@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Isso restaurará todas as 28 cores nomeadas para os padrões Operon.",
       "colorPaletteResetNotice": "Redefinição da paleta de cores",
       "colorPaletteResetTitle": "Redefinir paleta de cores?",
-      "colorPaletteSection": "Paleta de Cores",
-      "colorPaletteSectionDesc": "Editar as 28 posições fixas de cores nomeadas usadas na busca e nas predefinições do seletor de cores Operon.",
+      "colorPaletteSection": "Cores nomeadas",
+      "colorPaletteSectionDesc": "Selecione uma amostra para abrir o seletor ou edite seu valor HEX e nome. Estes 28 espaços são compartilhados pelos seletores de cores do Operon.",
       "colorPaletteSwatchLabel": "Escolha a cor para {{name}}",
       "compactChipIconOnly": "Somente ícone",
       "compactChipIconOnlyToggle": "Alternar somente ícone para {{label}}",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "90155dd7df055b413a3dff9bc1c11945fbe6120b9d794c33361e55a34c03fe13"
+  "sourceVersion": "526b3ef8f6b734711b2a71a0129a2b9926937a25487b9852bff8202c41c96d0a"
 }

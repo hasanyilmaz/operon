@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "これにより28色の名前付きカラーがすべて Operon のデフォルトに戻ります。",
       "colorPaletteResetNotice": "カラーパレットをリセットしました",
       "colorPaletteResetTitle": "カラーパレットをリセットしますか？",
-      "colorPaletteSection": "カラーパレット",
-      "colorPaletteSectionDesc": "Operon のカラーピッカー検索とプリセットで使用される固定の28色の名前付きカラースロットを編集します。",
+      "colorPaletteSection": "名前付きの色",
+      "colorPaletteSectionDesc": "色見本を選ぶとカラーピッカーが開きます。HEX値と名前を直接編集することもできます。この28枠はOperonのカラーピッカーで共有されます。",
       "colorPaletteSwatchLabel": "{{name}} のカラーを選択",
       "compactChipIconOnly": "アイコンのみ",
       "compactChipIconOnlyToggle": "{{label}} のアイコンのみを切り替え",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "84af711f7f457498c85b0306a528906f4ee2a8648c92cf4550b5fef88fc7d0fb"
+  "sourceVersion": "0379ef9622239662968474b30d1a3205de273116926474eae83005de104846b7"
 }

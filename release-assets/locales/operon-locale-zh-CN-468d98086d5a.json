@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "这将把全部 28 种命名颜色恢复为 Operon 默认值。",
       "colorPaletteResetNotice": "调色板已重置",
       "colorPaletteResetTitle": "重置调色板？",
-      "colorPaletteSection": "调色板",
-      "colorPaletteSectionDesc": "编辑 Operon 颜色选择器搜索和预设所使用的固定 28 个命名颜色槽。",
+      "colorPaletteSection": "命名颜色",
+      "colorPaletteSectionDesc": "点击色块打开颜色选择器，或编辑其 HEX 值和名称。这 28 个色位由 Operon 颜色选择器共用。",
       "colorPaletteSwatchLabel": "为 {{name}} 选择颜色",
       "compactChipIconOnly": "仅图标",
       "compactChipIconOnlyToggle": "切换 {{label}} 的仅图标",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "f55e0d9938d162b1fe49a3b819e181f9a351390f91a6ccace179211f29c643de"
+  "sourceVersion": "b4a19bdb59d8e32f0bc6e9b7426b55ba60368ee5a160dd674b0bc1fcd4cf2bc0"
 }

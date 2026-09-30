@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Bu işlem 28 adlandırılmış rengin tamamını Operon varsayılanlarına döndürür.",
       "colorPaletteResetNotice": "Renk paleti sıfırlandı",
       "colorPaletteResetTitle": "Renk paleti sıfırlansın mı?",
-      "colorPaletteSection": "Color Palette",
-      "colorPaletteSectionDesc": "Operon color picker araması ve ön ayarları için kullanılan sabit 28 renk slotunu düzenle.",
+      "colorPaletteSection": "Adlandırılmış Renkler",
+      "colorPaletteSectionDesc": "Renk seçiciyi açmak için renk kutusuna tıklayın veya HEX değerini ve adını düzenleyin. Bu 28 yuva Operon renk seçicilerinde ortak kullanılır.",
       "colorPaletteSwatchLabel": "{{name}} için renk seç",
       "compactChipIconOnly": "Yalnızca Simge",
       "compactChipIconOnlyToggle": "{{label}} için Yalnızca Simge modunu aç/kapat",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "10d0d04969fd0e31832d8c7ce40f0985b3d48cd54a16261c8e4b27f98629cc14"
+  "sourceVersion": "c7d5d745390d1e6a848f56970fe4691549cb71c4628b6eb424cef3a3444f3c7e"
 }

@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Dadurch werden alle 28 benannten Farben auf die Operon-Standards zurückgesetzt.",
       "colorPaletteResetNotice": "Farbpalette zurückgesetzt",
       "colorPaletteResetTitle": "Farbpalette zurücksetzen?",
-      "colorPaletteSection": "Color Palette",
-      "colorPaletteSectionDesc": "Bearbeite die festen 28 Farbfelder für Suche und Voreinstellungen in der Operon-Farbauswahl.",
+      "colorPaletteSection": "Benannte Farben",
+      "colorPaletteSectionDesc": "Klicke auf ein Farbfeld, um die Farbauswahl zu öffnen, oder bearbeite HEX-Wert und Namen. Diese 28 Plätze werden von den Operon-Farbauswahlen gemeinsam verwendet.",
       "colorPaletteSwatchLabel": "Farbe für {{name}} auswählen",
       "compactChipIconOnly": "Nur Symbol",
       "compactChipIconOnlyToggle": "Nur-Symbol für {{label}} umschalten",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "135c2ccad606887408c618ff41dbf24ab326220ff7a5e1df6d82ff5005f25f77"
+  "sourceVersion": "3c48378349bced9f7631ad1d3bca5081ae8ad1d4a9b1d6a5978929c3aed9cf69"
 }

@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Questo ripristinerà tutti i 28 colori con nome ai valori predefiniti di Operon.",
       "colorPaletteResetNotice": "Tavolozza colori ripristinata",
       "colorPaletteResetTitle": "Ripristinare la tavolozza colori?",
-      "colorPaletteSection": "Tavolozza colori",
-      "colorPaletteSectionDesc": "Modifica i 28 slot di colore con nome fissi usati dalla ricerca e dalle preimpostazioni del selettore di colore di Operon.",
+      "colorPaletteSection": "Colori con nome",
+      "colorPaletteSectionDesc": "Seleziona un campione per aprire il selettore oppure modifica il valore HEX e il nome. Questi 28 spazi sono condivisi dai selettori colore di Operon.",
       "colorPaletteSwatchLabel": "Scegli colore per {{name}}",
       "compactChipIconOnly": "Solo icona",
       "compactChipIconOnlyToggle": "Alterna Solo icona per {{label}}",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "94d48bceacb7f82b5c4a52f99a4ae2f51b5d3dd7d15abb8cd888d1534b2a4658"
+  "sourceVersion": "bdfe4f8e728634d6dc00890643d5e738c8cfc7312e7c8d4da1e9a216ae591e56"
 }

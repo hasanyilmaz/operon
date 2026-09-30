@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Это восстановит все 28 именованных цветов до значений Operon по умолчанию.",
       "colorPaletteResetNotice": "Цветовая палитра сброшена",
       "colorPaletteResetTitle": "Сбросить цветовую палитру?",
-      "colorPaletteSection": "Цветовая палитра",
-      "colorPaletteSectionDesc": "Редактируйте 28 фиксированных именованных цветовых слотов, используемых в поиске и пресетах палитры цвета Operon.",
+      "colorPaletteSection": "Именованные цвета",
+      "colorPaletteSectionDesc": "Выберите образец, чтобы открыть палитру, или измените HEX-код и название. Эти 28 ячеек используются во всех средствах выбора цвета Operon.",
       "colorPaletteSwatchLabel": "Выбрать цвет для {{name}}",
       "compactChipIconOnly": "Только значок",
       "compactChipIconOnlyToggle": "Переключить «Только значок» для {{label}}",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "aaf998b4063a0d44b6ef89aa3507e81e7eb062899bd3d74e5fa524430bc32c0e"
+  "sourceVersion": "7399a8a8f0cd630c4b3da700b6da0ff4a17c1204f9cdcbeddb115345b80eec32"
 }

@@ -35193,3 +35193,24 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-workspace-tweaks-settings-group:where(.operon-settings-scope) .operon-excluded-folders-add-row::before {
 	content: none;
 }
+
+/* Named palette rows keep their own search target and responsive editor. */
+.operon-color-palette-settings-group:where(.operon-settings-scope) > .setting-items {
+ container-type: inline-size;
+}
+.operon-color-palette-settings-group:where(.operon-settings-scope) .operon-color-palette-search-row {
+ padding: 0 24px 8px;
+}
+.operon-color-palette-settings-group:where(.operon-settings-scope) .operon-color-palette-reset-row {
+ padding: 12px 24px 18px;
+}
+.operon-color-palette-field-label:where(.operon-settings-scope, .operon-settings-scope *) {
+ display: flex;
+ flex-direction: column;
+ gap: 4px;
+ color: var(--text-muted);
+ font-size: var(--font-ui-small);
+}
+.operon-color-palette-row-controls:where(.operon-settings-scope, .operon-settings-scope *) {
+ align-items: center;
+}

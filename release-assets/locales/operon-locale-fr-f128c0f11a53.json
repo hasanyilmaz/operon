@@ -1237,8 +1237,8 @@
       "colorPaletteResetMessage": "Cela restaurera les 28 couleurs nommées aux valeurs par défaut d'Operon.",
       "colorPaletteResetNotice": "Palette de couleurs réinitialisée",
       "colorPaletteResetTitle": "Réinitialiser la palette de couleurs ?",
-      "colorPaletteSection": "Color Palette",
-      "colorPaletteSectionDesc": "Modifiez les 28 emplacements de couleur fixes utilisés par la recherche et les préréglages du sélecteur de couleur Operon.",
+      "colorPaletteSection": "Couleurs nommées",
+      "colorPaletteSectionDesc": "Sélectionnez un échantillon pour ouvrir le sélecteur, ou modifiez sa valeur HEX et son nom. Ces 28 emplacements sont partagés par les sélecteurs de couleur Operon.",
       "colorPaletteSwatchLabel": "Choisir la couleur pour {{name}}",
       "compactChipIconOnly": "Icône uniquement",
       "compactChipIconOnlyToggle": "Basculer Icône uniquement pour {{label}}",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "f8f260b4ec9c43442831a9cd8e0cfceffd1e9994fa9b397f834cc6f9d15d0174"
+  "sourceVersion": "2c1afdba6fdbb8d1c99a341d62f442f0f788589df3190f976d87d3a72a0f4f1d"
 }

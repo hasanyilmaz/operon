@@ -1350,6 +1350,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildContextMenuSettingsItems(entries) };
 		}
 
+		if (tab.id === 'interfaceColorPalette') {
+			return { type: 'page', name: pageName, desc, items: this.buildColorPaletteSettingsItems() };
+		}
+
 		if (tab.id === 'interfaceTweaks') {
 			return { type: 'page', name: pageName, desc, items: this.buildWorkspaceTweaksSettingsItems(entries) };
 		}
@@ -1918,6 +1922,31 @@ export class OperonSettingsTab extends PluginSettingTab {
 				})),
 			],
 		}];
+	}
+
+	private buildColorPaletteSettingsItems(): SettingDefinitionItem[] {
+		const palette = localizeColorPaletteNames(this.settings.colorPalette);
+		return [{ type: 'group', heading: t('settings', 'colorPaletteSection'), cls: 'operon-color-palette-settings-group', items: [
+			{ name: '', desc: t('settings', 'colorPaletteSectionDesc'), searchable: false, render: setting => {
+				const title = t('settings', 'subtabColorPalette');
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					this.buildNativeSettingsDocsAction(title, 'DOCS-067 Color picker').action);
+			} },
+			...palette.map(entry => ({ name: entry.name, desc: entry.hex, aliases: [entry.id, entry.hex.slice(1)], render: (setting: Setting) => {
+				setting.settingEl.empty();
+				setting.settingEl.removeClass('setting-item');
+				setting.settingEl.addClass('operon-color-palette-search-row');
+				this.renderColorPaletteRow(setting.settingEl, this.getColorPaletteEntry(entry.id) ?? entry);
+			} })),
+			{ name: t('settings', 'colorPaletteResetAll'), render: setting => {
+				setting.settingEl.empty();
+				setting.settingEl.removeClass('setting-item');
+				setting.settingEl.addClass('operon-color-palette-reset-row');
+				createSettingsListCardActionButton({ containerEl: setting.settingEl, label: t('settings', 'colorPaletteResetAll'),
+					icon: 'rotate-ccw', danger: true, wide: true, errorContext: 'settings color palette reset failed',
+					onClick: () => this.confirmColorPaletteReset() });
+			} },
+		] }];
 	}
 
 	private buildWorkspaceTweaksSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -4540,7 +4569,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: t('settings', 'colorPaletteSectionDesc'),
 		});
 		const listEl = sectionEl.createDiv('operon-color-palette-settings-list');
-		this.settings.colorPalette = normalizeColorPalette(this.settings.colorPalette);
 		const displayPalette = localizeColorPaletteNames(this.settings.colorPalette);
 
 		for (const entry of displayPalette) {
@@ -4605,7 +4633,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		const controlsEl = rowEl.createDiv('operon-color-palette-row-controls');
 		const hexFieldEl = controlsEl.createDiv('operon-color-palette-field operon-color-palette-hex-field');
-		const hexInput = hexFieldEl.createEl('input', {
+		const hexLabel = hexFieldEl.createEl('label', { text: t('settings', 'colorPaletteHexLabel'), cls: 'operon-color-palette-field-label' });
+		const hexInput = hexLabel.createEl('input', {
 			cls: 'operon-color-palette-input operon-color-palette-hex-input',
 			attr: {
 				type: 'text',
@@ -4620,7 +4649,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 
 		const nameFieldEl = controlsEl.createDiv('operon-color-palette-field operon-color-palette-name-field');
-		const nameInput = nameFieldEl.createEl('input', {
+		const nameLabel = nameFieldEl.createEl('label', { text: t('settings', 'colorPaletteNameLabel'), cls: 'operon-color-palette-field-label' });
+		const nameInput = nameLabel.createEl('input', {
 			cls: 'operon-color-palette-input operon-color-palette-name-input',
 			attr: {
 				type: 'text',
@@ -4644,6 +4674,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				saveTimer = null;
 				runSettingsAsync('settings color palette save failed', async () => {
 					await this.saveSettings();
+					this.updateNativeSettingsDefinitions();
 				});
 			}, 300);
 		};
