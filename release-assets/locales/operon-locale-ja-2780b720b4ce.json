@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "値を適用できませんでした。タスクまたは設定が変更された可能性があります。",
       "propertyPoolEmpty": "お気に入りはありません。プールでプロパティを選択して値を保存してください。",
       "propertyPoolFavorites": "お気に入り",
-      "propertyPoolFavoritesDesc": "保存した値はこの保管庫のすべての Canvas で共有されます。",
+      "propertyPoolFavoritesDesc": "この保管庫のすべてのCanvasで共有する保存済みプロパティ値を管理します。お気に入りを削除してもタスクの値は変わりません。",
+      "propertyPoolFavoritesTitle": "プロパティプールのお気に入り",
       "propertyPoolGroupAreaOccupied": "グループ全体が収まる空き領域にドロップしてください。",
       "propertyPoolGroupListOnly": "同じプロパティの値を有効なリストグループにドロップしてください。",
       "propertyPoolHistoryUnavailable": "Canvasの元に戻す・やり直しを利用できません。",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "{{property}}の値を検索…",
       "propertyPoolShortcutRowDesc": "プロパティのショートカットを選び、表示・非表示を切り替え、プール内で並べ替えます。",
       "propertyPoolShortcuts": "プロパティのショートカット",
-      "propertyPoolShortcutsDesc": "検索欄の上に表示するアイコンと順序を選択します。",
+      "propertyPoolShortcutsDesc": "Canvasのプロパティ値プールの検索欄の上にあるショートカットを選択し、表示・非表示や順序を設定します。",
+      "propertyPoolShortcutsTitle": "プロパティプールのショートカット",
       "propertyPoolSummary": "{{visible}} / {{total}} 件の値",
       "propertyPoolTitle": "Canvas プロパティ値プール",
       "propertyPoolTypeMore": "プロパティを検索するには2文字以上入力してください。",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "21f869ab376e9386f1ee54c4e5372bb28981914d52a231dbf0de462b1dbab8be"
+  "sourceVersion": "d8ab53135257560f3a8c2905415952c66109358eba7b8a97f454b16c048dfdf6"
 }

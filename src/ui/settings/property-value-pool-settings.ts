@@ -1,12 +1,12 @@
 import { renderPropertyPoolValueVisual } from '../property-pool-value-visual';
-import { Notice, type Setting, type SettingDefinition } from 'obsidian';
+import { Notice, type Setting, type SettingDefinition, type SettingDefinitionGroup } from 'obsidian';
 import { t } from '../../core/i18n';
 import { editPropertyPoolPreferences, propertyPoolScopeKey, propertyPoolFields, propertyPoolFavoriteId, resolvePropertyPoolFavorite, readPropertyPoolPreferences, type PropertyPoolFavorite, type PropertyPoolEdit, type PropertyPoolPreferences } from '../../core/property-value-pool';
 import type { OperonSettings } from '../../types/settings';
 import { settingsAsyncHandler } from './async-settings-action';
 
 /** Each editable row is a native search target; mounted rows share one subscription. */
-export function buildPropertyValuePoolSettings(getSettings: () => OperonSettings, save: (preferences: PropertyPoolPreferences, expected: unknown) => Promise<void>, resolveFavorite: (favorite: PropertyPoolFavorite) => PropertyPoolFavorite | null, subscribe?: (listener: () => void) => () => void, favoriteLabels = new Map<string, string>(), onSearchChanged?: () => void): SettingDefinition[] {
+export function buildPropertyValuePoolSettings(getSettings: () => OperonSettings, save: (preferences: PropertyPoolPreferences, expected: unknown) => Promise<void>, resolveFavorite: (favorite: PropertyPoolFavorite) => PropertyPoolFavorite | null, subscribe?: (listener: () => void) => () => void, favoriteLabels = new Map<string, string>(), onSearchChanged?: () => void): SettingDefinitionGroup[] {
 	let busy = false;
 	let searchRefreshQueued = false;
 	const refreshSearch = (): void => {
@@ -56,13 +56,20 @@ export function buildPropertyValuePoolSettings(getSettings: () => OperonSettings
 			};
 		},
 	});
-	const heading = (name: string, desc: string): SettingDefinition => ({ name, desc, searchable: false, render: setting => { setting.setHeading(); } });
 	const { writable, preferences } = readPropertyPoolPreferences(getSettings().propertyValuePool);
-	const items: SettingDefinition[] = [heading(t('settings', 'propertyPoolShortcuts'), t('settings', 'propertyPoolShortcutsDesc'))];
-	if (!writable) return [...items, { ...row('', t('settings', 'propertyPoolUnavailable'), () => {}), searchable: false }];
+	const shortcuts: SettingDefinition[] = [{ name: '', desc: t('settings', 'propertyPoolShortcutsDesc'), searchable: false }];
+	const favorites: SettingDefinition[] = [{ name: '', desc: t('settings', 'propertyPoolFavoritesDesc'), searchable: false }];
+	const groups: SettingDefinitionGroup[] = [
+		{ type: 'group', heading: t('settings', 'propertyPoolShortcutsTitle'), items: shortcuts },
+		{ type: 'group', heading: t('settings', 'propertyPoolFavoritesTitle'), items: favorites, visible: writable },
+	];
+	if (!writable) {
+		shortcuts.push({ ...row('', t('settings', 'propertyPoolUnavailable'), () => {}), searchable: false });
+		return groups;
+	}
 	for (const [index, shortcut] of preferences.shortcuts.entries()) {
 		const label = choices().find(choice => choice.key === shortcut.key)?.label ?? shortcut.key;
-		items.push(row(`${t('settings', 'propertyPoolShortcuts')} ${index + 1} — ${label}`, t('settings', 'propertyPoolShortcutRowDesc'), (setting, current, commit) => {
+		shortcuts.push(row(`${t('settings', 'propertyPoolShortcuts')} ${index + 1} — ${label}`, t('settings', 'propertyPoolShortcutRowDesc'), (setting, current, commit) => {
 			const active = current.shortcuts[index];
 			if (!active) return;
 			setting.addDropdown(dropdown => {
@@ -87,8 +94,7 @@ export function buildPropertyValuePoolSettings(getSettings: () => OperonSettings
 			})));
 		}));
 	}
-	items.push(heading(t('settings', 'propertyPoolFavorites'), t('settings', 'propertyPoolFavoritesDesc')));
-	if (!preferences.favorites.length) items.push({ name: '', desc: t('settings', 'propertyPoolEmpty'), searchable: false });
+	if (!preferences.favorites.length) favorites.push({ name: '', desc: t('settings', 'propertyPoolEmpty'), searchable: false });
 	for (const favorite of preferences.favorites) {
 		const resolved = resolvePropertyPoolFavorite(getSettings(), favorite);
 		const favoriteId = propertyPoolFavoriteId(favorite);
@@ -110,9 +116,9 @@ export function buildPropertyValuePoolSettings(getSettings: () => OperonSettings
 				renderPropertyPoolValueVisual(setting.nameEl, currentValue ?? favorite, field?.icon ?? 'text');
 			}
 		});
-		items.push(definition);
+		favorites.push(definition);
 	}
 	const favoriteIds = new Set(preferences.favorites.map(propertyPoolFavoriteId));
 	for (const key of favoriteLabels.keys()) if (!favoriteIds.has(key)) favoriteLabels.delete(key);
-	return items;
+	return groups;
 }

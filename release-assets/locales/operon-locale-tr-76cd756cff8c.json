@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "Değer uygulanamadı. Task veya ayarları değişmiş olabilir.",
       "propertyPoolEmpty": "Henüz favori yok. Değer kaydetmek için pool içinde bir property seçin.",
       "propertyPoolFavorites": "Favoriler",
-      "propertyPoolFavoritesDesc": "Kaydedilen property değerleri bu vault içindeki tüm Canvas’larda ortaktır.",
+      "propertyPoolFavoritesDesc": "Bu kasadaki tüm Canvas’larda paylaşılan kayıtlı özellik değerlerini yönetin. Bir favoriyi kaldırmak görev değerlerini değiştirmez.",
+      "propertyPoolFavoritesTitle": "Özellik Havuzu Favorileri",
       "propertyPoolGroupAreaOccupied": "Grubun tamamının sığacağı boş bir alana bırakın.",
       "propertyPoolGroupListOnly": "Geçerli bir liste grubuna aynı property’ye ait bir değer bırakın.",
       "propertyPoolHistoryUnavailable": "Canvas Undo/Redo kullanılamıyor.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "{{property}} değerlerinde ara…",
       "propertyPoolShortcutRowDesc": "Bir özellik kısayolu seçin, gösterin veya gizleyin ve havuzdaki sırasını değiştirin.",
       "propertyPoolShortcuts": "Property kısayolları",
-      "propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
+      "propertyPoolShortcutsDesc": "Canvas Özellik Değeri Havuzu arama kutusunun üzerindeki kısayolları seçin, gösterin veya gizleyin ve sıralayın.",
+      "propertyPoolShortcutsTitle": "Özellik Havuzu Kısayolları",
       "propertyPoolSummary": "{{visible}} / {{total}} değer",
       "propertyPoolTitle": "Canvas Property Value Pool",
       "propertyPoolTypeMore": "Property bulmak için en az iki karakter yazın.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3f07410036f6be585210991e81023b3f1bc23b0aa765fc3eb6b4597977324c71"
+  "sourceVersion": "14fe1edc7d0276ba0a1d1707b48a33a37f436dfb77b8b66f3845f03da8c1beec"
 }

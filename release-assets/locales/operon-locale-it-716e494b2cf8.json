@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "Impossibile applicare il valore. L’attività o le impostazioni potrebbero essere cambiate.",
       "propertyPoolEmpty": "Nessun preferito. Seleziona una proprietà nella raccolta per salvare un valore.",
       "propertyPoolFavorites": "Preferiti",
-      "propertyPoolFavoritesDesc": "I valori salvati sono condivisi tra tutti i Canvas di questo vault.",
+      "propertyPoolFavoritesDesc": "Gestisci i valori delle proprietà salvati e condivisi tra tutti i Canvas di questo vault. Rimuovere un preferito non cambia i valori delle attività.",
+      "propertyPoolFavoritesTitle": "Preferiti del pannello delle proprietà",
       "propertyPoolGroupAreaOccupied": "Rilascia in uno spazio vuoto abbastanza grande per tutto il gruppo.",
       "propertyPoolGroupListOnly": "Rilascia un valore della stessa proprietà su un gruppo elenco valido.",
       "propertyPoolHistoryUnavailable": "Annulla/ripristina di Canvas non è disponibile.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "Cerca valori di {{property}}…",
       "propertyPoolShortcutRowDesc": "Scegli una scorciatoia di proprietà, mostrala o nascondila e spostala nel pannello.",
       "propertyPoolShortcuts": "Scorciatoie delle proprietà",
-      "propertyPoolShortcutsDesc": "Scegli e ordina le icone sopra la ricerca.",
+      "propertyPoolShortcutsDesc": "Scegli, mostra o nascondi e ordina le scorciatoie sopra la ricerca nel pannello dei valori delle proprietà di Canvas.",
+      "propertyPoolShortcutsTitle": "Scorciatoie del pannello delle proprietà",
       "propertyPoolSummary": "{{visible}} / {{total}} valori",
       "propertyPoolTitle": "Canvas Raccolta valori delle proprietà",
       "propertyPoolTypeMore": "Digita almeno due caratteri per trovare una proprietà.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "4a2679c2e74a8cacaaa185a9cdcfae80e186df4f579f0dcd4d6ee52a05f0241c"
+  "sourceVersion": "b657da6fb7c7089b8e61334457e7fa82cefa709510848a350a5628d77bd19a0d"
 }

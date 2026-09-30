@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "No se pudo aplicar el valor. La tarea o sus ajustes pueden haber cambiado.",
       "propertyPoolEmpty": "No hay favoritos. Selecciona una propiedad en el panel para guardar un valor.",
       "propertyPoolFavorites": "Favoritos",
-      "propertyPoolFavoritesDesc": "Los valores guardados se comparten entre todos los Canvas de esta bóveda.",
+      "propertyPoolFavoritesDesc": "Gestiona valores de propiedades guardados y compartidos entre todos los Canvas de esta bóveda. Quitar un favorito no cambia los valores de las tareas.",
+      "propertyPoolFavoritesTitle": "Favoritos del panel de propiedades",
       "propertyPoolGroupAreaOccupied": "Suelta en un espacio vacío donde quepa todo el grupo.",
       "propertyPoolGroupListOnly": "Suelta un valor de la misma propiedad en un grupo de lista válido.",
       "propertyPoolHistoryUnavailable": "Deshacer/rehacer de Canvas no está disponible.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcutRowDesc": "Elige un acceso directo de propiedad, muéstralo u ocúltalo y cambia su posición en el panel.",
       "propertyPoolShortcuts": "Accesos a propiedades",
-      "propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
+      "propertyPoolShortcutsDesc": "Elige, muestra u oculta y ordena los accesos directos sobre el buscador del panel de valores de propiedades de Canvas.",
+      "propertyPoolShortcutsTitle": "Accesos directos del panel de propiedades",
       "propertyPoolSummary": "{{visible}} / {{total}} valores",
       "propertyPoolTitle": "Canvas Panel de valores de propiedades",
       "propertyPoolTypeMore": "Escribe al menos dos caracteres para encontrar una propiedad.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "171d954f2d1636ebf5dc9d9b5a2d2cfa4c15528c8189b9b2d17bfc77fec1e2ac"
+  "sourceVersion": "78df43483c9541ae14f04a008dd8aa89e511d6766992eb5926af6c6ca3d1b17a"
 }

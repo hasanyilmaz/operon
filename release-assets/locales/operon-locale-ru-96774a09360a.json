@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "Не удалось применить значение. Возможно, задача или её настройки изменились.",
       "propertyPoolEmpty": "Избранного пока нет. Выберите свойство в пуле, чтобы сохранить значение.",
       "propertyPoolFavorites": "Избранное",
-      "propertyPoolFavoritesDesc": "Сохранённые значения доступны во всех Canvas этого хранилища.",
+      "propertyPoolFavoritesDesc": "Управляйте сохранёнными значениями свойств, общими для всех Canvas этого хранилища. Удаление из избранного не меняет значения задач.",
+      "propertyPoolFavoritesTitle": "Избранное пула свойств",
       "propertyPoolGroupAreaOccupied": "Перетащите в свободную область, где поместится вся группа.",
       "propertyPoolGroupListOnly": "Перетащите значение того же свойства в допустимую группу списка.",
       "propertyPoolHistoryUnavailable": "Отмена и повтор в Canvas недоступны.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "Поиск значений {{property}}…",
       "propertyPoolShortcutRowDesc": "Выберите ярлык свойства, покажите или скройте его и измените его положение в панели.",
       "propertyPoolShortcuts": "Ярлыки свойств",
-      "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
+      "propertyPoolShortcutsDesc": "Выбирайте, показывайте, скрывайте и упорядочивайте ярлыки над поиском в пуле значений свойств Canvas.",
+      "propertyPoolShortcutsTitle": "Ярлыки пула свойств",
       "propertyPoolSummary": "{{visible}} / {{total}} значений",
       "propertyPoolTitle": "Canvas Пул значений свойств",
       "propertyPoolTypeMore": "Введите не менее двух символов для поиска свойства.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "fe1391c6e779f93b8442eca4bd9c6914cba2fcacf4eb570028073218174fe2ef"
+  "sourceVersion": "09c5d60572493ece8269d922266abdc18e474dcf84f19f70cc81e828a8076162"
 }

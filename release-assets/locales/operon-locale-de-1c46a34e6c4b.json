@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
       "propertyPoolEmpty": "Noch keine Favoriten. Wählen Sie im Pool eine Eigenschaft, um einen Wert zu speichern.",
       "propertyPoolFavorites": "Favoriten",
-      "propertyPoolFavoritesDesc": "Gespeicherte Werte gelten für alle Canvases in diesem Vault.",
+      "propertyPoolFavoritesDesc": "Gespeicherte Eigenschaftswerte verwalten, die alle Canvases in diesem Vault teilen. Das Entfernen eines Favoriten ändert keine Aufgabenwerte.",
+      "propertyPoolFavoritesTitle": "Eigenschaftspool-Favoriten",
       "propertyPoolGroupAreaOccupied": "In einem freien Bereich ablegen, der Platz für die gesamte Gruppe bietet.",
       "propertyPoolGroupListOnly": "Einen Wert derselben Eigenschaft auf einer gültigen Listengruppe ablegen.",
       "propertyPoolHistoryUnavailable": "Canvas-Rückgängig/Wiederholen ist nicht verfügbar.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "Werte für {{property}} suchen…",
       "propertyPoolShortcutRowDesc": "Einen Eigenschaftskurzbefehl auswählen, ein- oder ausblenden und im Pool verschieben.",
       "propertyPoolShortcuts": "Eigenschaftsverknüpfungen",
-      "propertyPoolShortcutsDesc": "Symbole über der Suche auswählen und anordnen.",
+      "propertyPoolShortcutsDesc": "Kurzbefehle über dem Suchfeld im Canvas-Eigenschaftswertepool auswählen, ein- oder ausblenden und anordnen.",
+      "propertyPoolShortcutsTitle": "Eigenschaftspool-Kurzbefehle",
       "propertyPoolSummary": "{{visible}} / {{total}} Werte",
       "propertyPoolTitle": "Canvas Eigenschaftswerte-Pool",
       "propertyPoolTypeMore": "Mindestens zwei Zeichen eingeben, um eine Eigenschaft zu finden.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "900e03dbe3898e9ea08a9275f59d79f371ad598a29d5cbe66b80c561c73d79dc"
+  "sourceVersion": "897d9f33f73037acb93c4ce49b65ea555d3644bc13548404a9498994cbacdd0b"
 }

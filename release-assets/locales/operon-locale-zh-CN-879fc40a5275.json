@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "无法应用此值。任务或其设置可能已更改。",
       "propertyPoolEmpty": "暂无收藏。在值池中选择属性以保存值。",
       "propertyPoolFavorites": "收藏",
-      "propertyPoolFavoritesDesc": "保存的属性值在此仓库的所有 Canvas 中共享。",
+      "propertyPoolFavoritesDesc": "管理此仓库中所有 Canvas 共享的已保存属性值。移除收藏不会更改任务的属性值。",
+      "propertyPoolFavoritesTitle": "属性池收藏",
       "propertyPoolGroupAreaOccupied": "请拖放到能容纳整个分组的空白区域。",
       "propertyPoolGroupListOnly": "请将相同属性的值拖放到有效的列表分组。",
       "propertyPoolHistoryUnavailable": "Canvas 的撤销/重做不可用。",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "搜索 {{property}} 的值…",
       "propertyPoolShortcutRowDesc": "选择属性快捷方式，显示或隐藏它，并调整其在池中的顺序。",
       "propertyPoolShortcuts": "属性快捷方式",
-      "propertyPoolShortcutsDesc": "选择并排列搜索栏上方的属性图标。",
+      "propertyPoolShortcutsDesc": "选择、显示或隐藏并排列 Canvas 属性值池搜索框上方的快捷方式。",
+      "propertyPoolShortcutsTitle": "属性池快捷方式",
       "propertyPoolSummary": "{{visible}} / {{total}} 个值",
       "propertyPoolTitle": "Canvas 属性值池",
       "propertyPoolTypeMore": "输入至少两个字符以查找属性。",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e5053620b6a2d83cabbbd4efecd8fc0ea39e52bfbf8c28d94ab227b01f8d28de"
+  "sourceVersion": "aeb3adc6561065fe1afbfa81b4838d911ff12c540c4d77ba76a67567dd1b2e2b"
 }

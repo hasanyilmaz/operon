@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "Não foi possível aplicar o valor. A tarefa ou suas configurações podem ter mudado.",
       "propertyPoolEmpty": "Nenhum favorito. Selecione uma propriedade no painel para salvar um valor.",
       "propertyPoolFavorites": "Favoritos",
-      "propertyPoolFavoritesDesc": "Os valores salvos são compartilhados entre todos os Canvas deste cofre.",
+      "propertyPoolFavoritesDesc": "Gerencie valores de propriedades salvos e compartilhados entre todos os Canvas deste cofre. Remover um favorito não altera os valores das tarefas.",
+      "propertyPoolFavoritesTitle": "Favoritos do painel de propriedades",
       "propertyPoolGroupAreaOccupied": "Solte em uma área vazia com espaço para todo o grupo.",
       "propertyPoolGroupListOnly": "Solte um valor da mesma propriedade em um grupo de lista válido.",
       "propertyPoolHistoryUnavailable": "Desfazer/refazer do Canvas não está disponível.",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
       "propertyPoolShortcutRowDesc": "Escolha um atalho de propriedade, mostre ou oculte e altere sua posição no painel.",
       "propertyPoolShortcuts": "Atalhos de propriedades",
-      "propertyPoolShortcutsDesc": "Escolha e ordene os ícones acima da pesquisa.",
+      "propertyPoolShortcutsDesc": "Escolha, mostre ou oculte e ordene os atalhos acima da busca no painel de valores de propriedades do Canvas.",
+      "propertyPoolShortcutsTitle": "Atalhos do painel de propriedades",
       "propertyPoolSummary": "{{visible}} / {{total}} valores",
       "propertyPoolTitle": "Canvas Painel de valores de propriedades",
       "propertyPoolTypeMore": "Digite pelo menos dois caracteres para encontrar uma propriedade.",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "c82d0dd5d5c8b7c5a7ecacc16545040f43e71330682a895c9c6a9ea6cdd89aa1"
+  "sourceVersion": "9b2e84680a2bc6b66dc03c999e7e9ad6f6c6ee505af86e9cd9da8eb0edc50125"
 }

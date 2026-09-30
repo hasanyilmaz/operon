@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3512,
-  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
+  "keyCount": 3514,
+  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2225,7 +2225,8 @@
       "propertyPoolDropFailed": "無法套用此值。任務或其設定可能已變更。",
       "propertyPoolEmpty": "尚無收藏。在值池中選擇屬性以儲存值。",
       "propertyPoolFavorites": "收藏",
-      "propertyPoolFavoritesDesc": "儲存的屬性值在此儲存庫的所有 Canvas 中共用。",
+      "propertyPoolFavoritesDesc": "管理此儲存庫中所有 Canvas 共用的已儲存屬性值。移除收藏不會變更任務的屬性值。",
+      "propertyPoolFavoritesTitle": "屬性池收藏",
       "propertyPoolGroupAreaOccupied": "請拖放到能容納整個群組的空白區域。",
       "propertyPoolGroupListOnly": "請將相同屬性的值拖放到有效的清單群組。",
       "propertyPoolHistoryUnavailable": "Canvas 的復原／重做無法使用。",
@@ -2243,7 +2244,8 @@
       "propertyPoolSearchValues": "搜尋 {{property}} 的值…",
       "propertyPoolShortcutRowDesc": "選擇屬性捷徑、顯示或隱藏它，並調整其在池中的順序。",
       "propertyPoolShortcuts": "屬性捷徑",
-      "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
+      "propertyPoolShortcutsDesc": "選擇、顯示或隱藏並排列 Canvas 屬性值池搜尋框上方的捷徑。",
+      "propertyPoolShortcutsTitle": "屬性池捷徑",
       "propertyPoolSummary": "{{visible}} / {{total}} 個值",
       "propertyPoolTitle": "Canvas 屬性值池",
       "propertyPoolTypeMore": "輸入至少兩個字元以尋找屬性。",
@@ -3557,5 +3559,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "43a3a97b9add211a733ec16dfc0b1e00e7a854358c6f61c6f4f8023893c8d5dc"
+  "sourceVersion": "b0f7d1e6ecb8d2b99a5b356600ad2f02aabf04057a43620b86d8261b607b0090"
 }
