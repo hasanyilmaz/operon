@@ -35182,3 +35182,14 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-location-map-settings-group:where(.operon-settings-scope) .setting-items > .setting-item > .setting-item-control {
 	align-self: center;
 }
+
+/* Workspace Tweaks Settings retain native rows and compact folder actions. */
+.operon-workspace-tweaks-settings-group:where(.operon-settings-scope) .setting-items > .setting-item > .setting-item-control {
+	align-self: center;
+}
+.operon-workspace-tweaks-settings-group:where(.operon-settings-scope) .operon-excluded-folders-add-row {
+	border-top: none;
+}
+.operon-workspace-tweaks-settings-group:where(.operon-settings-scope) .operon-excluded-folders-add-row::before {
+	content: none;
+}

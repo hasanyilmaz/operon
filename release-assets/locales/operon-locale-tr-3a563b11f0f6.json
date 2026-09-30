@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Collapse Properties by Default",
       "workspaceTweaksCollapsePropertiesDesc": "Kapsama uyan notlar açıldığında Obsidian Properties bölümünü kapatır; nerede uygulanacağını aşağıdaki kapsam ve hariç klasörlerle belirleyebilirsin.",
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Side dock tab ikon/header şeritlerini inceltir ve hover sırasında tam tab alanını geri gösterir.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Yan panel sekme simgesi/başlık şeritlerini daraltın; üzerine gelince tüm sekme alanı açılır. Yalnızca masaüstünde.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Normal kaydırma davranışını koruyarak Obsidian workspace genelindeki scrollbarları gizler.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Bu klasör zaten hariç tutulmuş.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Hariç klasör",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Klasör ara...",
-      "workspaceTweaksPropertiesExcludedFolders": "Hariç tutulan klasörler",
+      "workspaceTweaksPropertiesExcludedFolders": "Özellikler için Hariç Tutulan Klasörler",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Bu klasörlerdeki notlarda Properties, tweak açık olsa bile açık kalır.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Properties için hariç tutulan klasör yok.",
       "workspaceTweaksPropertiesScope": "Properties kapatma kapsamı",
       "workspaceTweaksPropertiesScopeAllNotes": "Tüm notlar",
       "workspaceTweaksPropertiesScopeDesc": "Properties sadece Operon dosya görevlerinde mi yoksa tüm notlarda mı kapatılsın seç.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Yalnızca Operon dosya görevleri",
-      "workspaceTweaksPropertiesSection": "Properties",
+      "workspaceTweaksPropertiesSection": "Özellikler Paneli",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Hariç klasörü kaldır",
-      "workspaceTweaksWorkspaceSection": "Workspace yardımcıları"
+      "workspaceTweaksWorkspaceSection": "Çalışma Alanı Görünümü"
     },
     "table": {
       "activePresetMissing": "Aktif tablo preset'i bulunamadı.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4523a4e6f66135b720c7831292ef42437c61c38e0e1f9953feec20d2c2c3bb6c"
+  "sourceVersion": "10d0d04969fd0e31832d8c7ce40f0985b3d48cd54a16261c8e4b27f98629cc14"
 }

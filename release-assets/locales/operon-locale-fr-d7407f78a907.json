@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Collapse Properties by Default",
       "workspaceTweaksCollapsePropertiesDesc": "Replie les Properties d'Obsidian à l'ouverture des notes correspondantes ; la portée et les dossiers exclus ci-dessous contrôlent où cela s'applique.",
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Affine les bandes d'icônes/en-têtes des onglets du side dock et réaffiche toute la zone d'onglets au survol.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Réduit les en-têtes des onglets latéraux et les affiche entièrement au survol. Sur ordinateur uniquement.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Masque les barres de défilement dans tout le workspace Obsidian tout en conservant le défilement normal.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Ce dossier est déjà exclu.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Dossier exclu",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Rechercher des dossiers...",
-      "workspaceTweaksPropertiesExcludedFolders": "Dossiers exclus",
+      "workspaceTweaksPropertiesExcludedFolders": "Dossiers exclus des propriétés",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Les notes de ces dossiers gardent les Properties ouvertes, même quand le tweak Properties est activé.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Aucune exclusion Properties.",
       "workspaceTweaksPropertiesScope": "Portée du repli des Properties",
       "workspaceTweaksPropertiesScopeAllNotes": "Toutes les notes",
       "workspaceTweaksPropertiesScopeDesc": "Choisissez si les Properties se replient seulement pour les tâches-fichiers Operon ou pour toutes les notes.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Seulement les tâches-fichiers Operon",
-      "workspaceTweaksPropertiesSection": "Properties",
+      "workspaceTweaksPropertiesSection": "Panneau des propriétés",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Retirer le dossier exclu",
-      "workspaceTweaksWorkspaceSection": "Aides du workspace"
+      "workspaceTweaksWorkspaceSection": "Apparence de l’espace de travail"
     },
     "table": {
       "activePresetMissing": "Le préréglage de tableau actif est introuvable.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "57e9b432069fb90e67e46b616cbc1c26f93028043c7a0d4f8254829eeae4e547"
+  "sourceVersion": "f8f260b4ec9c43442831a9cd8e0cfceffd1e9994fa9b397f834cc6f9d15d0174"
 }

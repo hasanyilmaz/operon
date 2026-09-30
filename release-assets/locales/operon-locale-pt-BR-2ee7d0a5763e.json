@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Colapsar propriedades por padrão",
       "workspaceTweaksCollapsePropertiesDesc": "Colapsa as propriedades Obsidian quando notas correspondentes estão abertas; use o escopo e as pastas excluídas abaixo para controlar onde isso se aplica.",
       "workspaceTweaksCompactSidebarTabIcons": "Ícones Compactos na Barra Lateral",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Reduz os ícones/faixas de cabeçalho da aba do dock lateral e revela a área completa da aba ao passar o mouse.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Reduz os cabeçalhos das abas laterais e mostra a área completa ao passar o mouse. Apenas no desktop.",
       "workspaceTweaksHideScrollbars": "Ocultar Barras de Rolagem",
       "workspaceTweaksHideScrollbarsDesc": "Oculta as barras de rolagem em todo o espaço de trabalho Obsidian mantendo o comportamento normal de rolagem.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Essa pasta já está excluída.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Pasta excluída",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Buscar pastas...",
-      "workspaceTweaksPropertiesExcludedFolders": "Pastas excluídas",
+      "workspaceTweaksPropertiesExcludedFolders": "Pastas excluídas das propriedades",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Notas nessas pastas sempre mantêm as propriedades abertas, mesmo quando o ajuste de propriedades estiver ativado.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Nenhuma exclusão de propriedades",
       "workspaceTweaksPropertiesScope": "Escopo de colapso das propriedades",
       "workspaceTweaksPropertiesScopeAllNotes": "Todas as notas",
       "workspaceTweaksPropertiesScopeDesc": "Escolha se as propriedades devem colapsar apenas para tarefas em arquivo Operon ou para todas as notas.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Apenas tarefas em arquivo Operon",
-      "workspaceTweaksPropertiesSection": "Propriedades",
+      "workspaceTweaksPropertiesSection": "Painel de propriedades",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Remover pasta excluída",
-      "workspaceTweaksWorkspaceSection": "Utilitários do Espaço de Trabalho"
+      "workspaceTweaksWorkspaceSection": "Aparência do espaço de trabalho"
     },
     "table": {
       "activePresetMissing": "A predefinição de tabela ativa está faltando.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "2c9a06b880d4b9f06f4840dfef929e5959f01afdf77f8b7394f8bfa8974a05ad"
+  "sourceVersion": "90155dd7df055b413a3dff9bc1c11945fbe6120b9d794c33361e55a34c03fe13"
 }

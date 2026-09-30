@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Collapse Properties by Default",
       "workspaceTweaksCollapsePropertiesDesc": "Klappt Obsidian Properties ein, wenn passende Notizen geöffnet werden; Scope und ausgeschlossene Ordner darunter steuern, wo es gilt.",
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Macht die Tab-Symbol/Header-Leisten im Side Dock schmal und zeigt den vollständigen Tab-Bereich beim Hover wieder an.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Verschmälert die Tab-Kopfleisten der Seitenleisten und zeigt sie beim Darüberfahren vollständig. Nur auf dem Desktop.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Blendet Scrollbars im gesamten Obsidian-Workspace aus, während normales Scrollen erhalten bleibt.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Dieser Ordner ist bereits ausgeschlossen.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Ausgeschlossener Ordner",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Ordner suchen...",
-      "workspaceTweaksPropertiesExcludedFolders": "Ausgeschlossene Ordner",
+      "workspaceTweaksPropertiesExcludedFolders": "Ausgeschlossene Ordner für Eigenschaften",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Notizen in diesen Ordnern behalten Properties offen, auch wenn der Properties-Tweak aktiv ist.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Keine Properties-Ausnahmen.",
       "workspaceTweaksPropertiesScope": "Properties-Einklapp-Scope",
       "workspaceTweaksPropertiesScopeAllNotes": "Alle Notizen",
       "workspaceTweaksPropertiesScopeDesc": "Wähle, ob Properties nur für Operon-Datei-Aufgaben oder für alle Notizen eingeklappt werden.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Nur Operon-Datei-Aufgaben",
-      "workspaceTweaksPropertiesSection": "Properties",
+      "workspaceTweaksPropertiesSection": "Eigenschaftenbereich",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Ausgeschlossenen Ordner entfernen",
-      "workspaceTweaksWorkspaceSection": "Workspace-Helfer"
+      "workspaceTweaksWorkspaceSection": "Arbeitsbereich-Darstellung"
     },
     "table": {
       "activePresetMissing": "Das aktive Tabellenpreset fehlt.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "099a780153f9b6127641698ac7bb9d564dd1ad8c898ab8bdbc4a7a2f91b71eea"
+  "sourceVersion": "135c2ccad606887408c618ff41dbf24ab326220ff7a5e1df6d82ff5005f25f77"
 }

@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "プロパティをデフォルトで折りたたむ",
       "workspaceTweaksCollapsePropertiesDesc": "一致するノートが開いたときに Obsidian のプロパティを折りたたみます。適用範囲は、以下の範囲と除外フォルダーで制御します。",
       "workspaceTweaksCompactSidebarTabIcons": "コンパクトなサイドバータブアイコン",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "サイドドックのタブアイコン/ヘッダーの帯を細くし、ホバー時にタブ領域全体を表示します。",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "サイドバーのタブ見出しを細くし、ホバーすると全体を表示します。デスクトップのみ。",
       "workspaceTweaksHideScrollbars": "スクロールバーを非表示",
       "workspaceTweaksHideScrollbarsDesc": "通常のスクロール動作を保ちつつ、Obsidian ワークスペース全体でスクロールバーを非表示にします。",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "そのフォルダーはすでに除外されています。",
       "workspaceTweaksPropertiesExcludedFolderSearch": "除外フォルダー",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "フォルダーを検索...",
-      "workspaceTweaksPropertiesExcludedFolders": "除外フォルダー",
+      "workspaceTweaksPropertiesExcludedFolders": "プロパティの除外フォルダー",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "これらのフォルダー内のノートは、プロパティの調整が有効でも常にプロパティを開いたままにします。",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "プロパティの除外はありません。",
       "workspaceTweaksPropertiesScope": "プロパティ折りたたみの範囲",
       "workspaceTweaksPropertiesScopeAllNotes": "すべてのノート",
       "workspaceTweaksPropertiesScopeDesc": "プロパティを Operon ファイルタスクのみで折りたたむか、すべてのノートで折りたたむかを選択します。",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Operon ファイルタスクのみ",
-      "workspaceTweaksPropertiesSection": "プロパティ",
+      "workspaceTweaksPropertiesSection": "プロパティパネル",
       "workspaceTweaksRemovePropertiesExcludedFolder": "除外フォルダーを削除",
-      "workspaceTweaksWorkspaceSection": "ワークスペースの補助"
+      "workspaceTweaksWorkspaceSection": "ワークスペースの外観"
     },
     "table": {
       "activePresetMissing": "アクティブなテーブルプリセットが見つかりません。",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d03152908c7aa771d1f61d6a536de591e53ba508098d9871663c35049a184960"
+  "sourceVersion": "84af711f7f457498c85b0306a528906f4ee2a8648c92cf4550b5fef88fc7d0fb"
 }

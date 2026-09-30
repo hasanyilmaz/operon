@@ -1350,6 +1350,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildContextMenuSettingsItems(entries) };
 		}
 
+		if (tab.id === 'interfaceTweaks') {
+			return { type: 'page', name: pageName, desc, items: this.buildWorkspaceTweaksSettingsItems(entries) };
+		}
+
 		if (tab.id === 'interfaceTaskEditor') {
 			return { type: 'page', name: pageName, desc, items: this.buildTaskEditorSettingsItems(entries) };
 		}
@@ -1914,6 +1918,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 				})),
 			],
 		}];
+	}
+
+	private buildWorkspaceTweaksSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const hideScrollbars = this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksHideScrollbars');
+		if (hideScrollbars) {
+			delete hideScrollbars.control;
+			hideScrollbars.render = setting => {
+				setting.addToggle(toggle => toggle.setValue(this.settings.workspaceTweaksHideScrollbars)
+					.onChange(value => this.setControlValue('workspaceTweaksHideScrollbars', value)));
+				const title = t('settings', 'subtabTweaks');
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					this.buildNativeSettingsDocsAction(title, 'DOCS-098 Workspace Tweaks').action);
+			};
+		}
+		const groups: SettingDefinitionItem[] = [{
+			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
+			heading: t('settings', 'workspaceTweaksWorkspaceSection'),
+			items: this.compactSettingsSearchDefinitions([hideScrollbars,
+				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCompactSidebarTabIcons')]),
+		}, {
+			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
+			heading: t('settings', 'workspaceTweaksPropertiesSection'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCollapseProperties'),
+				this.settings.workspaceTweaksCollapseProperties
+					? this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksPropertiesScope') : null,
+			]),
+		}];
+		const folders = entries.find(entry => entry.id === 'ui.workspaceTweaksPropertiesExcludedFolders');
+		if (this.settings.workspaceTweaksCollapseProperties && folders) {
+			groups.push({ type: 'group', cls: 'operon-workspace-tweaks-settings-group',
+				heading: t('settings', 'workspaceTweaksPropertiesExcludedFolders'),
+				items: [this.buildTaskCaptureSearchSection(folders, container => this.renderWorkspaceTweaksExcludedFolderSettings(container, false))],
+			});
+		}
+		return groups;
 	}
 
 	private buildTaskEditorSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -3788,6 +3828,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (SETTINGS_SEARCH_WORKSPACE_TWEAK_KEYS.has(key)) {
 			this.applyPendingSettingsChange();
+			if (key === 'workspaceTweaksCollapseProperties') this.updateNativeSettingsDefinitions();
 		}
 		if (key === 'calendarShowHoverAddButton' || key === 'kanbanShowHoverAddButton') {
 			this.applyPendingSettingsChange();
@@ -13285,9 +13326,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	}
 
-	private renderWorkspaceTweaksExcludedFolderSettings(containerEl: HTMLElement): void {
+	private renderWorkspaceTweaksExcludedFolderSettings(containerEl: HTMLElement, grouped = true): void {
 		const wrapper = containerEl.createDiv({ cls: 'operon-workspace-tweaks-excluded-folders-setting' });
-		const sectionEl = renderNativeSettingsGroupedSection(wrapper, t('settings', 'workspaceTweaksPropertiesExcludedFolders'));
+		const sectionEl = grouped
+			? renderNativeSettingsGroupedSection(wrapper, t('settings', 'workspaceTweaksPropertiesExcludedFolders'))
+			: wrapper.createDiv();
 		sectionEl.addClass('operon-settings-add-list-section');
 		sectionEl.addClass('operon-settings-card-list-section');
 		this.markSettingsSearchSectionTarget(sectionEl, 'ui.workspaceTweaksPropertiesExcludedFolders');
@@ -13374,11 +13417,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		};
 		const render = (): void => {
-			this.settings.workspaceTweaksPropertiesExcludedFolders = normalizeFolderList(
-				this.settings.workspaceTweaksPropertiesExcludedFolders,
-			);
+			const folders = normalizeFolderList(this.settings.workspaceTweaksPropertiesExcludedFolders);
 			listEl.empty();
-			for (const folderPath of this.settings.workspaceTweaksPropertiesExcludedFolders) {
+			for (const folderPath of folders) {
 				const row = createSettingsListCard({
 					containerEl: listEl,
 					icon: 'panel-top-close',
@@ -13409,7 +13450,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					},
 				});
 			}
-			if (this.settings.workspaceTweaksPropertiesExcludedFolders.length === 0) {
+			if (folders.length === 0) {
 				listEl.createDiv({
 					text: t('settings', 'workspaceTweaksPropertiesExcludedFoldersEmpty'),
 					cls: 'operon-excluded-folders-empty',

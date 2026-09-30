@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Сворачивать свойства по умолчанию",
       "workspaceTweaksCollapsePropertiesDesc": "Сворачивать свойства Obsidian при открытии подходящих заметок; используйте область и исключённые папки ниже, чтобы указать, где это применяется.",
       "workspaceTweaksCompactSidebarTabIcons": "Компактные значки вкладок боковой панели",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Сузить полосы значков/заголовков вкладок боковой панели и показывать всю область вкладки при наведении.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Сужает заголовки вкладок боковых панелей и раскрывает их при наведении. Только на компьютере.",
       "workspaceTweaksHideScrollbars": "Скрыть полосы прокрутки",
       "workspaceTweaksHideScrollbarsDesc": "Скрыть полосы прокрутки во всём рабочем пространстве Obsidian, сохраняя обычное поведение прокрутки.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Эта папка уже исключена.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Исключённая папка",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Поиск папок...",
-      "workspaceTweaksPropertiesExcludedFolders": "Исключённые папки",
+      "workspaceTweaksPropertiesExcludedFolders": "Исключённые папки для свойств",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Заметки в этих папках всегда оставляют свойства открытыми, даже если настройка свойств включена.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Нет исключений свойств.",
       "workspaceTweaksPropertiesScope": "Область сворачивания свойств",
       "workspaceTweaksPropertiesScopeAllNotes": "Все заметки",
       "workspaceTweaksPropertiesScopeDesc": "Выберите, сворачивать ли свойства только для файловых задач Operon или для всех заметок.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Только файловые задачи Operon",
-      "workspaceTweaksPropertiesSection": "Свойства",
+      "workspaceTweaksPropertiesSection": "Панель свойств",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Удалить исключённую папку",
-      "workspaceTweaksWorkspaceSection": "Вспомогательные средства рабочего пространства"
+      "workspaceTweaksWorkspaceSection": "Оформление рабочего пространства"
     },
     "table": {
       "activePresetMissing": "Активный пресет таблицы отсутствует.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "6573264a138b020325810682000d18f468a5f36279807f11ee00985e16c60952"
+  "sourceVersion": "aaf998b4063a0d44b6ef89aa3507e81e7eb062899bd3d74e5fa524430bc32c0e"
 }

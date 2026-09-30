@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "默认折叠属性",
       "workspaceTweaksCollapsePropertiesDesc": "在匹配的笔记打开时折叠 Obsidian 属性；使用下方的范围和排除文件夹来控制其应用位置。",
       "workspaceTweaksCompactSidebarTabIcons": "紧凑侧边栏标签图标",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "收窄侧边停靠的标签图标/标题栏，并在悬停时显示完整的标签区域。",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "缩窄侧栏标签页的图标和标题区域，悬停时显示完整区域。仅限桌面端。",
       "workspaceTweaksHideScrollbars": "隐藏滚动条",
       "workspaceTweaksHideScrollbarsDesc": "在整个 Obsidian 工作区隐藏滚动条，同时保持正常的滚动行为。",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "该文件夹已被排除。",
       "workspaceTweaksPropertiesExcludedFolderSearch": "排除的文件夹",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "搜索文件夹……",
-      "workspaceTweaksPropertiesExcludedFolders": "排除的文件夹",
+      "workspaceTweaksPropertiesExcludedFolders": "属性排除文件夹",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "即使启用了属性微调，这些文件夹中的笔记也始终保持属性展开。",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "没有属性排除项。",
       "workspaceTweaksPropertiesScope": "属性折叠范围",
       "workspaceTweaksPropertiesScopeAllNotes": "所有笔记",
       "workspaceTweaksPropertiesScopeDesc": "选择属性是仅对 Operon 文件任务折叠，还是对每个笔记都折叠。",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "仅 Operon 文件任务",
-      "workspaceTweaksPropertiesSection": "属性",
+      "workspaceTweaksPropertiesSection": "属性面板",
       "workspaceTweaksRemovePropertiesExcludedFolder": "移除排除的文件夹",
-      "workspaceTweaksWorkspaceSection": "工作区辅助"
+      "workspaceTweaksWorkspaceSection": "工作区外观"
     },
     "table": {
       "activePresetMissing": "当前表格预设缺失。",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "7c0e61f5ef740021c3a629d2b726061969cec0ea32990d52878c3b1090ab59e1"
+  "sourceVersion": "f55e0d9938d162b1fe49a3b819e181f9a351390f91a6ccace179211f29c643de"
 }

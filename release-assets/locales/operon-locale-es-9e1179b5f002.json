@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Contraer Properties por defecto",
       "workspaceTweaksCollapsePropertiesDesc": "Contraer las Properties de Obsidian cuando se abren notas coincidentes; usar el ámbito y las carpetas excluidas de abajo para controlar dónde se aplica.",
       "workspaceTweaksCompactSidebarTabIcons": "Iconos de pestaña compactos en la barra lateral",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Adelgazar las tiras de iconos/encabezados de pestaña del panel lateral y revelar el área completa de la pestaña al pasar el cursor.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Reduce las cabeceras de pestañas laterales y muestra el área completa al pasar el cursor. Solo en escritorio.",
       "workspaceTweaksHideScrollbars": "Ocultar barras de desplazamiento",
       "workspaceTweaksHideScrollbarsDesc": "Ocultar las barras de desplazamiento en todo el espacio de trabajo de Obsidian manteniendo el comportamiento normal de desplazamiento.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Esa carpeta ya está excluida.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Carpeta excluida",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Buscar carpetas...",
-      "workspaceTweaksPropertiesExcludedFolders": "Carpetas excluidas",
+      "workspaceTweaksPropertiesExcludedFolders": "Carpetas excluidas de propiedades",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Las notas en estas carpetas siempre mantienen las Properties abiertas, incluso cuando el ajuste de Properties está activado.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "No hay exclusiones de Properties.",
       "workspaceTweaksPropertiesScope": "Ámbito de contracción de Properties",
       "workspaceTweaksPropertiesScopeAllNotes": "Todas las notas",
       "workspaceTweaksPropertiesScopeDesc": "Elegir si las Properties se contraen solo para las tareas de archivo de Operon o para todas las notas.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Solo tareas de archivo de Operon",
-      "workspaceTweaksPropertiesSection": "Properties",
+      "workspaceTweaksPropertiesSection": "Panel de propiedades",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Quitar carpeta excluida",
-      "workspaceTweaksWorkspaceSection": "Ayudas del espacio de trabajo"
+      "workspaceTweaksWorkspaceSection": "Apariencia del espacio de trabajo"
     },
     "table": {
       "activePresetMissing": "Falta el preset de tabla activo.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "714156b5e249b099ea5e1ceff6bb54d61088dcdd0639b963ee4dc3c2680e738b"
+  "sourceVersion": "52ff40035314a9bd99a49472857f8362b89541eeb95be9ed46cbd8024bf6db08"
 }

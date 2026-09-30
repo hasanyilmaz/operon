@@ -2793,22 +2793,22 @@
       "workspaceTweaksCollapseProperties": "Comprimi Proprietà per impostazione predefinita",
       "workspaceTweaksCollapsePropertiesDesc": "Comprimi le Proprietà di Obsidian quando si aprono le note corrispondenti; usa l'ambito e le cartelle escluse qui sotto per controllare dove si applica.",
       "workspaceTweaksCompactSidebarTabIcons": "Icone schede barra laterale compatte",
-      "workspaceTweaksCompactSidebarTabIconsDesc": "Assottiglia le strisce di icone/intestazioni delle schede del pannello laterale e rivela l'area completa della scheda al passaggio del mouse.",
+      "workspaceTweaksCompactSidebarTabIconsDesc": "Riduce le intestazioni delle schede laterali e le mostra per intero al passaggio del mouse. Solo desktop.",
       "workspaceTweaksHideScrollbars": "Nascondi barre di scorrimento",
       "workspaceTweaksHideScrollbarsDesc": "Nascondi le barre di scorrimento in tutta l'area di lavoro di Obsidian mantenendo il comportamento di scorrimento normale.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Quella cartella è già esclusa.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Cartella esclusa",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Cerca cartelle...",
-      "workspaceTweaksPropertiesExcludedFolders": "Cartelle escluse",
+      "workspaceTweaksPropertiesExcludedFolders": "Cartelle escluse per le proprietà",
       "workspaceTweaksPropertiesExcludedFoldersDesc": "Le note in queste cartelle mantengono sempre le Proprietà aperte, anche quando la modifica Proprietà è attiva.",
       "workspaceTweaksPropertiesExcludedFoldersEmpty": "Nessuna esclusione Proprietà.",
       "workspaceTweaksPropertiesScope": "Ambito di compressione Proprietà",
       "workspaceTweaksPropertiesScopeAllNotes": "Tutte le note",
       "workspaceTweaksPropertiesScopeDesc": "Scegli se le Proprietà si comprimono solo per le attività-file Operon o per ogni nota.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Solo attività-file Operon",
-      "workspaceTweaksPropertiesSection": "Proprietà",
+      "workspaceTweaksPropertiesSection": "Pannello delle proprietà",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Rimuovi cartella esclusa",
-      "workspaceTweaksWorkspaceSection": "Aiuti area di lavoro"
+      "workspaceTweaksWorkspaceSection": "Aspetto dello spazio di lavoro"
     },
     "table": {
       "activePresetMissing": "La preimpostazione tabella attiva manca.",
@@ -3565,5 +3565,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "0b80d964be7a40b58ef3ba4c2ab53b7544bc11a9360337e6e8189b1444563cc2"
+  "sourceVersion": "94d48bceacb7f82b5c4a52f99a4ae2f51b5d3dd7d15abb8cd888d1534b2a4658"
 }
