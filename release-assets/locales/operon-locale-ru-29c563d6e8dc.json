@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "Цвет приоритета: {{name}}",
       "priorityColumnIcon": "Значок",
       "priorityColumnLabel": "Метка приоритета",
+      "priorityDefaultsSection": "Значения по умолчанию для новых задач",
       "priorityDesc": "Определите ранг приоритета, порядок, цвета, значки и приоритет по умолчанию для новых задач. Порядок приоритета используется для сортировки, представлений и решений по планированию.",
       "priorityDescriptionAria": "Описание приоритета: {{name}}",
       "priorityDescriptionPlaceholder": "Опишите, когда людям и агентам следует использовать этот приоритет...",
       "priorityIconAria": "Значок приоритета: {{name}}",
       "priorityIconTooltip": "Выбрать значок приоритета",
+      "priorityLevels": "Уровни приоритета",
+      "priorityLevelsDesc": "Расположите уровни от наиболее важного к наименее важному. Опишите, когда использовать каждый уровень.",
       "priorityNameAria": "Название приоритета: {{name}}",
       "priorityRenameMigrationMessage": "Это изменение обновит {{fileTaskCount}} файловых задач и {{inlineTaskCount}} встроенных задач в {{touchedFileCount}} файлах. Продолжить?",
       "priorityRenameMigrationTitle": "Применить миграцию переименования приоритетов?",
       "priorityRenameMigrationUnexpectedError": "При миграции переименования приоритетов произошла непредвиденная ошибка. Проверьте затронутые приоритеты задач.",
+      "priorityTaskCount": "Количество задач",
       "priorityTitle": "Приоритет",
       "projectSerialActiveTaskCount": "{{count}} активных задач",
       "projectSerialAddConfirmTitle": "Добавить серийный номер {{prefix}}?",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d6aca8165177d9def18497f38caa2ab2b5a7ee58e00b7fa68949e7b6a57764d9"
+  "sourceVersion": "6dfb789b637bbd729ceadc59f77bcaf6842b6105e0d5a559cef0f5ecb67b08b8"
 }

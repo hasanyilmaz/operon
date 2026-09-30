@@ -35386,3 +35386,75 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 		opacity: 1;
 	}
 }
+
+/* Priority Settings: isolated searchable rows and compact neutral controls. */
+.operon-priority-levels-group:where(.operon-settings-scope) > .setting-items {
+	overflow-x: auto;
+	padding: 12px 16px;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-priority-grid-item {
+	min-width: 420px;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) :is(.operon-priority-column-header, .operon-priority-row) {
+	grid-template-columns: 44px 40px minmax(120px, 1fr) 80px 104px;
+	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-priority-levels-description {
+	margin-bottom: 12px;
+}
+
+:where(.operon-priority-levels-group.operon-settings-scope) button:is(.operon-settings-small-secondary-button, .operon-priority-icon-trigger, .operon-settings-primary-button) {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+	color: var(--text-normal);
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-settings-small-secondary-button {
+	width: 32px;
+	min-width: 32px;
+	height: 32px;
+	padding: 0;
+	border-radius: 6px;
+	box-sizing: border-box;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-settings-action-cell-spaced {
+	gap: 4px;
+	align-items: center;
+	opacity: 0;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-priority-row:is(:hover, :focus-within) .operon-settings-action-cell-spaced {
+	opacity: 1;
+}
+
+.operon-priority-levels-group:where(.operon-settings-scope) .operon-priority-description-textarea {
+	background: transparent;
+}
+
+.operon-priority-defaults-group:where(.operon-settings-scope) .setting-item-control {
+	align-self: center;
+}
+
+@media (max-width: 800px) {
+	.operon-priority-levels-group:where(.operon-settings-scope) .operon-priority-grid-item {
+		min-width: 404px;
+	}
+
+	.operon-priority-levels-group:where(.operon-settings-scope) :is(.operon-priority-column-header, .operon-priority-row) {
+		grid-template-columns: 40px 36px minmax(120px, 1fr) 80px 104px;
+		gap: 6px;
+	}
+}
+
+@media (hover: none), (pointer: coarse) {
+	.operon-priority-levels-group:where(.operon-settings-scope) .operon-settings-action-cell-spaced {
+		opacity: 1;
+	}
+}

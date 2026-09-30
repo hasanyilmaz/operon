@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "Colore priorità: {{name}}",
       "priorityColumnIcon": "Icona",
       "priorityColumnLabel": "Etichetta priorità",
+      "priorityDefaultsSection": "Valori predefiniti per nuove attività",
       "priorityDesc": "Definisci rango, ordine, colori, icone di priorità e la priorità predefinita per le nuove attività. L'ordine di priorità viene usato per l'ordinamento, le viste e le decisioni di pianificazione.",
       "priorityDescriptionAria": "Descrizione priorità: {{name}}",
       "priorityDescriptionPlaceholder": "Descrivi quando persone e agenti dovrebbero usare questa priorità...",
       "priorityIconAria": "Icona priorità: {{name}}",
       "priorityIconTooltip": "Scegli icona priorità",
+      "priorityLevels": "Livelli di priorità",
+      "priorityLevelsDesc": "Ordina i livelli dal più importante al meno importante. Descrivi quando utilizzare ogni livello.",
       "priorityNameAria": "Nome priorità: {{name}}",
       "priorityRenameMigrationMessage": "Questa modifica aggiornerà {{fileTaskCount}} attività-file e {{inlineTaskCount}} attività in linea in {{touchedFileCount}} file. Continuare?",
       "priorityRenameMigrationTitle": "Applicare la migrazione di rinomina delle priorità?",
       "priorityRenameMigrationUnexpectedError": "La migrazione di rinomina delle priorità ha riscontrato un errore imprevisto. Rivedi le priorità delle attività interessate.",
+      "priorityTaskCount": "Numero di attività",
       "priorityTitle": "Priorità",
       "projectSerialActiveTaskCount": "{{count}} attività attive",
       "projectSerialAddConfirmTitle": "Aggiungere la serie {{prefix}}?",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "1e36773e20e47c8da53a047d726d3b889467aed288d549377efb319cc09bdeb6"
+  "sourceVersion": "fa6ebf6c0446934b859d70320f7522b3e2522fe0d2813bb07fa5be72e8911632"
 }

@@ -308,7 +308,6 @@ import {
 	renderNativeSettingsGroupedSection,
 	renderNativeSettingsPageTitleAction,
 	renderSettingsHeading,
-	renderSettingsInfoBox,
 	renderTextSetting,
 	renderToggleSetting,
 	type DropdownSettingOption,
@@ -766,7 +765,6 @@ const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'coreBackupRestore',
-	'corePriority',
 	'coreKeymapping',
 	'coreCustomKeys',
 	'tasksFileTasks',
@@ -1480,6 +1478,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 				desc,
 				items: this.buildCoreGeneralSettingsItems(entries),
 			};
+		}
+
+		if (tab.id === 'corePriority') {
+			return { type: 'page', name: pageName, desc, items: this.buildPrioritySettingsItems() };
 		}
 
 		if (tab.id === 'corePipelines') {
@@ -4038,8 +4040,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderBackupRestoreTab(contentEl);
 		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
-		} else if (tabId === 'corePriority') {
-			this.renderPriorityTab(contentEl);
 		} else if (tabId === 'coreKeymapping') {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
@@ -10339,40 +10339,65 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 * Priority tab — ordered list of priority definitions with label + color.
 	 * Index 0 = highest importance.
 	 */
-	private renderPriorityTab(containerEl: HTMLElement): void {
+	private buildPrioritySettingsItems(): SettingDefinitionItem[] {
+		const refresh = () => this.redisplayPreservingScroll();
 		const committedPriorities = this.settings.priorities.map(priority => clonePriorityDefinition(priority));
-		const priorityCounts = this.buildPriorityCounts();
+		const prepareHost = (setting: Setting, grid = false): HTMLElement => {
+			const host = setting.settingEl;
+			host.empty();
+			host.removeClass('setting-item');
+			host.addClass('operon-settings-tab-root', 'operon-settings-native-page-root', 'operon-priority-search-item');
+			if (grid) host.addClass('operon-priority-grid-item');
+			return host;
+		};
+		return [{
+			type: 'group', heading: t('settings', 'priorityLevels'), cls: 'operon-priority-levels-group',
+			items: [{ name: '', searchable: false, render: setting => {
+				const host = prepareHost(setting, true);
+				host.createDiv({ cls: 'setting-item-description operon-priority-levels-description', text: t('settings', 'priorityLevelsDesc') });
+				this.renderPriorityGridHeader(host);
+				return attachDeclarativeSettingsPageTitleAction(host, t('settings', 'tabPriority'),
+					this.buildNativeSettingsDocsAction(t('settings', 'tabPriority'), 'DOCS-038 Task priorities').action);
+			} }, ...this.settings.priorities.map((priority): SettingDefinition => ({
+				name: priority.label, desc: priority.description ?? '',
+				render: setting => {
+					const host = prepareHost(setting, true);
+					host.dataset.operonPriorityId = priority.id;
+					const index = this.settings.priorities.findIndex(candidate => candidate.id === priority.id);
+					if (index >= 0) this.renderPriorityRow(host, this.settings.priorities[index], committedPriorities, index, this.buildPriorityCounts(), refresh);
+					return () => { closeFloatingPanelsForRoot(host); cleanupOperonHoverTooltips(host); delete host.dataset.operonPriorityId; };
+				},
+			})), { name: '', searchable: false, render: setting => {
+				const host = prepareHost(setting);
+				this.renderPriorityAddRow(host, refresh);
+				return () => cleanupOperonHoverTooltips(host);
+			} }],
+		}, {
+			type: 'group', heading: t('settings', 'priorityDefaultsSection'), cls: 'operon-priority-defaults-group',
+			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'priorityDefaultsSection'),
+				'DOCS-061 operonId template variables', 'operon-native-settings-declarative-docs-action--inline-heading')],
+			items: [{ name: t('settings', 'defaultPriority'), desc: t('settings', 'defaultPriorityDesc'),
+				render: setting => this.renderDefaultPrioritySetting(setting) }],
+		}];
+	}
 
-		// Info box
-		renderSettingsInfoBox(containerEl, t('settings', 'priorityTitle'), t('settings', 'priorityDesc'), 'taxonomy.priorities');
-
-		// Priority rows
-		const cardEl = containerEl.createDiv('operon-priority-card');
-		const listEl = cardEl.createDiv();
+	private renderPriorityGridHeader(containerEl: HTMLElement): void {
 		createWorkflowGridHeader({
-			containerEl: listEl,
+			containerEl,
 			className: 'operon-priority-column-header',
 			labels: [
 				t('settings', 'pipelineColumnColor'),
 				t('settings', 'priorityColumnIcon'),
 				t('settings', 'priorityColumnLabel'),
-				t('settings', 'pipelineColumnStats'),
+				t('settings', 'priorityTaskCount'),
 				'',
 			],
 		});
+	}
 
-		const rowsEl = listEl.createDiv();
-		const renderRows = () => {
-			containerEl.empty();
-			this.renderPriorityTab(containerEl);
-		};
-		for (let i = 0; i < this.settings.priorities.length; i++) {
-			this.renderPriorityRow(rowsEl, this.settings.priorities[i], committedPriorities, i, priorityCounts, renderRows);
-		}
-		const refresh = renderRows;
-
+	private renderPriorityAddRow(containerEl: HTMLElement, refresh: () => void): void {
 		createWorkflowActionButton({
-			containerEl: cardEl,
+			containerEl,
 			text: t('settings', 'addPriority'),
 			label: t('settings', 'addPriority'),
 			className: 'operon-settings-primary-button operon-settings-spaced-top',
@@ -10387,11 +10412,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 				refresh();
 			},
 		});
+	}
 
-		// Default priority for new tasks
-		const defaultSection = containerEl.createDiv('operon-priority-default-section');
-
-		new Setting(defaultSection)
+	private renderDefaultPrioritySetting(setting: Setting): void {
+		setting
 			.setName(t('settings', 'defaultPriority'))
 			.setDesc(t('settings', 'defaultPriorityDesc'))
 			.addDropdown(dd => {
@@ -10564,6 +10588,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				delete currentPriority.description;
 			}
 			await this.saveSettings();
+			this.updateNativeSettingsDefinitions();
 		});
 		descriptionTextarea.addEventListener('blur', savePriorityDescription);
 		descriptionTextarea.addEventListener('change', savePriorityDescription);

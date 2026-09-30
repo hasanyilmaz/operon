@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "优先级颜色：{{name}}",
       "priorityColumnIcon": "图标",
       "priorityColumnLabel": "优先级标签",
+      "priorityDefaultsSection": "新任务默认值",
       "priorityDesc": "定义优先级等级、顺序、颜色、图标以及新任务的默认优先级。优先级顺序用于排序、视图和规划决策。",
       "priorityDescriptionAria": "优先级描述：{{name}}",
       "priorityDescriptionPlaceholder": "描述人员和代理应在何时使用此优先级……",
       "priorityIconAria": "优先级图标：{{name}}",
       "priorityIconTooltip": "选择优先级图标",
+      "priorityLevels": "优先级等级",
+      "priorityLevelsDesc": "按重要性从高到低排列等级。说明每个等级的适用场景。",
       "priorityNameAria": "优先级名称：{{name}}",
       "priorityRenameMigrationMessage": "此更改将更新 {{touchedFileCount}} 个文件中的 {{fileTaskCount}} 个文件任务和 {{inlineTaskCount}} 个行内任务。是否继续？",
       "priorityRenameMigrationTitle": "应用优先级重命名迁移？",
       "priorityRenameMigrationUnexpectedError": "优先级重命名迁移遇到意外错误。请查看受影响的任务优先级。",
+      "priorityTaskCount": "任务数量",
       "priorityTitle": "优先级",
       "projectSerialActiveTaskCount": "{{count}} 个活动任务",
       "projectSerialAddConfirmTitle": "添加 {{prefix}} 序列？",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "f8fbd8485ae414e655bb25f0ef68f4df650470352d242b2917067b96708c8141"
+  "sourceVersion": "751aab96ab97d0f0e75304f0612eabd55c1c43ec98f454b28dffd3c46455b28d"
 }

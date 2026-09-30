@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "Öncelik rengi: {{name}}",
       "priorityColumnIcon": "Simge",
       "priorityColumnLabel": "Öncelik Etiketi",
+      "priorityDefaultsSection": "Yeni Görev Varsayılanları",
       "priorityDesc": "Öncelik derecesini, sırasını, renklerini, simgelerini ve yeni görevler için varsayılan önceliği tanımla. Öncelik sırası sıralama, görünümler ve planlama kararlarında kullanılır.",
       "priorityDescriptionAria": "Öncelik açıklaması: {{name}}",
       "priorityDescriptionPlaceholder": "İnsanların ve agentların bu önceliği ne zaman kullanacağını açıkla...",
       "priorityIconAria": "Öncelik simgesi: {{name}}",
       "priorityIconTooltip": "Öncelik simgesi seç",
+      "priorityLevels": "Öncelik Seviyeleri",
+      "priorityLevelsDesc": "Seviyeleri en yüksekten en düşük öneme göre sırala. Her seviyenin ne zaman kullanılacağını açıkla.",
       "priorityNameAria": "Öncelik adı: {{name}}",
       "priorityRenameMigrationMessage": "Bu değişiklik {{touchedFileCount}} dosyada {{fileTaskCount}} dosya görevi ve {{inlineTaskCount}} satır içi görev güncelleyecek. Devam edilsin mi?",
       "priorityRenameMigrationTitle": "Öncelik Yeniden Adlandırma Geçişi uygulansın mı?",
       "priorityRenameMigrationUnexpectedError": "Öncelik yeniden adlandırma geçişi beklenmeyen bir hatayla karşılaştı. Etkilenen görev öncelik değerlerini kontrol et.",
+      "priorityTaskCount": "Görev Sayısı",
       "priorityTitle": "Öncelik",
       "projectSerialActiveTaskCount": "{{count}} aktif görev",
       "projectSerialAddConfirmTitle": "{{prefix}} serisi eklensin mi?",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "58f543be29267572842fcffe9c15a4ab91ffeed866dd01d040201d8a68d9ff31"
+  "sourceVersion": "b020dcf6eda47ed323b3d35a3596b8ad158898e10ae54f40af0fdba715dcd9f7"
 }

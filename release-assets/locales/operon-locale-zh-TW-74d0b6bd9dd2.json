@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "優先順序顏色：{{name}}",
       "priorityColumnIcon": "圖示",
       "priorityColumnLabel": "優先順序標籤",
+      "priorityDefaultsSection": "新任務預設值",
       "priorityDesc": "定義優先順序等級、順序、顏色、圖示以及新任務的預設優先順序。優先順序順序用於排序、檢視和規劃決策。",
       "priorityDescriptionAria": "優先順序描述：{{name}}",
       "priorityDescriptionPlaceholder": "描述人員和代理應在何時使用此優先順序……",
       "priorityIconAria": "優先順序圖示：{{name}}",
       "priorityIconTooltip": "選擇優先順序圖示",
+      "priorityLevels": "優先順序等級",
+      "priorityLevelsDesc": "依重要性由高至低排列等級。說明各等級的適用情境。",
       "priorityNameAria": "優先順序名稱：{{name}}",
       "priorityRenameMigrationMessage": "此更改將更新 {{touchedFileCount}} 個檔案中的 {{fileTaskCount}} 個檔案任務和 {{inlineTaskCount}} 個行內任務。是否繼續？",
       "priorityRenameMigrationTitle": "應用優先順序重新命名遷移？",
       "priorityRenameMigrationUnexpectedError": "優先順序重新命名遷移遇到意外錯誤。請檢視受影響的任務優先順序。",
+      "priorityTaskCount": "任務數量",
       "priorityTitle": "優先順序",
       "projectSerialActiveTaskCount": "{{count}} 個活動任務",
       "projectSerialAddConfirmTitle": "新增 {{prefix}} 序列？",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "4066c583334be930121c72dfccc60dbaeac4e341a6a3919bb11fa45a30fe09f1"
+  "sourceVersion": "7bfe3620df1789f8ab9e2703d7a47f7664722fd556157f80d13763de712a280d"
 }

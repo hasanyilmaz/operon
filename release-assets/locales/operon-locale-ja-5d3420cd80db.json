@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "優先度のカラー: {{name}}",
       "priorityColumnIcon": "アイコン",
       "priorityColumnLabel": "優先度ラベル",
+      "priorityDefaultsSection": "新規タスクの既定値",
       "priorityDesc": "優先度のランク、順序、カラー、アイコン、新しいタスクのデフォルト優先度を定義します。優先度の順序は、並べ替え、ビュー、計画の判断に使用されます。",
       "priorityDescriptionAria": "優先度の説明: {{name}}",
       "priorityDescriptionPlaceholder": "人間とエージェントがこの優先度をいつ使用すべきかを説明します...",
       "priorityIconAria": "優先度のアイコン: {{name}}",
       "priorityIconTooltip": "優先度のアイコンを選択",
+      "priorityLevels": "優先度レベル",
+      "priorityLevelsDesc": "重要度の高い順にレベルを並べます。各レベルを使用する場面を説明してください。",
       "priorityNameAria": "優先度名: {{name}}",
       "priorityRenameMigrationMessage": "この変更により、{{touchedFileCount}} 個のファイルにわたって、ファイルタスク {{fileTaskCount}} 件とインラインタスク {{inlineTaskCount}} 件が更新されます。続行しますか？",
       "priorityRenameMigrationTitle": "優先度の名前変更の移行を適用しますか？",
       "priorityRenameMigrationUnexpectedError": "優先度の名前変更の移行で予期しないエラーが発生しました。影響を受けたタスクの優先度を確認してください。",
+      "priorityTaskCount": "タスク数",
       "priorityTitle": "優先度",
       "projectSerialActiveTaskCount": "{{count}} 件のアクティブなタスク",
       "projectSerialAddConfirmTitle": "{{prefix}} シリアルを追加しますか？",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "84ad09e07e222809c8709fd60b60e7bce53b9fea8e7042bd99d6b5a9e085f5f1"
+  "sourceVersion": "d7970b96cd07ec8423b8bc514592b612069797a02079a12d4ab305ec1dbb3873"
 }

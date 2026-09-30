@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "Couleur de la priorité : {{name}}",
       "priorityColumnIcon": "Icône",
       "priorityColumnLabel": "Libellé de priorité",
+      "priorityDefaultsSection": "Valeurs par défaut des nouvelles tâches",
       "priorityDesc": "Définissez le rang de priorité, l'ordre, les couleurs, les icônes et la priorité par défaut des nouvelles tâches. L'ordre de priorité est utilisé pour le tri, les vues et les décisions de planification.",
       "priorityDescriptionAria": "Description de la priorité : {{name}}",
       "priorityDescriptionPlaceholder": "Décrivez quand les humains et agents doivent utiliser cette priorité...",
       "priorityIconAria": "Icône de la priorité : {{name}}",
       "priorityIconTooltip": "Choisir l'icône de priorité",
+      "priorityLevels": "Niveaux de priorité",
+      "priorityLevelsDesc": "Classez les niveaux du plus important au moins important. Décrivez quand utiliser chaque niveau.",
       "priorityNameAria": "Nom de la priorité : {{name}}",
       "priorityRenameMigrationMessage": "Ce changement mettra à jour {{fileTaskCount}} tâches-fichiers et {{inlineTaskCount}} tâches en ligne réparties sur {{touchedFileCount}} fichiers. Continuer ?",
       "priorityRenameMigrationTitle": "Appliquer la migration de renommage de priorité ?",
       "priorityRenameMigrationUnexpectedError": "La migration de renommage de priorité a rencontré une erreur inattendue. Examinez les priorités de tâche affectées.",
+      "priorityTaskCount": "Nombre de tâches",
       "priorityTitle": "Priorité",
       "projectSerialActiveTaskCount": "{{count}} tâches actives",
       "projectSerialAddConfirmTitle": "Ajouter la série {{prefix}}?",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "6cc434058a17dcbf660ee47f3c881d8eb6dc13ae5ffe3ffe2f58e729a99d4e6f"
+  "sourceVersion": "a553f27d1a29860ffd36200be20c904dd447e2c5b340f43af2672c4d6f439af7"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3530,
-  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
+  "keyCount": 3534,
+  "keyFingerprint": "f97dfb0133140d667d70352a0490af970cee4e305edb1f775e0dc87fcd641452",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2198,15 +2198,19 @@
       "priorityColorAria": "Prioritätsfarbe: {{name}}",
       "priorityColumnIcon": "Symbol",
       "priorityColumnLabel": "Prioritätsbezeichnung",
+      "priorityDefaultsSection": "Standardwerte für neue Aufgaben",
       "priorityDesc": "Definiere Prioritätsrang, Reihenfolge, Farben, Symbole und die Standardpriorität für neue Aufgaben. Die Prioritätsreihenfolge wird für Sortierung, Ansichten und Planungsentscheidungen verwendet.",
       "priorityDescriptionAria": "Prioritätsbeschreibung: {{name}}",
       "priorityDescriptionPlaceholder": "Beschreibe, wann Menschen und Agenten diese Priorität verwenden sollen…",
       "priorityIconAria": "Prioritätssymbol: {{name}}",
       "priorityIconTooltip": "Prioritätssymbol auswählen",
+      "priorityLevels": "Prioritätsstufen",
+      "priorityLevelsDesc": "Ordne die Stufen von höchster zu niedrigster Wichtigkeit. Beschreibe, wann jede Stufe verwendet werden soll.",
       "priorityNameAria": "Prioritätsname: {{name}}",
       "priorityRenameMigrationMessage": "Diese Änderung aktualisiert {{fileTaskCount}} Datei-Aufgaben und {{inlineTaskCount}} Inline-Aufgaben in {{touchedFileCount}} Dateien. Fortfahren?",
       "priorityRenameMigrationTitle": "Prioritäts-Umbenennungs-Migration anwenden?",
       "priorityRenameMigrationUnexpectedError": "Bei der Prioritäts-Umbenennungs-Migration ist ein unerwarteter Fehler aufgetreten. Überprüfe die betroffenen Aufgabenprioritäten.",
+      "priorityTaskCount": "Aufgabenanzahl",
       "priorityTitle": "Priorität",
       "projectSerialActiveTaskCount": "{{count}} aktive Aufgaben",
       "projectSerialAddConfirmTitle": "{{prefix}}-Serie hinzufügen?",
@@ -3575,5 +3579,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "89aa4e168b4275659cecd8566b9f4969521eac514a07ab7df490478183398cd2"
+  "sourceVersion": "0ba7ee9273ca87f252037bee0ccc8df99f76fd1491933f40440bc3c41711272a"
 }
