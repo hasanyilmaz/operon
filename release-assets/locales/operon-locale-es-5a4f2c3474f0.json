@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3509,
-  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
+  "keyCount": 3512,
+  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2241,6 +2241,7 @@
       "propertyPoolSearchAllValues": "Buscar en todos los valores de propiedades…",
       "propertyPoolSearchProperties": "Buscar favoritos o propiedades…",
       "propertyPoolSearchValues": "Buscar valores de {{property}}…",
+      "propertyPoolShortcutRowDesc": "Elige un acceso directo de propiedad, muéstralo u ocúltalo y cambia su posición en el panel.",
       "propertyPoolShortcuts": "Accesos a propiedades",
       "propertyPoolShortcutsDesc": "Elige y ordena los iconos sobre la búsqueda.",
       "propertyPoolSummary": "{{visible}} / {{total}} valores",
@@ -2533,16 +2534,18 @@
       "taskCardCheckboxProgress": "Progreso de casillas",
       "taskCardChips": "Chips de tarjetas de tareas",
       "taskCardChipsDesc": "Elige los campos y acciones de las tarjetas de tareas.",
+      "taskCardChipsVisibilityDesc": "Mostrar los chips y las acciones configurados para las tarjetas de tareas.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
-      "taskCardGeneralSettings": "General card settings",
+      "taskCardGeneralSettings": "Diseño y apariencia de las tarjetas",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
       "taskCardImageSection": "Card image",
       "taskCardImageSource": "Image source",
       "taskCardImageSourceDesc": "Choose the task field used for the card image. None hides the image.",
-      "taskCardItemOrder": "Card item order",
+      "taskCardImagesSection": "Imágenes de las tarjetas",
+      "taskCardItemOrder": "Secciones y orden de las tarjetas",
       "taskCardItemOrderDesc": "Arrange the card sections. The task header is always visible.",
       "taskCardLandscape": "Landscape (16:9)",
       "taskCardLeft": "Left",
@@ -3554,5 +3557,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f50bc5db6917e3f8b09c29221617541e1f18d9b21338fe01f62d10be223ef4f2"
+  "sourceVersion": "171d954f2d1636ebf5dc9d9b5a2d2cfa4c15528c8189b9b2d17bfc77fec1e2ac"
 }

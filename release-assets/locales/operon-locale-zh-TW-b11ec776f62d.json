@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3509,
-  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
+  "keyCount": 3512,
+  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2241,6 +2241,7 @@
       "propertyPoolSearchAllValues": "搜尋所有屬性值…",
       "propertyPoolSearchProperties": "搜尋收藏或屬性…",
       "propertyPoolSearchValues": "搜尋 {{property}} 的值…",
+      "propertyPoolShortcutRowDesc": "選擇屬性捷徑、顯示或隱藏它，並調整其在池中的順序。",
       "propertyPoolShortcuts": "屬性捷徑",
       "propertyPoolShortcutsDesc": "選擇並排列搜尋列上方的屬性圖示。",
       "propertyPoolSummary": "{{visible}} / {{total}} 個值",
@@ -2533,16 +2534,18 @@
       "taskCardCheckboxProgress": "核取方塊進度",
       "taskCardChips": "任務卡片資訊塊",
       "taskCardChipsDesc": "選擇任務卡片上顯示的欄位和操作。",
+      "taskCardChipsVisibilityDesc": "顯示已設定的任務卡片標籤與操作。",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
-      "taskCardGeneralSettings": "General card settings",
+      "taskCardGeneralSettings": "卡片版面與外觀",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
       "taskCardImageSection": "Card image",
       "taskCardImageSource": "Image source",
       "taskCardImageSourceDesc": "Choose the task field used for the card image. None hides the image.",
-      "taskCardItemOrder": "Card item order",
+      "taskCardImagesSection": "卡片圖片",
+      "taskCardItemOrder": "卡片區段與順序",
       "taskCardItemOrderDesc": "Arrange the card sections. The task header is always visible.",
       "taskCardLandscape": "Landscape (16:9)",
       "taskCardLeft": "Left",
@@ -3554,5 +3557,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "87c47f56b88cc6c0f77075e44969f38bc5064c4bb25a537ef736cf4824c650a6"
+  "sourceVersion": "43a3a97b9add211a733ec16dfc0b1e00e7a854358c6f61c6f4f8023893c8d5dc"
 }

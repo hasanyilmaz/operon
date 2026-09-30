@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3509,
-  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
+  "keyCount": 3512,
+  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2241,6 +2241,7 @@
       "propertyPoolSearchAllValues": "Поиск по всем значениям свойств…",
       "propertyPoolSearchProperties": "Поиск избранного или свойств…",
       "propertyPoolSearchValues": "Поиск значений {{property}}…",
+      "propertyPoolShortcutRowDesc": "Выберите ярлык свойства, покажите или скройте его и измените его положение в панели.",
       "propertyPoolShortcuts": "Ярлыки свойств",
       "propertyPoolShortcutsDesc": "Выберите и упорядочьте значки над поиском.",
       "propertyPoolSummary": "{{visible}} / {{total}} значений",
@@ -2533,16 +2534,18 @@
       "taskCardCheckboxProgress": "Прогресс флажков",
       "taskCardChips": "Чипы карточек задач",
       "taskCardChipsDesc": "Выберите поля и действия для карточек задач.",
+      "taskCardChipsVisibilityDesc": "Показывать настроенные чипы и действия карточек задач.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
-      "taskCardGeneralSettings": "General card settings",
+      "taskCardGeneralSettings": "Макет и внешний вид карточек",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
       "taskCardImageSection": "Card image",
       "taskCardImageSource": "Image source",
       "taskCardImageSourceDesc": "Choose the task field used for the card image. None hides the image.",
-      "taskCardItemOrder": "Card item order",
+      "taskCardImagesSection": "Изображения карточек",
+      "taskCardItemOrder": "Разделы и порядок карточек",
       "taskCardItemOrderDesc": "Arrange the card sections. The task header is always visible.",
       "taskCardLandscape": "Landscape (16:9)",
       "taskCardLeft": "Left",
@@ -3554,5 +3557,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "757229a041b49647dc582d2db2322245ee7961fc0c464e2f9cea19dc258d774a"
+  "sourceVersion": "fe1391c6e779f93b8442eca4bd9c6914cba2fcacf4eb570028073218174fe2ef"
 }

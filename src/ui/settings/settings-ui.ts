@@ -48,9 +48,10 @@ export interface NativeSettingsSectionOptions {
 export function renderNativeSettingsPageTitleAction(
 	titlebarEl: HTMLElement,
 	action: NativeSettingsDocsActionOptions,
+	append = false,
 ): HTMLButtonElement {
 	titlebarEl.addClass('operon-native-settings-page-titlebar-with-docs');
-	const existingButton = titlebarEl.querySelector<HTMLButtonElement>('.operon-native-settings-page-title-docs-action');
+	const existingButton = append ? null : titlebarEl.querySelector<HTMLButtonElement>('.operon-native-settings-page-title-docs-action');
 	const existingTooltipAnchor = existingButton?.closest('.operon-settings-docs-tooltip-anchor');
 	if (existingTooltipAnchor) existingTooltipAnchor.remove();
 	else existingButton?.remove();
@@ -74,7 +75,7 @@ export function renderNativeSettingsPageTitleAction(
 export function attachDeclarativeSettingsPageTitleAction(
 	settingEl: HTMLElement,
 	pageTitle: string,
-	action: NativeSettingsDocsActionOptions,
+	action: NativeSettingsDocsActionOptions | NativeSettingsDocsActionOptions[],
 ): (() => void) | undefined {
 	// Declarative page definitions do not expose title actions. Fail closed if the
 	// native page structure or title differs (for example, a search preview).
@@ -87,10 +88,12 @@ export function attachDeclarativeSettingsPageTitleAction(
 
 	const hadScope = titlebarEl.classList.contains('operon-settings-scope');
 	setSettingsScope(titlebarEl, true);
-	const button = renderNativeSettingsPageTitleAction(titlebarEl, action);
-	const anchor = button.closest('.operon-settings-docs-tooltip-anchor') ?? button;
+	const anchors = (Array.isArray(action) ? action : [action]).map(item => {
+		const button = renderNativeSettingsPageTitleAction(titlebarEl, item, true);
+		return button.closest('.operon-settings-docs-tooltip-anchor') ?? button;
+	});
 	return () => {
-		anchor.remove();
+		for (const anchor of anchors) anchor.remove();
 		if (!titlebarEl.querySelector('.operon-native-settings-page-title-docs-action')) {
 			titlebarEl.removeClass('operon-native-settings-page-titlebar-with-docs');
 			if (!hadScope) setSettingsScope(titlebarEl, false);

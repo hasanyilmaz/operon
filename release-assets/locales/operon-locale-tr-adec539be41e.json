@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3509,
-  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
+  "keyCount": 3512,
+  "keyFingerprint": "3d4ff44afe2994136e537383b79394ce4cb64eb1e2e938f9a83806dccc48ccba",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2241,6 +2241,7 @@
       "propertyPoolSearchAllValues": "Tüm özellik değerlerinde ara…",
       "propertyPoolSearchProperties": "Favorilerde veya özelliklerde ara…",
       "propertyPoolSearchValues": "{{property}} değerlerinde ara…",
+      "propertyPoolShortcutRowDesc": "Bir özellik kısayolu seçin, gösterin veya gizleyin ve havuzdaki sırasını değiştirin.",
       "propertyPoolShortcuts": "Property kısayolları",
       "propertyPoolShortcutsDesc": "Aramanın üstünde gösterilen property simgelerini seçin ve sıralayın.",
       "propertyPoolSummary": "{{visible}} / {{total}} değer",
@@ -2533,16 +2534,18 @@
       "taskCardCheckboxProgress": "Onay kutusu ilerlemesi",
       "taskCardChips": "Task Card Chips",
       "taskCardChipsDesc": "Task Cards üzerinde gösterilecek alanları ve eylemleri seçin.",
+      "taskCardChipsVisibilityDesc": "Yapılandırılmış görev kartı çiplerini ve eylemlerini göster.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
-      "taskCardGeneralSettings": "General card settings",
+      "taskCardGeneralSettings": "Kart Düzeni ve Görünümü",
       "taskCardHeaderSection": "Task header",
       "taskCardImageRatio": "Image ratio",
       "taskCardImageRatioDesc": "Original shows the complete image; fixed ratios crop the image around its center.",
       "taskCardImageSection": "Card image",
       "taskCardImageSource": "Image source",
       "taskCardImageSourceDesc": "Choose the task field used for the card image. None hides the image.",
-      "taskCardItemOrder": "Card item order",
+      "taskCardImagesSection": "Kart Görselleri",
+      "taskCardItemOrder": "Kart Bölümleri ve Sıralaması",
       "taskCardItemOrderDesc": "Arrange the card sections. The task header is always visible.",
       "taskCardLandscape": "Landscape (16:9)",
       "taskCardLeft": "Left",
@@ -3554,5 +3557,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8cea099755a0afaee4517aeb3c5ac68b3c99e9fda3fda3b1dc8df0b6fb78b517"
+  "sourceVersion": "3f07410036f6be585210991e81023b3f1bc23b0aa765fc3eb6b4597977324c71"
 }

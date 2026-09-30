@@ -189,7 +189,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsTaskCards', 'taskCardImageRatio', 'settings', 'taskCardImageRatio', 'taskCardImageRatioDesc', 'dropdown', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardItemOrder', 'settings', 'taskCardItemOrder', 'taskCardItemOrderDesc', 'render', ['task cards', 'canvas', 'embed']),
 	e('views', 'viewsTaskCards', 'taskCardShowTaskProgress', 'settings', 'taskCardTaskProgress', 'taskCardVisibilityDesc', 'toggle', ['task cards', 'visibility']),
-	e('views', 'viewsTaskCards', 'taskCardShowChips', 'settings', 'taskCardChips', 'taskCardVisibilityDesc', 'toggle', ['task cards', 'visibility']),
+	e('views', 'viewsTaskCards', 'taskCardShowChips', 'settings', 'taskCardChips', 'taskCardChipsVisibilityDesc', 'toggle', ['task cards', 'visibility']),
 	e('views', 'viewsTaskCards', 'taskCardShowCheckboxProgress', 'settings', 'taskCardCheckboxProgress', 'taskCardVisibilityDesc', 'toggle', ['task cards', 'visibility']),
 
 	e('views', 'viewsCalendar', 'calendarDefaultPresetId', 'calendar', 'defaultPreset', 'defaultPresetDesc', 'dropdown', ['calendar', 'calendar default preset', 'calendar preset', 'preset']),
