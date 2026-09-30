@@ -2243,20 +2243,28 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const columns = this.buildSettingsSearchSettingDefinition(entries, 'pinnedDockGridCols');
 		if (columns) columns.visible = () => this.settings.pinnedDockLayout === 'grid';
 		const automationTitle = t('settings', 'pinnedTasksAutomationSection');
+		const display = this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksDesktopSurface');
+		if (display) {
+			delete display.control;
+			display.render = setting => {
+				setting.addDropdown(dropdown => dropdown
+					.addOptions(this.getSettingsSearchDropdownOptions('pinnedTasksDesktopSurface'))
+					.setValue(String(this.getControlValue('pinnedTasksDesktopSurface')))
+					.onChange(settingsAsyncHandler('settings pinned tasks display save failed', async value => {
+						await this.setControlValue('pinnedTasksDesktopSurface', value);
+					})));
+				return attachDeclarativeSettingsPageTitleAction(
+					setting.settingEl, pageTitle,
+					this.buildNativeSettingsDocsAction(pageTitle, 'DOCS-032 Pinned Task Dock').action,
+				);
+			};
+		}
 		return [{
-			name: '',
-			desc: this.getSettingsSearchTabDescription('interfacePinnedDock'),
-			searchable: false,
-			render: setting => attachDeclarativeSettingsPageTitleAction(
-				setting.settingEl, pageTitle,
-				this.buildNativeSettingsDocsAction(pageTitle, 'DOCS-032 Pinned Task Dock').action,
-			),
-		}, {
 			type: 'group',
 			heading: t('settings', 'pinnedTasksSection'),
 			cls: 'operon-pinned-settings-group',
 			items: this.compactSettingsSearchDefinitions([
-				this.buildSettingsSearchSettingDefinition(entries, 'pinnedTasksDesktopSurface'),
+				display,
 			]),
 		}, {
 			type: 'group',
