@@ -1800,9 +1800,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 				render: setting => {
 					const host = prepareHost(setting);
 					host.dataset.operonPipelineId = pipeline.id;
+					const itemsHost = host.parentElement?.hasClass('setting-items') ? host.parentElement : null;
+					itemsHost?.addClass('operon-pipelines-settings-items');
 					const index = this.settings.pipelines.findIndex(candidate => candidate.id === pipeline.id);
 					if (index >= 0) this.renderPipelineCard(host, this.settings.pipelines[index], index, refresh);
-					return () => cleanupOperonHoverTooltips(host);
+					return () => {
+						cleanupOperonHoverTooltips(host);
+						delete host.dataset.operonPipelineId;
+						if (!Array.from(itemsHost?.children ?? []).some(child => (child as HTMLElement).dataset.operonPipelineId !== undefined)) {
+							itemsHost?.removeClass('operon-pipelines-settings-items');
+						}
+					};
 				},
 			})),
 			{ name: '', searchable: false, render: setting => {
