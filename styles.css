@@ -35534,3 +35534,8 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 		flex: 1;
 	}
 }
+
+/* Let the native Settings search highlight show through its property card. */
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-search-item.is-flashing > .operon-key-mapping-card {
+	background-color: transparent;
+}
