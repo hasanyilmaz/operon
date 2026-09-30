@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "选择移动端议程在所选日期之后显示多少天。",
       "calendarMobileAgendaPastDays": "移动端议程过去天数",
       "calendarMobileAgendaPastDaysDesc": "选择移动端议程在所选日期之前显示多少天。",
+      "calendarMobileAgendaSection": "日程",
       "calendarMobileAgendaShowCompletedItems": "移动端议程已完成项目",
       "calendarMobileAgendaShowCompletedItemsDesc": "在移动端议程中显示已完成和已取消的任务。",
       "calendarMobileAgendaSourcePreset": "议程预设",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} 个任务",
       "calendarMobileColorSource": "移动端颜色来源",
       "calendarMobileColorSourceDesc": "选择移动端日历为任务时间块使用的颜色来源。",
+      "calendarMobileContentSection": "日历内容",
       "calendarMobileDayEnabled": "循环中包含日视图",
       "calendarMobileDayEnabledDesc": "将日视图加入移动端日历视图循环。",
       "calendarMobileDaySourcePreset": "日视图预设",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "选择移动端日历窗口尚无记住视图时使用的视图。",
       "calendarMobileEnabled": "启用移动端日历布局",
       "calendarMobileEnabledDesc": "在窄日历窗格中使用紧凑的手机优先日历界面。",
+      "calendarMobileGridSection": "时间网格与全天项目",
       "calendarMobileMaxWidth": "移动端日历最大宽度（像素）",
       "calendarMobileMaxWidthDesc": "宽度等于或小于此值的日历窗格使用移动端日历界面。",
       "calendarMobileShowAllDayItems": "移动端日历全天项目",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "将 2 天视图加入移动端日历视图循环。",
       "calendarMobileTwoDaySourcePreset": "2 天预设",
       "calendarMobileTwoDaySourcePresetDesc": "选择移动端 2 天视图使用的日历预设。",
-      "calendarMobileViewCycle": "移动端视图循环",
+      "calendarMobileViewCycle": "视图与默认视图",
       "calendarMobileViewCycleDesc": "选择从工具栏循环切换时显示哪些移动端日历视图。",
       "calendarMobileViewPresets": "移动端视图预设",
       "calendarMobileViewPresetsDesc": "选择每个移动端日历视图使用的日历预设。",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "移动端看板布局最大宽度（像素）",
       "kanbanMobileLayoutMaxWidthDesc": "宽度等于或小于此值的触控看板视图使用移动端布局行为。",
       "kanbanMobileLayoutSettings": "移动端布局",
+      "kanbanMobileNavigationSection": "导航与泳道栏",
       "kanbanMobileSwimlaneHandleWidth": "移动端看板泳道栏宽度（像素）",
       "kanbanMobileSwimlaneHandleWidthDesc": "移动端紧凑彩色泳道栏的宽度。",
       "kanbanMobileSwimlaneRailAlwaysVisible": "始终显示移动端看板泳道栏",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "将移动端快速创建按钮移回默认的右下角位置。",
       "mobileInterfaceDesc": "在不更改桌面布局的情况下调整手机和触控优先的界面行为。",
       "mobileInterfaceTitle": "移动端界面",
+      "mobileLayoutSection": "移动端布局",
+      "mobileQuickCreateSection": "快速创建按钮",
       "mobileSubtabCalendar": "日历",
       "mobileSubtabGeneral": "常规",
       "mobileSubtabKanban": "看板",
       "mobileSubtabTaskEditor": "任务编辑器",
+      "mobileTouchMenuSection": "触控菜单",
       "moveConvertedNotesToPipelineLocation": "将转换的笔记移动到其管道位置",
       "moveConvertedNotesToPipelineLocationDesc": "启用后，转换的笔记会在5秒后移动到其管道文件夹，或默认文件任务文件夹。",
       "moveDown": "下移",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "任务图像",
       "taskCreatorToolbarTooltip_taskType": "任务类型",
       "taskEditorFileBodySection": "文件正文",
-      "taskEditorMobileCoreTools": "移动端任务编辑器工具栏",
+      "taskEditorMobileCoreTools": "工具栏显示与顺序",
       "taskEditorMobileCoreToolsDesc": "“移动端任务编辑器工具栏”控制手机上出现哪些核心图标并调整其顺序。可见时，“前往源文件”始终在最前，“移除”始终在最后。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
       "taskEditorMobileCoreToolsMoveUp": "上移",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b4a19bdb59d8e32f0bc6e9b7426b55ba60368ee5a160dd674b0bc1fcd4cf2bc0"
+  "sourceVersion": "bf8baf5921bc96ba37c73389eb6020f7c82b91fe195c44470e3e686d9d2e75f5"
 }

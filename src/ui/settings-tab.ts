@@ -1388,6 +1388,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		if (tab.id === 'viewsTaskCards') return { type: 'page', name: pageName, desc, items: this.buildTaskCardSettingsItems(entries) };
 
+		if (tab.id === 'mobileTaskEditor') {
+			return { type: 'page', name: pageName, desc, items: this.buildMobileTaskEditorSettingsItems(entries) };
+		}
+
 		if (tab.id === 'mobileGeneral') {
 			return {
 				type: 'page',
@@ -2016,91 +2020,65 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return groups;
 	}
 
+	private buildMobileSettingsGroups(
+		entries: OperonSettingsSearchEntry[],
+		sections: Array<{ heading: string; keys: string[]; docs?: string }>,
+		pageTitle: string,
+		pageDocs: string,
+	): SettingDefinitionItem[] {
+		const groups = sections.filter(section => section.keys.length > 0).map(section => ({
+			type: 'group' as const, heading: section.heading, cls: 'operon-mobile-settings-group',
+			extraButtons: section.docs ? [this.buildDeclarativeSettingsDocsButton(section.heading, section.docs,
+				'operon-native-settings-declarative-docs-action--inline-heading')] : undefined,
+			items: this.buildSettingsSearchTabItems(section.keys.flatMap(key => {
+				const entry = entries.find(candidate => candidate.key === key || candidate.id === key);
+				return entry ? [entry] : [];
+			})),
+		}));
+		const first = groups[0]?.items[0];
+		const control = first?.control;
+		if (first && control?.type === 'toggle') {
+			delete first.control;
+			first.render = setting => {
+				setting.addToggle(toggle => toggle.setValue(this.getControlValue(control.key) === true)
+					.onChange(value => this.setControlValue(control.key, value)));
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, `${t('settings', 'tabMobile')} ${pageTitle}`,
+					this.buildNativeSettingsDocsAction(pageTitle, pageDocs).action);
+			};
+		}
+		return groups;
+	}
+
 	private buildMobileCalendarSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const calendarTitle = t('settings', 'mobileSubtabCalendar');
-		return [
-			{
-				type: 'group',
-				heading: calendarTitle,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					calendarTitle,
-					'DOCS-096 Mobile Calendar',
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileMaxWidthPx'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileDefaultView'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileSlotMinutes'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileShowProjectedOccurrences'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileShowExternalCalendars'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileColorSource'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileShowDueMarkers'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileShowAllDayItems'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAgendaPastDays'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAgendaFutureDays'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAgendaShowCompletedItems'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAllDayVisibleTaskLimit'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileShowCompletedItems'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'calendarMobileViewCycle'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAgendaEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileDayEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileTwoDayEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileThreeDayEnabled'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'calendarMobileViewPresets'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileAgendaSourcePresetId'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileDaySourcePresetId'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileTwoDaySourcePresetId'),
-					this.buildSettingsSearchSettingDefinition(entries, 'calendarMobileThreeDaySourcePresetId'),
-				]),
-			},
-		];
+		const enabled = this.settings.calendarMobileEnabled;
+		const agenda = enabled && this.settings.calendarMobileAgendaEnabled;
+		const grid = enabled && (this.settings.calendarMobileDayEnabled || this.settings.calendarMobileTwoDayEnabled || this.settings.calendarMobileThreeDayEnabled);
+		const presets = Object.entries(CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE)
+			.filter(([mode]) => enabled && this.settings[CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE[mode as keyof typeof CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE]])
+			.map(([, key]) => key);
+		return this.buildMobileSettingsGroups(entries, [
+			{ heading: t('settings', 'mobileLayoutSection'), keys: ['calendarMobileEnabled', ...(enabled ? ['calendarMobileMaxWidthPx'] : [])] },
+			{ heading: t('settings', 'calendarMobileViewCycle'), keys: enabled ? ['calendarMobileAgendaEnabled', 'calendarMobileDayEnabled', 'calendarMobileTwoDayEnabled', 'calendarMobileThreeDayEnabled', 'calendarMobileDefaultView'] : [] },
+			{ heading: t('settings', 'calendarMobileViewPresets'), keys: presets, docs: 'DOCS-029 Calendar presets and time grid' },
+			{ heading: t('settings', 'calendarMobileContentSection'), keys: enabled ? ['calendarMobileShowProjectedOccurrences', 'calendarMobileShowExternalCalendars', 'calendarMobileColorSource'] : [] },
+			{ heading: t('settings', 'calendarMobileAgendaSection'), keys: agenda ? ['calendarMobileAgendaPastDays', 'calendarMobileAgendaFutureDays', 'calendarMobileAgendaShowCompletedItems'] : [] },
+			{ heading: t('settings', 'calendarMobileGridSection'), keys: grid ? ['calendarMobileSlotMinutes', 'calendarMobileShowDueMarkers', 'calendarMobileShowAllDayItems', 'calendarMobileAllDayVisibleTaskLimit', 'calendarMobileShowCompletedItems'] : [] },
+		], t('settings', 'mobileSubtabCalendar'), 'DOCS-096 Mobile Calendar');
 	}
 
 	private buildMobileGeneralSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const title = t('settings', 'mobileInterfaceTitle');
-		return [{
-			type: 'group',
-			heading: title,
-			extraButtons: [this.buildDeclarativeSettingsDocsButton(
-				title,
-				'DOCS-101 Mobile General',
-				'operon-native-settings-declarative-docs-action--inline-heading',
-			)],
-			items: this.buildSettingsSearchTabItems(entries),
-		}];
+		return this.buildMobileSettingsGroups(entries, [
+			{ heading: t('settings', 'mobileQuickCreateSection'), keys: ['mobileGlobalTaskFabEnabled', ...(this.settings.mobileGlobalTaskFabEnabled ? ['mobileGlobalTaskFabHideInCalendar', 'mobileGlobalTaskFabHideInKanban', 'ui.mobileGlobalTaskFabReset'] : [])], docs: 'DOCS-020 Task Creator' },
+			{ heading: t('settings', 'mobileTouchMenuSection'), keys: ['contextualMenuMobileAutoHideMs'], docs: 'DOCS-042 Contextual menu actions' },
+		], t('settings', 'mobileSubtabGeneral'), 'DOCS-101 Mobile General');
 	}
 
 	private buildMobileKanbanSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const kanbanTitle = t('settings', 'mobileSubtabKanban');
-		return [
-			{
-				type: 'group',
-				heading: kanbanTitle,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					kanbanTitle,
-					'DOCS-100 Mobile Kanban',
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'kanbanMobileLayoutChromeEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'kanbanMobileLayoutMaxWidthPx'),
-					this.buildSettingsSearchSettingDefinition(entries, 'kanbanMobileCompactSwimlaneWidthPx'),
-					this.buildSettingsSearchSettingDefinition(entries, 'kanbanMobileSwimlaneRailAlwaysVisible'),
-					this.buildSettingsSearchSettingDefinition(entries, 'kanbanMobileHorizontalStatusSnapEnabled'),
-				]),
-			},
-		];
+		const enabled = this.settings.kanbanMobileLayoutChromeEnabled;
+		return this.buildMobileSettingsGroups(entries, [
+			{ heading: t('settings', 'mobileLayoutSection'), keys: ['kanbanMobileLayoutChromeEnabled', ...(enabled ? ['kanbanMobileLayoutMaxWidthPx'] : [])] },
+			{ heading: t('settings', 'kanbanMobileNavigationSection'), keys: enabled ? ['kanbanMobileHorizontalStatusSnapEnabled', 'kanbanMobileSwimlaneRailAlwaysVisible', 'kanbanMobileCompactSwimlaneWidthPx'] : [], docs: 'DOCS-074 Kanban swimlanes' },
+		], t('settings', 'mobileSubtabKanban'), 'DOCS-100 Mobile Kanban');
 	}
 
 	private buildRelationshipsSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -2552,15 +2530,28 @@ export class OperonSettingsTab extends PluginSettingTab {
  }
 
 	private buildMobileTaskEditorSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const coreToolsEntry = entries.find(entry => entry.id === 'ui.taskEditorMobileCoreTools');
-		return this.compactSettingsSearchItems([
-			this.buildSettingsSearchRenderDefinition(coreToolsEntry, containerEl => {
-				const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorMobileCoreTools'));
-				this.applyInterfaceIconListSectionStyle(sectionEl);
-				this.renderTaskEditorMobileCoreToolSettingsSection(sectionEl);
-				this.markSettingsSearchSectionTarget(sectionEl, 'ui.taskEditorMobileCoreTools');
-			}),
-		]);
+		const heading = t('settings', 'taskEditorMobileCoreTools');
+		const entry = entries.find(candidate => candidate.id === 'ui.taskEditorMobileCoreTools');
+		return [{ type: 'group', heading, cls: 'operon-task-chip-settings-group operon-mobile-settings-group', items: [
+			{ name: heading, desc: t('settings', 'taskEditorMobileCoreToolsDesc'), aliases: entry ? this.getSettingsSearchAliases(entry) : [], render: setting => {
+				setting.settingEl.empty();
+				setting.settingEl.addClass('operon-task-chip-description');
+				setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'taskEditorMobileCoreToolsDesc') });
+				const title = `${t('settings', 'tabMobile')} ${t('settings', 'mobileSubtabTaskEditor')}`;
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					['DOCS-101 Mobile General', 'DOCS-021 Task Editor'].map(target => this.buildNativeSettingsDocsAction(title, target).action));
+			} },
+			...this.getRenderableSurfaceItems(this.settings.taskEditorMobileCoreTools, 'editorMobile').map(row => ({
+				name: this.getTaskEditorMobileCoreToolLabel(row.key), aliases: [row.key, this.getTaskEditorMobileCoreToolCanonicalLabel(row.key)],
+				render: (setting: Setting) => {
+					setting.settingEl.empty();
+					setting.settingEl.removeClass('setting-item');
+					setting.settingEl.addClass('operon-task-chip-setting');
+					setting.settingEl.dataset.operonChipRow = `mobileTaskEditor:${row.key}`;
+					this.renderTaskEditorMobileCoreToolSettingsSection(setting.settingEl, { key: row.key });
+				},
+			})),
+		] }];
 	}
 
 	private buildSettingsSearchSettingDefinition(
@@ -3851,6 +3842,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'pinnedTaskSortMode') {
 			this.applyPendingSettingsChange();
+		}
+		if (key === 'mobileGlobalTaskFabEnabled' || key === 'calendarMobileEnabled' || key === 'kanbanMobileLayoutChromeEnabled' || isCalendarMobileViewModeEnabledSettingKey(key)) {
+			this.updateNativeSettingsDefinitions();
 		}
 		if (SETTINGS_SEARCH_DOM_REFRESH_KEYS.has(key)) {
 			this.refreshNativeSettingsDom();
@@ -6693,9 +6687,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderTaskEditorMobileCoreToolSettingsSection(containerEl: HTMLElement): void {
+	private renderTaskEditorMobileCoreToolSettingsSection(containerEl: HTMLElement, singleRow?: InterfaceIconRowSelection): void {
 		renderInterfaceIconToggleSection<string, TaskEditorMobileCoreToolItem>({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', 'taskEditorMobileCoreToolsDesc'),
 			toggleTitle: t('settings', 'taskEditorMobileCoreTools'),

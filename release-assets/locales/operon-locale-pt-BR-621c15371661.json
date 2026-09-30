@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "Escolha quantos dias depois da data selecionada a Agenda móvel deve mostrar.",
       "calendarMobileAgendaPastDays": "Dias passados na Agenda móvel",
       "calendarMobileAgendaPastDaysDesc": "Escolha quantos dias antes da data selecionada a Agenda móvel deve mostrar.",
+      "calendarMobileAgendaSection": "Agenda",
       "calendarMobileAgendaShowCompletedItems": "Itens concluídos na Agenda móvel",
       "calendarMobileAgendaShowCompletedItemsDesc": "Mostrar tarefas concluídas e canceladas na Agenda móvel.",
       "calendarMobileAgendaSourcePreset": "Predefinição de Agenda",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} tarefas",
       "calendarMobileColorSource": "Origem da cor móvel",
       "calendarMobileColorSourceDesc": "Escolha qual origem de cor o Calendário móvel usa para blocos de tarefas.",
+      "calendarMobileContentSection": "Conteúdo do calendário",
       "calendarMobileDayEnabled": "Dia no ciclo",
       "calendarMobileDayEnabledDesc": "Incluir Dia no ciclo de visualização do Calendário móvel.",
       "calendarMobileDaySourcePreset": "Predefinição de Dia",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "Escolha a visualização usada quando uma aba do Calendário móvel ainda não tiver uma visualização lembrada.",
       "calendarMobileEnabled": "Habilitar layout de calendário para dispositivos móveis",
       "calendarMobileEnabledDesc": "Usar a superfície compacta e otimizada para celular do Calendário em painéis estreitos.",
+      "calendarMobileGridSection": "Grade de horários e itens de dia inteiro",
       "calendarMobileMaxWidth": "Largura máxima do calendário móvel (px)",
       "calendarMobileMaxWidthDesc": "Painéis de calendário com largura igual ou inferior a esta usam a superfície do calendário móvel.",
       "calendarMobileShowAllDayItems": "Itens o dia todo do Calendário móvel",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "Incluir 2 dias no ciclo de visualização do Calendário móvel.",
       "calendarMobileTwoDaySourcePreset": "Predefinição de 2 dias",
       "calendarMobileTwoDaySourcePresetDesc": "Escolha a predefinição de calendário usada pela visualização de 2 dias no celular.",
-      "calendarMobileViewCycle": "Ciclo de visualização no celular",
+      "calendarMobileViewCycle": "Visualizações e visualização padrão",
       "calendarMobileViewCycleDesc": "Escolher quais visualizações do Calendário móvel aparecerão ao ciclar a barra de ferramentas.",
       "calendarMobileViewPresets": "Predefinições de visualização móvel",
       "calendarMobileViewPresetsDesc": "Escolha a predefinição de calendário usada por cada modo de visualização de Calendário móvel.",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "Largura máxima do layout móvel Kanban (px)",
       "kanbanMobileLayoutMaxWidthDesc": "Em visualizações de toque com largura igual ou inferior a esta, usar o comportamento de layout móvel.",
       "kanbanMobileLayoutSettings": "Layout móvel",
+      "kanbanMobileNavigationSection": "Navegação e trilho de raias",
       "kanbanMobileSwimlaneHandleWidth": "Largura do trilho da faixa no celular Kanban (px)",
       "kanbanMobileSwimlaneHandleWidthDesc": "Largura do trilho colorido compacto da faixa em dispositivos móveis.",
       "kanbanMobileSwimlaneRailAlwaysVisible": "Sempre mostrar o trilho móvel Kanban",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "Mova o botão de criação rápida móvel de volta para a posição padrão no canto inferior direito.",
       "mobileInterfaceDesc": "Ajusta o comportamento da interface móvel e focada no toque sem alterar os layouts de desktop.",
       "mobileInterfaceTitle": "Interface Móvel",
+      "mobileLayoutSection": "Layout móvel",
+      "mobileQuickCreateSection": "Botão de criação rápida",
       "mobileSubtabCalendar": "Calendário",
       "mobileSubtabGeneral": "Geral",
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Editor de Tarefa",
+      "mobileTouchMenuSection": "Menu de toque",
       "moveConvertedNotesToPipelineLocation": "Mover notas convertidas para o local do pipeline",
       "moveConvertedNotesToPipelineLocationDesc": "Quando ativado, as notas convertidas são movidas para a pasta do pipeline ou para a pasta padrão de Tarefas em Arquivo após 5 segundos.",
       "moveDown": "Mover para baixo",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "Imagem da tarefa",
       "taskCreatorToolbarTooltip_taskType": "Tipo de tarefa",
       "taskEditorFileBodySection": "Conteúdo do arquivo",
-      "taskEditorMobileCoreTools": "Barra de ferramentas móvel do Editor de Tarefa",
+      "taskEditorMobileCoreTools": "Visibilidade e ordem das ferramentas",
       "taskEditorMobileCoreToolsDesc": "A barra de ferramentas móvel do Editor de Tarefa controla quais ícones principais aparecem nos telefones e ajusta sua ordem. Ir para a origem permanece primeiro e Remover permanece por último quando visíveis.",
       "taskEditorMobileCoreToolsMoveDown": "Mover para baixo",
       "taskEditorMobileCoreToolsMoveUp": "Mover para cima",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "526b3ef8f6b734711b2a71a0129a2b9926937a25487b9852bff8202c41c96d0a"
+  "sourceVersion": "ac73d1ccebd5d4a97206b1dd96f2ba0312d599159bc3059ec71165c57302c620"
 }

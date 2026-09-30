@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "Wähle, wie viele Tage nach dem ausgewählten Datum die mobile Agenda anzeigt.",
       "calendarMobileAgendaPastDays": "Mobile Agenda – vergangene Tage",
       "calendarMobileAgendaPastDaysDesc": "Wähle, wie viele Tage vor dem ausgewählten Datum die mobile Agenda anzeigt.",
+      "calendarMobileAgendaSection": "Agenda",
       "calendarMobileAgendaShowCompletedItems": "Erledigte Elemente in der mobilen Agenda",
       "calendarMobileAgendaShowCompletedItemsDesc": "Erledigte und abgebrochene Aufgaben in der mobilen Agenda anzeigen.",
       "calendarMobileAgendaSourcePreset": "Agenda-Voreinstellung",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} Aufgaben",
       "calendarMobileColorSource": "Mobile Farbquelle",
       "calendarMobileColorSourceDesc": "Wähle, welche Farbquelle der mobile Kalender für Aufgabenblöcke verwendet.",
+      "calendarMobileContentSection": "Kalenderinhalt",
       "calendarMobileDayEnabled": "Tag im Zyklus",
       "calendarMobileDayEnabledDesc": "Tag in den Zyklus mobiler Kalenderansichten aufnehmen.",
       "calendarMobileDaySourcePreset": "Tag-Voreinstellung",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "Wähle die Ansicht, die verwendet wird, wenn ein mobiler Kalender-Tab noch keine gemerkte Ansicht hat.",
       "calendarMobileEnabled": "Mobiles Kalenderlayout aktivieren",
       "calendarMobileEnabledDesc": "Die kompakte, für Telefone optimierte Kalenderoberfläche in schmalen Kalenderbereichen verwenden.",
+      "calendarMobileGridSection": "Zeitraster und ganztägige Einträge",
       "calendarMobileMaxWidth": "Maximale Breite des mobilen Kalenders (px)",
       "calendarMobileMaxWidthDesc": "Kalenderbereiche mit dieser Breite oder darunter verwenden die mobile Kalenderoberfläche.",
       "calendarMobileShowAllDayItems": "Ganztägige Elemente im mobilen Kalender",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "2 Tage in den Zyklus mobiler Kalenderansichten aufnehmen.",
       "calendarMobileTwoDaySourcePreset": "2-Tage-Voreinstellung",
       "calendarMobileTwoDaySourcePresetDesc": "Wähle die Kalender-Voreinstellung für die mobile 2-Tage-Ansicht.",
-      "calendarMobileViewCycle": "Zyklus mobiler Ansichten",
+      "calendarMobileViewCycle": "Ansichten und Standardansicht",
       "calendarMobileViewCycleDesc": "Wähle, welche mobilen Kalenderansichten beim Wechsel über die Werkzeugleiste erscheinen.",
       "calendarMobileViewPresets": "Voreinstellungen für mobile Ansichten",
       "calendarMobileViewPresetsDesc": "Wähle die Kalender-Voreinstellung, die jede mobile Kalenderansicht verwendet.",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "Maximale Breite des mobilen Kanban-Layouts (px)",
       "kanbanMobileLayoutMaxWidthDesc": "Touch-Kanban-Ansichten mit dieser Breite oder darunter verwenden das mobile Layout-Verhalten.",
       "kanbanMobileLayoutSettings": "Mobiles Layout",
+      "kanbanMobileNavigationSection": "Navigation und Swimlane-Leiste",
       "kanbanMobileSwimlaneHandleWidth": "Breite der mobilen Kanban-Swimlane-Leiste (px)",
       "kanbanMobileSwimlaneHandleWidthDesc": "Breite der kompakten farbigen Swimlane-Leiste auf Mobilgeräten.",
       "kanbanMobileSwimlaneRailAlwaysVisible": "Mobile Kanban-Swimlane-Leiste immer anzeigen",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "Die mobile Schnell-Erstellen-Schaltfläche auf die Standardposition unten rechts zurücksetzen.",
       "mobileInterfaceDesc": "Für Telefone und Touch-Bedienung optimiertes Oberflächenverhalten anpassen, ohne Desktop-Layouts zu ändern.",
       "mobileInterfaceTitle": "Mobile Oberfläche",
+      "mobileLayoutSection": "Mobiles Layout",
+      "mobileQuickCreateSection": "Schnellerstellungsschaltfläche",
       "mobileSubtabCalendar": "Kalender",
       "mobileSubtabGeneral": "Allgemein",
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Aufgaben-Editor",
+      "mobileTouchMenuSection": "Touch-Menü",
       "moveConvertedNotesToPipelineLocation": "Umgewandelte Notizen an ihren Pipeline-Speicherort verschieben",
       "moveConvertedNotesToPipelineLocationDesc": "Wenn aktiviert, werden umgewandelte Notizen nach 5 Sekunden in ihren Pipeline-Ordner oder den Standardordner für Datei-Aufgaben verschoben.",
       "moveDown": "Nach unten",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "Aufgabenbild",
       "taskCreatorToolbarTooltip_taskType": "Aufgabentyp",
       "taskEditorFileBodySection": "Dateiinhalt",
-      "taskEditorMobileCoreTools": "Symbolleiste des mobilen Aufgaben-Editors",
+      "taskEditorMobileCoreTools": "Sichtbarkeit und Reihenfolge der Werkzeuge",
       "taskEditorMobileCoreToolsDesc": "Die Symbolleiste des mobilen Aufgaben-Editors steuert, welche Kern-Symbole auf Telefonen erscheinen, und passt ihre Reihenfolge an. „Zur Quelle“ bleibt vorne und „Entfernen“ bleibt hinten, sofern sichtbar.",
       "taskEditorMobileCoreToolsMoveDown": "Nach unten",
       "taskEditorMobileCoreToolsMoveUp": "Nach oben",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3c48378349bced9f7631ad1d3bca5081ae8ad1d4a9b1d6a5978929c3aed9cf69"
+  "sourceVersion": "4dc2f71ed1b6a74259729db9f321f30a40d5d9b01c6f053d9283f628c0bccddf"
 }

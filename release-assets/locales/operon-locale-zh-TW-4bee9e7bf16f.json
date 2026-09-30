@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "選擇移動端議程在所選日期之後顯示多少天。",
       "calendarMobileAgendaPastDays": "移動端議程過去天數",
       "calendarMobileAgendaPastDaysDesc": "選擇移動端議程在所選日期之前顯示多少天。",
+      "calendarMobileAgendaSection": "議程",
       "calendarMobileAgendaShowCompletedItems": "移動端議程已完成專案",
       "calendarMobileAgendaShowCompletedItemsDesc": "在移動端議程中顯示已完成和已取消的任務。",
       "calendarMobileAgendaSourcePreset": "議程預設",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} 個任務",
       "calendarMobileColorSource": "移動端顏色來源",
       "calendarMobileColorSourceDesc": "選擇移動端日曆為任務時間塊使用的顏色來源。",
+      "calendarMobileContentSection": "日曆內容",
       "calendarMobileDayEnabled": "循環中包含日檢視",
       "calendarMobileDayEnabledDesc": "將日檢視加入移動端日曆檢視循環。",
       "calendarMobileDaySourcePreset": "日檢視預設",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "選擇移動端日曆視窗尚無記住檢視時使用的檢視。",
       "calendarMobileEnabled": "啟用移動端日曆佈局",
       "calendarMobileEnabledDesc": "在窄日曆窗格中使用緊湊的手機優先日曆介面。",
+      "calendarMobileGridSection": "時間網格與全天項目",
       "calendarMobileMaxWidth": "移動端日曆最大寬度（畫素）",
       "calendarMobileMaxWidthDesc": "寬度等於或小於此值的日曆窗格使用移動端日曆介面。",
       "calendarMobileShowAllDayItems": "移動端日曆全天專案",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "將 2 天檢視加入移動端日曆檢視循環。",
       "calendarMobileTwoDaySourcePreset": "2 天預設",
       "calendarMobileTwoDaySourcePresetDesc": "選擇移動端 2 天檢視使用的日曆預設。",
-      "calendarMobileViewCycle": "移動端檢視循環",
+      "calendarMobileViewCycle": "檢視與預設檢視",
       "calendarMobileViewCycleDesc": "選擇從工具列循環切換時顯示哪些移動端日曆檢視。",
       "calendarMobileViewPresets": "移動端檢視預設",
       "calendarMobileViewPresetsDesc": "選擇每個移動端日曆檢視使用的日曆預設。",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "移動端看板佈局最大寬度（畫素）",
       "kanbanMobileLayoutMaxWidthDesc": "寬度等於或小於此值的觸控看板檢視使用移動端佈局行為。",
       "kanbanMobileLayoutSettings": "移動端佈局",
+      "kanbanMobileNavigationSection": "導覽與泳道欄",
       "kanbanMobileSwimlaneHandleWidth": "移動端看板泳道欄寬度（畫素）",
       "kanbanMobileSwimlaneHandleWidthDesc": "移動端緊湊彩色泳道欄的寬度。",
       "kanbanMobileSwimlaneRailAlwaysVisible": "始終顯示移動端看板泳道欄",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "將移動端快速建立按鈕移回預設的右下角位置。",
       "mobileInterfaceDesc": "在不更改桌面佈局的情況下調整手機和觸控優先的介面行為。",
       "mobileInterfaceTitle": "移動端介面",
+      "mobileLayoutSection": "行動版配置",
+      "mobileQuickCreateSection": "快速建立按鈕",
       "mobileSubtabCalendar": "日曆",
       "mobileSubtabGeneral": "常規",
       "mobileSubtabKanban": "看板",
       "mobileSubtabTaskEditor": "任務編輯器",
+      "mobileTouchMenuSection": "觸控選單",
       "moveConvertedNotesToPipelineLocation": "將轉換的筆記移至其管線位置",
       "moveConvertedNotesToPipelineLocationDesc": "啟用後，轉換的筆記會在5 秒後移至其管線資料夾，或預設檔案任務資料夾。",
       "moveDown": "下移",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "任務圖片",
       "taskCreatorToolbarTooltip_taskType": "任務類型",
       "taskEditorFileBodySection": "檔案內文",
-      "taskEditorMobileCoreTools": "移動端任務編輯器工具欄",
+      "taskEditorMobileCoreTools": "工具列顯示與順序",
       "taskEditorMobileCoreToolsDesc": "「移動端任務編輯器工具欄」控制手機上出現哪些核心圖示並調整其順序。可見時，「前往原始檔」始終在最前，「移除」始終在最後。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
       "taskEditorMobileCoreToolsMoveUp": "上移",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c945fd1bbc5c101276f34a29f4fcda28fd50be33960959dfe9bdcdc117234e6f"
+  "sourceVersion": "9ffe46b34bc6ae82b51688a9b2423da18e5d2b3443dfbab2d27a580416c7a7e8"
 }

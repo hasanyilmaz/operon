@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "Mobil Ajandanın seçili tarihten sonra kaç gün göstereceğini seç.",
       "calendarMobileAgendaPastDays": "Mobil Ajanda geçmiş günleri",
       "calendarMobileAgendaPastDaysDesc": "Mobil Ajandanın seçili tarihten önce kaç gün göstereceğini seç.",
+      "calendarMobileAgendaSection": "Ajanda",
       "calendarMobileAgendaShowCompletedItems": "Mobil Ajanda tamamlanan öğeleri",
       "calendarMobileAgendaShowCompletedItemsDesc": "Mobil Ajandada tamamlanan ve iptal edilen görevleri gösterir.",
       "calendarMobileAgendaSourcePreset": "Ajanda ön ayarı",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} görev",
       "calendarMobileColorSource": "Mobil renk kaynağı",
       "calendarMobileColorSourceDesc": "Mobil Takvim görev bloklarının hangi renk kaynağını kullanacağını seç.",
+      "calendarMobileContentSection": "Takvim İçeriği",
       "calendarMobileDayEnabled": "Gün döngüde",
       "calendarMobileDayEnabledDesc": "Gün görünümünü mobil Takvim görünüm döngüsüne dahil et.",
       "calendarMobileDaySourcePreset": "Gün ön ayarı",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "Mobil Takvim sekmesinde hatırlanmış görünüm yoksa kullanılacak görünümü seç.",
       "calendarMobileEnabled": "Mobil Takvim düzenini etkinleştir",
       "calendarMobileEnabledDesc": "Dar takvim panellerinde kompakt, telefon odaklı Takvim yüzeyini kullanır.",
+      "calendarMobileGridSection": "Zaman Izgarası ve Tüm Gün Öğeleri",
       "calendarMobileMaxWidth": "Mobil Takvim maksimum genişliği (px)",
       "calendarMobileMaxWidthDesc": "Bu genişlik ve altındaki takvim panellerinde mobil Takvim yüzeyi kullanılır.",
       "calendarMobileShowAllDayItems": "Mobil Takvim tüm gün öğeleri",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "2 Gün görünümünü mobil Takvim görünüm döngüsüne dahil et.",
       "calendarMobileTwoDaySourcePreset": "2 Gün ön ayarı",
       "calendarMobileTwoDaySourcePresetDesc": "Mobil 2 Gün görünümünün kullanacağı Takvim ön ayarını seç.",
-      "calendarMobileViewCycle": "Mobil görünüm döngüsü",
+      "calendarMobileViewCycle": "Görünümler ve Varsayılan Görünüm",
       "calendarMobileViewCycleDesc": "Araç çubuğundaki döngüde hangi mobil Takvim görünümlerinin yer alacağını seç.",
       "calendarMobileViewPresets": "Mobil görünüm ön ayarları",
       "calendarMobileViewPresetsDesc": "Her mobil Takvim görünümünün kullanacağı Takvim ön ayarını seç.",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "Mobil Kanban düzeni maksimum genişliği (px)",
       "kanbanMobileLayoutMaxWidthDesc": "Bu genişlik ve altındaki dokunmatik Kanban görünümlerinde mobil görünüm davranışı kullanılır.",
       "kanbanMobileLayoutSettings": "Mobil görünüm",
+      "kanbanMobileNavigationSection": "Gezinme ve Kulvar Şeridi",
       "kanbanMobileSwimlaneHandleWidth": "Mobil Kanban kulvar rail genişliği (px)",
       "kanbanMobileSwimlaneHandleWidthDesc": "Mobildeki kompakt renkli kulvar rail genişliği.",
       "kanbanMobileSwimlaneRailAlwaysVisible": "Mobil Kanban kulvar rail'ini her zaman göster",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "Mobil hızlı oluşturma butonunu varsayılan sağ alt konuma geri taşır.",
       "mobileInterfaceDesc": "Masaüstü düzenleri değiştirmeden telefon ve dokunmatik odaklı arayüz davranışlarını ayarla.",
       "mobileInterfaceTitle": "Mobil Arayüz",
+      "mobileLayoutSection": "Mobil Düzen",
+      "mobileQuickCreateSection": "Hızlı Oluşturma Düğmesi",
       "mobileSubtabCalendar": "Takvim",
       "mobileSubtabGeneral": "Genel",
       "mobileSubtabKanban": "Kanban",
       "mobileSubtabTaskEditor": "Görev Editörü",
+      "mobileTouchMenuSection": "Dokunmatik Menü",
       "moveConvertedNotesToPipelineLocation": "Dönüştürülen notları pipeline konumuna taşı",
       "moveConvertedNotesToPipelineLocationDesc": "Açıkken dönüştürülen notlar 5 saniye sonra pipeline klasörüne veya varsayılan Dosya Görevleri klasörüne taşınır.",
       "moveDown": "Aşağı taşı",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "Görev Görseli",
       "taskCreatorToolbarTooltip_taskType": "Görev Türü",
       "taskEditorFileBodySection": "Dosya İçeriği",
-      "taskEditorMobileCoreTools": "Mobil Görev Editörü Araç Çubuğu",
+      "taskEditorMobileCoreTools": "Araç Çubuğu Görünürlüğü ve Sırası",
       "taskEditorMobileCoreToolsDesc": "Mobil Görev Editörü Araç Çubuğu, telefonda hangi temel simgelerin görüneceğini ve sıralarını belirler. Görünür olduklarında Kaynağa Git başta, Kaldır sonda kalır.",
       "taskEditorMobileCoreToolsMoveDown": "Aşağı taşı",
       "taskEditorMobileCoreToolsMoveUp": "Yukarı taşı",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c7d5d745390d1e6a848f56970fe4691549cb71c4628b6eb424cef3a3444f3c7e"
+  "sourceVersion": "54976191c607d3c35f76908257148f4b25adca788445283c3f164516ed1f32ae"
 }

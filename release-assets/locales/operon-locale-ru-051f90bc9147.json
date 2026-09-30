@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "Выберите, сколько дней после выбранной даты показывает мобильная повестка дня.",
       "calendarMobileAgendaPastDays": "Прошедшие дни мобильной повестки дня",
       "calendarMobileAgendaPastDaysDesc": "Выберите, сколько дней до выбранной даты показывает мобильная повестка дня.",
+      "calendarMobileAgendaSection": "Повестка",
       "calendarMobileAgendaShowCompletedItems": "Завершённые элементы мобильной повестки дня",
       "calendarMobileAgendaShowCompletedItemsDesc": "Показывать завершённые и отменённые задачи в мобильной повестке дня.",
       "calendarMobileAgendaSourcePreset": "Пресет повестки дня",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} задач",
       "calendarMobileColorSource": "Мобильный источник цвета",
       "calendarMobileColorSourceDesc": "Выберите, какой источник цвета использует мобильный календарь для блоков задач.",
+      "calendarMobileContentSection": "Содержимое календаря",
       "calendarMobileDayEnabled": "День в цикле",
       "calendarMobileDayEnabledDesc": "Включить «День» в цикл мобильных представлений календаря.",
       "calendarMobileDaySourcePreset": "Пресет дня",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "Выберите представление, используемое, когда для мобильной вкладки календаря ещё нет сохранённого представления.",
       "calendarMobileEnabled": "Включить мобильный макет календаря",
       "calendarMobileEnabledDesc": "Использовать компактную мобильную поверхность календаря в узких панелях календаря.",
+      "calendarMobileGridSection": "Сетка времени и события на весь день",
       "calendarMobileMaxWidth": "Максимальная ширина мобильного календаря (пикс.)",
       "calendarMobileMaxWidthDesc": "Панели календаря шириной не более этого значения используют мобильную поверхность календаря.",
       "calendarMobileShowAllDayItems": "Элементы на весь день в мобильном календаре",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "Включить «2 дня» в цикл мобильных представлений календаря.",
       "calendarMobileTwoDaySourcePreset": "Пресет 2 дней",
       "calendarMobileTwoDaySourcePresetDesc": "Выберите пресет календаря, используемый мобильным представлением «2 дня».",
-      "calendarMobileViewCycle": "Цикл мобильных представлений",
+      "calendarMobileViewCycle": "Представления и вид по умолчанию",
       "calendarMobileViewCycleDesc": "Выберите, какие мобильные представления календаря появляются при переключении с панели инструментов.",
       "calendarMobileViewPresets": "Мобильные пресеты представлений",
       "calendarMobileViewPresetsDesc": "Выберите пресет календаря, используемый каждым мобильным режимом представления календаря.",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "Максимальная ширина мобильного макета канбана (пикс.)",
       "kanbanMobileLayoutMaxWidthDesc": "Сенсорные представления канбана шириной не более этого значения используют мобильное поведение макета.",
       "kanbanMobileLayoutSettings": "Мобильный макет",
+      "kanbanMobileNavigationSection": "Навигация и полоса дорожек",
       "kanbanMobileSwimlaneHandleWidth": "Ширина полосы дорожки мобильного канбана (пикс.)",
       "kanbanMobileSwimlaneHandleWidthDesc": "Ширина компактной цветной полосы дорожки на мобильных устройствах.",
       "kanbanMobileSwimlaneRailAlwaysVisible": "Всегда показывать полосу дорожки мобильного канбана",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "Вернуть мобильную кнопку быстрого создания в положение по умолчанию в правом нижнем углу.",
       "mobileInterfaceDesc": "Настройте поведение интерфейса для телефонов и сенсорных устройств, не меняя макеты для настольных компьютеров.",
       "mobileInterfaceTitle": "Мобильный интерфейс",
+      "mobileLayoutSection": "Мобильный макет",
+      "mobileQuickCreateSection": "Кнопка быстрого создания",
       "mobileSubtabCalendar": "Календарь",
       "mobileSubtabGeneral": "Общее",
       "mobileSubtabKanban": "Канбан",
       "mobileSubtabTaskEditor": "Редактор задач",
+      "mobileTouchMenuSection": "Сенсорное меню",
       "moveConvertedNotesToPipelineLocation": "Перемещать преобразованные заметки в расположение их конвейера",
       "moveConvertedNotesToPipelineLocationDesc": "Когда включено, преобразованные заметки через 5 секунд перемещаются в папку конвейера или в папку файловых задач по умолчанию.",
       "moveDown": "Переместить вниз",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "Изображение задачи",
       "taskCreatorToolbarTooltip_taskType": "Тип задачи",
       "taskEditorFileBodySection": "Содержимое файла",
-      "taskEditorMobileCoreTools": "Панель инструментов мобильного редактора задач",
+      "taskEditorMobileCoreTools": "Видимость и порядок инструментов",
       "taskEditorMobileCoreToolsDesc": "Панель инструментов мобильного редактора задач управляет тем, какие основные значки появляются на телефонах, и настраивает их порядок. «Перейти к источнику» всегда остаётся первым, а «Удалить» — последним, если видимо.",
       "taskEditorMobileCoreToolsMoveDown": "Переместить вниз",
       "taskEditorMobileCoreToolsMoveUp": "Переместить вверх",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "7399a8a8f0cd630c4b3da700b6da0ff4a17c1204f9cdcbeddb115345b80eec32"
+  "sourceVersion": "db993f7770c4c457a971374a0c2f8ccacee7e291db48557736df54934c75d20f"
 }

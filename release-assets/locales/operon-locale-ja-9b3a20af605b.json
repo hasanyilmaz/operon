@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3520,
-  "keyFingerprint": "e3acd02c349d9fe11fc2e19eba57404c0146289e234a70a760933d85bea338dd",
+  "keyCount": 3527,
+  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1136,6 +1136,7 @@
       "calendarMobileAgendaFutureDaysDesc": "モバイルのアジェンダが選択日より後に表示する日数を選択します。",
       "calendarMobileAgendaPastDays": "モバイルアジェンダの過去の日数",
       "calendarMobileAgendaPastDaysDesc": "モバイルのアジェンダが選択日より前に表示する日数を選択します。",
+      "calendarMobileAgendaSection": "アジェンダ",
       "calendarMobileAgendaShowCompletedItems": "モバイルアジェンダの完了項目",
       "calendarMobileAgendaShowCompletedItemsDesc": "モバイルのアジェンダに完了およびキャンセルされたタスクを表示します。",
       "calendarMobileAgendaSourcePreset": "アジェンダプリセット",
@@ -1146,6 +1147,7 @@
       "calendarMobileAllDayVisibleTaskLimitOption": "{{count}} 件のタスク",
       "calendarMobileColorSource": "モバイルのカラーソース",
       "calendarMobileColorSourceDesc": "モバイルカレンダーがタスクブロックに使用するカラーソースを選択します。",
+      "calendarMobileContentSection": "カレンダーの内容",
       "calendarMobileDayEnabled": "日を切り替えに含める",
       "calendarMobileDayEnabledDesc": "モバイルカレンダーのビュー切り替えに日を含めます。",
       "calendarMobileDaySourcePreset": "日プリセット",
@@ -1156,6 +1158,7 @@
       "calendarMobileDefaultViewDesc": "モバイルのカレンダーにまだ記憶されたビューがない場合に使用するビューを選択します。",
       "calendarMobileEnabled": "モバイルのカレンダーレイアウトを有効化",
       "calendarMobileEnabledDesc": "狭いカレンダーペインでコンパクトなスマートフォン優先のカレンダー画面を使用します。",
+      "calendarMobileGridSection": "時間グリッドと終日項目",
       "calendarMobileMaxWidth": "モバイルカレンダーの最大幅（px）",
       "calendarMobileMaxWidthDesc": "この幅以下のカレンダーペインはモバイルカレンダー画面を使用します。",
       "calendarMobileShowAllDayItems": "モバイルカレンダーの終日項目",
@@ -1180,7 +1183,7 @@
       "calendarMobileTwoDayEnabledDesc": "モバイルカレンダーのビュー切り替えに2日を含めます。",
       "calendarMobileTwoDaySourcePreset": "2日プリセット",
       "calendarMobileTwoDaySourcePresetDesc": "モバイルの2日で使用するカレンダープリセットを選択します。",
-      "calendarMobileViewCycle": "モバイルのビュー切り替え",
+      "calendarMobileViewCycle": "ビューと既定のビュー",
       "calendarMobileViewCycleDesc": "ツールバーから切り替えるときに表示するモバイルカレンダービューを選択します。",
       "calendarMobileViewPresets": "モバイルのビュープリセット",
       "calendarMobileViewPresetsDesc": "各モバイルカレンダービューモードで使用するカレンダープリセットを選択します。",
@@ -1749,6 +1752,7 @@
       "kanbanMobileLayoutMaxWidth": "モバイルカンバンレイアウトの最大幅（px）",
       "kanbanMobileLayoutMaxWidthDesc": "この幅以下のタッチカンバンビューはモバイルレイアウトの動作を使用します。",
       "kanbanMobileLayoutSettings": "モバイルレイアウト",
+      "kanbanMobileNavigationSection": "ナビゲーションとスイムレーンレール",
       "kanbanMobileSwimlaneHandleWidth": "モバイルカンバンスイムレーンレールの幅（px）",
       "kanbanMobileSwimlaneHandleWidthDesc": "モバイルでのコンパクトな色付きスイムレーンレールの幅。",
       "kanbanMobileSwimlaneRailAlwaysVisible": "モバイルカンバンスイムレーンレールを常に表示",
@@ -2032,10 +2036,13 @@
       "mobileGlobalTaskFabResetPositionDesc": "モバイルのクイック作成ボタンをデフォルトの右下の位置に戻します。",
       "mobileInterfaceDesc": "デスクトップのレイアウトを変えずに、スマートフォンとタッチ優先のインターフェースの動作を調整します。",
       "mobileInterfaceTitle": "モバイルインターフェース",
+      "mobileLayoutSection": "モバイルレイアウト",
+      "mobileQuickCreateSection": "クイック作成ボタン",
       "mobileSubtabCalendar": "カレンダー",
       "mobileSubtabGeneral": "一般",
       "mobileSubtabKanban": "カンバン",
       "mobileSubtabTaskEditor": "タスクエディター",
+      "mobileTouchMenuSection": "タッチメニュー",
       "moveConvertedNotesToPipelineLocation": "変換したノートをパイプラインの場所へ移動",
       "moveConvertedNotesToPipelineLocationDesc": "有効にすると、変換したノートは5秒後にパイプラインのフォルダー、または既定のファイルタスクフォルダーへ移動します。",
       "moveDown": "下へ移動",
@@ -2653,7 +2660,7 @@
       "taskCreatorToolbarTooltip_taskImage": "タスク画像",
       "taskCreatorToolbarTooltip_taskType": "タスクタイプ",
       "taskEditorFileBodySection": "ファイル本文",
-      "taskEditorMobileCoreTools": "モバイルタスクエディターツールバー",
+      "taskEditorMobileCoreTools": "ツールバーの表示と順序",
       "taskEditorMobileCoreToolsDesc": "モバイルタスクエディターツールバーは、スマートフォンに表示されるコアアイコンを制御し、順序を調整します。表示時、「ソースへ移動」は常に先頭、「削除」は常に末尾になります。",
       "taskEditorMobileCoreToolsMoveDown": "下へ移動",
       "taskEditorMobileCoreToolsMoveUp": "上へ移動",
@@ -3565,5 +3572,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "0379ef9622239662968474b30d1a3205de273116926474eae83005de104846b7"
+  "sourceVersion": "8b75989ab74229133211376287d5b841f01af83095ae53e2437656f66545657c"
 }

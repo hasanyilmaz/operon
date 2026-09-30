@@ -35214,3 +35214,9 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-color-palette-row-controls:where(.operon-settings-scope, .operon-settings-scope *) {
  align-items: center;
 }
+
+/* Mobile Settings controls stay centered without changing mobile task surfaces. */
+.operon-mobile-settings-group:where(.operon-settings-scope) .setting-items > .setting-item > .setting-item-control,
+.operon-mobile-settings-group:where(.operon-settings-scope) .operon-settings-list-card-actions {
+	align-self: center;
+}
