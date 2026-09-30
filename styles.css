@@ -35307,35 +35307,62 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 	}
 }
 
-/* Pipelines Settings: preserve the original label width without stretching it
-   into the space saved by compact icon columns. */
-.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) {
+/* Pipelines Settings: one flexible label track shared with the pipeline name. */
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *) {
 	--operon-pipeline-label-min-width: 120px;
-	--operon-pipeline-label-width: max(var(--operon-pipeline-label-min-width), calc(100% - 588px));
+}
+
+:is(.operon-pipeline-header-row, .operon-pipeline-status-grid):where(.operon-settings-scope, .operon-settings-scope *) {
+	--operon-pipeline-fixed-width: 424px;
+	--operon-pipeline-label-offset: 100px;
 }
 
 .operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-status-column-header, .operon-status-list) {
-	min-width: calc(var(--operon-pipeline-label-min-width) + 424px);
+	min-width: calc(var(--operon-pipeline-label-min-width) + var(--operon-pipeline-fixed-width));
 }
 
 .operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-status-column-header, .operon-status-row) {
-	grid-template-columns: 44px 40px minmax(var(--operon-pipeline-label-min-width), var(--operon-pipeline-label-width)) 40px repeat(4, 32px) 108px;
+	grid-template-columns: 44px 40px minmax(var(--operon-pipeline-label-min-width), 1fr) 40px repeat(4, 32px) 108px;
+}
+
+.operon-pipeline-header-row:where(.operon-settings-scope, .operon-settings-scope *) {
+	flex-wrap: wrap;
+}
+
+.operon-pipeline-name-input:where(.operon-settings-scope, .operon-settings-scope *) {
+	flex: 0 0 auto;
+	width: max(calc(var(--operon-pipeline-label-min-width) + var(--operon-pipeline-label-offset)), calc(100% - var(--operon-pipeline-fixed-width) + var(--operon-pipeline-label-offset)));
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.operon-pipeline-default-wrapper:where(.operon-settings-scope, .operon-settings-scope *) {
+	flex-shrink: 0;
+}
+
+.operon-pipeline-header-spacer:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: none;
+}
+
+.operon-pipeline-header-actions:where(.operon-settings-scope, .operon-settings-scope *) {
+	margin-left: auto;
 }
 
 @container operon-pipeline-card (max-width: 600px) {
-	.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-status-column-header, .operon-status-list) {
-		min-width: calc(var(--operon-pipeline-label-min-width) + 392px);
+	:is(.operon-pipeline-header-row, .operon-pipeline-status-grid):where(.operon-settings-scope, .operon-settings-scope *) {
+		--operon-pipeline-fixed-width: 392px;
+		--operon-pipeline-label-offset: 88px;
 	}
 
 	.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-status-column-header, .operon-status-row) {
-		grid-template-columns: 40px 36px minmax(var(--operon-pipeline-label-min-width), var(--operon-pipeline-label-width)) 36px repeat(4, 32px) 104px;
+		grid-template-columns: 40px 36px minmax(var(--operon-pipeline-label-min-width), 1fr) 36px repeat(4, 32px) 104px;
 	}
 }
 
 @media (max-width: 800px) {
-	.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) {
+	.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *) {
 		--operon-pipeline-label-min-width: 118px;
-		--operon-pipeline-label-width: max(var(--operon-pipeline-label-min-width), calc(100% - 484px));
 	}
 }
 
