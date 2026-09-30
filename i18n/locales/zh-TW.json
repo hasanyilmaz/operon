@@ -643,7 +643,7 @@
 		"keyMappings": "任務屬性對映",
 		"keyMappingsDesc": "將 Operon 任務欄位對映到檔案任務 YAML/frontmatter 和行內任務後設資料中的可見屬性名稱，同時保持規範鍵穩定。",
 		"customKeysDesc": "建立和管理自定義規範欄位、介面可見性、用途、順序和刪除行為。",
-		"indexDebounce": "索引防抖（毫秒）",
+		"indexDebounce": "索引更新延遲（毫秒）",
 		"indexDebounceDesc": "在庫掃描期間，Operon 在處理檔案更改和增量索引更新前等待的毫秒數。",
 		"fullReindexOnStartup": "啟動時完整重建索引",
 		"fullReindexOnStartupDesc": "Operon 載入時始終執行完整庫掃描並重建任務索引。",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "現有關係與箭頭方向相反。請先變更箭頭方向。",
 		"edgeRelationsParent": "新增父任務之前，請先移除現有的父任務關係。",
 		"edgeRelationsFailed": "關係未能完全更新。重試前請檢查來源任務。",
-		"pinnedTasksAutomationSection": "自動釘選"
+		"pinnedTasksAutomationSection": "自動釘選",
+		"generalLanguageFormats": "語言與格式",
+		"generalUpdates": "更新",
+		"generalTaskIndexing": "任務索引"
 	},
 	"buttons": {
 		"ok": "確定",

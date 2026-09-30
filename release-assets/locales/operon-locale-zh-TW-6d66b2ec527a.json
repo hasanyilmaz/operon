@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "當預設繼承此全域設定時，顯示週末底色。",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "多個介面共用的晶片外觀設定。",
+      "generalLanguageFormats": "語言與格式",
+      "generalTaskIndexing": "任務索引",
+      "generalUpdates": "更新",
       "index": "索引",
-      "indexDebounce": "索引防抖（毫秒）",
+      "indexDebounce": "索引更新延遲（毫秒）",
       "indexDebounceDesc": "在庫掃描期間，Operon 在處理檔案更改和增量索引更新前等待的毫秒數。",
       "inheritPropertiesOnParentLink": "連結父任務時繼承屬性",
       "inheritPropertiesOnParentLinkDesc": "為現有任務指定新的父任務時，套用繼承規則：填入空白屬性，並新增清單中缺少的項目，不取代現有值。父任務後續的變更不會同步。",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "9ffe46b34bc6ae82b51688a9b2423da18e5d2b3443dfbab2d27a580416c7a7e8"
+  "sourceVersion": "4066c583334be930121c72dfccc60dbaeac4e341a6a3919bb11fa45a30fe09f1"
 }

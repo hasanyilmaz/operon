@@ -1782,23 +1782,32 @@ export class OperonSettingsTab extends PluginSettingTab {
 				continue;
 			}
 
-			const title = planItem.groupId === 'operonDocs'
-				? t('settings', 'operonDocsSection')
-				: t('settings', 'duplicateIdAlertsSection');
-			const target = planItem.groupId === 'operonDocs'
-				? 'DOCS-002 How to use these docs'
-				: 'DOCS-055 Duplicate IDs';
+			const titles = {
+				languageFormats: t('settings', 'generalLanguageFormats'), updates: t('settings', 'generalUpdates'),
+				demoWorkspace: t('settings', 'demoWorkspace'), operonDocs: t('settings', 'operonDocsSection'),
+				taskIndexing: t('settings', 'generalTaskIndexing'), duplicateIdAlerts: t('settings', 'duplicateIdAlertsSection'),
+				developerApi: t('settings', 'developerApiIntegrationsTitle'),
+			};
+			const title = titles[planItem.groupId];
+			const targets: Partial<Record<typeof planItem.groupId, string[]>> = {
+				updates: ['DOCS-007 Install and enable Operon'],
+				demoWorkspace: ['DOCS-081 Your first 7 days with Operon'],
+				operonDocs: ['DOCS-002 How to use these docs'],
+				taskIndexing: ['DOCS-091 Rebuild full index'],
+				duplicateIdAlerts: ['DOCS-055 Duplicate IDs', 'DOCS-015 Task identity and operonId'],
+				developerApi: ['DOCS-130 Developer API identity and capability grants', 'DOCS-129 In-process Developer API overview'],
+			};
 			const groupEntries = planItem.entryIds
 				.map(entryId => entriesById.get(entryId))
 				.filter((entry): entry is OperonSettingsSearchEntry => !!entry);
 			items.push({
 				type: 'group',
 				heading: title,
-				extraButtons: [this.buildDeclarativeSettingsDocsButton(
-					title,
-					target,
-					'operon-native-settings-declarative-docs-action--inline-heading',
-				)],
+				cls: 'operon-core-general-settings-group',
+				extraButtons: (targets[planItem.groupId] ?? []).map(target => this.buildDeclarativeSettingsDocsButton(
+					(targets[planItem.groupId]?.length ?? 0) > 1 ? `${title} — ${target}` : title,
+					target, 'operon-native-settings-declarative-docs-action--inline-heading',
+				)),
 				items: this.buildSettingsSearchTabItems(groupEntries),
 			});
 		}
@@ -4145,10 +4154,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderDeveloperApiIntegrations(containerEl: HTMLElement): void {
-		const section = renderNativeSettingsGroupedSection(
-			containerEl,
-			t('settings', 'developerApiIntegrationsTitle'),
-		);
+		const section = containerEl;
 		const description = section.createEl('p', {
 			text: t('settings', 'developerApiIntegrationsDesc'),
 			cls: 'operon-settings-muted-block',

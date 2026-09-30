@@ -643,7 +643,7 @@
 		"keyMappings": "任务属性映射",
 		"keyMappingsDesc": "将 Operon 任务字段映射到文件任务 YAML/frontmatter 和行内任务元数据中的可见属性名称，同时保持规范键稳定。",
 		"customKeysDesc": "创建和管理自定义规范字段、界面可见性、用途、顺序和删除行为。",
-		"indexDebounce": "索引防抖（毫秒）",
+		"indexDebounce": "索引更新延迟（毫秒）",
 		"indexDebounceDesc": "在库扫描期间，Operon 在处理文件更改和增量索引更新前等待的毫秒数。",
 		"fullReindexOnStartup": "启动时完整重建索引",
 		"fullReindexOnStartupDesc": "Operon 加载时始终运行完整库扫描并重建任务索引。",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "现有关系与箭头方向相反。请先更改箭头方向。",
 		"edgeRelationsParent": "添加新的父任务之前，请先移除现有的父任务关系。",
 		"edgeRelationsFailed": "关系未能完全更新。重试前请检查源任务。",
-		"pinnedTasksAutomationSection": "自动固定"
+		"pinnedTasksAutomationSection": "自动固定",
+		"generalLanguageFormats": "语言与格式",
+		"generalUpdates": "更新",
+		"generalTaskIndexing": "任务索引"
 	},
 	"buttons": {
 		"ok": "确定",

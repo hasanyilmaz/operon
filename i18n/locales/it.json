@@ -643,7 +643,7 @@
 		"keyMappings": "Mappatura proprietà attività",
 		"keyMappingsDesc": "Mappa i campi attività di Operon a nomi di proprietà visibili nello YAML/frontmatter delle attività-file e nei metadati delle attività in linea, mantenendo stabili le chiavi canoniche.",
 		"customKeysDesc": "Crea e gestisci campi canonici personalizzati, visibilità delle superfici, utilizzo, ordine e comportamento di eliminazione.",
-		"indexDebounce": "Debounce indice (ms)",
+		"indexDebounce": "Ritardo di aggiornamento dell’indice (ms)",
 		"indexDebounceDesc": "Millisecondi che Operon attende prima di elaborare le modifiche ai file e gli aggiornamenti incrementali dell'indice durante le scansioni della cassaforte.",
 		"fullReindexOnStartup": "Reindicizzazione completa all'avvio",
 		"fullReindexOnStartupDesc": "Esegui sempre una scansione completa della cassaforte e ricostruisci l'indice delle attività quando Operon si carica.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "La relazione esistente è opposta alla freccia. Cambia prima la direzione.",
 		"edgeRelationsParent": "Rimuovi prima la relazione con l’attività padre esistente.",
 		"edgeRelationsFailed": "La relazione non è stata aggiornata completamente. Controlla le attività di origine prima di riprovare.",
-		"pinnedTasksAutomationSection": "Fissaggio automatico"
+		"pinnedTasksAutomationSection": "Fissaggio automatico",
+		"generalLanguageFormats": "Lingua e formati",
+		"generalUpdates": "Aggiornamenti",
+		"generalTaskIndexing": "Indicizzazione delle attività"
 	},
 	"buttons": {
 		"ok": "OK",

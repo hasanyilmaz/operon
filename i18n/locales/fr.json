@@ -643,7 +643,7 @@
 		"keyMappings": "Correspondance des propriétés de tâche",
 		"keyMappingsDesc": "Faites correspondre les champs de tâche Operon aux noms de propriété visibles dans le YAML/frontmatter des tâches-fichiers et les métadonnées des tâches en ligne, tout en gardant les clés canoniques stables.",
 		"customKeysDesc": "Créez et gérez les champs canoniques personnalisés, la visibilité des surfaces, l'utilisation, l'ordre et le comportement de suppression.",
-		"indexDebounce": "Anti-rebond de l'index (ms)",
+		"indexDebounce": "Délai de mise à jour de l’index (ms)",
 		"indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
 		"fullReindexOnStartup": "Réindexation complète au démarrage",
 		"fullReindexOnStartupDesc": "Toujours exécuter une analyse complète du coffre et reconstruire l'index des tâches lorsqu'Operon se charge.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "La relation existante est inversée. Changez d’abord le sens de la flèche.",
 		"edgeRelationsParent": "Retirez la tâche parente existante avant d’en ajouter une autre.",
 		"edgeRelationsFailed": "La relation n’a pas pu être entièrement mise à jour. Vérifiez les tâches sources avant de réessayer.",
-		"pinnedTasksAutomationSection": "Épinglage automatique"
+		"pinnedTasksAutomationSection": "Épinglage automatique",
+		"generalLanguageFormats": "Langue et formats",
+		"generalUpdates": "Mises à jour",
+		"generalTaskIndexing": "Indexation des tâches"
 	},
 	"buttons": {
 		"ok": "OK",

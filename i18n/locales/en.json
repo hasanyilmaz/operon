@@ -643,7 +643,7 @@
 		"keyMappings": "Task Property Mapping",
 		"keyMappingsDesc": "Map Operon task fields to visible property names in file-task YAML/frontmatter and inline task metadata while keeping canonical keys stable.",
 		"customKeysDesc": "Create and manage custom canonical fields, surface visibility, usage, order, and delete behavior.",
-		"indexDebounce": "Index debounce (ms)",
+		"indexDebounce": "Index update delay (ms)",
 		"indexDebounceDesc": "Milliseconds Operon waits before processing file changes and incremental index updates during vault scans.",
 		"fullReindexOnStartup": "Full reindex on startup",
 		"fullReindexOnStartupDesc": "Always run a full vault scan and rebuild the task index when Operon loads.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsParent": "Remove the existing parent before adding a new parent.",
 		"edgeRelationsFailed": "The relation could not be fully updated. Check the source tasks before trying again.",
 		"pinnedTasksAutomationSection": "Automatic Pinning",
-		"contextualMenuMatrixEmpty": "Enable a menu action above to configure its visibility by surface."
+		"contextualMenuMatrixEmpty": "Enable a menu action above to configure its visibility by surface.",
+		"generalLanguageFormats": "Language & Formats",
+		"generalUpdates": "Updates",
+		"generalTaskIndexing": "Task Indexing"
 	},
 	"buttons": {
 		"ok": "OK",

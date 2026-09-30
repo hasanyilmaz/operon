@@ -35220,3 +35220,8 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-mobile-settings-group:where(.operon-settings-scope) .operon-settings-list-card-actions {
 	align-self: center;
 }
+
+/* Core General settings: controls align with wrapped descriptions. */
+.operon-core-general-settings-group:where(.operon-settings-scope) .setting-item-control {
+	align-self: center;
+}

@@ -641,7 +641,7 @@
 		"keyMappings": "Aufgabeneigenschaften-Zuordnung",
 		"keyMappingsDesc": "Ordne Operon-Aufgabenfelder sichtbaren Eigenschaftsnamen in Datei-Aufgaben-YAML/Frontmatter und Inline-Aufgaben-Metadaten zu, während die kanonischen Schlüssel stabil bleiben.",
 		"customKeysDesc": "Erstelle und verwalte benutzerdefinierte kanonische Felder, Oberflächen-Sichtbarkeit, Nutzung, Reihenfolge und Löschverhalten.",
-		"indexDebounce": "Index-Verzögerung (ms)",
+		"indexDebounce": "Verzögerung der Indexaktualisierung (ms)",
 		"indexDebounceDesc": "Millisekunden, die Operon wartet, bevor Dateiänderungen und inkrementelle Index-Updates während Tresor-Scans verarbeitet werden.",
 		"fullReindexOnStartup": "Vollständige Neuindizierung beim Start",
 		"fullReindexOnStartupDesc": "Beim Laden von Operon immer einen vollständigen Tresor-Scan ausführen und den Aufgabenindex neu aufbauen.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "Die bestehende Beziehung verläuft entgegen diesem Pfeil. Ändern Sie zuerst die Pfeilrichtung.",
 		"edgeRelationsParent": "Entfernen Sie zuerst die bestehende übergeordnete Aufgabe.",
 		"edgeRelationsFailed": "Die Beziehung konnte nicht vollständig aktualisiert werden. Prüfen Sie die Quellaufgaben vor einem erneuten Versuch.",
-		"pinnedTasksAutomationSection": "Automatisches Anheften"
+		"pinnedTasksAutomationSection": "Automatisches Anheften",
+		"generalLanguageFormats": "Sprache und Formate",
+		"generalUpdates": "Updates",
+		"generalTaskIndexing": "Aufgabenindexierung"
 	},
 	"buttons": {
 		"ok": "OK",

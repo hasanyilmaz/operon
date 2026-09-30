@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "プリセットがこのグローバル設定を継承する場合に、週末の網掛けを表示します。",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "複数の画面で共有するチップの表示設定。",
+      "generalLanguageFormats": "言語と書式",
+      "generalTaskIndexing": "タスクのインデックス作成",
+      "generalUpdates": "更新",
       "index": "インデックス",
-      "indexDebounce": "インデックスのデバウンス（ms）",
+      "indexDebounce": "インデックス更新の遅延（ミリ秒）",
       "indexDebounceDesc": "保管庫のスキャン中に、Operon がファイル変更と増分インデックス更新を処理する前に待機するミリ秒。",
       "inheritPropertiesOnParentLink": "親タスクを関連付けるときにプロパティを継承",
       "inheritPropertiesOnParentLinkDesc": "既存のタスクに新しい親タスクを割り当てると、継承ルールに従って空のプロパティを補完し、既存の値を置き換えずに不足するリスト項目を追加します。その後の親タスクの変更は同期されません。",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "8b75989ab74229133211376287d5b841f01af83095ae53e2437656f66545657c"
+  "sourceVersion": "84ad09e07e222809c8709fd60b60e7bce53b9fea8e7042bd99d6b5a9e085f5f1"
 }

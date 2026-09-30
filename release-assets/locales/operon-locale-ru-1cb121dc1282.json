@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "Показывать затенение выходных, когда пресет наследует эту глобальную настройку.",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "Общие настройки внешнего вида чипов для разных представлений.",
+      "generalLanguageFormats": "Язык и форматы",
+      "generalTaskIndexing": "Индексация задач",
+      "generalUpdates": "Обновления",
       "index": "Индекс",
-      "indexDebounce": "Задержка индекса (мс)",
+      "indexDebounce": "Задержка обновления индекса (мс)",
       "indexDebounceDesc": "Количество миллисекунд, которое Operon ожидает перед обработкой изменений файлов и инкрементальным обновлением индекса во время сканирования хранилища.",
       "inheritPropertiesOnParentLink": "Наследовать свойства при назначении родительской задачи",
       "inheritPropertiesOnParentLinkDesc": "При назначении новой родительской задачи существующей задаче применяются правила наследования: заполняются пустые свойства и добавляются недостающие элементы списков без замены существующих значений. Последующие изменения родительской задачи не синхронизируются.",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "db993f7770c4c457a971374a0c2f8ccacee7e291db48557736df54934c75d20f"
+  "sourceVersion": "d6aca8165177d9def18497f38caa2ab2b5a7ee58e00b7fa68949e7b6a57764d9"
 }

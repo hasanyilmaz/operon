@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "Zeige die Wochenend-Schattierung, wenn ein Preset diese globale Einstellung übernimmt.",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "Gemeinsame Chip-Darstellung auf mehreren Oberflächen.",
+      "generalLanguageFormats": "Sprache und Formate",
+      "generalTaskIndexing": "Aufgabenindexierung",
+      "generalUpdates": "Updates",
       "index": "Index",
-      "indexDebounce": "Index-Verzögerung (ms)",
+      "indexDebounce": "Verzögerung der Indexaktualisierung (ms)",
       "indexDebounceDesc": "Millisekunden, die Operon wartet, bevor Dateiänderungen und inkrementelle Index-Updates während Tresor-Scans verarbeitet werden.",
       "inheritPropertiesOnParentLink": "Eigenschaften beim Zuordnen einer übergeordneten Aufgabe übernehmen",
       "inheritPropertiesOnParentLinkDesc": "Beim Zuordnen einer neuen übergeordneten Aufgabe zu einer bestehenden Aufgabe gelten die Vererbungsregeln: Leere Eigenschaften werden gefüllt und fehlende Listeneinträge ergänzt, ohne vorhandene Werte zu ersetzen. Spätere Änderungen der übergeordneten Aufgabe werden nicht synchronisiert.",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "4dc2f71ed1b6a74259729db9f321f30a40d5d9b01c6f053d9283f628c0bccddf"
+  "sourceVersion": "89aa4e168b4275659cecd8566b9f4969521eac514a07ab7df490478183398cd2"
 }

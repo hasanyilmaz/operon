@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "Bir preset bu genel ayarı devraldığında hafta sonu gölgelendirmesini gösterin.",
       "generalChipSettings": "Genel Chip Ayarları",
       "generalChipSettingsDesc": "Birden fazla yüzeyde kullanılan ortak chip görünüm ayarları.",
+      "generalLanguageFormats": "Dil ve Biçimler",
+      "generalTaskIndexing": "Görev İndeksleme",
+      "generalUpdates": "Güncellemeler",
       "index": "İndeks",
-      "indexDebounce": "İndeks gecikme (ms)",
+      "indexDebounce": "İndeks güncelleme gecikmesi (ms)",
       "indexDebounceDesc": "Dosya değişikliklerini ve artımlı indeks güncellemelerini kasa taraması sırasında işlemeden önce beklenecek milisaniye.",
       "inheritPropertiesOnParentLink": "Parent bağlarken özellikleri devral",
       "inheritPropertiesOnParentLinkDesc": "Mevcut bir göreve yeni parent atarken inheritance kurallarını uygular: boş alanları doldurur ve mevcut değerleri değiştirmeden eksik liste öğelerini ekler. Parent üzerinde daha sonra yapılan değişiklikler senkronize edilmez.",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "54976191c607d3c35f76908257148f4b25adca788445283c3f164516ed1f32ae"
+  "sourceVersion": "58f543be29267572842fcffe9c15a4ab91ffeed866dd01d040201d8a68d9ff31"
 }

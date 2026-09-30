@@ -643,7 +643,7 @@
 		"keyMappings": "Mapeamento de Propriedades da Tarefa",
 		"keyMappingsDesc": "Mapeie os campos de tarefas do Operon para nomes de propriedades visíveis no YAML/frontmatter das tarefas em arquivo e nos metadados das tarefas inline, mantendo as chaves canônicas estáveis.",
 		"customKeysDesc": "Criar e gerenciar campos canônicos personalizados, visibilidade, uso, ordem e comportamento de exclusão.",
-		"indexDebounce": "Debounce do índice (ms)",
+		"indexDebounce": "Atraso de atualização do índice (ms)",
 		"indexDebounceDesc": "Milissegundos que Operon espera antes de processar alterações em arquivos e atualizações incrementais de índice durante varreduras do cofre.",
 		"fullReindexOnStartup": "Reindexação completa na inicialização",
 		"fullReindexOnStartupDesc": "Sempre executar uma varredura completa do cofre e reconstruir o índice de tarefas quando Operon carrega.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "A relação existente é contrária à seta. Altere primeiro a direção.",
 		"edgeRelationsParent": "Remova a tarefa principal existente antes de adicionar outra.",
 		"edgeRelationsFailed": "Não foi possível atualizar toda a relação. Verifique as tarefas de origem antes de tentar novamente.",
-		"pinnedTasksAutomationSection": "Fixação automática"
+		"pinnedTasksAutomationSection": "Fixação automática",
+		"generalLanguageFormats": "Idioma e formatos",
+		"generalUpdates": "Atualizações",
+		"generalTaskIndexing": "Indexação de tarefas"
 	},
 	"buttons": {
 		"ok": "OK",

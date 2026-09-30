@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "Mostre o sombreamento dos fins de semana quando um preset herdar esta configuração global.",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "Configurações de aparência dos chips compartilhadas entre várias superfícies.",
+      "generalLanguageFormats": "Idioma e formatos",
+      "generalTaskIndexing": "Indexação de tarefas",
+      "generalUpdates": "Atualizações",
       "index": "Índice",
-      "indexDebounce": "Debounce do índice (ms)",
+      "indexDebounce": "Atraso de atualização do índice (ms)",
       "indexDebounceDesc": "Milissegundos que Operon espera antes de processar alterações em arquivos e atualizações incrementais de índice durante varreduras do cofre.",
       "inheritPropertiesOnParentLink": "Herdar propriedades ao vincular uma tarefa pai",
       "inheritPropertiesOnParentLinkDesc": "Ao atribuir uma nova tarefa pai a uma tarefa existente, aplica as regras de herança: preenche propriedades vazias e adiciona itens ausentes às listas sem substituir os valores existentes. Alterações posteriores na tarefa pai não são sincronizadas.",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "ac73d1ccebd5d4a97206b1dd96f2ba0312d599159bc3059ec71165c57302c620"
+  "sourceVersion": "8814b33e797234e314425a770647be0817069f574b048f94f28cf9361d26531d"
 }

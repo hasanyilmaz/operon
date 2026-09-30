@@ -643,7 +643,7 @@
 		"keyMappings": "タスクプロパティのマッピング",
 		"keyMappingsDesc": "Operon のタスクフィールドを、ファイルタスクの YAML/frontmatter とインラインタスクのメタデータで表示されるプロパティ名にマッピングしつつ、正規キーを安定させます。",
 		"customKeysDesc": "カスタムの正規フィールドの作成と管理、表示、使用状況、順序、削除動作。",
-		"indexDebounce": "インデックスのデバウンス（ms）",
+		"indexDebounce": "インデックス更新の遅延（ミリ秒）",
 		"indexDebounceDesc": "保管庫のスキャン中に、Operon がファイル変更と増分インデックス更新を処理する前に待機するミリ秒。",
 		"fullReindexOnStartup": "起動時に完全な再インデックス",
 		"fullReindexOnStartupDesc": "Operon の読み込み時に、常に保管庫全体をスキャンしてタスクインデックスを再構築します。",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "既存の関係は矢印と逆方向です。先に矢印の方向を変更してください。",
 		"edgeRelationsParent": "新しい親を追加する前に、既存の親との関係を削除してください。",
 		"edgeRelationsFailed": "関係を完全に更新できませんでした。再試行する前に元のタスクを確認してください。",
-		"pinnedTasksAutomationSection": "自動ピン留め"
+		"pinnedTasksAutomationSection": "自動ピン留め",
+		"generalLanguageFormats": "言語と書式",
+		"generalUpdates": "更新",
+		"generalTaskIndexing": "タスクのインデックス作成"
 	},
 	"buttons": {
 		"ok": "OK",

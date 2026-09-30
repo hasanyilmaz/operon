@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3527,
-  "keyFingerprint": "4ba216709e4a3031352d8104f629a2497d2e25f312ad444c60939a0fe039f179",
+  "keyCount": 3530,
+  "keyFingerprint": "e209611880f831da7903f66db8a5d193e792cc2ef3418e4c5f1916ae2c2e917f",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1663,8 +1663,11 @@
       "ganttShowWeekendsDesc": "Affichez l'ombrage des week-ends lorsqu'un préréglage hérite de ce réglage global.",
       "generalChipSettings": "General Chip Settings",
       "generalChipSettingsDesc": "Réglages d’apparence des chips partagés entre plusieurs surfaces.",
+      "generalLanguageFormats": "Langue et formats",
+      "generalTaskIndexing": "Indexation des tâches",
+      "generalUpdates": "Mises à jour",
       "index": "Index",
-      "indexDebounce": "Anti-rebond de l'index (ms)",
+      "indexDebounce": "Délai de mise à jour de l’index (ms)",
       "indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
       "inheritPropertiesOnParentLink": "Hériter des propriétés lors de la liaison à une tâche parente",
       "inheritPropertiesOnParentLinkDesc": "Lors de l’attribution d’une nouvelle tâche parente à une tâche existante, applique les règles d’héritage : remplit les propriétés vides et ajoute les éléments manquants aux listes sans remplacer les valeurs existantes. Les modifications ultérieures de la tâche parente ne sont pas synchronisées.",
@@ -3572,5 +3575,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "0a7dd84179e16646bd2bf76a34b481677b22b83bf1ec6389d60f8a71b5e439fd"
+  "sourceVersion": "6cc434058a17dcbf660ee47f3c881d8eb6dc13ae5ffe3ffe2f58e729a99d4e6f"
 }

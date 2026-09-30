@@ -643,7 +643,7 @@
 		"keyMappings": "Görev Özelliği Haritalaması",
 		"keyMappingsDesc": "Operon görev alanlarını dosya görevi YAML/frontmatter'ında ve satır içi görev metadatasında kullanılan görünen özellik adlarına haritala; eş kurallı anahtarlar sabit kalır.",
 		"customKeysDesc": "Özel eş kurallı alanları, yüzey görünürlüğünü, kullanım bilgisini, sıralamayı ve silme davranışını oluşturup yönet.",
-		"indexDebounce": "İndeks gecikme (ms)",
+		"indexDebounce": "İndeks güncelleme gecikmesi (ms)",
 		"indexDebounceDesc": "Dosya değişikliklerini ve artımlı indeks güncellemelerini kasa taraması sırasında işlemeden önce beklenecek milisaniye.",
 		"fullReindexOnStartup": "Başlangıçta tam yeniden indeksleme",
 		"fullReindexOnStartupDesc": "Operon yüklendiğinde her zaman tam kasa taraması yap ve görev indeksini yeniden oluştur.",
@@ -2134,7 +2134,10 @@
 		"edgeRelationsReverse": "Mevcut ilişki bu oka ters yönde. Önce okun yönünü değiştirin.",
 		"edgeRelationsParent": "Yeni parent eklemeden önce mevcut parent ilişkisini kaldırın.",
 		"edgeRelationsFailed": "İlişki tamamen güncellenemedi. Yeniden denemeden önce kaynak task’ları kontrol edin.",
-		"pinnedTasksAutomationSection": "Otomatik Sabitleme"
+		"pinnedTasksAutomationSection": "Otomatik Sabitleme",
+		"generalLanguageFormats": "Dil ve Biçimler",
+		"generalUpdates": "Güncellemeler",
+		"generalTaskIndexing": "Görev İndeksleme"
 	},
 	"buttons": {
 		"ok": "Tamam",
