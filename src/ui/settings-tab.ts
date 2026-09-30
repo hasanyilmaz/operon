@@ -1885,7 +1885,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			type: 'group',
 			heading: t('settings', 'taskFinderHotkeysSection'),
 			cls: 'operon-task-finder-shortcuts-group',
-			items: [{ name: '', desc: t('settings', 'taskFinderShortcutsDesc'), searchable: false, render: setting => {
+			items: [{ name: t('settings', 'taskFinderHotkeysSection'), desc: t('settings', 'taskFinderShortcutsDesc'), render: setting => {
 				setting.settingEl.empty();
 				setting.settingEl.addClass('operon-task-finder-shortcuts-description');
 				setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'taskFinderShortcutsDesc') });

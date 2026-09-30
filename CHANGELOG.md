@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Organized **Task Finder settings** into search behavior and compact scope shortcut sections, with usage instructions and contextual help.
+
 - Organized **Pinned Dock settings** into display, appearance, automatic pinning, sidebar, and floating dock sections, with contextual help and options that appear only when relevant.
 
 - Organized **Task Chips settings** into individually searchable chip and action controls, with contextual help across all eight subpages and a dedicated Assignee Images section.
@@ -21,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,741/3,741** local regression tests, **48** synthetic Tables settings browser scenarios, **24** Gantt scenarios, **24** Task Cards section scenarios, **96** Task Chips scenarios, **24** Pinned Dock scenarios, and **12** Task Finder scenarios.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,742/3,742** local regression tests, **48** synthetic Tables settings browser scenarios, **24** Gantt scenarios, **24** Task Cards section scenarios, **96** Task Chips scenarios, **24** Pinned Dock scenarios, and **12** Task Finder scenarios.
 
 ## [3.10.2] - 2026-09-28
 
