@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "Тема приложения",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "Изображения исполнителей",
       "autoExpandParentTaskDateRange": "Автоматически расширять диапазон дат родительской задачи",
       "autoExpandParentTaskDateRangeDesc": "Переносит начало родительской задачи раньше, если дата начала или плановая дата потомка раньше, а срок — позже, если плановая дата, срок или дата завершения потомка выходит за текущий диапазон. Расширяются только уже заданные даты родительской задачи; пустые или удалённые даты остаются пустыми.",
       "autoExpandParentTaskDateRangePartialNotice": "Диапазоны согласованы частично. Обновлено: {{updated}}, ошибок: {{failed}}.",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "Показывать выходные",
       "ganttShowWeekendsDesc": "Показывать затенение выходных, когда пресет наследует эту глобальную настройку.",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "Общие настройки внешнего вида чипов для разных представлений.",
       "index": "Индекс",
       "indexDebounce": "Задержка индекса (мс)",
       "indexDebounceDesc": "Количество миллисекунд, которое Operon ожидает перед обработкой изменений файлов и инкрементальным обновлением индекса во время сканирования хранилища.",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "Переместить вверх",
       "kanbanTaskIconsReorder": "Изменить порядок чипов задач канбана",
       "kanbanTaskIconsSection": "Чипы задач канбана",
-      "kanbanTaskIconsSectionDesc": "Чипы задач канбана определяют, какие компактные чипы задач будут использовать карточки канбана, и их порядок. Серийный номер проекта отображается отдельно, если доступен.",
+      "kanbanTaskIconsSectionDesc": "Выберите чипы карточек Kanban, их порядок и режим отображения только значка. Project Serial отображается отдельно, если доступен.",
       "kanbanTaskIconsToggleTitle": "Переключить чипы задач канбана",
       "kanbanTaskNoteActionDesc": "Показывать чип индикатора заметки на карточках канбана, если у задачи есть заметка.",
       "kanbanTaskOpenCheckboxAction": "Открыть чекбоксы",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "Прогресс флажков",
       "taskCardChips": "Чипы карточек задач",
-      "taskCardChipsDesc": "Выберите поля и действия для карточек задач.",
+      "taskCardChipsDesc": "Выберите чипы и действия для Canvas Task Cards и Embedded Task Cards в заметках.",
       "taskCardChipsVisibilityDesc": "Показывать настроенные чипы и действия карточек задач.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "Закреплено",
       "taskCreatorToolbarPreview": "Видимые значки",
       "taskCreatorToolbarReorder": "Изменить порядок значков",
-      "taskCreatorToolbarSection": "Панель инструментов конструктора Operon",
-      "taskCreatorToolbarSectionDesc": "Панель инструментов конструктора Operon управляет тем, какие значки панели инструментов видны в «Новой задаче Operon», и их порядком. Это меняет только визуальную панель инструментов, а не функциональность создания задач.",
+      "taskCreatorToolbarSection": "Панель Task Creator",
+      "taskCreatorToolbarSectionDesc": "Выберите поля панели Task Creator и их порядок. Это меняет вид панели, но не функции создания задач.",
       "taskCreatorToolbarToggleTitle": "Переключить значки панели инструментов",
       "taskCreatorToolbarTooltipDesc_assignees": "Ответственные лица",
       "taskCreatorToolbarTooltipDesc_blockedBy": "Предпосылки для этой задачи",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "09c5d60572493ece8269d922266abdc18e474dcf84f19f70cc81e828a8076162"
+  "sourceVersion": "3e84a7d3cf4c365b83be8a3b031b6b9f31b00c8a13c62c1b8dc19bc8e9a0abb8"
 }

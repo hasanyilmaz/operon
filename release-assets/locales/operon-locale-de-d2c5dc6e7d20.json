@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "App-Theme",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "Bilder zugewiesener Personen",
       "autoExpandParentTaskDateRange": "Datumsbereich übergeordneter Aufgaben automatisch erweitern",
       "autoExpandParentTaskDateRangeDesc": "Verschiebt das Startdatum einer übergeordneten Aufgabe nach vorn, wenn das Start- oder Plandatum eines Nachfolgers früher liegt, und ihr Fälligkeitsdatum nach hinten, wenn ein Plan-, Fälligkeits- oder Abschlussdatum später liegt. Nur bereits gesetzte Datumswerte der übergeordneten Aufgabe werden erweitert; leere oder gelöschte Datumswerte bleiben leer.",
       "autoExpandParentTaskDateRangePartialNotice": "Datumsbereiche wurden teilweise abgeglichen. {{updated}} aktualisiert, {{failed}} fehlgeschlagen.",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "Wochenenden anzeigen",
       "ganttShowWeekendsDesc": "Zeige die Wochenend-Schattierung, wenn ein Preset diese globale Einstellung übernimmt.",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "Gemeinsame Chip-Darstellung auf mehreren Oberflächen.",
       "index": "Index",
       "indexDebounce": "Index-Verzögerung (ms)",
       "indexDebounceDesc": "Millisekunden, die Operon wartet, bevor Dateiänderungen und inkrementelle Index-Updates während Tresor-Scans verarbeitet werden.",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "Nach oben",
       "kanbanTaskIconsReorder": "Kanban-Aufgaben-Chips neu anordnen",
       "kanbanTaskIconsSection": "Kanban-Aufgaben-Chips",
-      "kanbanTaskIconsSectionDesc": "Kanban-Aufgaben-Chips bereiten vor, welche kompakten Aufgaben-Chips Kanban-Karten verwenden und in welcher Reihenfolge. Project Serial erscheint separat, wenn verfügbar.",
+      "kanbanTaskIconsSectionDesc": "Wähle die kompakten Chips auf Kanban-Karten, ihre Reihenfolge und die reine Symbolanzeige. Die Projektseriennummer erscheint separat, sofern vorhanden.",
       "kanbanTaskIconsToggleTitle": "Kanban-Aufgaben-Chips umschalten",
       "kanbanTaskNoteActionDesc": "Zeigt den Notizindikator-Chip auf Kanban-Karten, wenn die Aufgabe eine Notiz hat.",
       "kanbanTaskOpenCheckboxAction": "Kontrollkästchen öffnen",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "Kontrollkästchen-Fortschritt",
       "taskCardChips": "Aufgabenkarten-Chips",
-      "taskCardChipsDesc": "Felder und Aktionen auf Aufgabenkarten auswählen.",
+      "taskCardChipsDesc": "Wähle die Chips und Aktionen auf Canvas Task Cards und eingebetteten Task Cards in Notizen.",
       "taskCardChipsVisibilityDesc": "Konfigurierte Aufgabenkarten-Chips und Aktionen anzeigen.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "Angeheftet",
       "taskCreatorToolbarPreview": "Sichtbare Symbole",
       "taskCreatorToolbarReorder": "Symbole neu anordnen",
-      "taskCreatorToolbarSection": "Symbolleiste des Aufgaben-Erstellers",
-      "taskCreatorToolbarSectionDesc": "Die Symbolleiste des Aufgaben-Erstellers steuert, welche Symbolleisten-Symbole in „Neue Operon-Aufgabe“ sichtbar sind und in welcher Reihenfolge. Dies ändert nur die visuelle Symbolleiste, nicht die Funktionalität der Aufgabenerstellung.",
+      "taskCreatorToolbarSection": "Task-Creator-Werkzeugleiste",
+      "taskCreatorToolbarSectionDesc": "Wähle die Felder und ihre Reihenfolge in der Task-Creator-Werkzeugleiste. Dies ändert nur die Darstellung, nicht die Funktionen zur Aufgabenerstellung.",
       "taskCreatorToolbarToggleTitle": "Symbolleisten-Symbole umschalten",
       "taskCreatorToolbarTooltipDesc_assignees": "Verantwortliche Personen",
       "taskCreatorToolbarTooltipDesc_blockedBy": "Voraussetzungen dieser Aufgabe",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "897d9f33f73037acb93c4ce49b65ea555d3644bc13548404a9498994cbacdd0b"
+  "sourceVersion": "e19ddedfe43e7819cefb62341156ad579a64f0c997fc57f789a73810e86e8375"
 }

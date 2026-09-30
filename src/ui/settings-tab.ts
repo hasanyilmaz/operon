@@ -1,3 +1,4 @@
+import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
 import { buildPropertyValuePoolSettings } from './settings/property-value-pool-settings';
@@ -1343,7 +1344,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				type: 'page',
 				name: pageName,
 				desc,
-				items: this.buildTaskChipsSettingsPages(entries),
+				items: [{ name: '', desc, searchable: false, render: setting => {
+					return attachDeclarativeSettingsPageTitleAction(setting.settingEl, pageName, [this.buildNativeSettingsDocsAction(pageName, 'DOCS-041 Task chips display and behavior').action]);
+				} }, ...this.buildTaskChipsSettingsPages(entries)],
 			};
 		}
 
@@ -1772,22 +1775,66 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return TASK_CHIPS_SETTINGS_PAGE_ORDER.map(pageId => {
 			const meta = TASK_CHIPS_SETTINGS_PAGE_META[pageId];
 			const pageName = t('settings', meta.titleKey);
-			const pageEntries = meta.entryIds
-				.map(entryId => entries.find(entry => entry.id === `ui.${entryId}`))
-				.filter((entry): entry is OperonSettingsSearchEntry => !!entry);
-			return {
-				type: 'page',
-				name: pageName,
-				desc: t('settings', meta.descKey),
-				items: this.buildSettingsSearchTabItems(pageEntries),
-				page: () => new OperonNativeSettingsPage(
-					pageName,
-					containerEl => this.renderNativeTaskChipsSettingsPage(pageId, containerEl),
-					containerEl => this.hideNativeSettingsPage(containerEl),
-					this.buildNativeSettingsDocsAction(pageName, meta.docsTarget).action,
-				),
-			};
+			const docs = this.getTaskChipsDocsTargets(pageId);
+			let groups: SettingDefinitionGroup[];
+			if (pageId === 'generalChipSettings') {
+				const entry = entries.find(entry => entry.key === 'assigneeImageProperty');
+				const heading = t('settings', 'assigneeImagesSection');
+				groups = [{ type: 'group', heading,
+					extraButtons: [this.buildDeclarativeSettingsDocsButton(heading, 'DOCS-143 How to show assignee images', 'operon-native-settings-declarative-docs-action--inline-heading')],
+					items: entry ? [this.buildTaskCaptureSearchSection(entry, containerEl => this.renderTaskChipsSettingsPageContent(pageId, containerEl, { singleRow: { key: 'assigneeImageProperty' } }))] : [],
+				}];
+			} else {
+				const surface = pageId === 'taskCreatorToolbar' ? 'creator' : 'chips';
+				const settingsKey = ({ taskCreatorToolbar: 'taskCreatorToolbar', inlineTaskChips: 'inlineTaskCompactChips', taskFinderChips: 'taskFinderCompactChips', filterTaskChips: 'filterTaskCompactChips', kanbanTaskChips: 'kanbanTaskCompactChips', taskWikilinkOverlayChips: 'taskWikilinkOverlayCompactChips', taskCardChips: 'taskCardCompactChips' } as const)[pageId];
+				const rows = this.getRenderableSurfaceItems(this.settings[settingsKey], surface);
+				const definitions = rows.map(row => this.buildTaskChipCardDefinition(pageId,
+					surface === 'creator' ? this.getTaskCreatorToolbarFieldLabel(row.key) : this.getInlineTaskCompactChipLabel(row.key),
+					{ key: row.key }, [row.key]));
+				const description: SettingDefinition = { name: '', desc: t('settings', meta.descKey), searchable: false, render: setting => {
+					setting.settingEl.addClass('operon-task-chip-description');
+				} };
+				groups = [{ type: 'group', heading: '', cls: 'operon-task-chip-settings-group', items: [description, ...definitions] }];
+				const prefix = ({ inlineTaskChips: 'inlineTask', filterTaskChips: 'filterTask', kanbanTaskChips: 'kanbanTask', taskWikilinkOverlayChips: 'taskWikilinkOverlay', taskCardChips: 'taskCard' } as const)[pageId as 'inlineTaskChips' | 'filterTaskChips' | 'kanbanTaskChips' | 'taskWikilinkOverlayChips' | 'taskCardChips'];
+				if (prefix) {
+					const actions = ['Play', 'Pin', 'Note', 'Subtask', ...(prefix === 'inlineTask' ? [] : ['PlainCheckbox'])];
+					groups.push({ type: 'group', heading: t('settings', `${prefix}ActionsSection`), cls: 'operon-task-chip-settings-group', items: actions.map((action, index) => {
+						const titleKey = action === 'PlainCheckbox' ? (prefix === 'taskCard' ? 'kanbanTaskOpenCheckboxAction' : `${prefix}OpenCheckboxAction`) : `inlineTask${action}Action`;
+						const entry = entries.find(entry => entry.key === `${prefix}Show${action}Action`);
+						return this.buildTaskChipCardDefinition(pageId, t('settings', titleKey), { action: index }, entry ? this.getSettingsSearchAliases(entry) : []);
+					}) });
+				}
+			}
+			const first = groups[0]?.items?.[0];
+			if (first && 'render' in first && first.render && docs.length) {
+				const render = first.render;
+				first.render = (setting, context) => {
+					const cleanup = render(setting, context);
+					const cleanupTitle = attachDeclarativeSettingsPageTitleAction(setting.settingEl, pageName, docs.map(target => this.buildNativeSettingsDocsAction(pageName, target).action));
+					return () => { cleanupTitle?.(); cleanup?.(); };
+				};
+			}
+			return { type: 'page', name: pageName, desc: t('settings', meta.descKey), items: groups };
 		});
+	}
+
+	private buildTaskChipCardDefinition(pageId: TaskChipsSettingsPageId, name: string, singleRow: InterfaceIconRowSelection, aliases: string[]): SettingDefinition {
+		return { name, aliases, render: setting => {
+			setting.settingEl.empty();
+			setting.settingEl.removeClass('setting-item');
+			setting.settingEl.addClass('operon-task-chip-setting');
+			setting.settingEl.dataset.operonChipRow = `${pageId}:${'key' in singleRow ? singleRow.key : `action-${singleRow.action}`}`;
+			this.renderTaskChipsSettingsPageContent(pageId, setting.settingEl, { singleRow });
+		} };
+	}
+
+	private getTaskChipsDocsTargets(pageId: TaskChipsSettingsPageId): string[] {
+		const extra: Partial<Record<TaskChipsSettingsPageId, string>> = {
+			inlineTaskChips: 'DOCS-011 Inline tasks', taskFinderChips: 'DOCS-027 Task Finder',
+			filterTaskChips: 'DOCS-025 Filter View', kanbanTaskChips: 'DOCS-030 Kanban overview',
+			taskWikilinkOverlayChips: 'DOCS-041 Task chips display and behavior',
+		};
+		return pageId === 'generalChipSettings' ? [] : [TASK_CHIPS_SETTINGS_PAGE_META[pageId].docsTarget, ...(extra[pageId] ? [extra[pageId]] : [])];
 	}
 
 	private buildStateIconsSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -5778,7 +5825,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderTaskChipsSettingsPageContent(
 		pageId: TaskChipsSettingsPageId,
 		containerEl: HTMLElement,
-		options: { omitNativeTitle?: boolean } = {},
+		options: { omitNativeTitle?: boolean; singleRow?: InterfaceIconRowSelection } = {},
 	): void {
 		const meta = TASK_CHIPS_SETTINGS_PAGE_META[pageId];
 		const title = t('settings', meta.titleKey);
@@ -5787,11 +5834,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			sectionId: pageId,
 			desc,
 			omitNativeTitle: options.omitNativeTitle,
+			singleRow: options.singleRow,
 		};
 
 		if (pageId === 'generalChipSettings') {
 			this.renderBoundTextSetting(
-				this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions),
+				(options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)),
 				t('settings', 'assigneeImageProperty'), t('settings', 'assigneeImagePropertyDesc'),
 				'assigneeImageProperty', {
 					placeholder: 'avatar, photo',
@@ -5799,19 +5847,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 				},
 			);
 		} else if (pageId === 'taskCreatorToolbar') {
-			this.renderTaskCreatorToolbarSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
+			this.renderTaskCreatorToolbarSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), options.singleRow);
 		} else if (pageId === 'inlineTaskChips') {
-			this.renderInlineTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
+			this.renderInlineTaskCompactChipSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), options.singleRow);
 		} else if (pageId === 'taskFinderChips') {
-			this.renderTaskFinderCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
+			this.renderTaskFinderCompactChipSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), options.singleRow);
 		} else if (pageId === 'filterTaskChips') {
 			this.renderFilterTaskCardsSection(containerEl, sectionOptions);
 		} else if (pageId === 'taskCardChips') {
- this.renderKanbanTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions), 'taskCard');
+ this.renderKanbanTaskCompactChipSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), 'taskCard', options.singleRow);
 		} else if (pageId === 'kanbanTaskChips') {
-			this.renderKanbanTaskCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
+			this.renderKanbanTaskCompactChipSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), 'kanbanTask', options.singleRow);
 		} else if (pageId === 'taskWikilinkOverlayChips') {
-			this.renderTaskWikilinkOverlayCompactChipSettingsSection(this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions));
+			this.renderTaskWikilinkOverlayCompactChipSettingsSection((options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, title, sectionOptions)), options.singleRow);
 		}
 	}
 
@@ -6458,9 +6506,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderTaskCreatorToolbarSettingsSection(containerEl: HTMLElement): void {
+	private renderTaskCreatorToolbarSettingsSection(containerEl: HTMLElement, singleRow?: InterfaceIconRowSelection): void {
 		renderInterfaceIconToggleSection<string, TaskCreatorToolbarItem>({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', 'taskCreatorToolbarSectionDesc'),
 			descriptionSearchTargetId: 'ui.taskCreatorToolbar',
@@ -6487,9 +6537,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderInlineTaskCompactChipSettingsSection(containerEl: HTMLElement): void {
+	private renderInlineTaskCompactChipSettingsSection(containerEl: HTMLElement, singleRow?: InterfaceIconRowSelection): void {
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', 'inlineTaskIconsSectionDesc'),
 			descriptionSearchTargetId: 'ui.inlineTaskChips',
@@ -6556,9 +6608,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderTaskFinderCompactChipSettingsSection(containerEl: HTMLElement): void {
+	private renderTaskFinderCompactChipSettingsSection(containerEl: HTMLElement, singleRow?: InterfaceIconRowSelection): void {
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', 'taskFinderIconsSectionDesc'),
 			descriptionSearchTargetId: 'ui.taskFinderChips',
@@ -6582,9 +6636,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderTaskWikilinkOverlayCompactChipSettingsSection(containerEl: HTMLElement): void {
+	private renderTaskWikilinkOverlayCompactChipSettingsSection(containerEl: HTMLElement, singleRow?: InterfaceIconRowSelection): void {
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', 'taskWikilinkOverlayIconsSectionDesc'),
 			descriptionSearchTargetId: 'ui.taskWikilinkOverlayChips',
@@ -12420,13 +12476,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 		containerEl: HTMLElement,
 		options: {
 			sectionId?: TaskChipsSettingsPageId;
+			singleRow?: InterfaceIconRowSelection;
 			desc?: string;
 			omitNativeTitle?: boolean;
 		} = {},
 	): void {
-		const sectionEl = this.renderTaskChipsGroupedSection(containerEl, t('settings', 'filterTaskIconsSection'), options);
+		const sectionEl = options.singleRow ? containerEl : this.renderTaskChipsGroupedSection(containerEl, t('settings', 'filterTaskIconsSection'), options);
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
+			singleRow: options.singleRow,
+			onReorder: options.singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl: sectionEl,
 			description: t('settings', 'filterTaskIconsSectionDesc'),
 			descriptionSearchTargetId: 'ui.filterTaskChips',
@@ -12503,9 +12562,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderKanbanTaskCompactChipSettingsSection(containerEl: HTMLElement, profile: 'kanbanTask' | 'taskCard' = 'kanbanTask'): void {
+	private renderKanbanTaskCompactChipSettingsSection(containerEl: HTMLElement, profile: 'kanbanTask' | 'taskCard' = 'kanbanTask', singleRow?: InterfaceIconRowSelection): void {
 		renderCompactChipSettingsSection({
 			layout: 'row-list',
+			singleRow,
+			onReorder: singleRow ? () => this.updateNativeSettingsDefinitions() : undefined,
 			containerEl,
 			description: t('settings', profile === 'taskCard' ? 'taskCardChipsDesc' : 'kanbanTaskIconsSectionDesc'),
 			descriptionSearchTargetId: `ui.${profile}Chips`,

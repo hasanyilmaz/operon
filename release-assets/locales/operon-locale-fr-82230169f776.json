@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "Thème de l'application",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "Images des responsables",
       "autoExpandParentTaskDateRange": "Étendre automatiquement la plage de dates de la tâche parente",
       "autoExpandParentTaskDateRangeDesc": "Avance la date de début d'une tâche parente lorsque la date de début ou planifiée d'un descendant est antérieure et repousse son échéance lorsqu'une date planifiée, d'échéance ou d'achèvement est plus tardive. Seules les dates déjà définies sur la tâche parente sont étendues ; les dates vides ou effacées restent vides.",
       "autoExpandParentTaskDateRangePartialNotice": "Les plages ont été partiellement rapprochées. {{updated}} mises à jour, {{failed}} en échec.",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "Afficher les week-ends",
       "ganttShowWeekendsDesc": "Affichez l'ombrage des week-ends lorsqu'un préréglage hérite de ce réglage global.",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "Réglages d’apparence des chips partagés entre plusieurs surfaces.",
       "index": "Index",
       "indexDebounce": "Anti-rebond de l'index (ms)",
       "indexDebounceDesc": "Millisecondes qu'Operon attend avant de traiter les modifications de fichiers et les mises à jour incrémentielles de l'index pendant les analyses du coffre.",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "Déplacer vers le haut",
       "kanbanTaskIconsReorder": "Réorganiser les puces de tâche Kanban",
       "kanbanTaskIconsSection": "Puces de tâche Kanban",
-      "kanbanTaskIconsSectionDesc": "Les Puces de tâche Kanban préparent les puces compactes que les cartes Kanban utiliseront et leur ordre. Project Serial apparaît séparément lorsqu'il est disponible.",
+      "kanbanTaskIconsSectionDesc": "Choisissez les chips des cartes Kanban, leur ordre et leur affichage en icône seule. Project Serial apparaît séparément si disponible.",
       "kanbanTaskIconsToggleTitle": "Basculer les puces de tâche Kanban",
       "kanbanTaskNoteActionDesc": "Affiche la puce d'indicateur de note sur les cartes Kanban lorsque la tâche a une note.",
       "kanbanTaskOpenCheckboxAction": "Ouvrir les cases à cocher",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "Progression des cases à cocher",
       "taskCardChips": "Chips des cartes de tâches",
-      "taskCardChipsDesc": "Choisissez les champs et actions affichés sur les cartes de tâches.",
+      "taskCardChipsDesc": "Choisissez les chips et les actions des Canvas Task Cards et des Embedded Task Cards dans les notes.",
       "taskCardChipsVisibilityDesc": "Afficher les puces et actions configurées pour les cartes de tâches.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "Épinglée",
       "taskCreatorToolbarPreview": "Icônes visibles",
       "taskCreatorToolbarReorder": "Réorganiser les icônes",
-      "taskCreatorToolbarSection": "Barre d'outils du nouveau créateur Operon",
-      "taskCreatorToolbarSectionDesc": "La barre d'outils du nouveau créateur Operon détermine quelles icônes de la barre d'outils sont visibles dans Nouvelle tâche Operon et leur ordre. Cela modifie uniquement la barre d'outils visuelle, pas la fonctionnalité de création de tâches.",
+      "taskCreatorToolbarSection": "Barre de Task Creator",
+      "taskCreatorToolbarSectionDesc": "Choisissez les champs de la barre de Task Creator et leur ordre. Cela modifie son apparence, pas les fonctions de création de tâches.",
       "taskCreatorToolbarToggleTitle": "Basculer les icônes de la barre d'outils",
       "taskCreatorToolbarTooltipDesc_assignees": "Personnes responsables",
       "taskCreatorToolbarTooltipDesc_blockedBy": "Prérequis de cette tâche",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "fd4e673706eda7b118992df9bbdfc81cd6a4b5f638ee99f76b63822c4ba65156"
+  "sourceVersion": "b2430cf9c1ea97b1220501a58891ca3c125c5da87c944ab324a54a90edfe5895"
 }

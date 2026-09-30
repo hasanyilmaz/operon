@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "Uygulama teması",
       "assigneeImageProperty": "Atanan kişi görsel property’si",
       "assigneeImagePropertyDesc": "Bağlantılı kişi notlarında bu property’deki görseli kullanır. Varsayılan simgeyi korumak için boş bırakın.",
+      "assigneeImagesSection": "Atanan Kişi Görselleri",
       "autoExpandParentTaskDateRange": "Üst görev tarih aralığını otomatik genişlet",
       "autoExpandParentTaskDateRangeDesc": "Bir alt görevin başlangıç veya planlanan tarihi daha erkense üst görevin başlangıç tarihini erkene; planlanan, bitiş veya tamamlanma tarihi mevcut aralığı aşıyorsa bitiş tarihini ileriye taşır. Yalnızca parent üzerinde mevcut tarihler genişletilir; boş veya silinmiş tarihler boş kalır.",
       "autoExpandParentTaskDateRangePartialNotice": "Üst görev tarih aralıkları kısmen uzlaştırıldı. {{updated}} güncellendi, {{failed}} başarısız oldu.",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "Hafta sonlarını göster",
       "ganttShowWeekendsDesc": "Bir preset bu genel ayarı devraldığında hafta sonu gölgelendirmesini gösterin.",
       "generalChipSettings": "Genel Chip Ayarları",
-      "generalChipSettingsDesc": "Ortak chip görünüm ayarları.",
+      "generalChipSettingsDesc": "Birden fazla yüzeyde kullanılan ortak chip görünüm ayarları.",
       "index": "İndeks",
       "indexDebounce": "İndeks gecikme (ms)",
       "indexDebounceDesc": "Dosya değişikliklerini ve artımlı indeks güncellemelerini kasa taraması sırasında işlemeden önce beklenecek milisaniye.",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "Yukarı taşı",
       "kanbanTaskIconsReorder": "Kanban görev simgelerini yeniden sırala",
       "kanbanTaskIconsSection": "Kanban Görev Simgeleri",
-      "kanbanTaskIconsSectionDesc": "Kanban Görev Simgeleri, Kanban kartlarının kullanacağı kompakt görev simgelerini ve sıralarını hazırlar. Project Serial varsa ayrı olarak görünür.",
+      "kanbanTaskIconsSectionDesc": "Kanban kartlarında gösterilen chip’leri, sıralarını ve yalnız simge gösterip göstermediklerini seçin. Project Serial varsa ayrıca gösterilir.",
       "kanbanTaskIconsToggleTitle": "Kanban görev simgelerini aç/kapat",
       "kanbanTaskNoteActionDesc": "Görevin notu varsa Kanban kartlarında not göstergesi simgesini gösterir.",
       "kanbanTaskOpenCheckboxAction": "Onay kutularını aç",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "Onay kutusu ilerlemesi",
       "taskCardChips": "Task Card Chips",
-      "taskCardChipsDesc": "Task Cards üzerinde gösterilecek alanları ve eylemleri seçin.",
+      "taskCardChipsDesc": "Canvas Task Cards ve notlardaki Embedded Task Cards üzerinde gösterilen chip’leri ve eylemleri seçin.",
       "taskCardChipsVisibilityDesc": "Yapılandırılmış görev kartı çiplerini ve eylemlerini göster.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "Sabitlenmiş",
       "taskCreatorToolbarPreview": "Görünür simgeler",
       "taskCreatorToolbarReorder": "Simgeleri yeniden sırala",
-      "taskCreatorToolbarSection": "Yeni Operon Oluşturma Araç Çubuğu",
-      "taskCreatorToolbarSectionDesc": "Yeni Operon Oluşturma Araç Çubuğu, Yeni Operon Görevi içinde hangi araç çubuğu simgelerinin görüneceğini ve sıralarını belirler. Bu ayar yalnızca görsel araç çubuğunu değiştirir, görev oluşturma işlevini değiştirmez.",
+      "taskCreatorToolbarSection": "Task Creator Araç Çubuğu",
+      "taskCreatorToolbarSectionDesc": "Task Creator araç çubuğundaki alanları ve sıralarını seçin. Bu, görev oluşturma işlevlerini değil araç çubuğunun görünümünü değiştirir.",
       "taskCreatorToolbarToggleTitle": "Araç çubuğu simgelerini aç/kapat",
       "taskCreatorToolbarTooltipDesc_assignees": "Sorumlu kişiler",
       "taskCreatorToolbarTooltipDesc_blockedBy": "Bu görev için önkoşullar",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "14fe1edc7d0276ba0a1d1707b48a33a37f436dfb77b8b66f3845f03da8c1beec"
+  "sourceVersion": "2820ea0232d7517991fda976e5204bbe472f898a05034e39fcdf7b070d2178e0"
 }

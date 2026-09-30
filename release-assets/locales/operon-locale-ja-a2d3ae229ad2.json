@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "アプリのテーマ",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "担当者の画像",
       "autoExpandParentTaskDateRange": "親タスクの日付範囲を自動的に拡張",
       "autoExpandParentTaskDateRangeDesc": "子孫タスクの開始日または予定日が早い場合は親タスクの開始日を前倒しし、予定日、期限、完了日のいずれかが遅い場合は期限を後ろへ移動します。 親タスクに設定済みの日付のみを拡張します。未設定または削除された日付は空のままです。",
       "autoExpandParentTaskDateRangePartialNotice": "親タスクの日付範囲を一部調整しました。更新 {{updated}} 件、失敗 {{failed}} 件。",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "週末を表示",
       "ganttShowWeekendsDesc": "プリセットがこのグローバル設定を継承する場合に、週末の網掛けを表示します。",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "複数の画面で共有するチップの表示設定。",
       "index": "インデックス",
       "indexDebounce": "インデックスのデバウンス（ms）",
       "indexDebounceDesc": "保管庫のスキャン中に、Operon がファイル変更と増分インデックス更新を処理する前に待機するミリ秒。",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "上へ移動",
       "kanbanTaskIconsReorder": "Kanban タスクチップを並べ替え",
       "kanbanTaskIconsSection": "Kanban タスクチップ",
-      "kanbanTaskIconsSectionDesc": "Kanban タスクチップは、Kanban カードが使用するコンパクトなタスクチップとその順序を準備します。Project Serial は利用可能な場合に別に表示されます。",
+      "kanbanTaskIconsSectionDesc": "Kanban カードに表示するチップ、順序、アイコンのみの表示を選択します。Project Serial は利用可能な場合に別途表示されます。",
       "kanbanTaskIconsToggleTitle": "Kanban タスクチップを切り替え",
       "kanbanTaskNoteActionDesc": "タスクにノートがある場合に、Kanban カードにノートインジケーターチップを表示します。",
       "kanbanTaskOpenCheckboxAction": "チェックボックスを開く",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "チェックボックスの進捗",
       "taskCardChips": "タスクカードのチップ",
-      "taskCardChipsDesc": "タスクカードに表示するフィールドと操作を選択します。",
+      "taskCardChipsDesc": "Canvas Task Cards とノート内の Embedded Task Cards に表示するチップとアクションを選択します。",
       "taskCardChipsVisibilityDesc": "設定済みのタスクカードのチップとアクションを表示します。",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "ピン留め",
       "taskCreatorToolbarPreview": "表示するアイコン",
       "taskCreatorToolbarReorder": "アイコンを並べ替え",
-      "taskCreatorToolbarSection": "新しい Operon 作成ツールバー",
-      "taskCreatorToolbarSectionDesc": "新しい Operon 作成ツールバーは、新しい Operon タスクで表示されるツールバーアイコンとその順序を制御します。これは視覚的なツールバーのみを変更し、タスク作成の機能は変更しません。",
+      "taskCreatorToolbarSection": "Task Creator ツールバー",
+      "taskCreatorToolbarSectionDesc": "Task Creator のツールバーに表示する項目と順序を選択します。外観のみが変わり、タスク作成機能は変わりません。",
       "taskCreatorToolbarToggleTitle": "ツールバーアイコンを切り替え",
       "taskCreatorToolbarTooltipDesc_assignees": "責任者",
       "taskCreatorToolbarTooltipDesc_blockedBy": "このタスクの前提条件",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d8ab53135257560f3a8c2905415952c66109358eba7b8a97f454b16c048dfdf6"
+  "sourceVersion": "1d233142a3fb82432a61666ddbf93d0e2b76564020a24d070f79e3cfa03c425e"
 }

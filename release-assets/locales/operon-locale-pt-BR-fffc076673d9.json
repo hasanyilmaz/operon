@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "Tema do aplicativo",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "Imagens dos responsáveis",
       "autoExpandParentTaskDateRange": "Expandir automaticamente o intervalo de datas da tarefa pai",
       "autoExpandParentTaskDateRangeDesc": "Antecipa a data de início da tarefa pai quando a data de início ou agendada de um descendente é anterior e adia o vencimento quando uma data agendada, de vencimento ou de conclusão é posterior. Somente as datas já definidas na tarefa pai são ampliadas; datas vazias ou removidas permanecem vazias.",
       "autoExpandParentTaskDateRangePartialNotice": "Intervalos parcialmente reconciliados. {{updated}} atualizados, {{failed}} com falha.",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "Mostrar fins de semana",
       "ganttShowWeekendsDesc": "Mostre o sombreamento dos fins de semana quando um preset herdar esta configuração global.",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "Configurações de aparência dos chips compartilhadas entre várias superfícies.",
       "index": "Índice",
       "indexDebounce": "Debounce do índice (ms)",
       "indexDebounceDesc": "Milissegundos que Operon espera antes de processar alterações em arquivos e atualizações incrementais de índice durante varreduras do cofre.",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "Mover para cima",
       "kanbanTaskIconsReorder": "Reordenar os chips de tarefa Kanban",
       "kanbanTaskIconsSection": "Kanban Chips de Tarefa",
-      "kanbanTaskIconsSectionDesc": "Kanban Chips de Tarefa prepara quais chips compactos de tarefa os cartões Kanban usarão e em que ordem. O Número de Série do Projeto aparece separadamente quando disponível.",
+      "kanbanTaskIconsSectionDesc": "Escolha os chips compactos dos cartões Kanban, sua ordem e se mostram apenas um ícone. Project Serial aparece separadamente quando disponível.",
       "kanbanTaskIconsToggleTitle": "Alternar os chips de tarefa Kanban",
       "kanbanTaskNoteActionDesc": "Mostrar o chip indicador de nota nos cartões Kanban quando a tarefa tiver uma nota.",
       "kanbanTaskOpenCheckboxAction": "Abrir caixas de seleção",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "Progresso das caixas de seleção",
       "taskCardChips": "Chips dos cartões de tarefas",
-      "taskCardChipsDesc": "Escolha os campos e ações exibidos nos cartões de tarefas.",
+      "taskCardChipsDesc": "Escolha os chips e ações dos Canvas Task Cards e Embedded Task Cards nas notas.",
       "taskCardChipsVisibilityDesc": "Mostrar os chips e as ações configurados para os cartões de tarefas.",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "Fixado",
       "taskCreatorToolbarPreview": "Ícones visíveis",
       "taskCreatorToolbarReorder": "Reordenar ícones",
-      "taskCreatorToolbarSection": "Nova Barra de Ferramentas do Criador Operon",
-      "taskCreatorToolbarSectionDesc": "A barra do Criador de tarefas do Operon controla quais ícones aparecem no fluxo Nova tarefa do Operon e em que ordem. Isso altera apenas a barra visual, não a funcionalidade de criação de tarefas.",
+      "taskCreatorToolbarSection": "Barra do Task Creator",
+      "taskCreatorToolbarSectionDesc": "Escolha os campos da barra do Task Creator e sua ordem. Isso altera a aparência da barra, não as funções de criação de tarefas.",
       "taskCreatorToolbarToggleTitle": "Alternar ícones da barra de ferramentas",
       "taskCreatorToolbarTooltipDesc_assignees": "Pessoas responsáveis",
       "taskCreatorToolbarTooltipDesc_blockedBy": "Pré-requisitos para esta tarefa",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "9b2e84680a2bc6b66dc03c999e7e9ad6f6c6ee505af86e9cd9da8eb0edc50125"
+  "sourceVersion": "e9e7d34a6b1572ea2590828a016187a64848ffc5fbb572792b5d7e86f3285a8b"
 }

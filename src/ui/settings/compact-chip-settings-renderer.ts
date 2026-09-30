@@ -1,11 +1,13 @@
 import { InlineTaskCompactChipItem } from '../../types/settings';
-import { renderInterfaceIconToggleSection, type InterfaceIconActionToggle, type InterfaceManagedSurfaceItem } from './interface-editor-ui';
+import { renderInterfaceIconToggleSection, type InterfaceIconActionToggle, type InterfaceIconRowSelection, type InterfaceManagedSurfaceItem } from './interface-editor-ui';
 
 type CompactChipActionToggle = InterfaceIconActionToggle;
 
 export interface CompactChipSettingsRendererOptions {
 	containerEl: HTMLElement;
 	layout?: 'legacy' | 'row-list';
+	singleRow?: InterfaceIconRowSelection;
+	onReorder?: () => void;
 	description: string;
 	toggleTitle: string;
 	iconOnlyTitle?: string;

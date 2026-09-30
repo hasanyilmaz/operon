@@ -35072,3 +35072,28 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 /* Only the inactive Canvas Pool steps down; the active one keeps the native popover layer. */
 .operon-canvas-task-pool.operon-canvas-pool-background,
 .operon-canvas-property-pool.operon-canvas-pool-background { z-index: calc(var(--layer-popover) - 1); }
+
+/* Native Task Chips search targets retain the shared card appearance. */
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-task-chip-setting {
+	padding: 0 24px 10px;
+}
+
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-task-chip-setting:first-child {
+	padding-top: 18px;
+}
+
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-task-chip-setting:last-child {
+	padding-bottom: 18px;
+}
+
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-task-chip-description {
+	padding: 18px 24px 14px;
+}
+
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-task-chip-setting .operon-compact-chip-row-editor {
+	gap: 0;
+}
+
+.operon-task-chip-settings-group:where(.operon-settings-scope) .operon-compact-chip-row-list:empty {
+	display: none;
+}

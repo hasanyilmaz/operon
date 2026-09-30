@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3514,
-  "keyFingerprint": "ce3e7efaa5a93b3386ff9b8c7e90a24f9a0f7202dd6ad7de3d6cdff31f1def75",
+  "keyCount": 3515,
+  "keyFingerprint": "821d091ad534405565dd5aff62474fbe56d28149b7301afb6fa8b30da4bb7b54",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1096,6 +1096,7 @@
       "appearanceSchemeAppTheme": "應用主題",
       "assigneeImageProperty": "Assignee image property",
       "assigneeImagePropertyDesc": "Use an image from this property in linked assignee notes. Leave empty to keep the default icon.",
+      "assigneeImagesSection": "負責人圖片",
       "autoExpandParentTaskDateRange": "自動擴展父任務日期範圍",
       "autoExpandParentTaskDateRangeDesc": "當後代任務的開始日期或排定日期更早時提前父任務的開始日期；當其排定日期、到期日或完成日期晚於目前範圍時延後父任務的到期日。 僅擴展父任務已設定的日期；空白或已清除的日期保持空白。",
       "autoExpandParentTaskDateRangePartialNotice": "父任務日期範圍已部分協調。已更新 {{updated}} 個，{{failed}} 個失敗。",
@@ -1656,7 +1657,7 @@
       "ganttShowWeekends": "顯示週末",
       "ganttShowWeekendsDesc": "當預設繼承此全域設定時，顯示週末底色。",
       "generalChipSettings": "General Chip Settings",
-      "generalChipSettingsDesc": "Shared chip appearance settings.",
+      "generalChipSettingsDesc": "多個介面共用的晶片外觀設定。",
       "index": "索引",
       "indexDebounce": "索引防抖（毫秒）",
       "indexDebounceDesc": "在庫掃描期間，Operon 在處理檔案更改和增量索引更新前等待的毫秒數。",
@@ -1822,7 +1823,7 @@
       "kanbanTaskIconsMoveUp": "上移",
       "kanbanTaskIconsReorder": "重新排序看板任務標籤",
       "kanbanTaskIconsSection": "看板任務標籤",
-      "kanbanTaskIconsSectionDesc": "看板任務標籤準備看板卡片將使用的緊湊任務標籤及其順序。Project Serial 可用時會單獨顯示。",
+      "kanbanTaskIconsSectionDesc": "選擇 Kanban 卡片顯示的晶片、順序以及是否僅顯示圖示。Project Serial 可用時會另外顯示。",
       "kanbanTaskIconsToggleTitle": "切換看板任務標籤",
       "kanbanTaskNoteActionDesc": "當任務有備註時，在看板卡片上顯示備註指示標籤。",
       "kanbanTaskOpenCheckboxAction": "開啟復選框",
@@ -2535,7 +2536,7 @@
       "taskCardCenter": "Center",
       "taskCardCheckboxProgress": "核取方塊進度",
       "taskCardChips": "任務卡片資訊塊",
-      "taskCardChipsDesc": "選擇任務卡片上顯示的欄位和操作。",
+      "taskCardChipsDesc": "選擇 Canvas Task Cards 和筆記中的 Embedded Task Cards 顯示的晶片與操作。",
       "taskCardChipsVisibilityDesc": "顯示已設定的任務卡片標籤與操作。",
       "taskCardColorSource": "Color source",
       "taskCardColorSourceDesc": "Choose the card accent in notes. Canvas keeps its own node border color.",
@@ -2586,8 +2587,8 @@
       "taskCreatorToolbarPinned": "已固定",
       "taskCreatorToolbarPreview": "可見圖示",
       "taskCreatorToolbarReorder": "重新排序圖示",
-      "taskCreatorToolbarSection": "新建 Operon 建立器工具欄",
-      "taskCreatorToolbarSectionDesc": "「新建 Operon 建立器工具欄」控制「新建 Operon 任務」中哪些工具欄圖示可見及其順序。這隻更改視覺工具欄，不影響任務建立功能。",
+      "taskCreatorToolbarSection": "Task Creator 工具列",
+      "taskCreatorToolbarSectionDesc": "選擇 Task Creator 工具列顯示的欄位及其順序。此設定僅改變工具列外觀，不影響任務建立功能。",
       "taskCreatorToolbarToggleTitle": "切換工具欄圖示",
       "taskCreatorToolbarTooltipDesc_assignees": "負責的人員",
       "taskCreatorToolbarTooltipDesc_blockedBy": "此任務的前置條件",
@@ -3559,5 +3560,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "b0f7d1e6ecb8d2b99a5b356600ad2f02aabf04057a43620b86d8261b607b0090"
+  "sourceVersion": "f330f5c068d33bc0eda0d141a528acdea7e4bd2486437c8d3ab95578ac9bcf5c"
 }
