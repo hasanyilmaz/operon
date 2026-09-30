@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3516,
-  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
+  "keyCount": 3517,
+  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1243,7 +1243,7 @@
       "compactChipIconOnly": "Solo icona",
       "compactChipIconOnlyToggle": "Alterna Solo icona per {{label}}",
       "compactChipVisibilityToggle": "Alterna visibilità per {{label}}",
-      "contextMenuDelaySection": "Ritardo menu contestuale",
+      "contextMenuDelaySection": "Menu al passaggio del mouse",
       "contextualMenuActionCancelTask": "Annulla attività",
       "contextualMenuActionCancelTaskDesc": "Mostra questa azione nel menu contestuale quando l'attività attuale può essere annullata.",
       "contextualMenuActionCheckboxes": "Caselle di controllo",
@@ -1282,13 +1282,14 @@
       "contextualMenuActionTaskStatusDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può aggiornare lo stato dell'attività.",
       "contextualMenuActionUnschedule": "Rimuovi pianificazione",
       "contextualMenuActionUnscheduleDesc": "Mostra questa azione nel menu contestuale quando l'elemento attuale può cancellare la sua pianificazione.",
-      "contextualMenuActions": "Azioni menu contestuale",
+      "contextualMenuActions": "Azioni del menu e ordine",
       "contextualMenuActionsDesc": "Scegli quali azioni del menu contestuale sono attive globalmente e regola il loro ordine. Le azioni appaiono comunque solo quando l'attività e la superficie attuali le supportano.",
-      "contextualMenuMatrix": "Matrice menu contestuale",
-      "contextualMenuMatrixDesc": "Scegli dove possono apparire le azioni del menu contestuale attivate globalmente. Le regole di attività e superficie decidono comunque se ogni azione è disponibile.",
+      "contextualMenuMatrix": "Visibilità per superficie",
+      "contextualMenuMatrixDesc": "Contextual Menu Matrix — Scegli dove possono apparire le azioni del menu contestuale attivate globalmente. Le regole di attività e superficie decidono comunque se ogni azione è disponibile.",
+      "contextualMenuMatrixEmpty": "Abilita un’azione del menu sopra per configurarne la visibilità.",
       "contextualMenuMatrixLockedGlobal": "Attiva prima questa azione sopra per scegliere le sue superfici.",
       "contextualMenuMatrixLockedSurface": "Questa azione non è supportata su questa superficie.",
-      "contextualMenuMobile": "Menu tattile mobile",
+      "contextualMenuMobile": "Menu touch mobile",
       "contextualMenuMobileAutoHide": "Chiusura automatica menu contestuale mobile (ms)",
       "contextualMenuMobileAutoHideDesc": "Per quanto tempo un menu contestuale mobile rimane visibile dopo l'apertura prima di chiudersi automaticamente.",
       "contextualMenuMobileEnabled": "Attiva menu tattile mobile",
@@ -3561,5 +3562,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "da6178692bdb3d36c4a17075a2c1f5d57078712839ab21c791dd4d46fce2b7d6"
+  "sourceVersion": "8e2ddd105db1ee04c4f04012d0ac9e4575883d7d46ff5137c91d65bd5392e9f4"
 }

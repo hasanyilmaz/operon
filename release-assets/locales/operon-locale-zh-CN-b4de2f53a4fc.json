@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3516,
-  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
+  "keyCount": 3517,
+  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1243,7 +1243,7 @@
       "compactChipIconOnly": "仅图标",
       "compactChipIconOnlyToggle": "切换 {{label}} 的仅图标",
       "compactChipVisibilityToggle": "切换 {{label}} 的可见性",
-      "contextMenuDelaySection": "右键菜单延迟",
+      "contextMenuDelaySection": "悬停菜单",
       "contextualMenuActionCancelTask": "取消任务",
       "contextualMenuActionCancelTaskDesc": "当当前任务可以被取消时，在右键菜单中显示此操作。",
       "contextualMenuActionCheckboxes": "复选框",
@@ -1282,13 +1282,14 @@
       "contextualMenuActionTaskStatusDesc": "当当前项目可以更新任务状态时，在右键菜单中显示此操作。",
       "contextualMenuActionUnschedule": "取消计划",
       "contextualMenuActionUnscheduleDesc": "当当前项目可以清除其排程时，在右键菜单中显示此操作。",
-      "contextualMenuActions": "右键菜单操作",
+      "contextualMenuActions": "菜单操作与顺序",
       "contextualMenuActionsDesc": "选择哪些右键菜单操作全局启用并调整其顺序。仅当当前任务和界面支持时，操作才会出现。",
-      "contextualMenuMatrix": "右键菜单矩阵",
-      "contextualMenuMatrixDesc": "选择全局启用的右键菜单操作可以出现在何处。任务和界面规则仍决定每个操作是否可用。",
+      "contextualMenuMatrix": "各界面的操作可见性",
+      "contextualMenuMatrixDesc": "Contextual Menu Matrix — 选择全局启用的右键菜单操作可以出现在何处。任务和界面规则仍决定每个操作是否可用。",
+      "contextualMenuMatrixEmpty": "请先在上方启用菜单操作，再配置其显示位置。",
       "contextualMenuMatrixLockedGlobal": "先在上方启用此操作，才能选择其界面。",
       "contextualMenuMatrixLockedSurface": "此操作在此界面上不受支持。",
-      "contextualMenuMobile": "移动端触控菜单",
+      "contextualMenuMobile": "移动触控菜单",
       "contextualMenuMobileAutoHide": "移动端右键菜单自动隐藏（毫秒）",
       "contextualMenuMobileAutoHideDesc": "移动端右键菜单打开后在自动关闭前保持可见的时长。",
       "contextualMenuMobileEnabled": "启用移动端触控菜单",
@@ -3561,5 +3562,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e60120c51e091dc17c608ed98a7f613249c539ed30e1ad2c3e26d8b1f07634f4"
+  "sourceVersion": "5c401091e44bf68648771e545247611b106ab67b2e12a0f77d717e07f7ba77ec"
 }

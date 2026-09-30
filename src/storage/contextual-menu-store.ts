@@ -15,6 +15,7 @@ const CONTEXTUAL_MENU_STORE_VERSION = 1;
 export type ContextualMenuStoreSettings = Pick<
 	OperonSettings,
 	| 'contextualMenuActionAllowlist'
+	| 'contextualMenuActionOrder'
 	| 'contextualMenuSurfaceActionMatrix'
 	| 'contextualMenuOpenDelayMs'
 	| 'contextualMenuMobileEnabled'
@@ -26,6 +27,7 @@ export type ContextualMenuStoreSettings = Pick<
 interface ContextualMenuStoreData {
 	version: number;
 	actionAllowlist: ContextualMenuActionId[];
+	actionOrder?: ContextualMenuActionId[];
 	surfaceActionMatrix: ContextualMenuSurfaceActionMatrix;
 	openDelayMs: number;
 	mobileEnabled: boolean;
@@ -49,6 +51,7 @@ function cloneSurfaceActionMatrix(surfaceActionMatrix: ContextualMenuSurfaceActi
 function cloneSettings(settings: ContextualMenuStoreSettings): ContextualMenuStoreSettings {
 	return {
 		contextualMenuActionAllowlist: cloneActionAllowlist(settings.contextualMenuActionAllowlist),
+		...(settings.contextualMenuActionOrder === undefined ? {} : { contextualMenuActionOrder: [...settings.contextualMenuActionOrder] }),
 		contextualMenuSurfaceActionMatrix: cloneSurfaceActionMatrix(settings.contextualMenuSurfaceActionMatrix),
 		contextualMenuOpenDelayMs: settings.contextualMenuOpenDelayMs,
 		contextualMenuMobileEnabled: settings.contextualMenuMobileEnabled,
@@ -63,6 +66,7 @@ function readStoreData(
 	fallback: ContextualMenuStoreSettings,
 ): ContextualMenuStoreSettings {
 	return {
+		...(Array.isArray(raw.actionOrder) ? { contextualMenuActionOrder: [...raw.actionOrder] } : {}),
 		contextualMenuActionAllowlist: Array.isArray(raw.actionAllowlist)
 			? [...raw.actionAllowlist] as ContextualMenuActionId[]
 			: cloneActionAllowlist(fallback.contextualMenuActionAllowlist),
@@ -187,6 +191,7 @@ export class ContextualMenuStore {
 		const data: ContextualMenuStoreData = {
 			version: CONTEXTUAL_MENU_STORE_VERSION,
 			actionAllowlist: cloneActionAllowlist(this.settings.contextualMenuActionAllowlist),
+			...(this.settings.contextualMenuActionOrder === undefined ? {} : { actionOrder: [...this.settings.contextualMenuActionOrder] }),
 			surfaceActionMatrix: cloneSurfaceActionMatrix(this.settings.contextualMenuSurfaceActionMatrix),
 			openDelayMs: this.settings.contextualMenuOpenDelayMs,
 			mobileEnabled: this.settings.contextualMenuMobileEnabled,

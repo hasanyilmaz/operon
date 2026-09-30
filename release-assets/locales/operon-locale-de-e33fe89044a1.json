@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3516,
-  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
+  "keyCount": 3517,
+  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1243,7 +1243,7 @@
       "compactChipIconOnly": "Nur Symbol",
       "compactChipIconOnlyToggle": "Nur-Symbol für {{label}} umschalten",
       "compactChipVisibilityToggle": "Sichtbarkeit für {{label}} umschalten",
-      "contextMenuDelaySection": "Verzögerung des Kontextmenüs",
+      "contextMenuDelaySection": "Hover-Menü",
       "contextualMenuActionCancelTask": "Aufgabe abbrechen",
       "contextualMenuActionCancelTaskDesc": "Diese Aktion im Kontextmenü anzeigen, wenn die aktuelle Aufgabe abgebrochen werden kann.",
       "contextualMenuActionCheckboxes": "Kontrollkästchen",
@@ -1282,10 +1282,11 @@
       "contextualMenuActionTaskStatusDesc": "Diese Aktion im Kontextmenü anzeigen, wenn das aktuelle Element den Aufgabenstatus aktualisieren kann.",
       "contextualMenuActionUnschedule": "Terminierung aufheben",
       "contextualMenuActionUnscheduleDesc": "Diese Aktion im Kontextmenü anzeigen, wenn das aktuelle Element seine Terminierung aufheben kann.",
-      "contextualMenuActions": "Kontextmenü-Aktionen",
+      "contextualMenuActions": "Menüaktionen und Reihenfolge",
       "contextualMenuActionsDesc": "Wähle, welche Kontextmenü-Aktionen global aktiviert sind, und passe ihre Reihenfolge an. Aktionen erscheinen weiterhin nur, wenn die aktuelle Aufgabe und Oberfläche sie unterstützen.",
-      "contextualMenuMatrix": "Kontextmenü-Matrix",
-      "contextualMenuMatrixDesc": "Wähle, wo global aktivierte Kontextmenü-Aktionen erscheinen können. Aufgaben- und Oberflächenregeln entscheiden weiterhin, ob jede Aktion verfügbar ist.",
+      "contextualMenuMatrix": "Aktionssichtbarkeit nach Oberfläche",
+      "contextualMenuMatrixDesc": "Contextual Menu Matrix — Wähle, wo global aktivierte Kontextmenü-Aktionen erscheinen können. Aufgaben- und Oberflächenregeln entscheiden weiterhin, ob jede Aktion verfügbar ist.",
+      "contextualMenuMatrixEmpty": "Aktivieren Sie oben eine Menüaktion, um ihre Sichtbarkeit zu konfigurieren.",
       "contextualMenuMatrixLockedGlobal": "Aktiviere diese Aktion zuerst oben, um ihre Oberflächen zu wählen.",
       "contextualMenuMatrixLockedSurface": "Diese Aktion wird auf dieser Oberfläche nicht unterstützt.",
       "contextualMenuMobile": "Mobiles Touch-Menü",
@@ -3561,5 +3562,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e49b19d9f1b257bdf924239165b320256277b430b4c0c264452c12f802fbb833"
+  "sourceVersion": "d293d6eae0b1876e871d60c50c9bc8de50cbdef906094a44ad5da3ab2abc950b"
 }

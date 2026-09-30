@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3516,
-  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
+  "keyCount": 3517,
+  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1243,7 +1243,7 @@
       "compactChipIconOnly": "アイコンのみ",
       "compactChipIconOnlyToggle": "{{label}} のアイコンのみを切り替え",
       "compactChipVisibilityToggle": "{{label}} の表示を切り替え",
-      "contextMenuDelaySection": "コンテキストメニューの遅延",
+      "contextMenuDelaySection": "ホバーメニュー",
       "contextualMenuActionCancelTask": "タスクをキャンセル",
       "contextualMenuActionCancelTaskDesc": "現在のタスクがキャンセルできる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionCheckboxes": "チェックボックス",
@@ -1282,13 +1282,14 @@
       "contextualMenuActionTaskStatusDesc": "現在の項目がタスクのステータスを更新できる場合に、このアクションをコンテキストメニューに表示します。",
       "contextualMenuActionUnschedule": "予定を解除",
       "contextualMenuActionUnscheduleDesc": "現在の項目が予定をクリアできる場合に、このアクションをコンテキストメニューに表示します。",
-      "contextualMenuActions": "コンテキストメニューのアクション",
+      "contextualMenuActions": "メニュー操作と順序",
       "contextualMenuActionsDesc": "グローバルに有効にするコンテキストメニューのアクションを選択し、順序を調整します。アクションは、現在のタスクと面が対応している場合にのみ表示されます。",
-      "contextualMenuMatrix": "コンテキストメニューのマトリクス",
-      "contextualMenuMatrixDesc": "グローバルに有効なコンテキストメニューのアクションが表示できる場所を選択します。各アクションが利用可能かどうかは、タスクと面のルールが引き続き決定します。",
+      "contextualMenuMatrix": "表示場所ごとの操作の表示",
+      "contextualMenuMatrixDesc": "Contextual Menu Matrix — グローバルに有効なコンテキストメニューのアクションが表示できる場所を選択します。各アクションが利用可能かどうかは、タスクと面のルールが引き続き決定します。",
+      "contextualMenuMatrixEmpty": "上でメニュー操作を有効にすると、表示場所を設定できます。",
       "contextualMenuMatrixLockedGlobal": "面を選択するには、まず上でこのアクションを有効にしてください。",
       "contextualMenuMatrixLockedSurface": "このアクションはこの面ではサポートされていません。",
-      "contextualMenuMobile": "モバイルのタッチメニュー",
+      "contextualMenuMobile": "モバイルタッチメニュー",
       "contextualMenuMobileAutoHide": "モバイルコンテキストメニューの自動非表示（ms）",
       "contextualMenuMobileAutoHideDesc": "モバイルのコンテキストメニューが開いてから自動的に閉じるまでの表示時間。",
       "contextualMenuMobileEnabled": "モバイルのタッチメニューを有効化",
@@ -3561,5 +3562,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e512a8458b365c8340dbc57f428dfcd768cb22049fc78c9f0ea5ee5af847bee6"
+  "sourceVersion": "09d64fcd202bffc68a6765c8d8007ad6265ed5005902949ec722d47d5a38e9da"
 }

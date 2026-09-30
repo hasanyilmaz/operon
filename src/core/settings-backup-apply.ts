@@ -1,3 +1,4 @@
+import { resolveContextualMenuActionOrder } from './contextual-menu-engine';
 import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import {
 	buildOperonDataPackageFromSettings,
@@ -212,6 +213,10 @@ export function buildOperonSettingsBackupSelectedPatchV1(
 		const definition = SETTINGS_BACKUP_GROUPS.find(item => item.id === group);
 		for (const key of definition?.settingKeys ?? []) {
 			if (key === 'propertyValuePool' && plan.candidateSettings[key] === undefined) continue;
+			if (key === 'contextualMenuActionOrder' && plan.candidateSettings[key] === undefined) {
+				patch.contextualMenuActionOrder = resolveContextualMenuActionOrder(undefined, plan.candidateSettings.contextualMenuActionAllowlist);
+				continue;
+			}
 			Object.assign(patch, { [key]: cloneJson(plan.candidateSettings[key]) });
 		}
 	}

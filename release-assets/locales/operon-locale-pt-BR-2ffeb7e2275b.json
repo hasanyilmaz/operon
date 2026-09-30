@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3516,
-  "keyFingerprint": "1db26f24a9c5138c0074efb8042f29812fdc15795358e26b6ff94d0a51d5576f",
+  "keyCount": 3517,
+  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1243,7 +1243,7 @@
       "compactChipIconOnly": "Somente ícone",
       "compactChipIconOnlyToggle": "Alternar somente ícone para {{label}}",
       "compactChipVisibilityToggle": "Alternar visibilidade para {{label}}",
-      "contextMenuDelaySection": "Atraso do Menu de Contexto",
+      "contextMenuDelaySection": "Menu ao passar o cursor",
       "contextualMenuActionCancelTask": "Cancelar tarefa",
       "contextualMenuActionCancelTaskDesc": "Exibir esta ação no menu contextual quando a tarefa atual puder ser cancelada.",
       "contextualMenuActionCheckboxes": "Caixas de seleção",
@@ -1282,10 +1282,11 @@
       "contextualMenuActionTaskStatusDesc": "Exibir esta ação no menu contextual quando o item atual puder atualizar o status da tarefa.",
       "contextualMenuActionUnschedule": "Desagendar",
       "contextualMenuActionUnscheduleDesc": "Exibir esta ação no menu contextual quando o item atual puder limpar sua programação.",
-      "contextualMenuActions": "Ações do Menu Contextual",
+      "contextualMenuActions": "Ações do menu e ordem",
       "contextualMenuActionsDesc": "Escolha quais ações do menu contextual estão globalmente ativadas e ajuste a ordem delas. As ações ainda aparecem somente quando a tarefa e a superfície atuais as suportarem.",
-      "contextualMenuMatrix": "Matriz de Menu Contextual",
-      "contextualMenuMatrixDesc": "Escolha onde as ações de menu contextual ativadas globalmente podem aparecer. As regras de tarefa e superfície ainda decidem se cada ação está disponível.",
+      "contextualMenuMatrix": "Visibilidade por superfície",
+      "contextualMenuMatrixDesc": "Contextual Menu Matrix — Escolha onde as ações de menu contextual ativadas globalmente podem aparecer. As regras de tarefa e superfície ainda decidem se cada ação está disponível.",
+      "contextualMenuMatrixEmpty": "Ative uma ação do menu acima para configurar sua visibilidade.",
       "contextualMenuMatrixLockedGlobal": "Primeiro, habilite esta ação acima para escolher suas superfícies.",
       "contextualMenuMatrixLockedSurface": "Esta ação não é suportada nesta superfície.",
       "contextualMenuMobile": "Menu de toque móvel",
@@ -3561,5 +3562,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "07bf6e385d9d8801cf72f97434d6ad7e4b3a089ac424aaf07996f3882e4754e2"
+  "sourceVersion": "b9a351094eac484aa1c6c55558e4abe255f8ddfb98aa87551850793d64e87803"
 }

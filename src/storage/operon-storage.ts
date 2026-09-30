@@ -260,6 +260,7 @@ function pickPriorityStoreSettings(settings: OperonSettings): PriorityStoreSetti
 function pickContextualMenuStoreSettings(settings: OperonSettings): ContextualMenuStoreSettings {
 	return {
 		contextualMenuActionAllowlist: settings.contextualMenuActionAllowlist,
+		...(settings.contextualMenuActionOrder === undefined ? {} : { contextualMenuActionOrder: settings.contextualMenuActionOrder }),
 		contextualMenuSurfaceActionMatrix: settings.contextualMenuSurfaceActionMatrix,
 		contextualMenuOpenDelayMs: settings.contextualMenuOpenDelayMs,
 		contextualMenuMobileEnabled: settings.contextualMenuMobileEnabled,
@@ -1492,6 +1493,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'contextualMenuActionOrder')) delete this.settings.contextualMenuActionOrder;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;

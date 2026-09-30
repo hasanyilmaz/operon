@@ -28,6 +28,7 @@ import {
 } from './calendar';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
+	resolveContextualMenuActionOrder,
 	CONTEXTUAL_MENU_SURFACES,
 	type ContextualMenuActionId,
 	type ContextualMenuSurface,
@@ -1822,6 +1823,7 @@ export interface OperonSettings extends TaskCardSettings {
 	calendarWeekStart: 'monday' | 'sunday';
 	externalCalendars: ExternalCalendarSource[];
 	contextualMenuActionAllowlist: ContextualMenuActionId[];
+	contextualMenuActionOrder?: ContextualMenuActionId[];
 	contextualMenuSurfaceActionMatrix: ContextualMenuSurfaceActionMatrix;
 	contextualMenuOpenDelayMs: number;
 	contextualMenuMobileEnabled: boolean;
@@ -4987,6 +4989,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		? src.reminderSoundFilePath.trim()
 		: DEFAULT_SETTINGS.reminderSoundFilePath;
 
+ if (src.contextualMenuActionOrder !== undefined) {
+  out.contextualMenuActionOrder = resolveContextualMenuActionOrder(src.contextualMenuActionOrder, out.contextualMenuActionAllowlist);
+ } else { delete out.contextualMenuActionOrder; }
 	out.settingsVersion = CURRENT_SETTINGS_VERSION;
 	return out;
 }

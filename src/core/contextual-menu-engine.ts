@@ -406,6 +406,13 @@ export const CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = [
 export const CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS: ContextualMenuActionDefinition[] = CONTEXTUAL_MENU_ACTIONS
 	.filter(action => action.id !== 'skipThisOccurrence');
 
+export function resolveContextualMenuActionOrder(raw: unknown, enabled: readonly ContextualMenuActionId[]): ContextualMenuActionId[] {
+ const known = CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id);
+ const source: unknown[] = Array.isArray(raw) ? raw : [...enabled];
+ return [...new Set([...source, ...known].filter((id): id is ContextualMenuActionId =>
+  typeof id === 'string' && known.includes(id as ContextualMenuActionId)))];
+}
+
 const DUE_MARKER_ALLOWED_ACTIONS = new Set<ContextualMenuActionId>([
 	'taskStatus',
 	'pinToggle',

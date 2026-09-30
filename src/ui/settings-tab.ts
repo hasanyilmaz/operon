@@ -56,6 +56,7 @@ import { GANTT_SCALES, GANTT_UNIT_WIDTH_MULTIPLIERS } from '../types/gantt';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from './appearance-schemes';
 import {
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS,
+	resolveContextualMenuActionOrder,
 	CONFIGURABLE_CONTEXTUAL_MENU_SURFACE_GROUPS,
 	CONTEXTUAL_MENU_SURFACE_LABEL_KEYS,
 	getContextualMenuActionIcon,
@@ -1256,6 +1257,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return;
 		}
 		const normalized = this.normalizeSettingsSearchControlValue(entry, value);
+  if (entry.key.startsWith('contextualMenu')) {
+   if (this.contextMenuSaving) return;
+   await this.storage.updateSettings({ [entry.key]: normalized, contextualMenuActionOrder: resolveContextualMenuActionOrder(this.settings.contextualMenuActionOrder, this.settings.contextualMenuActionAllowlist) });
+   this.notifySettingsChanged();
+   if (entry.key === 'contextualMenuMobileEnabled') this.updateNativeSettingsDefinitions();
+   return;
+  }
 		if (entry.key === 'locationPickerMapDefaultCenter' && typeof normalized === 'string') {
 			await this.storage.saveLocationPickerDefault({ kind: 'center', value: normalized });
 			this.notifySettingsChanged();
@@ -1337,6 +1345,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (tab.id === 'tasksFileTasks' || tab.id === 'tasksInlineTasks') {
 			return { type: 'page', name: pageName, desc, items: this.buildTaskCaptureSearchSections(tab.id, entries) };
+		}
+
+		if (tab.id === 'interfaceContextMenu') {
+			return { type: 'page', name: pageName, desc, items: this.buildContextMenuSettingsItems(entries) };
 		}
 
 		if (tab.id === 'interfaceTaskFinder') {
@@ -2341,36 +2353,122 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}];
 	}
 
-	private buildContextMenuSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const actionsEntry = entries.find(entry => entry.id === 'ui.contextMenuActions');
-		const matrixEntry = entries.find(entry => entry.id === 'ui.contextMenuMatrix');
-		const mobileAutoHideEntry = this.findSettingsSearchEntryByKey('contextualMenuMobileAutoHideMs');
-		return this.compactSettingsSearchItems([
-			{
-				type: 'group',
-				heading: t('settings', 'contextMenuDelaySection'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'contextualMenuOpenDelayMs'),
-				]),
-			},
-			{
-				type: 'group',
-				heading: t('settings', 'contextualMenuMobile'),
-				items: this.compactSettingsSearchDefinitions([
-					this.buildSettingsSearchSettingDefinition(entries, 'contextualMenuMobileEnabled'),
-					this.buildSettingsSearchSettingDefinition(entries, 'contextualMenuMobileLongPressMs'),
-					this.buildSettingsSearchSettingDefinition(entries, 'contextualMenuMobileTransitionGraceMs'),
-					this.buildSettingsSearchSettingDefinitionFromEntry(mobileAutoHideEntry),
-				]),
-			},
-			this.buildSettingsSearchRenderDefinition(actionsEntry, containerEl => {
-				this.renderContextualMenuActionsSettingsSection(containerEl);
-			}),
-			this.buildSettingsSearchRenderDefinition(matrixEntry, containerEl => {
-				this.renderContextualMenuMatrixSettingsSection(containerEl);
-			}),
-		]);
-	}
+ private contextMenuSaving = false;
+ private contextMenuRefreshers = new Set<() => void>();
+
+ private buildContextMenuSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+  const delay = this.buildSettingsSearchSettingDefinition(entries, 'contextualMenuOpenDelayMs')!;
+  delete delay.control;
+  delay.render = setting => {
+   this.renderBoundClampedNumericSetting(setting.settingEl.parentElement!, '', '', 'contextualMenuOpenDelayMs', {
+    min: 0, max: 2000, fallback: DEFAULT_SETTINGS.contextualMenuOpenDelayMs, setting,
+    onCommit: value => this.setControlValue('contextualMenuOpenDelayMs', value),
+   });
+   const title = t('settings', 'subtabContextMenu');
+   return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title, this.buildNativeSettingsDocsAction(title, 'DOCS-042 Contextual menu actions').action);
+  };
+  const mobileKeys: OperonSettingSearchKey[] = ['contextualMenuMobileEnabled', 'contextualMenuMobileLongPressMs', 'contextualMenuMobileTransitionGraceMs', 'contextualMenuMobileAutoHideMs'];
+  const mobile = mobileKeys.map((key, index) => {
+   const item = this.buildSettingsSearchSettingDefinitionFromEntry(this.findSettingsSearchEntryByKey(key))!;
+   if (index > 0) item.visible = () => this.settings.contextualMenuMobileEnabled;
+   return item;
+  });
+  return [{ type: 'group', heading: t('settings', 'contextMenuDelaySection'), cls: 'operon-context-settings-group', items: [delay] },
+   { type: 'group', heading: t('settings', 'contextualMenuMobile'), cls: 'operon-context-settings-group', extraButtons: ['DOCS-101 Mobile General', 'DOCS-099 State Icons'].map(target => this.buildDeclarativeSettingsDocsButton(t('settings', 'contextualMenuMobile'), target)), items: mobile },
+   { type: 'group', heading: t('settings', 'contextualMenuActions'), cls: 'operon-context-settings-group', items: [
+    { name: t('settings', 'contextualMenuActions'), desc: t('settings', 'contextualMenuActionsDesc'), render: setting => {
+     setting.settingEl.empty(); setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'contextualMenuActionsDesc') });
+    } },
+    ...this.getOrderedContextualMenuActions().map(action => ({ name: t('settings', action.labelKey), desc: t('settings', action.descriptionKey), render: (setting: Setting) => {
+     setting.settingEl.classList.add('operon-context-action-target');
+     this.decorateContextualMenuActionSetting(setting, getContextualMenuActionIcon(action, this.settings.keyMappings));
+     const refresh = () => this.renderContextualMenuActionControls(setting, action.id);
+     this.contextMenuRefreshers ??= new Set(); this.contextMenuRefreshers.add(refresh); refresh();
+     return () => this.contextMenuRefreshers.delete(refresh);
+    } })),
+   ] },
+   { type: 'group', heading: t('settings', 'contextualMenuMatrix'), cls: 'operon-context-settings-group', items: [{
+    name: t('settings', 'contextualMenuMatrix'), desc: t('settings', 'contextualMenuMatrixDesc'), aliases: ['Contextual Menu Matrix', 'context menu matrix'],
+    render: setting => {
+     setting.settingEl.empty(); setting.settingEl.addClass('operon-context-matrix-target');
+     setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'contextualMenuMatrixDesc') });
+     const host = setting.settingEl.createDiv();
+     const refresh = () => {
+      this.renderContextualMenuMatrix(host);
+      const page = host.closest<HTMLElement>('.setting-page');
+      for (const group of Array.from(page?.querySelectorAll<HTMLElement>('.operon-context-settings-group') ?? [])) {
+       group.inert = this.contextMenuSaving === true;
+       if (group.inert) group.setAttribute('aria-busy', 'true'); else group.removeAttribute('aria-busy');
+      }
+     };
+     this.contextMenuRefreshers ??= new Set(); this.contextMenuRefreshers.add(refresh); refresh();
+     return () => this.contextMenuRefreshers.delete(refresh);
+    },
+   }] }];
+ }
+
+ private renderContextualMenuActionControls(setting: Setting, actionId: ContextualMenuActionId): void {
+  setting.controlEl.empty();
+  const order = resolveContextualMenuActionOrder(this.settings.contextualMenuActionOrder, this.settings.contextualMenuActionAllowlist);
+  const index = order.indexOf(actionId);
+  setting.settingEl.dataset.contextAction = actionId;
+  setting.addToggle(toggle => {
+   toggle.setValue(this.settings.contextualMenuActionAllowlist.includes(actionId)).setDisabled(this.contextMenuSaving);
+   toggle.toggleEl.dataset.contextFocus = actionId + ':toggle';
+   toggle.onChange(settingsAsyncHandler('context menu toggle failed', async enabled => {
+    const selected = new Set(this.settings.contextualMenuActionAllowlist);
+    if (enabled) selected.add(actionId); else selected.delete(actionId);
+    await this.commitContextMenuChange({ contextualMenuActionOrder: order, contextualMenuActionAllowlist: order.filter(id => selected.has(id)) }, setting.settingEl);
+   }));
+  });
+  for (const direction of [-1, 1]) setting.addExtraButton(button => {
+   button.setIcon(direction < 0 ? 'arrow-up' : 'arrow-down');
+   applyOperonTooltipToExtraButton(button, t('settings', direction < 0 ? 'moveUp' : 'moveDown'));
+   button.extraSettingsEl.dataset.contextFocus = actionId + ':' + direction;
+   button.setDisabled(this.contextMenuSaving || index + direction < 0 || index + direction >= order.length);
+   button.onClick(settingsAsyncHandler('context menu reorder failed', async () => {
+    if (index + direction < 0 || index + direction >= order.length) return;
+    const next = [...order]; [next[index], next[index + direction]] = [next[index + direction], next[index]];
+    await this.commitContextMenuChange({ contextualMenuActionOrder: next, contextualMenuActionAllowlist: next.filter(id => this.settings.contextualMenuActionAllowlist.includes(id)) }, setting.settingEl, true);
+   }));
+  });
+ }
+
+ private async commitContextMenuChange(patch: Partial<OperonSettings>, origin: HTMLElement, reorder = false): Promise<void> {
+  if (this.contextMenuSaving) return;
+  const doc = origin.ownerDocument;
+  const page = origin.closest<HTMLElement>('.setting-page') ?? origin.parentElement!;
+  const focus = (doc.activeElement as HTMLElement | null)?.dataset.contextFocus;
+  const ancestors: HTMLElement[] = [];
+  for (let el: HTMLElement | null = page; el; el = el.parentElement) ancestors.push(el);
+  const scrolls = ancestors.map(el => ({ el, top: el.scrollTop, left: el.scrollLeft }));
+  const innerScrolls = ['.setting-page-content', '.vertical-tab-content', '.operon-settings-contextual-menu-matrix-scroll'].map(selector => {
+   const el = page.querySelector<HTMLElement>(selector);
+   return { selector, top: el?.scrollTop ?? 0, left: el?.scrollLeft ?? 0 };
+  });
+  const groups = Array.from(page.querySelectorAll<HTMLElement>('.operon-context-settings-group'));
+  const inert = groups.map(el => el.inert);
+  this.contextMenuSaving = true;
+  groups.forEach(el => { el.inert = true; el.setAttribute('aria-busy', 'true'); });
+  try {
+   await this.storage.updateSettings(patch);
+   this.notifySettingsChanged();
+  } finally {
+   this.contextMenuSaving = false;
+   groups.forEach((el, i) => { el.inert = inert[i]; el.removeAttribute('aria-busy'); });
+   const restoreOriginalPage = origin.isConnected;
+   for (const refresh of this.contextMenuRefreshers ?? []) refresh();
+   if (reorder) this.updateNativeSettingsDefinitions();
+   if (restoreOriginalPage) {
+    const nextPage = Array.from(doc.querySelectorAll<HTMLElement>('.operon-context-action-target')).find(el => el.isConnected)?.closest<HTMLElement>('.setting-page') ?? page;
+
+    nextPage.scrollTop = scrolls[0].top; nextPage.scrollLeft = scrolls[0].left;
+    if (focus) Array.from(nextPage.querySelectorAll<HTMLElement>('[data-context-focus]')).find(el => el.dataset.contextFocus === focus)?.focus({ preventScroll: true });
+    for (const {el, top, left} of scrolls) if (el.isConnected) { el.scrollTop = top; el.scrollLeft = left; }
+    for (const {selector, top, left} of innerScrolls) { const el = nextPage.querySelector<HTMLElement>(selector); if (el) { el.scrollTop = top; el.scrollLeft = left; } }
+   }
+  }
+ }
 
 	private buildMobileTaskEditorSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const coreToolsEntry = entries.find(entry => entry.id === 'ui.taskEditorMobileCoreTools');
@@ -7041,23 +7139,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 		nameEl.prepend(iconEl);
 	}
 
-	private getOrderedContextualMenuActions(): typeof CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS {
-		const enabledActionIds = this.settings.contextualMenuActionAllowlist
-			.filter(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.some(action => action.id === id));
-		const disabledActions = CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS
-			.filter(action => !enabledActionIds.includes(action.id));
-		return [
-			...enabledActionIds
-				.map(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.find(action => action.id === id))
-				.filter((action): action is typeof CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS[number] => !!action),
-			...disabledActions,
-		];
-	}
+ private getOrderedContextualMenuActions(): typeof CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS {
+  return resolveContextualMenuActionOrder(this.settings.contextualMenuActionOrder, this.settings.contextualMenuActionAllowlist)
+   .map(id => CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.find(action => action.id === id)!);
+ }
 
 	private renderContextualMenuMatrix(containerEl: HTMLElement): void {
+		const previousScroll = containerEl.querySelector<HTMLElement>('.operon-settings-contextual-menu-matrix-scroll')?.scrollLeft ?? 0;
 		containerEl.empty();
 		const matrix = containerEl.createDiv('operon-settings-contextual-menu-matrix');
-		const actions = this.getOrderedContextualMenuActions();
+		const actions = this.getOrderedContextualMenuActions().filter(action => this.settings.contextualMenuActionAllowlist.includes(action.id));
+		if (!actions.length) { matrix.createDiv({cls: 'setting-item-description', text: t('settings', 'contextualMenuMatrixEmpty')}); return; }
 		const scroll = matrix.createDiv('operon-settings-contextual-menu-matrix-scroll');
 		const table = scroll.createDiv('operon-settings-contextual-menu-matrix-table');
 		table.setAttribute('role', 'table');
@@ -7083,7 +7175,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			});
 		}
 
-		for (const group of CONFIGURABLE_CONTEXTUAL_MENU_SURFACE_GROUPS) {
+		for (const sourceGroup of CONFIGURABLE_CONTEXTUAL_MENU_SURFACE_GROUPS) {
+			const group = { ...sourceGroup, surfaces: sourceGroup.id === 'calendar'
+				? ['calendarTimedItem', 'calendarSidebarTaskPoolTask', ...sourceGroup.surfaces] as ContextualMenuSurface[]
+				: sourceGroup.surfaces.filter(surface => surface !== 'calendarTimedItem' && surface !== 'calendarSidebarTaskPoolTask') };
 			const groupRow = table.createDiv('operon-settings-contextual-menu-matrix-group');
 			groupRow.setAttribute('role', 'row');
 			groupRow.createDiv({
@@ -7113,6 +7208,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				}
 			}
 		}
+			scroll.scrollLeft = previousScroll;
 	}
 
 	private renderContextualMenuMatrixCell(
@@ -7131,7 +7227,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			cls: 'operon-settings-contextual-menu-matrix-action-cell',
 			attr: { role: 'cell' },
 		});
-		createInterfaceMatrixButton({
+		const button = createInterfaceMatrixButton({
 			containerEl: actionCell,
 			icon,
 			label: `${t('settings', CONTEXTUAL_MENU_SURFACE_LABEL_KEYS[surface])}: ${label}`,
@@ -7144,11 +7240,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				: t('settings', 'contextualMenuMatrixLockedGlobal'),
 			errorContext: 'settings contextual menu matrix toggle failed',
 			onClick: async () => {
-				this.setContextualMenuSurfaceActionEnabled(surface, actionId, !enabled);
-				await this.saveSettings();
-				this.renderContextualMenuMatrix(matrixHost);
+    const current = new Set(this.settings.contextualMenuSurfaceActionMatrix[surface] ?? CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id));
+    if (enabled) current.delete(actionId); else current.add(actionId);
+    await this.commitContextMenuChange({
+     contextualMenuActionOrder: resolveContextualMenuActionOrder(this.settings.contextualMenuActionOrder, this.settings.contextualMenuActionAllowlist),
+     contextualMenuSurfaceActionMatrix: { ...this.settings.contextualMenuSurfaceActionMatrix, [surface]: CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id).filter(id => current.has(id)) },
+    }, matrixHost);
 			},
 		});
+			button.dataset.contextFocus = `${surface}:${actionId}`;
 	}
 
 	private isContextualMenuSurfaceActionEnabled(surface: ContextualMenuSurface, actionId: ContextualMenuActionId): boolean {
@@ -12483,13 +12583,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 			max: number;
 			fallback: number;
 			step?: string;
+			setting?: Setting;
+			onCommit?: (value: number) => Promise<void>;
 			onAfterChange?: (value: number) => void | Promise<void>;
 		},
 	): Setting {
-		const setting = new Setting(containerEl)
-			.setName(name)
-			.setDesc(desc)
-			.addText(text => {
+		const setting = options.setting ?? new Setting(containerEl).setName(name).setDesc(desc);
+		setting.addText(text => {
 				text.setValue(String(this.settings[key]));
 				text.inputEl.type = 'number';
 				text.inputEl.min = String(options.min);
@@ -12497,14 +12597,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 				if (options.step) text.inputEl.step = options.step;
 
 				let lastCommittedValue = this.settings[key];
+				let commitPending = false;
 				const commit = async (): Promise<void> => {
+					if (commitPending) return;
 					const nextValue = this.parseCalendarPresetNumber(text.inputEl.value, options.fallback, options.min, options.max);
 					if (text.inputEl.value !== String(nextValue)) {
 						text.setValue(String(nextValue));
 					}
 					if (nextValue === lastCommittedValue) return;
 
-					if (key === 'locationPickerMapDefaultZoom') {
+					if (options.onCommit) {
+						commitPending = true;
+						text.setDisabled(true);
+						try { await options.onCommit(nextValue); }
+						finally { text.setValue(String(this.settings[key])); text.setDisabled(false); commitPending = false; }
+					} else if (key === 'locationPickerMapDefaultZoom') {
 						await this.storage.saveLocationPickerDefault({ kind: 'zoom', value: nextValue });
 						this.notifySettingsChanged();
 					} else {

@@ -35135,3 +35135,19 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 }
+
+/* Context Menu settings: compact action rows and a single matrix search target. */
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-action-target .setting-item-name {
+ font-size: var(--font-ui-small);
+ font-weight: var(--font-normal);
+}
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-action-target + .operon-context-action-target {
+ border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
+}
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-matrix-target {
+ display: block;
+ min-width: 0;
+}
+.operon-context-settings-group:where(.operon-settings-scope) .operon-context-matrix-target > .setting-item-description {
+ margin-bottom: 16px;
+}
