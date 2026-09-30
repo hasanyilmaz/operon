@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "这只会从 Operon 设置中移除该自定义字段映射。现有的行内元数据标记和 YAML 属性仍保留在你的文件中，并在你重新创建相同的规范键之前处于不受管状态。",
       "keyMappingsDeleteCustomFieldTitle": "删除自定义字段“{{name}}”？",
       "keyMappingsDeleteCustomKey": "删除自定义字段",
-      "keyMappingsDesc": "将 Operon 任务字段映射到文件任务 YAML/frontmatter 和行内任务元数据中的可见属性名称，同时保持规范键稳定。",
+      "keyMappingsDesc": "重命名文件任务的 YAML 属性和界面标签。",
       "keyMappingsDesc_activeTracker": "追踪运行期间活动计时器的开始日期时间。",
       "keyMappingsDesc_assignees": "负责执行任务的人员。",
       "keyMappingsDesc_blockedBy": "在此任务能够继续前必须完成的任务。",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "规范键图标",
       "keyMappingsIconPickerTooltip": "为此规范键选择一个图标。留空则保持未设置。",
       "keyMappingsIconPlaceholder": "搜索 Lucide 图标或留空",
-      "keyMappingsIntro": "每个 Operon 任务字段都有一个内部规范键和一个可见属性名称。可见名称用于文件任务 YAML、行内任务元数据和任务界面。重命名可见属性会更改字段的显示方式，而不会更改视图、自动化和迁移所使用的规范键。",
-      "keyMappingsLegendHideDesc": "在文件任务和行内元数据中显示的已渲染元数据区块里隐藏此字段。该值仍会被保存，并可供 Operon 使用。",
+      "keyMappingsIntro": "重命名文件任务的 YAML 属性和界面标签。行内键保持不变。已有文件属性不会自动重命名。",
+      "keyMappingsLegendHideDesc": "隐藏仅影响文件任务的属性显示，属性值仍会保存。",
       "keyMappingsLegendHideLabel": "隐藏",
-      "keyMappingsLegendPropertyDesc": "用于文件任务 YAML 和行内任务元数据的属性名称（可编辑）",
+      "keyMappingsLegendPropertyDesc": "可编辑的文件任务 YAML 属性名和界面标签",
       "keyMappingsLegendPropertyLabel": "属性",
       "keyMappingsLegendTypeDesc": "此字段在文件任务 YAML、行内任务元数据和 Operon 视图中使用的数据类型，例如文本、数字、日期、复选框或列表。这有助于 Operon 选择正确的编辑器、验证和显示格式。",
       "keyMappingsLegendTypeLabel": "[类型]",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "751aab96ab97d0f0e75304f0612eabd55c1c43ec98f454b28dffd3c46455b28d"
+  "sourceVersion": "7d277f9d03a9088368ebf3d5f479da1b4cae415874f5ec5ffff7eb5455e63a19"
 }

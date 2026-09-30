@@ -765,7 +765,6 @@ const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'coreBackupRestore',
-	'coreKeymapping',
 	'coreCustomKeys',
 	'tasksFileTasks',
 	'tasksInlineTasks',
@@ -1478,6 +1477,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 				desc,
 				items: this.buildCoreGeneralSettingsItems(entries),
 			};
+		}
+
+		if (tab.id === 'coreKeymapping') {
+			return { type: 'page', name: pageName, desc, items: this.buildKeyMappingsSettingsItems() };
 		}
 
 		if (tab.id === 'corePriority') {
@@ -4040,8 +4043,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderBackupRestoreTab(contentEl);
 		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
-		} else if (tabId === 'coreKeymapping') {
-			this.renderKeyMappingsSection(contentEl);
+
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
 
@@ -11477,57 +11479,44 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 * Render the Key Mappings section (Spec Section 5.4.1).
 	 * Shows system canonical keys with editable visible property names.
 	 */
-	private renderKeyMappingsSection(containerEl: HTMLElement): void {
-		const refreshSection = () => {
-			containerEl.empty();
-			this.renderKeyMappingsSection(containerEl);
-		};
-		const keyMappingTitle = t('settings', 'keyMappings');
-		const keyMappingSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			keyMappingTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(keyMappingTitle, 'DOCS-039 Key mappings'),
-		);
-		keyMappingSection.addClass('operon-key-mapping-section');
-		keyMappingSection.dataset.operonSettingsSearchId = 'taxonomy.keyMappings';
-
-		const explanationBox = keyMappingSection.createDiv('operon-key-mapping-explanation-box');
-		explanationBox.dataset.operonSettingsSearchId = 'taxonomy.keyMappings';
-
-		explanationBox.createEl('p', {
-			text: t('settings', 'keyMappingsIntro'),
-			cls: 'operon-key-mapping-explanation-text',
-		});
-
-		const legendEl = explanationBox.createDiv('operon-key-mapping-legend');
-
-		const legendItems = [
-			{ label: t('settings', 'keyMappingsLegendPropertyLabel'), desc: t('settings', 'keyMappingsLegendPropertyDesc') },
-			{ label: t('settings', 'keyMappingsLegendValueSharingLabel'), desc: t('settings', 'keyMappingsLegendValueSharingDesc') },
-			{ label: t('settings', 'keyMappingsLegendHideLabel'), desc: t('settings', 'keyMappingsLegendHideDesc') },
-			{ label: t('settings', 'keyMappingsLegendTypeLabel'), desc: t('settings', 'keyMappingsLegendTypeDesc') },
-		];
-		for (const item of legendItems) {
-			const span = legendEl.createSpan('operon-key-mapping-legend-item');
-			span.createEl('strong', { text: item.label });
-			span.appendText(` – ${item.desc}`);
-		}
-
-		// System keys (canonical)
+	private buildKeyMappingsSettingsItems(): SettingDefinitionItem[] {
 		const canonicalSortIndex = new Map(CANONICAL_KEY_ORDER.map((entry, index) => [entry.name, index]));
 		const systemMappings = this.settings.keyMappings
-			.filter(m => m.isSystem && m.isInternal !== true)
-			.sort((left, right) => {
-				const leftIndex = canonicalSortIndex.get(left.canonicalKey) ?? Number.MAX_SAFE_INTEGER;
-				const rightIndex = canonicalSortIndex.get(right.canonicalKey) ?? Number.MAX_SAFE_INTEGER;
-				return leftIndex - rightIndex;
-			});
-
-		const systemSection = keyMappingSection.createDiv('operon-key-mapping-list');
-		for (const mapping of systemMappings) {
-			this.renderKeyMappingRow(systemSection, mapping, { refresh: refreshSection });
-		}
+			.filter(mapping => mapping.isSystem && mapping.isInternal !== true)
+			.sort((left, right) => (canonicalSortIndex.get(left.canonicalKey) ?? Number.MAX_SAFE_INTEGER)
+				- (canonicalSortIndex.get(right.canonicalKey) ?? Number.MAX_SAFE_INTEGER));
+		const prepareHost = (setting: Setting): HTMLElement => {
+			const host = setting.settingEl;
+			host.empty();
+			host.removeClass('setting-item');
+			host.addClass('operon-settings-tab-root', 'operon-settings-native-page-root', 'operon-key-mapping-search-item');
+			return host;
+		};
+		return [{
+			type: 'group', heading: t('settings', 'keyMappings'), cls: 'operon-key-mappings-group',
+			items: [{ name: '', searchable: false, render: setting => {
+				const host = prepareHost(setting);
+				const explanation = host.createDiv('setting-item-description operon-key-mappings-help');
+				explanation.createEl('p', { text: t('settings', 'keyMappingsIntro') });
+				explanation.createEl('p', { text: t('settings', 'keyMappingsLegendHideDesc') });
+				const title = t('settings', 'tabKeyMappings');
+				return attachDeclarativeSettingsPageTitleAction(host, title,
+					['DOCS-039 Key mappings', 'DOCS-018 Task properties'].map(target => this.buildNativeSettingsDocsAction(title, target).action));
+			} }, ...systemMappings.map((mapping): SettingDefinition => ({
+				name: mapping.visiblePropertyName === mapping.canonicalKey
+					? mapping.canonicalKey : `${mapping.canonicalKey} — ${mapping.visiblePropertyName}`,
+				desc: getKeyMappingDescription(mapping),
+				aliases: [mapping.canonicalKey, mapping.visiblePropertyName, mapping.type, 'keymapping', 'key mappings'],
+				render: setting => {
+					const host = prepareHost(setting);
+					const current = this.settings.keyMappings.find(candidate => candidate.canonicalKey === mapping.canonicalKey);
+					if (current) this.renderKeyMappingRow(host, current, {
+						onPropertySaved: () => this.updateNativeSettingsDefinitions(),
+					});
+					return () => { closeFloatingPanelsForRoot(host); cleanupOperonHoverTooltips(host); };
+				},
+			}))],
+		}];
 	}
 
 	private renderCustomKeysSection(containerEl: HTMLElement): void {
@@ -11819,19 +11808,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 			usage?: CustomFieldUsageSummary;
 			customIndex?: number;
 			customCount?: number;
+			onPropertySaved?: () => void;
 		} = {},
 	): void {
 		const canonicalKey = mapping.canonicalKey;
+		const getCurrentMapping = () => this.settings.keyMappings.find(candidate => candidate.canonicalKey === canonicalKey);
 		const card = containerEl.createDiv('operon-key-mapping-card');
 
 		// ── Row 1: title (left) + Property input (right) ────────────────
 		const row1 = card.createDiv('operon-key-mapping-row1');
 
 		const typeLabel = t('settings', `keyMappingsType_${mapping.type}`);
-		row1.createDiv({
-			text: `${canonicalKey} [${typeLabel === `keyMappingsType_${mapping.type}` ? mapping.type : typeLabel}]`,
-			cls: 'operon-key-mapping-title',
-		});
+		const resolvedType = typeLabel === `keyMappingsType_${mapping.type}` ? mapping.type : typeLabel;
+		if (options.onPropertySaved) {
+			const title = row1.createDiv({ text: canonicalKey, cls: 'operon-key-mapping-title' });
+			title.createSpan({ text: ` [${resolvedType}]`, cls: 'operon-key-mapping-type' });
+		} else {
+			row1.createDiv({ text: `${canonicalKey} [${resolvedType}]`, cls: 'operon-key-mapping-title' });
+		}
 
 		const propertyWrap = row1.createDiv('operon-key-mapping-property-wrap');
 		propertyWrap.createEl('label', {
@@ -11852,7 +11846,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			setKeyMappings: keyMappings => {
 				this.settings.keyMappings = keyMappings;
 			},
-			saveSettings: () => this.saveSettings(),
+			saveSettings: async () => {
+				await this.saveSettings();
+				options.onPropertySaved?.();
+			},
 		});
 
 		if (canonicalKey === 'operonId') {
@@ -11918,7 +11915,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 		setAccessibleLabelWithoutTooltip(iconButton, t('settings', 'keyMappingsIconAria'));
 
-		const getStoredIcon = (): string => normalizeTaskIconValue(mapping.icon);
+		const getStoredIcon = (): string => normalizeTaskIconValue(getCurrentMapping()?.icon);
 		const refreshIconPreview = (iconName = getStoredIcon()) => {
 			iconButton.empty();
 			setAccessibleLabelWithoutTooltip(iconButton, t('settings', 'keyMappingsIconAria'));
@@ -11931,8 +11928,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			iconButton.classList.add('has-icon');
 		};
 		const commitIconValue = async (nextValue: string): Promise<void> => {
-			mapping.icon = normalizeTaskIconValue(nextValue);
-			refreshIconPreview(mapping.icon);
+			const current = getCurrentMapping();
+			if (!current) return;
+			const nextIcon = normalizeTaskIconValue(nextValue);
+			if (nextIcon === getStoredIcon()) return;
+			current.icon = nextIcon;
+			refreshIconPreview(nextIcon);
 			await this.saveSettings();
 		};
 
@@ -11969,7 +11970,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const hideToggle = new ToggleComponent(hideControlHost);
 		hideToggle.setValue(mapping.hideInFileTaskView === true);
 		hideToggle.onChange(async value => {
-			mapping.hideInFileTaskView = value;
+			const current = getCurrentMapping();
+			if (!current || (current.hideInFileTaskView === true) === value) return;
+			current.hideInFileTaskView = value;
 			await this.saveSettings();
 		});
 		setAccessibleLabelWithoutTooltip(hideControlHost, t('settings', 'keyMappingsHideAria'));

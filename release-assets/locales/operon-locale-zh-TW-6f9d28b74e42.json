@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "這隻會從 Operon 設定中移除該自定義欄位對映。現有的行內後設資料標記和 YAML 屬性仍保留在你的檔案中，並在你重新建立相同的規範鍵之前處於不受管狀態。",
       "keyMappingsDeleteCustomFieldTitle": "刪除自定義欄位「{{name}}」？",
       "keyMappingsDeleteCustomKey": "刪除自定義欄位",
-      "keyMappingsDesc": "將 Operon 任務欄位對映到檔案任務 YAML/frontmatter 和行內任務後設資料中的可見屬性名稱，同時保持規範鍵穩定。",
+      "keyMappingsDesc": "重新命名檔案任務的 YAML 屬性和介面標籤。",
       "keyMappingsDesc_activeTracker": "追蹤執行期間活動計時器的開始日期時間。",
       "keyMappingsDesc_assignees": "負責執行任務的人員。",
       "keyMappingsDesc_blockedBy": "在此任務能夠繼續前必須完成的任務。",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "規範鍵圖示",
       "keyMappingsIconPickerTooltip": "為此規範鍵選擇一個圖示。留空則保持未設定。",
       "keyMappingsIconPlaceholder": "搜尋 Lucide 圖示或留空",
-      "keyMappingsIntro": "每個 Operon 任務欄位都有一個內部規範鍵和一個可見屬性名稱。可見名稱用於檔案任務 YAML、行內任務後設資料和任務介面。重新命名可見屬性會更改欄位的顯示方式，而不會更改檢視、自動化和遷移所使用的規範鍵。",
-      "keyMappingsLegendHideDesc": "在檔案任務和行內後設資料中顯示的已渲染後設資料區塊裡隱藏此欄位。該值仍會被儲存，並可供 Operon 使用。",
+      "keyMappingsIntro": "重新命名檔案任務的 YAML 屬性和介面標籤。行內鍵保持不變。既有檔案屬性不會自動重新命名。",
+      "keyMappingsLegendHideDesc": "隱藏僅影響檔案任務的屬性顯示，屬性值仍會儲存。",
       "keyMappingsLegendHideLabel": "隱藏",
-      "keyMappingsLegendPropertyDesc": "用於檔案任務 YAML 和行內任務後設資料的屬性名稱（可編輯）",
+      "keyMappingsLegendPropertyDesc": "可編輯的檔案任務 YAML 屬性名稱和介面標籤",
       "keyMappingsLegendPropertyLabel": "屬性",
       "keyMappingsLegendTypeDesc": "此欄位在檔案任務 YAML、行內任務後設資料和 Operon 檢視中使用的資料型別，例如文字、數字、日期、核取方塊或列表。這有助於 Operon 選擇正確的編輯器、驗證和顯示格式。",
       "keyMappingsLegendTypeLabel": "[型別]",
@@ -2491,7 +2491,7 @@
       "tabGeneral": "常規",
       "tabInterface": "介面",
       "tabKanban": "看板",
-      "tabKeyMappings": "鍵對映",
+      "tabKeyMappings": "鍵對應",
       "tabMobile": "移動端",
       "tabPipelines": "工作流",
       "tabPriority": "優先順序",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "7bfe3620df1789f8ab9e2703d7a47f7664722fd556157f80d13763de712a280d"
+  "sourceVersion": "3fdec7a37264e9336a920feabe507fd4fe0c18ec0e8b1eb72580a65f54273194"
 }

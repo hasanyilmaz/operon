@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "Dies entfernt nur die benutzerdefinierte Feldzuordnung aus den Operon-Einstellungen. Bestehende Inline-Metadaten-Tokens und YAML-Eigenschaften bleiben in deinen Dateien und werden nicht verwaltet, bis du denselben kanonischen Schlüssel erneut erstellst.",
       "keyMappingsDeleteCustomFieldTitle": "Benutzerdefiniertes Feld „{{name}}“ löschen?",
       "keyMappingsDeleteCustomKey": "Benutzerdefinierten Schlüssel löschen",
-      "keyMappingsDesc": "Ordne Operon-Aufgabenfelder sichtbaren Eigenschaftsnamen in Datei-Aufgaben-YAML/Frontmatter und Inline-Aufgaben-Metadaten zu, während die kanonischen Schlüssel stabil bleiben.",
+      "keyMappingsDesc": "Benenne YAML-Eigenschaften von Dateiaufgaben und UI-Beschriftungen um.",
       "keyMappingsDesc_activeTracker": "Startdatum mit Uhrzeit des aktiven Timers, während die Erfassung läuft.",
       "keyMappingsDesc_assignees": "Personen, die für die Aufgabe verantwortlich sind.",
       "keyMappingsDesc_blockedBy": "Aufgaben, die abgeschlossen sein müssen, bevor diese Aufgabe fortgesetzt werden kann.",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "Symbol für kanonischen Schlüssel",
       "keyMappingsIconPickerTooltip": "Wähle ein Symbol für diesen kanonischen Schlüssel. Leer lassen, um es nicht festzulegen.",
       "keyMappingsIconPlaceholder": "Lucide-Symbol suchen oder leer lassen",
-      "keyMappingsIntro": "Jedes Operon-Aufgabenfeld hat einen internen kanonischen Schlüssel und einen sichtbaren Eigenschaftsnamen. Der sichtbare Name wird in Datei-Aufgaben-YAML, Inline-Aufgaben-Metadaten und Aufgaben-UI-Oberflächen verwendet. Das Umbenennen der sichtbaren Eigenschaft ändert, wie das Feld erscheint, ohne den kanonischen Schlüssel zu ändern, der von Ansichten, Automatisierung und Migrationen verwendet wird.",
-      "keyMappingsLegendHideDesc": "Dieses Feld aus dem gerenderten Metadaten-Abschnitt ausblenden, der in Datei-Aufgaben und Inline-Metadaten angezeigt wird. Der Wert wird weiterhin gespeichert und kann von Operon genutzt werden.",
+      "keyMappingsIntro": "Benenne YAML-Eigenschaften von Dateiaufgaben und UI-Beschriftungen um. Inline-Schlüssel bleiben unverändert. Vorhandene Dateieigenschaften werden nicht automatisch umbenannt.",
+      "keyMappingsLegendHideDesc": "Hide blendet die Eigenschaft nur in den angezeigten Dateiaufgaben-Eigenschaften aus. Ihr Wert bleibt gespeichert.",
       "keyMappingsLegendHideLabel": "Ausblenden",
-      "keyMappingsLegendPropertyDesc": "Eigenschaftsname, der in Datei-Aufgaben-YAML und Inline-Aufgaben-Metadaten verwendet wird (bearbeitbar)",
+      "keyMappingsLegendPropertyDesc": "Bearbeitbarer YAML-Eigenschaftsname für Dateiaufgaben und UI-Beschriftung",
       "keyMappingsLegendPropertyLabel": "Eigenschaft",
       "keyMappingsLegendTypeDesc": "Datentyp, der für dieses Feld in Datei-Aufgaben-YAML, Inline-Aufgaben-Metadaten und Operon-Ansichten verwendet wird, z. B. Text, Zahl, Datum, Kontrollkästchen oder Liste. Dies hilft Operon, den richtigen Editor, die Validierung und das Anzeigeformat zu wählen.",
       "keyMappingsLegendTypeLabel": "[Typ]",
@@ -2491,7 +2491,7 @@
       "tabGeneral": "Allgemein",
       "tabInterface": "Oberfläche",
       "tabKanban": "Kanban",
-      "tabKeyMappings": "Keymapping",
+      "tabKeyMappings": "Schlüsselzuordnungen",
       "tabMobile": "Mobil",
       "tabPipelines": "Arbeitsabläufe",
       "tabPriority": "Priorität",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "0ba7ee9273ca87f252037bee0ccc8df99f76fd1491933f40440bc3c41711272a"
+  "sourceVersion": "d3c711ab1652952633191df006e497d04e15d28d34b91cc2b792cbae95b191da"
 }

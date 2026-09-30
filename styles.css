@@ -35458,3 +35458,79 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 		opacity: 1;
 	}
 }
+
+/* Key Mappings: individual search targets, shared cards retain their own boundaries. */
+.operon-key-mappings-group:where(.operon-settings-scope) > .setting-items {
+	padding: 16px 24px;
+	container-type: inline-size;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-search-item + .operon-key-mapping-search-item {
+	margin-top: 10px;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mappings-help p {
+	margin: 0 0 8px;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-title {
+	font-weight: var(--font-normal);
+	min-width: 0;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-type {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-row1 {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-row2 {
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr) auto;
+	align-items: center;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-description {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-property-wrap {
+	min-width: 0;
+}
+
+.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-input {
+	width: 180px;
+	min-width: 0;
+	max-width: 100%;
+}
+
+:where(.operon-key-mappings-group.operon-settings-scope) button.operon-key-mapping-icon-trigger {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+}
+
+:where(.operon-key-mappings-group.operon-settings-scope) button.operon-key-mapping-icon-trigger:is(:hover, :focus-visible) {
+	border-color: var(--interactive-accent);
+}
+
+@container (max-width: 480px) {
+	.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-row1 {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-property-wrap {
+		width: 100%;
+	}
+
+	.operon-key-mappings-group:where(.operon-settings-scope) .operon-key-mapping-input {
+		width: 100%;
+		flex: 1;
+	}
+}

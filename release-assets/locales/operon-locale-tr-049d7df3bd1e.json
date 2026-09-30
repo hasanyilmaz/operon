@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "Bu işlem yalnızca özel alan eşleştirmesini Operon ayarlarından kaldırır. Mevcut satır içi metadata tokenları ve YAML özellikleri dosyalarında kalır ve aynı eş kurallı anahtar yeniden oluşturulana kadar yönetilmeyen alan olur.",
       "keyMappingsDeleteCustomFieldTitle": "\"{{name}}\" özel alanı silinsin mi?",
       "keyMappingsDeleteCustomKey": "Özel anahtarı sil",
-      "keyMappingsDesc": "Operon görev alanlarını dosya görevi YAML/frontmatter'ında ve satır içi görev metadatasında kullanılan görünen özellik adlarına haritala; eş kurallı anahtarlar sabit kalır.",
+      "keyMappingsDesc": "Dosya görevlerinin YAML property adlarını ve arayüz etiketlerini değiştirin.",
       "keyMappingsDesc_activeTracker": "Takip çalışırken kullanılan aktif sayaç başlangıç tarihi-saati.",
       "keyMappingsDesc_assignees": "Görevi yapmaktan sorumlu kişiler.",
       "keyMappingsDesc_blockedBy": "Bu görevin ilerlemesini engelleyen görevler.",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "Eş Kurallı Anahtar Simgesi",
       "keyMappingsIconPickerTooltip": "Bu eş kurallı anahtar için bir simge seç. Boş bırakırsan ayarlanmamış kalır.",
       "keyMappingsIconPlaceholder": "Lucide simgesi ara veya boş bırak",
-      "keyMappingsIntro": "Her Operon görev alanının dahili bir eş kurallı anahtarı ve görünen bir özellik adı vardır. Görünen ad dosya görevi YAML'ında, satır içi görev metadatasında ve görev arayüzlerinde kullanılır. Görünen özellik adını değiştirmek alanın nasıl göründüğünü değiştirir; görünümler, otomasyon ve geçiş için kullanılan eş kurallı anahtarı değiştirmez.",
-      "keyMappingsLegendHideDesc": "Bu alanı dosya görevlerinde ve satır içi metadatada görünür olan işlenmiş metadata bölümünden gizler. Değer yine kaydedilir ve Operon tarafından kullanılabilir.",
+      "keyMappingsIntro": "Dosya görevlerinin YAML property adlarını ve arayüz etiketlerini değiştirin. Inline anahtarlar değişmez. Mevcut dosya property adları otomatik değiştirilmez.",
+      "keyMappingsLegendHideDesc": "Gizle yalnız dosya görevinin gösterilen property alanını gizler. Değeri kayıtlı kalır.",
       "keyMappingsLegendHideLabel": "Gizle",
-      "keyMappingsLegendPropertyDesc": "Dosya görevi YAML'ında ve satır içi görev metadatasında kullanılan özellik adı (düzenlenebilir)",
+      "keyMappingsLegendPropertyDesc": "Düzenlenebilir dosya görevi YAML property adı ve arayüz etiketi",
       "keyMappingsLegendPropertyLabel": "Özellik",
       "keyMappingsLegendTypeDesc": "Dosya görevi YAML'ında, satır içi görev metadatasında ve Operon görünümlerinde bu alan için kullanılan veri türüdür; metin, sayı, tarih, onay kutusu veya liste gibi. Operon'un doğru düzenleyiciyi, doğrulamayı ve görüntüleme biçimini seçmesine yardımcı olur.",
       "keyMappingsLegendTypeLabel": "[tür]",
@@ -2491,7 +2491,7 @@
       "tabGeneral": "Genel",
       "tabInterface": "Arayüz",
       "tabKanban": "Kanban",
-      "tabKeyMappings": "Anahtar Haritalama",
+      "tabKeyMappings": "Anahtar Eşleştirmeleri",
       "tabMobile": "Mobil",
       "tabPipelines": "Akışlar",
       "tabPriority": "Öncelik",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "b020dcf6eda47ed323b3d35a3596b8ad158898e10ae54f40af0fdba715dcd9f7"
+  "sourceVersion": "ebe867c96c3d9cb8d6e8cc408039fd5bcba11ed867674136c394c806f6246576"
 }

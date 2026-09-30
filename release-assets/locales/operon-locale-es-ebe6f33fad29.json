@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "Esto solo quita la asignación del campo personalizado de la configuración de Operon. Los tokens de metadatos en línea y las propiedades YAML existentes permanecen en los archivos y quedan sin gestionar hasta que se recree la misma clave canónica.",
       "keyMappingsDeleteCustomFieldTitle": "¿Eliminar el campo personalizado \"{{name}}\"?",
       "keyMappingsDeleteCustomKey": "Eliminar clave personalizada",
-      "keyMappingsDesc": "Asignar los campos de tarea de Operon a nombres de propiedad visibles en el YAML/frontmatter de tareas de archivo y en los metadatos de tareas en línea, manteniendo estables las claves canónicas.",
+      "keyMappingsDesc": "Renombra propiedades YAML de tareas de archivo y etiquetas de la interfaz.",
       "keyMappingsDesc_activeTracker": "Fecha y hora de inicio del temporizador activo mientras el registro está en marcha.",
       "keyMappingsDesc_assignees": "Personas responsables de realizar la tarea.",
       "keyMappingsDesc_blockedBy": "Tareas que deben terminar antes de que esta tarea pueda continuar.",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "Icono de la clave canónica",
       "keyMappingsIconPickerTooltip": "Elegir un icono para esta clave canónica. Dejar en blanco para mantenerlo sin definir.",
       "keyMappingsIconPlaceholder": "Buscar icono de Lucide o dejar en blanco",
-      "keyMappingsIntro": "Cada campo de tarea de Operon tiene una clave canónica interna y un nombre de propiedad visible. El nombre visible se usa en el YAML de tareas de archivo, los metadatos de tareas en línea y las superficies de interfaz de tareas. Renombrar la propiedad visible cambia cómo aparece el campo sin cambiar la clave canónica usada por las vistas, la automatización y las migraciones.",
-      "keyMappingsLegendHideDesc": "Ocultar este campo de la sección de metadatos renderizada que se muestra en las tareas de archivo y en los metadatos en línea. El valor se sigue guardando y Operon lo puede usar.",
+      "keyMappingsIntro": "Renombra propiedades YAML de tareas de archivo y etiquetas de la interfaz. Las claves inline no cambian. Las propiedades existentes no se renombran automáticamente.",
+      "keyMappingsLegendHideDesc": "Ocultar solo oculta la propiedad en las propiedades mostradas de la tarea de archivo. Su valor sigue guardado.",
       "keyMappingsLegendHideLabel": "Ocultar",
-      "keyMappingsLegendPropertyDesc": "Nombre de propiedad usado en el YAML de tareas de archivo y en los metadatos de tareas en línea (editable)",
+      "keyMappingsLegendPropertyDesc": "Nombre editable de propiedad YAML de tarea de archivo y etiqueta de interfaz",
       "keyMappingsLegendPropertyLabel": "Propiedad",
       "keyMappingsLegendTypeDesc": "Tipo de dato usado para este campo en el YAML de tareas de archivo, los metadatos de tareas en línea y las vistas de Operon, como texto, número, fecha, casilla o lista. Esto ayuda a Operon a elegir el editor, la validación y el formato de visualización correctos.",
       "keyMappingsLegendTypeLabel": "[tipo]",
@@ -2491,7 +2491,7 @@
       "tabGeneral": "General",
       "tabInterface": "Interfaz",
       "tabKanban": "Kanban",
-      "tabKeyMappings": "Asignación de claves",
+      "tabKeyMappings": "Mapeo de claves",
       "tabMobile": "Móvil",
       "tabPipelines": "Flujos de trabajo",
       "tabPriority": "Prioridad",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a83dd6785aa7a3fd1bd7b9c283a5274a279b35eb6054618351818b0e8093e530"
+  "sourceVersion": "b206bee5d91ae2142fc1efa83d6b582366199096a13ecfd0b5f190e78c5161cd"
 }

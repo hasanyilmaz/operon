@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "これは Operon 設定からカスタムフィールドのマッピングのみを削除します。既存のインラインメタデータトークンと YAML プロパティはファイルに残り、同じ正規キーを再作成するまで管理対象外になります。",
       "keyMappingsDeleteCustomFieldTitle": "カスタムフィールド「{{name}}」を削除しますか？",
       "keyMappingsDeleteCustomKey": "カスタムキーを削除",
-      "keyMappingsDesc": "Operon のタスクフィールドを、ファイルタスクの YAML/frontmatter とインラインタスクのメタデータで表示されるプロパティ名にマッピングしつつ、正規キーを安定させます。",
+      "keyMappingsDesc": "ファイルタスクのYAMLプロパティ名とUIラベルを変更します。",
       "keyMappingsDesc_activeTracker": "記録の実行中のアクティブなタイマーの開始日時。",
       "keyMappingsDesc_assignees": "タスクを実行する責任者。",
       "keyMappingsDesc_blockedBy": "このタスクが続行する前に完了する必要があるタスク。",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "正規キーのアイコン",
       "keyMappingsIconPickerTooltip": "この正規キーのアイコンを選択します。未設定のままにするには空白にします。",
       "keyMappingsIconPlaceholder": "Lucide アイコンを検索するか空白のままに",
-      "keyMappingsIntro": "各 Operon タスクフィールドには、内部の正規キーと表示されるプロパティ名があります。表示名は、ファイルタスクの YAML、インラインタスクのメタデータ、タスク UI 面で使用されます。表示プロパティの名前を変更すると、ビュー・自動化・移行で使用される正規キーを変えずに、フィールドの表示方法が変わります。",
-      "keyMappingsLegendHideDesc": "ファイルタスクとインラインメタデータに表示されるレンダリング済みのメタデータセクションから、このフィールドを非表示にします。値は引き続き保存され、Operon で使用できます。",
+      "keyMappingsIntro": "ファイルタスクのYAMLプロパティ名とUIラベルを変更します。インラインキーは変わりません。既存のファイルプロパティは自動で改名されません。",
+      "keyMappingsLegendHideDesc": "非表示はファイルタスクのプロパティ表示だけに適用されます。値は保存されたままです。",
       "keyMappingsLegendHideLabel": "非表示",
-      "keyMappingsLegendPropertyDesc": "ファイルタスクの YAML とインラインタスクのメタデータで使用されるプロパティ名（編集可能）",
+      "keyMappingsLegendPropertyDesc": "編集可能なファイルタスクのYAMLプロパティ名とUIラベル",
       "keyMappingsLegendPropertyLabel": "プロパティ",
       "keyMappingsLegendTypeDesc": "ファイルタスクの YAML、インラインタスクのメタデータ、Operon のビューでこのフィールドに使用されるデータ型（テキスト、数値、日付、チェックボックス、リストなど）。これにより Operon は適切なエディター、検証、表示形式を選択できます。",
       "keyMappingsLegendTypeLabel": "[タイプ]",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "d7970b96cd07ec8423b8bc514592b612069797a02079a12d4ab305ec1dbb3873"
+  "sourceVersion": "1195fa35dc4811f30fb87ab0ea0b239fe65eea95196775a73ce428675acb9e61"
 }

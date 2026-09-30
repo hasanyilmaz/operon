@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "Questo rimuove solo la mappatura del campo personalizzato dalle impostazioni di Operon. I token di metadati in linea e le proprietà YAML esistenti rimangono nei tuoi file e diventano non gestiti finché non ricrei la stessa chiave canonica.",
       "keyMappingsDeleteCustomFieldTitle": "Eliminare il campo personalizzato \"{{name}}\"?",
       "keyMappingsDeleteCustomKey": "Elimina chiave personalizzata",
-      "keyMappingsDesc": "Mappa i campi attività di Operon a nomi di proprietà visibili nello YAML/frontmatter delle attività-file e nei metadati delle attività in linea, mantenendo stabili le chiavi canoniche.",
+      "keyMappingsDesc": "Rinomina le proprietà YAML delle attività file e le etichette dell’interfaccia.",
       "keyMappingsDesc_activeTracker": "Data e ora di inizio del timer attivo mentre il monitoraggio è in corso.",
       "keyMappingsDesc_assignees": "Persone responsabili dello svolgimento dell'attività.",
       "keyMappingsDesc_blockedBy": "Attività che devono terminare prima che questa attività possa continuare.",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "Icona della chiave canonica",
       "keyMappingsIconPickerTooltip": "Scegli un'icona per questa chiave canonica. Lascia vuoto per non impostarla.",
       "keyMappingsIconPlaceholder": "Cerca icona Lucide o lascia vuoto",
-      "keyMappingsIntro": "Ogni campo attività di Operon ha una chiave canonica interna e un nome di proprietà visibile. Il nome visibile viene usato nello YAML delle attività-file, nei metadati delle attività in linea e nelle superfici dell'interfaccia attività. Rinominare la proprietà visibile cambia come appare il campo senza cambiare la chiave canonica usata dalle viste, dall'automazione e dalle migrazioni.",
-      "keyMappingsLegendHideDesc": "Nascondi questo campo dalla sezione metadati visualizzata mostrata nelle attività-file e nei metadati in linea. Il valore viene comunque salvato e utilizzabile da Operon.",
+      "keyMappingsIntro": "Rinomina le proprietà YAML delle attività file e le etichette dell’interfaccia. Le chiavi inline restano invariate. Le proprietà esistenti non vengono rinominate automaticamente.",
+      "keyMappingsLegendHideDesc": "Nascondi nasconde la proprietà solo nelle proprietà visualizzate dell’attività file. Il valore resta salvato.",
       "keyMappingsLegendHideLabel": "Nascondi",
-      "keyMappingsLegendPropertyDesc": "Nome di proprietà usato nello YAML delle attività-file e nei metadati delle attività in linea (modificabile)",
+      "keyMappingsLegendPropertyDesc": "Nome modificabile della proprietà YAML dell’attività file ed etichetta dell’interfaccia",
       "keyMappingsLegendPropertyLabel": "Proprietà",
       "keyMappingsLegendTypeDesc": "Tipo di dato usato per questo campo nello YAML delle attività-file, nei metadati delle attività in linea e nelle viste di Operon, come testo, numero, data, casella di controllo o elenco. Questo aiuta Operon a scegliere l'editor, la validazione e il formato di visualizzazione corretti.",
       "keyMappingsLegendTypeLabel": "[tipo]",
@@ -2491,7 +2491,7 @@
       "tabGeneral": "Generale",
       "tabInterface": "Interfaccia",
       "tabKanban": "Kanban",
-      "tabKeyMappings": "Mappatura chiavi",
+      "tabKeyMappings": "Mappatura delle chiavi",
       "tabMobile": "Mobile",
       "tabPipelines": "Pipeline",
       "tabPriority": "Priorità",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "fa6ebf6c0446934b859d70320f7522b3e2522fe0d2813bb07fa5be72e8911632"
+  "sourceVersion": "e8f51748d02b67df830c09a8787a9c8820705fa0b7faa84f65cf94d99559dfd4"
 }

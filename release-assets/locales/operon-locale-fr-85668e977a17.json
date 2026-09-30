@@ -1893,7 +1893,7 @@
       "keyMappingsDeleteCustomFieldMessage": "Cela supprime uniquement le mapping du champ personnalisé des réglages Operon. Les jetons de métadonnées en ligne et les propriétés YAML existants restent dans vos fichiers et deviennent non gérés jusqu'à recréation de la même clé canonique.",
       "keyMappingsDeleteCustomFieldTitle": "Supprimer le champ personnalisé « {{name}} » ?",
       "keyMappingsDeleteCustomKey": "Supprimer la clé personnalisée",
-      "keyMappingsDesc": "Faites correspondre les champs de tâche Operon aux noms de propriété visibles dans le YAML/frontmatter des tâches-fichiers et les métadonnées des tâches en ligne, tout en gardant les clés canoniques stables.",
+      "keyMappingsDesc": "Renommez les propriétés YAML des tâches fichier et les libellés de l’interface.",
       "keyMappingsDesc_activeTracker": "Date et heure de début du minuteur actif pendant que le suivi est en cours.",
       "keyMappingsDesc_assignees": "Personnes responsables de l'exécution de la tâche.",
       "keyMappingsDesc_blockedBy": "Tâches qui doivent se terminer avant que cette tâche puisse continuer.",
@@ -1937,10 +1937,10 @@
       "keyMappingsIconLabel": "Icône de la clé canonique",
       "keyMappingsIconPickerTooltip": "Choisissez une icône pour cette clé canonique. Laissez vide pour ne pas en définir.",
       "keyMappingsIconPlaceholder": "Rechercher une icône Lucide ou laisser vide",
-      "keyMappingsIntro": "Chaque champ de tâche Operon a une clé canonique interne et un nom de propriété visible. Le nom visible est utilisé dans le YAML des tâches-fichiers, les métadonnées des tâches en ligne et les surfaces d'interface des tâches. Renommer la propriété visible change l'apparence du champ sans changer la clé canonique utilisée par les vues, l'automatisation et les migrations.",
-      "keyMappingsLegendHideDesc": "Masquer ce champ de la section de métadonnées affichée dans les tâches-fichiers et les métadonnées en ligne. La valeur est toujours enregistrée et utilisable par Operon.",
+      "keyMappingsIntro": "Renommez les propriétés YAML des tâches fichier et les libellés de l’interface. Les clés inline restent inchangées. Les propriétés existantes ne sont pas renommées automatiquement.",
+      "keyMappingsLegendHideDesc": "Masquer cache uniquement la propriété dans les propriétés affichées de la tâche fichier. Sa valeur reste enregistrée.",
       "keyMappingsLegendHideLabel": "Masquer",
-      "keyMappingsLegendPropertyDesc": "Nom de propriété utilisé dans le YAML des tâches-fichiers et les métadonnées des tâches en ligne (modifiable)",
+      "keyMappingsLegendPropertyDesc": "Nom modifiable de propriété YAML de tâche fichier et libellé d’interface",
       "keyMappingsLegendPropertyLabel": "Propriété",
       "keyMappingsLegendTypeDesc": "Type de données utilisé pour ce champ dans le YAML des tâches-fichiers, les métadonnées des tâches en ligne et les vues Operon, comme texte, nombre, date, case à cocher ou liste. Cela aide Operon à choisir le bon éditeur, la bonne validation et le bon format d'affichage.",
       "keyMappingsLegendTypeLabel": "[type]",
@@ -3579,5 +3579,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "a553f27d1a29860ffd36200be20c904dd447e2c5b340f43af2672c4d6f439af7"
+  "sourceVersion": "75e054f9be16e606873c2abdfeb10592c5df1831db9f5d256f9589a393025ea6"
 }
