@@ -35098,17 +35098,40 @@ body .operon-canvas-property-pool .operon-canvas-property-pool-shortcuts > butto
 	display: none;
 }
 
-/* Individual Task Finder search targets retain the shortcut card layout. */
+/* Compact Task Finder shortcut rows stay local to their Settings group. */
 .operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target {
-	padding: 0 var(--setting-items-padding-x) 10px;
+	padding: 0 var(--setting-items-padding-x);
 }
 .operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target > .operon-settings-list-card {
-	padding: 10px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	background-color: var(--background-primary);
+	min-height: 0;
+	padding: 12px 0;
+	border: 0;
+	border-radius: 0;
+	background-color: transparent;
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target > .operon-settings-list-card:is(:first-child, :last-child) {
+	border-radius: 0;
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target + .operon-task-finder-shortcut-target > .operon-settings-list-card {
+	border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
 }
 .operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-target > .operon-settings-list-card:is(:hover, :focus-within) {
-	border-color: var(--background-modifier-border-hover);
 	background-color: var(--background-primary-alt);
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-setting .setting-item-info {
+	min-width: 0;
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-setting .setting-item-name {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-normal);
+}
+.operon-task-finder-shortcuts-group:where(.operon-settings-scope) .operon-task-finder-shortcut-preview {
+	min-width: 0;
+	height: auto;
+	padding: 0;
+	gap: 4px;
+	border: 0;
+	background: transparent;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
 }

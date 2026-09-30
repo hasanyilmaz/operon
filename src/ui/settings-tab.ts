@@ -1885,7 +1885,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			type: 'group',
 			heading: t('settings', 'taskFinderHotkeysSection'),
 			cls: 'operon-task-finder-shortcuts-group',
-			items: [{ name: '', desc: t('settings', 'taskFinderShortcutsDesc'), searchable: false },
+			items: [{ name: '', desc: t('settings', 'taskFinderShortcutsDesc'), searchable: false, render: setting => {
+				setting.settingEl.empty();
+				setting.settingEl.addClass('operon-task-finder-shortcuts-description');
+				setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'taskFinderShortcutsDesc') });
+			} },
 				...TASK_FINDER_DEFAULT_SCOPE_ORDER.map(key => ({
 					name: this.getTaskFinderScopeLabel(key),
 					desc: t('settings', 'taskFinderShortcutInputDesc'),
