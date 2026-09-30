@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Значок",
       "taskCreatorToolbarTooltip_taskImage": "Изображение задачи",
       "taskCreatorToolbarTooltip_taskType": "Тип задачи",
+      "taskEditorFileBodySection": "Содержимое файла",
       "taskEditorMobileCoreTools": "Панель инструментов мобильного редактора задач",
       "taskEditorMobileCoreToolsDesc": "Панель инструментов мобильного редактора задач управляет тем, какие основные значки появляются на телефонах, и настраивает их порядок. «Перейти к источнику» всегда остаётся первым, а «Удалить» — последним, если видимо.",
       "taskEditorMobileCoreToolsMoveDown": "Переместить вниз",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Изменить порядок основных мобильных значков",
       "taskEditorShowLineNumbers": "Показывать номера строк в редакторе задач",
       "taskEditorShowLineNumbersDesc": "Отображать номера строк исходного текста на панели тела файла в редакторе задач.",
-      "taskEditorWorkflowPickers": "Средства выбора рабочего процесса",
-      "taskEditorWorkflowPickersDesc": "Выберите, какие строки выбора появляются в редакторе задач, затем настройте их порядок. Скрытые средства выбора не изменяют существующие метаданные задачи.",
+      "taskEditorWorkflowPickers": "Видимость и порядок свойств",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: выберите строки свойств в Task Editor и их порядок, включая поддерживаемые пользовательские свойства. Скрытие строки не изменяет существующие метаданные задачи.",
       "taskEditorWorkflowPickersMoveDown": "Переместить вниз",
       "taskEditorWorkflowPickersMoveUp": "Переместить вверх",
       "taskEditorWorkflowPickersReorder": "Изменить порядок средств выбора рабочего процесса",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "92e9802346c04f639958d986c7af814ec3844004af0083bf3e5b2cbdb5e53db6"
+  "sourceVersion": "f76134584159c7ed4e39a4ce4c8e08aee9b8c3149a3a36a350577236198285ab"
 }

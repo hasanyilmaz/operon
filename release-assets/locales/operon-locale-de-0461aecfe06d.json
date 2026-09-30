@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Symbol",
       "taskCreatorToolbarTooltip_taskImage": "Aufgabenbild",
       "taskCreatorToolbarTooltip_taskType": "Aufgabentyp",
+      "taskEditorFileBodySection": "Dateiinhalt",
       "taskEditorMobileCoreTools": "Symbolleiste des mobilen Aufgaben-Editors",
       "taskEditorMobileCoreToolsDesc": "Die Symbolleiste des mobilen Aufgaben-Editors steuert, welche Kern-Symbole auf Telefonen erscheinen, und passt ihre Reihenfolge an. „Zur Quelle“ bleibt vorne und „Entfernen“ bleibt hinten, sofern sichtbar.",
       "taskEditorMobileCoreToolsMoveDown": "Nach unten",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Mobile Kern-Symbole neu anordnen",
       "taskEditorShowLineNumbers": "Zeilennummern im Aufgaben-Editor anzeigen",
       "taskEditorShowLineNumbersDesc": "Quell-Zeilennummern im Dateiinhaltsbereich des Aufgaben-Editors anzeigen.",
-      "taskEditorWorkflowPickers": "Arbeitsablauf-Auswahlfelder",
-      "taskEditorWorkflowPickersDesc": "Wähle, welche Auswahlzeilen im Aufgaben-Editor erscheinen, und passe dann ihre Reihenfolge an. Ausgeblendete Auswahlfelder ändern vorhandene Aufgaben-Metadaten nicht.",
+      "taskEditorWorkflowPickers": "Sichtbarkeit und Reihenfolge der Eigenschaften",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: Wählen Sie die sichtbaren Eigenschaftszeilen im Task Editor und ihre Reihenfolge, einschließlich unterstützter benutzerdefinierter Eigenschaften. Das Ausblenden einer Zeile ändert keine vorhandenen Aufgabenmetadaten.",
       "taskEditorWorkflowPickersMoveDown": "Nach unten",
       "taskEditorWorkflowPickersMoveUp": "Nach oben",
       "taskEditorWorkflowPickersReorder": "Arbeitsablauf-Auswahlfelder neu anordnen",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "7d1125ff03ee36031b5f5ad9367e603098c2d185a950d82e8b2db775949cdba0"
+  "sourceVersion": "c8f1c23bd6de6e15af7741378b2643d7e5c4406c5d07d997476522674de92e55"
 }

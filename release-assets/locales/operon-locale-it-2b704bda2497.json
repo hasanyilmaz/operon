@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Icona",
       "taskCreatorToolbarTooltip_taskImage": "Immagine attività",
       "taskCreatorToolbarTooltip_taskType": "Tipo di attività",
+      "taskEditorFileBodySection": "Contenuto del file",
       "taskEditorMobileCoreTools": "Barra degli strumenti Editor attività mobile",
       "taskEditorMobileCoreToolsDesc": "La barra degli strumenti Editor attività mobile controlla quali icone principali appaiono sui telefoni e regola il loro ordine. Vai all'origine rimane primo e Rimuovi rimane ultimo quando visibili.",
       "taskEditorMobileCoreToolsMoveDown": "Sposta in basso",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Riordina icone principali mobili",
       "taskEditorShowLineNumbers": "Mostra numeri di riga nell'Editor attività",
       "taskEditorShowLineNumbersDesc": "Mostra i numeri di riga di origine nel pannello contenuto del file dell'Editor attività.",
-      "taskEditorWorkflowPickers": "Selettori flusso di lavoro",
-      "taskEditorWorkflowPickersDesc": "Scegli quali righe di selettore appaiono nell'Editor attività, poi regola il loro ordine. I selettori nascosti non modificano i metadati delle attività esistenti.",
+      "taskEditorWorkflowPickers": "Visibilità e ordine delle proprietà",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: scegli le proprietà visibili in Task Editor e il loro ordine, incluse le proprietà personalizzate supportate. Nascondere una riga non modifica i metadati esistenti.",
       "taskEditorWorkflowPickersMoveDown": "Sposta in basso",
       "taskEditorWorkflowPickersMoveUp": "Sposta in alto",
       "taskEditorWorkflowPickersReorder": "Riordina selettori flusso di lavoro",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "b38a898667ff3b425a4fcee8c07d41423c8cb4689c15a9ab0068b70deb017052"
+  "sourceVersion": "1fa20d7b6f4867fbd9668cd52c278b44fd65113d47134929340276491b458ae5"
 }

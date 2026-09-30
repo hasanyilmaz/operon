@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "图标",
       "taskCreatorToolbarTooltip_taskImage": "任务图像",
       "taskCreatorToolbarTooltip_taskType": "任务类型",
+      "taskEditorFileBodySection": "文件正文",
       "taskEditorMobileCoreTools": "移动端任务编辑器工具栏",
       "taskEditorMobileCoreToolsDesc": "“移动端任务编辑器工具栏”控制手机上出现哪些核心图标并调整其顺序。可见时，“前往源文件”始终在最前，“移除”始终在最后。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "重新排序移动端核心图标",
       "taskEditorShowLineNumbers": "在任务编辑器中显示行号",
       "taskEditorShowLineNumbersDesc": "在任务编辑器的文件正文面板中显示源行号。",
-      "taskEditorWorkflowPickers": "工作流选择器",
-      "taskEditorWorkflowPickersDesc": "选择任务编辑器中出现哪些选择器行，然后调整其顺序。隐藏的选择器不会更改现有的任务元数据。",
+      "taskEditorWorkflowPickers": "属性显示与排序",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers：选择在 Task Editor 中显示的属性行及其顺序，包括受支持的自定义属性。隐藏行不会更改现有任务元数据。",
       "taskEditorWorkflowPickersMoveDown": "下移",
       "taskEditorWorkflowPickersMoveUp": "上移",
       "taskEditorWorkflowPickersReorder": "重新排序工作流选择器",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "cf5a81418898120bfe857785f4f120a201794738b0e030e689ed6cf638da620e"
+  "sourceVersion": "b5bbc96f69e5d1d78f2be22cc9c3e0837ad528a2c27f338ba0aec90dd252a525"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Simge",
       "taskCreatorToolbarTooltip_taskImage": "Görev Görseli",
       "taskCreatorToolbarTooltip_taskType": "Görev Türü",
+      "taskEditorFileBodySection": "Dosya İçeriği",
       "taskEditorMobileCoreTools": "Mobil Görev Editörü Araç Çubuğu",
       "taskEditorMobileCoreToolsDesc": "Mobil Görev Editörü Araç Çubuğu, telefonda hangi temel simgelerin görüneceğini ve sıralarını belirler. Görünür olduklarında Kaynağa Git başta, Kaldır sonda kalır.",
       "taskEditorMobileCoreToolsMoveDown": "Aşağı taşı",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Mobil temel simgeleri sırala",
       "taskEditorShowLineNumbers": "Görev Editörü'nde satır numaralarını göster",
       "taskEditorShowLineNumbersDesc": "Görev Editörü dosya gövdesi panelinde kaynak satır numaralarını gösterir.",
-      "taskEditorWorkflowPickers": "İş Akışı Seçicileri",
-      "taskEditorWorkflowPickersDesc": "Görev Editörü'nde hangi seçici satırlarının görüneceğini seç ve sıralarını düzenle. Gizlenen seçiciler mevcut görev metadatasını değiştirmez.",
+      "taskEditorWorkflowPickers": "Özellik Görünürlüğü ve Sıralaması",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: desteklenen özel özellikler dahil Task Editor içinde hangi özellik satırlarının görüneceğini ve sırasını seçin. Bir satırı gizlemek mevcut görev verilerini değiştirmez.",
       "taskEditorWorkflowPickersMoveDown": "Aşağı taşı",
       "taskEditorWorkflowPickersMoveUp": "Yukarı taşı",
       "taskEditorWorkflowPickersReorder": "İş akışı seçicilerini sırala",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "791af1ec876092bf242ef1293eee427c4874d37a6b095f056eb87eaee4a98d78"
+  "sourceVersion": "1c564671466e229ae72d30a57fa6ae2a7e8e86565effcf1d5ccf2b7e2c269ed6"
 }

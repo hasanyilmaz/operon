@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Icono",
       "taskCreatorToolbarTooltip_taskImage": "Imagen de tarea",
       "taskCreatorToolbarTooltip_taskType": "Tipo de tarea",
+      "taskEditorFileBodySection": "Contenido del archivo",
       "taskEditorMobileCoreTools": "Barra de herramientas del Editor de tareas móvil",
       "taskEditorMobileCoreToolsDesc": "La barra de herramientas del Editor de tareas móvil controla qué iconos esenciales aparecen en los teléfonos y ajusta su orden. Ir al origen permanece primero y Quitar permanece último cuando están visibles.",
       "taskEditorMobileCoreToolsMoveDown": "Mover hacia abajo",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Reordenar iconos esenciales móviles",
       "taskEditorShowLineNumbers": "Mostrar números de línea en el Editor de tareas",
       "taskEditorShowLineNumbersDesc": "Mostrar los números de línea de origen en el panel de cuerpo del archivo del Editor de tareas.",
-      "taskEditorWorkflowPickers": "Selectores de flujo de trabajo",
-      "taskEditorWorkflowPickersDesc": "Elegir qué filas de selector aparecen en el Editor de tareas y luego ajustar su orden. Los selectores ocultos no cambian los metadatos de tareas existentes.",
+      "taskEditorWorkflowPickers": "Visibilidad y orden de propiedades",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: elige las filas de propiedades que aparecen en Task Editor y su orden, incluidas las propiedades personalizadas compatibles. Ocultar una fila no cambia los metadatos existentes de la tarea.",
       "taskEditorWorkflowPickersMoveDown": "Mover hacia abajo",
       "taskEditorWorkflowPickersMoveUp": "Mover hacia arriba",
       "taskEditorWorkflowPickersReorder": "Reordenar selectores de flujo de trabajo",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8de67ef37f18fa04b8ef44b4264c236e5bb426abfc483ffbcae10130160aeed2"
+  "sourceVersion": "1310a3d7f85435911de1ad3424d70910c4242cf89c2fb572f217b715dd8c7ca1"
 }

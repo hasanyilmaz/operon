@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "アイコン",
       "taskCreatorToolbarTooltip_taskImage": "タスク画像",
       "taskCreatorToolbarTooltip_taskType": "タスクタイプ",
+      "taskEditorFileBodySection": "ファイル本文",
       "taskEditorMobileCoreTools": "モバイルタスクエディターツールバー",
       "taskEditorMobileCoreToolsDesc": "モバイルタスクエディターツールバーは、スマートフォンに表示されるコアアイコンを制御し、順序を調整します。表示時、「ソースへ移動」は常に先頭、「削除」は常に末尾になります。",
       "taskEditorMobileCoreToolsMoveDown": "下へ移動",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "モバイルのコアアイコンを並べ替え",
       "taskEditorShowLineNumbers": "タスクエディターに行番号を表示",
       "taskEditorShowLineNumbersDesc": "タスクエディターのファイル本文パネルにソースの行番号を表示します。",
-      "taskEditorWorkflowPickers": "ワークフローピッカー",
-      "taskEditorWorkflowPickersDesc": "タスクエディターに表示するピッカー行を選択し、順序を調整します。非表示のピッカーは既存のタスクメタデータを変更しません。",
+      "taskEditorWorkflowPickers": "プロパティの表示と順序",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: 対応するカスタムプロパティを含め、Task Editor に表示するプロパティ行とその順序を選択します。行を非表示にしても既存のタスクメタデータは変更されません。",
       "taskEditorWorkflowPickersMoveDown": "下へ移動",
       "taskEditorWorkflowPickersMoveUp": "上へ移動",
       "taskEditorWorkflowPickersReorder": "ワークフローピッカーを並べ替え",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "f3ccaec835975199c690fa079ef94a0c742a7e1d3ec74476acf605b35a6b68fc"
+  "sourceVersion": "592337f7e0836444175283b94c27fab39b0caa80ee0608e502ce25a26971cd54"
 }

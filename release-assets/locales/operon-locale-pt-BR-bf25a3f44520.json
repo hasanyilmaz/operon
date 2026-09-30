@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Ícone",
       "taskCreatorToolbarTooltip_taskImage": "Imagem da tarefa",
       "taskCreatorToolbarTooltip_taskType": "Tipo de tarefa",
+      "taskEditorFileBodySection": "Conteúdo do arquivo",
       "taskEditorMobileCoreTools": "Barra de ferramentas móvel do Editor de Tarefa",
       "taskEditorMobileCoreToolsDesc": "A barra de ferramentas móvel do Editor de Tarefa controla quais ícones principais aparecem nos telefones e ajusta sua ordem. Ir para a origem permanece primeiro e Remover permanece por último quando visíveis.",
       "taskEditorMobileCoreToolsMoveDown": "Mover para baixo",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Reordenar ícones principais móveis",
       "taskEditorShowLineNumbers": "Mostrar números de linha no Editor de Tarefa",
       "taskEditorShowLineNumbersDesc": "Exibir números de linha da origem no painel do corpo do arquivo do Editor de Tarefa.",
-      "taskEditorWorkflowPickers": "Seletores de fluxo de trabalho",
-      "taskEditorWorkflowPickersDesc": "Escolha quais linhas de seleção aparecem no Editor de Tarefa e ajuste sua ordem. Seletores ocultos não alteram os metadados existentes da tarefa.",
+      "taskEditorWorkflowPickers": "Visibilidade e ordem das propriedades",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers: escolha as propriedades exibidas no Task Editor e sua ordem, incluindo propriedades personalizadas compatíveis. Ocultar uma linha não altera os metadados existentes da tarefa.",
       "taskEditorWorkflowPickersMoveDown": "Mover para baixo",
       "taskEditorWorkflowPickersMoveUp": "Mover para cima",
       "taskEditorWorkflowPickersReorder": "Reordenar seletores de fluxo de trabalho",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "476cfd0ef92932f59eb1f8a9bd382056cb51934d4727e4fc4d5f540ae34ac3fd"
+  "sourceVersion": "0ee2874ad9d3f31c915996ed7983ecc34c40dd19b80efa272d52c097622f82cd"
 }

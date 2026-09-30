@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Icône",
       "taskCreatorToolbarTooltip_taskImage": "Image de tâche",
       "taskCreatorToolbarTooltip_taskType": "Type de tâche",
+      "taskEditorFileBodySection": "Contenu du fichier",
       "taskEditorMobileCoreTools": "Barre d'outils de l'éditeur de tâche mobile",
       "taskEditorMobileCoreToolsDesc": "La barre d'outils de l'éditeur de tâche mobile détermine quelles icônes essentielles apparaissent sur les téléphones et ajuste leur ordre. Les actions Aller à la source et Retirer restent respectivement en première et dernière position lorsqu'elles sont visibles.",
       "taskEditorMobileCoreToolsMoveDown": "Déplacer vers le bas",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "Réorganiser les icônes essentielles mobiles",
       "taskEditorShowLineNumbers": "Afficher les numéros de ligne dans l'éditeur de tâche",
       "taskEditorShowLineNumbersDesc": "Afficher les numéros de ligne source dans le panneau de contenu du fichier de l'éditeur de tâche.",
-      "taskEditorWorkflowPickers": "Sélecteurs de workflow",
-      "taskEditorWorkflowPickersDesc": "Choisissez quelles lignes de sélecteurs apparaissent dans l'éditeur de tâche, puis ajustez leur ordre. Les sélecteurs masqués ne modifient pas les métadonnées de tâche existantes.",
+      "taskEditorWorkflowPickers": "Visibilité et ordre des propriétés",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers : choisissez les propriétés affichées dans Task Editor et leur ordre, y compris les propriétés personnalisées prises en charge. Masquer une ligne ne modifie pas les métadonnées existantes.",
       "taskEditorWorkflowPickersMoveDown": "Déplacer vers le bas",
       "taskEditorWorkflowPickersMoveUp": "Déplacer vers le haut",
       "taskEditorWorkflowPickersReorder": "Réorganiser les sélecteurs de workflow",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "4211894013b9b24f8adcb6ec12afaf7d59f3dfe04ed9f27dc386037d5da6de66"
+  "sourceVersion": "6b4bc5c3b18344d3bdf8c72ea7dbd292db4383f088e785e3260dea82a8fcdf2f"
 }

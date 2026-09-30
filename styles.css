@@ -35171,3 +35171,9 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-scope *) button.operon-settings-icon-picker-trigger:hover {
 	background: var(--background-modifier-hover);
 }
+
+/* Task Editor Settings: center controls without changing the editor surface. */
+.operon-settings-search-control-row:where(.operon-settings-scope, .operon-settings-scope *)[data-operon-settings-search-key="taskEditorShowLineNumbers"] > .setting-item-control,
+.operon-task-editor-properties-group:where(.operon-settings-scope) .operon-settings-list-card-actions {
+	align-self: center;
+}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3518,
-  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
+  "keyCount": 3519,
+  "keyFingerprint": "e8a81085da9d0f306ed46280d59498eff17a148808518ef9bd5d9b346b6d6a3b",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2651,6 +2651,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "圖示",
       "taskCreatorToolbarTooltip_taskImage": "任務圖片",
       "taskCreatorToolbarTooltip_taskType": "任務類型",
+      "taskEditorFileBodySection": "檔案內文",
       "taskEditorMobileCoreTools": "移動端任務編輯器工具欄",
       "taskEditorMobileCoreToolsDesc": "「移動端任務編輯器工具欄」控制手機上出現哪些核心圖示並調整其順序。可見時，「前往原始檔」始終在最前，「移除」始終在最後。",
       "taskEditorMobileCoreToolsMoveDown": "下移",
@@ -2658,8 +2659,8 @@
       "taskEditorMobileCoreToolsReorder": "重新排序移動端核心圖示",
       "taskEditorShowLineNumbers": "在任務編輯器中顯示行號",
       "taskEditorShowLineNumbersDesc": "在任務編輯器的檔案正文面板中顯示源行號。",
-      "taskEditorWorkflowPickers": "工作流選擇器",
-      "taskEditorWorkflowPickersDesc": "選擇任務編輯器中出現哪些選擇器行，然後調整其順序。隱藏的選擇器不會更改現有的任務後設資料。",
+      "taskEditorWorkflowPickers": "屬性顯示與排序",
+      "taskEditorWorkflowPickersDesc": "Workflow Pickers：選擇在 Task Editor 中顯示的屬性列及其順序，包括支援的自訂屬性。隱藏列不會變更現有任務中繼資料。",
       "taskEditorWorkflowPickersMoveDown": "下移",
       "taskEditorWorkflowPickersMoveUp": "上移",
       "taskEditorWorkflowPickersReorder": "重新排序工作流選擇器",
@@ -3563,5 +3564,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "0e4f2f3fc96e90fa2351c9bfc1161dbe8409090c762200e972c7c4db517a33a6"
+  "sourceVersion": "6a6944923ddca5354c31fc0f0b210eb323580d0630e115cd22fb89590453d316"
 }
