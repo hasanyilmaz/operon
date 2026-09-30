@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "默认工作流：{{name}}",
       "defaultPriority": "新任务的默认优先级",
       "defaultPriorityDesc": "创建新任务时自动分配。留空则无默认值。",
+      "defaultStateIconsSection": "默认状态图标",
       "defaultStatusDone": "已完成",
       "defaultStatusOpen": "未完成",
       "deleteExternalCalendarConfirm": "删除外部日历",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "尚未添加外部日历。",
       "externalCalendarsTitle": "外部日历",
       "fallbackCancelledStateIcon": "已取消状态图标",
-      "fallbackCancelledStateIconDesc": "当任务没有 taskIcon 且其状态为已取消时，在实时预览和紧凑任务行中使用。",
+      "fallbackCancelledStateIconDesc": "当任务自身的图标和所选备用来源均未提供图标时，用于已取消的任务。",
       "fallbackFinishedStateIcon": "已完成状态图标",
-      "fallbackFinishedStateIconDesc": "当任务没有 taskIcon 且其状态为已完成时，在实时预览和紧凑任务行中使用。",
+      "fallbackFinishedStateIconDesc": "当任务自身的图标和所选备用来源均未提供图标时，用于已完成的任务。",
       "fallbackOpenStateIcon": "未完成状态图标",
-      "fallbackOpenStateIconDesc": "当任务没有 taskIcon 且其状态为未完成时，在实时预览和紧凑任务行中使用。",
+      "fallbackOpenStateIconDesc": "当任务自身的图标和所选备用来源均未提供图标时，用于未完成的任务。",
       "fallbackTaskIconSource": "后备图标来源",
       "fallbackTaskIconSourceDesc": "选择当任务没有 taskIcon 时 Operon 检查的来源。如果该来源没有匹配的图标，则使用未完成、已完成或已取消的状态图标。",
       "fallbackTaskIconSourcePipelineStatus": "工作流状态图标",
       "fallbackTaskIconSourcePriority": "优先级图标",
       "fallbackTaskIconSourceState": "状态图标",
-      "fallbackTaskStateIcons": "任务图标回退和颜色",
+      "fallbackTaskStateIcons": "图标和颜色来源",
       "fileParentTaskTargetDefault": "默认保存位置",
       "fileParentTaskTargetInsideParentFile": "父文件内部",
       "fileParentTaskTargetMode": "父任务为文件任务时的行内任务放置",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "重复任务放置、文件发生目标位置和重复 YAML 清理。",
       "settingsPageRelationshipsDesc": "任务层级的自动父级链接、继承和项目序号。",
       "settingsPageRemindersDesc": "提醒发送、系统通知、声音和错过提醒的补发行为。",
-      "settingsPageStateIconsDesc": "后备任务图标，以及用于切换任务状态的主任务图标颜色来源。",
+      "settingsPageStateIconsDesc": "任务图标的点击行为、备用图标和颜色来源。",
       "settingsPageTaskChipsDesc": "任务创建器工具栏按钮，以及用于行内任务、筛选视图结果、看板卡片、任务查找器和任务维基链接覆盖层的紧凑任务标签。",
       "settingsPageTaskEditorDesc": "任务编辑器选择器行、顺序和可见性。",
       "settingsPageTaskFinderDesc": "任务查找器启动行为、可见结果、记住的范围、快捷键和结果标签。",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "重复",
       "subtabRelationships": "关系",
       "subtabReminders": "提醒",
-      "subtabStateIcons": "状态图标和颜色",
+      "subtabStateIcons": "任务图标和颜色",
       "subtabTaskChips": "任务标签",
       "subtabTaskEditor": "任务编辑器",
       "subtabTaskFinder": "任务查找器",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "d6f4d8591a87f018e8fcf55a92e8b436923a5db299739384622b95181ae6b56f"
+  "sourceVersion": "cf5a81418898120bfe857785f4f120a201794738b0e030e689ed6cf638da620e"
 }

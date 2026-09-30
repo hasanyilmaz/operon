@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Flujo de trabajo predeterminado: {{name}}",
       "defaultPriority": "Prioridad predeterminada para nuevas tareas",
       "defaultPriorityDesc": "Se asigna automáticamente al crear una nueva tarea. Dejar vacío para no tener predeterminada.",
+      "defaultStateIconsSection": "Iconos de estado predeterminados",
       "defaultStatusDone": "Hecha",
       "defaultStatusOpen": "Abierta",
       "deleteExternalCalendarConfirm": "Eliminar calendario externo",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Aún no se han añadido calendarios externos.",
       "externalCalendarsTitle": "Calendarios externos",
       "fallbackCancelledStateIcon": "Icono de estado Cancelada",
-      "fallbackCancelledStateIconDesc": "Usado cuando una tarea no tiene taskIcon y su estado es cancelada, en Live Preview y en las filas de tarea compactas.",
+      "fallbackCancelledStateIconDesc": "Se usa para tareas canceladas cuando ni el icono propio de la tarea ni la fuente alternativa seleccionada proporcionan un icono.",
       "fallbackFinishedStateIcon": "Icono de estado Finalizada",
-      "fallbackFinishedStateIconDesc": "Usado cuando una tarea no tiene taskIcon y su estado es finalizada, en Live Preview y en las filas de tarea compactas.",
+      "fallbackFinishedStateIconDesc": "Se usa para tareas finalizadas cuando ni el icono propio de la tarea ni la fuente alternativa seleccionada proporcionan un icono.",
       "fallbackOpenStateIcon": "Icono de estado Abierta",
-      "fallbackOpenStateIconDesc": "Usado cuando una tarea no tiene taskIcon y su estado es abierta, en Live Preview y en las filas de tarea compactas.",
+      "fallbackOpenStateIconDesc": "Se usa para tareas abiertas cuando ni el icono propio de la tarea ni la fuente alternativa seleccionada proporcionan un icono.",
       "fallbackTaskIconSource": "Origen del icono de reserva",
       "fallbackTaskIconSourceDesc": "Elegir qué origen comprueba Operon cuando una tarea no tiene taskIcon. Si ese origen no tiene un icono coincidente, se usa el icono de estado Abierta, Finalizada o Cancelada.",
       "fallbackTaskIconSourcePipelineStatus": "Iconos de estado del flujo de trabajo",
       "fallbackTaskIconSourcePriority": "Iconos de prioridad",
       "fallbackTaskIconSourceState": "Iconos de estado",
-      "fallbackTaskStateIcons": "Iconos de tarea alternativos y colores",
+      "fallbackTaskStateIcons": "Fuentes de iconos y colores",
       "fileParentTaskTargetDefault": "Ubicación de guardado predeterminada",
       "fileParentTaskTargetInsideParentFile": "Dentro del archivo principal",
       "fileParentTaskTargetMode": "Ubicación de tarea en línea cuando la principal es tarea de archivo",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Ubicación de tareas recurrentes, destinos de ocurrencias de archivo y limpieza de YAML recurrente.",
       "settingsPageRelationshipsDesc": "Enlaces automáticos a tareas principales, herencia y números de serie de proyecto para jerarquías de tareas.",
       "settingsPageRemindersDesc": "Entrega de recordatorios, notificaciones del sistema, sonido y recuperación de recordatorios perdidos.",
-      "settingsPageStateIconsDesc": "Iconos de tarea de reserva y origen de color para el icono principal que cambia el estado de la tarea.",
+      "settingsPageStateIconsDesc": "Comportamiento al pulsar el icono de tarea, iconos alternativos y fuentes de color.",
       "settingsPageTaskChipsDesc": "Botones de la barra de herramientas del Creador de tareas más chips de tarea compactos para tareas en línea, resultados de la Vista de filtros, tarjetas Kanban, Buscador de tareas y Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Filas de selector del Editor de tareas, orden y visibilidad.",
       "settingsPageTaskFinderDesc": "Comportamiento de inicio del Buscador de tareas, resultados visibles, ámbitos recordados, atajos y chips de resultados.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Recurrencia",
       "subtabRelationships": "Relaciones",
       "subtabReminders": "Recordatorios",
-      "subtabStateIcons": "Iconos y colores de estado",
+      "subtabStateIcons": "Iconos y colores de tareas",
       "subtabTaskChips": "Chips de tarea",
       "subtabTaskEditor": "Editor de tareas",
       "subtabTaskFinder": "Buscador de tareas",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "c788546a3e794276e184d2c6b9b70fe9041760b7c4a6b52bc428265af54a87b6"
+  "sourceVersion": "8de67ef37f18fa04b8ef44b4264c236e5bb426abfc483ffbcae10130160aeed2"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "デフォルトのワークフロー: {{name}}",
       "defaultPriority": "新しいタスクのデフォルト優先度",
       "defaultPriorityDesc": "新しいタスクの作成時に自動的に割り当てられます。デフォルトなしにする場合は空のままにします。",
+      "defaultStateIconsSection": "既定の状態アイコン",
       "defaultStatusDone": "完了",
       "defaultStatusOpen": "未完了",
       "deleteExternalCalendarConfirm": "外部カレンダーを削除",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "外部カレンダーはまだ追加されていません。",
       "externalCalendarsTitle": "外部カレンダー",
       "fallbackCancelledStateIcon": "キャンセル状態のアイコン",
-      "fallbackCancelledStateIconDesc": "タスクに taskIcon がなく、状態がキャンセルの場合に、ライブプレビューとコンパクトなタスク行で使用されます。",
+      "fallbackCancelledStateIconDesc": "タスク自体のアイコンも選択した代替ソースもアイコンを提供しない場合、キャンセルされたタスクに使用します。",
       "fallbackFinishedStateIcon": "完了状態のアイコン",
-      "fallbackFinishedStateIconDesc": "タスクに taskIcon がなく、状態が完了の場合に、ライブプレビューとコンパクトなタスク行で使用されます。",
+      "fallbackFinishedStateIconDesc": "タスク自体のアイコンも選択した代替ソースもアイコンを提供しない場合、完了したタスクに使用します。",
       "fallbackOpenStateIcon": "未完了状態のアイコン",
-      "fallbackOpenStateIconDesc": "タスクに taskIcon がなく、状態が未完了の場合に、ライブプレビューとコンパクトなタスク行で使用されます。",
+      "fallbackOpenStateIconDesc": "タスク自体のアイコンも選択した代替ソースもアイコンを提供しない場合、未完了のタスクに使用します。",
       "fallbackTaskIconSource": "フォールバックアイコンのソース",
       "fallbackTaskIconSourceDesc": "タスクに taskIcon がない場合に Operon が確認するソースを選択します。そのソースに一致するアイコンがない場合、未完了・完了・キャンセルの状態アイコンが使用されます。",
       "fallbackTaskIconSourcePipelineStatus": "ワークフローステータスのアイコン",
       "fallbackTaskIconSourcePriority": "優先度アイコン",
       "fallbackTaskIconSourceState": "状態アイコン",
-      "fallbackTaskStateIcons": "タスクアイコンのフォールバックと色",
+      "fallbackTaskStateIcons": "アイコンと色のソース",
       "fileParentTaskTargetDefault": "デフォルトの保存先",
       "fileParentTaskTargetInsideParentFile": "親ファイルの中",
       "fileParentTaskTargetMode": "親がファイルタスクの場合のインラインタスクの配置",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "繰り返しタスクの配置、ファイルの繰り返し先、繰り返し YAML のクリーンアップ。",
       "settingsPageRelationshipsDesc": "タスク階層の自動親リンク、継承、プロジェクトシリアル。",
       "settingsPageRemindersDesc": "リマインダーの配信、システム通知、サウンド、未通知リマインダーの追跡動作。",
-      "settingsPageStateIconsDesc": "フォールバックのタスクアイコンと、状態を切り替えるメインのタスクアイコンの色ソース。",
+      "settingsPageStateIconsDesc": "タスクアイコンのクリック動作、代替アイコン、色のソース。",
       "settingsPageTaskChipsDesc": "タスク作成ツールバーのボタンと、インラインタスク・フィルタービューの結果・Kanban カード・タスクファインダー・タスクウィキリンクオーバーレイ用のコンパクトなタスクチップ。",
       "settingsPageTaskEditorDesc": "タスクエディターのピッカー行、順序、表示。",
       "settingsPageTaskFinderDesc": "タスクファインダーの起動動作、表示する結果、記憶される範囲、ショートカット、結果チップ。",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "繰り返し",
       "subtabRelationships": "関係",
       "subtabReminders": "リマインダー",
-      "subtabStateIcons": "状態アイコンと色",
+      "subtabStateIcons": "タスクのアイコンと色",
       "subtabTaskChips": "タスクチップ",
       "subtabTaskEditor": "タスクエディター",
       "subtabTaskFinder": "タスクファインダー",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "563fbe35bbe23c0c37ad80c145668d1d015da4d5b279209862071e6d139dc0d8"
+  "sourceVersion": "f3ccaec835975199c690fa079ef94a0c742a7e1d3ec74476acf605b35a6b68fc"
 }

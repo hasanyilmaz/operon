@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Pipeline padrão: {{name}}",
       "defaultPriority": "Prioridade padrão para novas tarefas",
       "defaultPriorityDesc": "Atribuído automaticamente ao criar uma nova tarefa. Deixe vazio se não houver padrão.",
+      "defaultStateIconsSection": "Ícones de estado padrão",
       "defaultStatusDone": "Concluído",
       "defaultStatusOpen": "Aberto",
       "deleteExternalCalendarConfirm": "Excluir calendário externo",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Nenhum calendário externo adicionado ainda.",
       "externalCalendarsTitle": "Calendários externos",
       "fallbackCancelledStateIcon": "Ícone de status cancelado",
-      "fallbackCancelledStateIconDesc": "Usado quando uma tarefa não possui taskIcon e seu estado está cancelado no Live Preview e nas linhas compactas de tarefas.",
+      "fallbackCancelledStateIconDesc": "Usado para tarefas canceladas quando nem o ícone da tarefa nem a fonte alternativa selecionada fornecem um ícone.",
       "fallbackFinishedStateIcon": "Ícone de estado finalizado",
-      "fallbackFinishedStateIconDesc": "Usado quando a tarefa não possui taskIcon e seu status está como Concluído tanto na Pré-visualização ao Vivo quanto nas linhas compactas de tarefas.",
+      "fallbackFinishedStateIconDesc": "Usado para tarefas concluídas quando nem o ícone da tarefa nem a fonte alternativa selecionada fornecem um ícone.",
       "fallbackOpenStateIcon": "Ícone de estado Aberto",
-      "fallbackOpenStateIconDesc": "Usado quando a tarefa não possui taskIcon e seu status está aberto na Pré-visualização ao Vivo e nas linhas compactas de tarefas.",
+      "fallbackOpenStateIconDesc": "Usado para tarefas abertas quando nem o ícone da tarefa nem a fonte alternativa selecionada fornecem um ícone.",
       "fallbackTaskIconSource": "Origem do ícone de fallback",
       "fallbackTaskIconSourceDesc": "Escolha qual origem Operon verifica quando uma tarefa não possui taskIcon. Se essa origem não tiver um ícone correspondente, o ícone de estado Aberto, Concluído ou Cancelado será usado.",
       "fallbackTaskIconSourcePipelineStatus": "Ícones de status do fluxo",
       "fallbackTaskIconSourcePriority": "Ícones de prioridade",
       "fallbackTaskIconSourceState": "Ícones de estado",
-      "fallbackTaskStateIcons": "Fallback e Cores dos Ícones de Tarefa",
+      "fallbackTaskStateIcons": "Fontes de ícones e cores",
       "fileParentTaskTargetDefault": "Local de salvamento padrão",
       "fileParentTaskTargetInsideParentFile": "Dentro do arquivo pai",
       "fileParentTaskTargetMode": "Posicionamento de tarefa inline quando o pai é uma tarefa em arquivo",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Posicionamento de tarefa recorrente, destinos de ocorrência de arquivo e limpeza recorrente YAML.",
       "settingsPageRelationshipsDesc": "Links parentais automáticos, herança e números de série de projeto para hierarquias de tarefas.",
       "settingsPageRemindersDesc": "Entrega de lembretes, notificações do sistema, som e comportamento de recuperação de lembretes perdidos.",
-      "settingsPageStateIconsDesc": "Ícones de tarefa de fallback e a origem de cor para o ícone principal da tarefa do ciclo de status.",
+      "settingsPageStateIconsDesc": "Comportamento ao clicar no ícone da tarefa, ícones alternativos e fontes de cor.",
       "settingsPageTaskChipsDesc": "Botões da barra de ferramentas do Criador de Tarefas, mais chips compactos para tarefas inline, resultados da Visualização Filtrada, cartões Kanban e Localizador de Tarefas, e Sobreposições Wikilink de Tarefa.",
       "settingsPageTaskEditorDesc": "Linhas do seletor (picker) do Editor de Tarefa, ordem e visibilidade.",
       "settingsPageTaskFinderDesc": "Comportamento de lançamento do Localizador de Tarefas, resultados visíveis, escopos lembrados, atalhos e chips de resultado.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Recorrência",
       "subtabRelationships": "Relacionamentos",
       "subtabReminders": "Lembretes",
-      "subtabStateIcons": "Ícones e Cores de Estado",
+      "subtabStateIcons": "Ícones e cores das tarefas",
       "subtabTaskChips": "Chips de Tarefa",
       "subtabTaskEditor": "Editor de Tarefa",
       "subtabTaskFinder": "Localizador de tarefas",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "5111707cb90b57ba11fcda619ed4aa60e408ef192750ece9ed80d2ec0d1811fc"
+  "sourceVersion": "476cfd0ef92932f59eb1f8a9bd382056cb51934d4727e4fc4d5f540ae34ac3fd"
 }

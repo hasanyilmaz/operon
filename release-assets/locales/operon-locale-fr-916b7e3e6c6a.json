@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Pipeline par défaut : {{name}}",
       "defaultPriority": "Priorité par défaut des nouvelles tâches",
       "defaultPriorityDesc": "Automatiquement assignée lors de la création d'une nouvelle tâche. Laissez vide pour aucune valeur par défaut.",
+      "defaultStateIconsSection": "Icônes d’état par défaut",
       "defaultStatusDone": "Terminée",
       "defaultStatusOpen": "Ouverte",
       "deleteExternalCalendarConfirm": "Supprimer le calendrier externe",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Aucun calendrier externe ajouté pour le moment.",
       "externalCalendarsTitle": "Calendriers externes",
       "fallbackCancelledStateIcon": "Icône de l'état Annulé",
-      "fallbackCancelledStateIconDesc": "Utilisée lorsqu'une tâche n'a pas de taskIcon et que son état est annulé, dans l'Aperçu en direct et les lignes de tâche compactes.",
+      "fallbackCancelledStateIconDesc": "Utilisée pour les tâches annulées lorsque ni l’icône propre à la tâche ni la source de remplacement choisie ne fournit d’icône.",
       "fallbackFinishedStateIcon": "Icône de l'état Terminé",
-      "fallbackFinishedStateIconDesc": "Utilisée lorsqu'une tâche n'a pas de taskIcon et que son état est terminé, dans l'Aperçu en direct et les lignes de tâche compactes.",
+      "fallbackFinishedStateIconDesc": "Utilisée pour les tâches terminées lorsque ni l’icône propre à la tâche ni la source de remplacement choisie ne fournit d’icône.",
       "fallbackOpenStateIcon": "Icône de l'état Ouvert",
-      "fallbackOpenStateIconDesc": "Utilisée lorsqu'une tâche n'a pas de taskIcon et que son état est ouvert, dans l'Aperçu en direct et les lignes de tâche compactes.",
+      "fallbackOpenStateIconDesc": "Utilisée pour les tâches ouvertes lorsque ni l’icône propre à la tâche ni la source de remplacement choisie ne fournit d’icône.",
       "fallbackTaskIconSource": "Source de l'icône de repli",
       "fallbackTaskIconSourceDesc": "Choisissez quelle source Operon vérifie lorsqu'une tâche n'a pas de taskIcon. Si cette source n'a pas d'icône correspondante, l'icône de l'état Ouvert, Terminé ou Annulé est utilisée.",
       "fallbackTaskIconSourcePipelineStatus": "Icônes de statut de pipeline",
       "fallbackTaskIconSourcePriority": "Icônes de priorité",
       "fallbackTaskIconSourceState": "Icônes d'état",
-      "fallbackTaskStateIcons": "Icônes de tâche de repli et couleurs",
+      "fallbackTaskStateIcons": "Sources des icônes et des couleurs",
       "fileParentTaskTargetDefault": "Emplacement d'enregistrement par défaut",
       "fileParentTaskTargetInsideParentFile": "À l'intérieur du fichier parent",
       "fileParentTaskTargetMode": "Placement des tâches en ligne lorsque le parent est une tâche-fichier",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Placement des tâches récurrentes, destinations des occurrences de tâches-fichiers et nettoyage du YAML récurrent.",
       "settingsPageRelationshipsDesc": "Liens parents automatiques, héritage et numéros de série de projet pour les hiérarchies de tâches.",
       "settingsPageRemindersDesc": "Distribution des rappels, notifications système, son et rattrapage des rappels manqués.",
-      "settingsPageStateIconsDesc": "Icônes de tâche de repli et source de couleur de l'icône principale qui change l'état de la tâche.",
+      "settingsPageStateIconsDesc": "Comportement au clic sur l’icône de tâche, icônes de remplacement et sources de couleur.",
       "settingsPageTaskChipsDesc": "Boutons de la barre d'outils du créateur de tâches et puces de tâche compactes pour les tâches en ligne, les résultats de la vue de filtre, les cartes Kanban, la recherche de tâches et les Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Lignes de sélecteurs de l'éditeur de tâche, ordre et visibilité.",
       "settingsPageTaskFinderDesc": "Comportement de lancement de la recherche de tâches, résultats visibles, portées mémorisées, raccourcis et puces de résultats.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Récurrence",
       "subtabRelationships": "Relations",
       "subtabReminders": "Rappels",
-      "subtabStateIcons": "Icônes et couleurs d'état",
+      "subtabStateIcons": "Icônes et couleurs des tâches",
       "subtabTaskChips": "Puces de tâche",
       "subtabTaskEditor": "Éditeur de tâche",
       "subtabTaskFinder": "Recherche de tâches",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "35d0807b56433acb73b73a105a89b307f0db6c261da50f3bdba8ae6ab84b9f83"
+  "sourceVersion": "4211894013b9b24f8adcb6ec12afaf7d59f3dfe04ed9f27dc386037d5da6de66"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Varsayılan akış: {{name}}",
       "defaultPriority": "Yeni görevler için varsayılan öncelik",
       "defaultPriorityDesc": "Yeni görev oluştururken otomatik atanır. Varsayılan olmasın istiyorsan boş bırak.",
+      "defaultStateIconsSection": "Varsayılan Durum Simgeleri",
       "defaultStatusDone": "Bitti",
       "defaultStatusOpen": "Açık",
       "deleteExternalCalendarConfirm": "Harici takvimi sil",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Henüz harici takvim eklenmedi.",
       "externalCalendarsTitle": "Harici Takvimler",
       "fallbackCancelledStateIcon": "İptal durum simgesi",
-      "fallbackCancelledStateIconDesc": "Görevin taskIcon değeri yoksa ve durumu iptal ise Canlı Önizleme ve kompakt görev satırlarında kullanılır.",
+      "fallbackCancelledStateIconDesc": "Görevin kendi simgesi ve seçilen yedek kaynak bir simge sağlamadığında iptal edilmiş görevler için kullanılır.",
       "fallbackFinishedStateIcon": "Bitmiş durum simgesi",
-      "fallbackFinishedStateIconDesc": "Görevin taskIcon değeri yoksa ve durumu bitmiş ise Canlı Önizleme ve kompakt görev satırlarında kullanılır.",
+      "fallbackFinishedStateIconDesc": "Görevin kendi simgesi ve seçilen yedek kaynak bir simge sağlamadığında tamamlanmış görevler için kullanılır.",
       "fallbackOpenStateIcon": "Açık durum simgesi",
-      "fallbackOpenStateIconDesc": "Görevin taskIcon değeri yoksa ve durumu açık ise Canlı Önizleme ve kompakt görev satırlarında kullanılır.",
+      "fallbackOpenStateIconDesc": "Görevin kendi simgesi ve seçilen yedek kaynak bir simge sağlamadığında açık görevler için kullanılır.",
       "fallbackTaskIconSource": "Yedek simge kaynağı",
       "fallbackTaskIconSourceDesc": "Görevde taskIcon yoksa Operon'un hangi kaynağa bakacağını seç. Seçili kaynakta eşleşen simge yoksa Açık, Bitmiş veya İptal durum simgesi kullanılır.",
       "fallbackTaskIconSourcePipelineStatus": "Akış durum simgeleri",
       "fallbackTaskIconSourcePriority": "Öncelik simgeleri",
       "fallbackTaskIconSourceState": "Durum simgeleri",
-      "fallbackTaskStateIcons": "Görev simgesi yedekleri ve renkleri",
+      "fallbackTaskStateIcons": "Simge ve Renk Kaynakları",
       "fileParentTaskTargetDefault": "Varsayılan kayıt yeri",
       "fileParentTaskTargetInsideParentFile": "Üst görev dosyasının içine",
       "fileParentTaskTargetMode": "Üst dosya görevi ise satır içi görev konumu",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Tekrarlayan görev yerleşimi, dosya oluşumu hedefleri ve tekrarlayan YAML temizliği.",
       "settingsPageRelationshipsDesc": "Görev hiyerarşileri için otomatik üst görev bağlantıları, kalıtım ve proje seri numaraları.",
       "settingsPageRemindersDesc": "Hatırlatıcı teslimi, sistem bildirimleri, ses ve kaçırılan hatırlatıcıları telafi etme davranışı.",
-      "settingsPageStateIconsDesc": "Yedek görev simgeleri ve durumu değiştiren ana görev simgesinin renk kaynağı.",
+      "settingsPageStateIconsDesc": "Görev simgesinin tıklama davranışı, yedek simgeler ve renk kaynakları.",
       "settingsPageTaskChipsDesc": "Görev Oluşturucu araç çubuğu düğmeleri, satır içi görevler, Filtre Görünümü sonuçları, Kanban kartları, Görev Bul ve Task Wikilink Overlay yüzeyleri için kompakt görev simgeleri.",
       "settingsPageTaskEditorDesc": "Görev Editörü picker satırları, sırası ve görünürlüğü.",
       "settingsPageTaskFinderDesc": "Görev Bul açılış davranışı, görünür sonuçlar, hatırlanan kapsamlar, kısayollar ve sonuç simgeleri.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Yineleme",
       "subtabRelationships": "İlişkiler",
       "subtabReminders": "Hatırlatıcılar",
-      "subtabStateIcons": "Durum Simgeleri ve Renkleri",
+      "subtabStateIcons": "Görev Simgeleri ve Renkleri",
       "subtabTaskChips": "Görev Simgeleri",
       "subtabTaskEditor": "Görev Editörü",
       "subtabTaskFinder": "Görev Bul",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "fe1ac65fe29c4b44a6cba703670dc98ce9788e07b059c7e6756d495c41680f45"
+  "sourceVersion": "791af1ec876092bf242ef1293eee427c4874d37a6b095f056eb87eaee4a98d78"
 }

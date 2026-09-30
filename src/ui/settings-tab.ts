@@ -774,7 +774,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksTaskRouter',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
-	'interfaceStateIcons',
 	'interfaceTaskEditor',
 	'interfaceTweaks',
 	'interfaceColorPalette',
@@ -1487,6 +1486,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildFiltersSettingsItems(entries) };
 		}
 
+		if (tab.id === 'interfaceStateIcons') {
+			return { type: 'page', name: pageName, desc, items: this.buildStateIconsSettingsItems(entries) };
+		}
+
 		if (SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS.has(tab.id)) {
 			const titleDocsTarget = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS[tab.id];
 			const titleAction = titleDocsTarget
@@ -1854,19 +1857,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildStateIconsSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const sourceEntry = this.buildSettingsSearchSettingDefinition(entries, 'fallbackTaskIconSource');
-		const colorSourceEntry = this.buildSettingsSearchSettingDefinition(entries, 'taskStatusIconColorSource');
-		return [
-			{
-				type: 'group',
-				heading: t('settings', 'fallbackTaskStateIcons'),
-				items: this.compactSettingsSearchDefinitions([
-					sourceEntry,
-					colorSourceEntry,
-					this.buildStateIconRowsSettingsDefinition(),
-				]),
-			},
-		];
+		const render = (containerEl: HTMLElement, key: string): void => this.renderTaskIconSetting(containerEl, key);
+		return this.buildTaskSettingsGroups([
+			['taskIconBehavior', ['taskIconClickAction'], render],
+			['fallbackTaskStateIcons', ['fallbackTaskIconSource', 'taskStatusIconColorSource'], render, ['DOCS-037 Pipelines and statuses', 'DOCS-038 Task priorities']],
+			['defaultStateIconsSection', ['fallbackOpenStateIcon', 'fallbackFinishedStateIcon', 'fallbackCancelledStateIcon'], render, 'DOCS-066 Icon picker'],
+		], entries, t('settings', 'subtabStateIcons'), 'DOCS-099 State Icons');
 	}
 
 	private buildTaskFinderSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -2521,28 +2517,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 	}
 
-	private buildStateIconRowsSettingsDefinition(): SettingDefinition {
-		return {
-			name: t('settings', 'fallbackTaskStateIcons'),
-			desc: this.getSettingsSearchTabDescription('interfaceStateIcons'),
-			aliases: [
-				'state icons',
-				'state icons and colors',
-				'fallback icons',
-				'task icon color',
-				'open state icon',
-				'finished state icon',
-				'cancelled state icon',
-			],
-			render: setting => {
-				setting.settingEl.empty();
-				setting.settingEl.addClass('operon-settings-search-bounded-render');
-				this.renderStateIconSetting(setting.settingEl, 'open', t('settings', 'fallbackOpenStateIcon'), t('settings', 'fallbackOpenStateIconDesc'));
-				this.renderStateIconSetting(setting.settingEl, 'done', t('settings', 'fallbackFinishedStateIcon'), t('settings', 'fallbackFinishedStateIconDesc'));
-				this.renderStateIconSetting(setting.settingEl, 'cancelled', t('settings', 'fallbackCancelledStateIcon'), t('settings', 'fallbackCancelledStateIconDesc'));
-			},
-		};
-	}
 
 	private compactSettingsSearchItems(items: Array<SettingDefinitionItem | null>): SettingDefinitionItem[] {
 		return items.filter((item): item is SettingDefinitionItem => item !== null);
@@ -3936,8 +3910,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderInterfaceTaskFinderTab(contentEl);
 		} else if (tabId === 'interfaceContextMenu') {
 			this.renderInterfaceContextMenuTab(contentEl);
-		} else if (tabId === 'interfaceStateIcons') {
-			this.renderInterfaceStateIconsTab(contentEl);
+
 		} else if (tabId === 'interfaceTaskEditor') {
 			this.renderInterfaceTaskEditorTab(contentEl);
 		} else if (tabId === 'interfaceTweaks') {
@@ -5724,24 +5697,29 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderInterfaceStateIconsTab(containerEl: HTMLElement): void {
-		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskIconBehavior'));
-		const actionSetting = this.renderBoundDropdownSetting(behaviorSection, t('settings', 'taskIconClickAction'), this.getTaskIconClickActionDescription(), 'taskIconClickAction', {
-			value: this.settings.taskIconClickAction,
-			dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('taskIconClickAction')).map(([value, label]) => ({ value, label })),
-			normalize: value => value === 'state' ? 'state' : 'pipeline',
-			onAfterChange: () => {
-				actionSetting.setDesc(this.getTaskIconClickActionDescription());
-				this.applyPendingSettingsChange();
-			},
-			rollbackOnError: true,
-		});
-		const sectionEl = renderNativeSettingsGroupedSection(containerEl, t('settings', 'fallbackTaskStateIcons'));
-		this.renderFallbackTaskIconSourceSetting(sectionEl);
-		this.renderTaskStatusIconColorSourceSetting(sectionEl);
-		this.renderStateIconSetting(sectionEl, 'open', t('settings', 'fallbackOpenStateIcon'), t('settings', 'fallbackOpenStateIconDesc'));
-		this.renderStateIconSetting(sectionEl, 'done', t('settings', 'fallbackFinishedStateIcon'), t('settings', 'fallbackFinishedStateIconDesc'));
-		this.renderStateIconSetting(sectionEl, 'cancelled', t('settings', 'fallbackCancelledStateIcon'), t('settings', 'fallbackCancelledStateIconDesc'));
+	private renderTaskIconSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'taskIconClickAction') {
+			const actionSetting = this.renderBoundDropdownSetting(containerEl, t('settings', 'taskIconClickAction'), this.getTaskIconClickActionDescription(), 'taskIconClickAction', {
+				value: this.settings.taskIconClickAction,
+				dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions('taskIconClickAction')).map(([value, label]) => ({ value, label })),
+				normalize: value => value === 'state' ? 'state' : 'pipeline',
+				onAfterChange: () => {
+					actionSetting.setDesc(this.getTaskIconClickActionDescription());
+					this.applyPendingSettingsChange();
+				},
+				rollbackOnError: true,
+			});
+		} else if (key === 'fallbackTaskIconSource') {
+			this.renderFallbackTaskIconSourceSetting(containerEl);
+		} else if (key === 'taskStatusIconColorSource') {
+			this.renderTaskStatusIconColorSourceSetting(containerEl);
+		} else {
+			const state = key === 'fallbackOpenStateIcon' ? 'open' : key === 'fallbackFinishedStateIcon' ? 'done' : key === 'fallbackCancelledStateIcon' ? 'cancelled' : null;
+			if (!state) return;
+			this.renderStateIconSetting(containerEl, state, t('settings', key), t('settings', `${key}Desc`));
+			containerEl.addClass('operon-settings-search-control');
+			containerEl.querySelector('.setting-item')?.addClass('operon-settings-search-control-row');
+		}
 	}
 
 	private renderFallbackTaskIconSourceSetting(containerEl: HTMLElement): void {

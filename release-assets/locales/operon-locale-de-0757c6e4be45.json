@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Standard-Arbeitsablauf: {{name}}",
       "defaultPriority": "Standardpriorität für neue Aufgaben",
       "defaultPriorityDesc": "Wird beim Erstellen einer neuen Aufgabe automatisch zugewiesen. Leer lassen für keinen Standard.",
+      "defaultStateIconsSection": "Standard-Statussymbole",
       "defaultStatusDone": "Erledigt",
       "defaultStatusOpen": "Offen",
       "deleteExternalCalendarConfirm": "Externen Kalender löschen",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Noch keine externen Kalender hinzugefügt.",
       "externalCalendarsTitle": "Externe Kalender",
       "fallbackCancelledStateIcon": "Symbol für Status „Abgebrochen“",
-      "fallbackCancelledStateIconDesc": "Wird verwendet, wenn eine Aufgabe kein taskIcon hat und ihr Status in Live-Vorschau und kompakten Aufgabenzeilen abgebrochen ist.",
+      "fallbackCancelledStateIconDesc": "Wird für abgebrochene Aufgaben verwendet, wenn weder das eigene Aufgabensymbol noch die gewählte Ersatzquelle ein Symbol bereitstellt.",
       "fallbackFinishedStateIcon": "Symbol für Status „Erledigt“",
-      "fallbackFinishedStateIconDesc": "Wird verwendet, wenn eine Aufgabe kein taskIcon hat und ihr Status in Live-Vorschau und kompakten Aufgabenzeilen erledigt ist.",
+      "fallbackFinishedStateIconDesc": "Wird für abgeschlossene Aufgaben verwendet, wenn weder das eigene Aufgabensymbol noch die gewählte Ersatzquelle ein Symbol bereitstellt.",
       "fallbackOpenStateIcon": "Symbol für Status „Offen“",
-      "fallbackOpenStateIconDesc": "Wird verwendet, wenn eine Aufgabe kein taskIcon hat und ihr Status in Live-Vorschau und kompakten Aufgabenzeilen offen ist.",
+      "fallbackOpenStateIconDesc": "Wird für offene Aufgaben verwendet, wenn weder das eigene Aufgabensymbol noch die gewählte Ersatzquelle ein Symbol bereitstellt.",
       "fallbackTaskIconSource": "Quelle für Fallback-Symbole",
       "fallbackTaskIconSourceDesc": "Wähle, welche Quelle Operon prüft, wenn eine Aufgabe kein taskIcon hat. Hat diese Quelle kein passendes Symbol, wird das Status-Symbol für Offen, Erledigt oder Abgebrochen verwendet.",
       "fallbackTaskIconSourcePipelineStatus": "Arbeitsablaufstatus-Symbole",
       "fallbackTaskIconSourcePriority": "Prioritäts-Symbole",
       "fallbackTaskIconSourceState": "Status-Symbole",
-      "fallbackTaskStateIcons": "Aufgaben-Icon-Fallbacks und Farben",
+      "fallbackTaskStateIcons": "Symbol- und Farbquellen",
       "fileParentTaskTargetDefault": "Standard-Speicherort",
       "fileParentTaskTargetInsideParentFile": "In der übergeordneten Datei",
       "fileParentTaskTargetMode": "Inline-Aufgaben-Platzierung, wenn die übergeordnete Aufgabe eine Datei-Aufgabe ist",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Platzierung wiederkehrender Aufgaben, Ziele für Datei-Instanzen und YAML-Bereinigung bei Wiederholungen.",
       "settingsPageRelationshipsDesc": "Automatische übergeordnete Verknüpfungen, Vererbung und Projektseriennummern für Aufgabenhierarchien.",
       "settingsPageRemindersDesc": "Erinnerungszustellung, Systembenachrichtigungen, Ton und Nachholen verpasster Erinnerungen.",
-      "settingsPageStateIconsDesc": "Fallback-Aufgabensymbole und die Farbquelle für das Hauptsymbol zum Wechseln des Aufgabenstatus.",
+      "settingsPageStateIconsDesc": "Klickverhalten der Aufgabensymbole, Ersatzsymbole und Farbquellen.",
       "settingsPageTaskChipsDesc": "Symbolleisten-Schaltflächen des Aufgaben-Erstellers sowie kompakte Aufgaben-Chips für Inline-Aufgaben, Filteransicht-Ergebnisse, Kanban-Karten, Aufgabensuche und Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Auswahlzeilen, Reihenfolge und Sichtbarkeit im Aufgaben-Editor.",
       "settingsPageTaskFinderDesc": "Startverhalten der Aufgabensuche, sichtbare Ergebnisse, gemerkte Suchbereiche, Kürzel und Ergebnis-Chips.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Wiederholung",
       "subtabRelationships": "Beziehungen",
       "subtabReminders": "Erinnerungen",
-      "subtabStateIcons": "Status-Symbole und Farben",
+      "subtabStateIcons": "Aufgabensymbole und Farben",
       "subtabTaskChips": "Aufgaben-Chips",
       "subtabTaskEditor": "Aufgaben-Editor",
       "subtabTaskFinder": "Aufgabensuche",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "629873bb877393fe2a926a33e13241077313b3fe888f3cf77537813be1dfaa18"
+  "sourceVersion": "7d1125ff03ee36031b5f5ad9367e603098c2d185a950d82e8b2db775949cdba0"
 }

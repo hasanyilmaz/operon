@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Pipeline predefinita: {{name}}",
       "defaultPriority": "Priorità predefinita per le nuove attività",
       "defaultPriorityDesc": "Assegnata automaticamente alla creazione di una nuova attività. Lascia vuoto per nessuna predefinita.",
+      "defaultStateIconsSection": "Icone di stato predefinite",
       "defaultStatusDone": "Completata",
       "defaultStatusOpen": "Aperta",
       "deleteExternalCalendarConfirm": "Elimina calendario esterno",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Ancora nessun calendario esterno aggiunto.",
       "externalCalendarsTitle": "Calendari esterni",
       "fallbackCancelledStateIcon": "Icona stato annullata",
-      "fallbackCancelledStateIconDesc": "Usata quando un'attività non ha taskIcon e il suo stato è annullata, sia in Anteprima in tempo reale che nelle righe di attività compatte.",
+      "fallbackCancelledStateIconDesc": "Usata per le attività annullate quando né l’icona dell’attività né la fonte alternativa selezionata forniscono un’icona.",
       "fallbackFinishedStateIcon": "Icona stato completata",
-      "fallbackFinishedStateIconDesc": "Usata quando un'attività non ha taskIcon e il suo stato è completata, sia in Anteprima in tempo reale che nelle righe di attività compatte.",
+      "fallbackFinishedStateIconDesc": "Usata per le attività completate quando né l’icona dell’attività né la fonte alternativa selezionata forniscono un’icona.",
       "fallbackOpenStateIcon": "Icona stato aperta",
-      "fallbackOpenStateIconDesc": "Usata quando un'attività non ha taskIcon e il suo stato è aperta, sia in Anteprima in tempo reale che nelle righe di attività compatte.",
+      "fallbackOpenStateIconDesc": "Usata per le attività aperte quando né l’icona dell’attività né la fonte alternativa selezionata forniscono un’icona.",
       "fallbackTaskIconSource": "Origine icona di riserva",
       "fallbackTaskIconSourceDesc": "Scegli quale origine controlla Operon quando un'attività non ha taskIcon. Se quell'origine non ha un'icona corrispondente, viene usata l'icona di stato Aperta, Completata o Annullata.",
       "fallbackTaskIconSourcePipelineStatus": "Icone di stato pipeline",
       "fallbackTaskIconSourcePriority": "Icone di priorità",
       "fallbackTaskIconSourceState": "Icone di stato",
-      "fallbackTaskStateIcons": "Icone di riserva e colori attività",
+      "fallbackTaskStateIcons": "Fonti di icone e colori",
       "fileParentTaskTargetDefault": "Posizione di salvataggio predefinita",
       "fileParentTaskTargetInsideParentFile": "All'interno del file principale",
       "fileParentTaskTargetMode": "Posizionamento attività in linea quando il genitore è un'attività-file",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Posizionamento delle attività ricorrenti, destinazioni delle occorrenze di attività-file e pulizia dello YAML ricorrente.",
       "settingsPageRelationshipsDesc": "Collegamenti automatici all'attività principale, ereditarietà e serie di progetto per le gerarchie di attività.",
       "settingsPageRemindersDesc": "Consegna dei promemoria, notifiche di sistema, suono e recupero dei promemoria mancati.",
-      "settingsPageStateIconsDesc": "Icone di attività di riserva e origine colore per l'icona principale di ciclo di stato dell'attività.",
+      "settingsPageStateIconsDesc": "Comportamento al clic sull’icona dell’attività, icone alternative e fonti di colore.",
       "settingsPageTaskChipsDesc": "Pulsanti della barra degli strumenti del Creatore di attività più chip di attività compatti per attività in linea, risultati della Vista filtro, schede Kanban, Ricerca attività e overlay wikilink attività.",
       "settingsPageTaskEditorDesc": "Righe di selezione dell'Editor attività, ordine e visibilità.",
       "settingsPageTaskFinderDesc": "Comportamento di avvio della Ricerca attività, risultati visibili, ambiti memorizzati, scorciatoie e chip dei risultati.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Ricorrenza",
       "subtabRelationships": "Relazioni",
       "subtabReminders": "Promemoria",
-      "subtabStateIcons": "Icone e colori di stato",
+      "subtabStateIcons": "Icone e colori delle attività",
       "subtabTaskChips": "Chip attività",
       "subtabTaskEditor": "Editor attività",
       "subtabTaskFinder": "Ricerca attività",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ec41375089bf9ed917d5a5d0c368bf89d144691b4779c7fb581161640dcc3e4a"
+  "sourceVersion": "b38a898667ff3b425a4fcee8c07d41423c8cb4689c15a9ab0068b70deb017052"
 }

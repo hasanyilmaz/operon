@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "Конвейер по умолчанию: {{name}}",
       "defaultPriority": "Приоритет по умолчанию для новых задач",
       "defaultPriorityDesc": "Назначается автоматически при создании новой задачи. Оставьте пустым, чтобы не задавать значение по умолчанию.",
+      "defaultStateIconsSection": "Значки состояний по умолчанию",
       "defaultStatusDone": "Готово",
       "defaultStatusOpen": "Открыто",
       "deleteExternalCalendarConfirm": "Удалить внешний календарь",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "Внешние календари ещё не добавлены.",
       "externalCalendarsTitle": "Внешние календари",
       "fallbackCancelledStateIcon": "Значок состояния «Отменено»",
-      "fallbackCancelledStateIconDesc": "Используется, если у задачи нет taskIcon и она отменена, в Live Preview и компактных строках задач.",
+      "fallbackCancelledStateIconDesc": "Используется для отменённых задач, если ни собственный значок задачи, ни выбранный резервный источник не предоставляют значок.",
       "fallbackFinishedStateIcon": "Значок состояния «Завершено»",
-      "fallbackFinishedStateIconDesc": "Используется, если у задачи нет taskIcon и она завершена, в Live Preview и компактных строках задач.",
+      "fallbackFinishedStateIconDesc": "Используется для завершённых задач, если ни собственный значок задачи, ни выбранный резервный источник не предоставляют значок.",
       "fallbackOpenStateIcon": "Значок состояния «Открыто»",
-      "fallbackOpenStateIconDesc": "Используется, если у задачи нет taskIcon и её состояние открыто, в Live Preview и компактных строках задач.",
+      "fallbackOpenStateIconDesc": "Используется для открытых задач, если ни собственный значок задачи, ни выбранный резервный источник не предоставляют значок.",
       "fallbackTaskIconSource": "Источник резервного значка",
       "fallbackTaskIconSourceDesc": "Выберите, какой источник Operon проверяет, если у задачи нет taskIcon. Если в этом источнике нет подходящего значка, используется значок состояния «Открыто», «Завершено» или «Отменено».",
       "fallbackTaskIconSourcePipelineStatus": "Значки статуса конвейера",
       "fallbackTaskIconSourcePriority": "Значки приоритета",
       "fallbackTaskIconSourceState": "Значки состояния",
-      "fallbackTaskStateIcons": "Резервные значки задач и цвета",
+      "fallbackTaskStateIcons": "Источники значков и цветов",
       "fileParentTaskTargetDefault": "Место сохранения по умолчанию",
       "fileParentTaskTargetInsideParentFile": "Внутри родительского файла",
       "fileParentTaskTargetMode": "Размещение встроенной задачи, если родитель — файловая задача",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "Размещение повторяющихся задач, назначение файлов повторений и очистка YAML повторяющихся задач.",
       "settingsPageRelationshipsDesc": "Автоматические родительские связи, наследование и проектные серийные номера для иерархий задач.",
       "settingsPageRemindersDesc": "Доставка напоминаний, системные уведомления, звук и обработка пропущенных напоминаний.",
-      "settingsPageStateIconsDesc": "Резервные значки задач и источник цвета для основного значка, меняющего состояние задачи.",
+      "settingsPageStateIconsDesc": "Действие при нажатии на значок задачи, резервные значки и источники цвета.",
       "settingsPageTaskChipsDesc": "Кнопки панели инструментов конструктора задач и компактные чипы задач для встроенных задач, результатов представления фильтра, карточек канбана, поиска задач и оверлеев вики-ссылок задач.",
       "settingsPageTaskEditorDesc": "Строки выбора, порядок и видимость в редакторе задач.",
       "settingsPageTaskFinderDesc": "Поведение запуска поиска задач, видимые результаты, запоминаемые области, сочетания клавиш и чипы результатов.",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "Повторение",
       "subtabRelationships": "Связи",
       "subtabReminders": "Напоминания",
-      "subtabStateIcons": "Значки и цвета состояний",
+      "subtabStateIcons": "Значки и цвета задач",
       "subtabTaskChips": "Чипы задач",
       "subtabTaskEditor": "Редактор задач",
       "subtabTaskFinder": "Поиск задач",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "0a28a4905ddecee3e78e50763b308d4d41d3ab52b50f52b5b29eea56f78423ad"
+  "sourceVersion": "92e9802346c04f639958d986c7af814ec3844004af0083bf3e5b2cbdb5e53db6"
 }

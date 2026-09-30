@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3517,
-  "keyFingerprint": "cb3243c513dfbf4b1f2016cd9ce997569137c0558aed13f63a4fea4699fae0ed",
+  "keyCount": 3518,
+  "keyFingerprint": "0652e9a6a40b9a846b9dea2b6cd54cedffa464ab3e87adea32322e82942c2a51",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1347,6 +1347,7 @@
       "defaultPipelineAria": "預設工作流：{{name}}",
       "defaultPriority": "新任務的預設優先順序",
       "defaultPriorityDesc": "建立新任務時自動分配。留空則無預設值。",
+      "defaultStateIconsSection": "預設狀態圖示",
       "defaultStatusDone": "已完成",
       "defaultStatusOpen": "未完成",
       "deleteExternalCalendarConfirm": "刪除外部日曆",
@@ -1478,17 +1479,17 @@
       "externalCalendarsEmpty": "尚未新增外部日曆。",
       "externalCalendarsTitle": "外部日曆",
       "fallbackCancelledStateIcon": "已取消狀態圖示",
-      "fallbackCancelledStateIconDesc": "當任務沒有 taskIcon 且其狀態為已取消時，在即時預覽和緊湊任務行中使用。",
+      "fallbackCancelledStateIconDesc": "當任務本身的圖示和所選備用來源皆未提供圖示時，用於已取消的任務。",
       "fallbackFinishedStateIcon": "已完成狀態圖示",
-      "fallbackFinishedStateIconDesc": "當任務沒有 taskIcon 且其狀態為已完成時，在即時預覽和緊湊任務行中使用。",
+      "fallbackFinishedStateIconDesc": "當任務本身的圖示和所選備用來源皆未提供圖示時，用於已完成的任務。",
       "fallbackOpenStateIcon": "未完成狀態圖示",
-      "fallbackOpenStateIconDesc": "當任務沒有 taskIcon 且其狀態為未完成時，在即時預覽和緊湊任務行中使用。",
+      "fallbackOpenStateIconDesc": "當任務本身的圖示和所選備用來源皆未提供圖示時，用於未完成的任務。",
       "fallbackTaskIconSource": "後備圖示來源",
       "fallbackTaskIconSourceDesc": "選擇當任務沒有 taskIcon 時 Operon 檢查的來源。如果該來源沒有匹配的圖示，則使用未完成、已完成或已取消的狀態圖示。",
       "fallbackTaskIconSourcePipelineStatus": "工作流狀態圖示",
       "fallbackTaskIconSourcePriority": "優先順序圖示",
       "fallbackTaskIconSourceState": "狀態圖示",
-      "fallbackTaskStateIcons": "任務圖示備援與顏色",
+      "fallbackTaskStateIcons": "圖示與顏色來源",
       "fileParentTaskTargetDefault": "預設儲存位置",
       "fileParentTaskTargetInsideParentFile": "父檔案內部",
       "fileParentTaskTargetMode": "父任務為檔案任務時的行內任務放置",
@@ -2429,7 +2430,7 @@
       "settingsPageRecurrenceDesc": "重複任務放置、檔案發生目標位置和重複 YAML 清理。",
       "settingsPageRelationshipsDesc": "任務層級的自動父級連結、繼承和專案序號。",
       "settingsPageRemindersDesc": "提醒傳送、系統通知、聲音與錯過提醒的補送行為。",
-      "settingsPageStateIconsDesc": "後備任務圖示，以及用於切換任務狀態的主要任務圖示顏色來源。",
+      "settingsPageStateIconsDesc": "任務圖示的點擊行為、備用圖示及顏色來源。",
       "settingsPageTaskChipsDesc": "任務建立器工具欄按鈕，以及用於行內任務、篩選檢視結果、看板卡片、任務查詢器和任務維基連結覆蓋層的緊湊任務標籤。",
       "settingsPageTaskEditorDesc": "任務編輯器選擇器行、順序和可見性。",
       "settingsPageTaskFinderDesc": "任務查詢器啟動行為、可見結果、記住的範圍、快捷鍵和結果標籤。",
@@ -2458,7 +2459,7 @@
       "subtabRecurrence": "重複",
       "subtabRelationships": "關係",
       "subtabReminders": "提醒",
-      "subtabStateIcons": "狀態圖示與顏色",
+      "subtabStateIcons": "任務圖示與顏色",
       "subtabTaskChips": "任務標籤",
       "subtabTaskEditor": "任務編輯器",
       "subtabTaskFinder": "任務查詢器",
@@ -3562,5 +3563,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f8c92d77f9c14a4920a877a7a0b30e6ab3b78ba95111c26f7dce5d6adc5a3af3"
+  "sourceVersion": "0e4f2f3fc96e90fa2351c9bfc1161dbe8409090c762200e972c7c4db517a33a6"
 }
