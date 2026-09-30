@@ -37,6 +37,7 @@ import {
 	buildWorkflowStatusIdentityIndex,
 	resolveConfiguredStatusIdentity,
 } from '../core/workflow-status-identity';
+import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { validatePipelineTaxonomy } from '../core/pipeline-taxonomy-validation';
 import { PriorityDefinition, DEFAULT_PRIORITIES, clonePriorityDefinition, createPriorityId } from '../types/priority';
 import { CalendarPreset, createCalendarPresetId } from '../types/calendar';
@@ -130,7 +131,7 @@ import { openOperonDocsTarget } from './operon-docs-link';
 import { showFilterSetPicker } from './filter-set-picker';
 import { buildCalendarHiddenTimeOptions } from './calendar/calendar-hidden-time-options';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
-import { bindOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createInlineTaskCompactChipElement } from './compact-task-layout';
 import { openExternalUrl } from './external-link-actions';
@@ -1787,7 +1788,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ name: '', searchable: false, render: setting => {
 				const host = prepareHost(setting);
 				this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
-				renderSettingsInfoBox(host, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'), 'taxonomy.pipelines');
 				this.renderPipelineRepairWarnings(host, refresh);
 				const title = t('settings', 'tabPipelines');
 				const target = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS.corePipelines;
@@ -1802,6 +1802,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					host.dataset.operonPipelineId = pipeline.id;
 					const index = this.settings.pipelines.findIndex(candidate => candidate.id === pipeline.id);
 					if (index >= 0) this.renderPipelineCard(host, this.settings.pipelines[index], index, refresh);
+					return () => cleanupOperonHoverTooltips(host);
 				},
 			})),
 			{ name: '', searchable: false, render: setting => {
@@ -10082,8 +10083,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderPipelinesTab(containerEl: HTMLElement): void {
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		const refresh = () => { containerEl.empty(); this.renderPipelinesTab(containerEl); };
-		// Explanation
-		renderSettingsInfoBox(containerEl, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'), 'taxonomy.pipelines');
 		this.renderPipelineRepairWarnings(containerEl, refresh);
 
 		// Render each pipeline card
@@ -10889,24 +10888,45 @@ export class OperonSettingsTab extends PluginSettingTab {
 		descriptionTextarea.addEventListener('blur', savePipelineDescription);
 		descriptionTextarea.addEventListener('change', savePipelineDescription);
 
-		createWorkflowGridHeader({
-			containerEl: card,
+		const statusGrid = card.createDiv('operon-pipeline-status-grid');
+		const columnLabels = [
+			t('settings', 'pipelineColumnColor'),
+			t('settings', 'pipelineColumnIcon'),
+			t('settings', 'pipelineColumnStatusLabel'),
+			t('settings', 'pipelineColumnStats'),
+			t('settings', 'pipelineColumnScheduled'),
+			t('settings', 'pipelineColumnTracking'),
+			t('settings', 'pipelineColumnFinished'),
+			t('settings', 'pipelineColumnCancelled'),
+			'',
+		];
+		const columnHeader = createWorkflowGridHeader({
+			containerEl: statusGrid,
 			className: 'operon-status-column-header',
-			labels: [
-				t('settings', 'pipelineColumnColor'),
-				t('settings', 'pipelineColumnIcon'),
-				t('settings', 'pipelineColumnStatusLabel'),
-				t('settings', 'pipelineColumnStats'),
-				t('settings', 'pipelineColumnScheduled'),
-				t('settings', 'pipelineColumnTracking'),
-				t('settings', 'pipelineColumnFinished'),
-				t('settings', 'pipelineColumnCancelled'),
-				'',
-			],
+			labels: columnLabels,
+		});
+		const columnIcons = [
+			'chart-column',
+			...['dateScheduled', 'activeTracker', 'dateCompleted', 'dateCancelled'].map(key =>
+				getConfiguredKeyMappingIcon(key, this.settings.keyMappings)
+				|| getConfiguredKeyMappingIcon(key, DEFAULT_SETTINGS.keyMappings)),
+		];
+		Array.from(columnHeader.children).forEach((element, index) => {
+			const cell = element as HTMLElement;
+			if (index < 3) {
+				cell.addClass('operon-pipeline-column-label');
+			} else if (index < 8) {
+				cell.empty();
+				cell.addClass('operon-pipeline-column-icon');
+				cell.tabIndex = 0;
+				setIcon(cell, columnIcons[index - 3]);
+				setAccessibleLabelWithoutTooltip(cell, columnLabels[index]);
+				bindOperonHoverTooltip(cell, { content: columnLabels[index], taskColor: null });
+			}
 		});
 
-		// Status rows
-		const statusList = card.createDiv('operon-status-list');
+		// Header and rows share a scroll host so their compact columns stay aligned.
+		const statusList = statusGrid.createDiv('operon-status-list');
 
 		for (let si = 0; si < pipeline.statuses.length; si++) {
 			this.renderStatusRow(statusList, pipeline, committedPipeline, pipelineIndex, si, statusCounts, refresh);

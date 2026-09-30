@@ -35242,3 +35242,67 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 	box-shadow: none;
 	color: var(--text-normal);
 }
+
+/* Pipelines Settings: compact headers and neutral card surfaces. */
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *),
+.operon-pipeline-description-textarea:where(.operon-settings-scope, .operon-settings-scope *) {
+	background: transparent;
+}
+
+.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) {
+	width: 100%;
+	min-width: 0;
+	overflow-x: auto;
+}
+
+.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-status-column-header, .operon-status-list) {
+	min-width: 644px;
+}
+
+.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-status-column-header, .operon-status-row) {
+	grid-template-columns: 44px 40px minmax(120px, 1fr) 40px repeat(4, 32px) 108px;
+	gap: 8px;
+}
+
+.operon-pipeline-column-label:where(.operon-settings-scope, .operon-settings-scope *) {
+	opacity: 0;
+}
+
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *):is(:hover, :focus-within) .operon-pipeline-column-label {
+	opacity: 1;
+}
+
+.operon-pipeline-column-icon:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 24px;
+	border-radius: 4px;
+}
+
+.operon-pipeline-column-icon:where(.operon-settings-scope, .operon-settings-scope *) > .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.operon-pipeline-column-icon:where(.operon-settings-scope, .operon-settings-scope *):focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+@container operon-pipeline-card (max-width: 600px) {
+	.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) > :is(.operon-status-column-header, .operon-status-list) {
+		min-width: 610px;
+	}
+
+	.operon-pipeline-status-grid:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-status-column-header, .operon-status-row) {
+		grid-template-columns: 40px 36px minmax(118px, 1fr) 36px repeat(4, 32px) 104px;
+		gap: 6px;
+	}
+}
+
+@media (hover: none), (pointer: coarse) {
+	.operon-pipeline-column-label:where(.operon-settings-scope, .operon-settings-scope *) {
+		opacity: 1;
+	}
+}
