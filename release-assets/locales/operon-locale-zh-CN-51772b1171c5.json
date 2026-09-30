@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "打开任务编辑器",
       "ganttBarRightClickAction": "任务条右键点击操作",
       "ganttBarRightClickActionDesc": "选择右键点击甘特任务条时执行的操作。",
+      "ganttDateMarkersSection": "日期标记",
       "ganttDefaultBarColor": "默认条形颜色",
       "ganttDefaultBarColorDesc": "选择新甘特预设使用的表格颜色来源。",
       "ganttDefaultScale": "默认刻度",
-      "ganttDefaultScaleDesc": "选择日、周或月作为时间线的初始刻度。",
+      "ganttDefaultScaleDesc": "为新建的Table预设选择初始日–周或周–月时间轴刻度。",
       "ganttDefaultSplit": "默认表格分栏",
       "ganttDefaultSplitDesc": "选择新表格预设中表格窗格的初始宽度。",
       "ganttDefaultUnitWidth": "默认单位宽度",
       "ganttDefaultUnitWidthDesc": "设置时间线单位的初始宽度倍数。",
-      "ganttDefaults": "甘特默认设置",
+      "ganttDefaults": "新预设默认值",
       "ganttFocusTodayOnOpen": "打开时聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次打开甘特图时，将今天置于时间线靠近起点的位置，为未来日期留出更多空间。",
+      "ganttInteractionSection": "打开与点击操作",
       "ganttMoveOpenBlockedTasksWithBlocker": "随阻塞任务移动未完成的被阻塞任务",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "移动甘特条时，将其直接或通过依赖链阻塞的所有未完成任务的现有日期移动相同天数。已完成和已取消的任务不会更改。",
       "ganttMoveOpenDescendantsWithParent": "随父任务移动未完成的后代任务",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "选择点击时间线中的单日时要写入的任务日期。",
       "ganttOneDayClickRange": "设置开始和截止日期",
       "ganttOneDayClickScheduled": "设置计划日期",
+      "ganttRelatedTasksSection": "移动关联任务",
       "ganttScaleDay": "日 – 周",
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "周 – 月",
-      "ganttSettingsDesc": "配置 Operon 表格中甘特时间线的默认设置。",
+      "ganttSettingsDesc": "配置新预设的默认值和甘特时间轴的通用行为。",
       "ganttShowDateDueMarkers": "显示截止日期图标",
       "ganttShowDateDueMarkersDesc": "在甘特图中每个任务的截止日期显示图标。",
       "ganttShowDateScheduledMarkers": "显示计划日期图标",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "2fd9d4eb66298023d4a4439ee2f7e0da202f769cc2940aeef3580d96fa7d2546"
+  "sourceVersion": "bd64a364c740426a12720423c48066e09797d9c66eb1f85e7a8a6c7b30c02b38"
 }

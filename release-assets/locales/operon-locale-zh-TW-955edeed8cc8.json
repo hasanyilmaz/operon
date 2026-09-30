@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "開啟任務編輯器",
       "ganttBarRightClickAction": "任務列右鍵點擊動作",
       "ganttBarRightClickActionDesc": "選擇右鍵點擊甘特任務列時執行的動作。",
+      "ganttDateMarkersSection": "日期標記",
       "ganttDefaultBarColor": "預設長條顏色",
       "ganttDefaultBarColorDesc": "選擇新甘特預設使用的表格顏色來源。",
       "ganttDefaultScale": "預設刻度",
-      "ganttDefaultScaleDesc": "選擇日、週或月作為時間軸的初始刻度。",
+      "ganttDefaultScaleDesc": "為新建的Table預設選擇初始日–週或週–月時間軸刻度。",
       "ganttDefaultSplit": "預設表格分割",
       "ganttDefaultSplitDesc": "選擇新表格預設中表格窗格的初始寬度。",
       "ganttDefaultUnitWidth": "預設單位寬度",
       "ganttDefaultUnitWidthDesc": "設定時間軸單位的初始寬度倍數。",
-      "ganttDefaults": "甘特預設值",
+      "ganttDefaults": "新預設的預設值",
       "ganttFocusTodayOnOpen": "開啟時聚焦今天",
       "ganttFocusTodayOnOpenDesc": "首次開啟甘特圖時，將今天置於時間軸靠近起點的位置，為未來日期保留更多空間。",
+      "ganttInteractionSection": "開啟與點擊操作",
       "ganttMoveOpenBlockedTasksWithBlocker": "隨阻擋任務移動未完成的受阻任務",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "移動甘特列時，將其直接或透過相依鏈阻擋的所有未完成任務之現有日期移動相同天數。已完成和已取消的任務不會變更。",
       "ganttMoveOpenDescendantsWithParent": "隨父任務移動未完成的後代任務",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "選擇點擊時間軸中的單日時要寫入的任務日期。",
       "ganttOneDayClickRange": "設定開始和截止日期",
       "ganttOneDayClickScheduled": "設定排程日期",
+      "ganttRelatedTasksSection": "移動關聯任務",
       "ganttScaleDay": "日 – 週",
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "週 – 月",
-      "ganttSettingsDesc": "設定 Operon 表格中甘特時間軸的預設值。",
+      "ganttSettingsDesc": "設定新預設的預設值及甘特時間軸的共用行為。",
       "ganttShowDateDueMarkers": "顯示截止日期圖示",
       "ganttShowDateDueMarkersDesc": "在甘特圖中每個任務的截止日期顯示圖示。",
       "ganttShowDateScheduledMarkers": "顯示排程日期圖示",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "017aafc5d2fbab6dbd384e1bc6cbbb9ebec5a6fcd9d046080b2f66b9804c5252"
+  "sourceVersion": "87c47f56b88cc6c0f77075e44969f38bc5064c4bb25a537ef736cf4824c650a6"
 }

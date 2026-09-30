@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "Task Editor'ı aç",
       "ganttBarRightClickAction": "Bar sağ tıklama eylemi",
       "ganttBarRightClickActionDesc": "Bir Gantt görev barına sağ tıklandığında ne olacağını seçin.",
+      "ganttDateMarkersSection": "Tarih İşaretleri",
       "ganttDefaultBarColor": "Varsayılan çubuk rengi",
       "ganttDefaultBarColorDesc": "Yeni Gantt presetlerinin kullanacağı Tablo renk kaynağını seçin.",
       "ganttDefaultScale": "Varsayılan ölçek",
-      "ganttDefaultScaleDesc": "Başlangıç zaman çizelgesi ölçeğini Gün, Hafta veya Ay olarak seçin.",
+      "ganttDefaultScaleDesc": "Yeni Table ön ayarları için başlangıç zaman ölçeğini Gün–Hafta veya Hafta–Ay olarak seçin.",
       "ganttDefaultSplit": "Varsayılan tablo bölümü",
       "ganttDefaultSplitDesc": "Yeni Tablo presetleri için tablo panelinin başlangıç genişliğini seçin.",
       "ganttDefaultUnitWidth": "Varsayılan birim genişliği",
       "ganttDefaultUnitWidthDesc": "Zaman çizelgesi birimlerinin başlangıç genişliği çarpanını ayarlayın.",
-      "ganttDefaults": "Gantt varsayılanları",
+      "ganttDefaults": "Yeni Ön Ayar Varsayılanları",
       "ganttFocusTodayOnOpen": "Açılışta bugüne odaklan",
       "ganttFocusTodayOnOpenDesc": "Gantt ilk açıldığında bugünü zaman çizelgesinin başlangıcına yakın konumlandırarak gelecek tarihler için daha fazla alan bırakın.",
+      "ganttInteractionSection": "Açılış ve Tıklama Eylemleri",
       "ganttMoveOpenBlockedTasksWithBlocker": "Bloke edilen açık taskları blocker tasklarla birlikte taşı",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Bir Gantt barı taşındığında doğrudan veya dependency zinciri üzerinden bloke ettiği tüm açık taskların mevcut tarihlerini aynı gün sayısı kadar kaydırın. Tamamlanmış ve iptal edilmiş tasklar değiştirilmez.",
       "ganttMoveOpenDescendantsWithParent": "Açık alt taskları parent tasklarla birlikte taşı",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "Zaman çizelgesinde tek bir güne tıklandığında hangi görev tarihlerinin yazılacağını seçin.",
       "ganttOneDayClickRange": "Başlangıç ve bitiş tarihlerini ayarla",
       "ganttOneDayClickScheduled": "Planlanan tarihi ayarla",
+      "ganttRelatedTasksSection": "İlişkili Görevleri Taşı",
       "ganttScaleDay": "Gün – Hafta",
       "ganttScaleMonth": "Ay",
       "ganttScaleWeek": "Hafta – Ay",
-      "ganttSettingsDesc": "Operon Tablolarında oluşturulan Gantt zaman çizelgelerinin varsayılanlarını yapılandırın.",
+      "ganttSettingsDesc": "Yeni ön ayarların varsayılanlarını ve ortak Gantt zaman çizelgesi davranışlarını yapılandırın.",
       "ganttShowDateDueMarkers": "Bitiş tarihi simgelerini göster",
       "ganttShowDateDueMarkersDesc": "Gantt'ta her görevin bitiş tarihinde bir simge gösterin.",
       "ganttShowDateScheduledMarkers": "Planlanan tarih simgelerini göster",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "bec475117c518cad77cac36487b38c9327c1dbaab64e33388995a212ad7fd094"
+  "sourceVersion": "8cea099755a0afaee4517aeb3c5ac68b3c99e9fda3fda3b1dc8df0b6fb78b517"
 }

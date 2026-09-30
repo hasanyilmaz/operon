@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "Открыть редактор задачи",
       "ganttBarRightClickAction": "Действие при щелчке правой кнопкой по полосе",
       "ganttBarRightClickActionDesc": "Выберите действие при щелчке правой кнопкой по полосе задачи в Ганте.",
+      "ganttDateMarkersSection": "Маркеры дат",
       "ganttDefaultBarColor": "Цвет полосы по умолчанию",
       "ganttDefaultBarColorDesc": "Выберите источник цвета таблицы для новых пресетов Ганта.",
       "ganttDefaultScale": "Масштаб по умолчанию",
-      "ganttDefaultScaleDesc": "Выберите начальный масштаб временной шкалы: день, неделя или месяц.",
+      "ganttDefaultScaleDesc": "Выберите начальный масштаб День–Неделя или Неделя–Месяц для новых пресетов Table.",
       "ganttDefaultSplit": "Разделение таблицы по умолчанию",
       "ganttDefaultSplitDesc": "Выберите начальную ширину панели таблицы для новых пресетов.",
       "ganttDefaultUnitWidth": "Ширина единицы по умолчанию",
       "ganttDefaultUnitWidthDesc": "Задайте начальный множитель ширины единиц временной шкалы.",
-      "ganttDefaults": "Настройки Ганта по умолчанию",
+      "ganttDefaults": "Параметры новых пресетов",
       "ganttFocusTodayOnOpen": "Фокус на сегодня при открытии",
       "ganttFocusTodayOnOpenDesc": "При первом открытии диаграммы Ганта располагать сегодняшний день ближе к началу шкалы, оставляя больше места для будущих дат.",
+      "ganttInteractionSection": "Открытие и действия по щелчку",
       "ganttMoveOpenBlockedTasksWithBlocker": "Перемещать открытые заблокированные задачи вместе с блокирующими",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "При перемещении полосы Ганта сдвигать на то же количество дней существующие даты всех открытых задач, которые она блокирует напрямую или через цепочку зависимостей. Завершённые и отменённые задачи не изменяются.",
       "ganttMoveOpenDescendantsWithParent": "Перемещать открытые подзадачи вместе с родительскими задачами",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "Выберите, какие даты задачи записывать при клике на один день временной шкалы.",
       "ganttOneDayClickRange": "Задать даты начала и срока",
       "ganttOneDayClickScheduled": "Задать запланированную дату",
+      "ganttRelatedTasksSection": "Перемещение связанных задач",
       "ganttScaleDay": "День – Неделя",
       "ganttScaleMonth": "Месяц",
       "ganttScaleWeek": "Неделя – Месяц",
-      "ganttSettingsDesc": "Настройте значения по умолчанию для диаграмм Ганта в таблицах Operon.",
+      "ganttSettingsDesc": "Настройте параметры новых пресетов и общее поведение временных шкал Ганта.",
       "ganttShowDateDueMarkers": "Показывать значки срока",
       "ganttShowDateDueMarkersDesc": "Показывать в Ганте значок на дате срока каждой задачи.",
       "ganttShowDateScheduledMarkers": "Показывать значки запланированной даты",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "e9c4d276e965a880211489d9106f26485a479c0e2aa223b7821935b04ed943d5"
+  "sourceVersion": "757229a041b49647dc582d2db2322245ee7961fc0c464e2f9cea19dc258d774a"
 }

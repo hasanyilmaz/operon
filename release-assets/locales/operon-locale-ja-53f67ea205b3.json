@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "タスクエディターを開く",
       "ganttBarRightClickAction": "バーの右クリック動作",
       "ganttBarRightClickActionDesc": "ガントのタスクバーを右クリックしたときの動作を選択します。",
+      "ganttDateMarkersSection": "日付マーカー",
       "ganttDefaultBarColor": "既定のバー色",
       "ganttDefaultBarColorDesc": "新しいガントプリセットで使用するテーブルの色ソースを選択します。",
       "ganttDefaultScale": "既定のスケール",
-      "ganttDefaultScaleDesc": "タイムラインの初期スケールを日、週、月から選択します。",
+      "ganttDefaultScaleDesc": "新規Tableプリセットの初期表示スケールを日–週または週–月から選択します。",
       "ganttDefaultSplit": "既定のテーブル分割",
       "ganttDefaultSplitDesc": "新しいテーブルプリセットで使用するテーブルペインの初期幅を選択します。",
       "ganttDefaultUnitWidth": "既定の単位幅",
       "ganttDefaultUnitWidthDesc": "タイムライン単位の初期幅倍率を設定します。",
-      "ganttDefaults": "ガントの既定値",
+      "ganttDefaults": "新規プリセットの既定値",
       "ganttFocusTodayOnOpen": "開いたときに今日へフォーカス",
       "ganttFocusTodayOnOpenDesc": "ガントを初めて開いたときに、今後の日付をより広く表示できるよう、今日をタイムラインの始点寄りに配置します。",
+      "ganttInteractionSection": "表示開始とクリック操作",
       "ganttMoveOpenBlockedTasksWithBlocker": "未完了のブロック対象タスクをブロッカーと一緒に移動",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "ガントバーを移動したとき、そのタスクが直接または依存関係チェーンを通じてブロックするすべての未完了タスクの日付を同じ日数だけ移動します。完了済みおよびキャンセル済みのタスクは変更されません。",
       "ganttMoveOpenDescendantsWithParent": "親タスクと一緒に未完了の子孫タスクを移動",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "タイムライン上の1日をクリックしたときに書き込むタスクの日付を選択します。",
       "ganttOneDayClickRange": "開始日と期限を設定",
       "ganttOneDayClickScheduled": "予定日を設定",
+      "ganttRelatedTasksSection": "関連タスクの移動",
       "ganttScaleDay": "日 – 週",
       "ganttScaleMonth": "月",
       "ganttScaleWeek": "週 – 月",
-      "ganttSettingsDesc": "Operonテーブル内に作成するガントタイムラインの既定値を設定します。",
+      "ganttSettingsDesc": "新規プリセットの既定値とガントタイムライン共通の動作を設定します。",
       "ganttShowDateDueMarkers": "期限日のアイコンを表示",
       "ganttShowDateDueMarkersDesc": "ガントで各タスクの期限日にアイコンを表示します。",
       "ganttShowDateScheduledMarkers": "予定日のアイコンを表示",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "20e94be5951eccc0b686d9d1474d5c9994b1a7633f78b4849d7f48497d64ccb5"
+  "sourceVersion": "816ff7f115a35afef75fb8e0235994726e0dc3478ac6b12275e2297ee56183fe"
 }

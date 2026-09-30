@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "Aufgabeneditor öffnen",
       "ganttBarRightClickAction": "Aktion beim Rechtsklick auf einen Balken",
       "ganttBarRightClickActionDesc": "Wähle, was beim Rechtsklick auf einen Gantt-Aufgabenbalken geschieht.",
+      "ganttDateMarkersSection": "Datumsmarkierungen",
       "ganttDefaultBarColor": "Standardfarbe der Balken",
       "ganttDefaultBarColorDesc": "Wähle die Tabellen-Farbquelle für neue Gantt-Presets.",
       "ganttDefaultScale": "Standardskala",
-      "ganttDefaultScaleDesc": "Wähle Tag, Woche oder Monat als anfängliche Zeitleistenskala.",
+      "ganttDefaultScaleDesc": "Wähle für neue Table-Voreinstellungen die anfängliche Zeitskala Tag–Woche oder Woche–Monat.",
       "ganttDefaultSplit": "Standardmäßige Tabellenaufteilung",
       "ganttDefaultSplitDesc": "Wähle die anfängliche Breite des Tabellenbereichs für neue Tabellen-Presets.",
       "ganttDefaultUnitWidth": "Standardbreite der Einheit",
       "ganttDefaultUnitWidthDesc": "Lege den anfänglichen Breitenfaktor für Zeitleisteneinheiten fest.",
-      "ganttDefaults": "Gantt-Standardeinstellungen",
+      "ganttDefaults": "Standardwerte für neue Voreinstellungen",
       "ganttFocusTodayOnOpen": "Beim Öffnen auf Heute fokussieren",
       "ganttFocusTodayOnOpenDesc": "Positioniere Heute beim ersten Öffnen von Gantt nahe am Anfang der Zeitleiste, damit mehr Platz für kommende Termine bleibt.",
+      "ganttInteractionSection": "Öffnen und Klickaktionen",
       "ganttMoveOpenBlockedTasksWithBlocker": "Offene blockierte Aufgaben mit ihren Blockern verschieben",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Wenn ein Gantt-Balken verschoben wird, werden die vorhandenen Datumswerte aller offenen Aufgaben, die er direkt oder über eine Abhängigkeitskette blockiert, um dieselbe Anzahl von Tagen verschoben. Abgeschlossene und abgebrochene Aufgaben bleiben unverändert.",
       "ganttMoveOpenDescendantsWithParent": "Offene Unteraufgaben mit übergeordneten Aufgaben verschieben",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "Wähle, welche Aufgabendaten ein Klick auf einen einzelnen Tag der Zeitleiste schreibt.",
       "ganttOneDayClickRange": "Start- und Fälligkeitsdatum festlegen",
       "ganttOneDayClickScheduled": "Geplantes Datum festlegen",
+      "ganttRelatedTasksSection": "Verknüpfte Aufgaben verschieben",
       "ganttScaleDay": "Tag – Woche",
       "ganttScaleMonth": "Monat",
       "ganttScaleWeek": "Woche – Monat",
-      "ganttSettingsDesc": "Konfiguriere die Standardeinstellungen für Gantt-Zeitleisten in Operon-Tabellen.",
+      "ganttSettingsDesc": "Standardwerte für neue Voreinstellungen und das gemeinsame Verhalten der Gantt-Zeitleiste konfigurieren.",
       "ganttShowDateDueMarkers": "Fälligkeitsdatum-Symbole anzeigen",
       "ganttShowDateDueMarkersDesc": "Zeige in Gantt ein Symbol am Fälligkeitsdatum jeder Aufgabe.",
       "ganttShowDateScheduledMarkers": "Symbole für geplante Daten anzeigen",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "ba67cb389a6ef819a763d7d1daee3ead36682664197aba4f7cf3304b4b33860b"
+  "sourceVersion": "fc7f7b23a2b5f28275e53566eac7ab583e3243ac73b2016eac80f13fb027ebbd"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "Abrir editor de tareas",
       "ganttBarRightClickAction": "Acción al hacer clic derecho en una barra",
       "ganttBarRightClickActionDesc": "Elige qué ocurre al hacer clic derecho en una barra de tarea de Gantt.",
+      "ganttDateMarkersSection": "Marcadores de fecha",
       "ganttDefaultBarColor": "Color de barra predeterminado",
       "ganttDefaultBarColorDesc": "Elige la fuente de color de la tabla para los nuevos preajustes de Gantt.",
       "ganttDefaultScale": "Escala predeterminada",
-      "ganttDefaultScaleDesc": "Elige Día, Semana o Mes como escala inicial de la cronología.",
+      "ganttDefaultScaleDesc": "Elige la escala inicial Día–Semana o Semana–Mes para los nuevos preajustes de Table.",
       "ganttDefaultSplit": "División predeterminada de la tabla",
       "ganttDefaultSplitDesc": "Elige el ancho inicial del panel de tabla para los nuevos preajustes de tabla.",
       "ganttDefaultUnitWidth": "Ancho de unidad predeterminado",
       "ganttDefaultUnitWidthDesc": "Define el multiplicador de ancho inicial de las unidades de la cronología.",
-      "ganttDefaults": "Valores predeterminados de Gantt",
+      "ganttDefaults": "Valores predeterminados de nuevos preajustes",
       "ganttFocusTodayOnOpen": "Centrar en hoy al abrir",
       "ganttFocusTodayOnOpenDesc": "Sitúa Hoy cerca del inicio de la cronología la primera vez que se abre Gantt, dejando más espacio para las fechas futuras.",
+      "ganttInteractionSection": "Apertura y acciones de clic",
       "ganttMoveOpenBlockedTasksWithBlocker": "Mover tareas bloqueadas abiertas con sus bloqueadores",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Al mover una barra Gantt, desplaza las fechas existentes de todas las tareas abiertas que bloquea, de forma directa o mediante una cadena de dependencias, el mismo número de días. Las tareas completadas y canceladas no cambian.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendientes abiertos con las tareas principales",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "Elige qué fechas de la tarea se escribirán al hacer clic en un solo día de la cronología.",
       "ganttOneDayClickRange": "Establecer fechas de inicio y vencimiento",
       "ganttOneDayClickScheduled": "Establecer fecha programada",
+      "ganttRelatedTasksSection": "Mover tareas relacionadas",
       "ganttScaleDay": "Día – Semana",
       "ganttScaleMonth": "Mes",
       "ganttScaleWeek": "Semana – Mes",
-      "ganttSettingsDesc": "Configura los valores predeterminados de las cronologías Gantt creadas en las tablas de Operon.",
+      "ganttSettingsDesc": "Configura los valores predeterminados de nuevos preajustes y el comportamiento compartido de la línea de tiempo Gantt.",
       "ganttShowDateDueMarkers": "Mostrar iconos de fecha de vencimiento",
       "ganttShowDateDueMarkersDesc": "Muestra un icono en la fecha de vencimiento de cada tarea en Gantt.",
       "ganttShowDateScheduledMarkers": "Mostrar iconos de fecha programada",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "2a96a1ca96551795b917f9d9d3263bec125fb804a8ca0482720fbf06c0859da8"
+  "sourceVersion": "f50bc5db6917e3f8b09c29221617541e1f18d9b21338fe01f62d10be223ef4f2"
 }

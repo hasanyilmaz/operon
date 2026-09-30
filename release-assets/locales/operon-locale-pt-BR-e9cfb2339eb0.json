@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3506,
-  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
+  "keyCount": 3509,
+  "keyFingerprint": "36ecccc189e9c70ecc2b2920ad8727fde8a6985b53cf75419d8f758770d76bb9",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1619,17 +1619,19 @@
       "ganttBarClickOpenTaskEditor": "Abrir editor de tarefas",
       "ganttBarRightClickAction": "Ação ao clicar com o botão direito na barra",
       "ganttBarRightClickActionDesc": "Escolha o que acontece ao clicar com o botão direito em uma barra de tarefa do Gantt.",
+      "ganttDateMarkersSection": "Marcadores de data",
       "ganttDefaultBarColor": "Cor padrão da barra",
       "ganttDefaultBarColorDesc": "Escolha a fonte de cor da Tabela usada por novos presets de Gantt.",
       "ganttDefaultScale": "Escala padrão",
-      "ganttDefaultScaleDesc": "Escolha Dia, Semana ou Mês como escala inicial da linha do tempo.",
+      "ganttDefaultScaleDesc": "Escolha a escala inicial Dia–Semana ou Semana–Mês para novas predefinições de Table.",
       "ganttDefaultSplit": "Divisão padrão da tabela",
       "ganttDefaultSplitDesc": "Escolha a largura inicial do painel da tabela para novos presets de Tabela.",
       "ganttDefaultUnitWidth": "Largura padrão da unidade",
       "ganttDefaultUnitWidthDesc": "Defina o multiplicador inicial da largura das unidades da linha do tempo.",
-      "ganttDefaults": "Padrões do Gantt",
+      "ganttDefaults": "Padrões de novas predefinições",
       "ganttFocusTodayOnOpen": "Focar em hoje ao abrir",
       "ganttFocusTodayOnOpenDesc": "Posicione Hoje próximo ao início da linha do tempo na primeira vez que o Gantt for aberto, deixando mais espaço para datas futuras.",
+      "ganttInteractionSection": "Abertura e ações de clique",
       "ganttMoveOpenBlockedTasksWithBlocker": "Mover tarefas bloqueadas abertas com seus bloqueadores",
       "ganttMoveOpenBlockedTasksWithBlockerDesc": "Ao mover uma barra Gantt, desloque pelo mesmo número de dias as datas existentes de todas as tarefas abertas que ela bloqueia, diretamente ou por uma cadeia de dependências. Tarefas concluídas e canceladas não são alteradas.",
       "ganttMoveOpenDescendantsWithParent": "Mover descendentes abertos com as tarefas pai",
@@ -1638,10 +1640,11 @@
       "ganttOneDayClickDesc": "Escolha quais datas da tarefa serão gravadas ao clicar em um único dia da linha do tempo.",
       "ganttOneDayClickRange": "Definir datas de início e vencimento",
       "ganttOneDayClickScheduled": "Definir data agendada",
+      "ganttRelatedTasksSection": "Mover tarefas relacionadas",
       "ganttScaleDay": "Dia – Semana",
       "ganttScaleMonth": "Mês",
       "ganttScaleWeek": "Semana – Mês",
-      "ganttSettingsDesc": "Configure os padrões das linhas do tempo de Gantt criadas nas tabelas do Operon.",
+      "ganttSettingsDesc": "Configure os padrões de novas predefinições e o comportamento compartilhado das linhas do tempo Gantt.",
       "ganttShowDateDueMarkers": "Mostrar ícones da data de vencimento",
       "ganttShowDateDueMarkersDesc": "Mostre um ícone na data de vencimento de cada tarefa no Gantt.",
       "ganttShowDateScheduledMarkers": "Mostrar ícones da data agendada",
@@ -3551,5 +3554,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "ee066c2d04a9115c9d0c76ae62f70aa5b0a0164d36e01474c1f34d70587abf21"
+  "sourceVersion": "c75510e3d28e039db1d6001358116d2598e604f69f89728a1193842e147cc15e"
 }

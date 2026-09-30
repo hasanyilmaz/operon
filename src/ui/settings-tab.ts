@@ -770,7 +770,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksFileTasks',
 	'tasksInlineTasks',
 	'tasksTaskRouter',
-	'viewsGantt',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
 	'interfaceStateIcons',
@@ -1470,6 +1469,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildKanbanSettingsItems(entries) };
 		}
 
+		if (tab.id === 'viewsGantt') {
+			return { type: 'page', name: pageName, desc, items: this.buildGanttSettingsItems(entries) };
+		}
+
 		if (tab.id === 'viewsTables') {
 			return { type: 'page', name: pageName, desc, items: this.buildTablesSettingsItems(entries) };
 		}
@@ -1618,6 +1621,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['kanbanCardContent', ['kanbanTaskShowNotesPreview', 'kanbanTaskShowSubtaskProgress', 'kanbanTaskShowPlainCheckboxProgress'], render, ['DOCS-016 Parent and sub-tasks', 'DOCS-017 Plain checkbox lists']],
 			['kanbanPresets', ['kanbanDefaultPresetId', 'kanbanPresets'], render, ['DOCS-031 Kanban manual order', 'DOCS-037 Pipelines and statuses']],
 		], entries, t('settings', 'tabKanban'), 'DOCS-030 Kanban overview');
+	}
+
+	private buildGanttSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const render = (containerEl: HTMLElement, key: string): void => this.renderGanttSetting(containerEl, key);
+		return this.buildTaskSettingsGroups([
+			['ganttDefaults', ['tableGanttDefaultSplitPercent', 'tableGanttDefaultScale', 'tableGanttDefaultUnitWidthMultiplier'], render, 'DOCS-109 Table presets'],
+			['ganttDateMarkersSection', ['tableGanttShowDateStartedMarkers', 'tableGanttShowDateScheduledMarkers', 'tableGanttShowDateDueMarkers'], render],
+			['ganttInteractionSection', ['tableGanttFocusTodayOnOpen', 'tableGanttBarClickAction', 'tableGanttBarRightClickAction', 'tableGanttOneDayClickBehavior'], render, ['DOCS-042 Contextual menu actions', 'DOCS-021 Task Editor']],
+			['ganttRelatedTasksSection', ['tableGanttMoveOpenDescendantsWithParent', 'tableGanttMoveOpenBlockedTasksWithBlocker'], render, ['DOCS-016 Parent and sub-tasks', 'DOCS-069 Task link and list pickers']],
+		], entries, t('settings', 'tabGantt'), 'DOCS-139 Gantt view');
 	}
 
 	private buildTablesSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -3695,8 +3708,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
-		} else if (tabId === 'viewsGantt') {
-			this.renderGanttTab(contentEl);
+
 		} else if (tabId === 'interfaceTaskFinder') {
 			this.renderInterfaceTaskFinderTab(contentEl);
 		} else if (tabId === 'interfaceContextMenu') {
@@ -7879,62 +7891,84 @@ export class OperonSettingsTab extends PluginSettingTab {
 		};
 	}
 
-	private renderGanttTab(containerEl: HTMLElement): void {
-		renderSettingsInfoBox(containerEl, t('settings', 'tabGantt'), t('settings', 'ganttSettingsDesc'));
-		const section = renderNativeSettingsGroupedSection(containerEl, t('settings', 'ganttDefaults'));
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultSplit'), t('settings', 'ganttDefaultSplitDesc'), 'tableGanttDefaultSplitPercent', {
-			value: String(this.settings.tableGanttDefaultSplitPercent),
-			dropdownOptions: TABLE_GANTT_SPLIT_OPTIONS.map(value => ({ value: String(value), label: `${value}%` })),
-			normalize: value => Number(value),
-		});
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultScale'), t('settings', 'ganttDefaultScaleDesc'), 'tableGanttDefaultScale', {
-			value: this.settings.tableGanttDefaultScale,
-			dropdownOptions: GANTT_SCALES.map(value => ({ value, label: t('settings', `ganttScale${capitalize(value)}`) })),
-			normalize: value => GANTT_SCALES.includes(value) ? value : 'day',
-		});
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttDefaultUnitWidth'), t('settings', 'ganttDefaultUnitWidthDesc'), 'tableGanttDefaultUnitWidthMultiplier', {
-			value: String(this.settings.tableGanttDefaultUnitWidthMultiplier),
-			dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
-			normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
-		});
-		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateStartedMarkers'), t('settings', 'ganttShowDateStartedMarkersDesc'), 'tableGanttShowDateStartedMarkers');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateScheduledMarkers'), t('settings', 'ganttShowDateScheduledMarkersDesc'), 'tableGanttShowDateScheduledMarkers');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttMoveOpenDescendantsWithParent'), t('settings', 'ganttMoveOpenDescendantsWithParentDesc'), 'tableGanttMoveOpenDescendantsWithParent');
-		this.renderBoundToggleSetting(section, t('settings', 'ganttMoveOpenBlockedTasksWithBlocker'), t('settings', 'ganttMoveOpenBlockedTasksWithBlockerDesc'), 'tableGanttMoveOpenBlockedTasksWithBlocker');
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarClickAction'), t('settings', 'ganttBarClickActionDesc'), 'tableGanttBarClickAction', {
-			value: this.settings.tableGanttBarClickAction,
-			dropdownOptions: [
-				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
-				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
-				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
-				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
-			],
-			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
-				? value
-				: DEFAULT_SETTINGS.tableGanttBarClickAction,
-		});
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttBarRightClickAction'), t('settings', 'ganttBarRightClickActionDesc'), 'tableGanttBarRightClickAction', {
-			value: this.settings.tableGanttBarRightClickAction,
-			dropdownOptions: [
-				{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
-				{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
-				{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
-				{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
-			],
-			normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
-				? value
-				: DEFAULT_SETTINGS.tableGanttBarRightClickAction,
-		});
-		this.renderBoundDropdownSetting(section, t('settings', 'ganttOneDayClick'), t('settings', 'ganttOneDayClickDesc'), 'tableGanttOneDayClickBehavior', {
-			value: this.settings.tableGanttOneDayClickBehavior,
-			dropdownOptions: [
-				{ value: 'scheduled', label: t('settings', 'ganttOneDayClickScheduled') },
-				{ value: 'dateRange', label: t('settings', 'ganttOneDayClickRange') },
-			],
-			normalize: value => value === 'dateRange' ? 'dateRange' : 'scheduled',
-		});
+	private renderGanttSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'tableGanttDefaultSplitPercent') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttDefaultSplit'), t('settings', 'ganttDefaultSplitDesc'), 'tableGanttDefaultSplitPercent', {
+				value: String(this.settings.tableGanttDefaultSplitPercent),
+				dropdownOptions: TABLE_GANTT_SPLIT_OPTIONS.map(value => ({ value: String(value), label: `${value}%` })),
+				normalize: value => Number(value),
+			});
+		}
+		if (key === 'tableGanttDefaultScale') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttDefaultScale'), t('settings', 'ganttDefaultScaleDesc'), 'tableGanttDefaultScale', {
+				value: this.settings.tableGanttDefaultScale,
+				dropdownOptions: GANTT_SCALES.map(value => ({ value, label: t('settings', `ganttScale${capitalize(value)}`) })),
+				normalize: value => GANTT_SCALES.includes(value) ? value : 'day',
+			});
+		}
+		if (key === 'tableGanttDefaultUnitWidthMultiplier') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttDefaultUnitWidth'), t('settings', 'ganttDefaultUnitWidthDesc'), 'tableGanttDefaultUnitWidthMultiplier', {
+				value: String(this.settings.tableGanttDefaultUnitWidthMultiplier),
+				dropdownOptions: GANTT_UNIT_WIDTH_MULTIPLIERS.map(value => ({ value: String(value), label: `${value}x` })),
+				normalize: value => Number(value) as typeof this.settings.tableGanttDefaultUnitWidthMultiplier,
+			});
+		}
+		if (key === 'tableGanttShowDateStartedMarkers') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttShowDateStartedMarkers'), t('settings', 'ganttShowDateStartedMarkersDesc'), 'tableGanttShowDateStartedMarkers');
+		}
+		if (key === 'tableGanttShowDateScheduledMarkers') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttShowDateScheduledMarkers'), t('settings', 'ganttShowDateScheduledMarkersDesc'), 'tableGanttShowDateScheduledMarkers');
+		}
+		if (key === 'tableGanttShowDateDueMarkers') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttShowDateDueMarkers'), t('settings', 'ganttShowDateDueMarkersDesc'), 'tableGanttShowDateDueMarkers');
+		}
+		if (key === 'tableGanttFocusTodayOnOpen') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttFocusTodayOnOpen'), t('settings', 'ganttFocusTodayOnOpenDesc'), 'tableGanttFocusTodayOnOpen');
+		}
+		if (key === 'tableGanttMoveOpenDescendantsWithParent') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttMoveOpenDescendantsWithParent'), t('settings', 'ganttMoveOpenDescendantsWithParentDesc'), 'tableGanttMoveOpenDescendantsWithParent');
+		}
+		if (key === 'tableGanttMoveOpenBlockedTasksWithBlocker') {
+			this.renderBoundToggleSetting(containerEl, t('settings', 'ganttMoveOpenBlockedTasksWithBlocker'), t('settings', 'ganttMoveOpenBlockedTasksWithBlockerDesc'), 'tableGanttMoveOpenBlockedTasksWithBlocker');
+		}
+		if (key === 'tableGanttBarClickAction') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttBarClickAction'), t('settings', 'ganttBarClickActionDesc'), 'tableGanttBarClickAction', {
+				value: this.settings.tableGanttBarClickAction,
+				dropdownOptions: [
+					{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+					{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+					{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+					{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+				],
+				normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+					? value
+					: DEFAULT_SETTINGS.tableGanttBarClickAction,
+			});
+		}
+		if (key === 'tableGanttBarRightClickAction') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttBarRightClickAction'), t('settings', 'ganttBarRightClickActionDesc'), 'tableGanttBarRightClickAction', {
+				value: this.settings.tableGanttBarRightClickAction,
+				dropdownOptions: [
+					{ value: 'none', label: t('settings', 'ganttBarClickNoAction') },
+					{ value: 'openTaskEditor', label: t('settings', 'ganttBarClickOpenTaskEditor') },
+					{ value: 'goToSource', label: t('settings', 'ganttBarClickGoToSource') },
+					{ value: 'contextMenu', label: t('settings', 'ganttBarClickContextMenu') },
+				],
+				normalize: value => ['none', 'openTaskEditor', 'goToSource', 'contextMenu'].includes(value)
+					? value
+					: DEFAULT_SETTINGS.tableGanttBarRightClickAction,
+			});
+		}
+		if (key === 'tableGanttOneDayClickBehavior') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'ganttOneDayClick'), t('settings', 'ganttOneDayClickDesc'), 'tableGanttOneDayClickBehavior', {
+				value: this.settings.tableGanttOneDayClickBehavior,
+				dropdownOptions: [
+					{ value: 'scheduled', label: t('settings', 'ganttOneDayClickScheduled') },
+					{ value: 'dateRange', label: t('settings', 'ganttOneDayClickRange') },
+				],
+				normalize: value => value === 'dateRange' ? 'dateRange' : 'scheduled',
+			});
+		}
 	}
 
 	private promptSettingsConfirmation(options: ConstructorParameters<typeof ConfirmActionModal>[1]): Promise<boolean> {
