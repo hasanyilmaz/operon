@@ -35371,3 +35371,18 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 	background-color: transparent;
 	border-color: transparent;
 }
+
+/* Pipelines Settings: reveal header controls without moving their layout. */
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-pipeline-default-wrapper, .operon-pipeline-header-actions) {
+	opacity: 0;
+}
+
+.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *):is(:hover, :focus-within) :is(.operon-pipeline-default-wrapper, .operon-pipeline-header-actions) {
+	opacity: 1;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.operon-pipeline-card:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-pipeline-default-wrapper, .operon-pipeline-header-actions) {
+		opacity: 1;
+	}
+}
