@@ -35644,3 +35644,40 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 		flex: 1;
 	}
 }
+
+/* Backup & Restore: native search targets and page-local controls. */
+.operon-backup-settings-group .setting-item.operon-backup-settings-row {
+	align-items: center;
+	flex-direction: row;
+}
+
+.operon-backup-settings-group .setting-item.operon-backup-settings-row .setting-item-info {
+	min-width: 0;
+	align-self: center;
+	flex: 1 1 0;
+}
+
+.operon-backup-settings-group .setting-item.operon-backup-settings-row .setting-item-control {
+	align-self: center;
+	flex: 0 0 auto;
+	max-width: 45%;
+	width: auto;
+	margin-top: 0;
+}
+
+.operon-backup-settings-group .setting-item.operon-backup-settings-row button:not(.mod-warning) {
+	background: transparent;
+	border: var(--border-width) solid var(--background-modifier-border);
+	box-shadow: none;
+}
+
+.operon-backup-settings-group .setting-item.operon-backup-settings-row button:not(.mod-warning):hover {
+	background: var(--background-modifier-hover);
+}
+
+.operon-backup-settings-group .setting-item.operon-backup-settings-row button {
+	max-width: 100%;
+	height: auto;
+	min-height: var(--input-height);
+	white-space: normal;
+}

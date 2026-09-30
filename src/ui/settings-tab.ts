@@ -1479,6 +1479,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+		if (tab.id === 'coreBackupRestore') {
+			return { type: 'page', name: pageName, desc, items: this.buildBackupRestoreSettingsItems() };
+		}
+
 		if (tab.id === 'coreCustomKeys') {
 			return { type: 'page', name: pageName, desc, items: this.buildCustomKeysSettingsItems() };
 		}
@@ -4043,9 +4047,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		for (const dispose of this.propertyPoolSettings.values()) dispose();
 		this.propertyPoolSettings.clear();
 		if (tabId !== 'tasksReminders') this.disposeReminderSoundPreview();
-		if (tabId === 'coreBackupRestore') {
-			this.renderBackupRestoreTab(contentEl);
-		} else if (tabId === 'corePipelines') {
+		if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
 
 		} else if (tabId === 'interfaceTaskFinder') {
@@ -4073,91 +4075,93 @@ export class OperonSettingsTab extends PluginSettingTab {
 		super.hide();
 	}
 
-	private renderBackupRestoreTab(containerEl: HTMLElement): void {
+	private buildBackupRestoreSettingsItems(): SettingDefinitionItem[] {
+		const title = settingsBackupT('settingsBackupPageTitle');
+		const action = (key: 'export' | 'restore' | 'resume' | 'reset', nameKey: string, descKey: string): SettingDefinition => ({
+			name: settingsBackupT(nameKey),
+			desc: settingsBackupT(descKey),
+			render: setting => {
+				setting.settingEl.addClass('operon-backup-settings-row');
+				this.renderBackupRestoreAction(setting, key);
+				if (key === 'export') {
+					return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+						['DOCS-134 Backup and restore settings', 'DOCS-044 Where Operon stores data']
+							.map(target => this.buildNativeSettingsDocsAction(title, target).action));
+				}
+			},
+		});
+		return [{
+			type: 'group', heading: settingsBackupT('settingsBackupExportTitle'), cls: 'operon-backup-settings-group',
+			items: [action('export', 'settingsBackupExportAction', 'settingsBackupExportActionDesc')],
+		}, {
+			type: 'group', heading: settingsBackupT('settingsBackupRestoreTitle'), cls: 'operon-backup-settings-group',
+			items: [action('restore', 'settingsBackupChooseFile', 'settingsBackupChooseFileDesc'),
+				action('resume', 'settingsBackupResumeRecovery', 'settingsBackupRecoveryUnavailable')],
+		}, {
+			type: 'group', heading: settingsBackupT('settingsBackupResetTitle'), cls: 'operon-backup-settings-group',
+			items: [action('reset', 'settingsBackupResetAction', 'settingsBackupResetActionDesc')],
+		}];
+	}
+
+	private renderBackupRestoreAction(setting: Setting, action: 'export' | 'restore' | 'resume' | 'reset'): void {
+		const containerEl = setting.settingEl;
 		const integration = this.settingsBackupUiIntegration;
 		if (!integration) {
-			containerEl.createEl('p', {
-				text: settingsBackupT('settingsBackupUnavailable'),
-				cls: 'operon-settings-muted-block',
-			});
+			setting.setDesc(settingsBackupT('settingsBackupUnavailable'));
 			return;
 		}
-
-		const exportSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			settingsBackupT('settingsBackupExportTitle'),
-		);
-		exportSection.addClass('operon-settings-backup-section-card');
-		exportSection.createEl('p', {
-			text: settingsBackupT('settingsBackupExportDesc'),
-			cls: 'operon-settings-muted-block',
-		});
-		new Setting(exportSection)
-			.setName(settingsBackupT('settingsBackupExportAction'))
-			.setDesc(settingsBackupT('settingsBackupExportActionDesc'))
-			.addButton(button => button
-				.setButtonText(settingsBackupT('settingsBackupDownload'))
-				.setCta()
-				.onClick(settingsAsyncHandler('settings backup export failed', async () => {
-					button.setDisabled(true);
-					try {
+		if (action === 'export') {
+			setting
+				.setName(settingsBackupT('settingsBackupExportAction'))
+				.setDesc(settingsBackupT('settingsBackupExportActionDesc'))
+				.addButton(button => button
+					.setButtonText(settingsBackupT('settingsBackupDownload'))
+					.onClick(settingsAsyncHandler('settings backup export failed', async () => {
+						button.setDisabled(true);
 						try {
-							const artifact = await integration.exportBackup();
-							downloadSettingsBackupArtifact(containerEl.ownerDocument, artifact);
-							new Notice(settingsBackupT('settingsBackupExportReady'));
-						} catch (error) {
-							console.debug('Operon: settings backup export failed', error);
-							new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							try {
+								const artifact = await integration.exportBackup();
+								downloadSettingsBackupArtifact(containerEl.ownerDocument, artifact);
+								new Notice(settingsBackupT('settingsBackupExportReady'));
+							} catch (error) {
+								console.debug('Operon: settings backup export failed', error);
+								new Notice(settingsBackupT('settingsBackupOperationFailed'));
+							}
+						} finally {
+							button.setDisabled(false);
 						}
-					} finally {
-						button.setDisabled(false);
-					}
-				})));
-
-		const restoreSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			settingsBackupT('settingsBackupRestoreTitle'),
-		);
-		restoreSection.addClass('operon-settings-backup-section-card');
-		restoreSection.createEl('p', {
-			text: settingsBackupT('settingsBackupRestoreDesc'),
-			cls: 'operon-settings-muted-block',
-		});
-		new Setting(restoreSection)
-			.setName(settingsBackupT('settingsBackupChooseFile'))
-			.setDesc(settingsBackupT('settingsBackupChooseFileDesc'))
-			.addButton(button => button
-				.setButtonText(settingsBackupT('settingsBackupChooseFile'))
-				.setCta()
-				.onClick(() => {
-					void openSettingsBackupRestorePicker(this.app, containerEl.ownerDocument, integration, true);
-				}));
-
-		const pending = integration.getPendingRecovery();
-		new Setting(restoreSection)
-			.setName(settingsBackupT('settingsBackupResumeRecovery'))
-			.setDesc(pending?.message ?? settingsBackupT('settingsBackupRecoveryUnavailable'))
-			.addButton(button => {
-				button.setButtonText(settingsBackupT('settingsBackupResumeRecovery'))
+					})));
+			return;
+		}
+		if (action === 'restore') {
+			setting
+				.setName(settingsBackupT('settingsBackupChooseFile'))
+				.setDesc(settingsBackupT('settingsBackupChooseFileDesc'))
+				.addButton(button => button
+					.setButtonText(settingsBackupT('settingsBackupChooseFile'))
 					.onClick(() => {
-						// The row remains available while the page is open so a modal result
-						// can be resumed without navigating away and back.
-						scopeSettingsModal(new SettingsBackupRestoreModal(this.app, integration, null), true).open();
+						void openSettingsBackupRestorePicker(this.app, containerEl.ownerDocument, integration, true);
+					}));
+			return;
+		}
+		if (action === 'resume') {
+			const pending = integration.getPendingRecovery();
+			setting
+				.setName(settingsBackupT('settingsBackupResumeRecovery'))
+				.setDesc(pending?.message ?? settingsBackupT('settingsBackupRecoveryUnavailable'))
+				.addButton(button => {
+					button.setButtonText(settingsBackupT('settingsBackupResumeRecovery'))
+						.onClick(() => {
+							// The row remains available while the page is open so a modal result
+							// can be resumed without navigating away and back.
+							scopeSettingsModal(new SettingsBackupRestoreModal(this.app, integration, null), true).open();
+						});
+					if (pending) button.buttonEl.addClass('mod-warning');
 					});
-				if (pending) button.buttonEl.addClass('mod-warning');
-				});
-
-		const resetSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			settingsBackupT('settingsBackupResetTitle'),
-		);
-		resetSection.addClass('operon-settings-backup-section-card');
-		resetSection.createEl('p', {
-			text: settingsBackupT('settingsBackupResetDesc'),
-			cls: 'operon-settings-muted-block',
-		});
+			return;
+		}
 		let resetRunning = false;
-		new Setting(resetSection)
+		setting
 			.setName(settingsBackupT('settingsBackupResetAction'))
 			.setDesc(settingsBackupT('settingsBackupResetActionDesc'))
 			.addButton(button => {
