@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3503,
-  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
+  "keyCount": 3506,
+  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2487,6 +2487,7 @@
       "tableEmbedVisibleRows": "嵌入表格中的最大可见行数",
       "tableEmbedVisibleRowsDesc": "设置嵌入式 Operon Table 的默认高度。额外行仍可通过滚动访问。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
+      "tableEmbeddedSection": "嵌入式表格",
       "tableFallbackPresetName": "Table 预设 {{number}}",
       "tableFileConflictKeepOriginal": "将 {{name}} 保留为原始文件",
       "tableFileConflictPartialNotice": "冲突解决已创建 {{succeeded}} 个 Table 文件；仍有 {{failed}} 个文件需要检查。",
@@ -2502,7 +2503,9 @@
       "tableFileRecoveryNotice": "Operon 已修复 Table 配置。所有有效的 Table 配置均已保留。",
       "tableFileRecoveryReason": "原因：{{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon 无法安全打开已存储的 Table 配置（{{reason}}）。设置写入已被阻止。请勿重新安装或编辑 data.json；请保留文件，检查报告的原因并寻求恢复指导。",
+      "tableFilesSection": "表格文件",
       "tableGeneralSettings": "Table 常规设置",
+      "tableHelperColumnsSection": "辅助列",
       "tablePresetConflict": "ID 冲突",
       "tablePresetFileMissingNotice": "Table 文件缺失：{{path}}",
       "tablePresetMissingFile": "文件缺失",
@@ -3548,5 +3551,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "271529044adaff8c89f14fa60d82acf3626ac7473de751ea5f216fc8ad9559d8"
+  "sourceVersion": "2fd9d4eb66298023d4a4439ee2f7e0da202f769cc2940aeef3580d96fa7d2546"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3503,
-  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
+  "keyCount": 3506,
+  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2487,6 +2487,7 @@
       "tableEmbedVisibleRows": "Linhas visíveis máximas em tabelas incorporadas",
       "tableEmbedVisibleRowsDesc": "Define a altura padrão das tabelas Operon incorporadas. Linhas adicionais permanecem disponíveis por rolagem.",
       "tableEmbedVisibleRowsOption": "{{rows}} linhas",
+      "tableEmbeddedSection": "Tabelas incorporadas",
       "tableFallbackPresetName": "Predefinição de Tabela {{number}}",
       "tableFileConflictKeepOriginal": "Manter {{name}} como original",
       "tableFileConflictPartialNotice": "A resolução do conflito criou {{succeeded}} arquivo(s) de Tabela; {{failed}} arquivo(s) ainda precisam ser revisados.",
@@ -2502,7 +2503,9 @@
       "tableFileRecoveryNotice": "O Operon reparou configurações de Tabela. Todas as configurações de Tabela válidas foram preservadas.",
       "tableFileRecoveryReason": "Motivo: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Esta versão do Operon não conseguiu abrir com segurança a configuração de Tabela armazenada ({{reason}}). As gravações de configurações foram bloqueadas. Não reinstale nem edite data.json; preserve seus arquivos, examine o motivo informado e busque orientação de recuperação.",
+      "tableFilesSection": "Arquivos de tabela",
       "tableGeneralSettings": "Configurações Gerais da Tabela",
+      "tableHelperColumnsSection": "Colunas auxiliares",
       "tablePresetConflict": "Conflito de ID",
       "tablePresetFileMissingNotice": "O arquivo da tabela está faltando: {{path}}",
       "tablePresetMissingFile": "Arquivo ausente",
@@ -3548,5 +3551,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "1bd7716970f00d6284670f11d7f25932e10707acb73353ebacc8b1ac41f4c949"
+  "sourceVersion": "ee066c2d04a9115c9d0c76ae62f70aa5b0a0164d36e01474c1f34d70587abf21"
 }

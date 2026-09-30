@@ -86,7 +86,7 @@ test('all Table creation entrypoints route through the shared, explicitly invoke
 	const settingsSource = readFileSync(path.resolve('src/ui/settings-tab.ts'), 'utf8');
 	const start = source.indexOf('\tprivate async addTablePresetAndRefresh(');
 	const end = source.indexOf('\n\tprivate buildTablePresetSettings', start);
-	const settingsStart = settingsSource.indexOf('\tprivate renderTablesTab(');
+	const settingsStart = settingsSource.indexOf('\tprivate renderTableSetting(');
 	const settingsEnd = settingsSource.indexOf('\n\tprivate renderTablePresetRow(', settingsStart);
 	assert.ok(start >= 0, 'shared Table creation flow must exist');
 	assert.ok(end > start, 'shared Table creation flow must have a bounded body');

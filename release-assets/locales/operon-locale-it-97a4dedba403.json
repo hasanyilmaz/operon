@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3503,
-  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
+  "keyCount": 3506,
+  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2487,6 +2487,7 @@
       "tableEmbedVisibleRows": "Righe visibili massime nelle tabelle incorporate",
       "tableEmbedVisibleRowsDesc": "Imposta l'altezza predefinita delle Operon Table incorporate. Le righe aggiuntive restano disponibili scorrendo.",
       "tableEmbedVisibleRowsOption": "{{rows}} righe",
+      "tableEmbeddedSection": "Tabelle incorporate",
       "tableFallbackPresetName": "Preimpostazione Table {{number}}",
       "tableFileConflictKeepOriginal": "Mantieni {{name}} come originale",
       "tableFileConflictPartialNotice": "La risoluzione del conflitto ha creato {{succeeded}} file Table; {{failed}} file richiedono ancora revisione.",
@@ -2502,7 +2503,9 @@
       "tableFileRecoveryNotice": "Operon ha riparato le configurazioni Table. Ogni configurazione Table valida è stata conservata.",
       "tableFileRecoveryReason": "Motivo: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon non ha potuto aprire in sicurezza la configurazione Table salvata ({{reason}}). Le scritture delle impostazioni sono state bloccate. Non reinstallare né modificare data.json; conserva i file, esamina il motivo segnalato e richiedi assistenza per il recupero.",
+      "tableFilesSection": "File tabella",
       "tableGeneralSettings": "Impostazioni generali Table",
+      "tableHelperColumnsSection": "Colonne ausiliarie",
       "tablePresetConflict": "Conflitto ID",
       "tablePresetFileMissingNotice": "Il file Table manca: {{path}}",
       "tablePresetMissingFile": "File mancante",
@@ -3548,5 +3551,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "29a2f5e16fe0e756dc088b696d70ed31b8ce5f24dfebda264badc964e9639a2e"
+  "sourceVersion": "80d7d52fb77a54c92c7e269aea3e4148b5509185ceeec7c342b0e00362645c71"
 }

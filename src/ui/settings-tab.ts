@@ -770,7 +770,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'tasksFileTasks',
 	'tasksInlineTasks',
 	'tasksTaskRouter',
-	'viewsTables',
 	'viewsGantt',
 	'interfaceTaskFinder',
 	'interfaceContextMenu',
@@ -788,7 +787,6 @@ const SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS: Partial<Record<OperonSetting
 	tasksInlineTasks: 'DOCS-011 Inline tasks',
 	tasksFileTasks: 'DOCS-013 File tasks',
 	tasksTaskRouter: 'DOCS-136 Task Router',
-	viewsTables: 'DOCS-105 Table overview',
 	interfaceTaskFinder: 'DOCS-027 Task Finder',
 	interfaceContextMenu: 'DOCS-042 Contextual menu actions',
 	interfaceStateIcons: 'DOCS-099 State Icons',
@@ -978,6 +976,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		defaultPipelineName: string;
 		kanbanPipelineIds: Map<string, string | null>;
 	};
+	private refreshTablesSettingsPage: (() => void) | null = null;
 	private activeNativeSettingsPage: {
 		tabId: OperonSettingsTabId;
 		containerEl: HTMLElement;
@@ -1097,10 +1096,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	refreshTablePresetFileState(): void {
-		const activePage = this.activeNativeSettingsPage;
-		if (activePage?.tabId === 'viewsTables' && activePage.containerEl.isConnected) {
-			this.redisplayPreservingScroll();
-		}
+		this.refreshTablesSettingsPage?.();
 	}
 
 	refreshLanguageState(): void {
@@ -1474,6 +1470,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			return { type: 'page', name: pageName, desc, items: this.buildKanbanSettingsItems(entries) };
 		}
 
+		if (tab.id === 'viewsTables') {
+			return { type: 'page', name: pageName, desc, items: this.buildTablesSettingsItems(entries) };
+		}
+
 		if (tab.id === 'viewsFilters') {
 			return { type: 'page', name: pageName, desc, items: this.buildFiltersSettingsItems(entries) };
 		}
@@ -1538,7 +1538,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private buildTaskCaptureSearchSection(
 		entry: OperonSettingsSearchEntry,
-		render: (containerEl: HTMLElement, key: string) => void,
+		render: (containerEl: HTMLElement, key: string) => void | (() => void),
 	): SettingDefinition {
 		const key = entry.key ?? entry.id.split('.').pop() ?? '';
 		return {
@@ -1550,11 +1550,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				setting.settingEl.empty();
 				setting.settingEl.removeClass('setting-item');
 				setting.settingEl.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
-				render(setting.settingEl, key);
+				const cleanup = render(setting.settingEl, key);
 				if (entry.tabId !== 'viewsFilters' && (entry.key || key === 'fileTaskPipelineLocations' || key === 'fileTaskArchivePipelineLocations')) {
 					setting.settingEl.addClass('operon-settings-search-control');
 					setting.settingEl.querySelector('.setting-item')?.addClass('operon-settings-search-control-row');
 				}
+				return cleanup;
 			},
 		};
 	}
@@ -1619,6 +1620,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 		], entries, t('settings', 'tabKanban'), 'DOCS-030 Kanban overview');
 	}
 
+	private buildTablesSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		const render = (containerEl: HTMLElement, key: string): void | (() => void) => {
+			if (key === 'tablePresets') return this.renderTablePresetsSection(containerEl);
+			this.renderTableSetting(containerEl, key);
+		};
+		return this.buildTaskSettingsGroups([
+			['tableFilesSection', ['tableDefaultFolder'], render, 'DOCS-114 Table files'],
+			['tableEmbeddedSection', ['tableEmbedVisibleRows', 'tableEmbedDefaultWidthPercent'], render, 'DOCS-110 Embed a table in a note'],
+			['tableHelperColumnsSection', ['tableShowLineNumbers', 'tableShowTaskIcon', 'tableShowTaskDataTypeIcon'], render, ['DOCS-106 Table columns', 'DOCS-112 Table cells display and behavior']],
+			['tablePresets', ['tableDefaultPresetId', 'tablePresets'], render, 'DOCS-109 Table presets'],
+		], entries, t('settings', 'tabTables'), 'DOCS-105 Table overview');
+	}
+
 	private buildFiltersSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const refresh = (): void => this.redisplayPreservingScroll();
 		const render = (containerEl: HTMLElement, key: string): void => {
@@ -1640,7 +1654,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildTaskSettingsGroups(
-		sections: Array<[string, string[], (containerEl: HTMLElement, key: string) => void, (string | string[])?]>,
+		sections: Array<[string, string[], (containerEl: HTMLElement, key: string) => void | (() => void), (string | string[])?]>,
 		entries: OperonSettingsSearchEntry[],
 		pageTitle: string,
 		pageDocsTarget: string,
@@ -3604,8 +3618,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
 	}
 
-	private resolveSettingsScrollHost(): HTMLElement | null {
-		const containerEl = this.activeNativeSettingsPage?.containerEl ?? this.containerEl;
+	private resolveSettingsScrollHost(containerEl = this.activeNativeSettingsPage?.containerEl ?? this.containerEl): HTMLElement | null {
 		const settingsScrollHost = containerEl.closest<HTMLElement>('.vertical-tab-content');
 		if (settingsScrollHost) return settingsScrollHost;
 
@@ -3682,8 +3695,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderKeyMappingsSection(contentEl);
 		} else if (tabId === 'coreCustomKeys') {
 			this.renderCustomKeysSection(contentEl);
-		} else if (tabId === 'viewsTables') {
-			this.renderTablesTab(contentEl);
 		} else if (tabId === 'viewsGantt') {
 			this.renderGanttTab(contentEl);
 		} else if (tabId === 'interfaceTaskFinder') {
@@ -7642,7 +7653,109 @@ export class OperonSettingsTab extends PluginSettingTab {
 		});
 	}
 
-	private renderTablesTab(containerEl: HTMLElement): void {
+	private renderTableSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'tableDefaultPresetId') {
+			const tablePresets = this.getAvailableTablePresets();
+			this.markSettingsSearchTarget(renderDropdownSetting({
+				containerEl,
+				name: t('settings', 'tableDefaultPreset'),
+				desc: t('settings', 'tableDefaultPresetDesc'),
+				value: this.settings.tableDefaultPresetId ?? tablePresets[0]?.id ?? '',
+				options: [],
+				configure: drop => {
+					const labels = this.getTablePresetOptionLabels(tablePresets);
+					for (const preset of tablePresets) {
+						drop.addOption(preset.id, labels.get(preset.id) ?? preset.name);
+					}
+					const defaultPresetId = this.settings.tableDefaultPresetId;
+					if (defaultPresetId && !tablePresets.some(preset => preset.id === defaultPresetId)) {
+						const source = this.getTablePresetSourceMetadata(defaultPresetId);
+						if (source?.kind === 'conflict' || source?.kind === 'missing') {
+							drop.addOption(defaultPresetId, `${source.name} (${t('settings', source.kind === 'missing'
+								? 'tablePresetMissingFile'
+								: 'tablePresetConflict')})`);
+						}
+					}
+				},
+				onChange: settingsAsyncHandler('settings table default preset save failed', async value => {
+					await this.saveTableSettingsAndRefresh(() => {
+						this.settings.tableDefaultPresetId = value ? value : (tablePresets[0]?.id ?? null);
+					});
+				}),
+			}), 'tableDefaultPresetId');
+		}
+		if (key === 'tableDefaultFolder') {
+			this.renderBoundTextSetting(
+				containerEl,
+				t('settings', 'tableDefaultFolder'),
+				t('settings', 'tableDefaultFolderDesc'),
+				'tableDefaultFolder',
+				{
+					placeholder: t('settings', 'tableDefaultFolderPlaceholder'),
+					settingClass: 'operon-settings-long-text-setting',
+					controlClass: 'operon-settings-input-long',
+					normalize: normalizeSettingsFolderPath,
+					configure: text => {
+						new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings table default folder selection failed', async folder => {
+							this.settings.tableDefaultFolder = normalizeSettingsFolderPath(folder.path);
+							await this.saveSettings();
+						}));
+					},
+				},
+			);
+		}
+		if (key === 'tableEmbedVisibleRows') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'tableEmbedVisibleRows'), t('settings', 'tableEmbedVisibleRowsDesc'), 'tableEmbedVisibleRows', {
+				value: String(this.settings.tableEmbedVisibleRows) as `${TableEmbedVisibleRows}`,
+				dropdownOptions: TABLE_EMBED_VISIBLE_ROW_OPTIONS.map(rows => ({
+					value: String(rows) as `${TableEmbedVisibleRows}`,
+					label: t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
+				})),
+				normalize: value => normalizeTableEmbedVisibleRows(value, DEFAULT_SETTINGS.tableEmbedVisibleRows),
+				onAfterChange: () => this.applyPendingSettingsChange(),
+			});
+		}
+		if (key === 'tableEmbedDefaultWidthPercent') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'tableEmbedDefaultWidthPercent'), t('settings', 'tableEmbedDefaultWidthPercentDesc'), 'tableEmbedDefaultWidthPercent', {
+				value: String(this.settings.tableEmbedDefaultWidthPercent) as `${TableEmbedDefaultWidthPercent}`,
+				dropdownOptions: TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS.map(width => ({
+					value: String(width) as `${TableEmbedDefaultWidthPercent}`,
+					label: `${String(width)}%`,
+				})),
+				normalize: value => normalizeTableEmbedDefaultWidthPercent(value, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent),
+				onAfterChange: () => this.applyPendingSettingsChange(),
+			});
+		}
+		if (key === 'tableShowLineNumbers') {
+			this.renderBoundToggleSetting(
+				containerEl,
+				t('settings', 'tableShowLineNumbers'),
+				t('settings', 'tableShowLineNumbersDesc'),
+				'tableShowLineNumbers',
+				{ onAfterChange: () => this.applyPendingSettingsChange() },
+			);
+		}
+		if (key === 'tableShowTaskIcon') {
+			this.renderBoundToggleSetting(
+				containerEl,
+				t('settings', 'tableShowTaskIcon'),
+				t('settings', 'tableShowTaskIconDesc'),
+				'tableShowTaskIcon',
+				{ onAfterChange: () => this.applyPendingSettingsChange() },
+			);
+		}
+		if (key === 'tableShowTaskDataTypeIcon') {
+			this.renderBoundToggleSetting(
+				containerEl,
+				t('settings', 'tableShowTaskDataTypeIcon'),
+				t('settings', 'tableShowTaskDataTypeIconDesc'),
+				'tableShowTaskDataTypeIcon',
+				{ onAfterChange: () => this.applyPendingSettingsChange() },
+			);
+		}
+	}
+
+	private renderTableRecoveryNotice(containerEl: HTMLElement): void {
 		const recoveryDetails = this.tablePresetFileIntegration?.getRecoveryDetails?.();
 		if (recoveryDetails && recoveryDetails.health !== 'ready') {
 			const details = recoveryDetails;
@@ -7670,16 +7783,26 @@ export class OperonSettingsTab extends PluginSettingTab {
 			if (details?.repairBackupPath) notice.createEl('code', { text: details.repairBackupPath });
 			for (const path of details?.affectedPaths ?? []) notice.createEl('code', { text: path });
 		}
-		const tablePresets = this.getAvailableTablePresets();
+	}
+
+	private renderTablePresetsSection(containerEl: HTMLElement): () => void {
+		const pageEl = containerEl.closest<HTMLElement>('.setting-page');
+		const titlebarEl = pageEl?.querySelector<HTMLElement>('.setting-page-titlebar');
+		const titleEl = titlebarEl?.querySelector<HTMLElement>('.setting-page-title');
+		const ownsPage = (): boolean => !!pageEl && titlebarEl?.parentElement === pageEl
+			&& titleEl?.parentElement === titlebarEl && titleEl?.textContent === t('settings', 'tabTables');
+		let disposed = false;
 		const refreshTablesTab = (): void => {
-			const scrollHost = this.resolveSettingsScrollHost();
+			if (disposed || !containerEl.isConnected || !containerEl.getClientRects().length
+				|| containerEl.ownerDocument.defaultView?.getComputedStyle(containerEl).visibility !== 'visible') return;
+			const scrollHost = this.resolveSettingsScrollHost(containerEl);
 			const scrollTop = scrollHost?.scrollTop ?? 0;
 			const scrollLeft = scrollHost?.scrollLeft ?? 0;
-			containerEl.empty();
-			this.renderTablesTab(containerEl);
+			this.updateNativeSettingsDefinitions();
 			if (!scrollHost) return;
 
 			const restore = (): void => {
+				if (!ownsPage() || !scrollHost.isConnected || !pageEl?.getClientRects().length) return;
 				const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
 				const maxScrollLeft = Math.max(0, scrollHost.scrollWidth - scrollHost.clientWidth);
 				scrollHost.scrollTop = Math.min(scrollTop, maxScrollTop);
@@ -7689,107 +7812,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			scrollHost.ownerDocument.defaultView?.requestAnimationFrame(restore);
 		};
 
-		renderSettingsInfoBox(containerEl, t('table', 'title'), t('settings', 'tableSettingsDesc'));
-
-		const generalTitle = t('settings', 'tableGeneralSettings');
-		const generalSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			generalTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(generalTitle, 'DOCS-114 Table files'),
-		);
-		this.markSettingsSearchTarget(renderDropdownSetting({
-			containerEl: generalSection,
-			name: t('settings', 'tableDefaultPreset'),
-			desc: t('settings', 'tableDefaultPresetDesc'),
-			value: this.settings.tableDefaultPresetId ?? tablePresets[0]?.id ?? '',
-			options: [],
-			configure: drop => {
-				const labels = this.getTablePresetOptionLabels(tablePresets);
-				for (const preset of tablePresets) {
-					drop.addOption(preset.id, labels.get(preset.id) ?? preset.name);
-				}
-				const defaultPresetId = this.settings.tableDefaultPresetId;
-				if (defaultPresetId && !tablePresets.some(preset => preset.id === defaultPresetId)) {
-					const source = this.getTablePresetSourceMetadata(defaultPresetId);
-					if (source?.kind === 'conflict' || source?.kind === 'missing') {
-						drop.addOption(defaultPresetId, `${source.name} (${t('settings', source.kind === 'missing'
-							? 'tablePresetMissingFile'
-							: 'tablePresetConflict')})`);
-					}
-				}
-			},
-			onChange: settingsAsyncHandler('settings table default preset save failed', async value => {
-				await this.saveTableSettingsAndRefresh(() => {
-					this.settings.tableDefaultPresetId = value ? value : (tablePresets[0]?.id ?? null);
-				});
-			}),
-		}), 'tableDefaultPresetId');
-		this.renderBoundTextSetting(
-			generalSection,
-			t('settings', 'tableDefaultFolder'),
-			t('settings', 'tableDefaultFolderDesc'),
-			'tableDefaultFolder',
-			{
-				placeholder: t('settings', 'tableDefaultFolderPlaceholder'),
-				settingClass: 'operon-settings-long-text-setting',
-				controlClass: 'operon-settings-input-long',
-				normalize: normalizeSettingsFolderPath,
-				configure: text => {
-					new FolderSuggest(this.app, text.inputEl, settingsAsyncHandler('settings table default folder selection failed', async folder => {
-						this.settings.tableDefaultFolder = normalizeSettingsFolderPath(folder.path);
-						await this.saveSettings();
-					}));
-				},
-			},
-		);
-		this.renderBoundDropdownSetting(generalSection, t('settings', 'tableEmbedVisibleRows'), t('settings', 'tableEmbedVisibleRowsDesc'), 'tableEmbedVisibleRows', {
-			value: String(this.settings.tableEmbedVisibleRows) as `${TableEmbedVisibleRows}`,
-			dropdownOptions: TABLE_EMBED_VISIBLE_ROW_OPTIONS.map(rows => ({
-				value: String(rows) as `${TableEmbedVisibleRows}`,
-				label: t('settings', 'tableEmbedVisibleRowsOption', { rows: String(rows) }),
-			})),
-			normalize: value => normalizeTableEmbedVisibleRows(value, DEFAULT_SETTINGS.tableEmbedVisibleRows),
-			onAfterChange: () => this.applyPendingSettingsChange(),
-		});
-		this.renderBoundDropdownSetting(generalSection, t('settings', 'tableEmbedDefaultWidthPercent'), t('settings', 'tableEmbedDefaultWidthPercentDesc'), 'tableEmbedDefaultWidthPercent', {
-			value: String(this.settings.tableEmbedDefaultWidthPercent) as `${TableEmbedDefaultWidthPercent}`,
-			dropdownOptions: TABLE_EMBED_DEFAULT_WIDTH_PERCENT_OPTIONS.map(width => ({
-				value: String(width) as `${TableEmbedDefaultWidthPercent}`,
-				label: `${String(width)}%`,
-			})),
-			normalize: value => normalizeTableEmbedDefaultWidthPercent(value, DEFAULT_SETTINGS.tableEmbedDefaultWidthPercent),
-			onAfterChange: () => this.applyPendingSettingsChange(),
-		});
-		this.renderBoundToggleSetting(
-			generalSection,
-			t('settings', 'tableShowLineNumbers'),
-			t('settings', 'tableShowLineNumbersDesc'),
-			'tableShowLineNumbers',
-			{ onAfterChange: () => this.applyPendingSettingsChange() },
-		);
-		this.renderBoundToggleSetting(
-			generalSection,
-			t('settings', 'tableShowTaskIcon'),
-			t('settings', 'tableShowTaskIconDesc'),
-			'tableShowTaskIcon',
-			{ onAfterChange: () => this.applyPendingSettingsChange() },
-		);
-		this.renderBoundToggleSetting(
-			generalSection,
-			t('settings', 'tableShowTaskDataTypeIcon'),
-			t('settings', 'tableShowTaskDataTypeIconDesc'),
-			'tableShowTaskDataTypeIcon',
-			{ onAfterChange: () => this.applyPendingSettingsChange() },
-		);
-
-		const presetsTitle = t('settings', 'tablePresets');
-		const presetsSection = renderNativeSettingsGroupedSection(
-			containerEl,
-			presetsTitle,
-			undefined,
-			this.buildNativeSettingsDocsAction(presetsTitle, 'DOCS-109 Table presets'),
-		);
+		const refreshOwnedPage = (): void => {
+			if (ownsPage()) refreshTablesTab();
+		};
+		if (ownsPage()) this.refreshTablesSettingsPage = refreshOwnedPage;
+		this.renderTableRecoveryNotice(containerEl);
+		const presetsSection = containerEl.createDiv('operon-table-presets-settings-list');
 		presetsSection.addClass('operon-settings-add-list-section');
 		presetsSection.addClass('operon-settings-card-list-section');
 		const tablePresetsDescEl = presetsSection.createEl('p', {
@@ -7828,7 +7856,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		renderList();
 
 		const addRowEl = presetsSection.createDiv('operon-settings-add-row');
-		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'tableAddPresetButton'));
+		const addBtn = createSettingsAddButton(addRowEl, t('settings', 'tableAddPresetButton').replace(/^\+\s*/, ''));
 		addBtn.addEventListener('click', settingsAsyncHandler('settings table preset add failed', async () => {
 			const preset = createTablePresetFromSource(null, t('settings', 'tableFallbackPresetName', {
 					number: String(this.settings.tablePresetOrderIds.length + 1),
@@ -7844,6 +7872,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 					refreshTablesTab();
 				}, { saveWhenClean: true });
 			}));
+		return () => {
+			disposed = true;
+			if (this.refreshTablesSettingsPage === refreshOwnedPage) this.refreshTablesSettingsPage = null;
+			closeFloatingPanelsForRoot(containerEl);
+		};
 	}
 
 	private renderGanttTab(containerEl: HTMLElement): void {

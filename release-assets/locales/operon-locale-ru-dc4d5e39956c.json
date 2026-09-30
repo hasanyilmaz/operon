@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3503,
-  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
+  "keyCount": 3506,
+  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2487,6 +2487,7 @@
       "tableEmbedVisibleRows": "Максимум видимых строк во встроенных таблицах",
       "tableEmbedVisibleRowsDesc": "Задаёт высоту по умолчанию для встроенных Operon Tables. Дополнительные строки остаются доступными через прокрутку.",
       "tableEmbedVisibleRowsOption": "{{rows}} строк",
+      "tableEmbeddedSection": "Встроенные таблицы",
       "tableFallbackPresetName": "Пресет Table {{number}}",
       "tableFileConflictKeepOriginal": "Сохранить {{name}} как оригинал",
       "tableFileConflictPartialNotice": "Создано файлов Table: {{succeeded}}; ещё требуют проверки: {{failed}}.",
@@ -2502,7 +2503,9 @@
       "tableFileRecoveryNotice": "Operon восстановил конфигурации Table. Все допустимые конфигурации Table сохранены.",
       "tableFileRecoveryReason": "Причина: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon не удалось безопасно открыть сохранённую конфигурацию Table ({{reason}}). Запись настроек заблокирована. Не переустанавливайте плагин и не редактируйте data.json; сохраните файлы, проверьте указанную причину и обратитесь за помощью по восстановлению.",
+      "tableFilesSection": "Файлы таблиц",
       "tableGeneralSettings": "Общие настройки Table",
+      "tableHelperColumnsSection": "Вспомогательные столбцы",
       "tablePresetConflict": "Конфликт ID",
       "tablePresetFileMissingNotice": "Файл Table отсутствует: {{path}}",
       "tablePresetMissingFile": "Файл отсутствует",
@@ -3548,5 +3551,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "20cba8fa59c605eab09d56a130255246e84a9248deae9b779697d7970d51b0c2"
+  "sourceVersion": "e9c4d276e965a880211489d9106f26485a479c0e2aa223b7821935b04ed943d5"
 }

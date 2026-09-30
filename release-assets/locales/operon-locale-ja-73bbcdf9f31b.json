@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3503,
-  "keyFingerprint": "dbd78b71e70c52524264fc4425dc70a63cd78bb9e3858b4e1f029e80c7ab8ce3",
+  "keyCount": 3506,
+  "keyFingerprint": "0ef11edef71553f22fc8c33d84a529148fa3527e42637461cd68a8f2d6318ae7",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2487,6 +2487,7 @@
       "tableEmbedVisibleRows": "埋め込みテーブルの最大表示行数",
       "tableEmbedVisibleRowsDesc": "埋め込み Operon Table のデフォルトの高さを設定します。追加の行はスクロールで引き続き表示できます。",
       "tableEmbedVisibleRowsOption": "{{rows}} 行",
+      "tableEmbeddedSection": "埋め込みテーブル",
       "tableFallbackPresetName": "Table プリセット {{number}}",
       "tableFileConflictKeepOriginal": "{{name}} を元ファイルとして保持",
       "tableFileConflictPartialNotice": "競合解決で {{succeeded}} 件の Table ファイルを作成しました。{{failed}} 件は引き続き確認が必要です。",
@@ -2502,7 +2503,9 @@
       "tableFileRecoveryNotice": "Operon は Table 設定を修復しました。有効な Table 設定はすべて保持されました。",
       "tableFileRecoveryReason": "理由: {{reason}}",
       "tableFileUnsupportedPackageNotice": "Operon は保存された Table 設定を安全に開けませんでした（{{reason}}）。設定の書き込みは停止されました。再インストールや data.json の編集は行わず、ファイルを保持し、報告された理由を確認して復旧支援を受けてください。",
+      "tableFilesSection": "テーブルファイル",
       "tableGeneralSettings": "Table の一般設定",
+      "tableHelperColumnsSection": "補助列",
       "tablePresetConflict": "ID の競合",
       "tablePresetFileMissingNotice": "Table ファイルが見つかりません: {{path}}",
       "tablePresetMissingFile": "ファイルが見つかりません",
@@ -3548,5 +3551,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "cff326aeca9c6435118969b16ab0ebd8a1256dc936fddd822d96c33c81c7cce3"
+  "sourceVersion": "20e94be5951eccc0b686d9d1474d5c9994b1a7633f78b4849d7f48497d64ccb5"
 }

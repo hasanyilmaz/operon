@@ -71,7 +71,7 @@ function renderRoute(tabId) {
 	for (const method of settingsTabSource.matchAll(/(?:el|\(el, key\)) => this\.(\w+)\(el(?:, key)?\)/g)) {
 		harness[method[1]] = host => { assert.equal(host, container); calls.push(method[1]); };
 	}
-	const container = { empty() {}, removeClass() {}, addClass() {} };
+	const container = { empty() {}, removeClass() {}, addClass() {}, querySelector() { return null; } };
 	const entries=[...registrySource.matchAll(/(?:e|section)\('[^']+', '([^']+)', '([^']+)', '[^']+', '([^']+)', '([^']+)'/g)].filter(m=>m[1]===tabId).map(m=>({id:'test.'+m[2],name:{key:m[3]},desc:{key:m[4]}}));
 	const items = tabId === 'tasksTaskRouter' ? harness.buildTaskRouterSettingsItems(entries) : harness.buildTaskCaptureSearchSections(tabId, entries);
 	const sections = items.flatMap(item => item.items ?? [item]);
