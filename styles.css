@@ -35225,3 +35225,20 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 .operon-core-general-settings-group:where(.operon-settings-scope) .setting-item-control {
 	align-self: center;
 }
+
+/* Pipelines Settings: shared action shapes with neutral resting controls. */
+.operon-pipeline-header-actions:where(.operon-settings-scope, .operon-settings-scope *) :is(.operon-settings-icon-action-button, .operon-settings-danger-icon-button) {
+	width: 32px;
+	min-width: 32px;
+	height: 32px;
+	padding: 0;
+	border-radius: 6px;
+	box-sizing: border-box;
+}
+
+:where(.operon-pipeline-card, .operon-pipeline-add-row):where(.operon-settings-scope, .operon-settings-scope *) button:is(.operon-settings-icon-action-button, .operon-settings-danger-icon-button, .operon-status-icon-trigger, .operon-status-add-button, .operon-settings-primary-button) {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+	color: var(--text-normal);
+}

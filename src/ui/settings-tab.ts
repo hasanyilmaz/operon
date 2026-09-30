@@ -765,7 +765,6 @@ const SETTINGS_SEARCH_NATIVE_TAB_IDS = new Set<OperonSettingsTabId>([
 
 const SETTINGS_SEARCH_IMPERATIVE_PAGE_TAB_IDS = new Set<OperonSettingsTabId>([
 	'coreBackupRestore',
-	'corePipelines',
 	'corePriority',
 	'coreKeymapping',
 	'coreCustomKeys',
@@ -1482,6 +1481,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			};
 		}
 
+		if (tab.id === 'corePipelines') {
+			return { type: 'page', name: pageName, desc, items: this.buildPipelinesSettingsItems() };
+		}
+
 		if (tab.id === 'viewsCalendar') {
 			return { type: 'page', name: pageName, desc, items: this.buildCalendarSettingsItems(entries) };
 		}
@@ -1769,6 +1772,42 @@ export class OperonSettingsTab extends PluginSettingTab {
 				items,
 			};
 		});
+	}
+
+	private buildPipelinesSettingsItems(): SettingDefinitionItem[] {
+		const refresh = () => this.redisplayPreservingScroll();
+		const prepareHost = (setting: Setting): HTMLElement => {
+			const host = setting.settingEl;
+			host.empty();
+			host.removeClass('setting-item');
+			host.addClass('operon-settings-tab-root', 'operon-settings-native-page-root');
+			return host;
+		};
+		return [
+			{ name: '', searchable: false, render: setting => {
+				const host = prepareHost(setting);
+				this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
+				renderSettingsInfoBox(host, t('settings', 'pipelinesTitle'), t('settings', 'pipelinesDesc'), 'taxonomy.pipelines');
+				this.renderPipelineRepairWarnings(host, refresh);
+				const title = t('settings', 'tabPipelines');
+				const target = SETTINGS_SEARCH_IMPERATIVE_PAGE_DOCS_TARGETS.corePipelines;
+				return target ? attachDeclarativeSettingsPageTitleAction(host, title,
+					this.buildNativeSettingsDocsAction(title, target).action) : undefined;
+			} },
+			...this.settings.pipelines.map((pipeline): SettingDefinition => ({
+				name: pipeline.name,
+				desc: pipeline.description ?? '',
+				render: setting => {
+					const host = prepareHost(setting);
+					host.dataset.operonPipelineId = pipeline.id;
+					const index = this.settings.pipelines.findIndex(candidate => candidate.id === pipeline.id);
+					if (index >= 0) this.renderPipelineCard(host, this.settings.pipelines[index], index, refresh);
+				},
+			})),
+			{ name: '', searchable: false, render: setting => {
+				this.renderPipelineAddRow(prepareHost(setting), refresh);
+			} },
+		];
 	}
 
 	private buildCoreGeneralSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -10052,6 +10091,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.renderPipelineCard(containerEl, this.settings.pipelines[i], i, refresh);
 		}
 
+		this.renderPipelineAddRow(containerEl, refresh);
+	}
+
+	private renderPipelineAddRow(containerEl: HTMLElement, refresh: () => void): void {
 		createWorkflowInlineAddRow({
 			containerEl,
 			rowClass: 'operon-pipeline-add-row',
@@ -10776,11 +10819,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		createWorkflowActionButton({
 			containerEl: headerActions,
-			text: t('settings', 'deletePipeline'),
+			icon: 'x',
 			label: this.settings.pipelines.length <= 1
 				? t('settings', 'pipelineAtLeastOnePipeline')
 				: t('settings', 'deletePipeline'),
-			className: 'operon-settings-danger-outline-button',
+			className: 'operon-settings-danger-icon-button',
 			danger: true,
 			disabled: this.settings.pipelines.length <= 1,
 			errorContext: 'settings pipeline delete failed',
@@ -10841,6 +10884,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				delete currentPipeline.description;
 			}
 			await this.saveWorkflowSettings();
+			this.updateNativeSettingsDefinitions();
 		});
 		descriptionTextarea.addEventListener('blur', savePipelineDescription);
 		descriptionTextarea.addEventListener('change', savePipelineDescription);
