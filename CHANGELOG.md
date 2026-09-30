@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Organized **Tables settings** into focused sections with individual setting search results, consistent row dividers, and help links beside page and section headings.
+
 ### Validation
+
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,711/3,711** local regression tests and **48** synthetic Tables settings browser scenarios.
 
 ## [3.10.2] - 2026-09-28
 
