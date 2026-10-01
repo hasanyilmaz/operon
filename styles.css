@@ -30104,7 +30104,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
    Kept late in the cascade so custom settings editors inherit one input
    treatment while preserving their width/layout-specific classes. */
 
-.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *),
+.setting-group:where(.operon-settings-scope) {
 	--operon-settings-input-height: var(--input-height, 32px);
 	--operon-settings-input-radius: var(--input-radius, 6px);
 	--operon-settings-input-bg: var(--background-modifier-form-field, var(--background-primary));
@@ -30185,7 +30186,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 /* ── Settings Dropdown Standardization ─────────────────────────────── */
 
-.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select,
+.setting-group:where(.operon-settings-scope) select {
 	box-sizing: border-box;
 	min-height: var(--operon-settings-input-height);
 	max-width: 100%;
@@ -30200,18 +30202,22 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 	transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:hover:not(:disabled) {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:hover:not(:disabled),
+.setting-group:where(.operon-settings-scope) select:hover:not(:disabled) {
 	border-color: var(--background-modifier-border-hover);
 }
 
 .operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:focus,
-.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:focus-visible {
+.setting-group:where(.operon-settings-scope) select:focus,
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:focus-visible,
+.setting-group:where(.operon-settings-scope) select:focus-visible {
 	border-color: var(--interactive-accent);
 	outline: none;
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
 }
 
-.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:disabled {
+.operon-settings-tab-root:where(.operon-settings-scope, .operon-settings-scope *) select:disabled,
+.setting-group:where(.operon-settings-scope) select:disabled {
 	cursor: not-allowed;
 	opacity: 0.62;
 	background-color: var(--background-secondary);
