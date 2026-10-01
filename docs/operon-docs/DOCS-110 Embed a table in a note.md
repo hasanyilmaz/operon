@@ -2,7 +2,7 @@
 Notes: Render a preset's live, editable table inside any note
 Icon: panel-top
 Color: "#0284c7"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-10-01T14:06:16+02:00
 ---
 
 # Embed a table in a note
@@ -39,9 +39,9 @@ width: 125%
 
 Operon replaces the block with the preset's table: its filter, columns, grouping, sorting, summaries, Task Tree expansion, Gantt layout, visible row count, and width, all live. The table is always referenced by `presetId`; `rows` only controls the local embed height, while `width` only controls the local embed width.
 
-`rows` is optional. When it is a positive whole number, it controls how many rows this embedded table shows before the table body scrolls. This local value is not limited to the settings dropdown options. If `rows` is missing or invalid, the embed uses the global setting in **Settings → Operon → Views → Tables → Maximum visible rows in embedded tables**. The global default is `20`, with settings options for `10`, `20`, `30`, `40`, `50`, `75`, and `100` rows.
+`rows` is optional. When it is a positive whole number, it controls how many rows this embedded table shows before the table body scrolls. This local value is not limited to the settings dropdown options. If `rows` is missing or invalid, the embed uses the global setting in **Settings → Operon → Views → Tables → Embedded Tables → Maximum visible rows in embedded tables**. The global default is `20`, with settings options for `10`, `20`, `30`, `40`, `50`, `75`, and `100` rows.
 
-`width` is optional. A valid local value is any whole-number percentage of at least `50%`, such as `width: 125%` or `width: 300%`; it overrides the global **Default width for embedded tables** setting for that one code block. The Settings dropdown offers `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%`, but those choices do not limit local syntax. Operon keeps the rendered table within the available pane geometry. If `width` is missing or invalid, the global setting applies; its default is `175%`. A valid local `width:` always takes precedence over the global setting.
+`width` is optional. A valid local value is any whole-number percentage of at least `50%`, such as `width: 125%` or `width: 300%`; it overrides the global **Default width of embedded tables** setting under **Settings → Operon → Views → Tables → Embedded Tables** for that one code block. The Settings dropdown offers `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%`, but those choices do not limit local syntax. Operon keeps the rendered table within the available pane geometry. If `width` is missing or invalid, the global setting applies; its default is `175%`. A valid local `width:` always takes precedence over the global setting.
 
 ## Fast insert command
 
@@ -119,9 +119,9 @@ An invalid `rows` or `width` value does not break the embed. Operon ignores that
 
 **What if I change the preset later?** Every note that embeds that preset shows the change, because the embed follows the preset rather than a copy of it.
 
-**How many rows does an embedded table show?** By default it uses **Settings → Operon → Views → Tables → Maximum visible rows in embedded tables**, which starts at `20`. Add `rows: 35` or another positive whole number to one code block when that embed needs a different visible height.
+**How many rows does an embedded table show?** By default it uses **Settings → Operon → Views → Tables → Embedded Tables → Maximum visible rows in embedded tables**, which starts at `20`. Add `rows: 35` or another positive whole number to one code block when that embed needs a different visible height.
 
-**How wide is an embedded table?** It uses the **Default width for embedded tables** setting, which starts at `175%`. Add any whole-number local percentage of at least `50%`, such as `width: 125%`, when one embed needs another width; local `width:` overrides the global setting. The Settings dropdown is limited to `50%` through `250%`, but that does not limit local values.
+**How wide is an embedded table?** It uses the **Default width of embedded tables** setting, which starts at `175%`. Add any whole-number local percentage of at least `50%`, such as `width: 125%`, when one embed needs another width; local `width:` overrides the global setting. The Settings dropdown is limited to `50%` through `250%`, but that does not limit local values.
 
 **Does changing the embed preset affect my default preset?** No. The toolbar switcher changes only the `presetId` in that one embedded code block.
 

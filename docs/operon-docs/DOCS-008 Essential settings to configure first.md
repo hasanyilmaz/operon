@@ -2,7 +2,7 @@
 Notes: The few settings to set before real use
 Icon: sliders-horizontal
 Color: "#16a34a"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Essential settings to configure first
@@ -27,15 +27,15 @@ In the same Task Router page, check the File Task default folder, pipeline-speci
 
 ## 3. Your pipeline and statuses
 
-Open the **Pipelines** tab and look at the workflow stages a task moves through. These are the columns you will see on the Kanban. You do not have to perfect them on day one, but the first status names should already make sense to you. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+Open **Core → Pipelines** and look at the workflow stages a task moves through. These are the columns you will see on the Kanban. You do not have to perfect them on day one, but the first status names should already make sense to you. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 
 ## 4. Priorities
 
-Open the **Priority** tab and confirm the priority levels match how you actually rank work. Priority drives sorting and filtering later. See [[DOCS-038 Task priorities|Task priorities]].
+Open **Core → Priority** and confirm the priority levels match how you actually rank work. Priority drives sorting and filtering later. See [[DOCS-038 Task priorities|Task priorities]].
 
 ## 5. Key mappings (property names)
 
-Open the **Keymapping** tab. Key mappings connect each Operon field to the property name written in your Markdown, both inline `{{key:: value}}` and file-task frontmatter. If you already have a property naming style in your vault, align it here so the same field means the same thing everywhere. See [[DOCS-039 Key mappings|Key mappings]], and [[DOCS-040 Custom keys|Custom keys]] if you need a field the defaults do not cover.
+Open **Core → Key Mappings → Task Property Mapping**. Key mappings set the property names used in file-task frontmatter and the corresponding UI labels. Inline tasks keep their stable canonical keys in `{{key:: value}}`. If your vault already uses names such as `Tier` for priority, align them here before creating many file tasks. Renaming a mapping does not rewrite existing frontmatter. See [[DOCS-039 Key mappings|Key mappings]], and [[DOCS-040 Custom keys|Custom keys]] if you need a field the defaults do not cover.
 
 > **MEDIA-DOCS-008-3:** The Keymapping tab mapping canonical fields to visible property names.
 
@@ -49,7 +49,7 @@ Open the **Keymapping** tab. Key mappings connect each Operon field to the prope
 4. Glance at your priority levels.
 5. Align key mappings with your property naming, if you have one.
 
-That is enough. You can refine any of these later without breaking existing tasks.
+That is enough for a first pass. If you rename a property later, update existing file-task frontmatter to match; changing the mapping alone does not migrate those files.
 
 ## Next step
 

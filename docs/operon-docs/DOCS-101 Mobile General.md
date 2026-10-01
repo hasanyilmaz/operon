@@ -2,7 +2,7 @@
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Mobile General
@@ -53,7 +53,7 @@ The quick-create button settings above are what let you hide the floating button
 
 ## Settings
 
-These live under **Settings → Operon → Mobile**. The **General** subtab holds the quick-create button (show, hide in Calendar, hide in Kanban, reset position) and the mobile context menu auto-hide. The **Task Editor** subtab holds the mobile Task Editor toolbar (which tools show and their order). The **Calendar** and **Kanban** subtabs are covered on [[DOCS-096 Mobile Calendar|Mobile Calendar]] and [[DOCS-100 Mobile Kanban|Mobile Kanban]].
+These live under **Settings → Operon → Mobile**. **Mobile General → Quick Create Button** holds the button visibility, per-view hiding, and position reset. **Mobile General → Touch Menu** holds mobile context menu auto-hide. Per-view hiding and reset controls are shown when the quick-create button is enabled. **Mobile Task Editor → Toolbar Visibility & Order** controls which mobile toolbar tools appear and their order. The **Mobile Calendar** and **Mobile Kanban** pages are covered on [[DOCS-096 Mobile Calendar|Mobile Calendar]] and [[DOCS-100 Mobile Kanban|Mobile Kanban]].
 
 ## FAQ
 

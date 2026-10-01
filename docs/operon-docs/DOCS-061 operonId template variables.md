@@ -2,7 +2,7 @@
 Notes: Use Operon task variables and Obsidian Templates-compatible creation variables
 Icon: braces
 Color: "#059669"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Template variables
@@ -185,7 +185,7 @@ Variables combine with [Templater](https://github.com/SilentVoid13/Templater) sy
 
 ## Before you build: check your key mappings
 
-A template writes property names directly, so they must match what Operon reads. Before authoring templates, open **Settings → Operon → Core → Keymapping** and confirm your field names. See [[DOCS-039 Key mappings|Key mappings]].
+A template writes property names directly, so they must match what Operon reads. Before authoring templates, open **Settings → Operon → Core → Key Mappings** and confirm your field names. See [[DOCS-039 Key mappings|Key mappings]].
 
 ## FAQ
 

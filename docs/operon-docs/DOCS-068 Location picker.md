@@ -2,7 +2,7 @@
 Notes: Set a task's location from a place note, a map, or coordinates
 Icon: map-pin
 Color: "#db2777"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Location picker
@@ -65,7 +65,12 @@ The Map tab needs the community Maps plugin. Without it, you still have the **Pl
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Location Map**, which sets the map defaults, the place-note property names for marker icon and color, and the map preview size.
+Open **Settings → Operon → Interface → Location Map**:
+
+- **Map Appearance** controls whether picker and preview maps always use light map tiles.
+- **Place Note Properties** sets optional property names for place-note icons and colors. Leave them empty to use the task icon and task color key mappings.
+- **Picker Map** sets the default center and zoom for the picker’s Map tab.
+- **Map Preview** sets the location chip preview’s width, height, default zoom, and minimum and maximum zoom.
 
 ## Related
 

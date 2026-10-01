@@ -2,7 +2,7 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Custom keys
@@ -59,7 +59,7 @@ A Checkbox-type custom field is stored, but it does not yet appear in the editor
 
 ## Description for shared context
 
-A custom field can carry an optional **description**: a short note on what the field is used for, shown in the Keymapping list. Like a pipeline or priority description, it is never required, but it earns its place. It reminds you what you meant when you created the field, and it gives an agent working in your vault the context to use the field correctly instead of guessing from its name. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]] and [[DOCS-038 Task priorities|Task priorities]] for the same idea on those fields.
+A custom field can carry an optional **description**: a short note on what the field is used for, edited in its own card on **Core → Custom Keys**. Like a pipeline or priority description, it is never required, but it earns its place. It reminds you what you meant when you created the field, and it gives an agent working in your vault the context to use the field correctly instead of guessing from its name. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]] and [[DOCS-038 Task priorities|Task priorities]] for the same idea on those fields.
 
 ## Usage and order
 
@@ -90,6 +90,8 @@ A Custom Key is not the only way an unmanaged frontmatter property becomes usabl
 ## Settings
 
 Operon settings for this live in **Settings → Operon → Core → Custom Keys**, which creates and manages custom fields, their surfaces, usage, order, and delete behavior.
+
+Each custom field has one Settings search result, including its name and description. The result targets that field's card rather than creating a separate result for every control inside it. See [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

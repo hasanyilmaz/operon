@@ -2,7 +2,7 @@
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-10-01T14:06:16+02:00
 ---
 
 # Pipelines and statuses
@@ -45,13 +45,12 @@ Every status holds more than a name:
 - **Color and icon**: how the status looks on chips, the Kanban, and task icons.
 - **Finished / cancelled flags**: a status marked finished completes the task and sets `dateCompleted`; one marked cancelled cancels it and sets `dateCancelled`. These also set the Markdown checkbox to done or cancelled.
 - **Automation targets**: a status can be the place a task lands when you schedule it or when you start a timer (see below).
-- **Property mapping**: an optional export name for syncing the status to another property.
 
 A valid Canvas group with a single status rule uses that status's shared color. Changing it in Settings updates matching groups; choosing a color for a linked group with the Canvas palette updates the same pipeline/status definition, its other groups, and its status indicators. This is a shared color, not a local override for one group. Identically named statuses in different pipelines keep separate colors. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 
 ## The status grid
 
-In the Pipelines settings, a pipeline's statuses are laid out as a grid: one row per status, with a column for each thing a status carries. Reading across a row tells you everything about that status at a glance.
+In the Pipelines settings, a pipeline's statuses are laid out as a grid: one row per status, with a column for each thing a status carries. Reading across a row shows its editable settings and task count. **Stats**, **Scheduled**, **Tracking**, **Finished**, and **Cancelled** use compact icon headers; hover a header to see its label. The first three text headers, **Color**, **Icon**, and **Status Label**, appear while the pipeline is hovered or contains keyboard focus, and remain visible on touch devices.
 
 | Column | What it is |
 |---|---|
@@ -64,7 +63,7 @@ In the Pipelines settings, a pipeline's statuses are laid out as a grid: one row
 | Finished | Flags this as a terminal **done** state: reaching it completes the task and sets `dateCompleted` |
 | Cancelled | Flags this as a terminal **cancelled** state: reaching it cancels the task and sets `dateCancelled` |
 
-The **Scheduled** and **Tracking** columns are single-choice down the grid, since only one status can be each automation target; how they fire is covered in "Automatic status moves" below. **Finished** and **Cancelled** also set the Markdown checkbox to done or cancelled. Beyond the grid, each status has an optional **property mapping** (an export name for syncing the status to another property), edited in the status's own detail row.
+The **Scheduled** and **Tracking** columns are single-choice down the grid, since only one status can be each automation target; how they fire is covered in "Automatic status moves" below. **Finished** and **Cancelled** also set the Markdown checkbox to done or cancelled.
 
 ## Statuses become Kanban columns
 
@@ -76,10 +75,10 @@ A task's pipeline can also group, subgroup, or sort rows on the [[DOCS-105 Table
 
 Two statuses can be automation targets, so Operon advances a task at the natural moment instead of making you do it:
 
-- **On schedule**: when you first give a task a scheduled date, it moves to the status flagged as the scheduled target (by default, `Planned`).
-- **On tracking**: when you first start a timer on a task, it moves to the status flagged as the tracking target (by default, `InProgress`).
+- **On schedule**: when a scheduled date changes from empty to set, the task can move to the status flagged as the scheduled target (by default, `Planned`). Changing an already-set date does not trigger this transition.
+- **On tracking**: starting a timer can move the task to the status flagged as the tracking target (by default, `InProgress`) if its current status differs. This also applies to later timer starts, not just the first session.
 
-Both fire only once, on the first transition from empty to set, so they nudge a task forward without fighting your later manual changes.
+Both use the pipeline’s configured automation target and remain subject to the applicable task and dependency guards. Scheduling responds to an empty-to-set date transition; tracking checks the target when a timer starts.
 
 An active dependency does not prevent planning a task for the first time. When you assign the first Scheduled Date, Operon saves the date and may move the open task to that pipeline's configured open **Scheduled** target in the same action. This narrow planning exception does not unlock unrelated status changes: moving the blocked task manually to another workflow stage, completing it, or cancelling it remains protected until its active blockers are resolved or removed.
 
@@ -103,7 +102,9 @@ Task Router can map each pipeline to a working File Task folder and a separate t
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Core → Pipelines**, which configures workflow statuses, their colors and icons, and the automatic status behavior.
+Open **Settings → Operon → Core → Pipelines** to configure workflow statuses, their colors and icons, and automatic status behavior. Each pipeline has its own Settings search result, found by its name or description; selecting it takes you to that pipeline. Individual statuses do not create separate search results.
+
+The pipeline header contains its name, **Default** selection, up/down controls, and a **×** delete control. On desktop, the default selection and header controls appear while the pipeline is hovered or contains keyboard focus; on touch devices they remain visible. Status rows have their own up/down and **×** controls, with **Add status** below the grid and **Add pipeline** below the pipeline list.
 
 ## Related
 

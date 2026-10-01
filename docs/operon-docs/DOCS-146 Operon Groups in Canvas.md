@@ -2,7 +2,7 @@
 Notes: Create Canvas groups with property rules, apply them to tasks, and follow changes across the board
 Icon: group
 Color: "#0284c7"
-Updated: 2026-09-23T19:01:57+02:00
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Operon Groups in Canvas
@@ -78,7 +78,7 @@ A successful task drop records the card movement and task changes together in Ca
 
 ## Settings
 
-There is no separate group settings page. Use **Settings → Operon → Core → Keymapping** for property names, **Core → Priority** for priority definitions and colors, and **Core → Pipelines** for statuses and their colors.
+There is no separate group settings page. Use **Settings → Operon → Core → Key Mappings** for property names, **Core → Priority** for priority definitions and colors, and **Core → Pipelines** for statuses and their colors.
 
 ## FAQ
 

@@ -2,7 +2,7 @@
 Notes: How the Calendar works on a phone, its view modes, cycle, and per-mode presets
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-09-23T10:47:51+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Mobile Calendar
@@ -53,7 +53,16 @@ A mobile Calendar leaf opens on your **default mobile view** until it remembers 
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Mobile → Calendar**. There you can turn the mobile Calendar layout on, choose the **default view**, set the **view cycle** (which of Agenda, Day, 2 Days, and 3 Days appear when cycling), and choose the **preset for each view**. The same page also holds the compact-grid time grouping, the all-day row limit, whether completed items show, the agenda window, and the maximum width at which the mobile layout takes over.
+Open **Settings → Operon → Mobile → Mobile Calendar**:
+
+- **Mobile Layout** enables the compact layout and sets its maximum width.
+- **Views & Default View** selects the available views and the opening view.
+- **Mobile view presets** assigns a Calendar preset to each enabled view.
+- **Calendar Content** controls projected occurrences, external calendars, and color source.
+- **Agenda** sets its past/future window and completed-item visibility.
+- **Time Grid & All-Day Items** controls compact-grid slots, due markers, all-day items, row limits, and completed-item visibility.
+
+Dependent sections appear when the mobile layout is enabled. Agenda settings require Agenda to be enabled; grid settings require at least one grid view. Turning a view off hides its preset selector without deleting the saved selection.
 
 ## FAQ
 

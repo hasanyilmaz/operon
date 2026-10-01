@@ -2,7 +2,7 @@
 Notes: Install the plugin and turn it on
 Icon: download
 Color: "#16a34a"
-Updated: 2026-08-18T18:41:15
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Install and enable Operon
@@ -13,7 +13,7 @@ The plugin id is `operon`.
 
 ## Requirements
 
-Operon requires Obsidian `1.7.2` or newer. It is not desktop-only, so it runs on both desktop and mobile. Some workflows are simply more comfortable on a larger screen: Calendar planning, Kanban boards, and the denser settings panels have more room to breathe on desktop.
+Operon requires Obsidian `1.13.7` or newer. It is not desktop-only, so it runs on both desktop and mobile. Some workflows are simply more comfortable on a larger screen: Calendar planning, Kanban boards, and the denser settings panels have more room to breathe on desktop.
 
 **Get Operon:** [Operon on the Obsidian community plugins directory](https://community.obsidian.md/plugins/operon)
 
@@ -35,11 +35,11 @@ For a gentle first action, create one small inline task. A real workflow can wai
 
 ## Staying up to date
 
-Operon can check GitHub for a newer compatible release once each time it starts, and shows a notice pointing you to Community Plugins when one is available. This is on by default; turn it off in **Settings → Operon → Core → General** if you would rather update on your own schedule. The check itself never installs anything, it only tells you an update exists.
+Operon can check GitHub for a newer compatible release once each time it starts, and shows a notice pointing you to Community Plugins when one is available. This is on by default; turn it off in **Settings → Operon → Core → General → Updates** if you would rather update on your own schedule. The check itself never installs anything, it only tells you an update exists.
 
 ## Language packs
 
-English is built into Operon and is available immediately. The following interface languages are available as downloadable packs from **Settings → Operon → Core → General → Language**:
+English is built into Operon and is available immediately. The following interface languages are available as downloadable packs from **Settings → Operon → Core → General → Language & Formats → Language**:
 
 - Turkish
 - German
@@ -64,15 +64,15 @@ The main compatibility risk is another task plugin that also rewrites checkbox l
 
 ## FAQ
 
-**What is the minimum Obsidian version?** Operon requires Obsidian `1.7.2` or newer.
+**What is the minimum Obsidian version?** Operon requires Obsidian `1.13.7` or newer.
 
 **Does Operon work on mobile?** Yes. It is not desktop-only. Some workflows are easier on desktop, but mobile is supported.
 
 **Do I need another plugin?** No. Operon stands on its own. It can optionally use Obsidian core features like Daily Notes and Page Preview, and the community **Maps** plugin, which adds a visual map preview to location chips.
 
-**Does Operon update itself?** No. It can check GitHub on startup and notify you when a newer compatible release is out, but you still update it yourself through Community Plugins. See **Settings → Operon → Core → General** to turn the check off.
+**Does Operon update itself?** No. It can check GitHub on startup and notify you when a newer compatible release is out, but you still update it yourself through Community Plugins. See **Settings → Operon → Core → General → Updates** to turn the check off.
 
-**Which interface languages are available?** English is built in. Downloadable packs are available for Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, Italian, and Brazilian Portuguese. Select one in **Settings → Operon → Core → General → Language**. If its pack cannot be downloaded or validated, Operon keeps the language already active.
+**Which interface languages are available?** English is built in. Downloadable packs are available for Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, Italian, and Brazilian Portuguese. Select one in **Settings → Operon → Core → General → Language & Formats → Language**. If its pack cannot be downloaded or validated, Operon keeps the language already active.
 
 ## Next step
 

@@ -2,20 +2,20 @@
 Notes: Optional cosmetic workspace helpers for scrollbars, side dock tab icons, and collapsing Properties
 Icon: sliders-horizontal
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T14:06:16+02:00
 ---
 
 # Workspace Tweaks
 
-**Workspace Tweaks** are a small set of optional, purely cosmetic helpers that tidy up how the Obsidian workspace looks while you work in Operon. They change appearance only: nothing here is written into your notes, no task data is touched, and every option is a simple toggle you can turn on or off at will. Turn one on and the effect applies right away; turn it off and the workspace returns to normal.
+**Workspace Tweaks** are a small set of optional, purely cosmetic helpers that tidy up how the Obsidian workspace looks while you work in Operon. They change appearance only: nothing here is written into your notes, no task data is touched. The main tweaks use toggles; Properties behavior also has a scope selector and folder exceptions. Enable a tweak to apply it, or disable it to stop applying that preference.
 
 They are deliberately conservative. None of them is required to use Operon, and leaving them all off changes nothing. Think of them as finishing touches for people who like a quieter, more focused workspace.
 
 ## Where it lives
 
-Open **Settings → Operon → Interface → Workspace Tweaks**. The tab has two groups: **Workspace helpers** and **Properties**.
+Open **Settings → Operon → Interface → Workspace Tweaks**. The page has **Workspace Appearance**, **Properties Panel**, and **Properties Excluded Folders**. The folder section and collapse-scope control appear when **Collapse Properties by Default** is enabled; disabling it preserves their values.
 
-## Workspace helpers
+## Workspace Appearance
 
 ### Hide Scrollbars
 
@@ -27,7 +27,7 @@ Slims the tab header strips in the left and right side docks down to a narrow ba
 
 This one applies on the desktop app. On mobile, where the side docks behave differently, it has no effect.
 
-## Properties
+## Properties Panel
 
 This group helps with Obsidian's native **Properties** panel, the frontmatter editor that sits at the top of a note. File tasks keep their fields in frontmatter, so that panel can take up a lot of room at the top of every task note. These options let Operon tuck it away for you.
 
@@ -48,9 +48,9 @@ Chooses how widely the collapse applies:
 
 Pick **Only Operon file tasks** to keep the tidy-up focused on your task notes and leave ordinary notes untouched. Pick **All notes** if you would rather every note open with Properties collapsed.
 
-### Excluded folders
+## Properties Excluded Folders
 
-A list of folders whose notes **always keep Properties open**, even when the collapse tweak is on. This is the override for places where you actively edit frontmatter and want the panel in view, such as a templates folder or an area you are actively curating. Add a folder with the folder search, and remove it again from the list. An excluded folder wins regardless of the scope above.
+A list of folders whose notes are **excluded from automatic Properties collapsing**, even when the collapse tweak is on. Operon leaves their current panel state alone; it does not force a closed panel open. This is the override for places where you actively edit frontmatter and want the panel in view, such as a templates folder or an area you are actively curating. Add a folder with the folder search, and remove it again from the list. An excluded folder wins regardless of the scope above. These exceptions only control Properties-panel collapsing; they do not exclude tasks from the index. Task-index exclusions are configured separately under **Tasks → File Tasks → Excluded folders**.
 
 ## What these tweaks do not do
 
@@ -68,7 +68,7 @@ Out of the box, all of these are off: scrollbars and side dock tabs look normal,
 
 **I collapsed Properties by accident, can I get them back?** Yes. Expand the Properties panel by hand any time; the tweak only sets the default opening state.
 
-**Why didn't a note collapse its Properties?** Check the scope and the excluded folders. With **Only Operon file tasks**, plain notes are left open; and any note inside an excluded folder always stays open.
+**Why didn't a note collapse its Properties?** Check the scope and the excluded folders. With **Only Operon file tasks**, plain notes are not automatically collapsed. Notes inside excluded folders are also skipped; their current open or closed panel state is preserved.
 
 **Does Compact Sidebar Tab Icons work on mobile?** No. It applies on the desktop app.
 

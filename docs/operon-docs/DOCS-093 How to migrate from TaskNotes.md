@@ -2,7 +2,7 @@
 Notes: Step-by-step procedure to bring TaskNotes tasks into Operon, with a before and after example
 Icon: move-right
 Color: "#2563eb"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # How to migrate from TaskNotes
@@ -15,7 +15,7 @@ There is no one-click TaskNotes importer, but there is a reliable path made from
 
 ## Step 1: Map your fields with Key Mappings
 
-This is the heart of the move. In **Settings → Operon → Core → Keymapping**, each Operon canonical key has a **Property** area. Write your TaskNotes property name there, and Operon will read and write that property instead of its default name.
+This is the heart of the move. In **Settings → Operon → Core → Key Mappings**, each Operon canonical key has a **Property** area. Write your TaskNotes property name there, and Operon will read and write that property instead of its default name.
 
 For example, if TaskNotes stores a deadline in a `due` property, set the Property area of Operon's `dateDue` key to `due`. From then on:
 

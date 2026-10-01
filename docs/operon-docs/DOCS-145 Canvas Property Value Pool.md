@@ -2,7 +2,7 @@
 Notes: Find, favorite, and apply property values to tasks on Canvas
 Icon: layers
 Color: "#0284c7"
-Updated: 2026-09-23T19:01:57+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Canvas Property Value Pool
@@ -73,11 +73,13 @@ Drag the header to move the panel. Pin it to keep it open when clicking elsewher
 
 ## Settings
 
-Open **Settings → Operon → Views → Task Cards**, then **Canvas Property Value Pool**.
+Open **Settings → Operon → Views → Task Cards**. Three separate sections control this pool: **Canvas Property Value Pool** for size, **Property Pool Shortcuts** for shortcut visibility and order, and **Property Pool Favorites** for managing saved values.
 
-`Property shortcuts` provides nine slots with visibility and ordering controls. Initially all are enabled: All values, Favorites, Status, Dates, ReminderRules, Contexts, Tags, Assignees, and Type. Property shortcuts retain their canonical identities but display your [[DOCS-039 Key mappings|mapped property names]]; a context mapping named Up appears as Up.
+**Property Pool Shortcuts** provides nine slots with visibility and ordering controls. Initially all are enabled: All values, Favorites, Status, Dates, ReminderRules, Contexts, Tags, Assignees, and Type. Property shortcuts retain their canonical identities but display your [[DOCS-039 Key mappings|mapped property names]]; a context mapping named Up appears as Up.
 
-`Panel width` offers 240, 280, 320, 360, or 400 px, constrained by available space. `Visible rows` offers 5, 7, 11, or 13. Defaults are 320 px and 5 rows.
+Under **Canvas Property Value Pool**, `Panel width` offers 240, 280, 320, 360, or 400 px, constrained by available space. `Visible rows` offers 5, 7, 11, or 13. Defaults are 320 px and 5 rows.
+
+**Property Pool Favorites** lists saved property values and lets you remove them from favorites. These are shared across canvases in the vault; removing a favorite does not remove that value from tasks.
 
 ## FAQ
 
