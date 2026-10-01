@@ -667,7 +667,6 @@ export class OperonDataPackageStore {
 					sourceChangedBeforeCommit = typeof reloadSource !== 'string' || observed !== reloadSource;
 					if (sourceChangedBeforeCommit) throw new Error('Canonical settings changed during reload');
 					if (shouldPersistCandidate) {
-						this.assertWritesAllowed(true);
 						if (!pipelineTaxonomy.backupPath) {
 							await this.backupCanonicalDataPackageNow(externalPackage);
 						}
