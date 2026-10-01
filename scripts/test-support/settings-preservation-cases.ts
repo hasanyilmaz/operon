@@ -523,3 +523,215 @@ for (const action of ['approve', 'deny', 'revoke'] as const) {
   });
  });
 }
+
+for (const trigger of ['external-value', 'formatting-only', 'transient-read', 'normalization'] as const) {
+ add(`${trigger} before an unchanged save recovers only after adopting verified settings`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const external = fixture.package();
+   if (trigger === 'external-value' || trigger === 'normalization') external.settings.operonDocsFolder = 'Synced Docs';
+   if (trigger === 'normalization') Reflect.deleteProperty(external.ui, 'workspaceTweaks');
+   const raw = JSON.stringify(external, null, trigger === 'formatting-only' ? 2 : '\t') + '\n';
+   fixture.seed(fixture.canonicalPath, raw);
+   if (trigger === 'transient-read') fixture.readFault = 'unreadable';
+   const attempts = fixture.canonicalAttempts;
+   await assert.rejects(store.updateDataPackage(current => current));
+   fixture.readFault = 'none';
+   assert.equal(store.canPersist(), false);
+   assert.equal(fixture.canonicalAttempts, attempts, 'Preflight failure must not write');
+   await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Rejected UI edit' }));
+   await storage.reloadCanonicalSettingsPackage();
+   assert.equal(store.canPersist(), true);
+   assert.equal(storage.getSettings().operonDocsFolder, external.settings.operonDocsFolder);
+   if (trigger === 'normalization') {
+    assert.equal(fixture.canonicalAttempts, attempts + 1, 'Only existing normalization may write during reload');
+    assert.ok(fixture.operations.some(operation => operation.kind === 'write' && operation.path.includes('.invalid-')));
+   } else {
+    assertBytesEqual(fixture.raw(), raw, 'Pure adoption must not rewrite the file');
+    assert.equal(fixture.canonicalAttempts, attempts);
+   }
+   await storage.updateSettings({ releaseNotesLastShownVersion: 'after-recovery' });
+   assert.equal(fixture.package().settings.operonDocsFolder, external.settings.operonDocsFolder, 'Rejected UI edit must never replay');
+   assert.equal(fixture.package().settings.releaseNotesLastShownVersion, 'after-recovery');
+   const committed = fixture.raw();
+   await storage.reloadCanonicalSettingsPackage();
+   assertBytesEqual(fixture.raw(), committed, 'Repeated reload must be idempotent');
+  });
+ });
+}
+
+for (const failure of ['prepare', 'commit', 'rollback'] as const) {
+ add(`recoverable reload ${failure} failure leaves a hard write suspension`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const raw = fixture.raw()! + '\n';
+   fixture.seed(fixture.canonicalPath, raw);
+   await assert.rejects(store.updateDataPackage(current => current));
+   const attempts = fixture.canonicalAttempts;
+   const previous = store.getDataPackage();
+   await assert.rejects(store.reloadCanonicalDataPackage(DEFAULT_SETTINGS, {
+    stage: async () => {
+     assert.equal(store.canPersist(), false, 'Staging must not unlock ordinary writes');
+     if (failure === 'prepare') throw new Error('Injected preparation failure');
+     return {
+      commit: () => {
+       assert.equal(store.canPersist(), false, 'Runtime commit must precede unlocking');
+       throw new Error('Injected commit failure');
+      },
+      rollback: () => { if (failure === 'rollback') throw new Error('Injected rollback failure'); },
+     };
+    },
+   }));
+   assert.deepEqual(store.getDataPackage(), previous);
+   const reason = store.getWriteSuspensionReason();
+   fixture.readFault = 'unreadable';
+   await storage.reloadCanonicalSettingsPackage();
+   fixture.readFault = 'none';
+   await storage.reloadCanonicalSettingsPackage();
+   assert.equal(store.canPersist(), false);
+   assert.equal(store.getWriteSuspensionReason(), reason, 'Read failures must not downgrade the hard suspension');
+   await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Must not save' }));
+   assert.equal(fixture.canonicalAttempts, attempts);
+   assertBytesEqual(fixture.raw(), raw);
+  });
+ });
+}
+
+for (const sourceFault of ['change', 'unreadable'] as const) {
+ add(`source ${sourceFault} during reload staging prevents adoption and permits a later verified reload`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const previous = store.getDataPackage();
+   const external = fixture.package();
+   external.settings.operonDocsFolder = 'First Sync';
+   fixture.seed(fixture.canonicalPath, JSON.stringify(external));
+   await assert.rejects(store.updateDataPackage(current => current));
+   const attempts = fixture.canonicalAttempts;
+   let committed = false, rolledBack = false;
+   await assert.rejects(store.reloadCanonicalDataPackage(DEFAULT_SETTINGS, {
+    stage: async () => {
+     if (sourceFault === 'change') {
+      external.settings.operonDocsFolder = 'Second Sync';
+      fixture.seed(fixture.canonicalPath, JSON.stringify(external));
+     } else fixture.readFault = 'unreadable';
+     return { commit: () => { committed = true; }, rollback: () => { rolledBack = true; } };
+    },
+   }), /changed during reload/);
+   fixture.readFault = 'none';
+   assert.equal(committed, false);
+   assert.equal(rolledBack, true);
+   assert.equal(store.canPersist(), false);
+   assert.deepEqual(store.getDataPackage(), previous);
+   assert.equal(fixture.canonicalAttempts, attempts);
+   await storage.reloadCanonicalSettingsPackage();
+   assert.equal(store.canPersist(), true);
+   assert.equal(storage.getSettings().operonDocsFolder, external.settings.operonDocsFolder);
+  });
+ });
+}
+
+add('uncertain writes stay suspended after a failed read and a later valid reload', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const process = fixture.adapter.process;
+  fixture.adapter.process = async (path, update) => {
+   const result = await process(path, update);
+   if (path === fixture.canonicalPath) fixture.readFault = 'unreadable';
+   return result;
+  };
+  await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Uncertain commit' }));
+  const reason = store.getWriteSuspensionReason();
+  const attempts = fixture.canonicalAttempts;
+  const raw = fixture.raw();
+  await storage.reloadCanonicalSettingsPackage();
+  fixture.readFault = 'none';
+  fixture.adapter.process = process;
+  await storage.reloadCanonicalSettingsPackage();
+  assert.equal(store.canPersist(), false);
+  assert.equal(store.getWriteSuspensionReason(), reason);
+  await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Must stay blocked' }));
+  assert.equal(fixture.canonicalAttempts, attempts);
+  assertBytesEqual(fixture.raw(), raw);
+ });
+});
+
+add('a later queued user save uses the adopted external settings', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const external = fixture.package();
+  external.settings.operonDocsFolder = 'Queued Sync';
+  fixture.seed(fixture.canonicalPath, JSON.stringify(external));
+  await assert.rejects(store.updateDataPackage(current => current));
+  await Promise.all([
+   storage.reloadCanonicalSettingsPackage(),
+   storage.updateSettings({ releaseNotesLastShownVersion: 'queued-user-save' }),
+  ]);
+  assert.equal(fixture.package().settings.operonDocsFolder, 'Queued Sync');
+  assert.equal(fixture.package().settings.releaseNotesLastShownVersion, 'queued-user-save');
+ });
+});
+
+for (const failure of ['backup', 'uncertain-write'] as const) {
+ add(`recovery normalization ${failure} failure cannot be unlocked by later valid reads`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const external = fixture.package();
+   Reflect.deleteProperty(external.ui, 'workspaceTweaks');
+   const raw = JSON.stringify(external);
+   fixture.seed(fixture.canonicalPath, raw);
+   await assert.rejects(store.updateDataPackage(current => current));
+   const write = fixture.adapter.write;
+   if (failure === 'backup') fixture.adapter.write = async (path, contents) => {
+    if (path.includes('.bak')) throw new Error('Injected recovery backup failure');
+    return write(path, contents);
+   };
+   else fixture.writeFault = 'partial-throw';
+   await assert.rejects(storage.reloadCanonicalSettingsPackage());
+   fixture.adapter.write = write;
+   fixture.seed(fixture.canonicalPath, raw);
+   const attempts = fixture.canonicalAttempts;
+   const reason = store.getWriteSuspensionReason();
+   fixture.readFault = 'unreadable';
+   await storage.reloadCanonicalSettingsPackage();
+   fixture.readFault = 'none';
+   await assert.rejects(storage.reloadCanonicalSettingsPackage(), /writes are suspended/);
+   assert.equal(store.canPersist(), false);
+   assert.equal(store.getWriteSuspensionReason(), reason);
+   await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Must not overwrite' }));
+   assert.equal(fixture.canonicalAttempts, attempts);
+   assertBytesEqual(fixture.raw(), raw);
+  });
+ });
+}
+
+add('reload discards directly mutated settings left dirty by a rejected save', async () => {
+ await withSettingsFixture({}, async fixture => {
+  const storage = fixture.createStorage();
+  await storage.initialize();
+  const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+  const external = fixture.package();
+  external.settings.operonDocsFolder = 'Latest synced folder';
+  fixture.seed(fixture.canonicalPath, JSON.stringify(external));
+  await assert.rejects(store.updateDataPackage(current => current));
+  storage.getSettings().operonDocsFolder = 'Dirty rejected edit';
+  await assert.rejects(storage.saveSettings());
+  await storage.reloadCanonicalSettingsPackage();
+  assert.equal(storage.getSettings().operonDocsFolder, 'Latest synced folder');
+  storage.getSettings().releaseNotesLastShownVersion = 'later-direct-save';
+  await storage.saveSettings();
+  assert.equal(fixture.package().settings.operonDocsFolder, 'Latest synced folder');
+  assert.equal(fixture.package().settings.releaseNotesLastShownVersion, 'later-direct-save');
+ });
+});
