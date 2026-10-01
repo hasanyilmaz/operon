@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.11.0] - 2026-10-01
+
 I have mixed feelings about Obsidian’s new approach to settings, and I still prefer parts of the old layout.
 
 But it’s time to move on. Rather than maintain two interfaces, I’ve focused on making Operon’s new settings as clear and useful as possible. Starting with this release, the legacy settings interface will no longer be available.
@@ -23,7 +27,7 @@ But it’s time to move on. Rather than maintain two interfaces, I’ve focused 
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,742/3,742** local regression tests.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,806/3,806** local regression tests.
 
 ## [3.10.2] - 2026-09-28
 
