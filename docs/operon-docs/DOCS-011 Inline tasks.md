@@ -2,7 +2,7 @@
 Notes: Tasks written on a single Markdown line
 Icon: list-checks
 Color: "#7c3aed"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Inline tasks
@@ -56,7 +56,7 @@ And do not treat the metadata as decorative. It is visible because the task live
 
 ## Settings
 
-Choose the default inline destination and parent-aware placement under **Settings → Operon → Tasks → Task Router**. Daily-note field defaults and conversion controls remain under **Tasks → Inline Tasks**. See [[DOCS-136 Task Router|Task Router]].
+Choose the default inline destination and parent-aware placement under **Settings → Operon → Tasks → Task Router**. Under **Tasks → Inline Tasks**, **Daily Note Defaults** holds the inline daily-note field defaults, and **Checkbox Conversion** holds the conversion controls. See [[DOCS-136 Task Router|Task Router]].
 
 ## Related
 

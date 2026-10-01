@@ -2,7 +2,7 @@
 Notes: The Calendar sidebar's Task Pool, its modes, search, and how it relates to the preset filter
 Icon: calendar-plus
 Color: "#0284c7"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Calendar Task Pool
@@ -17,7 +17,7 @@ This makes it the heart of calendar planning: open the sidebar, choose what you 
 
 ## Where it lives
 
-The Task Pool is one of the three sections of [[DOCS-060 Calendar layout toolbar and sidebar|sidebar mode]], alongside Calendars and Finished Tasks. Switch the Calendar to sidebar mode to use it. Its width and whether it starts open or collapsed are set in **Settings → Operon → Views → Calendar**. It always shares the active Calendar preset's filter with the grid; there is no separate setting for that.
+The Task Pool is one of the two sections of [[DOCS-060 Calendar layout toolbar and sidebar|sidebar mode]], alongside Calendars. Completed tasks are available through its **Finished** mode rather than a separate sidebar section. Switch the Calendar to sidebar mode to use it. Its width and whether it starts open or collapsed are set in **Settings → Operon → Views → Calendar → Calendar Sidebar Settings**. It always shares the active Calendar preset's filter with the grid; there is no separate setting for that.
 
 ## The five modes
 

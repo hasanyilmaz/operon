@@ -2,7 +2,7 @@
 Notes: Render task chips and actions on a task wikilink, for file and inline tasks
 Icon: link
 Color: "#ca8a04"
-Updated: 2026-09-08T11:15:28+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Task Wikilink Overlay
@@ -97,7 +97,7 @@ The overlay's chips and configurable actions are set in **Settings → Operon �
 
 ![MEDIA-DOCS-103-2 - Task Wikilink Overlay Chips settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-103-2.png)
 
-The icon’s click preference lives in **Settings → Operon → Interface → State Icons and Colors → Task Icon Behavior**. Menu actions are configured separately in **Interface → Context Menu**, using the **Task wikilink overlay** row in the Contextual Menu Matrix. A menu action keeps its own meaning regardless of the icon’s click mode. See [[DOCS-042 Contextual menu actions|Contextual menu actions]] for hover, mobile long-press, and open-menu behavior during task updates.
+The icon’s click preference lives in **Settings → Operon → Interface → Task Icons and Colors → Task Icon Behavior**. Menu actions are configured separately in **Interface → Context Menu**, using the **Task wikilink overlay** row in **Action Visibility by Surface** (the Contextual Menu Matrix). A menu action keeps its own meaning regardless of the icon’s click mode. See [[DOCS-042 Contextual menu actions|Contextual menu actions]] for hover, mobile long-press, and open-menu behavior during task updates.
 
 ## Links that stay current
 

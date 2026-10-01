@@ -2,7 +2,7 @@
 Notes: The fallback icon a task shows when it has no taskIcon, plus the color source for the main task icon
 Icon: square-check-big
 Color: "#ca8a04"
-Updated: 2026-09-08T11:15:28+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # State Icons
@@ -17,10 +17,11 @@ These fallbacks and colors apply wherever the main task icon renders as an Opero
 
 ## Where it lives
 
-Open **Settings → Operon → Interface → State Icons and Colors**. The page has two groups:
+Open **Settings → Operon → Interface → Task Icons and Colors**. The page has three groups:
 
 - **Task Icon Behavior** contains **Task icon click action**.
-- **Task Icon Fallbacks and Colors** contains **Fallback icon source**, **Task icon color source**, and the **Open**, **Finished**, and **Cancelled** state icon fields.
+- **Icon and Color Sources** contains **Fallback icon source** and **Task icon color source**.
+- **Default State Icons** contains the **Open**, **Finished**, and **Cancelled** state icon fields.
 
 ## Task icon click action
 
@@ -117,7 +118,7 @@ Out of the box, **Task icon click action** is **Follow pipeline**. The fallback 
 
 ## Settings
 
-Everything here lives in **Settings → Operon → Interface → State Icons and Colors**. Choose the click action under **Task Icon Behavior**; configure appearance under **Task Icon Fallbacks and Colors**. Changing the click action does not change the fallback icon or color preferences.
+Everything here lives in **Settings → Operon → Interface → Task Icons and Colors**. Choose the click action under **Task Icon Behavior**; choose sources under **Icon and Color Sources** and fallback state icons under **Default State Icons**. Changing the click action does not change the fallback icon or color preferences.
 
 ## Related
 

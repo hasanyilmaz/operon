@@ -2,7 +2,7 @@
 Notes: How the Kanban board works on a phone, with touch layout, status snap, and the compact swimlane rail
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Mobile Kanban
@@ -47,7 +47,7 @@ The mobile quick-create button (the floating plus) appears over Operon's mobile 
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Mobile → Kanban**: **Enable mobile Kanban layout**, the **layout max width** that decides when it applies, the **swimlane rail width**, **Always show swimlane rail**, and **horizontal status snap**. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**. The setting to hide the quick-create button in Kanban is on the [[DOCS-101 Mobile General|Mobile General]] page.
+Operon settings for this live in **Settings → Operon → Mobile → Mobile Kanban**. **Mobile Layout** contains the enable toggle and maximum width. **Navigation & Swimlane Rail** contains horizontal status snap, Always show swimlane rail, and rail width. Dependent controls are hidden when the mobile layout is disabled; their saved values are retained. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**. The setting to hide the quick-create button in Kanban is on the [[DOCS-101 Mobile General|Mobile General]] page.
 
 ## FAQ
 

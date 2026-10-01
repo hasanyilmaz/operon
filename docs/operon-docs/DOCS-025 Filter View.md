@@ -2,7 +2,7 @@
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-09-26T13:06:25+02:00
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # Filter View
@@ -28,7 +28,7 @@ A filter prevents one large task index from turning into noise. It is the differ
 
 Add conditions one at a time and watch the list narrow as each applies. When the result is useful, save it so you can return without rebuilding. Saved filters live with Operon's data in the plugin folder and become reusable views. Name each one for its purpose, such as "This week" or "High priority open." For a step-by-step first filter, see [[DOCS-010 Build your first filtered view|Build your first filtered view]].
 
-A saved filter can be marked a **favorite** with the star on its card, in **Settings → Operon → Views → Filters** or in the filter's own editor, the same favorite star used on Table, Calendar, and Kanban presets. For a saved filter it is an organizing marker for the ones you rely on; the Filter View's picker still lists every saved filter, favorite or not.
+A saved filter can be marked a **favorite** with the star on its card, in **Settings → Operon → Views → Filters → Saved Filters** or in the filter's own editor, the same favorite star used on Table, Calendar, and Kanban presets. For a saved filter it is an organizing marker for the ones you rely on; the Filter View's picker still lists every saved filter, favorite or not.
 
 A condition is not limited to Operon's own fields, either. Any unmanaged frontmatter property on a file task can become a condition too, discovered automatically and typed without any setup. See [[DOCS-115 File task property columns|File task property columns]] and [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
 
@@ -52,7 +52,7 @@ With **Tracked time**, that shared filter also selects which recorded sessions a
 
 A filter row is not read-only. You can open a task's [[DOCS-042 Contextual menu actions|contextual menu]] to edit it, change status, start a timer, pin it, or open the [[DOCS-021 Task Editor|Task Editor]]. Filter rows can also show the **Open checkboxes** chip and checklist progress for a task's [[DOCS-017 Plain checkbox lists|plain checkboxes]].
 
-Task-date chips in a row follow **Settings → Operon → General → Date format**, like the same chips on other surfaces. When a Filter View is grouped by a task date, the visible group heading follows that format too. The group still keeps its canonical ISO date behind the label, so opening the corresponding Daily Note and matching or sorting tasks continue to use the original date rather than the formatted text. See [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
+Task-date chips in a row follow **Settings → Operon → Core → General → Language & Formats → Date format**, like the same chips on other surfaces. When a Filter View is grouped by a task date, the visible group heading follows that format too. The group still keeps its canonical ISO date behind the label, so opening the corresponding Daily Note and matching or sorting tasks continue to use the original date rather than the formatted text. See [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 > **MEDIA-DOCS-025-2:** A filter row with its date picker open and the checkbox-progress chip visible.
 
@@ -64,7 +64,7 @@ Task-date chips in a row follow **Settings → Operon → General → Date forma
 
 **How many filters should I keep?** As many as map to real moments in your work. Several focused filters beat one complicated one.
 
-**Why did a task's subtasks open by themselves?** Its subtask tree was at or below the **Auto-expand subtasks** limit in **Settings → Operon → Views → Filters**. Lower the limit, or set it to **Never**, if you would rather expand trees by hand.
+**Why did a task's subtasks open by themselves?** Its subtask tree was at or below the **Auto-expand subtasks** limit in **Settings → Operon → Views → Filters → Filter View Behavior**. Lower the limit, or set it to **Never**, if you would rather expand trees by hand.
 
 ## Subtasks and auto-expand
 
@@ -72,7 +72,14 @@ When a filter row shows subtasks, each visible subtask tree can expand automatic
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Filters**, which configures Filter View behavior, including whether subtasks are shown and the subtask auto-expand limit.
+Open **Settings → Operon → Views → Filters**:
+
+- **Filter View Behavior** controls whether subtasks are shown, their auto-expand limit, and whether only open subtasks appear. The last two controls are shown when **Show subtasks** is enabled; hiding them preserves their saved values.
+- **Dynamic File Task Filter** contains its enable toggle, placement and subtask controls, and filter editor.
+- **Dynamic Subtasks Filter** contains its subtask controls and filter editor.
+- **Saved Filters**, at the end of the page, contains your reusable filters.
+
+Each surface keeps its own subtask preferences. Changing normal Filter View behavior does not replace the separate dynamic-filter preferences.
 
 ## Related
 

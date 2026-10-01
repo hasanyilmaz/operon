@@ -2,12 +2,12 @@
 Notes: Find any Operon setting from Obsidian's settings search
 Icon: search
 Color: "#ca8a04"
-Updated: 2026-09-15T11:09:13+02:00
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Settings search
 
-Operon has a lot of settings, spread across tabs for Core, Tasks, Views, Interface, and Mobile. You do not have to remember where each one lives. On Obsidian 1.13 and later, Operon exposes supported settings and sections through Obsidian's built-in settings search, so you can search by name or purpose and open the matching controls.
+Operon's Settings pages are organized under **Core**, **Tasks**, **Views**, **Interface**, and **Mobile**. Search from Obsidian's Settings window to find a control without remembering its page or section. Operon requires Obsidian **1.13.7 or newer** and uses its built-in Settings pages and search.
 
 > **MEDIA-DOCS-043-1:** Obsidian's settings search showing matching Operon settings for a typed term.
 
@@ -15,29 +15,41 @@ Operon has a lot of settings, spread across tabs for Core, Tasks, Views, Interfa
 
 ## How to use it
 
-Open Obsidian **Settings** and type in the search box at the top. Matching Operon settings appear in the results, grouped under their tab, and selecting one takes you straight to it. It is the fastest way to change a setting when you know what you want but not which tab it is on.
+Open Obsidian **Settings** and type in the search box at the top. Matching Operon settings appear under their page. Selecting a result opens the page and highlights the matching setting or registered section. Search navigation itself does not change or save a setting.
 
 ## Search by meaning, not just labels
 
 Operon's settings carry search keywords, so you can find a setting by the words you would naturally use, not only its exact label. Searching `exclude folder` finds the indexing exclusions, and `calendar day title` finds the right Calendar control, even when the setting's name is worded differently. This matters because the obvious search term and the official label are often not the same.
 
-## File Tasks, Inline Tasks, and Task Router
+## What a result targets
 
-Search also reaches the sections under **File Tasks**, **Inline Tasks**, and **Task Router**. Try `daily notes` or `weekly notes` to find their separate settings results, including note formats, templates, and folders. Inline daily-note defaults are searchable too.
+Ordinary settings have separate results. For example, a match in one checkbox-conversion setting on **Tasks → Inline Tasks** targets that setting, not every control in the section.
 
-Opening a section result takes you to its existing controls. Searching does not change a setting or its save behavior. This coverage does not mean every nested control has its own individual result; if a specific option does not appear, open the matching section or browse to it normally.
+Some configurable lists use one result per item:
+
+- **Pipelines**: one result per pipeline, not per status.
+- **Priority**: one result per priority level.
+- **Key Mappings** and **Custom Keys**: one result per property, targeting its row or card.
+
+Some sections intentionally stay together. **Action Visibility by Surface** on **Interface → Context Menu** is one searchable matrix, not one result per cell. You can still find it using **Contextual Menu Matrix**. Its separate menu-action settings each have their own result.
+
+## When a control is not shown
+
+Some controls depend on another setting. If a parent option is off, its dependent controls may be hidden and absent from the current search results. Open the relevant page and check the parent option. A missing result does not mean the saved value was deleted.
+
+The number of results can change with your pipelines, priorities, custom fields, and enabled options. There is no fixed result count for every vault.
 
 ## Why it helps
 
-- **You stop hunting through tabs.** Type the idea, land on the setting.
+- **You stop hunting through pages.** Type the idea, land on the setting.
 - **Discovery.** A search can surface a setting you did not know existed.
-- **Direct access.** Registered settings and sections can be found without remembering their position in the tab layout.
+- **Direct access.** Registered settings and sections can be found without remembering their position in the page layout.
 
-If you would rather browse, the tabs are still there. Settings search is the shortcut, not a replacement: see [[DOCS-008 Essential settings to configure first|Essential settings to configure first]] for the handful worth setting up first.
+You can also browse the same Settings pages directly. Settings search is the shortcut, not a replacement: see [[DOCS-008 Essential settings to configure first|Essential settings to configure first]] for the handful worth setting up first.
 
 ## FAQ
 
-**Where is the search box?** In Obsidian's Settings window on Obsidian 1.13 and later. It searches the settings exposed by Obsidian and participating plugins, including Operon. On older versions, browse Operon's settings pages directly.
+**Where is the search box?** In Obsidian's Settings window. It searches settings exposed by Obsidian and participating plugins, including Operon. This Operon version requires Obsidian 1.13.7 or newer; it does not provide a separate legacy Settings interface.
 
 **Do I search inside the Operon tab?** You search from Obsidian's main settings search. Operon's settings are registered there, so they show up alongside everything else.
 

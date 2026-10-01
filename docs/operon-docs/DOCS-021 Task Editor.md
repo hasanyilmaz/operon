@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-15T11:06:30+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Task Editor
@@ -44,7 +44,7 @@ The Task Editor exposes the canonical fields as proper controls:
 
 For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
-The editor's Date and Date & time controls follow **Settings → Operon → General → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
+The editor's Date and Date & time controls follow **Settings → Operon → Core → General → Language & Formats → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
 
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
@@ -99,7 +99,7 @@ Reminders get their own rows, one for **ReminderDatetimes** and one for **Remind
 - **Edit or remove** one by clicking its chip, which reopens the same picker loaded with that reminder.
 - The **ReminderRules** control is **disabled when the task has no date a rule could attach to**, since there would be nothing for an offset to count back from. Give the task a due, scheduled, or start date, or a timed block, and it becomes available.
 
-Both rows are **hidden by default.** Turn them on in **Settings → Operon → Interface → Task Editor**, under **Workflow Pickers**, which is also where you set the order of the editor's picker rows. Hiding a row never changes the reminders stored on a task. See [[DOCS-116 Reminders|Reminders]].
+Both rows are **hidden by default.** Turn them on in **Settings → Operon → Interface → Task Editor**, under **Property Visibility & Order**, which is also where you set the order of the editor's picker rows. Hiding a row never changes the reminders stored on a task. See [[DOCS-116 Reminders|Reminders]].
 
 ## Saving is automatic
 
@@ -125,7 +125,7 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 **Why can I not add a reminder rule to this task?** A rule counts back from one of the task's dates, and this task has none yet. Add a due, scheduled, or start date, or a timed block, first.
 
-**I do not see reminder rows in the editor.** They are hidden by default. Turn them on under **Settings → Operon → Interface → Task Editor**, in **Workflow Pickers**.
+**I do not see reminder rows in the editor.** They are hidden by default. Turn them on under **Settings → Operon → Interface → Task Editor**, in **Property Visibility & Order**.
 
 **Can I write a multiline description?** No. The Description remains the task's one-line title. Use Notes for line breaks, paragraphs, and pasted multiline detail.
 
@@ -133,7 +133,7 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Task Editor**, which configures the Task Editor layout and which fields it shows.
+Operon settings for this live in **Settings → Operon → Interface → Task Editor**, under **File Body** for file-body behavior and **Property Visibility & Order** for property visibility and ordering. The latter was previously called Workflow Pickers.
 
 ## Related
 

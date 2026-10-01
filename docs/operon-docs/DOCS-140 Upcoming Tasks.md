@@ -2,7 +2,7 @@
 Notes: Date-based planning with sidebar and status bar countdowns
 Icon: calendar-clock
 Color: "#0284c7"
-Updated: 2026-09-08T11:22:36+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Upcoming Tasks
@@ -29,7 +29,7 @@ Days appear in date order, with **Timed** and **All-day** groups. Timed tasks ar
 
 Click the task name to open the [[DOCS-021 Task Editor|Task Editor]]. **Cmd-click** on macOS or **Ctrl-click** on other platforms opens the task's source: its file, or the inline task's location.
 
-Hover over the task icon to access its contextual menu; on mobile, use a long press with **Mobile touch menu** enabled in Context Menu settings. Available actions follow the **Upcoming Tasks** row in the Contextual Menu Matrix. Clicking or tapping the icon follows your global [[DOCS-099 State Icons|task icon click preference]]. See [[DOCS-042 Contextual menu actions|Contextual menu actions]] for menu configuration.
+Hover over the task icon to access its contextual menu; on mobile, use a long press with **Mobile touch menu** enabled in Context Menu settings. Available actions follow the **Upcoming Tasks** row in **Action Visibility by Surface** (the Contextual Menu Matrix). Clicking or tapping the icon follows your global [[DOCS-099 State Icons|task icon click preference]]. See [[DOCS-042 Contextual menu actions|Contextual menu actions]] for menu configuration.
 
 Use **Play** to start time tracking and **Stop** to stop it. These controls use the normal Tracker flow and do not change the task's scheduled date. While tracking is active, the stop control and any available countdown stay visible beside a shortened task name, without covering its text. For all-day tasks, the tracking control sits at the right edge without a countdown.
 
@@ -64,12 +64,17 @@ Tracking and countdown selection are independent: starting or stopping a timer d
 
 Open **Settings → Operon → Tasks → Upcoming Tasks**.
 
+### General
+
+| Setting | Options or purpose | Default |
+| --- | --- | --- |
+| Upcoming days | 1–7 calendar days, including today; also controls the status bar's candidate range | 3 |
+| Countdown display | HH:MM or HH:MM:SS; changes the format in both the sidebar and status bar | HH:MM:SS |
+
 ### Sidebar
 
 | Setting | Options or purpose | Default |
 | --- | --- | --- |
-| Countdown display | HH:MM or HH:MM:SS; changes the format in both the sidebar and status bar | HH:MM:SS |
-| Upcoming days | 1–7 calendar days, including today; also controls the status bar's candidate range | 3 |
 | Show all-day tasks | Include Scheduled dates without a start time and Due dates | On |
 | Daily group order | Timed first or All-day first | Timed first |
 | Sidebar side | Left or Right; used when opening a closed panel | Left |
@@ -82,6 +87,8 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 | Show next upcoming task in status bar | Show or hide the indicator | On |
 | When countdown ends | Keep current task or Continue with next task | Keep current task |
 | Status bar click action | Start timer, Open task editor, or Open task | Start timer |
+
+**Daily group order** is shown when **Show all-day tasks** is enabled. The status bar click and countdown-end controls are shown when the status bar indicator is enabled; hiding these controls preserves their saved values.
 
 ## FAQ
 

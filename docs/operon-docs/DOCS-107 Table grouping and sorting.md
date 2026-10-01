@@ -2,7 +2,7 @@
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-Updated: 2026-09-26T13:13:00+02:00
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # Table grouping and sorting
@@ -26,7 +26,7 @@ Pick one field under **Group by** and the table splits into sections, one per di
 
 Grouping is a lens, not a filter: every matching task is still represented, just gathered under headings.
 
-When you group or subgroup by a built-in or custom task **Date** or **Date & time** field, the visible heading follows **Settings → Operon → General → Date format**. Operon still uses the field's canonical value for group identity, collapse state, ordering, and sorting, so changing the display format does not create different groups or rearrange them. Arbitrary [[DOCS-115 File task property columns|file task property]] date headings keep their stored display in this version.
+When you group or subgroup by a built-in or custom task **Date** or **Date & time** field, the visible heading follows **Settings → Operon → Core → General → Language & Formats → Date format**. Operon still uses the field's canonical value for group identity, collapse state, ordering, and sorting, so changing the display format does not create different groups or rearrange them. Arbitrary [[DOCS-115 File task property columns|file task property]] date headings keep their stored display in this version.
 
 ## Task Tree is context, not grouping
 

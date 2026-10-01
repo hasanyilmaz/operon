@@ -2,7 +2,7 @@
 Notes: Get notified about a task, either at a fixed moment or at an offset from one of its dates
 Icon: alarm-clock
 Color: "#ca8a04"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Reminders
@@ -85,8 +85,8 @@ A fixed reminder shows just the time when it falls today, and the date with the 
 
 **Reminders are hidden by default on every surface**, including the Task Editor. This is deliberate: most tasks do not carry reminders, and a control or chip slot that is empty most of the time is wasted space. Turn them on where you actually want them:
 
-- In the **Task Editor**, from **Settings → Operon → Interface → Task Editor**, in **Workflow Pickers**.
-- In the **Task Creator**, from **Settings → Operon → Interface → Task Chips**, in the Task Creator toolbar section. See [[DOCS-020 Task Creator|Task Creator]].
+- In the **Task Editor**, from **Settings → Operon → Interface → Task Editor**, in **Property Visibility & Order**.
+- In the **Task Creator**, from **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage. See [[DOCS-020 Task Creator|Task Creator]].
 - On **task chips** in reading view, Live Preview, the Filter View, Kanban cards, Task Finder, and the wikilink overlay, each from its own section under **Settings → Operon → Interface → Task Chips**. See [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 Hiding a reminder surface only hides it. The reminders themselves stay on the task and keep firing.
@@ -184,9 +184,9 @@ Both use your real notification and sound settings, and neither creates or opens
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Reminders**: the missed-reminder catch-up window, how long an in-app notification stays visible, the pin-on-reminder automation, system notifications, the mobile notification snapshot, reminder sound, and the two test notifications. FlowTime's optional completion-sound toggle is separate, under **Settings → Operon → Tasks → Tracker**, but uses this Reminder sound file.
+Operon settings for this live in **Settings → Operon → Tasks → Reminders**. **Reminder delivery** contains the missed-reminder catch-up window, in-app notification duration, pin-on-reminder automation, system notifications, mobile notification snapshot, and reminder sound. **Test notifications** contains the two test actions. FlowTime's optional completion-sound toggle is separate, under **Settings → Operon → Tasks → Tracker → TrackTime & FlowTime**, but uses this Reminder sound file.
 
-Where reminders are *shown* is configured separately, under **Settings → Operon → Interface**, in **Task Editor** for the editor's picker rows and **Task Chips** for every chip surface. The two fields' property names and icons are set in **Settings → Operon → Core → Keymapping**. See [[DOCS-039 Key mappings|Key mappings]].
+Where reminders are *shown* is configured separately, under **Settings → Operon → Interface**, in **Task Editor** for the editor's picker rows and **Task Chips** for every chip surface. The two fields' property names and icons are set in **Settings → Operon → Core → Key Mappings → Task Property Mapping**. See [[DOCS-039 Key mappings|Key mappings]].
 
 ## Related
 

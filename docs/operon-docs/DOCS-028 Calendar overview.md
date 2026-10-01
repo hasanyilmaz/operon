@@ -2,7 +2,7 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-09-23T10:47:51+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Calendar overview
@@ -43,7 +43,7 @@ You can also move eligible materialized, non-recurring tasks between the Due lan
 
 Operon does not write projected occurrences or external items through these moves. If a Due-lane drop would put the due date before the task's existing start date, the drop is rejected and a short notice explains that the selected date cannot be earlier than the task's start date.
 
-Task-date details and Calendar confirmation messages follow **Settings → Operon → General → Date format**. Calendar day, week, month, range, and navigation headings remain locale-based, so the setting changes task information rather than the Calendar scale.
+Task-date details and Calendar confirmation messages follow **Settings → Operon → Core → General → Language & Formats → Date format**. Calendar day, week, month, range, and navigation headings remain locale-based, so the setting changes task information rather than the Calendar scale.
 
 ## Open a task
 
@@ -91,7 +91,7 @@ Operon can also show events from external calendar sources alongside your tasks,
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks. This is also where you can show the Due lane or turn off the hover add button that appears over an empty all-day date cell, a quick way to start a task on that date without it.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, which configures how the Calendar displays tasks and time blocks. Use **Calendar Lanes** for lane visibility, **Calendar presets** for saved layouts, and **Calendar Sidebar Settings** for sidebar width and opening preferences. **Calendar Lanes** also includes the hover add button for starting a task from an empty all-day date cell.
 
 ## Related
 

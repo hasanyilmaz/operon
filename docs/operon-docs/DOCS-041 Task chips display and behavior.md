@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-09-26T13:08:53+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Task chips: display and behavior
@@ -57,13 +57,13 @@ Table columns have a separate compact mode. Their duration and estimate cells ke
 
 ## Assignee images
 
-An assignee linked to a person note can show an image in place of the usual assignees icon. Open **Settings → Operon → Interface → Task Chips → General Chip Settings**, at the bottom of the Task Chips list, and enter the property name in **Assignee image property**. You can type any name or choose a suggestion from the vault's property names. Leave it blank to keep the usual icons.
+An assignee linked to a person note can show an image in place of the usual assignees icon. Open **Settings → Operon → Interface → Task Chips → General Chip Settings → Assignee Images**, on the last Task Chips subpage, and enter the property name in **Assignee image property**. You can type any name or choose a suggestion from the vault's property names. Leave it blank to keep the usual icons.
 
 The image comes from that property in the linked person's note, not from an upload to Operon. For example, assign `[[Bobby]]` and give Bobby's note a `photo` property containing an image reference. Plain `Bobby` text does not resolve a person note. Missing or unreadable images keep the usual icon, and the person's name and click behavior stay the same. See [[DOCS-143 How to show assignee images|How to show assignee images]] for the setup and supported values.
 
 ## Date and time on chips
 
-Built-in and custom task fields typed as **Date** follow **Settings → Operon → General → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, Task Wikilink Overlay Chips, and Task Card Chips, so a date keeps the same visible order as the task moves between surfaces.
+Built-in and custom task fields typed as **Date** follow **Settings → Operon → Core → General → Language & Formats → Date format**. The same choice is used on Inline Task Chips, Filter Task Chips, Task Finder Chips, Kanban Task Chips, Task Wikilink Overlay Chips, and Task Card Chips, so a date keeps the same visible order as the task moves between surfaces.
 
 A **Date & time** chip stays compact by showing only its time in the row. Its tooltip shows the complete value: the date follows **Date format**, and the time follows the separate 12-hour or 24-hour **Time format** setting. These are display choices only; the chip still opens and writes the task's canonical date or datetime value.
 
@@ -83,7 +83,7 @@ Canvas Task Cards and Embedded Task Cards share **Task Card Chips**. Their field
 
 The **Task Card Actions** controls on that settings page choose whether cards offer Play, Pin, Note, Add subtask, and Open checkboxes. Play becomes Stop while the task is being timed; each action appears only when enabled and applicable. These controls are separate from the task icon's [[DOCS-042 Contextual menu actions|contextual menu]] configuration.
 
-The whole chip section can also be shown or hidden under **Settings → Operon → Views → Task Cards**. A note embed may override that section's visibility with `chips: true` or `chips: false`; it still uses the same configured field list. Images and progress are separate card sections, so hiding chips does not hide those sections.
+The whole chip section can also be shown or hidden under **Settings → Operon → Views → Task Cards → Card Sections and Order**. A note embed may override that section's visibility with `chips: true` or `chips: false`; it still uses the same configured field list. Images and progress are separate card sections, so hiding chips does not hide those sections.
 
 On a locked Canvas, task-changing card controls are unavailable. The mobile Kanban restriction described above belongs to Kanban cards; it is not the setting for Canvas or embedded Task Cards. For card layout and interaction details, see [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 

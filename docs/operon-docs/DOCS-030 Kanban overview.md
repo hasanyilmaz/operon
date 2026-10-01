@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-09-15T11:03:02+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Kanban overview
@@ -127,7 +127,7 @@ For exactly which fields are matched and how Task Finder ranks its own results, 
 
 ## Settings
 
-Operon settings for the board live in **Settings → Operon → Views → Kanban**, which configures how the Kanban board displays cards, including the hover add button that appears over an empty cell as a quick way to start a card there. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
+Operon settings for the board live in **Settings → Operon → Views → Kanban**, under **Board Layout** for column width, swimlane limits, and the hover add button; **Card Content** for notes and progress previews; and **Kanban Presets** for saved boards and the default preset. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
 
 ## Related
 

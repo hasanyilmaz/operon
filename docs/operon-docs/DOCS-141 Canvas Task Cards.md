@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Canvas Task Cards
@@ -161,13 +161,13 @@ Normal card placement uses Canvas Undo and Redo. Undoing a text-card conversion 
 
 ## Settings
 
-Open **Settings → Operon → Views → Task Cards** for the shared card appearance and both Canvas pool settings.
+Open **Settings → Operon → Views → Task Cards** for shared appearance and Canvas pool preferences. **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order** configure the cards. **Canvas Task Pool** and **Canvas Property Value Pool** contain each pool's width and row count. **Property Pool Shortcuts** and **Property Pool Favorites** are separate sections; see [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
 
 | Setting | Purpose |
 | --- | --- |
 | Default width | Starting width for new cards; 300, 325, 350, 375, or 400 px, with 350 px as the default |
 | Image source and Image ratio | Choose the task media field and whether to show its original proportions or a fixed crop |
-| Card item order | Arrange the image, header, task progress, chips, and checkbox progress; the header remains visible |
+| Card Sections and Order | Arrange the image, header, task progress, chips, and checkbox progress; the header remains visible |
 | Task progress, chips, and checkbox progress | Control which optional sections are shown when their data is available |
 | Canvas Task Pool — Panel width | Set the pool's width, constrained by the available space |
 | Canvas Task Pool — Visible rows | Set how many rows fit before scrolling; this does not limit the search scope |
@@ -176,7 +176,7 @@ Open **Settings → Operon → Views → Task Cards** for the shared card appear
 
 Default alignment and text wrapping apply to cards embedded in notes. Canvas cards use their Canvas dimensions and positions instead.
 
-Configure **Task Card Chips** and **Task Card Actions** under **Settings → Operon → Interface → Task Chips**. Configure task-icon menu actions through the **Task Cards** surface under **Interface → Context Menu**.
+Open **Settings → Operon → Interface → Task Chips → Task Card Chips** for chip visibility and order; **Task Card Actions** is a section within that same subpage. Configure task-icon menu actions through the **Task Cards** surface under **Interface → Context Menu**.
 
 ## FAQ
 

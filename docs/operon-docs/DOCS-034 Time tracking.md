@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-09-26T13:06:25+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Time tracking
@@ -79,7 +79,7 @@ Open the **Time Session History** panel to see and edit the sessions you have tr
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Tracker**, which configures time tracking, including TrackTime and FlowTime.
+Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting and the status bar timer, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Generate future work from a repeating pattern
 Icon: repeat
 Color: "#9333ea"
-Updated: 2026-09-04T17:41:51+0200
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Recurring tasks
@@ -80,7 +80,7 @@ If a single run does not apply, open the task's [[DOCS-042 Contextual menu actio
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Recurrence**, which configures how recurring occurrences are generated.
+Operon settings for this live in **Settings → Operon → Tasks → Recurrence**, under **Occurrence placement** for the inline occurrence position and file occurrence destination. **Recurring file task YAML/frontmatter cleanup** manages per-series rules that clear selected property values in newly created file occurrences. Enter raw YAML property names exactly as stored in the file; these cleanup rules do not apply to inline tasks.
 
 ## Related
 
