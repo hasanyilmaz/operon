@@ -29414,6 +29414,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 .operon-settings-contextual-menu-matrix-table:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
+	grid-template-columns: max-content repeat(var(--operon-contextual-menu-action-count, 10), 36px);
+	width: max-content;
 	grid-auto-rows: minmax(34px, auto);
 	min-width: max-content;
 	border: 1px solid var(--background-modifier-border);
@@ -29424,7 +29426,8 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 
 .operon-settings-contextual-menu-matrix-row:where(.operon-settings-scope, .operon-settings-scope *) {
 	display: grid;
-	grid-template-columns: minmax(196px, 1fr) repeat(var(--operon-contextual-menu-action-count, 10), 36px);
+	grid-column: 1 / -1;
+	grid-template-columns: subgrid;
 	align-items: center;
 	border-top: 1px solid var(--background-modifier-border);
 }
@@ -29441,6 +29444,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 .operon-settings-contextual-menu-matrix-group:where(.operon-settings-scope, .operon-settings-scope *) {
+	grid-column: 1 / -1;
 	padding: 8px 10px;
 	font-size: var(--font-ui-smaller);
 	font-weight: 700;
@@ -29450,7 +29454,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 .operon-settings-contextual-menu-matrix-surface-cell:where(.operon-settings-scope, .operon-settings-scope *) {
-	padding: 0 10px;
+	padding: 0 2px 0 10px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-normal);
 	white-space: nowrap;
