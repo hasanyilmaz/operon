@@ -29454,7 +29454,7 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 }
 
 .operon-settings-contextual-menu-matrix-surface-cell:where(.operon-settings-scope, .operon-settings-scope *) {
-	padding: 0 2px 0 10px;
+	padding: 0 10px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-normal);
 	white-space: nowrap;
