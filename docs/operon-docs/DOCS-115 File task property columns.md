@@ -2,7 +2,7 @@
 Notes: Frontmatter properties Operon does not manage, surfaced automatically as searchable, typed columns and filter conditions
 Icon: scan-search
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # File task property columns
@@ -96,7 +96,7 @@ None of these needs your attention until they actually happen; they exist so a s
 
 ## Settings
 
-There is nothing to configure. Discovery, typing, and exclusion are all automatic. The properties this feature stays out of are governed by **Settings → Operon → Core → Keymapping** and **Settings → Operon → Core → Custom Keys**: anything already mapped there is excluded from file task property discovery.
+There is nothing to configure. Discovery, typing, and exclusion are all automatic. The properties this feature stays out of are governed by **Settings → Operon → Core → Key Mappings** and **Settings → Operon → Core → Custom Keys**: anything already mapped there is excluded from file task property discovery.
 
 ## Related
 

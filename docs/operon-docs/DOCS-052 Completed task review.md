@@ -2,7 +2,7 @@
 Notes: Look back at finished work and keep completed tasks tidy
 Icon: list-checks
 Color: "#4f46e5"
-Updated: 2026-09-04T17:41:51+0200
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Completed task review
@@ -18,7 +18,7 @@ When a task reaches a finished status, Operon sets its `dateCompleted`; a cancel
 Completed work shows up across the surfaces you already use:
 
 - **Filter View**: build a filter for finished tasks, or for tasks completed in a date range, to get a clean list of what got done. This is the everyday review surface. See [[DOCS-025 Filter View|Filter View]].
-- **Calendar**: completed tasks appear on their `dateCompleted`, and the Calendar sidebar has a **Finished Tasks** section, so you can see done work in time. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]].
+- **Calendar**: completed tasks appear on their `dateCompleted`, and the Calendar sidebar Task Pool has a **Finished** mode, so you can see done work in time. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]].
 - **Task Finder**: turn on **Include finished tasks** to search work you have already closed. See [[DOCS-027 Task Finder|Task Finder]].
 
 For reviewing the time you spent, rather than the tasks you closed, see [[DOCS-053 Time session history|Time session history]].
@@ -46,7 +46,7 @@ Nothing is destroyed by these. Completed tasks keep their record and their track
 
 ## Settings
 
-Operon archive routing lives in **Settings → Operon → Tasks → Task Router → File Task Archive**. Auto-unpin is in the Pinned Dock settings.
+Operon archive routing lives in **Settings → Operon → Tasks → Task Router → Archive finished/cancelled File Tasks**. **Auto-unpin finished tasks** is under **Interface → Pinned Dock → Automatic Pinning**.
 
 ## Related
 

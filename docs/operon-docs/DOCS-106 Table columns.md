@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-09-26T13:08:53+02:00
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # Table columns
@@ -143,7 +143,7 @@ The source column is still active: clicking it opens the task's source in a new 
 
 ## The three helper columns
 
-Beyond your field columns, a table can show three fixed helper columns, turned on for every table in **Settings → Operon → Views → Tables**:
+Beyond your field columns, a table can show three fixed helper columns, turned on for every table in **Settings → Operon → Views → Tables → Helper Columns**:
 
 | Column | Shows |
 |---|---|
@@ -181,7 +181,7 @@ These are global toggles rather than per-preset columns, so they appear the same
 
 ## Settings
 
-The three helper columns are toggled in **Settings → Operon → Views → Tables**: show line numbers, show task icon helper, and show Task Data Type helper. Every other column choice, its field, width, order, alignment, color, and format, lives in the preset and is edited from the table. See [[DOCS-109 Table presets|Table presets]].
+The three helper columns are toggled in **Settings → Operon → Views → Tables → Helper Columns**: show line numbers, show task icon helper, and show Task Data Type helper. Every other column choice, its field, width, order, alignment, color, and format, lives in the preset and is edited from the table. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

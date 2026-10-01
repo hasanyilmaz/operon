@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-09-11T23:02:45+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Task Finder
@@ -130,7 +130,7 @@ To switch a scope without leaving the keyboard, type its **dot shortcut** in the
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Task Finder**, which sets the default scopes Task Finder opens with and the dot shortcuts that toggle each scope.
+Operon settings for this live in **Settings → Operon → Interface → Task Finder**, under **Search Behavior** for visible result count, the recently modified window, and remembering the last scopes. **Scope Shortcuts** sets the dot shortcut for each scope. Search Settings for Scope Shortcuts or a scope name to reach the relevant controls.
 
 ## Related
 

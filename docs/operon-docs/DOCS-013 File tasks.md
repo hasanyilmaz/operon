@@ -2,7 +2,7 @@
 Notes: Notes whose frontmatter makes the file itself a task
 Icon: file-text
 Color: "#7c3aed"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # File tasks
@@ -104,9 +104,16 @@ File tasks shine for recurring work with a stable structure: a weekly review, a 
 
 ## Settings
 
-File Task creation defaults, templates, Daily and Weekly Notes, conversion, and exclusions live under **Settings → Operon → Tasks → File Tasks**. Working folders, parent-aware placement, and archive destinations live under **Tasks → Task Router**.
+Open **Settings → Operon → Tasks → File Tasks**:
 
-Operon settings for this live in **Settings → Operon → Tasks → File Tasks**, which configures how file tasks behave. Use **New File Task Creation Defaults** there when you want Task Creator to default to File mode and preselect a file-task template.
+- **New File Task Creation Defaults** sets Task Creator's default File mode and preselected file-task template.
+- **File Task Templates** manages file-task templates.
+- **Daily notes** and **Weekly notes** configure those managed notes.
+- **File Task Conversion** contains conversion preferences.
+- **Excluded folders** keeps selected folders outside Operon's task indexing.
+- **Convert notes** provides the note-conversion tools.
+
+Working folders, parent-aware placement, and archive destinations live separately under **Tasks → Task Router**.
 
 ## Related
 

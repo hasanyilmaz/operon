@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-09-04T17:33:56+0200
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Date and time picker
@@ -13,7 +13,7 @@ This picker serves two property types: **Date** fields (`dateDue`, `dateSchedule
 
 ## Choose how task dates look
 
-The **Date format** setting in **Settings → Operon → General**, directly below **Time format**, controls how supported task dates are displayed:
+The **Date format** setting in **Settings → Operon → Core → General → Language & Formats**, directly below **Time format**, controls how supported task dates are displayed:
 
 - **YYYY-MM-DD** — `2026-09-03`, the default.
 - **DD/MM/YYYY** — `03/09/2026`.

@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-09-26T13:06:25+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Calendar presets and time grid
@@ -135,7 +135,7 @@ On a phone, each mobile Calendar view, Agenda, Day, 2 Days, and 3 Days, opens wi
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, where you manage Calendar presets, choose each preset's type, range, filtering, appearance, and visibility, set the default preset, and set the time grid scale. The preset assigned to each mobile view is set under **Settings → Operon → Mobile → Calendar**.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, under **Calendar presets** to manage presets and choose the default. Open a preset's editor for its type, range, filtering, appearance, and visibility. The separate **Time Grid** section holds global grid preferences, including the opening scroll position. The preset assigned to each mobile view is set under **Settings → Operon → Mobile → Mobile Calendar → Mobile view presets**.
 
 ## Related
 

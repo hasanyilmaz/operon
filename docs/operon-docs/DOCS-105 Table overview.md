@@ -2,7 +2,7 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-09-15T11:03:02+02:00
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # Table overview
@@ -121,7 +121,7 @@ If your work is mostly date-driven, the [[DOCS-028 Calendar overview|Calendar]] 
 
 ## Settings
 
-Operon settings for the Table live in **Settings → Operon → Views → Tables**, where you set the default preset; the destination for new Table files; the maximum visible rows; and the default embedded-table width. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and Task Data Type helper columns. Global Gantt behavior lives under **Views → Gantt**. Each preset's own filter, columns, grouping, sorting, summaries, and Gantt layout are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
+Operon settings for the Table live in **Settings → Operon → Views → Tables**, in four sections: **Table Files** for the destination of new files, **Embedded Tables** for visible rows and default embed width, **Helper Columns** for the three global helper-column toggles, and **Table Presets** for preset management and the default preset. New files start in `Operon/Tables` unless you choose another vault-relative folder; leave that folder blank to create new files at the vault root. The folder setting never moves existing Table files. Embedded tables default to `175%` width, with `50%`, `75%`, `100%`, `125%`, `150%`, `175%`, `200%`, `225%`, and `250%` choices; a valid local `width:` in an embed takes precedence. You also choose whether rows show the global line number, task icon helper, and Task Data Type helper columns. Global Gantt behavior lives under **Views → Gantt**. Each preset's own filter, columns, grouping, sorting, summaries, and Gantt layout are edited from the table itself. See [[DOCS-109 Table presets|Table presets]].
 
 ## Related
 

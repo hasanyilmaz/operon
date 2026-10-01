@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Task Creator
@@ -40,7 +40,7 @@ Give the task a clear title, then choose its shape:
 
 From there you can set the fields that matter. For a first task, a title, status, priority, and maybe a date are plenty. Contexts, assignees, recurrence, parent links, icons, and colors can wait. The field names follow the canonical set described in [[DOCS-012 Inline task syntax|Inline task syntax]].
 
-Date and Date & time controls show their selected task date using **Settings → Operon → General → Date format**. This changes only what you see in the creator; the task is still saved with canonical ISO date values. The picker, its fixed display options, and natural-language input are covered in [[DOCS-063 Date and time picker|Date and time picker]].
+Date and Date & time controls show their selected task date using **Settings → Operon → Core → General → Language & Formats → Date format**. This changes only what you see in the creator; the task is still saved with canonical ISO date values. The picker, its fixed display options, and natural-language input are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
 Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Type stores one classification, Task Image stores one media reference, and Task Gallery keeps several references in order. See [[DOCS-018 Task properties|Task properties]] and [[DOCS-138 Task images and galleries|Task images and galleries]].
 
@@ -50,7 +50,7 @@ The toolbar carries a button for each kind of reminder, **ReminderDatetimes** fo
 
 Two things worth knowing:
 
-- **Both buttons are hidden by default.** Turn them on in **Settings → Operon → Interface → Task Chips**, in the Task Creator toolbar section, which is also where you order the toolbar.
+- **Both buttons are hidden by default.** Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage, which is also where you order the toolbar.
 - **The rule button stays disabled until the task has a date**, because a rule counts back from one of the task's own dates. Set a due, scheduled, or start date, or a timed block, first, and it becomes available.
 
 If you would rather not set reminders during capture at all, leave the buttons off and add reminders later from the [[DOCS-021 Task Editor|Task Editor]] or directly from a task's chips.
@@ -81,7 +81,7 @@ Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structu
 
 **Can Task Creator open in File mode by default?** Yes. Enable **Default to File Task in Task Creator** under **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**.
 
-**Where are the reminder buttons?** Hidden by default. Turn them on in **Settings → Operon → Interface → Task Chips**, in the Task Creator toolbar section.
+**Where are the reminder buttons?** Hidden by default. Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage.
 
 ## Related
 

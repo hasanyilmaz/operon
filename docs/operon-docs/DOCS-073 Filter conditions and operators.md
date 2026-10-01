@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-09-26T13:06:25+02:00
+Updated: 2026-10-01T13:55:38+02:00
 ---
 
 # Filter conditions and operators
@@ -59,7 +59,7 @@ For date fields like `dateDue` and `dateScheduled` (date and time fields use the
 
 The "X days" operators take a number, and "day of week is" and "month is" take a weekday or month number, so their input is numeric rather than a date picker.
 
-When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → General → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
+When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → Core → General → Language & Formats → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
 ### Tracked time
 

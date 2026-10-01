@@ -2,7 +2,7 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Calendar layout: toolbar and sidebar
@@ -21,11 +21,12 @@ With **Calendar week** selected for a Time Grid or Time Tracker Grid preset, dat
 
 ## Sidebar mode
 
-Sidebar mode places a resizable column next to the grid that holds three collapsible sections:
+Sidebar mode places a resizable column next to the grid that holds two collapsible sections:
 
 - **Calendars**: switches between your saved [[DOCS-029 Calendar presets and time grid|Calendar presets]]. See "Switching presets" below for what this section shows.
 - **Task Pool**: a working list of tasks you can drag straight onto the grid to schedule them. It has five icon modes (Overdue, Unscheduled, All, Finished, and Pinned) in one row and a search box. For its modes, search, and how it relates to the preset filter, see [[DOCS-095 Calendar Task Pool|Calendar Task Pool]].
-- **Finished Tasks**: completed work, kept out of the way but reachable.
+
+Completed work is available through the Task Pool's **Finished** mode; there is no separate Finished Tasks section.
 
 On a desktop or hybrid device, use a mouse or trackpad to drag Task Pool rows directly. With touch or pen, press and hold a row before dragging it; moving before the drag activates scrolls the Task Pool instead. Supported targets and scheduling behavior are covered in [[DOCS-095 Calendar Task Pool|Calendar Task Pool]].
 
@@ -39,7 +40,7 @@ Both layouts give you a way to jump to another Calendar preset without opening s
 
 Toggling an individual [[DOCS-048 External calendars|external calendar]] source on or off for the current preset is done from **Edit preset**, in its **External Calendars** section, not from the sidebar.
 
-You can drag the sidebar's edge to resize it, or set its width in settings. Each section can start expanded or collapsed, your choice. Reach for sidebar mode when the Calendar lives in a side dock, when the screen is narrow, or when you want the Task Pool at hand to drag unscheduled work onto your week.
+You can drag the sidebar's edge to resize it, or set its width in settings. The **Calendars default state** and **Task Pool default state** controls set their opening preferences. Reach for sidebar mode when the Calendar lives in a side dock, when the screen is narrow, or when you want the Task Pool at hand to drag unscheduled work onto your week.
 
 ## Keeping your place in the time grid
 
@@ -54,7 +55,7 @@ Week navigation preserves your vertical hour position. Escape, an interrupted to
 ## When to use which
 
 - **Toolbar**: a wide, primary Calendar where grid space matters most. Planning a packed week, dragging timed blocks around, reviewing a full day.
-- **Sidebar**: a narrow or docked Calendar, or any time you want the Task Pool and the external-calendar list one glance away. Good for steadily pulling unscheduled tasks into a plan.
+- **Sidebar**: a narrow or docked Calendar, or any time you want the Task Pool and Calendar preset list one glance away. Good for steadily pulling unscheduled tasks into a plan.
 
 Many people keep a main Calendar in toolbar mode and a second, docked Calendar in sidebar mode for quick capture and scheduling.
 
@@ -70,7 +71,7 @@ Many people keep a main Calendar in toolbar mode and a second, docked Calendar i
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, under the Calendar sidebar settings: the sidebar width, whether the Calendars, Task Pool, and Finished Tasks sections start expanded or collapsed. The Task Pool always follows the active Calendar preset filter.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, under **Calendar Sidebar Settings**: sidebar width, sidebar week numbers, and the default expanded or collapsed states for Calendars and Task Pool. The Task Pool always follows the active Calendar preset filter.
 
 ## Related
 

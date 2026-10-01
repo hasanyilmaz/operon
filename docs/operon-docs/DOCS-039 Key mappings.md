@@ -2,7 +2,7 @@
 Notes: Rename property names without changing what a field means
 Icon: key-round
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T14:06:16+02:00
 ---
 
 # Key mappings
@@ -48,10 +48,11 @@ For each field, the mapping records:
 
 - The **canonical key** (fixed).
 - The **visible property name** (editable).
-- The **property type**: Text, Number, Date, Date & time, List, or Checkbox. This decides how the value is stored and which picker the editor shows.
+- The **property type**, displayed beside the canonical key: Text, Number, Date, Date & time, List, or Checkbox. It determines how the field is handled; it is not editable in this row.
 - An optional **icon** for the field.
+- A **Hide** toggle that hides the property from the rendered file-task metadata view. The value remains saved in YAML; this is not an inline-field visibility setting.
 
-Operon has a built-in set of canonical fields covering the whole task model. You rename and retype them, but you do not create or delete them here. To add a field of your own, see [[DOCS-040 Custom keys|Custom keys]].
+Operon has a built-in set of canonical fields covering the whole task model. You can edit their visible names and icons, but you do not change their types, create them, or delete them here. The `operonId` property name is protected and cannot be renamed. To add a field of your own, see [[DOCS-040 Custom keys|Custom keys]].
 
 ## The reminder fields and name collisions
 
@@ -68,7 +69,7 @@ Since visible names must be unique, Operon has to handle the case where one of t
 
 ## Field icon
 
-Each field can carry an optional **icon**, chosen from Lucide. The icon is centralized: set it once on the mapping and that field shows the same icon everywhere Operon displays it, from field controls to compact chips. Leave it blank to keep the field iconless. Because it is one setting per field, you change a field's look across the whole plugin in a single place rather than surface by surface.
+Each field can carry an optional **icon**, chosen from Lucide. Surfaces that use the field’s key mapping share this icon, so you can configure it centrally rather than surface by surface. Leaving it blank does not guarantee an iconless field: some surfaces, including Task Creator and Task Editor controls, use a fallback icon when no mapping icon is set.
 
 ## Renaming a field later
 
@@ -100,7 +101,9 @@ If you already have a property naming style in your vault, key mappings let Oper
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Core → Keymapping**, which maps Operon fields to visible property names while keeping the canonical keys stable.
+Operon settings for this live in **Settings → Operon → Core → Key Mappings → Task Property Mapping**, which maps Operon fields to visible property names while keeping the canonical keys stable.
+
+Each property has one Settings search result that opens and highlights its own row. See [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-Updated: 2026-09-11T23:04:43+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Contextual menu actions
@@ -32,10 +32,24 @@ Grouped by what they do:
 
 You control the menu in **Settings → Operon → Interface → Context Menu**:
 
-- **Contextual Menu Actions**: choose which actions are globally enabled and set their order. Disabled actions never appear; enabled ones still show only when the task and surface support them.
-- **Contextual Menu Matrix**: choose which surfaces can show each globally enabled action. The **Upcoming Tasks** row is under **Task Lists**, so its menu can be configured independently of other task surfaces. **Task wikilink overlay** has its own row under **Note Surfaces**. The **Task Cards** row controls the task-icon menus shared by Canvas Task Cards and Embedded Task Cards, independently of Kanban and other task surfaces. Locked cells mean the action is globally disabled or unsupported on that surface; enabling a cell never overrides task-specific availability.
-- **Context Menu Delay**: set the **Hover menu open delay**.
-- **Mobile touch menu**: enable long-press menus and adjust the long-press delay and transition grace period.
+- **Hover Menu** sets the hover-open delay.
+- **Mobile Touch Menu** enables long-press menus and sets the long-press delay, transition grace period, and auto-hide time. The three timing controls are hidden when the menu is disabled; their saved values remain.
+- **Menu Actions & Order** enables actions and sets their order. Enabled actions still appear only when the task and surface support them.
+- **Action Visibility by Surface**, also called the **Contextual Menu Matrix**, selects where each enabled action may appear.
+
+### Keep an action's position
+
+Turning an action off leaves its row in place and hides its matrix column. The up/down arrows can move both enabled and disabled actions. Re-enabling an action restores it at its saved position, with its previous surface selections. The live menu and matrix follow the enabled actions in that order; disabling an action does not move it into a separate group.
+
+### Read the matrix
+
+Rows represent surfaces and columns represent globally enabled actions. A selected cell allows the action on that surface; an unselected cell hides it there. Locked cells mean that the surface does not support that action. No selection bypasses task-specific availability or read-only restrictions.
+
+**Upcoming Tasks** is under **Task Lists**; **Task wikilink overlay** is under **Note Surfaces**. **Task Cards** covers the task-icon menus shared by Canvas and embedded cards, separately from Kanban. Calendar timed items and Calendar task pool tasks appear in the **Calendar** group. **Time Session History** appears under **Time Tracking**.
+
+A disabled action's column disappears without deleting its surface selections. Surface rows remain present. If every action is off, the section asks you to enable an action instead of showing an empty table.
+
+Settings search treats the matrix as one result, reachable by either **Action Visibility by Surface** or **Contextual Menu Matrix**. Each menu action has its own result targeting that action's row; there are no separate results for individual matrix cells.
 
 Tune this once to keep the menu short and relevant to how you work.
 

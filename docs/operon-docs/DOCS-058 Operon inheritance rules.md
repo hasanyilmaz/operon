@@ -2,7 +2,7 @@
 Notes: What is inherited between tasks and when
 Icon: git-branch-plus
 Color: "#7c3aed"
-Updated: 2026-09-15T11:06:30+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Operon inheritance rules
@@ -96,7 +96,7 @@ That makes it relationship automation, not inheritance: the task tree causes an 
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Relationships**, which configures which fields a new subtask inherits from its parent.
+Operon settings for this live in **Settings → Operon → Tasks → Relationships**. The **Parent-Child task inheritance** section contains **Status pipeline** and the inherited-field selection. The separate **Relationships** section contains **Inherit properties when linking a parent** and relationship automation such as parent date-range expansion.
 
 ## Related
 

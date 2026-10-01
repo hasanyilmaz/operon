@@ -2,7 +2,7 @@
 Notes: Plan and reschedule Table tasks on a Gantt timeline
 Icon: chart-gantt
 Color: "#0284c7"
-Updated: 2026-09-04T17:37:12+0200
+Updated: 2026-10-01T13:50:38+02:00
 ---
 
 # Gantt view
@@ -34,7 +34,7 @@ Gantt reads the same task fields used by the rest of Operon:
 
 Each visible date marker opens its matching date picker when clicked or tapped. Dragging the marker moves only that date field, leaving the task's other dates unchanged. With touch or pen, press and hold a marker before dragging it. On fine-pointer devices, a marker inside a bar can stay quiet until hover or keyboard focus; on touch-oriented devices, date markers and editing controls remain visible with larger grab areas.
 
-Task dates in bar and marker tooltips follow **Settings → Operon → General → Date format**. Timeline day, week, and month headers remain locale-based and are not reformatted by that setting.
+Task dates in bar and marker tooltips follow **Settings → Operon → Core → General → Language & Formats → Date format**. Timeline day, week, and month headers remain locale-based and are not reformatted by that setting.
 
 A task without any usable Gantt date still keeps its row. Its empty timeline lane is where you can give it a date directly.
 
@@ -154,7 +154,14 @@ If a bar returns to its previous position, reopen the task and check its current
 
 ## Settings
 
-Global Gantt behavior lives in **Settings → Operon → Views → Gantt**. The current Table preset's saved Gantt layout is edited through **Edit preset** from the Table toolbar or from **Settings → Operon → Views → Tables**.
+Global Gantt behavior lives in **Settings → Operon → Views → Gantt**:
+
+- **New Preset Defaults** sets the initial split, scale, and unit width for new presets.
+- **Date Markers** controls start, scheduled, and due markers.
+- **Opening and Click Actions** controls Today focus and bar interactions.
+- **Move Related Tasks** controls moving open descendants or open blocked tasks with the task being moved.
+
+The current Table preset's saved Gantt layout is edited through **Edit preset** from the Table toolbar or from **Settings → Operon → Views → Tables**.
 
 ## Related
 

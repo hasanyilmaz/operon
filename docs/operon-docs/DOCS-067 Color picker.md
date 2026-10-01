@@ -2,7 +2,7 @@
 Notes: Give a task a color from a named palette or a full custom picker
 Icon: palette
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Color picker
@@ -58,7 +58,7 @@ A task's color appears on its [[DOCS-041 Task chips display and behavior|chips]]
 
 ## Settings
 
-The 28-slot named palette is configured in **Settings → Operon → Interface → Color Palette**, where you edit each slot's **name** and **hex**, and can reset all 28 to the Operon defaults. Your changes appear in every color picker.
+The 28-slot named palette is configured in **Settings → Operon → Interface → Color Palette → Named Colors**, where you edit each slot's **name** and **hex**, and can reset all 28 to the Operon defaults. Your changes appear in every color picker.
 
 ## Related
 

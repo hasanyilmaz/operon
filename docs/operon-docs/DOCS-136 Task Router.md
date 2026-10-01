@@ -2,7 +2,7 @@
 Notes: Route new and existing inline and file tasks to the right working and archive locations
 Icon: route
 Color: "#2563eb"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-01T13:47:36+02:00
 ---
 
 # Task Router
@@ -13,11 +13,13 @@ Routing changes location, not identity. An Operon task keeps its `operonId`, fie
 
 ## What Task Router controls
 
-Task Router has three parts:
+Task Router has five main sections:
 
-- **Inline Tasks** chooses the normal destination for a new inline task and how a parent may override that destination.
-- **File Tasks** chooses the default File Task folder, optional pipeline-specific folders, and parent-aware placement.
-- **File Task Archive** chooses where finished and cancelled File Tasks move.
+- **Inline Task Default Save Location** chooses the normal destination for new inline tasks.
+- **Parent-Aware Inline Task Placement** controls parent-based placement during creation and the separate option for keeping existing inline tasks with their parent.
+- **File Task Default Save Location** contains the fallback folder and **Pipeline locations** rules.
+- **Parent-Aware File Task Placement** controls parent-based placement when no pipeline folder overrides it.
+- **Archive finished/cancelled File Tasks** contains pipeline archive rules and the fallback archive folder.
 
 Daily and Weekly note creation has its own configuration under **Tasks → File Tasks**. Task Router selects those notes as destinations; [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] explains how Operon resolves and creates them.
 
@@ -107,7 +109,7 @@ When no pipeline folder overrides it, a parent can influence where a new File Ta
 
 The relationship is independent of the chosen folder. A task may keep its parent even when routing uses a pipeline or default destination.
 
-## File Task Archive
+## Archive finished/cancelled File Tasks
 
 Finished and cancelled File Tasks can move out of working folders without being deleted.
 
@@ -145,7 +147,7 @@ The rule set remains readable: the matching pipeline wins, then the relevant fal
 
 ## Settings
 
-These settings live in **Settings → Operon → Tasks → Task Router**, under **Inline Tasks**, **File Tasks**, and **File Task Archive**. Daily and Weekly formats, templates, folders, and container behavior live separately under **Settings → Operon → Tasks → File Tasks**.
+These settings live in **Settings → Operon → Tasks → Task Router**, in the five sections listed above. Daily and Weekly formats, templates, folders, and container behavior live separately under **Settings → Operon → Tasks → File Tasks**.
 
 ## Related
 

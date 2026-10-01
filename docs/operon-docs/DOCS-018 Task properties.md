@@ -2,7 +2,7 @@
 Notes: What a task property is, the four traits every property has, and the same fields shown both ways
 Icon: table-properties
 Color: "#7c3aed"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Task properties
@@ -65,7 +65,7 @@ The canonical keys are the same on both; only the container differs. In the file
 
 ## Settings
 
-Operon settings for this live in two places under **Settings → Operon → Core**: **Keymapping** sets each property's visible name and type, and **Custom Keys** creates and manages your own canonical fields.
+Operon settings for this live in two places under **Settings → Operon → Core**: **Key Mappings → Task Property Mapping** lets you edit visible property names and icons while displaying each field's fixed type. **Custom Keys** creates and manages your own canonical fields; you choose a custom field's type when creating it.
 
 ## Related
 

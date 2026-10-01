@@ -2,7 +2,7 @@
 Notes: Show a person image on assignee chips using a property in the linked person note
 Icon: contact
 Color: "#0F766E"
-Updated: 2026-09-15T12:10:53+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # How to show assignee images
@@ -37,7 +37,7 @@ Replace that example address with a working image URL. A profile page URL is not
 
 ## Step 2: Choose the source property
 
-Open **Settings → Operon → Interface → Task Chips → General Chip Settings**, at the bottom of the Task Chips list. In **Assignee image property**, enter `photo`.
+Open **Settings → Operon → Interface → Task Chips → General Chip Settings → Assignee Images**, on the last Task Chips subpage. In **Assignee image property**, enter `photo`.
 
 Suggestions help you find existing vault property names, but you can type a name that is not suggested. Use the exact property name from the person note. This is one shared setting: each linked person's note supplies its own image from that property.
 

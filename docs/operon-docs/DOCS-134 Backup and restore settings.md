@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-10-01T13:41:33+02:00
 ---
 
 # Back up and restore settings
@@ -11,7 +11,7 @@ Operon can export its portable settings as one JSON file and restore that file i
 
 ## Create a settings backup
 
-Open **Settings → Operon → Core → Backup & Restore**, then select **Download**. Operon creates a file named like this:
+Open **Settings → Operon → Core → Backup & Restore → Export Settings Backup**, then select **Download** on the **Download backup** row. Operon creates a file named like this:
 
 ```text
 operon-settings-backup-20260811T093045Z.json
@@ -43,7 +43,7 @@ The target vault keeps those excluded values when settings are restored. For the
 
 ## Preview and restore a backup
 
-1. Open **Settings → Operon → Core → Backup & Restore**.
+1. Open **Settings → Operon → Core → Backup & Restore → Restore Settings Backup**.
 2. Select **Choose backup file** and open an Operon JSON backup.
 3. Review the compatibility result and the Settings groups that would change.
 4. For each required Vault reference decision, choose **Use backup value** or **Keep current value**.
@@ -63,7 +63,7 @@ If settings were committed but some Operon features could not refresh, the recov
 
 ## Reset Operon settings
 
-The **Reset settings** section returns portable Operon settings to the current defaults. Operon shows a confirmation first. Confirming does not delete notes, tasks, or `.table` files, and it preserves the same target-owned state that restore excludes.
+The **Reset Settings** section returns portable Operon settings to the current defaults. Operon shows a confirmation first. Confirming does not delete notes, tasks, or `.table` files, and it preserves the same target-owned state that restore excludes.
 
 Reset does not provide session Undo. Download a backup first if you may want the current configuration again.
 
@@ -86,7 +86,7 @@ Reset does not provide session Undo. Download a backup first if you may want the
 
 ## Settings
 
-Backup, restore, recovery, and reset controls live in **Settings → Operon → Core → Backup & Restore**.
+Controls live in **Settings → Operon → Core → Backup & Restore**, under **Export Settings Backup**, **Restore Settings Backup**, and **Reset Settings**. Pending restore recovery is available from the same page.
 
 ## Related
 

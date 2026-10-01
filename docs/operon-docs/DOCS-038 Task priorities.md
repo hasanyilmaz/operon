@@ -2,7 +2,7 @@
 Notes: Rank tasks by importance for sorting and planning
 Icon: flag
 Color: "#ca8a04"
-Updated: 2026-09-23T10:43:50+02:00
+Updated: 2026-10-01T14:00:09+02:00
 ---
 
 # Task priorities
@@ -69,7 +69,12 @@ Each priority level can carry an optional **description**: a short note on when 
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Core → Priority**, which defines the priority levels, their order, colors, and icons, and the default priority for new tasks.
+Open **Settings → Operon → Core → Priority**:
+
+- **Priority Levels** contains each level’s label, color, icon, description, and order. **Task Count** shows how many tasks use that level. On desktop, a row’s up/down and delete controls appear on hover or keyboard focus; on touch devices they remain visible.
+- **New Task Defaults** sets the default priority for new tasks.
+
+Each priority level has its own Settings search result, so you can jump directly to its row.
 
 ## Related
 

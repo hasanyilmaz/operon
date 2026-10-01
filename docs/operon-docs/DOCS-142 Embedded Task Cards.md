@@ -2,7 +2,7 @@
 Notes: Place a live task card inside a note, with local layout options and shared task controls
 Icon: panels-top-left
 Color: "#0284c7"
-Updated: 2026-09-12T01:13:01+02:00
+Updated: 2026-10-01T13:53:36+02:00
 ---
 
 # Embedded Task Cards
@@ -124,7 +124,7 @@ Use separate blocks when a project note needs both its main task card and a filt
 
 ## Settings
 
-Open **Settings → Operon → Views → Task Cards** for shared card appearance.
+Open **Settings → Operon → Views → Task Cards** for shared card appearance, organized under **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order**.
 
 | Setting | Purpose |
 | --- | --- |
@@ -133,12 +133,12 @@ Open **Settings → Operon → Views → Task Cards** for shared card appearance
 | Color source | Choose the task field or color system used for the card accent in notes |
 | Image source | Choose the task media field, or None to hide images |
 | Image ratio | Original proportions, Landscape (16:9), Square (1:1), or Portrait (2:3) |
-| Card item order | Arrange the image, header, task progress, chips, and checkbox progress; the task header stays visible |
+| Card Sections and Order | Arrange the image, header, task progress, chips, and checkbox progress; the task header stays visible |
 | Task progress, chips, and checkbox progress | Choose the optional sections to display when their data is available |
 
 The default-width dropdown offers 300, 325, 350, 375, and 400 px. A local `width` option can use the wider supported range documented above. Fixed image ratios crop around the center; Original shows the full image. See [[DOCS-138 Task images and galleries|Task images and galleries]] for media fields.
 
-Under **Settings → Operon → Interface → Task Chips**, configure **Task Card Chips** and **Task Card Actions** independently of Inline, Filter, or Kanban chips. Under **Interface → Context Menu**, use the **Task Cards** surface to configure its task-icon menu. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+Under **Settings → Operon → Interface → Task Chips → Task Card Chips**, configure card chips independently of Inline, Filter, or Kanban chips. **Task Card Actions** is a section within that same subpage. Under **Interface → Context Menu**, use the **Task Cards** surface to configure its task-icon menu. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
 The Canvas Task Pool settings on the Task Cards page apply to Canvas, not to embedded cards in notes.
 
