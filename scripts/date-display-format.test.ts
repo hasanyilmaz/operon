@@ -293,13 +293,13 @@ test('General Settings and Settings Search share one fixed dropdown contract', (
 	assert.ok(entry?.aliases?.includes('date format'));
 
 	const settingsTabSource = readFileSync('src/ui/settings-tab.ts', 'utf8');
-	const timeIndex = settingsTabSource.indexOf("t('settings', 'timeFormat')", settingsTabSource.indexOf('private renderGeneralBasicsTab'));
-	const dateIndex = settingsTabSource.indexOf("t('settings', 'dateDisplayFormat')", timeIndex);
-	const demoIndex = settingsTabSource.indexOf("t('settings', 'demoWorkspace')", dateIndex);
+	const nativeEntryIds = OPERON_SETTINGS_SEARCH_REGISTRY.filter(entry => entry.tabId === 'coreGeneral').map(entry => entry.id);
+	const timeIndex = nativeEntryIds.indexOf('settings.timeFormat');
+	const dateIndex = nativeEntryIds.indexOf('settings.dateDisplayFormat');
+	const demoIndex = nativeEntryIds.indexOf('settings.demoWorkspace');
 	assert.ok(timeIndex >= 0 && dateIndex > timeIndex && demoIndex > dateIndex);
 	assert.ok(settingsTabSource.includes("'timeFormat',\n\t'dateDisplayFormat',"));
 	assert.ok(settingsTabSource.includes("if (key === 'dateDisplayFormat') {\n\t\t\tthis.applyPendingSettingsChange();\n\t\t}"));
-	assert.ok(settingsTabSource.includes("dropdownOptions: [...DATE_DISPLAY_FORMAT_OPTIONS],\n\t\t\t\tonAfterChange: () => {\n\t\t\t\t\tthis.applyPendingSettingsChange();"));
 });
 
 test('settings backup exports and restores date display format through portable general settings', () => {

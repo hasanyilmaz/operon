@@ -640,6 +640,7 @@ export class OperonDataPackageStore {
 					};
 				}
 
+				const reloadSource = this.canonicalSource;
 				const fallback = this.dataPackage ?? buildFallbackDataPackage(defaults);
 				const legacyArchiveReload = isLegacyArchiveRoutingSettings(externalPackage.settings);
 				const compatibilitySafeExternalPackage = preserveLegacyReloadSettingsIntent(externalPackage, current);
@@ -652,28 +653,40 @@ export class OperonDataPackageStore {
 					: migrationSafePackage;
 				const nextSignature = buildStableJsonSignature(dataPackage);
 				const externalSignature = buildStableJsonSignature(externalPackage);
-				if (!this.writeSuspensionRequiresExplicitRecovery) {
-					this.resumeWrites();
-				}
 				const packageChanged = nextSignature !== this.dataPackageSignature;
 				const shouldPersistCandidate = externalSignature !== nextSignature;
 				let staged: OperonDataPackageReloadStage | null = null;
+				let sourceChangedBeforeCommit = false;
 				try {
 					staged = options.stage
 						? await options.stage(this.cloneDataPackage(dataPackage))
 						: null;
+					// A staged snapshot must still describe the disk, even when no normalization is needed.
+					let observed: string | null | undefined;
+					try { observed = await this.readCanonicalSource(); } catch { observed = undefined; }
+					sourceChangedBeforeCommit = typeof reloadSource !== 'string' || observed !== reloadSource;
+					if (sourceChangedBeforeCommit) throw new Error('Canonical settings changed during reload');
 					if (shouldPersistCandidate) {
 						if (!pipelineTaxonomy.backupPath) {
 							await this.backupCanonicalDataPackageNow(externalPackage);
 						}
-						await this.persistCandidate(dataPackage);
+						await this.persistCandidate(dataPackage, () => true, true);
 					}
 					staged?.commit();
 					if (packageChanged) this.setDataPackage(dataPackage);
+					// Ordinary writes stay blocked until both runtime and committed cache adopt the snapshot.
+					if (!this.writeSuspensionRequiresExplicitRecovery) this.resumeWrites();
 				} catch (error) {
 					this.canonicalSource = undefined;
-					if (!this.writesSuspended) this.suspendWrites('Canonical reload could not commit its settings snapshot');
-					staged?.rollback();
+					if (sourceChangedBeforeCommit) {
+						this.suspendWritesUntilReload('Canonical settings changed during reload');
+					} else if (!this.writeSuspensionRequiresExplicitRecovery) {
+						this.suspendWrites('Canonical reload could not commit its settings snapshot');
+					}
+					try { staged?.rollback(); } catch (rollbackError) {
+						this.suspendWrites('Canonical reload could not roll back its settings snapshot');
+						throw rollbackError;
+					}
 					throw error;
 				}
 				adopted = true;
@@ -1282,7 +1295,7 @@ export class OperonDataPackageStore {
 		} catch {
 			this.canonicalSource = undefined;
 			console.warn('Operon: Failed to load data.json; settings writes are paused to protect existing data');
-			this.suspendWritesForReadFailure('data.json could not be read safely');
+			this.suspendWritesUntilReload('data.json could not be read safely');
 			return null;
 		}
 	}
@@ -1307,7 +1320,7 @@ export class OperonDataPackageStore {
 		const raw = await this.loadExistingPackage();
 		if (!raw) {
 			this.canonicalSource = undefined;
-			this.suspendWritesForReadFailure('Canonical settings could not be reloaded safely');
+			this.suspendWritesUntilReload('Canonical settings could not be reloaded safely');
 			diagnostics.malformedPackage = true;
 			diagnostics.warnings.push('Canonical settings are missing, invalid or unavailable');
 			return null;
@@ -1430,8 +1443,9 @@ export class OperonDataPackageStore {
 		return serialized;
 	}
 
-	private assertWritesAllowed(): void {
-		if (this.writesSuspended || this.versionBackupBlocked || this.canonicalSource === undefined) {
+	private assertWritesAllowed(allowReloadRecovery = false): void {
+		const suspended = this.writesSuspended && (!allowReloadRecovery || this.writeSuspensionRequiresExplicitRecovery);
+		if (suspended || this.versionBackupBlocked || this.canonicalSource === undefined) {
 			throw new Error(`Operon data package writes are suspended: ${this.writeSuspensionReason ?? 'data.json could not be read safely'}`);
 		}
 	}
@@ -1444,13 +1458,17 @@ export class OperonDataPackageStore {
 			if (await this.readCanonicalSource() === this.canonicalSource) return true;
 		} catch { /* Unknown observations follow the same fail-closed path as conflicts. */ }
 		this.canonicalSource = undefined;
-		this.suspendWrites('Canonical settings changed before an unchanged save');
+		this.suspendWritesUntilReload('Canonical settings changed before an unchanged save');
 		throw new Error('Canonical settings changed before save');
 	}
 
 	/** Returns whether publication succeeded despite an acknowledgement error. Never retries. */
-	private async persistCandidate(dataPackage: OperonDataPackageV1, canCommit: () => boolean = () => true): Promise<boolean> {
-		this.assertWritesAllowed();
+	private async persistCandidate(
+		dataPackage: OperonDataPackageV1,
+		canCommit: () => boolean = () => true,
+		allowReloadRecovery = false,
+	): Promise<boolean> {
+		this.assertWritesAllowed(allowReloadRecovery);
 		const expected = this.canonicalSource;
 		const serialized = JSON.stringify(dataPackage, null, '\t');
 		let accepted = false, cancelled = false;
@@ -1523,7 +1541,9 @@ export class OperonDataPackageStore {
 		return run;
 	}
 
-	private suspendWritesForReadFailure(reason: string): void {
+	private suspendWritesUntilReload(reason: string): void {
+		// A later read failure must never downgrade an uncertain write or explicit recovery lock.
+		if (this.writeSuspensionRequiresExplicitRecovery) return;
 		this.writesSuspended = true;
 		this.writeSuspensionReason = reason;
 		this.writeSuspensionRequiresExplicitRecovery = false;

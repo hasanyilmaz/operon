@@ -1,3 +1,4 @@
+import { isSettingsScope } from './settings-scope';
 import { App, Setting, getIcon } from 'obsidian';
 import { t } from '../../core/i18n';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
@@ -85,6 +86,7 @@ export function renderSettingsIconPickerRow(options: SettingsIconPickerRowOption
 	};
 	const openPicker = (): void => {
 		openSettingsIconPickerModal(options.app, {
+			settingsScope: isSettingsScope(options.containerEl),
 			title: options.name,
 			value: currentValue,
 			query: '',

@@ -1,3 +1,4 @@
+import { scopeSettingsModal } from './settings/settings-scope';
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import type { SettingsBackupProfileGroupId, SettingsBackupVaultReferenceKey } from '../core/settings-backup-compatibility';
@@ -716,10 +717,11 @@ export async function openSettingsBackupRestorePicker(
 	app: App,
 	ownerDocument: Document,
 	integration: SettingsBackupUiIntegration,
+	settingsScope = false,
 ): Promise<void> {
 	try {
 		const file = await chooseSettingsBackupFile(ownerDocument);
-		if (file) new SettingsBackupRestoreModal(app, integration, file).open();
+		if (file) scopeSettingsModal(new SettingsBackupRestoreModal(app, integration, file), settingsScope).open();
 	} catch (error) {
 		console.debug('Operon: settings backup file admission failed', error);
 		new Notice(settingsBackupFileAdmissionMessage(error));

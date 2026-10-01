@@ -1,3 +1,4 @@
+import { setSettingsScope } from './settings-scope';
 import { App, Modal, getIcon, getIconIds } from 'obsidian';
 import { t } from '../../core/i18n';
 import { getOwnerWindow } from '../../core/dom-compat';
@@ -6,6 +7,7 @@ import { searchLucideIcons } from '../field-pickers/icon-search';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 
 interface SettingsIconPickerModalOptions {
+	settingsScope?: boolean;
 	title?: string;
 	value?: string;
 	query?: string;
@@ -52,6 +54,7 @@ export class SettingsIconPickerModal extends Modal {
 	}
 
 	onOpen(): void {
+		setSettingsScope(this.modalEl, this.options.settingsScope === true);
 		this.modalEl.addClass('operon-settings-icon-picker-modal');
 		this.titleEl.setText(this.options.title ?? t('settings', 'settingsIconPickerTitle'));
 		this.render();

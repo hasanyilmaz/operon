@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import ts from 'typescript';
+import { transform } from 'esbuild';
 
 const settingsTabSource = await readFile(new URL('../src/ui/settings-tab.ts', import.meta.url), 'utf8');
 const registrySource = await readFile(new URL('../src/ui/settings/settings-search-registry.ts', import.meta.url), 'utf8');
@@ -41,12 +43,40 @@ e('automation', '<tab>', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSav
 e('automation', '<tab>', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
 section('automation', '<tab>', 'fileTaskArchivePipelineLocations', 'settings', 'fileTaskArchivePipelineLocations', 'fileTaskArchivePipelineLocationsDesc', ['file task', 'archive', 'archive folder', 'archive pipeline', 'finished task', 'cancelled task']),`;
 
-function extractMethod(source, methodName, nextMethodName) {
-	const start = source.indexOf(`\tprivate ${methodName}`);
-	const end = source.indexOf(`\n\tprivate ${nextMethodName}`, start + 1);
-	assert.notEqual(start, -1, `${methodName} should exist`);
-	assert.notEqual(end, -1, `${nextMethodName} should follow ${methodName}`);
-	return source.slice(start, end);
+function extractMethod(source, methodName) {
+	const tree = ts.createSourceFile('settings.ts', source, ts.ScriptTarget.Latest, true);
+	const owner = tree.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonSettingsTab');
+	const method = owner?.members.find(node => ts.isMethodDeclaration(node) && node.name.getText(tree) === methodName);
+	assert.ok(method, `${methodName} should exist`);
+	return method.getText(tree);
+}
+
+const compiledRoutes = await transform(`const t = (_namespace, key) => key;
+const attachDeclarativeSettingsPageTitleAction = () => undefined;
+export default class Harness {
+${extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections')}
+${extractMethod(settingsTabSource, 'buildTaskCaptureSearchSection')}
+${extractMethod(settingsTabSource, 'buildTaskRouterSettingsItems')}
+${extractMethod(settingsTabSource, 'buildTaskSettingsGroups')}
+buildDeclarativeSettingsDocsButton() { return () => {}; }
+buildNativeSettingsDocsAction() { return {}; }
+getSettingsSearchAliasesForEntries() { return []; }
+getSettingsSearchAliases() { return []; }
+getSettingsSearchText(ref) { return ref.key; }
+}`, { loader: 'ts', format: 'esm', target: 'es2022' });
+const { default: Routes } = await import(`data:text/javascript;base64,${Buffer.from(compiledRoutes.code).toString('base64')}`);
+function renderRoute(tabId) {
+	const harness = new Routes();
+	const calls = [];
+	for (const method of settingsTabSource.matchAll(/(?:el|\(el, key\)) => this\.(\w+)\(el(?:, key)?\)/g)) {
+		harness[method[1]] = host => { assert.equal(host, container); calls.push(method[1]); };
+	}
+	const container = { empty() {}, removeClass() {}, addClass() {}, querySelector() { return null; } };
+	const entries=[...registrySource.matchAll(/(?:e|section)\('[^']+', '([^']+)', '([^']+)', '[^']+', '([^']+)', '([^']+)'/g)].filter(m=>m[1]===tabId).map(m=>({id:'test.'+m[2],name:{key:m[3]},desc:{key:m[4]}}));
+	const items = tabId === 'tasksTaskRouter' ? harness.buildTaskRouterSettingsItems(entries) : harness.buildTaskCaptureSearchSections(tabId, entries);
+	const sections = items.flatMap(item => item.items ?? [item]);
+	for (const section of sections) section.render({ settingEl: container });
+	return { calls: [...new Set(calls)], titles: sections.map(section => section.name) };
 }
 
 test('Task Router is the third Tasks page and has native Settings Search wiring', () => {
@@ -59,7 +89,7 @@ test('Task Router is the third Tasks page and has native Settings Search wiring'
 	assert.match(settingsTabSource, /\| 'tasksTaskRouter'/);
 	assert.match(settingsTabSource, /'tasksTaskRouter',\n/);
 	assert.match(settingsTabSource, /tasksTaskRouter: \{ namespace: 'settings', key: 'settingsPageTaskRouterDesc' \}/);
-	assert.match(settingsTabSource, /tabId === 'tasksTaskRouter'[\s\S]*?this\.renderTasksTaskRouterTab\(contentEl\)/);
+	assert.match(settingsTabSource, /tab.id === 'tasksTaskRouter'[\s\S]*?items: this\.buildTaskRouterSettingsItems\(entries\)/);
 });
 
 test('exactly the 11 routing settings belong to Task Router search', () => {
@@ -121,21 +151,22 @@ test('exactly the 11 routing settings belong to Task Router search', () => {
 });
 
 test('File Tasks renders managed Daily and Weekly Notes and Task Router exposes the Weekly destination', () => {
-	const periodicMethod = extractMethod(settingsTabSource, 'renderFileTaskDailyNotesSettings', 'renderPeriodicNoteSettings');
+	const periodicMethod = ['renderFileDailyNotesSettings', 'renderFileWeeklyNotesSettings'].map(name => extractMethod(settingsTabSource, name)).join('\n');
 	const sharedMethod = extractMethod(settingsTabSource, 'renderPeriodicNoteSettings', 'renderPeriodicNoteFormatSetting');
 	const formatMethod = extractMethod(settingsTabSource, 'renderPeriodicNoteFormatSetting', 'renderFileTaskArchiveSettings');
 
-	assert.match(periodicMethod, /kind: 'daily'[\s\S]*?docsTarget: 'DOCS-050 Daily Notes workflows'/);
+	assert.match(periodicMethod, /kind: 'daily'/);
+	assert.match(extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections'), /renderFileDailyNotesSettings\(el, key\), \['DOCS-050 Daily Notes workflows', 'DOCS-137 Daily and Weekly Notes'\]/);
 	assert.match(periodicMethod, /kind: 'weekly'/);
 	assert.doesNotMatch(periodicMethod, /weekly[\s\S]*?docsTarget/u);
 	assert.match(sharedMethod, /managedFieldsEl\.empty\(\)/);
-	assert.match(sharedMethod, /if \(!this\.settings\[options\.managementKey\]\) return/);
+	assert.match(sharedMethod, /if \(!selectedKey && !this\.settings\[options\.managementKey\]\) return/);
 	assert.ok(
 		sharedMethod.indexOf('renderManagedFields();')
 			< sharedMethod.indexOf("t('settings', options.createAsTaskKey)"),
 		'create-as-task must remain outside the hidden managed fields',
 	);
-	assert.match(sharedMethod, /onAfterChange: renderManagedFields/);
+	assert.match(sharedMethod, /onAfterChange: \(\) => selectedKey \? this\.refreshNativeSettingsDom\(\) : renderManagedFields\(\)/);
 	assert.doesNotMatch(sharedMethod, /redisplayPreservingScroll/);
 	assert.match(sharedMethod, /new FileSuggest[\s\S]*?file\.extension === 'md'/);
 	assert.match(sharedMethod, /new FolderSuggest/);
@@ -150,41 +181,22 @@ test('File Tasks renders managed Daily and Weekly Notes and Task Router exposes 
 });
 
 test('routing sections render only from Task Router and archive is not duplicated', () => {
-	const routerMethod = extractMethod(settingsTabSource, 'renderTasksTaskRouterTab', 'renderTasksInlineTasksTab');
-	const inlineMethod = extractMethod(settingsTabSource, 'renderTasksInlineTasksTab', 'getInlineTaskTargetFileDescription');
-	const fileMethod = extractMethod(settingsTabSource, 'renderTasksFileTasksTab', 'renderInlineTaskRoutingSettings');
-
-	assert.match(routerMethod, /renderInlineTaskRoutingSettings\(containerEl\)/);
-	assert.match(routerMethod, /renderFileTaskRoutingSettings\(containerEl\)/);
-	assert.match(routerMethod, /renderFileTaskArchiveSettings\(containerEl\)/);
-	assert.doesNotMatch(inlineMethod, /renderInlineTaskRoutingSettings/);
-	assert.doesNotMatch(fileMethod, /renderFileTaskRoutingSettings|renderFileTaskArchiveSettings/);
-	assert.equal((routerMethod.match(/this\.renderFileTaskArchiveSettings\(/g) ?? []).length, 1);
-	const searchMethod = extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections', 'buildCoreGeneralSettingsItems');
-	assert.equal((searchMethod.match(/this\.renderFileTaskArchiveSettings\(/g) ?? []).length, 1);
+	assert.deepEqual(renderRoute('tasksTaskRouter').calls, ['renderInlineTaskRoutingSettings', 'renderInlineTaskParentRoutingSettings', 'renderFileTaskRoutingSettings', 'renderFileTaskParentRoutingSettings', 'renderFileTaskArchiveSettings']);
+	for (const page of ['tasksInlineTasks', 'tasksFileTasks']) {
+		assert.ok(renderRoute(page).calls.every(name => !['renderInlineTaskRoutingSettings', 'renderInlineTaskParentRoutingSettings', 'renderFileTaskRoutingSettings', 'renderFileTaskParentRoutingSettings', 'renderFileTaskArchiveSettings'].includes(name)));
+	}
 });
 
 test('File Tasks keeps section copy and documentation attached while rendering the approved order', () => {
-	const fileMethod = extractMethod(settingsTabSource, 'renderTasksFileTasksTab', 'renderInlineTaskRoutingSettings');
-	const templateMethod = extractMethod(settingsTabSource, 'renderFileTaskTemplateSettings', 'getDefaultFileTaskTemplateDropdownOptions');
-	const orderedCalls = [
-		'renderNewFileTaskCreationDefaultSettings',
-		'renderFileTaskTemplateSettings',
-		'renderFileTaskDailyNotesSettings',
-		"t('settings', 'fileTaskConversion')",
-		'renderExcludedFolderSettings',
-		'renderFileTaskMigrationSettings',
-	];
-	let priorIndex = -1;
-	for (const call of orderedCalls) {
-		const index = fileMethod.indexOf(call);
-		assert.ok(index > priorIndex, `${call} should follow the preceding File Tasks section`);
-		priorIndex = index;
-	}
-
-	assert.match(fileMethod, /creationDefaultsTitle, 'DOCS-020 Task Creator'/);
-	assert.match(fileMethod, /templateTitle, 'DOCS-024 Task templates'/);
-	assert.match(fileMethod, /conversionTitle, 'DOCS-019 Converting inline and file tasks'/);
+	const templateMethod = extractMethod(settingsTabSource, 'renderFileTaskTemplateSettings');
+	assert.deepEqual(renderRoute('tasksFileTasks').calls, [
+		'renderFileCreationDefaultsSection', 'renderFileTemplatesSection',
+		'renderFileDailyNotesSettings', 'renderFileWeeklyNotesSettings',
+		'renderFileConversionSection', 'renderExcludedFolderSettings', 'renderFileTaskMigrationSettings',
+	]);
+	assert.match(extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections'), /renderFileCreationDefaultsSection\(el, key\), 'DOCS-020 Task Creator'/);
+	assert.match(extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections'), /renderFileTemplatesSection\(el\), 'DOCS-024 Task templates'/);
+	assert.match(extractMethod(settingsTabSource, 'buildTaskCaptureSearchSections'), /renderFileConversionSection\(el, key\), 'DOCS-019 Converting inline and file tasks'/);
 	assert.doesNotMatch(
 		templateMethod,
 		/renderExcludedFolderSettings|renderFileTaskDailyNotesSettings|renderFileTaskMigrationSettings/,
@@ -192,11 +204,11 @@ test('File Tasks keeps section copy and documentation attached while rendering t
 });
 
 test('Task Router preserves the intended docs targets', () => {
-	assert.match(settingsTabSource, /tasksTaskRouter: 'DOCS-008 Essential settings to configure first'/);
-	assert.match(settingsTabSource, /defaultLocationTitle, 'DOCS-011 Inline tasks'/);
-	assert.match(settingsTabSource, /placementTitle, 'DOCS-094 How to create a task with Task Creator'/);
-	assert.match(settingsTabSource, /defaultLocationTitle, 'DOCS-013 File tasks'/);
-	assert.match(settingsTabSource, /title, 'DOCS-052 Completed task review'/);
+	assert.match(settingsTabSource, /tasksTaskRouter: 'DOCS-136 Task Router'/);
+	assert.match(settingsTabSource, /renderInlineTaskRoutingSettings\(el, key\), 'DOCS-137 Daily and Weekly Notes'/);
+	assert.match(settingsTabSource, /renderInlineTaskParentRoutingSettings\(el, key\), 'DOCS-094 How to create a task with Task Creator'/);
+	assert.match(settingsTabSource, /renderFileTaskRoutingSettings\(el, key\), 'DOCS-013 File tasks'/);
+	assert.match(settingsTabSource, /renderFileTaskArchiveSettings\(el, key\), 'DOCS-052 Completed task review'/);
 });
 
 test('Pipeline Locations uses labeled native controls with a neutral add action', () => {
@@ -205,7 +217,8 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	const archiveMethod = extractMethod(settingsTabSource, 'renderFileTaskArchiveSettings', 'renderWorkspaceTweaksExcludedFolderSettings');
 	const pipelineCssStart = stylesSource.indexOf('.operon-file-task-pipeline-location-rows');
 	const pipelineCssEnd = stylesSource.indexOf('/* Static-style cleanup helpers */', pipelineCssStart);
-	const pipelineCss = stylesSource.slice(pipelineCssStart, pipelineCssEnd);
+	const pipelineCss = stylesSource.slice(pipelineCssStart, pipelineCssEnd).replaceAll(':where(.operon-settings-scope, .operon-settings-scope *)', '');
+	assert.ok(stylesSource.slice(pipelineCssStart, pipelineCssEnd).includes(':where(.operon-settings-scope, .operon-settings-scope *)'));
 
 	assert.match(sharedRenderer, /createDiv\('operon-file-task-pipeline-location-row'\)/);
 	assert.match(sharedRenderer, /new Obsidian\.DropdownComponent\(rowEl\)/);
@@ -232,19 +245,19 @@ test('Pipeline Locations uses labeled native controls with a neutral add action'
 	assert.match(settingsUiSource, /setIcon\(iconEl, 'plus'\)/);
 	assert.match(routingMethod, /defaultLocationSection\.addClass\('operon-file-task-pipeline-location-container'\)/);
 	assert.match(archiveMethod, /sectionEl\.addClass\('operon-file-task-pipeline-location-container'\)/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 24px;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-container \{[\s\S]*?container-name: operon-file-task-pipeline-locations;[\s\S]*?container-type: inline-size;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) max-content minmax\(0, 1fr\) auto;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-select \{[\s\S]*?text-align: start;[\s\S]*?text-align-last: start;/);
-	assert.doesNotMatch(stylesSource, /\.operon-file-task-pipeline-location-row\.is-draft \{/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding: 12px 24px 18px;[\s\S]*?border-top: 0;/);
-	assert.match(stylesSource, /\.operon-settings-native-page-root \.operon-file-task-pipeline-location-container > \.operon-file-task-pipeline-location-add-row \{[\s\S]*?border-top: 0;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button \{[\s\S]*?background: transparent;/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button:not\(:disabled\):hover,[\s\S]*?\.operon-file-task-pipeline-location-add-button:not\(:disabled\):focus-visible/);
-	assert.match(stylesSource, /\.operon-file-task-pipeline-location-add-button:disabled \{[\s\S]*?opacity: 0\.55;[\s\S]*?cursor: not-allowed;/);
-	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 16px;/);
-	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-remove \{[\s\S]*?grid-row: 3;/);
-	assert.match(stylesSource, /@container operon-file-task-pipeline-locations \(max-width: 440px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 12px;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 24px;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-container \{[\s\S]*?container-name: operon-file-task-pipeline-locations;[\s\S]*?container-type: inline-size;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-row \{[\s\S]*?grid-template-columns: max-content minmax\(0, 1fr\) max-content minmax\(0, 1fr\) auto;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-select \{[\s\S]*?text-align: start;[\s\S]*?text-align-last: start;/);
+	assert.doesNotMatch(pipelineCss, /\.operon-file-task-pipeline-location-row\.is-draft \{/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-add-row \{[\s\S]*?padding: 12px 24px 18px;[\s\S]*?border-top: 0;/);
+	assert.match(pipelineCss, /\.operon-settings-native-page-root \.operon-file-task-pipeline-location-container > \.operon-file-task-pipeline-location-add-row \{[\s\S]*?border-top: 0;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-add-button \{[\s\S]*?background: transparent;/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-add-button:not\(:disabled\):hover,[\s\S]*?\.operon-file-task-pipeline-location-add-button:not\(:disabled\):focus-visible/);
+	assert.match(pipelineCss, /\.operon-file-task-pipeline-location-add-button:disabled \{[\s\S]*?opacity: 0\.55;[\s\S]*?cursor: not-allowed;/);
+	assert.match(pipelineCss, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 16px;/);
+	assert.match(pipelineCss, /@container operon-file-task-pipeline-locations \(max-width: 680px\) \{[\s\S]*?\.operon-file-task-pipeline-location-remove \{[\s\S]*?grid-row: 3;/);
+	assert.match(pipelineCss, /@container operon-file-task-pipeline-locations \(max-width: 440px\) \{[\s\S]*?\.operon-file-task-pipeline-location-rows \{[\s\S]*?padding-inline: 12px;/);
 	assert.doesNotMatch(pipelineCss, /@media \(max-width:/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /New File Tasks are created/);
 	assert.match(englishLocale.settings.fileTaskPipelineLocationsDesc, /about 5 seconds/);

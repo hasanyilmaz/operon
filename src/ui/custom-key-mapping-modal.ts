@@ -1,3 +1,4 @@
+import { isSettingsScope } from './settings/settings-scope';
 import { App, getIcon, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
@@ -282,6 +283,7 @@ export class CustomKeyMappingModal extends Modal {
 
 	private openIconPicker(): void {
 		openSettingsIconPickerModal(this.app, {
+			settingsScope: isSettingsScope(this.modalEl),
 			title: t('settings', 'keyMappingsCustomFieldIconLabel'),
 			value: this.getPreviewIcon(),
 			query: '',

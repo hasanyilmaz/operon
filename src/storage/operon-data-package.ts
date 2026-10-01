@@ -94,6 +94,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'propertyValuePool',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
+	'contextualMenuActionOrder',
 	'contextualMenuSurfaceActionMatrix',
 	'contextualMenuOpenDelayMs',
 	'contextualMenuMobileEnabled',
@@ -450,6 +451,9 @@ export function composeOperonSettingsFromDataPackage(
 			dataPackage.views.tablePresets?.tableShowTaskDataTypeIcon,
 			defaults.tableShowTaskDataTypeIcon,
 		),
+  ...(dataPackage.ui.contextualMenu.contextualMenuActionOrder === undefined ? {} : {
+   contextualMenuActionOrder: cloneUnknown(dataPackage.ui.contextualMenu.contextualMenuActionOrder),
+  }),
 		contextualMenuActionAllowlist: readArray(
 			dataPackage.ui.contextualMenu.contextualMenuActionAllowlist,
 			defaults.contextualMenuActionAllowlist,
@@ -546,6 +550,7 @@ export function buildOperonDataPackageFromSettings(
 			contextualMenu: {
 				version: 1,
 				contextualMenuActionAllowlist: cloneUnknown(normalized.contextualMenuActionAllowlist),
+				...(normalized.contextualMenuActionOrder === undefined ? {} : { contextualMenuActionOrder: [...normalized.contextualMenuActionOrder] }),
 				contextualMenuSurfaceActionMatrix: cloneUnknown(normalized.contextualMenuSurfaceActionMatrix),
 				contextualMenuOpenDelayMs: normalized.contextualMenuOpenDelayMs,
 				contextualMenuMobileEnabled: normalized.contextualMenuMobileEnabled,

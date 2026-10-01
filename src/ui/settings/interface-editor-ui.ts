@@ -50,12 +50,16 @@ export interface InterfaceManagedSurfaceItem {
 	onMoveDown?: () => Promise<void>;
 }
 
+export type InterfaceIconRowSelection = { key: string } | { action: number };
+
 export interface InterfaceIconToggleSectionOptions<
 	TKey extends string,
 	TItem extends InterfaceIconToggleSectionItem<TKey>,
 > {
 	containerEl: HTMLElement;
 	layout?: 'legacy' | 'row-list';
+	singleRow?: InterfaceIconRowSelection;
+	onReorder?: () => void;
 	description: string;
 	toggleTitle: string;
 	iconOnlyTitle?: string;
@@ -168,8 +172,16 @@ function restoreScrollSnapshot(snapshot: ScrollSnapshot | null): void {
 
 function rerenderRowsPreservingScroll(anchorEl: HTMLElement, renderRows: () => void): void {
 	const snapshot = captureScrollSnapshot(anchorEl);
+	const row = anchorEl.closest<HTMLElement>('[data-operon-chip-row]');
+	const page = row?.closest('.setting-page');
+	const focused = anchorEl.ownerDocument.activeElement;
+	const buttonIndex = row && focused ? Array.from(row.querySelectorAll('button')).indexOf(focused as HTMLButtonElement) : -1;
 	renderRows();
 	restoreScrollSnapshot(snapshot);
+	if (row && buttonIndex >= 0) {
+		const currentRow = row.isConnected ? row : Array.from((page?.isConnected ? page : anchorEl.ownerDocument).querySelectorAll<HTMLElement>('[data-operon-chip-row]')).find(candidate => candidate.dataset.operonChipRow === row.dataset.operonChipRow);
+		currentRow?.querySelectorAll('button')[buttonIndex]?.focus({ preventScroll: true });
+	}
 }
 
 export function createInterfaceIconToggleButton(options: InterfaceIconToggleButtonOptions): HTMLButtonElement {
@@ -387,14 +399,16 @@ function renderInterfaceIconRowListSection<
 	TKey extends string,
 	TItem extends InterfaceIconToggleSectionItem<TKey>,
 >(options: InterfaceIconToggleSectionOptions<TKey, TItem>): void {
-	const description = options.containerEl.createEl('p', {
-		text: options.description,
-	});
-	description.addClass('operon-settings-section-desc');
-	if (options.descriptionSearchTargetId) {
-		description.dataset.operonSettingsSearchId = options.descriptionSearchTargetId;
-	}
+	if (!options.singleRow) {
+		const description = options.containerEl.createEl('p', {
+			text: options.description,
+		});
+		description.addClass('operon-settings-section-desc');
+		if (options.descriptionSearchTargetId) {
+			description.dataset.operonSettingsSearchId = options.descriptionSearchTargetId;
+		}
 
+	}
 	const sectionEl = options.containerEl.createDiv('operon-compact-chip-row-editor');
 	const listEl = sectionEl.createDiv('operon-compact-chip-row-list');
 	const actionListEl = sectionEl.createDiv('operon-compact-chip-action-list');
@@ -407,6 +421,7 @@ function renderInterfaceIconRowListSection<
 		actionListEl.empty();
 
 		items.forEach((item, index) => {
+			if (options.singleRow && (!('key' in options.singleRow) || options.singleRow.key !== item.key)) return;
 			const label = options.getLabel(item.key);
 			const icon = options.getIcon(item.key);
 			const row = createSettingsListCard({
@@ -433,10 +448,13 @@ function renderInterfaceIconRowListSection<
 				disabled: index === 0 || !(options.canMoveUp?.(item, index, items) ?? true),
 				errorContext: options.visibilityErrorContext,
 				onClick: async () => {
+					const items = options.getItems();
+					const index = items.findIndex(current => current.key === item.key);
+					if (index < 0) return;
 					if (index === 0 || !(options.canMoveUp?.(item, index, items) ?? true)) return;
 					options.setItems(moveInterfaceItem(items, index, index - 1));
 					await options.save();
-					rerenderRowsPreservingScroll(sectionEl, renderRows);
+					rerenderRowsPreservingScroll(sectionEl, options.onReorder ?? renderRows);
 				},
 			});
 
@@ -448,10 +466,13 @@ function renderInterfaceIconRowListSection<
 				disabled: index >= items.length - 1 || !(options.canMoveDown?.(item, index, items) ?? true),
 				errorContext: options.visibilityErrorContext,
 				onClick: async () => {
+					const items = options.getItems();
+					const index = items.findIndex(current => current.key === item.key);
+					if (index < 0) return;
 					if (index >= items.length - 1 || !(options.canMoveDown?.(item, index, items) ?? true)) return;
 					options.setItems(moveInterfaceItem(items, index, index + 1));
 					await options.save();
-					rerenderRowsPreservingScroll(sectionEl, renderRows);
+					rerenderRowsPreservingScroll(sectionEl, options.onReorder ?? renderRows);
 				},
 			});
 
@@ -468,9 +489,11 @@ function renderInterfaceIconRowListSection<
 					className: 'operon-compact-chip-icon-only-toggle',
 					errorContext: options.iconOnlyErrorContext,
 					onClick: async () => {
-						if (!item.visible) return;
-						options.setItems(items.map((entry, entryIndex) =>
-							entryIndex === index ? { ...entry, iconOnly: !entry.iconOnly } : entry,
+						const items = options.getItems();
+						const current = items.find(entry => entry.key === item.key);
+						if (!current?.visible) return;
+						options.setItems(items.map(entry =>
+							entry.key === item.key ? { ...entry, iconOnly: !entry.iconOnly } : entry,
 						));
 						await options.save();
 						rerenderRowsPreservingScroll(sectionEl, renderRows);
@@ -488,8 +511,10 @@ function renderInterfaceIconRowListSection<
 				className: 'operon-compact-chip-visibility-toggle',
 				errorContext: options.visibilityErrorContext,
 				onClick: async () => {
-					options.setItems(items.map((entry, entryIndex) =>
-						entryIndex === index ? { ...entry, visible: !entry.visible } : entry,
+					const items = options.getItems();
+					if (!items.some(entry => entry.key === item.key)) return;
+					options.setItems(items.map(entry =>
+						entry.key === item.key ? { ...entry, visible: !entry.visible } : entry,
 					));
 					await options.save();
 					rerenderRowsPreservingScroll(sectionEl, renderRows);
@@ -498,6 +523,7 @@ function renderInterfaceIconRowListSection<
 		});
 
 		for (const item of options.getManagedItems?.() ?? []) {
+			if (options.singleRow && (!('key' in options.singleRow) || options.singleRow.key !== item.key)) continue;
 			const row = createSettingsListCard({
 				containerEl: listEl,
 				icon: item.icon,
@@ -561,13 +587,14 @@ function renderInterfaceIconRowListSection<
 		}
 
 		const actions = options.getActionToggles?.() ?? [];
-		if (actions.length > 0) {
+		if (actions.length > 0 && !options.singleRow) {
 			actionListEl.createDiv({
 				text: options.actionTogglesTitle ?? '',
 				cls: 'operon-compact-chip-action-title',
 			});
 		}
-		for (const action of actions) {
+		for (const [index, action] of actions.entries()) {
+			if (options.singleRow && (!('action' in options.singleRow) || options.singleRow.action !== index)) continue;
 			const row = createSettingsListCard({
 				containerEl: actionListEl,
 				icon: action.icon,

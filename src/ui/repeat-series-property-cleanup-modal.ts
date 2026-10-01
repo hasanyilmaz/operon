@@ -1,3 +1,4 @@
+import { scopeSettingsModal } from './settings/settings-scope';
 import { App, Modal, Notice, Setting } from 'obsidian';
 import { t } from '../core/i18n';
 import {
@@ -105,7 +106,7 @@ export class RepeatSeriesPropertyCleanupModal extends Modal {
 			new Notice(t('settings', 'repeatYamlPropertyRemovalNoSeries'));
 			return;
 		}
-		new RepeatSeriesPropertyRemovalPickerModal(
+		scopeSettingsModal(new RepeatSeriesPropertyRemovalPickerModal(
 			this.app,
 			this.opts.seriesOptions,
 			selection => {
@@ -114,7 +115,7 @@ export class RepeatSeriesPropertyCleanupModal extends Modal {
 				this.selectedSeriesPath = selection.path;
 				this.refreshSeriesSetting();
 			},
-		).open();
+		), this.modalEl).open();
 	}
 
 	private renderFooter(container: HTMLElement): void {

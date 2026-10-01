@@ -1,3 +1,4 @@
+import { isSettingsScope, scopeSettingsModal } from './settings/settings-scope';
 import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
 import { DATE_OPERATORS } from '../core/filter-display';
 /**
@@ -592,6 +593,7 @@ export class FilterSetModal extends Modal {
 					?? currentOptions[0]?.label
 					?? t('filterSets', 'conditionFieldPickerLabel');
 				openSettingsOptionPickerModal(this.app, {
+					settingsScope: isSettingsScope(this.inlineEditor?.container ?? this.modalEl),
 					title: selectedLabel,
 					value: select.value,
 					options: currentOptions,
@@ -687,6 +689,7 @@ export class FilterSetModal extends Modal {
 			const pickerFields = this.getPickerFieldOptions(fields, currentValue);
 			if (this.options.pickerPresentation === 'modal') {
 				openSettingsOptionPickerModal(this.app, {
+					settingsScope: isSettingsScope(this.inlineEditor?.container ?? this.modalEl),
 					title: options.label,
 					value: currentValue,
 					options: pickerFields.map(field => ({
@@ -1238,6 +1241,7 @@ export class FilterSetModal extends Modal {
 		};
 		const openPicker = (): void => {
 			openSettingsIconPickerModal(this.app, {
+				settingsScope: isSettingsScope(this.inlineEditor?.container ?? this.modalEl),
 				title: t('filterSets', 'filterIcon'),
 				value: this.filterSet.icon,
 				query: '',
@@ -1657,6 +1661,7 @@ export class FilterSetModal extends Modal {
 			const pickerFields = this.getPickerFieldOptions(fieldOptions, cond.field);
 			if (this.options.pickerPresentation === 'modal') {
 				openSettingsOptionPickerModal(this.app, {
+					settingsScope: isSettingsScope(this.inlineEditor?.container ?? this.modalEl),
 					title: t('filterSets', 'conditionFieldPickerLabel'),
 					value: cond.field,
 					options: pickerFields.map(option => ({
@@ -1782,7 +1787,7 @@ export class FilterSetModal extends Modal {
 						},
 					};
 					if (this.options.pickerPresentation === 'modal') {
-						openSettingsMultiOptionPickerModal(this.app, pickerOptions);
+						openSettingsMultiOptionPickerModal(this.app, { ...pickerOptions, settingsScope: isSettingsScope(this.inlineEditor?.container ?? this.modalEl) });
 						return;
 					}
 					showSearchableMultiOptionPicker(selectionButton, {
@@ -2313,11 +2318,11 @@ export class FilterSetModal extends Modal {
 
 			if (deps) {
 				badge.addEventListener('click', () => {
-					new FilterPreviewModal(
+					scopeSettingsModal(new FilterPreviewModal(
 						this.app,
 						this.filterSet,
 						deps,
-					).open();
+					), this.inlineEditor?.container ?? this.modalEl).open();
 				});
 			}
 		}

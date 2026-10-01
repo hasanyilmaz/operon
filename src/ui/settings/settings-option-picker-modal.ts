@@ -1,3 +1,4 @@
+import { setSettingsScope } from './settings-scope';
 import { App, Modal } from 'obsidian';
 import { getOwnerWindow } from '../../core/dom-compat';
 import {
@@ -10,6 +11,7 @@ import {
 } from '../field-pickers/list-picker';
 
 export interface SettingsOptionPickerModalOptions<TOption extends SearchableOptionPickerItem> {
+	settingsScope?: boolean;
 	title: string;
 	value: string | null | undefined;
 	options: readonly TOption[];
@@ -31,6 +33,7 @@ export class SettingsOptionPickerModal<TOption extends SearchableOptionPickerIte
 	}
 
 	onOpen(): void {
+		setSettingsScope(this.modalEl, this.options.settingsScope === true);
 		this.modalEl.addClass('operon-settings-option-picker-modal');
 		this.titleEl.setText(this.options.title);
 		this.render();
@@ -88,6 +91,7 @@ export function openSettingsOptionPickerModal<TOption extends SearchableOptionPi
 }
 
 export interface SettingsMultiOptionPickerModalOptions extends Omit<SearchableMultiOptionPickerOptions, 'floatingOptions' | 'onClose' | 'onPanelClose'> {
+	settingsScope?: boolean;
 	onClose?: () => void;
 }
 
@@ -103,6 +107,7 @@ export class SettingsMultiOptionPickerModal extends Modal {
 	}
 
 	onOpen(): void {
+		setSettingsScope(this.modalEl, this.options.settingsScope === true);
 		this.modalEl.addClass('operon-settings-option-picker-modal');
 		this.titleEl.setText(this.options.title);
 		this.render();

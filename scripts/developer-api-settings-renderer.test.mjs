@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 // Execute the production renderer with UI ports; do not copy its control flow.
 const source = readFileSync(new URL('../src/ui/settings-tab.ts', import.meta.url), 'utf8');
 const start = source.indexOf('private renderDeveloperApiIntegrations(');
-const end = source.indexOf('private renderReleaseNotesSettingsCard(', start);
+const end = source.indexOf('\n\tprivate ', start + 1);
 assert.ok(start >= 0 && end > start);
 const code = transformSync(`class Harness { ${source.slice(start, end)} }`, { loader: 'ts', target: 'es2022' }).code;
 
@@ -39,9 +39,9 @@ function fixture(grants = [], rejectApprove = false) {
   constructor(_app, _options, answer) { this.answer = answer; }
   open() { confirmations.push(this.answer); }
  }
- const Harness = new Function('Setting', 'renderNativeSettingsGroupedSection', 't', 'buildDeveloperApiGrantApprovalUiState', 'settingsAsyncHandler', 'runSettingsAsync', 'ConfirmActionModal', `${code}; return Harness;`)(
+ const Harness = new Function('Setting', 'renderNativeSettingsGroupedSection', 't', 'buildDeveloperApiGrantApprovalUiState', 'settingsAsyncHandler', 'runSettingsAsync', 'ConfirmActionModal', 'scopeSettingsModal', `${code}; return Harness;`)(
   Setting, () => node(), (_namespace, key) => key, grant => grant.ui,
-  (label, callback) => () => run(label, callback), run, ConfirmActionModal,
+  (label, callback) => () => run(label, callback), run, ConfirmActionModal, (modal, enabled) => { assert.equal(enabled, true); return modal; },
  );
  const harness = new Harness();
  harness.developerApiIntegration = {

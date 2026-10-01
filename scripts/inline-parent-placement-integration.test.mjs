@@ -17,7 +17,7 @@ export async function runInlineParentPlacementIntegrationTests(rootDir) {
  const settingsClass=settingsAst.statements.find(node=>ts.isClassDeclaration(node)&&node.name?.text==='OperonSettingsTab');
  const settingsMethods=['getControlValue','setControlValue'].map(name=>settingsClass.members.find(member=>member.name?.getText(settingsAst)===name).getText(settingsAst)).join('\n');
  assert.match(settingsSource, /inlineTaskParentFileTargetMode === 'inside-parent-file' \|\| this.settings.keepInlineTasksWithParent/);
- assert.match(settingsSource, /'inlineTaskParentFileTargetMode', 'keepInlineTasksWithParent', 'inlineTaskParentFileHeadingKeyword'/);
+ assert.match(settingsSource, /'inlineTaskParentFileTargetMode', 'inlineTaskParentFileHeadingKeyword', 'keepInlineTasksWithParent'/);
  const dir=await mkdtemp(path.join(tmpdir(),'operon-inline-parent-integration-'));
  try {
   const outfile=path.join(dir,'test.mjs');

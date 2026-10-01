@@ -379,11 +379,14 @@ test('Settings backup integration exposes reset and the Reset card is guarded an
 	assert.doesNotMatch(resetCard, /DEFAULT_SETTINGS|saveSettings\(/u);
 });
 
-test('Backup and Restore card descriptions use a scoped inset', () => {
+test('Backup and Restore uses four separate native action rows with scoped layout', () => {
 	const tabSource = readFileSync('src/ui/settings-tab.ts', 'utf8');
 	const styles = readFileSync('styles.css', 'utf8');
-	assert.ok((tabSource.match(/operon-settings-backup-section-card/gu) ?? []).length >= 3);
-	assert.match(styles, /operon-settings-backup-section-card > \.operon-settings-muted-block[\s\S]*padding: 18px 24px 14px/u);
+	for (const key of ['export', 'restore', 'resume', 'reset']) {
+		assert.ok(tabSource.includes(`action('${key}',`));
+	}
+	assert.match(tabSource, /renderBackupRestoreAction\(setting, key\)/u);
+	assert.match(styles, /\.operon-backup-settings-group \.setting-item\.operon-backup-settings-row \{\s*align-items: center/u);
 });
 
 test('restore success and reset confirmation use the approved copy', () => {

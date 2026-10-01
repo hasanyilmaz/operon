@@ -1,3 +1,4 @@
+import { isSettingsScope, setSettingsScope } from '../settings/settings-scope';
 import { observeTaskCardAnchor } from '../task-card-anchor';
 import { App } from 'obsidian';
 import {
@@ -511,6 +512,7 @@ export function createFloatingPanel(
 	const panelHost = mobileSurfaceContext?.panelHost ?? host;
 	const panel = createOwnerElement(anchorEl ?? rectAnchorOwnerEl ?? host, 'div');
 	panel.className = className;
+	setSettingsScope(panel, isSettingsScope(anchorEl ?? rectAnchorOwnerEl));
 	if (mobileSurfaceContext) {
 		panel.classList.add('operon-mobile-picker-surface', mobileSurfaceContext.surfaceClass);
 	}
@@ -627,6 +629,7 @@ export function createFloatingPanel(
   anchor = followsTaskCard && asHTMLElement(next) ? snapshotFloatingRectAnchor(next as HTMLElement) : next;
   anchorEl = asHTMLElement(anchor); rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
   record.anchorEl = anchorEl;
+  setSettingsScope(panel, isSettingsScope(nextOwner));
   if (followsTaskCard && rectAnchorOwnerEl) stopCardAnchor = observeTaskCardAnchor(rectAnchorOwnerEl, schedulePosition);
   schedulePosition();
  };

@@ -2363,6 +2363,7 @@ function checkCalendarHoverGuideContract() {
 
 function checkSettingsDescriptionTextareaGuards() {
 	const settingsSource = readText('src/ui/settings-tab.ts');
+	const settingsScope = ':where(.operon-settings-scope, .operon-settings-scope *)';
 	const enLocale = readJson('i18n/locales/en.json');
 	const textareaDeclarations = [
 		'width: 100%;',
@@ -2374,7 +2375,7 @@ function checkSettingsDescriptionTextareaGuards() {
 	for (const selector of ['.operon-priority-description-textarea', '.operon-pipeline-description-textarea']) {
 		assertCssRuleContains(
 			'styles.css',
-			selector,
+			selector + settingsScope,
 			textareaDeclarations,
 			'pipeline and priority description textareas must stay vertically resizable and uncapped',
 		);
@@ -2388,27 +2389,27 @@ function checkSettingsDescriptionTextareaGuards() {
 
 	assertCssRuleContains(
 		'styles.css',
-		'.operon-priority-description-row',
+		'.operon-priority-description-row' + settingsScope,
 		['grid-column: 3 / -1;', 'min-width: 0;'],
 		'priority description textarea must stay aligned under the priority label column',
 	);
 	for (const selector of ['.operon-priority-column-header', '.operon-priority-row']) {
 		assertCssRuleContains(
 			'styles.css',
-			selector,
+			selector + settingsScope,
 			['display: grid;', 'grid-template-columns: 56px 40px minmax(140px, 1fr) 52px 132px;', 'gap: 8px;'],
 			'priority header and rows must share the same settings grid columns',
 		);
 	}
 	assertCssRuleContains(
 		'styles.css',
-		'.operon-pipeline-card',
+		'.operon-pipeline-card' + settingsScope,
 		['max-width: 100%;', 'box-sizing: border-box;', 'overflow-x: clip;'],
 		'pipeline cards must stay full-width and clipped inside settings panes',
 	);
 	assertCssRuleContains(
 		'styles.css',
-		'.operon-pipeline-description-row',
+		'.operon-pipeline-description-row' + settingsScope,
 		['margin-bottom: 12px;'],
 		'pipeline description textarea must stay separated from the status grid',
 	);

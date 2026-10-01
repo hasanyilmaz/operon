@@ -285,7 +285,7 @@ test('Table Settings exposes healthy controls without a domain-wide read-only ga
 	assert.equal(settingsSource.includes('isDomainReadOnly'), false);
 	assert.equal(settingsSource.includes('isReadOnly?: () => boolean'), false);
 	assert.equal(settingsSource.includes("readOnlyRoots.flatMap(root => Array.from(root.querySelectorAll('input, button, select, textarea')))"), false);
-	assert.ok(settingsSource.includes("createSettingsAddButton(addRowEl, t('settings', 'tableAddPresetButton'))"));
+	assert.ok(settingsSource.includes("createSettingsAddButton(addRowEl, t('settings', 'tableAddPresetButton').replace(/^\\+\\s*/, ''))"));
 	assert.ok(mainSource.includes('listUnavailableSources: () => []'));
 	assert.ok(mainSource.includes('await this.storage.reconcileTablePresetFileAuthority({'));
 	assert.ok(mainSource.includes('createdByOperon && createdFile instanceof TFile'));
