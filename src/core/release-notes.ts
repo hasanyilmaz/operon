@@ -13,6 +13,38 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.11.0',
+		date: '2026-10-01',
+		title: 'Operon 3.11.0 — Settings, Reorganized',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+I have mixed feelings about Obsidian’s new approach to settings, and I still prefer parts of the old layout.
+
+But it’s time to move on. Rather than maintain two interfaces, I’ve focused on making Operon’s new settings as clear and useful as possible. Starting with this release, the legacy settings interface will no longer be available.
+
+### Improved
+
+- **Settings throughout Operon** now have clearer headings and groups, contextual help links, and more consistent controls and spacing. Dependent options appear only when relevant, making pages easier to navigate on narrow and wide screens.
+- **Settings search** has been expanded and reorganized, with over **600 separate search targets** in the default configuration. Find settings, actions, and configurable items more easily, and jump directly to the relevant control or section. Coverage varies with your configuration.
+
+### Changed
+
+- Operon now requires **Obsidian 1.13.7 or newer** and uses its native Settings pages and search. The legacy Settings interface for older Obsidian versions has been removed.
+
+### Updated Docs
+
+**57 documents** have been updated to reflect the revised Settings layout, navigation, and behavior.
+
+- [[DOCS-043 Settings search|Settings search]]
+- [[DOCS-008 Essential settings to configure first|Essential settings to configure first]]
+- [[DOCS-039 Key mappings|Key mappings]]
+- [[DOCS-042 Contextual menu actions|Contextual menu actions]]
+- [[DOCS-134 Backup and restore settings|Backup and restore settings]]
+- And 52 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.10.2',
 		date: '2026-09-28',
 		title: 'Operon 3.10.2 — Inline Tasks and Everyday Fixes',
