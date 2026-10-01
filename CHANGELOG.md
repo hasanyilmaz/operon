@@ -7,23 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+I have mixed feelings about Obsidian’s new approach to settings, and I still prefer parts of the old layout.
+
+But it’s time to move on. Rather than maintain two interfaces, I’ve focused on making Operon’s new settings as clear and useful as possible. Starting with this release, the legacy settings interface will no longer be available.
+
 ### Improved
 
-- Organized **Task Finder settings** into search behavior and compact scope shortcut sections, with usage instructions and contextual help.
+- Improved **Settings** throughout Operon with clearer headings and groups, contextual help links, and consistent controls and spacing. Dependent options appear only when relevant, making pages easier to navigate on narrow and wide screens.
 
-- Organized **Pinned Dock settings** into display, appearance, automatic pinning, sidebar, and floating dock sections, with contextual help and options that appear only when relevant.
+- Expanded and reorganized **Settings search** with over **600 separate search targets** in the default configuration, making settings, actions, and configurable items easier to find. Results take you directly to the relevant control or section; coverage varies with your configuration.
 
-- Organized **Task Chips settings** into individually searchable chip and action controls, with contextual help across all eight subpages and a dedicated Assignee Images section.
+### Changed
 
-- Organized **Task Cards settings** into focused sections with individual search results, contextual help, and separate Property Pool shortcuts and favorites.
-
-- Organized **Tables settings** into focused sections with individual setting search results, consistent row dividers, and help links beside page and section headings.
-
-- Organized **Gantt settings** into preset defaults, date markers, click actions, and related-task movement sections, with individual search results and contextual help.
+- Operon now requires **Obsidian 1.13.7 or newer** and uses its native Settings pages and search. Removed the legacy Settings interface for older Obsidian versions.
 
 ### Validation
 
-- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,742/3,742** local regression tests, **48** synthetic Tables settings browser scenarios, **24** Gantt scenarios, **24** Task Cards section scenarios, **96** Task Chips scenarios, **24** Pinned Dock scenarios, and **12** Task Finder scenarios.
+- Local Plugin and Runtime checks, production build, and release guard passed, along with **3,742/3,742** local regression tests.
 
 ## [3.10.2] - 2026-09-28
 
