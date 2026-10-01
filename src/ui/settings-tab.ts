@@ -3499,7 +3499,7 @@ export class OperonSettingsTab extends PluginSettingTab {
  if (visibilityKey) setting.addToggle(toggle => toggle.setValue(this.settings[visibilityKey]).onChange(value => this.saveTaskCardSetting(visibilityKey, value)));
   const index = this.settings.taskCardItemOrder.indexOf(section);
   setting.setName(t('settings', ({ image: 'taskCardImageSection', header: 'taskCardHeaderSection', taskProgress: 'taskCardTaskProgress', chips: 'taskCardChips', checkboxProgress: 'taskCardCheckboxProgress' })[section]));
-  for (const delta of [-1, 1]) setting.addButton(button => button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down')
+  for (const delta of [-1, 1]) setting.addExtraButton(button => button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down')
    .setTooltip(t('settings', delta < 0 ? 'taskCardMoveUp' : 'taskCardMoveDown'))
    .setDisabled(index + delta < 0 || index + delta >= this.settings.taskCardItemOrder.length)
    .onClick(async () => {
