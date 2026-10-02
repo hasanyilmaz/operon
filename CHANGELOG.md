@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Excalidraw task cards** to create or display Operon tasks with native frames, automatic height, editable fields, full task menus, and independent menu preferences while keeping tasks in their Markdown sources.
+
+- Added **Excalidraw Task Pool** with shared Canvas search and task tabs, click, keyboard, or drag-and-drop card insertion, and a movable panel that follows each drawing’s light or dark mode.
+
 ### Fixed
 
 - Removed expensive CSS selectors from **Settings** while preserving control alignment and multiline editor layouts.
 
 ### Validation
 
-- Full local Plugin checks, production build, CSS parsing, and release guard passed, along with **3,807/3,807** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **3,913/3,913** local regression tests.
 
 ## [3.11.0] - 2026-10-01
 
