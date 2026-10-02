@@ -35696,6 +35696,6 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
  * Keep headings, vertical editors, multiline inputs and custom grids independent.
  * A group owner is required so shared modal and task surfaces stay unchanged.
  */
-:where(.setting-group.operon-settings-scope) .setting-item:not(.setting-item-heading, .mod-vertical, .operon-settings-long-text-setting):has(> .setting-item-info) > .setting-item-control:has(> :is(input, select, button, .checkbox-container)):not(:has(textarea)) {
+:where(.setting-group.operon-settings-scope) .setting-item:not(.setting-item-heading, .mod-vertical, .operon-settings-long-text-setting, .operon-settings-nonstandard-row) > .setting-item-info ~ .setting-item-control {
 	align-self: center;
 }

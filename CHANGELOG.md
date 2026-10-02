@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Removed expensive CSS selectors from **Settings** while preserving control alignment and multiline editor layouts.
+
 ### Validation
+
+- Full local Plugin checks, production build, CSS parsing, and release guard passed, along with **3,807/3,807** local regression tests.
 
 ## [3.11.0] - 2026-10-01
 
