@@ -16,7 +16,7 @@ import {
 
 export interface PinnedCachePackagePersistence {
 	getPackage(): OperonPinnedTasksPackageV1;
-	updatePackage(mutator: (current: OperonPinnedTasksPackageV1) => OperonPinnedTasksPackageV1): Promise<OperonPinnedTasksPackageV1>;
+	updatePackage(mutator: (current: OperonPinnedTasksPackageV1) => OperonPinnedTasksPackageV1, canCommit?: () => boolean): Promise<OperonPinnedTasksPackageV1>;
 	canPersist(): boolean;
 }
 
@@ -147,6 +147,7 @@ export class PinnedCache {
 		expected: PinnedCacheEntrySnapshot,
 		pinned: boolean,
 		updatedAt: string,
+  canCommit?: () => boolean,
 	): Promise<PinnedCacheCompareAndSetResult> {
 		const normalized = operonId.trim();
 		if (!normalized) throw new Error('Pinned task compare-and-set requires an operonId.');
@@ -155,6 +156,7 @@ export class PinnedCache {
 		}
 		const expectedSnapshot = expected ? { ...expected } : null;
 		const run = this.mutationQueue.then(async (): Promise<PinnedCacheCompareAndSetResult> => {
+			if (canCommit?.() === false) throw new Error('Write permission expired');
 			if (!this.packagePersistence?.canPersist()) {
 				throw new Error('Canonical pinned task persistence is unavailable.');
 			}
@@ -165,6 +167,7 @@ export class PinnedCache {
 					// Runtime CAS authority is the canonical package passed by the
 					// persistence queue. Never merge the in-memory facade here: doing so
 					// could flush unrelated stale memory entries during one exact mutation.
+					if (canCommit?.() === false) throw new Error('Write permission expired');
 					const base = normalizePinnedTasksPackage(currentPackage);
 					const currentEntry = base.itemsById[normalized]
 						? { ...base.itemsById[normalized] }
@@ -200,7 +203,7 @@ export class PinnedCache {
 						after: plannedEntry,
 					};
 					return this.withEntry(base, normalized, plannedEntry);
-				});
+				}, canCommit);
 			} catch (error) {
 				// The package store may have committed before losing its acknowledgement.
 				// Rehydrate the facade from the canonical read without attempting

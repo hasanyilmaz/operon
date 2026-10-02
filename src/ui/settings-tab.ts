@@ -1673,8 +1673,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['taskCardGeneralSettings', ['taskCardWidth', 'taskCardAlign', 'taskCardWrap', 'taskCardColorSource'], render],
 			['taskCardImagesSection', ['taskCardImageSource', 'taskCardImageRatio'], render, 'DOCS-138 Task images and galleries'],
 			['taskCardItemOrder', [], render],
-			['canvasTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render],
-			['propertyPoolTitle', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas Property Value Pool'],
+			['visualTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render],
+			['visualPropertyPool', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas Property Value Pool'],
 		], entries, t('settings', 'taskCards'), ['DOCS-141 Canvas Task Cards', 'DOCS-142 Embedded Task Cards'], undefined, key => {
 			if (key === 'taskCardWrap') return this.settings.taskCardAlign !== 'center';
 			if (key === 'taskCardImageRatio') return this.settings.taskCardImageSource !== 'none';
@@ -2517,7 +2517,7 @@ export class OperonSettingsTab extends PluginSettingTab {
     } })),
    ] },
    { type: 'group', heading: t('settings', 'contextualMenuMatrix'), cls: 'operon-context-settings-group', items: [{
-    name: t('settings', 'contextualMenuMatrix'), desc: t('settings', 'contextualMenuMatrixDesc'), aliases: ['Contextual Menu Matrix', 'context menu matrix'],
+    name: t('settings', 'contextualMenuMatrix'), desc: t('settings', 'contextualMenuMatrixDesc'), aliases: ['Contextual Menu Matrix', 'context menu matrix', 'Excalidraw'],
     render: setting => {
      setting.settingEl.empty(); setting.settingEl.addClass('operon-context-matrix-target');
      setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'contextualMenuMatrixDesc') });

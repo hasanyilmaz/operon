@@ -1,0 +1,150 @@
+import { TFile, type App } from 'obsidian';
+import { isValidOperonId } from '../core/id-generator';
+
+/** Narrow, feature-detected bridge to the optional Excalidraw plugin. */
+export interface ExcalidrawTaskElement {
+ id: string; type: string; x?: number; y?: number; width?: number; height?: number; angle?: number; scale?: readonly number[]; link?: string | null; isDeleted?: boolean; locked?: boolean;
+}
+export interface ExcalidrawTaskState {
+ viewModeEnabled?: boolean;
+ activeEmbeddable?: { element: { id: string }; state: string } | null;
+ [key: string]: unknown;
+}
+export interface ExcalidrawTaskAPI {
+ refresh?(): void;
+ getSceneElements(): readonly ExcalidrawTaskElement[];
+ getAppState(): ExcalidrawTaskState;
+ onChange(listener: (elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState) => void): () => void;
+ selectElements(elements: ExcalidrawTaskElement[]): void;
+}
+export interface ExcalidrawTaskEA {
+ style: Record<string, unknown>;
+ getViewLastPointerPosition?(): { x: number; y: number };
+ getViewCenterPosition(): { x: number; y: number } | null;
+ addEmbeddable(x: number, y: number, width: number, height: number, link: string, file: undefined, props: Record<string, unknown>): string;
+ addElementsToView(reposition: boolean, save: boolean, onTop: boolean, restore?: boolean, captureUpdate?: 'NEVER'): Promise<boolean>;
+ copyViewElementsToEAforEditing?(elements: readonly ExcalidrawTaskElement[]): void;
+ getElement?(id: string): ExcalidrawTaskElement | undefined;
+ getSceneFromFile(file: TFile): Promise<{ elements: ExcalidrawTaskElement[] } | null>;
+ destroy(): void;
+}
+interface ExcalidrawTaskPlugin {
+ _loaded: boolean;
+ ea: { getAPI(view: ExcalidrawTaskView): ExcalidrawTaskEA };
+}
+export interface ExcalidrawTaskView {
+ file: TFile | null; data: string; contentEl: HTMLElement; plugin: ExcalidrawTaskPlugin;
+ _loaded: boolean; compatibilityMode?: boolean;
+ excalidrawAPI: ExcalidrawTaskAPI;
+ forceSave(silent: boolean, waitIfBusy: boolean): Promise<void>;
+ getViewType(): string;
+ getEmbeddableLeafElementById(id: string): { node?: { containerEl: HTMLElement; file: TFile } } | null;
+}
+export function readExcalidrawTaskView(app: App, value: unknown): ExcalidrawTaskView | null {
+ const view = value as Partial<ExcalidrawTaskView> | null;
+ const plugin = (app as App & { plugins?: { plugins?: Record<string, unknown> } }).plugins?.plugins?.['obsidian-excalidraw-plugin'];
+ if (!view || !plugin || view.plugin !== plugin || view.plugin._loaded !== true || !view._loaded
+  || view.getViewType?.() !== 'excalidraw' || !(view.file instanceof TFile) || view.file.extension !== 'md'
+  || view.compatibilityMode || typeof view.data !== 'string' || !view.contentEl
+  || typeof view.forceSave !== 'function' || typeof view.getEmbeddableLeafElementById !== 'function'
+  || typeof view.plugin.ea?.getAPI !== 'function') return null;
+ const api = view.excalidrawAPI;
+ if (!api || typeof api.getSceneElements !== 'function' || typeof api.getAppState !== 'function'
+  || typeof api.onChange !== 'function' || typeof api.selectElements !== 'function') return null;
+ return view as ExcalidrawTaskView;
+}
+export const excalidrawTaskHeading = (id: string): string => `Operon task ${id}`;
+export const excalidrawTaskBody = (id: string): string => `\`\`\`operon\nview: card\ntaskId: ${id}\n\`\`\``;
+
+/** Inspect ordinary Markdown only; the scene suffix remains byte-for-byte intact. */
+export function excalidrawTaskReference(data: string, id: string): 'missing' | 'present' | 'conflict' {
+ if (!isValidOperonId(id)) return 'conflict';
+ const boundary = /^(?:%%(?:\r?\n)+)?# Excalidraw Data\r?$/m.exec(data);
+ if (!boundary || data.slice(boundary.index + boundary[0].length).match(/^# Excalidraw Data\r?$/m)) return 'conflict';
+ const header = data.slice(0, boundary.index).replace(/\r\n/g, '\n');
+ const title = `# ${excalidrawTaskHeading(id)}`;
+ const lines = header.split('\n'), hits = lines.flatMap((line, index) => line === title ? [index] : []);
+ if (!hits.length) return 'missing';
+ if (hits.length !== 1) return 'conflict';
+ const start = hits[0] + 1;
+ let end = start;
+ while (end < lines.length && !/^#(?: |$)/.test(lines[end])) end++;
+ return lines.slice(start, end).join('\n').trim() === excalidrawTaskBody(id) ? 'present' : 'conflict';
+}
+export function appendExcalidrawTaskReference(data: string, id: string): string {
+ const state = excalidrawTaskReference(data, id);
+ if (state === 'conflict') throw new Error('Invalid or conflicting task reference');
+ if (state === 'present') return data;
+ const boundary = /^(?:%%(?:\r?\n)+)?# Excalidraw Data\r?$/m.exec(data);
+ if (!boundary) throw new Error('Missing drawing section');
+ const newline = data.includes('\r\n') ? '\r\n' : '\n';
+ const section = `# ${excalidrawTaskHeading(id)}\n\n${excalidrawTaskBody(id)}\n\n`.replace(/\n/g, newline);
+ const scaffold = /^# Markdown Images\r?$/m.exec(data.slice(0, boundary.index));
+ const insertion = scaffold?.index ?? boundary.index;
+ return data.slice(0, insertion) + newline + section + data.slice(insertion);
+}
+export function isExcalidrawTaskLink(app: App, view: ExcalidrawTaskView, link: string | null | undefined, id: string): boolean {
+ const match = /^\[\[([^\]\n]*?)#(Operon task [a-z0-9]{7})\]\]$/.exec(link ?? '');
+ return !!view.file && !!match && match[2] === excalidrawTaskHeading(id)
+  && app.metadataCache.getFirstLinkpathDest(match[1], view.file.path) === view.file
+  && excalidrawTaskReference(view.data, id) === 'present';
+}
+/** Resolve native embed ownership and its single reference without mounting another card. */
+export function readExcalidrawCardReference(app: App, view: ExcalidrawTaskView, element: ExcalidrawTaskElement, expectedId?: string): { taskId: string; node: HTMLElement; container: HTMLElement } | null {
+ const taskId = /#Operon task ([a-z0-9]{7})\]\]$/.exec(element.link ?? '')?.[1];
+ if (element.isDeleted || element.type !== 'embeddable' || !taskId || expectedId && taskId !== expectedId
+  || !isExcalidrawTaskLink(app, view, element.link, taskId)) return null;
+ const ref = view.getEmbeddableLeafElementById(element.id)?.node;
+ const container = ref?.containerEl, node = container?.closest<HTMLElement>('.canvas-node');
+ return ref?.file === view.file && container && node?.isConnected && view.contentEl.contains(node) ? { taskId, node, container } : null;
+}
+export class ExcalidrawTaskSaveError extends Error {}
+
+/** Revalidate after awaits; native save may swallow errors, so verify persisted results. */
+export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }): Promise<void> {
+ const file = view.file, path = file?.path;
+ const current = () => !!file && view.file === file && file.path === path && allowed();
+ if (!file || !current()) throw new Error('Drawing unavailable');
+ const ea = view.plugin.ea.getAPI(view);
+ let writeAttempted = false;
+ try {
+  for (const method of ['getViewCenterPosition', 'addEmbeddable', 'addElementsToView', 'getSceneFromFile', 'destroy'] as const)
+   if (typeof ea?.[method] !== 'function') throw new Error('Excalidraw API unavailable');
+  await view.forceSave(true, true);
+  if (!current()) throw new Error('Drawing changed');
+  // Use the native TextFileView buffer and native serializer, without replacing the file externally.
+  const data = appendExcalidrawTaskReference(view.data, id);
+  writeAttempted = true;
+  view.data = data;
+  await view.forceSave(true, true);
+  if (!current()) throw new Error('Drawing changed');
+  const savedReference = await app.vault.read(file);
+  if (!current()) throw new Error('Drawing changed');
+  if (excalidrawTaskReference(savedReference, id) !== 'present') throw new ExcalidrawTaskSaveError();
+  const point = position ?? ea.getViewCenterPosition();
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error('Drawing coordinates unavailable');
+  const state = view.excalidrawAPI.getAppState();
+  const styles: Record<string, string> = { strokeColor: 'currentItemStrokeColor', backgroundColor: 'currentItemBackgroundColor',
+   strokeWidth: 'currentItemStrokeWidth', strokeStyle: 'currentItemStrokeStyle', roughness: 'currentItemRoughness',
+   opacity: 'currentItemOpacity', fillStyle: 'currentItemFillStyle', roundness: 'currentItemRoundness' };
+  for (const [key, setting] of Object.entries(styles)) if (state[setting] !== undefined) ea.style[key] = state[setting];
+  const link = `[[${path}#${excalidrawTaskHeading(id)}]]`;
+  const elementId = ea.addEmbeddable(point.x - 200, point.y - 150, 400, 300, link, undefined, {
+   useObsidianDefaults: false, backgroundMatchElement: true, backgroundOpacity: 100,
+   borderMatchElement: true, borderOpacity: 0, filenameVisible: false, propertiesVisible: false, lockedReadingMode: true,
+  });
+  if (!elementId || !current()) throw new Error('Drawing changed');
+  if (!await ea.addElementsToView(false, false, true)) throw new ExcalidrawTaskSaveError();
+  if (!current()) throw new Error('Drawing changed');
+  await view.forceSave(true, true);
+  if (!current()) throw new Error('Drawing changed');
+  const saved = await ea.getSceneFromFile(file);
+  if (!current()) throw new Error('Drawing changed');
+  if (!saved?.elements.some(element => element.id === elementId && !element.isDeleted && element.link === link)) throw new ExcalidrawTaskSaveError();
+  const element = view.excalidrawAPI.getSceneElements().find(value => value.id === elementId && !value.isDeleted);
+  if (element) view.excalidrawAPI.selectElements([element]);
+ } catch (error) {
+  if (writeAttempted) throw new ExcalidrawTaskSaveError();
+  throw error;
+ } finally { ea?.destroy?.(); }
+}

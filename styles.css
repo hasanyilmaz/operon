@@ -34782,6 +34782,18 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
 
+/* Excalidraw owns the outer stroke, fill and geometry. Only verified task embeds opt in. */
+.canvas-node[data-operon-task-card-excalidraw] > .canvas-node-container { border: 0; border-radius: inherit; box-shadow: none; background: transparent; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content { padding: 0; overflow-y: auto; overflow-x: hidden; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view { padding: 0; background: transparent; }
+.canvas-node[data-operon-task-card-excalidraw] .markdown-preview-sizer { padding: 0; margin: 0; max-width: none; min-height: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .el-pre { margin: 0; padding: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .markdown-preview-view .el-h1 { display: none; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+/* Embedded cards keep media opaque even when the vault theme dims Markdown images. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card-image img { opacity: 1; }
+
 /* Metadata-backed Canvas tasks use the native node surface, without a Markdown editor. */
 .canvas-node.operon-canvas-task-node .canvas-node-content > :not(.operon-canvas-task-content) { display: none; }
 .canvas-node.operon-canvas-task-node .operon-canvas-task-content { min-height: 100%; }
@@ -35699,3 +35711,9 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 :where(.setting-group.operon-settings-scope) .setting-item:not(.setting-item-heading, .mod-vertical, .operon-settings-long-text-setting, .operon-settings-nonstandard-row) > .setting-item-info ~ .setting-item-control {
 	align-self: center;
 }
+
+/* Native Excalidraw top-right entry; planning panels follow their drawing palette. */
+.excalidraw button.operon-excalidraw-task-pool-button { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--color-on-surface); box-shadow: none; }
+.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) { background: var(--color-surface-high); }
+.excalidraw button.operon-excalidraw-task-pool-button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.excalidraw button.operon-excalidraw-task-pool-button svg { width: 20px; height: 20px; }

@@ -46,7 +46,7 @@ test('Weekly Task Router target uses the shared periodic adapter and a Daily-for
 		'async resolvePeriodicNoteFileTaskContainer(',
 	);
 	assert.match(resolver, /if \(saveMode === 'weekly-notes'\)/);
-	assert.match(resolver, /resolveOrCreatePeriodicNoteResult\('weekly', targetDateKey\)/);
+	assert.match(resolver, /resolveOrCreatePeriodicNoteResult\('weekly', targetDateKey, undefined, options\.canCommit, options\.acceptFile\)/);
 	assert.match(resolver, /resolvePeriodicNoteFileTaskContainer\(weeklyNote\)/);
 	assert.match(resolver, /resolvePeriodicNoteFileTaskContainer\(dailyNote\)/);
 	assert.match(
@@ -100,7 +100,7 @@ test('Weekly File Task container parenting is opt-in and explicit parent clear w
 		'async insertTaskCreatorInlineTaskBelowInlineParent(',
 	);
 	assert.match(defaultInsertion, /isTaskCreatorFieldExplicitlyCleared\(draft, 'parentTask'\)/);
-	assert.match(defaultInsertion, /resolveTaskCreatorScheduledPeriodicParent\(draft\)/);
+	assert.match(defaultInsertion, /resolveTaskCreatorScheduledPeriodicParent\(draft, options\)/);
 	assert.match(defaultInsertion, /fallbackParentTaskId: parentTaskExplicitlyCleared \|\| useScheduledPeriodicParent/);
 	assert.match(defaultInsertion, /autoParentEnabled:.*?false/s);
 

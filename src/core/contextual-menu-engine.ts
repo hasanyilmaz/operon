@@ -35,6 +35,7 @@ export type ContextualMenuSurface =
 	| 'filterTask'
 	| 'tableTask'
 	| 'taskCard'
+	| 'excalidrawTask'
 	| 'kanbanCard'
 	| 'calendarTimedItem'
 	| 'calendarAllDayScheduledItem'
@@ -57,6 +58,7 @@ export const CONTEXTUAL_MENU_SURFACES: ContextualMenuSurface[] = [
 	'filterTask',
 	'tableTask',
 	'taskCard',
+	'excalidrawTask',
 	'kanbanCard',
 	'calendarTimedItem',
 	'calendarAllDayScheduledItem',
@@ -87,7 +89,7 @@ export const CONTEXTUAL_MENU_SURFACE_GROUPS: ContextualMenuSurfaceGroup[] = [
 	{
 		id: 'planningBoards',
 		labelKey: 'contextualMenuSurfaceGroupPlanningBoards',
-		surfaces: ['taskCard', 'kanbanCard', 'tableTask', 'pinnedTask'],
+		surfaces: ['taskCard', 'excalidrawTask', 'kanbanCard', 'tableTask', 'pinnedTask'],
 	},
 	{
 		id: 'timeTracking',
@@ -131,6 +133,7 @@ export const CONTEXTUAL_MENU_SURFACE_LABEL_KEYS: Record<ContextualMenuSurface, s
 	filterTask: 'contextualMenuSurfaceFilterTask',
 	tableTask: 'contextualMenuSurfaceTableTask',
 	taskCard: 'contextualMenuSurfaceTaskCard',
+	excalidrawTask: 'contextualMenuSurfaceExcalidraw',
 	kanbanCard: 'contextualMenuSurfaceKanbanCard',
 	calendarTimedItem: 'contextualMenuSurfaceCalendarTimedItem',
 	calendarAllDayScheduledItem: 'contextualMenuSurfaceCalendarAllDayScheduledItem',

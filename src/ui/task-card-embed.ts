@@ -6,6 +6,7 @@ import { TaskCardControls, type TaskCardControlDependencies } from './task-card-
 import { isValidOperonId } from '../core/id-generator';
 import { normalizeTaskCardSettings, type TaskCardSettings } from '../types/task-card';
 import { resolveKanbanCardImageReference } from '../core/kanban-card-image-source';
+import { TaskCardExcalidrawHost } from './task-card-excalidraw';
 import { TaskCardCanvasHost } from './task-card-canvas';
 import type { TaskCardLayoutOptions } from './task-card-layout-model';
 import { MarkdownRenderChild, setIcon, TFile, type App, type MarkdownPostProcessorContext } from 'obsidian';
@@ -38,6 +39,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
  private layoutChild: MarkdownRenderChild | null = null;
  private layoutSignature = '';
  private canvasHost: TaskCardCanvasHost | null = null;
+ private excalidrawHost: TaskCardExcalidrawHost | null = null;
  private imageWrap!: HTMLElement;
  private image: HTMLImageElement | null = null;
  private imageSource: string | null = null;
@@ -68,7 +70,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
   let clearDescriptionGesture = () => {};
   this.register(() => clearDescriptionGesture());
   this.registerDomEvent(this.title, 'pointerdown', event => {
-   if (!root.closest('.operon-task-card-canvas-node') || event.button !== 0) return;
+   if (!root.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]') || event.button !== 0 || (this.excalidrawHost?.attached && !this.excalidrawHost.canInteract())) return;
    if (event.isPrimary === false) return;
    clearDescriptionGesture(); suppressDescriptionClick = false;
    const doc = root.ownerDocument, win = getOwnerWindow(root), x = event.clientX, y = event.clientY;
@@ -89,10 +91,12 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
    };
   });
   this.registerDomEvent(this.title, 'dblclick', event => {
-   if (root.closest('.operon-task-card-canvas-node')) { event.preventDefault(); event.stopPropagation(); }
+   if (this.excalidrawHost?.attached && !this.excalidrawHost.canInteract()) return;
+   if (root.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]')) { event.preventDefault(); event.stopPropagation(); }
   });
 		this.registerDomEvent(this.title, 'click', event => {
-   if (root.closest('.operon-task-card-canvas-node')) {
+   if (this.excalidrawHost?.attached && !this.excalidrawHost.canInteract()) return;
+   if (root.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]')) {
     event.preventDefault(); event.stopPropagation();
     if (!suppressDescriptionClick || event.detail === 0) this.controls?.openDescription(this.title);
     return;
@@ -103,7 +107,10 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			event.stopPropagation();
 			if ('options' in this.parsed) this.owner.activate(this.parsed.options.taskId, event.metaKey || event.ctrlKey);
 		});
-		if (typeof this.source === 'string') this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
+		if (typeof this.source === 'string') {
+   this.excalidrawHost = new TaskCardExcalidrawHost(this.owner.deps.app, root, () => this.refresh());
+   this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
+  }
 		this.owner.attach(this);
 	}
 
@@ -126,6 +133,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
     this.controls = new TaskCardControls(this.containerEl, this.card, this.header, this.icon, task.operonId, { ...deps,
      app: this.owner.deps.app, getSettings: this.owner.deps.getSettings,
      presentation: () => 'options' in this.parsed ? this.parsed.options : {},
+     surface: () => this.excalidrawHost?.attached ? this.excalidrawHost : null,
      getAllTasks: () => this.owner.getAllTasks(),
      getTask: id => this.owner.resolve(id).state === 'ready' ? deps.getTask(id) : undefined,
      run: (id, allowed, action) => this.owner.run(id, allowed, action),
@@ -139,7 +147,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			const color = resolveTaskStatusIconColor(task.fieldValues, settings) ?? '';
 			const status = task.fieldValues.status || task.checkbox;
 			const title = task.description || t('errors', 'taskCard_untitled');
-			const hint = this.containerEl.closest('.operon-task-card-canvas-node') ? t('taskEditor', 'description') : t('errors', 'taskCard_open');
+			const hint = this.containerEl.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]') ? t('taskEditor', 'description') : t('errors', 'taskCard_open');
    const accent = resolveTaskColorSource(task.fieldValues, preferences.taskCardColorSource, settings);
    const media = this.parsed.options.image === false ? null : resolveKanbanCardImageReference(task.fieldValues, preferences.taskCardImageSource);
    let imageSource: string | null = null;
@@ -178,13 +186,14 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 
  private updateLayout(defaults: TaskCardLayoutOptions): void {
   const canvas = typeof this.source !== 'string' || this.canvasHost?.refresh('options' in this.parsed ? this.parsed.options.taskId : '', defaults);
+  const excalidraw = this.excalidrawHost?.refresh('options' in this.parsed ? this.parsed.options.taskId : '');
   const options = 'options' in this.parsed ? this.parsed.options : defaults;
-  const signature = JSON.stringify([canvas, options]);
+  const signature = JSON.stringify([canvas, excalidraw, options]);
   if (signature === this.layoutSignature) return;
   this.layoutSignature = signature;
   if (this.layoutChild) { this.removeChild(this.layoutChild); this.layoutChild = null; }
   this.warning.hidden = true;
-  if (!canvas) {
+  if (!canvas && !excalidraw) {
    this.layoutChild = this.owner.layout.create(this.containerEl, this.card, options, 'operon', unavailable => {
     const text = unavailable ? t('errors', 'taskCard_layout') : '';
     if (this.warning.textContent !== text) this.warning.textContent = text;
@@ -229,6 +238,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 	onunload(): void {
 		this.active = false;
   this.canvasHost?.destroy();
+  this.excalidrawHost?.destroy();
   if (this.image) { this.image.onload = null; this.image.onerror = null; }
 		this.owner.detach(this);
 		this.containerEl.removeClass('operon-task-card-embed');

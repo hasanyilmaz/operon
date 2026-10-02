@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from '../../src/types/settings';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
@@ -53,6 +54,7 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		views: value.views,
 		ui: {
 			...value.ui,
+			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask']) },
 			taskCreationProfile: withoutNewFields(value.ui.taskCreationProfile, ['inheritPropertiesOnParentLink']),
 			taskUiPreferences: withoutNewFields(value.ui.taskUiPreferences, ['assigneeImageProperty']),
 		},
@@ -66,6 +68,9 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	}
 	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
 		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');
+	const expectedExcalidraw = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
+	const actualExcalidraw = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
+	if (expectedExcalidraw !== undefined || actualExcalidraw !== undefined) assert.deepEqual(actualExcalidraw, expectedExcalidraw ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask, 'Excalidraw choices must be preserved or use standard defaults');
 	const expectedSlices = slices(expected);
 	for (const [key, value] of Object.entries(slices(actual))) {
 		assert.equal(sha256(JSON.stringify(value)), sha256(JSON.stringify(expectedSlices[key])), `User settings changed: ${key}`);
