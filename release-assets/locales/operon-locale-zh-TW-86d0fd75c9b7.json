@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "無值",
       "propertyPoolNoValues": "沒有符合的值。",
       "propertyPoolReadOnly": "此繪圖或目標卡片為唯讀。",
-      "propertyPoolRefreshWarning": "任務已變更，但重新整理或歷史記錄尚未完成。請勿重複拖放。",
+      "propertyPoolRefreshWarning": "任務已變更，但檔案移動、重新整理或歷史記錄未完成。請勿重複拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "無法儲存屬性值池設定。請重新整理後再試。",
       "propertyPoolSearchAllValues": "搜尋所有屬性值…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d3611d4e4c92d87b97d9b0d74d0ae45a2626f2d81441f4161c4a62c34b61963d"
+  "sourceVersion": "944c947eb28b9b89d3fa094709f1eccfb8ebfb3c3fb487a1ecebb1d81598b842"
 }

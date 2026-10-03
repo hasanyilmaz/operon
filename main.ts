@@ -33462,15 +33462,8 @@ export default class OperonPlugin extends Plugin {
         if (terminal && this.settings.pinnedDockAutoUnpinFinished && this.pinnedCache?.isPinned(task.operonId)) return true;
         if (task.primary.format === 'yaml') {
             if (terminal && this.settings.fileTaskAutoArchiveEnabled) return true;
-            // A manual location mismatch alone does not trigger the pipeline mover.
-            // Only a status edit that changes the destination can require relocation.
-            if ('status' in payload && payload.status !== task.fieldValues.status) {
-                const beforeRoute = resolveFileTaskPipelineLocation(this.settings, task.fieldValues);
-                const route = resolveFileTaskPipelineLocation(this.settings, next);
-                const folder = task.primary.filePath.split('/').slice(0, -1).join('/');
-                if (route.kind === 'unsafe-rule'
-                    || (route.folder !== null && route.folder !== beforeRoute.folder && route.folder !== folder)) return true;
-            }
+            if ('status' in payload && payload.status !== task.fieldValues.status
+                && resolveFileTaskPipelineLocation(this.settings, next).kind === 'unsafe-rule') return true;
         }
         return false;
     }
@@ -33630,9 +33623,23 @@ export default class OperonPlugin extends Plugin {
             refresh: async task => {
                 try {
                     await this.indexer.forceReindexFilePathAfterMutation(plan.path, { notify: false });
-                    const after = this.indexer.getTask(plan.id);
+                    let after = this.indexer.getTask(plan.id);
+                    let moved = true;
+                    if (task.primary.format === 'yaml' && after && task.fieldValues.status !== after.fieldValues.status) {
+                        const status = after.fieldValues.status;
+                        const move = await this.fileTaskPipelineMover?.settleForIndexedChange(task, after, () =>
+                            allowed() && (plan.group ? JSON.stringify(plan.group.values.map(item => propertyPoolTaskSignature(this.settings, item))) : propertyPoolTaskSignature(this.settings, plan.favorite)) === plan.signature
+                            && this.indexer.getTask(plan.id)?.fieldValues.status === status);
+                        moved = move?.ok === true;
+                        if (move?.path && move.path !== plan.path) {
+                            await this.indexer.forceReindexFilePathAfterMutation(move.path, { notify: false });
+                            after = this.indexer.getTask(plan.id);
+                            if (after?.primary.filePath === move.path && after.primary.format === plan.format) plan.path = move.path;
+                            else moved = false;
+                        }
+                    }
                     const result = await this.aggregateCoordinator.refreshAfterTaskMutation(task, after ?? null, { modifiedTimestamp: now });
-                    return result.failedWriteCount === 0;
+                    return moved && result.failedWriteCount === 0;
                 } finally { this.refreshViews({ preserveKanbanViewport: true }); }
             },
         });

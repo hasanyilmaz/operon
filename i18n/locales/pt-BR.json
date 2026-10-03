@@ -426,7 +426,7 @@
 		"propertyPoolAlreadyPresent": "Já está presente.",
 		"propertyPoolWorkflowBlocked": "Use o editor de tarefas: esta alteração exige outras ações do fluxo de trabalho.",
 		"propertyPoolDropFailed": "Não foi possível aplicar o valor. A tarefa ou suas configurações podem ter mudado.",
-		"propertyPoolRefreshWarning": "A tarefa mudou, mas a atualização ou o histórico não foi concluído. Não repita a ação de soltar.",
+		"propertyPoolRefreshWarning": "A tarefa foi alterada, mas a movimentação do arquivo, a atualização ou o registro do histórico não foi concluído. Não repita a ação de soltar.",
 		"propertyPoolSummary": "{{visible}} / {{total}} valores",
 		"propertyPoolAllValues": "Todos os valores",
 		"propertyPoolSearchAllValues": "Pesquisar todos os valores de propriedades…",

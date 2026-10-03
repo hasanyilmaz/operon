@@ -5830,7 +5830,7 @@
       "No value",
       "No matching values.",
       "This drawing or target card is read-only.",
-      "The task changed, but refreshing or recording its history did not finish. Do not repeat the drop.",
+      "The task changed, but moving its file, refreshing, or recording its history did not finish. Do not repeat the drop.",
       "Remove favorite",
       "Could not save Property Value Pool settings. Refresh and try again.",
       "Search all property values…",

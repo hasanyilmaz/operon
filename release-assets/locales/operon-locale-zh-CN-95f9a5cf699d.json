@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "无值",
       "propertyPoolNoValues": "没有匹配的值。",
       "propertyPoolReadOnly": "此绘图或目标卡片为只读。",
-      "propertyPoolRefreshWarning": "任务已更改，但刷新或历史记录尚未完成。请勿重复拖放。",
+      "propertyPoolRefreshWarning": "任务已更改，但文件移动、刷新或历史记录未完成。请勿重复拖放。",
       "propertyPoolRemoveFavorite": "取消收藏",
       "propertyPoolSaveFailed": "无法保存属性值池设置。请刷新后重试。",
       "propertyPoolSearchAllValues": "搜索所有属性值…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "377e5b799f0a123a13f65ea1282793eda3b02e8b710562d900997584c366fac6"
+  "sourceVersion": "feedae32847c046f3e70403e949b05fb39f1efb3ffe5b0e8e0fb0e12ac6f285b"
 }

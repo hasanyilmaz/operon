@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "値なし",
       "propertyPoolNoValues": "一致する値はありません。",
       "propertyPoolReadOnly": "この図または対象カードは読み取り専用です。",
-      "propertyPoolRefreshWarning": "タスクは変更されましたが、更新または履歴の記録が完了しませんでした。再度ドロップしないでください。",
+      "propertyPoolRefreshWarning": "タスクは変更されましたが、ファイルの移動、更新、または履歴の記録が完了しませんでした。ドロップ操作を繰り返さないでください。",
       "propertyPoolRemoveFavorite": "お気に入りから削除",
       "propertyPoolSaveFailed": "設定を保存できませんでした。更新して再試行してください。",
       "propertyPoolSearchAllValues": "すべてのプロパティ値を検索…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "8360d076539a2fea59881f82b12a2bbc1e4186994b861a9f5eada7257c1ee83b"
+  "sourceVersion": "1a2160326a0c38a0f6fb0befa43d6f605891b238ab3059eb9536b3eef8a6c3b4"
 }

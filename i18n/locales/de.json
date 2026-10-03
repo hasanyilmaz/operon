@@ -426,7 +426,7 @@
 		"propertyPoolAlreadyPresent": "Bereits vorhanden.",
 		"propertyPoolWorkflowBlocked": "Verwende den Aufgaben-Editor: Diese Änderung erfordert weitere Workflow-Aktionen.",
 		"propertyPoolDropFailed": "Der Wert konnte nicht angewendet werden. Die Aufgabe oder ihre Einstellungen haben sich möglicherweise geändert.",
-		"propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
+		"propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber das Verschieben ihrer Datei, die Aktualisierung oder das Speichern des Verlaufs wurde nicht abgeschlossen. Wiederholen Sie das Ablegen nicht.",
 		"propertyPoolSummary": "{{visible}} / {{total}} Werte",
 		"propertyPoolAllValues": "Alle Werte",
 		"propertyPoolSearchAllValues": "Alle Eigenschaftswerte durchsuchen…",

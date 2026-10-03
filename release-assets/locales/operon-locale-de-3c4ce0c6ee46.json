@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "Kein Wert",
       "propertyPoolNoValues": "Keine passenden Werte.",
       "propertyPoolReadOnly": "Diese Zeichnung oder Zielkarte ist schreibgeschützt.",
-      "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber Aktualisierung oder Verlaufseintrag wurden nicht abgeschlossen. Nicht erneut ablegen.",
+      "propertyPoolRefreshWarning": "Die Aufgabe wurde geändert, aber das Verschieben ihrer Datei, die Aktualisierung oder das Speichern des Verlaufs wurde nicht abgeschlossen. Wiederholen Sie das Ablegen nicht.",
       "propertyPoolRemoveFavorite": "Favorit entfernen",
       "propertyPoolSaveFailed": "Pool-Einstellungen konnten nicht gespeichert werden. Aktualisieren und erneut versuchen.",
       "propertyPoolSearchAllValues": "Alle Eigenschaftswerte durchsuchen…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "bcee911ce0d351d3c7f4345c8c611b6539a6185039499b16846d830c2c61e863"
+  "sourceVersion": "88323d2cf6d6dee58813cb49670ca8e05c617a92d1d466418b6fee5d83eb2216"
 }

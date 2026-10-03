@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "Нет значения",
       "propertyPoolNoValues": "Подходящих значений нет.",
       "propertyPoolReadOnly": "Этот рисунок или целевая карточка доступны только для чтения.",
-      "propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
+      "propertyPoolRefreshWarning": "Задача изменена, но перемещение её файла, обновление или запись истории не завершены. Не повторяйте перетаскивание.",
       "propertyPoolRemoveFavorite": "Удалить из избранного",
       "propertyPoolSaveFailed": "Не удалось сохранить настройки. Обновите и повторите попытку.",
       "propertyPoolSearchAllValues": "Поиск по всем значениям свойств…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "20ec0b41c10523c3b0b84801de8b027d6eaa8aa31d3fe21e05be9c20c928cb3c"
+  "sourceVersion": "04199677b19c9834678f8332c77b7e9f66049e3754c7fe27113295dde266f33c"
 }

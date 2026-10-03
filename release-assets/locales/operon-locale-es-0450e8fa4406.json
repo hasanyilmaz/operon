@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "Sin valor",
       "propertyPoolNoValues": "No hay valores coincidentes.",
       "propertyPoolReadOnly": "Este dibujo o la tarjeta de destino es de solo lectura.",
-      "propertyPoolRefreshWarning": "La tarea cambió, pero no terminó la actualización o el registro del historial. No repitas la operación.",
+      "propertyPoolRefreshWarning": "La tarea cambió, pero no se completó el traslado de su archivo, la actualización o el registro del historial. No repitas la acción de soltar.",
       "propertyPoolRemoveFavorite": "Quitar favorito",
       "propertyPoolSaveFailed": "No se pudieron guardar los ajustes. Actualiza e inténtalo de nuevo.",
       "propertyPoolSearchAllValues": "Buscar en todos los valores de propiedades…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "5ef0c8e1cf264a63ea347a0fce621affefd6123696a8b7873177717b83431f34"
+  "sourceVersion": "47b9ad9c9bdcfea21ffd8c7e6c08f6f418690604719169aac66c221b46f0e6c7"
 }

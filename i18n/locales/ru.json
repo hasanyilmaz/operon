@@ -426,7 +426,7 @@
 		"propertyPoolAlreadyPresent": "Уже добавлено.",
 		"propertyPoolWorkflowBlocked": "Используйте редактор задач: это изменение требует дополнительных действий рабочего процесса.",
 		"propertyPoolDropFailed": "Не удалось применить значение. Возможно, задача или её настройки изменились.",
-		"propertyPoolRefreshWarning": "Задача изменена, но обновление или запись истории не завершены. Не повторяйте перетаскивание.",
+		"propertyPoolRefreshWarning": "Задача изменена, но перемещение её файла, обновление или запись истории не завершены. Не повторяйте перетаскивание.",
 		"propertyPoolSummary": "{{visible}} / {{total}} значений",
 		"propertyPoolAllValues": "Все значения",
 		"propertyPoolSearchAllValues": "Поиск по всем значениям свойств…",

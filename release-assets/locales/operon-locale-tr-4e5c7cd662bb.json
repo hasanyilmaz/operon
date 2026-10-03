@@ -2269,7 +2269,7 @@
       "propertyPoolNoValue": "Değer yok",
       "propertyPoolNoValues": "Eşleşen değer yok.",
       "propertyPoolReadOnly": "Bu çizim veya hedef kart salt okunur.",
-      "propertyPoolRefreshWarning": "Task değişti ancak yenileme veya geçmiş kaydı tamamlanamadı. Bırakma işlemini tekrarlamayın.",
+      "propertyPoolRefreshWarning": "Görev değişti ancak dosyasını taşıma, yenileme veya geçmiş kaydı tamamlanmadı. Bırakma işlemini tekrarlamayın.",
       "propertyPoolRemoveFavorite": "Favoriyi kaldır",
       "propertyPoolSaveFailed": "Property Value Pool ayarları kaydedilemedi. Yenileyip tekrar deneyin.",
       "propertyPoolSearchAllValues": "Tüm özellik değerlerinde ara…",
@@ -3595,5 +3595,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "dab86297b6869a9a659f638f605777292f844a4f20ae509cf845fbe37d22e8fe"
+  "sourceVersion": "d295f7fd67bd8dee0bef298797776e89f4592bd06a07b8a45b3a48fb13823cb4"
 }
