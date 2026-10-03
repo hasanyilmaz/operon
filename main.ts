@@ -33462,9 +33462,15 @@ export default class OperonPlugin extends Plugin {
         if (terminal && this.settings.pinnedDockAutoUnpinFinished && this.pinnedCache?.isPinned(task.operonId)) return true;
         if (task.primary.format === 'yaml') {
             if (terminal && this.settings.fileTaskAutoArchiveEnabled) return true;
-            const route = resolveFileTaskPipelineLocation(this.settings, next);
-            const folder = task.primary.filePath.split('/').slice(0, -1).join('/');
-            if (route.kind === 'unsafe-rule' || (route.folder !== null && route.folder !== folder)) return true;
+            // A manual location mismatch alone does not trigger the pipeline mover.
+            // Only a status edit that changes the destination can require relocation.
+            if ('status' in payload && payload.status !== task.fieldValues.status) {
+                const beforeRoute = resolveFileTaskPipelineLocation(this.settings, task.fieldValues);
+                const route = resolveFileTaskPipelineLocation(this.settings, next);
+                const folder = task.primary.filePath.split('/').slice(0, -1).join('/');
+                if (route.kind === 'unsafe-rule'
+                    || (route.folder !== null && route.folder !== beforeRoute.folder && route.folder !== folder)) return true;
+            }
         }
         return false;
     }
