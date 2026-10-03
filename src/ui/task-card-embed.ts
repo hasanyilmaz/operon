@@ -122,7 +122,11 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
    this.parsed = this.readOptions(defaults);
    this.updateLayout(defaults);
 			if ('error' in this.parsed) { this.showMessage('invalid', t('errors', `taskCard_${this.parsed.error}`)); return; }
-			const result = resolution ?? this.owner.resolve(this.parsed.options.taskId);
+			let result = resolution ?? this.owner.resolve(this.parsed.options.taskId);
+			if ((result.state === 'missing' || result.state === 'loading') && this.lastReady?.task.operonId === this.parsed.options.taskId
+				&& this.owner.deps.isSourceTransitionActive?.(this.parsed.options.taskId)) result = this.lastReady;
+			if (result.state === 'ready') this.lastReady = result;
+			else if (!this.owner.deps.isSourceTransitionActive?.(this.parsed.options.taskId)) this.lastReady = null;
 			if (result.state !== 'ready') {
 				this.showMessage(result.state, t('errors', `taskCard_${result.state}`, { id: this.parsed.options.taskId }));
 				return;
@@ -221,6 +225,8 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
   image.src = source;
  }
 
+	private lastReady: Extract<TaskCardResolution, { state: 'ready' }> | null = null;
+
 	private showMessage(state: string, text: string): void {
   if (this.controls) { this.removeChild(this.controls); this.controls = null; }
 		const signature = JSON.stringify([state, text]);
@@ -237,6 +243,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 
 	onunload(): void {
 		this.active = false;
+		this.lastReady = null;
   this.canvasHost?.destroy();
   this.excalidrawHost?.destroy();
   if (this.image) { this.image.onload = null; this.image.onerror = null; }

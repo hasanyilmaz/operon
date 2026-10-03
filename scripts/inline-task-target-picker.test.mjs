@@ -11,7 +11,7 @@ try {
  const source = ts.createSourceFile('main.ts', await readFile('main.ts', 'utf8'), ts.ScriptTarget.Latest, true);
  const cls = source.statements.find(n => ts.isClassDeclaration(n) && n.name?.text === 'OperonPlugin');
  const method = name => cls.members.find(n => n.name?.getText(source) === name).getText(source);
- const methods = ['recordInlineTaskCreationTarget', 'recordInlineTaskCreationFromEditor', 'insertTaskCreatorInlineTaskAtChosenTarget', 'insertTaskCreatorInlineTaskWithResolvedTarget', 'insertTaskCreatorInlineTaskUsingDefaultTarget', 'createInlineTaskFromCreatorDraftResult', 'openTaskCreator', 'createCalendarInlineTaskFromCreatorDraft', 'createKanbanInlineTaskFromCreatorDraft', 'createInlineSubtaskFromFlexibleCreatorDraft', 'insertTaskCreatorInlineTaskBelowInlineParent', 'insertTaskCreatorInlineTaskInsideFileParent'];
+ const methods = ['isExcalidrawTaskSource', 'recordInlineTaskCreationTarget', 'recordInlineTaskCreationFromEditor', 'insertTaskCreatorInlineTaskAtChosenTarget', 'insertTaskCreatorInlineTaskWithResolvedTarget', 'insertTaskCreatorInlineTaskUsingDefaultTarget', 'createInlineTaskFromCreatorDraftResult', 'openTaskCreator', 'createCalendarInlineTaskFromCreatorDraft', 'createKanbanInlineTaskFromCreatorDraft', 'createInlineSubtaskFromFlexibleCreatorDraft', 'insertTaskCreatorInlineTaskBelowInlineParent', 'insertTaskCreatorInlineTaskInsideFileParent'];
  const stub = path.join(dir, 'obsidian.ts');
  await writeFile(stub, `
 export const notices:string[]=[];
@@ -35,6 +35,7 @@ import { rankInlineTaskTargets } from './src/core/inline-task-targets';
 import { DEFAULT_SETTINGS, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword } from './src/types/settings';
 import { indentNewInlineSubtask, resolveInlineParentCheckboxPlacement, resolveTaskCreatorInlinePlacement } from './src/core/task-creator-target-resolver';
 import { Notice } from 'obsidian';
+import { ExcalidrawSourceError } from './src/ui/excalidraw-markdown-source';
 import { insertInlineTaskUnderFirstHeadingKeyword } from './src/core/markdown-heading-insertion';
 const localNow=()=> '2026-09-28T12:00';
 const t=(_group:string,key:string)=>key;
@@ -72,7 +73,7 @@ function setup(){
  const h:any=new Harness();
  const files=new Map(['Active.md','Parent.md','Other.md'].map(p=>[p,new TFile(p)]));
  const contents=new Map([['Parent.md','---\\noperonId: p\\n---\\n'],['Other.md','']]);
- h.app={vault:{getMarkdownFiles:()=>[...files.values()],getAbstractFileByPath:(p:string)=>files.get(p),read:async(f:any)=>contents.get(f.path)??''}};
+ h.app={metadataCache:{getFileCache:()=>({})},vault:{getMarkdownFiles:()=>[...files.values()],getAbstractFileByPath:(p:string)=>files.get(p),read:async(f:any)=>contents.get(f.path)??''}};
  h.settings={inlineTaskHeading:'Tasks',inlineTaskParentFileHeadingKeyword:'Backlog',inlineTaskParentInlineTargetMode:'below-parent',inlineTaskParentFileTargetMode:'inside-parent-file'};
  const parent={operonId:'p',primary:{format:'yaml',filePath:'Parent.md'}};
  h.indexer={getTask:(id:string)=>id==='p'?parent:null,hasDuplicateOperonIdConflict:()=>false,reindexFilePath:async()=>{},getAllTasks:()=>[],subscribeIndexUpdates:()=>()=>{}};
@@ -85,6 +86,15 @@ function setup(){
  return {h,files,contents,parent};
 }
 const draft=()=>({description:'New',fieldValues:{parentTask:'p'},explicitFieldKeys:['parentTask'],tags:[],subtaskIds:[]});
+test('drawing parent writes require the coordinated source adapter',async()=>{
+ for(const format of ['inline','yaml']){
+  const {h,files,parent}=setup();parent.primary.format=format;parent.primary.filePath='Parent.excalidraw.md';files.set(parent.primary.filePath,new TFile(parent.primary.filePath));
+  h.app.vault.cachedRead=()=>assert.fail('uncoordinated drawing read');
+  delete h.insertTaskCreatorInlineTaskInsideFileParent;delete h.insertTaskCreatorInlineTaskBelowInlineParent;
+  const operation=format==='inline'?h.insertTaskCreatorInlineTaskBelowInlineParent(draft(),parent):h.insertTaskCreatorInlineTaskInsideFileParent(draft(),parent,'Backlog');
+  await assert.rejects(operation,ExcalidrawSourceError);assert.equal(h.writes.length,0);
+ }
+});
 test('paged picker draws 50, loads next 50, retains active state and keyboard visibility',()=>{
  const selected:any[]=[];showSearchableOptionPicker(new Element() as any,{value:null,options:Array.from({length:121},(_,i)=>({value:String(i),label:'File '+i})),placeholder:'Find',ariaLabel:'Files',noMatchesText:'Empty',pageSize:50,onSelect:v=>selected.push(v.value)});
  assert.equal(rows().length,50);const list=panel().querySelectorAll('.operon-searchable-option-picker-list')[0];list.scrollTop=901;list.fire('scroll');assert.equal(rows().length,100);assert.equal(rows()[0].classes.has('is-active'),true);assert.equal(rows()[0].attrs['aria-setsize'],'121');

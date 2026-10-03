@@ -10,7 +10,7 @@ export async function runCheckboxOwnershipIntegrationTests(rootDir) {
  const source = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
- const names = ['prepareAgentRuntimeSourceTransition','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','prepareAgentRuntimeTaskAdoption','findInlineTaskLineIndex','resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','resolveSelectedLineRangeForTaskConversion','normalizeEditorSelection','isMarkdownFenceLine','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
+ const names = ['isExcalidrawTaskSource','prepareAgentRuntimeSourceTransition','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','prepareAgentRuntimeTaskAdoption','findInlineTaskLineIndex','resolveCheckboxOwnerInheritedFields','resolveCheckboxConversionInheritedFields','handleConvertSelectionToOperonTasksCommand','resolveSelectedLineRangeForTaskConversion','normalizeEditorSelection','isMarkdownFenceLine','buildSelectedLineOperonTaskConversion','finalizeBulkConvertedTaskNode','pruneBulkSelectionParentStack','getParsedTaskFieldValues','applyBulkSelectionLineChanges','buildNewInlineTaskWithInheritedFields','applyInheritedSubtaskFields','setParsedTaskField','createInlineField','getInlineWriteKeyName','normalizeParsedTaskCreatedTimestamp','touchParsedTaskModifiedTimestamp','serializeInlineTask','parseInlineTaskLine','upgradePlainCheckboxLineToOperonInlineTask','handleConvertTasksEmojiLineToOperonInlineTaskCommand','evaluateAgentRuntimeSavedFilter','applyUiCanonicalConversion','insertTaskCreatorInlineTaskBelowInlineParent'];
  const methods = names.map(name=>{const method=plugin.members.find(member=>member.name?.getText(ast)===name);assert.ok(method,name);return method.getText(ast);}).join('\n');
  const bar = plugin.members.find(member=>member.name?.getText(ast)==='registerInlineTaskBar');
  let openEditor;
@@ -38,6 +38,8 @@ import {compareResourceReferencesCanonicalV1} from './src/agent-runtime/contract
 import {findFileTaskTemplateOptionById} from './src/core/file-task-templates';
 import {resolveWorkflowStatus} from './src/types/pipeline';
 import {TaskWriter} from './src/core/task-writer';
+import {withRuntimeVaultMutationLockV1} from './src/agent-runtime/runtime/mutation-gateway';
+import {withExcalidrawMarkdownSources,rebaseExcalidrawTaskSource} from './src/ui/excalidraw-markdown-source';
 import {scanFileWithMappings} from './src/indexer/file-scanner';
 import {sourceRevisionForTaskCreationV1} from './src/agent-runtime/runtime/task-creation-adapter';
 import {canonicalJsonV1,toJsonValueV1,sha256HexV1} from './src/agent-runtime/contracts/v1/canonical';
@@ -209,6 +211,7 @@ for(const indent of ['', '\t', '    ']) {
 }
 {
  const f=fixture(''),policies=[];Platform.isMobile=false;f.probe.app={vault:{getAbstractFileByPath:()=>null}};
+ f.probe.agentRuntimeVaultIdentityHash='checkbox-test';f.probe.writer=new TaskWriter(f.probe.app,{},DEFAULT_SETTINGS.keyMappings);
  const task={operonId:'parent1',primary:{format:'inline',filePath:'Tasks.md',lineNumber:0}};
  f.probe.persistTaskEditorDeleteOpenSources=async()=>true;f.probe.indexer={getTask:()=>task,reindexFilesBatch:async()=>{},hasDuplicateOperonIdConflict:()=>false};
  f.probe.agentRuntimeTaskLocator=()=>({representation:'inline',filePath:'Tasks.md',lineNumber:0});
@@ -228,7 +231,7 @@ for(const trailing of ['', '\n']) {
 }
 {
  const f=fixture(parent+'\n        - [ ] Last'),task={operonId:'parent1',primary:{filePath:'Tasks.md',lineNumber:99,format:'inline'}};
- let written;f.probe.app={vault:{getAbstractFileByPath:()=>f.file,cachedRead:async()=>f.editor.getValue(),modify:async(_file,content)=>written=content}};f.file.extension='md';
+ let written;f.probe.app={metadataCache:{getFileCache:()=>({})},vault:{getAbstractFileByPath:()=>f.file,cachedRead:async()=>f.editor.getValue(),modify:async(_file,content)=>written=content}};f.file.extension='md';
  f.probe.buildTaskCreatorInlineTaskLine=()=>({operonId:'child01',taskLine:'- [ ] Child {{operonId:: child01}}',fieldValues:{}});f.probe.validateDependencyDraftOrShow=()=>true;
  const result=await f.probe.insertTaskCreatorInlineTaskBelowInlineParent({},task);
  assert.equal(result.lineNumber,2);assert.equal(written,parent+'\n        - [ ] Last\n    - [ ] Child {{operonId:: child01}}');checks+=2;

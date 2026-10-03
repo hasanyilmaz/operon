@@ -10,7 +10,7 @@ export async function runInlineParentPlacementIntegrationTests(rootDir) {
  const source = await readFile(path.join(rootDir, 'main.ts'), 'utf8');
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
- const names = ['showRawTaskCreationNotices','getFileBasenameFromPath','suppressRawTaskCreationNotice','isRawTaskCreationNoticeSuppressed','pruneRawTaskCreationNoticeSuppressions','showTaskNotice','openInlineTaskEditorForLine','updatePluginUiTaskStatusAndRefresh','runPluginUiTaskMutation','prepareDirectInlineParentPlacement','needsDirectInlineParentPlacement','commitDirectInlineParentPlacement','renderDirectInlineFieldEdit','writeDirectTaskFields','updateDirectTaskFieldsAndRefresh','updateTaskFieldsAndRefresh','parentLinkSourceMatches','parentLinkReplacementPayload','getTaskMutationFieldValue','commitInlineTerminalRecurrenceMutation','applyEditedTaskDirectFromView','replaceInlineTaskLineInContent','updateGanttTaskCascade'];
+ const names = ['showRawTaskCreationNotices','getFileBasenameFromPath','suppressRawTaskCreationNotice','isRawTaskCreationNoticeSuppressed','pruneRawTaskCreationNoticeSuppressions','showTaskNotice','openInlineTaskEditorForLine','updatePluginUiTaskStatusAndRefresh','runPluginUiTaskMutation','isExcalidrawTaskSource','prepareDirectInlineParentPlacement','needsDirectInlineParentPlacement','commitDirectInlineParentPlacement','renderDirectInlineFieldEdit','writeDirectTaskFields','updateDirectTaskFieldsAndRefresh','updateTaskFieldsAndRefresh','parentLinkSourceMatches','parentLinkReplacementPayload','getTaskMutationFieldValue','commitInlineTerminalRecurrenceMutation','applyEditedTaskDirectFromView','replaceInlineTaskLineInContent','updateGanttTaskCascade'];
  const methods = names.map(name => {const method=plugin.members.find(member=>member.name?.getText(ast)===name);assert.ok(method,name);return method.getText(ast);}).join('\n');
  const settingsSource=await readFile(path.join(rootDir,'src/ui/settings-tab.ts'),'utf8');
  const settingsAst=ts.createSourceFile('settings-tab.ts',settingsSource,ts.ScriptTarget.Latest,true);
@@ -25,6 +25,7 @@ export async function runInlineParentPlacementIntegrationTests(rootDir) {
 import assert from 'node:assert/strict';
 import {TFile} from 'obsidian';
 import {TaskWriter} from './src/core/task-writer';
+import {withExcalidrawMarkdownSources,rebaseExcalidrawTaskSource,readExcalidrawMarkdownSections} from './src/ui/excalidraw-markdown-source';
 import {formatTaskNotice, formatTaskNoticeCount, buildTaskCreationNotices} from './src/core/task-notice';
 const RAW_TASK_CREATION_BULK_NOTICE_THRESHOLD=4,RAW_TASK_CREATION_NOTICE_SUPPRESSION_TTL_MS=30_000;
 import {isPluginUiMutationCommitted} from './src/systems/plugin-ui-mutation-feedback';
@@ -51,7 +52,7 @@ function fixture(source=line('moving1','parent1')+'\n- [ ] own\n'+line('child01'
  const disk=new Map([['Source.md',source],['Target.md',target],['Ancestor.md',line('grand01')]]),buffers=new Map(disk),files=new Map([...disk.keys()].map(p=>[p,new TFile(p)]));
  const tasks=new Map(),calls=[],aggregates=[],repairs=[];let failedPath='', external=false, failOnce=false, cycle=false;
  function reindex(){tasks.clear();for(const [p,c] of disk){for(const [i,l]of c.split('\n').entries()){const parsed=parseTaskLine(l,i,p,DEFAULT_SETTINGS.keyMappings);if(parsed?.operonId)tasks.set(parsed.operonId,{...parsed,fieldValues:Object.fromEntries(parsed.fields.map(f=>[f.key,f.value])),primary:{format:'inline',filePath:p,lineNumber:i},tier:'hot',datetimeModified:''});}const doc=parseFrontmatterDocument(c,DEFAULT_SETTINGS.keyMappings);if(doc.managedFieldValues.operonId){const id=doc.managedFieldValues.operonId;tasks.set(id,{operonId:id,description:id,checkbox:'open',tags:[],fieldValues:doc.managedFieldValues,primary:{format:'yaml',filePath:p,lineNumber:0},tier:'hot',datetimeModified:''});}}}
- const app={vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>disk.get(f.path),cachedRead:async f=>disk.get(f.path),process:async(f,cb)=>{if(f.path===failedPath){if(external)disk.set('Target.md','User text');if(failOnce)failedPath='';throw Error('Injected write failure');}const next=cb(disk.get(f.path));calls.push(f.path);disk.set(f.path,next);const movedLine=next.split('\n').find(l=>l.includes('{{operonId:: moving1}}'));if(f.path==='Target.md'&&movedLine){const parsed=parseTaskLine(movedLine,0,f.path,DEFAULT_SETTINGS.keyMappings);probe.showRawTaskCreationNotices([{before:null,after:{...parsed,primary:{format:'inline',filePath:f.path,lineNumber:0}}}]);}return next;}}};
+ const app={metadataCache:{getFileCache:()=>({})},workspace:{getLeavesOfType:()=>[]},vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>disk.get(f.path),cachedRead:async f=>disk.get(f.path),process:async(f,cb)=>{if(f.path===failedPath){if(external)disk.set('Target.md','User text');if(failOnce)failedPath='';throw Error('Injected write failure');}const next=cb(disk.get(f.path));calls.push(f.path);disk.set(f.path,next);const movedLine=next.split('\n').find(l=>l.includes('{{operonId:: moving1}}'));if(f.path==='Target.md'&&movedLine){const parsed=parseTaskLine(movedLine,0,f.path,DEFAULT_SETTINGS.keyMappings);probe.showRawTaskCreationNotices([{before:null,after:{...parsed,primary:{format:'inline',filePath:f.path,lineNumber:0}}}]);}return next;}}};
  const indexer={getTask:id=>tasks.get(id),hasDuplicateOperonIdConflict:()=>false,isPathIndexable:()=>true,beginExpectedDuplicateOperonIdTransition:()=>()=>{},reindexFilesBatch:async()=>reindex(),reindexFilePath:async()=>reindex(),forceReindexFilePathAfterMutation:async()=>reindex(),scheduleReindex:()=>{},getAllTasks:()=>[...tasks.values()]};
  const probe=new Probe();Object.assign(probe,{app,indexer,settings:{...DEFAULT_SETTINGS,keepInlineTasksWithParent:true},storage:{repeatSeries:{getAllSeriesIds:()=>[],getEntry:()=>null}},
   wouldCreatePeriodicParentCycle:()=>cycle,persistTaskEditorDeleteOpenSources:async()=>true,
@@ -74,6 +75,25 @@ function fixture(source=line('moving1','parent1')+'\n- [ ] own\n'+line('child01'
 }
 let assertions=0;
 const check=(condition,label)=>{assert.ok(condition,label);assertions++;};
+for(const sourceDrawing of [false,true])for(const targetDrawing of [false,true])if(sourceDrawing||targetDrawing){
+ const suffix='\n%%\n# Excalidraw Data\n\n## Drawing\n~~~compressed-json\nopaque\n~~~\n%%';
+ const source=line('moving1','parent1')+'\n- [ ] own\n'+(sourceDrawing?suffix:'');
+ const destination='---\noperonId: parent1\n---\n'+(targetDrawing?suffix:'Parent body');
+ const f=fixture(source,destination),locks=[];
+ f.probe.app.metadataCache.getFileCache=file=>sourceDrawing&&file.path==='Source.md'||targetDrawing&&file.path==='Target.md'?{frontmatter:{'excalidraw-plugin':'parsed'}}:{};
+ const natives=[...(sourceDrawing?['Source.md']:[]),...(targetDrawing?['Target.md']:[])].map(path=>{
+  const v={file:f.probe.app.vault.getAbstractFileByPath(path),data:f.disk.get(path),preparedSaveText:f.disk.get(path),lastSavedData:f.disk.get(path),isSynchronizing:false,plugin:{},
+   isSameFileEditingActive:()=>false,saveCoordinator:{isSaveInProgress:false},excalidrawAPI:{getAppState:()=>({viewModeEnabled:false})},
+   acquireSynchronization:async()=>{locks.push(path);v.isSynchronizing=true;return true;},withPersistenceWriteLease:async(_,fn)=>fn()};return v;
+ });
+ f.probe.app.workspace.getLeavesOfType=()=>natives.map(view=>({view}));
+ check(await f.probe.updateDirectTaskFieldsAndRefresh('moving1',{priority:'High'}),'native coordinated parent placement '+sourceDrawing+targetDrawing);
+ check(f.tasks.get('moving1').primary.filePath==='Target.md','moved source follows same ID');
+ check(f.disk.get('Target.md').includes('## Backlog'),'parent heading created');
+ if(targetDrawing){check(f.disk.get('Target.md').indexOf('moving1')<f.disk.get('Target.md').indexOf('%%'),'task before native data');check(f.disk.get('Target.md').endsWith(suffix),'target scene unchanged');}
+ if(sourceDrawing)check(f.disk.get('Source.md').endsWith(suffix),'source scene unchanged');
+ assert.deepEqual(locks,[...locks].sort());for(const v of natives){check(v.data===f.disk.get(v.file.path),'native source adopted');check(!v.isSynchronizing,'native lease released');}
+}
 // Direct ordinary edit moves exactly one task and its own checkbox; child and ancestor edits stay put.
 {
  const f=fixture(undefined,line('parent1','grand01')+'\n- [ ] parent check');

@@ -1,3 +1,4 @@
+import { readExcalidrawMarkdownSections, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import { TFile, type App } from 'obsidian';
 import { isValidOperonId } from '../core/id-generator';
 
@@ -59,8 +60,8 @@ export const excalidrawTaskBody = (id: string): string => `\`\`\`operon\nview: c
 /** Inspect ordinary Markdown only; the scene suffix remains byte-for-byte intact. */
 export function excalidrawTaskReference(data: string, id: string): 'missing' | 'present' | 'conflict' {
  if (!isValidOperonId(id)) return 'conflict';
- const boundary = /^(?:%%(?:\r?\n)+)?# Excalidraw Data\r?$/m.exec(data);
- if (!boundary || data.slice(boundary.index + boundary[0].length).match(/^# Excalidraw Data\r?$/m)) return 'conflict';
+ let boundary: { index: number };
+ try { boundary = { index: readExcalidrawMarkdownSections(data).dataStart }; } catch { return 'conflict'; }
  const header = data.slice(0, boundary.index).replace(/\r\n/g, '\n');
  const title = `# ${excalidrawTaskHeading(id)}`;
  const lines = header.split('\n'), hits = lines.flatMap((line, index) => line === title ? [index] : []);
@@ -75,12 +76,10 @@ export function appendExcalidrawTaskReference(data: string, id: string): string 
  const state = excalidrawTaskReference(data, id);
  if (state === 'conflict') throw new Error('Invalid or conflicting task reference');
  if (state === 'present') return data;
- const boundary = /^(?:%%(?:\r?\n)+)?# Excalidraw Data\r?$/m.exec(data);
- if (!boundary) throw new Error('Missing drawing section');
+ const boundary = { index: readExcalidrawMarkdownSections(data).dataStart };
  const newline = data.includes('\r\n') ? '\r\n' : '\n';
  const section = `# ${excalidrawTaskHeading(id)}\n\n${excalidrawTaskBody(id)}\n\n`.replace(/\n/g, newline);
- const scaffold = /^# Markdown Images\r?$/m.exec(data.slice(0, boundary.index));
- const insertion = scaffold?.index ?? boundary.index;
+ const insertion = readExcalidrawMarkdownSections(data).imagesStart ?? boundary.index;
  return data.slice(0, insertion) + newline + section + data.slice(insertion);
 }
 export function isExcalidrawTaskLink(app: App, view: ExcalidrawTaskView, link: string | null | undefined, id: string): boolean {
@@ -102,6 +101,11 @@ export class ExcalidrawTaskSaveError extends Error {}
 
 /** Revalidate after awaits; native save may swallow errors, so verify persisted results. */
 export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }): Promise<void> {
+ const file = view.file;
+ if (!file) throw new Error('Drawing unavailable');
+ return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position));
+}
+async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }): Promise<void> {
  const file = view.file, path = file?.path;
  const current = () => !!file && view.file === file && file.path === path && allowed();
  if (!file || !current()) throw new Error('Drawing unavailable');

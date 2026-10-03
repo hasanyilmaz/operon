@@ -513,6 +513,7 @@ export class RepeatSeriesStore {
 		seriesId: string,
 		template: RepeatTemporalTemplate,
 		now: string,
+        canCommit?: () => boolean,
 	): Promise<void> {
 		await this.mutate(async () => {
 			const existing = this.data.series[seriesId];
@@ -521,7 +522,7 @@ export class RepeatSeriesStore {
 				...existing,
 				baseTemporalTemplate: cloneTemporalTemplate(template),
 				updatedAt: now,
-			});
+			}, canCommit);
 		});
 	}
 

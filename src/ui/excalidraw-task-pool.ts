@@ -108,7 +108,7 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
   button.style.display = action ? '' : 'none';
   button.disabled = this.fileBusy || !this.adapter.isCurrent() || !action || !!action.disabled;
   if (action && button.dataset.operonFileAction !== `${action.icon}|${action.label}`) {
-   cleanupOperonHoverTooltips(button); setIcon(button, action.icon); setAccessibleLabelWithoutTooltip(button, action.label);
+   cleanupOperonHoverTooltips(button); button.replaceChildren(); setIcon(button, action.icon); setAccessibleLabelWithoutTooltip(button, action.label);
    bindOperonHoverTooltip(button, { title: action.label, taskColor: null });
    button.dataset.operonFileAction = `${action.icon}|${action.label}`;
   }

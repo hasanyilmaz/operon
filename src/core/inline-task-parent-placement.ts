@@ -37,10 +37,36 @@ export interface InlineParentPlacementInput {
 	parentContent?: string;
 	keyMappings: KeyMapping[];
 	headingKeyword: string;
+	/** Opaque technical suffix boundaries, supplied only for drawing sources. */
+	bodyEndByPath?: ReadonlyMap<string, number>;
 }
 
 /** No I/O, relationship traversal, settings persistence, or mutation callbacks. */
 export function planInlineTaskParentPlacement(input: InlineParentPlacementInput): InlineParentPlacementPlan {
+	if (input.bodyEndByPath?.size) {
+		const originals = new Map([[input.task.primary.filePath, input.sourceContent]]);
+		if (input.parentTask && input.parentContent !== undefined && input.parentTask.primary.filePath !== input.task.primary.filePath) {
+			originals.set(input.parentTask.primary.filePath, input.parentContent);
+		}
+		const body = (path: string, content: string) => content.slice(0, input.bodyEndByPath?.get(path) ?? content.length);
+		const sourcePath = input.task.primary.filePath;
+		const boundary = input.bodyEndByPath.get(sourcePath);
+		const suffix = boundary === undefined ? '' : input.sourceContent.slice(boundary);
+		if (suffix && !input.updatedSourceContent.endsWith(suffix)) return { kind: 'blocked', reason: 'source-changed' };
+		const plan = planInlineTaskParentPlacement({ ...input, bodyEndByPath: undefined,
+			sourceContent: body(sourcePath, input.sourceContent),
+			updatedSourceContent: suffix ? input.updatedSourceContent.slice(0, -suffix.length) : input.updatedSourceContent,
+			...(input.parentTask && input.parentContent !== undefined ? { parentContent: body(input.parentTask.primary.filePath, input.parentContent) } : {}),
+		});
+		if (plan.kind !== 'move') return plan;
+		return { ...plan, writes: plan.writes.map(write => {
+			const original = originals.get(write.filePath)!;
+			const end = input.bodyEndByPath?.get(write.filePath);
+			const protectedText = end === undefined ? '' : original.slice(end);
+			return { ...write, expectedContent: original,
+				nextContent: write.nextContent + (protectedText && !write.nextContent.endsWith('\n') ? '\n' : '') + protectedText };
+		}) };
+	}
 	const { task, keyMappings } = input;
 	if (!input.enabled || task.primary.format !== 'inline') return { kind: 'not-needed' };
 	const sourcePath = task.primary.filePath;

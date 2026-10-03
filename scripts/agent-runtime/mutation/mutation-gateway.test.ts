@@ -148,6 +148,23 @@ test('automatic reconcile try-lock cannot overlap a Runtime vault mutation', asy
 	);
 });
 
+test('vault mutation lease reenters only while its exact object is owned', async () => {
+ const hash = 'e'.repeat(64);
+ let previousLease: Parameters<typeof withRuntimeVaultMutationLockV1>[2];
+ for (const mode of ['forged', 'expired'] as const) {
+  let queued: Promise<void> | undefined, queuedEntered = false;
+  await withRuntimeVaultMutationLockV1(hash, async lease => {
+   assert.equal(await withRuntimeVaultMutationLockV1(hash, async () => 'owned', lease), 'owned');
+   const unowned = mode === 'forged' ? { vaultIdentityHash: hash } : previousLease;
+   queued = withRuntimeVaultMutationLockV1(hash, async () => { queuedEntered = true; }, unowned);
+   await Promise.resolve(); await Promise.resolve();
+   assert.equal(queuedEntered, false, mode + ' lease must wait');
+   previousLease = lease;
+  });
+  await queued; assert.equal(queuedEntered, true);
+ }
+});
+
 test('Runtime admission preserves the contract tag-count boundary', () => {
 	const maximumTags = Array.from({ length: 512 }, (_, index) => `tag-${index}`);
 	const accepted = structuredClone(request);
@@ -4960,7 +4977,8 @@ test('Task Editor parent delete forward-completes a detached-child prefix from i
 			await checkpoint({ phase: 'committing', completedStepCount: 1 });
 			throw new Error('simulated interruption before parent deletion');
 		},
-		recoverMutationTransaction: async (_request, recoveryJournal, checkpoint) => {
+		recoverMutationTransaction: async (_request, recoveryJournal, checkpoint, policy) => {
+			assert.equal(policy, internalPolicy);
 			events.push('delete-parent');
 			assert.equal(recoveryJournal.completedStepCount, 1);
 			await checkpoint({ phase: 'committing', completedStepCount: 2 });

@@ -19,7 +19,7 @@ export class ExcalidrawTaskIntegration extends Component {
  constructor(private deps: { app: App; cards: TaskCardEmbeds; openFinder(select: (id: string) => void | Promise<void>): void;
   fileAction?(file: TFile, readOnly: boolean): ExcalidrawFileAction | null;
   propertyValuePool?: CanvasPropertyValuePoolPreferences;
-  openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>): void }) { super(); }
+  openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>, view?: ExcalidrawTaskView): void }) { super(); }
  onload(): void {
   this.active = true;
   this.register(this.deps.cards.onRefresh(() => { for (const pool of this.pools.values()) pool.refreshFileAction(); }));
@@ -103,26 +103,34 @@ export class ExcalidrawTaskIntegration extends Component {
  }
  create(checking: boolean, target?: ExcalidrawTaskView, position?: { x: number; y: number }): boolean {
   const view = target ?? readExcalidrawTaskView(this.deps.app, this.deps.app.workspace.getActiveViewOfType(ItemView));
-  if (!view || !this.isCurrent(view) || this.pending || !this.deps.openCreator) return false;
+  if (!view || !this.isCurrent(view) || view.excalidrawAPI.getAppState().viewModeEnabled !== false || this.pending || !this.deps.openCreator) return false;
   if (checking) return true;
+  const context = this.captureCreation(view, position, true);
+  if (!context) return false;
+  this.deps.openCreator(context.allowed, context.created, view);
+  return true;
+ }
+ captureCreation(target?: ExcalidrawTaskView, position?: { x: number; y: number }, notify = false): { view: ExcalidrawTaskView; file: NonNullable<ExcalidrawTaskView['file']>; allowed: () => boolean; created: (id: string) => Promise<void> } | null {
+  const view = target ?? readExcalidrawTaskView(this.deps.app, this.deps.app.workspace.getActiveViewOfType(ItemView));
+  if (!view || !this.isCurrent(view) || this.pending) return null;
   const file = view.file!, path = file.path;
   let point = position;
   if (!point) {
    try { const ea = view.plugin.ea.getAPI(view); try { point = ea.getViewCenterPosition() ?? undefined; } finally { ea?.destroy?.(); } }
-   catch { new Notice(t('notifications', 'excalidrawTaskUnavailable')); return false; }
+   catch { if (notify) new Notice(t('notifications', 'excalidrawTaskUnavailable')); return null; }
   }
-  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) { new Notice(t('notifications', 'excalidrawTaskUnavailable')); return false; }
-  const captured = { ...point }, allowed = () => this.isCurrent(view) && view.file === file && file.path === path;
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) { if (notify) new Notice(t('notifications', 'excalidrawTaskUnavailable')); return null; }
+  const captured = { ...point }, allowed = () => this.isCurrent(view) && view.file === file && file.path === path && view.excalidrawAPI.getAppState().viewModeEnabled === false;
   let consumed = false;
-  this.deps.openCreator(allowed, async id => {
+  const created = async (id: string) => {
    if (consumed) return; consumed = true;
    if (this.pending || !this.isCurrent(view) || !allowed() || this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); return; }
    this.pending = true;
    try { await insertExcalidrawTask(this.deps.app, view, id, () => allowed() && this.deps.cards.resolve(id).state === 'ready', captured); }
    catch { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); }
    finally { this.pending = false; }
-  });
-  return true;
+  };
+  return { view, file, allowed, created };
  }
  open(checking: boolean): boolean {
   const { app, cards } = this.deps;

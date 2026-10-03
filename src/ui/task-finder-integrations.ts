@@ -1,3 +1,4 @@
+import { commitInlineParentPlacementWrites } from '../systems/inline-parent-placement-transaction';
 import { App, Editor, MarkdownView, Notice, TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
@@ -22,6 +23,8 @@ export interface MoveInlineTaskHereDependencies {
 	withDuplicateConflictAutoOpenSuppressed: <T>(operation: () => Promise<T>) => Promise<T>;
 	refreshViews: () => void;
 	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	withTaskSources?: (paths: readonly string[], allowed: () => boolean,
+		operation: (write: (path: string, expected: string, next: string, guard: () => boolean) => Promise<boolean>, current: () => boolean) => Promise<boolean>) => Promise<boolean>;
 }
 
 type InlineTaskLineMatch = {
@@ -164,57 +167,65 @@ export async function moveInlineTaskToEditorLine(
 	targetFilePath: string,
 	targetLineNumber: number,
 ): Promise<boolean> {
-	if (task.primary.format !== 'inline') {
-		new Notice(t('notifications', 'moveInlineTaskRequiresInlineSource'));
-		return false;
+	if (task.primary.format !== 'inline') { new Notice(t('notifications', 'moveInlineTaskRequiresInlineSource')); return false; }
+	if (targetLineNumber < 0 || targetLineNumber > editor.lastLine() || editor.getLine(targetLineNumber).trim()) {
+		new Notice(t('notifications', 'moveInlineTaskTargetRequiresBlankLine')); return false;
 	}
-	if (targetLineNumber < 0 || targetLineNumber > editor.lastLine()) {
-		new Notice(t('notifications', 'moveInlineTaskTargetRequiresBlankLine'));
-		return false;
-	}
-	if (editor.getLine(targetLineNumber).trim()) {
-		new Notice(t('notifications', 'moveInlineTaskTargetRequiresBlankLine'));
-		return false;
-	}
-
-	const sourceFilePath = task.primary.filePath;
-	return await deps.withDuplicateConflictAutoOpenSuppressed(async () => {
-		if (sourceFilePath === targetFilePath) {
-			const source = findInlineTaskLineInEditor(deps, editor, sourceFilePath, task.operonId, task.primary.lineNumber);
-			if (!source || source.lineNumber === targetLineNumber) {
-				new Notice(t('notifications', 'moveInlineTaskFailed'));
-				return false;
-			}
-			editor.setLine(targetLineNumber, source.lineText);
-			editor.setLine(source.lineNumber, '');
-			await persistMarkdownViewAndReindex(view, targetFilePath, deps.indexer);
-			new Notice(t('notifications', 'inlineTaskMovedHere'));
-			deps.refreshViews();
-			return true;
-		}
-
+	const sourceFilePath = task.primary.filePath, targetFile = view.file;
+	const allowed = () => view.file === targetFile && view.file?.path === targetFilePath;
+	await persistMarkdownViewBuffer(view);
+	const operation = async (write: (path: string, expected: string, next: string, guard: () => boolean) => Promise<boolean>, current: () => boolean) => {
+		if (!current() || editor.getLine(targetLineNumber).trim()) return false;
+		const sameFile = sourceFilePath === targetFilePath;
 		const sourceFile = deps.app.vault.getAbstractFileByPath(sourceFilePath);
-		if (!(sourceFile instanceof TFile)) {
-			new Notice(t('notifications', 'moveInlineTaskFailed'));
-			return false;
-		}
-
-		const sourceContent = await deps.app.vault.cachedRead(sourceFile);
-		const source = findInlineTaskLineInContent(deps, sourceContent, sourceFilePath, task.operonId, task.primary.lineNumber);
-		if (!source?.lines) {
-			new Notice(t('notifications', 'moveInlineTaskFailed'));
-			return false;
-		}
-
-		editor.setLine(targetLineNumber, source.lineText);
-		await persistMarkdownViewBuffer(view);
-		source.lines[source.lineNumber] = '';
-		await deps.app.vault.modify(sourceFile, source.lines.join('\n'));
-		await deps.indexer.reindexFilesBatch([targetFilePath, sourceFilePath]);
-		new Notice(t('notifications', 'inlineTaskMovedHere'));
-		deps.refreshViews();
-		return true;
-	});
+		if (!(sourceFile instanceof TFile)) return false;
+		const targetBefore = editor.getValue();
+		const sourceBefore = sameFile ? targetBefore : await deps.app.vault.read(sourceFile);
+		const source = findInlineTaskLineInContent(deps, sourceBefore, sourceFilePath, task.operonId, task.primary.lineNumber);
+		if (!source?.lines || sameFile && source.lineNumber === targetLineNumber || !current()) return false;
+		const targetLines = targetBefore.split('\n');
+		targetLines[targetLineNumber] = source.lineText;
+		if (sameFile) targetLines[source.lineNumber] = '';
+		else source.lines[source.lineNumber] = '';
+		const writes = [{ filePath: targetFilePath, expectedContent: targetBefore, nextContent: targetLines.join('\n') },
+			...(sameFile ? [] : [{ filePath: sourceFilePath, expectedContent: sourceBefore, nextContent: source.lines.join('\n') }])];
+		const release = deps.indexer.beginExpectedDuplicateOperonIdTransition(task.operonId, [task.primary,
+			{ filePath: targetFilePath, format: 'inline', lineNumber: targetLineNumber }]);
+		try {
+			const outcome = await commitInlineParentPlacementWrites(writes, {
+				read: async path => {
+					const file = deps.app.vault.getAbstractFileByPath(path);
+					if (!(file instanceof TFile)) throw new Error('The task source is unavailable.');
+					return deps.app.vault.read(file);
+				},
+				buffersMatch: (path, content) => path !== targetFilePath || allowed() && editor.getValue() === content,
+				write,
+				synchronize: (path, before, after) => {
+					if (path !== targetFilePath) return true;
+					if (!allowed() || editor.getValue() !== before && editor.getValue() !== after) return false;
+					if (editor.getValue() !== after) editor.setValue(after);
+					return true;
+				},
+				canCommit: current,
+			});
+			await deps.indexer.reindexFilesBatch([targetFilePath, sourceFilePath]);
+			deps.refreshViews();
+			if (outcome !== 'committed') { new Notice(t('notifications', 'moveInlineTaskFailed')); return false; }
+			new Notice(t('notifications', 'inlineTaskMovedHere')); return true;
+		} finally { release(); }
+	};
+	return deps.withDuplicateConflictAutoOpenSuppressed(() => deps.withTaskSources
+		? deps.withTaskSources([sourceFilePath, targetFilePath], allowed, operation)
+		: operation(async (path, expected, next, guard) => {
+			const file = deps.app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile) || !guard()) return false;
+			let committed = false;
+			await deps.app.vault.process(file, content => {
+				if (content !== expected || !guard()) return content;
+				committed = true; return next;
+			});
+			return committed;
+		}, allowed));
 }
 
 async function persistMarkdownViewBuffer(view: MarkdownView): Promise<void> {
@@ -222,42 +233,6 @@ async function persistMarkdownViewBuffer(view: MarkdownView): Promise<void> {
 	if (typeof savableView.save === 'function') {
 		await savableView.save();
 	}
-}
-
-async function persistMarkdownViewAndReindex(
-	view: MarkdownView,
-	filePath: string,
-	indexer: OperonIndexer,
-): Promise<void> {
-	if (view.file?.path === filePath) {
-		await persistMarkdownViewBuffer(view);
-	}
-	await indexer.reindexFilePath(filePath);
-}
-
-function findInlineTaskLineInEditor(
-	deps: MoveInlineTaskHereDependencies,
-	editor: Editor,
-	filePath: string,
-	operonId: string,
-	lineHint: number,
-): InlineTaskLineMatch | null {
-	if (lineHint >= 0 && lineHint <= editor.lastLine()) {
-		const lineText = editor.getLine(lineHint);
-		const hinted = deps.parseInlineTaskLine(lineText, lineHint, filePath);
-		if (hinted?.operonId === operonId) {
-			return { lineNumber: lineHint, lineText };
-		}
-	}
-
-	for (let i = 0; i <= editor.lastLine(); i++) {
-		const lineText = editor.getLine(i);
-		const parsed = deps.parseInlineTaskLine(lineText, i, filePath);
-		if (parsed?.operonId === operonId) {
-			return { lineNumber: i, lineText };
-		}
-	}
-	return null;
 }
 
 function findInlineTaskLineInContent(

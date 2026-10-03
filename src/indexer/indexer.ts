@@ -2654,6 +2654,10 @@ export class OperonIndexer {
 		return this.duplicateConflicts.has(operonId);
 	}
 
+	isTaskSourceTransitionActive(operonId: string): boolean {
+		return this.expectedDuplicateTransitionInstances.has(operonId);
+	}
+
 	beginExpectedDuplicateOperonIdTransition(operonId: string, locations: TaskLocation[]): () => void {
 		const normalizedOperonId = operonId.trim();
 		if (!normalizedOperonId || locations.length === 0) return () => {};
@@ -2683,14 +2687,14 @@ export class OperonIndexer {
 			if (activeCounts.size === 0) {
 				this.expectedDuplicateTransitionInstances.delete(normalizedOperonId);
 			}
-			this.reconcileExpectedDuplicateTransition(normalizedOperonId);
+			this.reconcileExpectedDuplicateTransition(normalizedOperonId, activeCounts.size === 0);
 		};
 	}
 
-	private reconcileExpectedDuplicateTransition(operonId: string): void {
+	private reconcileExpectedDuplicateTransition(operonId: string, transitionEnded = false): void {
 		const hadConflict = this.duplicateConflicts.has(operonId);
 		this.reconcileOperonId(operonId);
-		if (hadConflict === this.duplicateConflicts.has(operonId)) return;
+		if (hadConflict === this.duplicateConflicts.has(operonId) && !transitionEnded) return;
 		this.generation += 1;
 		this.emitIncrementalReconciliation([operonId]);
 	}
