@@ -1,11 +1,11 @@
 import { ExcalidrawPropertyPool } from './excalidraw-property-pool';
 import type { CanvasPropertyValuePoolPreferences } from './surface-property-value-pool';
 import { bindExcalidrawPoolTheme } from './excalidraw-pool-theme';
-import { ExcalidrawTaskPool, excalidrawPoolScenePoint } from './excalidraw-task-pool';
+import { ExcalidrawTaskPool, excalidrawPoolScenePoint, type ExcalidrawFileAction } from './excalidraw-task-pool';
 import type { TaskPoolTarget } from './surface-task-pool';
 import { bindExcalidrawCreationMenu } from './excalidraw-task-menu';
 import type { ExcalidrawTaskView } from './excalidraw-task-bridge';
-import { Component, ItemView, Notice, type App } from 'obsidian';
+import { Component, ItemView, Notice, type App, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import type { TaskCardEmbeds } from './task-card-embed';
 import { ExcalidrawTaskSaveError, insertExcalidrawTask, readExcalidrawTaskView } from './excalidraw-task-bridge';
@@ -17,10 +17,12 @@ export class ExcalidrawTaskIntegration extends Component {
  private menus = new Map<ExcalidrawTaskView, () => void>();
  private unsupported = new WeakSet<ExcalidrawTaskView>();
  constructor(private deps: { app: App; cards: TaskCardEmbeds; openFinder(select: (id: string) => void | Promise<void>): void;
+  fileAction?(file: TFile, readOnly: boolean): ExcalidrawFileAction | null;
   propertyValuePool?: CanvasPropertyValuePoolPreferences;
   openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>): void }) { super(); }
  onload(): void {
   this.active = true;
+  this.register(this.deps.cards.onRefresh(() => { for (const pool of this.pools.values()) pool.refreshFileAction(); }));
   const workspace = this.deps.app.workspace;
   if (typeof workspace.on === 'function') {
    this.registerEvent(workspace.on('layout-change', () => this.sync()));
@@ -71,7 +73,7 @@ export class ExcalidrawTaskIntegration extends Component {
      || hit.closest('button, input, textarea, select, a, .Island, .App-menu, .App-toolbar, .layer-ui__wrapper, .context-menu, .embeddable-menu, .operon-canvas-task-pool, .operon-canvas-property-pool, .operon-floating-panel')) return null;
     return excalidrawPoolScenePoint(view.excalidrawAPI.getAppState(), point);
    },
-  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined);
+  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined, this.deps.fileAction ? () => view.file && this.isAvailable(view) ? this.deps.fileAction!(view.file, !this.isCurrent(view)) : null : undefined);
   this.pools.set(view, pool); this.addChild(pool);
  }
  openPool(checking: boolean, kind: 'task' | 'property' = 'task'): boolean {

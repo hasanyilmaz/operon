@@ -16624,6 +16624,27 @@ export default class OperonPlugin extends Plugin {
 		this.addChild(this.canvasTaskIntegration);
   this.excalidrawTaskIntegration = new ExcalidrawTaskIntegration({
    propertyValuePool,
+   fileAction: (file, readOnly) => {
+    const task = this.indexer.getFileTaskByPath(file.path);
+    if (!task) return { icon: 'list-chevrons-up-down', label: t('contextMenu', 'convertToOperonFileTask'), disabled: readOnly,
+     run: () => this.openNativeFileTaskConversionPicker(file) };
+    const template = normalizeDynamicFileTaskFilterSet(this.settings.filterSets.find(isDynamicFileTaskFilterSet) ?? null);
+    return { icon: template.icon?.trim() || 'filter', label: template.name, disabled: this.indexer.hasDuplicateOperonIdConflict(task.operonId), run: () => {
+     if (this.indexer.getFileTaskByPath(file.path)?.operonId !== task.operonId || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return;
+     this.subtasksFilterModal?.close();
+     const deps = this.buildFilterSurfaceDeps();
+     const modal = new SubtasksFilterModal(this.app, { parentTaskId: task.operonId,
+      fileTaskPath: () => {
+       const current = this.indexer.getTask(task.operonId);
+       return current?.primary.format === 'yaml' && !this.indexer.hasDuplicateOperonIdConflict(task.operonId) ? current.primary.filePath : '';
+      }, title: template.name,
+      deps: { ...deps, getSettings: () => ({ ...this.settings, dynamicFileTaskFilterEnabled: true }) },
+      onEditFilter: filter => this.openDynamicFileTaskFilterSettings(filter),
+      onClose: () => { if (this.subtasksFilterModal === modal) this.subtasksFilterModal = null; },
+     });
+     this.subtasksFilterModal = modal; modal.open();
+    } };
+   },
    openCreator: (allowed, created) => this.openSurfaceTaskCreator('', allowed, created, undefined, true, true),
    app: this.app, cards: this.taskCardEmbeds,
    openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {

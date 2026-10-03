@@ -6,12 +6,14 @@ import {
 	createFilterSurfaceInstance,
 	destroyFilterSurfaceInstance,
 } from './embed-filter-processor';
-import { renderSubtasksFilterSurface } from './dynamic-file-task-filter';
+import { renderSubtasksFilterSurface, renderDynamicFileTaskFilterSurface } from './dynamic-file-task-filter';
 
 const SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS = 'operon-subtasks-filter-modal-open';
 
 export interface SubtasksFilterModalOptions {
 	parentTaskId: string;
+	fileTaskPath?: () => string;
+	title?: string;
 	deps: EmbedFilterDeps;
 	onEditFilter?: (template: FilterSet) => void;
 	onClose?: () => void;
@@ -43,7 +45,7 @@ export class SubtasksFilterModal extends Modal {
 			this.updateMobileViewportHeight();
 		}
 		this.titleEl.addClass('operon-subtasks-filter-title');
-		this.titleEl.setText(t('filterSets', 'dynamicSubtasksFilterTitle'));
+		this.titleEl.setText(this.options.title ?? t('filterSets', 'dynamicSubtasksFilterTitle'));
 
 		this.contentEl.empty();
 		this.rootEl = this.contentEl.createDiv('operon-subtasks-filter');
@@ -67,7 +69,7 @@ export class SubtasksFilterModal extends Modal {
 
 	refresh(): void {
 		if (!this.instance) return;
-		const rendered = renderSubtasksFilterSurface(
+		const rendered = this.options.fileTaskPath ? renderDynamicFileTaskFilterSurface(this.instance, this.options.fileTaskPath(), this.options.deps, this.options.onEditFilter) : renderSubtasksFilterSurface(
 			this.instance,
 			this.options.parentTaskId,
 			this.options.deps,
