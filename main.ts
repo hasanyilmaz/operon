@@ -16629,7 +16629,10 @@ export default class OperonPlugin extends Plugin {
     if (!task) return { icon: 'list-chevrons-up-down', label: t('contextMenu', 'convertToOperonFileTask'), disabled: readOnly,
      run: () => this.openNativeFileTaskConversionPicker(file) };
     const template = normalizeDynamicFileTaskFilterSet(this.settings.filterSets.find(isDynamicFileTaskFilterSet) ?? null);
-    return { icon: template.icon?.trim() || 'filter', label: template.name, disabled: this.indexer.hasDuplicateOperonIdConflict(task.operonId), run: () => {
+    return { icon: template.icon?.trim() || 'filter', label: template.name, disabled: this.indexer.hasDuplicateOperonIdConflict(task.operonId),
+     editor: { icon: 'settings-2', label: t('tooltips', 'editTask'), disabled: readOnly || this.indexer.hasDuplicateOperonIdConflict(task.operonId), run: () => {
+      if (this.indexer.getFileTaskByPath(file.path)?.operonId === task.operonId && !this.indexer.hasDuplicateOperonIdConflict(task.operonId)) this.openEditorForId(task.operonId);
+     } }, run: () => {
      if (this.indexer.getFileTaskByPath(file.path)?.operonId !== task.operonId || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return;
      this.subtasksFilterModal?.close();
      const deps = this.buildFilterSurfaceDeps();

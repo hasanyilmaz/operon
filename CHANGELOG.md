@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Excalidraw Property Pool** to update existing task cards by dragging property values, with shared Canvas favorites and shortcuts and panels that follow each drawing’s light or dark mode.
 
+- Added an **Excalidraw file task shortcut** that converts the drawing into an Operon file task or opens its dynamic filter using the configured filter icon.
+
 ### Fixed
 
 - Removed expensive CSS selectors from **Settings** while preserving control alignment and multiline editor layouts.

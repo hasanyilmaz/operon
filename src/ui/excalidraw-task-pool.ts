@@ -6,7 +6,7 @@ import { t } from '../core/i18n';
 import { SurfaceTaskPool, type TaskPoolPoint, type TaskPoolSurface, type TaskPoolTarget } from './surface-task-pool';
 import type { ExcalidrawTaskAPI, ExcalidrawTaskState, ExcalidrawTaskView } from './excalidraw-task-bridge';
 
-export interface ExcalidrawFileAction { icon: string; label: string; disabled?: boolean; run(): void | Promise<void>; }
+export interface ExcalidrawFileAction { icon: string; label: string; disabled?: boolean; editor?: ExcalidrawFileAction; run(): void | Promise<void>; }
 
 type ToolbarRenderer = (...args: unknown[]) => unknown;
 type ToolbarView = ExcalidrawTaskView & {
@@ -25,7 +25,7 @@ export function excalidrawPoolScenePoint(state: ExcalidrawTaskState, point: Task
 
 /** Keep native controls and React ownership intact, including wrappers added after ours. */
 export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () => boolean,
- mount: (button: HTMLButtonElement | null) => void, unsupported: () => void, mountProperty?: (button: HTMLButtonElement | null) => void, mountFile?: (button: HTMLButtonElement | null) => void): (() => void) | null {
+ mount: (button: HTMLButtonElement | null) => void, unsupported: () => void, mountProperty?: (button: HTMLButtonElement | null) => void, mountFile?: (button: HTMLButtonElement | null) => void, mountEditor?: (button: HTMLButtonElement | null) => void): (() => void) | null {
  const native = view as Partial<ToolbarView>, original = native.renderTopRightUI;
  if (typeof original !== 'function') return null;
  const descriptor = Object.getOwnPropertyDescriptor(view, 'renderTopRightUI');
@@ -33,6 +33,7 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
  const ref = (button: HTMLButtonElement | null) => { if (active) mount(button); };
  const propertyRef = (button: HTMLButtonElement | null) => { if (active) mountProperty?.(button); };
  const fileRef = (button: HTMLButtonElement | null) => { if (active) mountFile?.(button); };
+ const editorRef = (button: HTMLButtonElement | null) => { if (active) mountEditor?.(button); };
  const wrapper: ToolbarRenderer = function(...args) {
   const output: unknown = original.apply(view, args);
   if (!active || !ready()) return output;
@@ -41,10 +42,11 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
   return react.createElement(react.Fragment, null, output,
    react.createElement('button', { key: 'operon-task-pool', ref, type: 'button', className: 'operon-excalidraw-task-pool-button' }),
    ...(mountProperty ? [react.createElement('button', { key: 'operon-property-pool', ref: propertyRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-property-pool-button' })] : []),
-   ...(mountFile ? [react.createElement('button', { key: 'operon-file-task', ref: fileRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-file-task-button' })] : []));
+   ...(mountFile ? [react.createElement('button', { key: 'operon-file-task', ref: fileRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-file-task-button' })] : []),
+   ...(mountEditor ? [react.createElement('button', { key: 'operon-file-task-editor', ref: editorRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-file-task-editor-button' })] : []));
  };
  try { native.renderTopRightUI = wrapper; } catch { return null; }
- return () => { active = false; mount(null); mountProperty?.(null); mountFile?.(null);
+ return () => { active = false; mount(null); mountProperty?.(null); mountFile?.(null); mountEditor?.(null);
   if (native.renderTopRightUI === wrapper) {
    if (descriptor) Object.defineProperty(view, 'renderTopRightUI', descriptor); else Reflect.deleteProperty(view, 'renderTopRightUI');
   }
@@ -53,6 +55,7 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
 
 export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPool<T> {
  private fileButton: HTMLButtonElement | null = null;
+ private editorButton: HTMLButtonElement | null = null;
  private fileBusy = false;
  private toolbar: (() => void) | null = null;
  private stopScene: (() => void) | null = null;
@@ -67,33 +70,41 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
   this.toolbar = bindExcalidrawPoolToolbar(this.view, () => this.adapter.isCurrent(), button => {
    this.setButton(button);
    if (button) { this.sync(); if (this.pendingShow) { const allowed = this.pendingShow; this.pendingShow = null; if (allowed()) super.show(); } }
-  }, this.warn, this.propertyPool ? button => this.propertyPool!.setButton(button) : undefined, this.fileAction ? button => this.setFileButton(button) : undefined);
+  }, this.warn, this.propertyPool ? button => this.propertyPool!.setButton(button) : undefined, this.fileAction ? button => this.setFileButton(button) : undefined, this.fileAction ? button => this.setFileButton(button, true) : undefined);
   if (!this.toolbar) this.warn();
   else this.view.excalidrawAPI?.refresh?.();
  }
- private setFileButton(button: HTMLButtonElement | null): void {
-  if (this.fileButton === button) return;
-  if (this.fileButton) { cleanupOperonHoverTooltips(this.fileButton); this.fileButton.onclick = null; delete this.fileButton.dataset.operonFileAction; }
-  this.fileButton = button;
+ private setFileButton(button: HTMLButtonElement | null, editor = false): void {
+  const previous = editor ? this.editorButton : this.fileButton;
+  if (previous === button) return;
+  if (previous) { cleanupOperonHoverTooltips(previous); previous.onclick = null; delete previous.dataset.operonFileAction; }
+  if (editor) this.editorButton = button; else this.fileButton = button;
   if (button) button.onclick = event => {
    event.preventDefault(); event.stopPropagation();
    if (!this.live || !this.adapter.isCurrent() || this.fileBusy) return;
-   const action = this.fileAction?.();
+   const action = this.resolveFileAction(editor);
    if (!action || action.disabled) return;
    const file = this.adapter.file();
    this.fileBusy = true; this.refreshFileAction();
    void Promise.resolve().then(() => {
-    const current = this.fileAction?.();
+    const current = this.resolveFileAction(editor);
     if (this.live && this.adapter.isCurrent() && this.adapter.file() === file && current && !current.disabled) return current.run();
    }).catch(() => new Notice(t('notifications', 'nativeFileTaskConversionUnavailable')))
     .finally(() => { this.fileBusy = false; if (this.live) this.refreshFileAction(); });
   };
   this.refreshFileAction();
  }
- refreshFileAction(): void {
-  const button = this.fileButton;
-  if (!button) return;
+ private resolveFileAction(editor: boolean): ExcalidrawFileAction | null {
   const action = this.fileAction?.();
+  return (editor ? action?.editor : action) ?? null;
+ }
+ refreshFileAction(): void {
+  this.refreshFileButton(this.fileButton, false);
+  this.refreshFileButton(this.editorButton, true);
+ }
+ private refreshFileButton(button: HTMLButtonElement | null, editor: boolean): void {
+  if (!button) return;
+  const action = this.resolveFileAction(editor);
   button.style.display = action ? '' : 'none';
   button.disabled = this.fileBusy || !this.adapter.isCurrent() || !action || !!action.disabled;
   if (action && button.dataset.operonFileAction !== `${action.icon}|${action.label}`) {
