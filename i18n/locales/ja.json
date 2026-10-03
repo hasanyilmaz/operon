@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "ExcalidrawタスクプールのコントロールAPIを利用できません。",
+		"excalidrawTaskCleanupDeferred": "Excalidraw カードの自動クリーンアップを完了できませんでした。タスクの変更は保持されています。",
 		"excalidrawTaskSaveFailed": "保存を確認できませんでした。カードを再追加する前に図面を確認してください。",
 		"excalidrawMenuUnavailable": "ExcalidrawのメニューAPIを利用できません。作成コマンドを使用してください。",
 		"excalidrawTaskCreatedUnbound": "タスクは保存された可能性がありますが、カードを確認できませんでした。再試行の前にソースを確認し、存在する場合は既存タスクとしてExcalidrawに追加してください。",

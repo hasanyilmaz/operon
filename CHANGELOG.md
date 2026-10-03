@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **Excalidraw task cards** to create or display Operon tasks with native frames, automatic height, editable fields, full task menus, and independent menu preferences while keeping tasks in their Markdown sources.
+- Added **Excalidraw task cards** to create or display Operon tasks with native frames and task colors, automatic height, editable fields, full task menus, and independent menu preferences while keeping tasks in their Markdown sources. Clicking an empty area of an active card opens Task Editor.
 
 - Added **inline tasks in Excalidraw Markdown**, using normal task creation and parent rules, with automatic task cards and task headings placed before drawing data.
 
@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Excalidraw Property Pool** to update existing task cards by dragging property values, with shared Canvas favorites and shortcuts and panels that follow each drawing’s light or dark mode.
 
-- Added an **Excalidraw file task shortcut** that converts the drawing into an Operon file task or opens its dynamic filter using the configured filter icon.
+- Added an **Excalidraw file task shortcut** that converts the drawing into an Operon file task or opens its dynamic filter using the configured filter icon, with a separate Task Editor shortcut for file task drawings.
+
+### Improved
+
+- **Excalidraw task cards** keep their position and style when tasks are moved, renamed, or converted between inline and file tasks, while their controls follow the current source.
 
 ### Fixed
 
@@ -25,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, and code review passed, along with **4,097/4,097** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **4,271/4,271** local regression tests.
 
 ## [3.11.0] - 2026-10-01
 

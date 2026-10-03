@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "API управления пулом задач Excalidraw недоступен.",
+		"excalidrawTaskCleanupDeferred": "Не удалось завершить автоматическую очистку карточек Excalidraw. Изменение задачи сохранено.",
 		"excalidrawTaskSaveFailed": "Не удалось подтвердить сохранение. Проверьте рисунок, прежде чем добавлять карточку повторно.",
 		"excalidrawMenuUnavailable": "API меню Excalidraw недоступен. Используйте команду создания.",
 		"excalidrawTaskCreatedUnbound": "Задача могла сохраниться, но карточку подтвердить не удалось. Проверьте источник перед повторной попыткой; если задача существует, добавьте её в Excalidraw как существующую.",

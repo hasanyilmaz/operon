@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "A API de controle do conjunto de tarefas do Excalidraw está indisponível.",
+		"excalidrawTaskCleanupDeferred": "Não foi possível concluir a limpeza automática dos cartões do Excalidraw. A alteração da tarefa foi mantida.",
 		"excalidrawTaskSaveFailed": "Não foi possível verificar o salvamento. Confira o desenho antes de adicionar o cartão novamente.",
 		"excalidrawMenuUnavailable": "A API de menu do Excalidraw está indisponível. Use o comando de criação.",
 		"excalidrawTaskCreatedUnbound": "A tarefa pode ter sido salva, mas o cartão não pôde ser confirmado. Confira a origem antes de tentar novamente; se existir, adicione a tarefa existente ao Excalidraw.",

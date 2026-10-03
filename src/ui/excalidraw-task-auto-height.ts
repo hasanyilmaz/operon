@@ -1,3 +1,5 @@
+import { serializeExcalidrawSource } from './excalidraw-markdown-source';
+import type { App } from 'obsidian';
 import { isExcalidrawTaskStrokeEditing } from './excalidraw-task-colors';
 import { Notice } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
@@ -56,7 +58,7 @@ export class ExcalidrawTaskAutoHeight {
  private observer: ResizeObserver | null = null;
  private cleanup: (() => void)[] = [];
  constructor(private root: HTMLElement, private container: HTMLElement, private view: ExcalidrawTaskView,
-  private id: string, private allowed: () => boolean) {
+  private id: string, private allowed: () => boolean, private app?: App) {
   const win = getOwnerWindow(root) as Window & { ResizeObserver: typeof ResizeObserver };
   const card = root.querySelector('.operon-task-card');
   if (typeof win.ResizeObserver === 'function' && card) {
@@ -86,7 +88,13 @@ export class ExcalidrawTaskAutoHeight {
    if (!this.active || this.pointers.size > 0) return;
    this.dirty = false; this.busy = true;
    const previous = queues.get(this.view) ?? Promise.resolve();
-   const job = previous.then(() => this.fit()).catch(() => {
+   const job = previous.then(() => {
+    const file = this.view.file, path = file?.path;
+    return this.app && file ? serializeExcalidrawSource(this.app, file, () => {
+     if (this.view.file !== file || file.path !== path) { this.dirty = true; return Promise.resolve(); }
+     return this.fit();
+    }) : this.fit();
+   }).catch(() => {
     if (this.active && !failed.has(this.view)) { failed.add(this.view); new Notice(t('notifications', 'excalidrawTaskSaveFailed')); }
    }).finally(() => { this.busy = false; if (this.dirty) this.schedule(); });
    queues.set(this.view, job);

@@ -4,6 +4,7 @@ import { isValidOperonId } from '../core/id-generator';
 
 /** Narrow, feature-detected bridge to the optional Excalidraw plugin. */
 export interface ExcalidrawTaskElement {
+ [key: string]: unknown;
  id: string; type: string; strokeColor?: string; x?: number; y?: number; width?: number; height?: number; angle?: number; scale?: readonly number[]; link?: string | null; isDeleted?: boolean; locked?: boolean;
 }
 export interface ExcalidrawTaskState {
@@ -13,6 +14,9 @@ export interface ExcalidrawTaskState {
 }
 export interface ExcalidrawTaskAPI {
  refresh?(): void;
+ getSceneElementsIncludingDeleted?(): readonly ExcalidrawTaskElement[];
+ updateScene?(update: { appState?: { activeEmbeddable: null }; elements?: readonly ExcalidrawTaskElement[]; captureUpdate: 'NEVER' }): void;
+ refreshAllArrows?(): void;
  getSceneElements(): readonly ExcalidrawTaskElement[];
  getAppState(): ExcalidrawTaskState;
  onChange(listener: (elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState) => void): () => void;
@@ -38,6 +42,8 @@ export interface ExcalidrawTaskView {
  _loaded: boolean; compatibilityMode?: boolean;
  excalidrawAPI: ExcalidrawTaskAPI;
  forceSave(silent: boolean, waitIfBusy: boolean): Promise<void>;
+ updateScene?(update: { elements: ExcalidrawTaskElement[]; captureUpdate: 'NEVER'; appState?: { activeEmbeddable: null } }): void;
+ setDirty?(): void;
  getViewType(): string;
  getEmbeddableLeafElementById(id: string): { node?: { containerEl: HTMLElement; file: TFile } } | null;
 }

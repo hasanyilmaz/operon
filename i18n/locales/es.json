@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "La API de control del grupo de tareas de Excalidraw no está disponible.",
+		"excalidrawTaskCleanupDeferred": "No se pudo completar la limpieza automática de tarjetas de Excalidraw. Se conservó el cambio de la tarea.",
 		"excalidrawTaskSaveFailed": "No se pudo verificar el guardado. Revisa el dibujo antes de añadir la tarjeta de nuevo.",
 		"excalidrawMenuUnavailable": "La API de menú de Excalidraw no está disponible. Usa el comando de creación.",
 		"excalidrawTaskCreatedUnbound": "La tarea podría haberse guardado, pero no se pudo confirmar su tarjeta. Revisa la fuente antes de reintentar; si existe, añade la tarea existente a Excalidraw.",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "Risolvi le copie di operonId duplicate prima di modificare questa attività.",
       "excalidrawMenuUnavailable": "L’API del menu di Excalidraw non è disponibile. Usa il comando di creazione.",
       "excalidrawPoolUnavailable": "L’API di controllo del pool attività Excalidraw non è disponibile.",
+      "excalidrawTaskCleanupDeferred": "La pulizia automatica delle schede Excalidraw non è stata completata. La modifica dell’attività è stata mantenuta.",
       "excalidrawTaskCreatedUnbound": "L’attività potrebbe essere stata salvata, ma la scheda non è stata confermata. Controlla la fonte prima di riprovare; se esiste, aggiungi l’attività esistente a Excalidraw.",
       "excalidrawTaskSaveFailed": "Impossibile verificare il salvataggio. Controlla il disegno prima di aggiungere nuovamente la scheda.",
       "excalidrawTaskUnavailable": "Il disegno o l’attività non è disponibile. Riapri il disegno e riprova.",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "bf391519594eab50db3a0b80b918ec7687ed749eea287f4bd57cf537285018c8"
+  "sourceVersion": "4fae67fb4ebb781cbff1a2f5091183f1b126d683e29eb72060534cf1deac078b"
 }

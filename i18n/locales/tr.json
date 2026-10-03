@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "Excalidraw Görev Havuzu kontrol API’si kullanılamıyor.",
+		"excalidrawTaskCleanupDeferred": "Excalidraw kartlarının otomatik temizliği tamamlanamadı. Görev değişikliği korundu.",
 		"excalidrawTaskSaveFailed": "Çizimin kaydedildiği doğrulanamadı. Kartı tekrar eklemeden önce çizimi kontrol edin.",
 		"excalidrawMenuUnavailable": "Excalidraw menü API’si kullanılamıyor. Oluşturma komutunu kullanın.",
 		"excalidrawTaskCreatedUnbound": "Görev kaydedilmiş olabilir ancak kartı doğrulanamadı. Tekrar denemeden önce kaynağı kontrol edin; görev varsa mevcut görevi Excalidraw’a ekleme komutunu kullanın.",

@@ -14327,6 +14327,11 @@ export default class OperonPlugin extends Plugin {
 		request: MutationApplyRequestV1,
 		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
+  const target = this.excalidrawTaskIntegration && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
+  const deletedTasks = target ? target.primary.format === 'yaml'
+   ? this.indexer.getAllTasks().filter(task => task.primary.filePath === target.primary.filePath) : [target] : [];
+  const releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
+  try {
 		const apply = async (): Promise<MutationResultV1> => this.agentRuntimeMutationGateway
 			? internalPolicy
 				? await this.agentRuntimeMutationGateway.applyForPluginUi(request, internalPolicy)
@@ -14341,9 +14346,13 @@ export default class OperonPlugin extends Plugin {
 				groupResults: [],
 				error: runtimeUnavailableError('The live mutation Gateway is unavailable.'),
 			};
-		return request.plan.mutationKind === 'timer.session'
+		const result = request.plan.mutationKind === 'timer.session'
 			? await this.timeTracker.runSerializedSessionMutation(apply)
 			: await apply();
+  releaseDeletion?.(result.status === 'applied');
+  if (result.status === 'applied' && deletedTasks.length) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+  return result;
+  } finally { releaseDeletion?.(); }
 	}
 
 	private planSourceTransitionAggregatePatches(
@@ -16553,7 +16562,9 @@ export default class OperonPlugin extends Plugin {
 			if (!this.startupReady) return;
 			this.indexV8CleanupMaintenance?.request();
 		};
-		this.indexer.onTasksRemoved = (removedTasks) => {
+		this.indexer.onTasksRemoved = (removedTasks, evidence) => {
+   if (this.startupReady && evidence) this.excalidrawTaskIntegration?.confirmDeleted(evidence.filePaths
+    ? removedTasks.filter(task => evidence.filePaths!.includes(task.primary.filePath)) : removedTasks, evidence.kind);
 			if (!this.startupReady || removedTasks.length === 0) return;
 			for (const task of removedTasks) {
 				if (task.primary.format !== 'yaml') continue;
@@ -16719,6 +16730,12 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.addChild(this.canvasTaskIntegration);
   this.excalidrawTaskIntegration = new ExcalidrawTaskIntegration({
+   cleanup: { app: this.app, getSettings: () => this.settings,
+    awaitSettlement: () => this.indexer.awaitRamSettlement(),
+    isSourceTransitionActive: id => this.indexer.isTaskSourceTransitionActive(id),
+    taskState: id => { const state = this.taskCardEmbeds?.resolve(id).state;
+     return this.indexer.isTaskSourceTransitionActive(id) ? 'uncertain' : state === 'ready' || state === 'missing' ? state : 'uncertain'; },
+   },
    propertyValuePool,
    fileAction: (file, readOnly) => {
     const task = this.indexer.getFileTaskByPath(file.path);
@@ -24468,6 +24485,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		let mutationStarted = false;
+  let releaseDeletion: ((committed?: boolean) => void) | undefined;
 		try {
 			let relationPlan = this.resolveTaskEditorDeleteRelationPlan(
 				operonId,
@@ -24509,7 +24527,10 @@ export default class OperonPlugin extends Plugin {
 				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
-			const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
+			const deletedTasks = this.excalidrawTaskIntegration && prepared.target.action === 'trash'
+    ? this.indexer.getAllTasks().filter(task => task.primary.filePath === prepared.target.filePath) : [indexedTarget];
+   releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
+   const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
 				targetFilePath: prepared.target.filePath,
 				companions: prepared.companions,
 				runExclusive: operation => this.writer.runExclusiveTaskMutation(async permit => {
@@ -24583,6 +24604,8 @@ export default class OperonPlugin extends Plugin {
 				}
 				this.showPluginUiMutationOutcome('committed-repair-scheduled');
 			}
+   releaseDeletion?.(!conversion);
+   if (!conversion) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
 			return true;
 		} catch (error) {
 			if (mutationStarted) conversion?.uncertain();
@@ -24592,7 +24615,7 @@ export default class OperonPlugin extends Plugin {
 				? mutationStarted ? 'outcome-unknown' : 'source-changed'
 				: 'source-missing');
 			return false;
-		}
+		} finally { releaseDeletion?.(); }
 	}
 
 	private async handleConvertTaskToPlainCommand(): Promise<void> {

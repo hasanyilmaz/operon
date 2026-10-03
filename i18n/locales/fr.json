@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "L’API de contrôle du réservoir de tâches Excalidraw est indisponible.",
+		"excalidrawTaskCleanupDeferred": "Le nettoyage automatique des cartes Excalidraw n’a pas pu être terminé. La modification de la tâche a été conservée.",
 		"excalidrawTaskSaveFailed": "L’enregistrement n’a pas pu être vérifié. Vérifiez le dessin avant d’ajouter à nouveau la carte.",
 		"excalidrawMenuUnavailable": "L’API de menu d’Excalidraw est indisponible. Utilisez la commande de création.",
 		"excalidrawTaskCreatedUnbound": "La tâche a peut-être été enregistrée, mais sa carte n’a pas pu être confirmée. Vérifiez la source avant de réessayer ; si elle existe, ajoutez la tâche existante à Excalidraw.",

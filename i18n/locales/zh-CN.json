@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "Excalidraw 任务池控件 API 不可用。",
+		"excalidrawTaskCleanupDeferred": "无法完成 Excalidraw 卡片的自动清理。任务更改已保留。",
 		"excalidrawTaskSaveFailed": "无法确认绘图已保存。再次添加卡片前，请检查绘图。",
 		"excalidrawMenuUnavailable": "Excalidraw 菜单 API 不可用。请使用创建命令。",
 		"excalidrawTaskCreatedUnbound": "任务可能已保存，但无法确认卡片。重试前请检查源文件；若任务已存在，请将现有任务添加到 Excalidraw。",

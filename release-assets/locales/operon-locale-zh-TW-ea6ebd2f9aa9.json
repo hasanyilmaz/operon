@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "編輯此任務前，請先解決重複的 operonId 副本。",
       "excalidrawMenuUnavailable": "Excalidraw 選單 API 無法使用。請使用建立命令。",
       "excalidrawPoolUnavailable": "Excalidraw 任務池控制項 API 無法使用。",
+      "excalidrawTaskCleanupDeferred": "無法完成 Excalidraw 卡片的自動清理。任務變更已保留。",
       "excalidrawTaskCreatedUnbound": "任務可能已儲存，但無法確認卡片。重試前請檢查來源檔案；若任務已存在，請將現有任務加入 Excalidraw。",
       "excalidrawTaskSaveFailed": "無法確認繪圖已儲存。再次新增卡片前，請檢查繪圖。",
       "excalidrawTaskUnavailable": "繪圖或任務無法使用。請重新開啟繪圖後再試一次。",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "944c947eb28b9b89d3fa094709f1eccfb8ebfb3c3fb487a1ecebb1d81598b842"
+  "sourceVersion": "957ca18b2b894af7c21a8b9cb27a7975e4aded0a1a3417963c1eaaec23a59911"
 }

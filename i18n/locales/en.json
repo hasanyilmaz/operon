@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "Excalidraw’s Task Pool control API is unavailable.",
+		"excalidrawTaskCleanupDeferred": "Automatic Excalidraw card cleanup could not be completed. The task change was kept.",
 		"excalidrawTaskSaveFailed": "The drawing save could not be verified. Check the drawing before adding the card again.",
 		"excalidrawMenuUnavailable": "Excalidraw’s menu API is unavailable. Use the creation command.",
 		"excalidrawTaskCreatedUnbound": "The task may have been saved, but its card could not be confirmed. Check the task source before trying again; use Add existing task to Excalidraw if it exists.",

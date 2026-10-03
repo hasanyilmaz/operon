@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "Die Steuerungs-API für den Excalidraw-Aufgabenpool ist nicht verfügbar.",
+		"excalidrawTaskCleanupDeferred": "Die automatische Bereinigung der Excalidraw-Karten konnte nicht abgeschlossen werden. Die Aufgabenänderung wurde beibehalten.",
 		"excalidrawTaskSaveFailed": "Das Speichern konnte nicht bestätigt werden. Prüfe die Zeichnung, bevor du die Karte erneut hinzufügst.",
 		"excalidrawMenuUnavailable": "Die Menü-API von Excalidraw ist nicht verfügbar. Verwenden Sie den Erstellungsbefehl.",
 		"excalidrawTaskCreatedUnbound": "Die Aufgabe wurde möglicherweise gespeichert, ihre Karte konnte jedoch nicht bestätigt werden. Prüfen Sie vor einem erneuten Versuch die Quelle und fügen Sie die vorhandene Aufgabe zu Excalidraw hinzu.",

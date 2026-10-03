@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "Bu görevi düzenlemeden önce çakışan operonId kopyalarını çöz.",
       "excalidrawMenuUnavailable": "Excalidraw menü API’si kullanılamıyor. Oluşturma komutunu kullanın.",
       "excalidrawPoolUnavailable": "Excalidraw Görev Havuzu kontrol API’si kullanılamıyor.",
+      "excalidrawTaskCleanupDeferred": "Excalidraw kartlarının otomatik temizliği tamamlanamadı. Görev değişikliği korundu.",
       "excalidrawTaskCreatedUnbound": "Görev kaydedilmiş olabilir ancak kartı doğrulanamadı. Tekrar denemeden önce kaynağı kontrol edin; görev varsa mevcut görevi Excalidraw’a ekleme komutunu kullanın.",
       "excalidrawTaskSaveFailed": "Çizimin kaydedildiği doğrulanamadı. Kartı tekrar eklemeden önce çizimi kontrol edin.",
       "excalidrawTaskUnavailable": "Çizim veya görev kullanılamıyor. Çizimi yeniden açıp tekrar deneyin.",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "d295f7fd67bd8dee0bef298797776e89f4592bd06a07b8a45b3a48fb13823cb4"
+  "sourceVersion": "96eaaf361d4b5f39a3c33bca360d41cc8c47d26893f0786ef9eec08fb979e865"
 }

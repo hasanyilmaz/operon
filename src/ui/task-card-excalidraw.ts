@@ -51,7 +51,7 @@ export class TaskCardExcalidrawHost implements TaskCardSurfaceAccess {
     if (this.colors) this.stopColor = bindExcalidrawTaskColor(next.view, { id: next.id,
      allowed: () => this.binding === binding && this.canChangeStatus(), read: () => this.colors?.read(binding.taskId),
      write: (task, color, allowed) => this.colors!.write(task, color, allowed), refresh: () => this.changed() });
-    this.height = new ExcalidrawTaskAutoHeight(this.root, next.container, next.view, next.id, () => this.binding === binding && this.canChangeStatus());
+    this.height = new ExcalidrawTaskAutoHeight(this.root, next.container, next.view, next.id, () => this.binding === binding && this.canChangeStatus(), this.app);
     const signatureFor = (element: ExcalidrawTaskElement | undefined, state: ExcalidrawTaskState) => JSON.stringify([element?.link, element?.locked, element?.isDeleted,
      state.viewModeEnabled, state.activeEmbeddable?.element.id, state.activeEmbeddable?.state, binding.view.file?.path]);
     this.signature = signatureFor(next.view.excalidrawAPI.getSceneElements().find(element => element.id === next.id), next.view.excalidrawAPI.getAppState());

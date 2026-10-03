@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "Resolva as cópias duplicadas de operonId antes de editar esta tarefa.",
       "excalidrawMenuUnavailable": "A API de menu do Excalidraw está indisponível. Use o comando de criação.",
       "excalidrawPoolUnavailable": "A API de controle do conjunto de tarefas do Excalidraw está indisponível.",
+      "excalidrawTaskCleanupDeferred": "Não foi possível concluir a limpeza automática dos cartões do Excalidraw. A alteração da tarefa foi mantida.",
       "excalidrawTaskCreatedUnbound": "A tarefa pode ter sido salva, mas o cartão não pôde ser confirmado. Confira a origem antes de tentar novamente; se existir, adicione a tarefa existente ao Excalidraw.",
       "excalidrawTaskSaveFailed": "Não foi possível verificar o salvamento. Confira o desenho antes de adicionar o cartão novamente.",
       "excalidrawTaskUnavailable": "O desenho ou a tarefa está indisponível. Reabra o desenho e tente novamente.",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "4b610efa60c1a5c019329596852e6ed9d1792fe8bc54da7a6fb7d0baf277988c"
+  "sourceVersion": "0640f89e45084230870f63380e05cf9e67e19ed916d3177153ec3d4a465dc4b5"
 }

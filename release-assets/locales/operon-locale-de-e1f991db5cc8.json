@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "Löse Kopien mit doppelter operonId, bevor du diese Aufgabe bearbeitest.",
       "excalidrawMenuUnavailable": "Die Menü-API von Excalidraw ist nicht verfügbar. Verwenden Sie den Erstellungsbefehl.",
       "excalidrawPoolUnavailable": "Die Steuerungs-API für den Excalidraw-Aufgabenpool ist nicht verfügbar.",
+      "excalidrawTaskCleanupDeferred": "Die automatische Bereinigung der Excalidraw-Karten konnte nicht abgeschlossen werden. Die Aufgabenänderung wurde beibehalten.",
       "excalidrawTaskCreatedUnbound": "Die Aufgabe wurde möglicherweise gespeichert, ihre Karte konnte jedoch nicht bestätigt werden. Prüfen Sie vor einem erneuten Versuch die Quelle und fügen Sie die vorhandene Aufgabe zu Excalidraw hinzu.",
       "excalidrawTaskSaveFailed": "Das Speichern konnte nicht bestätigt werden. Prüfe die Zeichnung, bevor du die Karte erneut hinzufügst.",
       "excalidrawTaskUnavailable": "Zeichnung oder Aufgabe nicht verfügbar. Öffne die Zeichnung erneut und versuche es noch einmal.",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "88323d2cf6d6dee58813cb49670ca8e05c617a92d1d466418b6fee5d83eb2216"
+  "sourceVersion": "e6d8fe17d8db12c0dc3318740f41632ac7cd9d43fa9cba3083672d81cef6e7c8"
 }

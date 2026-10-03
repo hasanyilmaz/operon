@@ -64,7 +64,7 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
  private live = false;
  private warned = false;
  private readonly warn = () => { if (!this.warned) { this.warned = true; new Notice(t('notifications', 'excalidrawPoolUnavailable')); } };
- constructor(private view: ExcalidrawTaskView, private adapter: TaskPoolSurface<T>, private propertyPool?: ExcalidrawPropertyPool, private fileAction?: () => ExcalidrawFileAction | null) { super(adapter); }
+ constructor(private view: ExcalidrawTaskView, private adapter: TaskPoolSurface<T>, private propertyPool?: ExcalidrawPropertyPool, private fileAction?: () => ExcalidrawFileAction | null, private sceneReady?: () => void) { super(adapter); }
  onload(): void {
   this.live = true; if (this.propertyPool) this.addChild(this.propertyPool); super.onload();
   this.toolbar = bindExcalidrawPoolToolbar(this.view, () => this.adapter.isCurrent(), button => {
@@ -137,7 +137,7 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
     });
    }
   }
-  super.sync(); this.propertyPool?.sync(); this.refreshFileAction();
+  super.sync(); this.propertyPool?.sync(); this.refreshFileAction(); this.sceneReady?.();
  }
  onunload(): void {
   this.live = false; this.pendingShow = null; this.stopScene?.(); this.stopScene = null; this.api = null;

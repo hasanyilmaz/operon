@@ -11,6 +11,7 @@ export interface SafeTextWriteOptions {
 	forceAtomicReplacement?: boolean;
  canCommit?: () => boolean;
 	verifyAtomicReplacement?: boolean;
+ beforeAtomicReplace?: (temporaryPath: string) => Promise<void>;
 }
 
 function buildTempPath(path: string): string {
@@ -58,6 +59,7 @@ export async function writeTextSafely(
 			throw new Error('Atomic replacement temporary write was not observed exactly');
 		}
 		const exists = await adapter.exists(path);
+  await options.beforeAtomicReplace?.(tempPath);
   check();
 		if (exists) {
 			await adapter.rename(path, backupPath);

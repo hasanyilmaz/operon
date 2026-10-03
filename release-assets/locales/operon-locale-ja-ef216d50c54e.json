@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "このタスクを編集する前に、重複した operonId のコピーを解決してください。",
       "excalidrawMenuUnavailable": "ExcalidrawのメニューAPIを利用できません。作成コマンドを使用してください。",
       "excalidrawPoolUnavailable": "ExcalidrawタスクプールのコントロールAPIを利用できません。",
+      "excalidrawTaskCleanupDeferred": "Excalidraw カードの自動クリーンアップを完了できませんでした。タスクの変更は保持されています。",
       "excalidrawTaskCreatedUnbound": "タスクは保存された可能性がありますが、カードを確認できませんでした。再試行の前にソースを確認し、存在する場合は既存タスクとしてExcalidrawに追加してください。",
       "excalidrawTaskSaveFailed": "保存を確認できませんでした。カードを再追加する前に図面を確認してください。",
       "excalidrawTaskUnavailable": "図面またはタスクを利用できません。図面を開き直して再試行してください。",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "1a2160326a0c38a0f6fb0befa43d6f605891b238ab3059eb9536b3eef8a6c3b4"
+  "sourceVersion": "c3e038f189a48c37a6bfd065eab7091e9e8467e36eef16d1260228ac00e42c6e"
 }

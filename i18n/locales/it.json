@@ -148,6 +148,7 @@
 	},
 	"notifications": {
 		"excalidrawPoolUnavailable": "L’API di controllo del pool attività Excalidraw non è disponibile.",
+		"excalidrawTaskCleanupDeferred": "La pulizia automatica delle schede Excalidraw non è stata completata. La modifica dell’attività è stata mantenuta.",
 		"excalidrawTaskSaveFailed": "Impossibile verificare il salvataggio. Controlla il disegno prima di aggiungere nuovamente la scheda.",
 		"excalidrawMenuUnavailable": "L’API del menu di Excalidraw non è disponibile. Usa il comando di creazione.",
 		"excalidrawTaskCreatedUnbound": "L’attività potrebbe essere stata salvata, ma la scheda non è stata confermata. Controlla la fonte prima di riprovare; se esiste, aggiungi l’attività esistente a Excalidraw.",

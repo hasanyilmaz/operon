@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3550,
-  "keyFingerprint": "955d0bae31c3b564ef892e955fedfe7189a49dfe4d8c549e3945ef68a52f3ad8",
+  "keyCount": 3551,
+  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -875,6 +875,7 @@
       "duplicateOperonIdBlocked": "Resolver las copias de operonId duplicadas antes de editar esta tarea.",
       "excalidrawMenuUnavailable": "La API de menú de Excalidraw no está disponible. Usa el comando de creación.",
       "excalidrawPoolUnavailable": "La API de control del grupo de tareas de Excalidraw no está disponible.",
+      "excalidrawTaskCleanupDeferred": "No se pudo completar la limpieza automática de tarjetas de Excalidraw. Se conservó el cambio de la tarea.",
       "excalidrawTaskCreatedUnbound": "La tarea podría haberse guardado, pero no se pudo confirmar su tarjeta. Revisa la fuente antes de reintentar; si existe, añade la tarea existente a Excalidraw.",
       "excalidrawTaskSaveFailed": "No se pudo verificar el guardado. Revisa el dibujo antes de añadir la tarjeta de nuevo.",
       "excalidrawTaskUnavailable": "El dibujo o la tarea no está disponible. Vuelve a abrir el dibujo e inténtalo de nuevo.",
@@ -3595,5 +3596,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "47b9ad9c9bdcfea21ffd8c7e6c08f6f418690604719169aac66c221b46f0e6c7"
+  "sourceVersion": "23e1834d065809f7b0d6aec5c45d0bc36c4636137b93aca1e59ae3e35582e9e6"
 }
