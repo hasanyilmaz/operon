@@ -70,7 +70,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
   let suppressDescriptionClick = false;
   let clearDescriptionGesture = () => {};
   this.register(() => clearDescriptionGesture());
-  this.registerDomEvent(this.title, 'pointerdown', event => {
+  const beginCardGesture = (event: PointerEvent) => {
    if (!root.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]') || event.button !== 0 || (this.excalidrawHost?.attached && !this.excalidrawHost.canInteract())) return;
    if (event.isPrimary === false) return;
    clearDescriptionGesture(); suppressDescriptionClick = false;
@@ -90,7 +90,8 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
     doc.removeEventListener('pointercancel', cancel, true); win.removeEventListener('blur', cancel);
     clearDescriptionGesture = () => {};
    };
-  });
+  };
+  this.registerDomEvent(this.title, 'pointerdown', beginCardGesture);
   this.registerDomEvent(this.title, 'dblclick', event => {
    if (this.excalidrawHost?.attached && !this.excalidrawHost.canInteract()) return;
    if (root.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]')) { event.preventDefault(); event.stopPropagation(); }
@@ -116,6 +117,30 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
    } : undefined);
    this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
   }
+  const isBackground = (target: EventTarget | null) => {
+   const element = target as Element | null;
+   return !!element && root.contains(element) && !element.closest('button, a, input, textarea, select, [contenteditable], [role="button"], .operon-task-chip, .operon-task-progress-track, .operon-task-card-message');
+  };
+  let backgroundGesture: (() => boolean) | null = null;
+  this.registerDomEvent(root, 'pointerdown', event => {
+   backgroundGesture = null;
+   const host = this.excalidrawHost;
+   if (!host?.attached || !host.canInteract() || !host.canEditFields() || !isBackground(event.target) || event.button !== 0 || event.isPrimary === false) return;
+   backgroundGesture = host.captureWriteGuard();
+   beginCardGesture(event);
+  });
+  this.registerDomEvent(root, 'click', event => {
+   const allowed = backgroundGesture; backgroundGesture = null;
+   if (!allowed?.() || !this.excalidrawHost?.canInteract() || event.defaultPrevented || event.button !== 0 || event.detail > 1
+    || suppressDescriptionClick || !isBackground(event.target) || !('options' in this.parsed)) return;
+   const selection = getOwnerWindow(root).getSelection();
+   if (selection && !selection.isCollapsed && (root.contains(selection.anchorNode) || root.contains(selection.focusNode))) return;
+   event.preventDefault(); event.stopPropagation();
+   this.owner.activate(this.parsed.options.taskId, false);
+  });
+  this.registerDomEvent(root, 'dblclick', event => {
+   if (this.excalidrawHost?.canInteract() && isBackground(event.target)) { event.preventDefault(); event.stopPropagation(); }
+  });
 		this.owner.attach(this);
 	}
 
