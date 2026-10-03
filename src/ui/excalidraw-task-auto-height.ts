@@ -1,3 +1,4 @@
+import { isExcalidrawTaskStrokeEditing } from './excalidraw-task-colors';
 import { Notice } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
@@ -66,9 +67,9 @@ export class ExcalidrawTaskAutoHeight {
   const up = (event: PointerEvent) => { if (this.pointers.delete(event.pointerId)) this.schedule(); };
   const blur = () => { const pending = this.pointers.size > 0; this.pointers.clear(); if (pending) this.schedule(); };
   view.contentEl.addEventListener('pointerdown', down, true);
-  win.addEventListener('pointerup', up); win.addEventListener('pointercancel', up); win.addEventListener('blur', blur);
+  win.addEventListener('pointerup', up, true); win.addEventListener('pointercancel', up, true); win.addEventListener('blur', blur);
   this.cleanup.push(() => { view.contentEl.removeEventListener('pointerdown', down, true);
-   win.removeEventListener('pointerup', up); win.removeEventListener('pointercancel', up); win.removeEventListener('blur', blur); });
+   win.removeEventListener('pointerup', up, true); win.removeEventListener('pointercancel', up, true); win.removeEventListener('blur', blur); });
   this.sceneChanged(view.excalidrawAPI.getSceneElements().find(element => element.id === id), view.excalidrawAPI.getAppState().viewModeEnabled, view.excalidrawAPI.getAppState().theme);
  }
  sceneChanged(element: ExcalidrawTaskElement | undefined, readonly: boolean | undefined, theme?: unknown): void {
@@ -106,7 +107,7 @@ export class ExcalidrawTaskAutoHeight {
   // Store the configured Task Card color; Excalidraw retains its native dark-mode stroke rendering.
   const card = this.root.querySelector<HTMLElement>('.operon-task-card');
   const stroke = card ? resolveExcalidrawTaskStroke(card) : null;
-  const strokeColor = stroke && stroke !== element.strokeColor?.toLowerCase() ? stroke : null;
+  const strokeColor = !isExcalidrawTaskStrokeEditing(this.view, this.id) && stroke && stroke !== element.strokeColor?.toLowerCase() ? stroke : null;
   if (!plan && !strokeColor) return;
   const patch = { ...plan, ...(strokeColor ? { strokeColor } : {}) };
   const matches = (value: ExcalidrawTaskElement) => value.width === element.width

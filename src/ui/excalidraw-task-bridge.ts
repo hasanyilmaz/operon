@@ -130,8 +130,11 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
   const state = view.excalidrawAPI.getAppState();
   const styles: Record<string, string> = { strokeColor: 'currentItemStrokeColor', backgroundColor: 'currentItemBackgroundColor',
    strokeWidth: 'currentItemStrokeWidth', strokeStyle: 'currentItemStrokeStyle', roughness: 'currentItemRoughness',
-   opacity: 'currentItemOpacity', fillStyle: 'currentItemFillStyle', roundness: 'currentItemRoundness' };
+   opacity: 'currentItemOpacity', fillStyle: 'currentItemFillStyle' };
   for (const [key, setting] of Object.entries(styles)) if (state[setting] !== undefined) ea.style[key] = state[setting];
+  const roundness = state.currentItemRoundness;
+  if (roundness === 'round' || roundness === 'sharp') ea.style.strokeSharpness = roundness;
+  else if (roundness !== undefined) { ea.style.strokeSharpness = undefined; ea.style.roundness = roundness; }
   const link = `[[${path}#${excalidrawTaskHeading(id)}]]`;
   const elementId = ea.addEmbeddable(point.x - 200, point.y - 150, 400, 300, link, undefined, {
    useObsidianDefaults: false, backgroundMatchElement: true, backgroundOpacity: 100,

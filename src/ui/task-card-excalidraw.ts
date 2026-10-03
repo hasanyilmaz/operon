@@ -1,3 +1,5 @@
+import { bindExcalidrawTaskColor } from './excalidraw-task-colors';
+import type { IndexedTask } from '../types/fields';
 import type { App } from 'obsidian';
 import { ExcalidrawTaskAutoHeight } from './excalidraw-task-auto-height';
 import { isExcalidrawTaskLink, readExcalidrawCardReference, readExcalidrawTaskView, type ExcalidrawTaskView, type ExcalidrawTaskElement, type ExcalidrawTaskState } from './excalidraw-task-bridge';
@@ -16,11 +18,13 @@ export class TaskCardExcalidrawHost implements TaskCardSurfaceAccess {
  readonly menuSurface = 'excalidrawTask' as const;
  private binding: Binding | null = null;
  private height: ExcalidrawTaskAutoHeight | null = null;
+ private stopColor: (() => void) | null = null;
  private unsubscribe: (() => void) | null = null;
  private signature = '';
  private active = true;
  private queued = false;
- constructor(private app: App, private root: HTMLElement, private changed: () => void) {}
+ constructor(private app: App, private root: HTMLElement, private changed: () => void,
+  private colors?: { read(id: string): IndexedTask | undefined; write(task: IndexedTask, color: string, allowed: () => boolean): Promise<boolean> }) {}
  refresh(taskId: string): boolean {
   if (!this.active) return false;
   const node = this.root.closest<HTMLElement>('.canvas-node');
@@ -44,6 +48,9 @@ export class TaskCardExcalidrawHost implements TaskCardSurfaceAccess {
     // Native React rewrites className on theme changes; its data attributes are stable.
     next.node.setAttribute('data-operon-task-card-excalidraw', '');
     const binding = next;
+    if (this.colors) this.stopColor = bindExcalidrawTaskColor(next.view, { id: next.id,
+     allowed: () => this.binding === binding && this.canChangeStatus(), read: () => this.colors?.read(binding.taskId),
+     write: (task, color, allowed) => this.colors!.write(task, color, allowed), refresh: () => this.changed() });
     this.height = new ExcalidrawTaskAutoHeight(this.root, next.container, next.view, next.id, () => this.binding === binding && this.canChangeStatus());
     const signatureFor = (element: ExcalidrawTaskElement | undefined, state: ExcalidrawTaskState) => JSON.stringify([element?.link, element?.locked, element?.isDeleted,
      state.viewModeEnabled, state.activeEmbeddable?.element.id, state.activeEmbeddable?.state, binding.view.file?.path]);
@@ -95,6 +102,7 @@ export class TaskCardExcalidrawHost implements TaskCardSurfaceAccess {
  get attached(): boolean { return this.binding !== null; }
  private release(): void {
   this.height?.destroy(); this.height = null;
+  this.stopColor?.(); this.stopColor = null;
   this.unsubscribe?.(); this.unsubscribe = null; this.signature = '';
   if (this.binding) {
    const { node } = this.binding, set = owners.get(node); set?.delete(this);

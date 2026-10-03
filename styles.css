@@ -34791,6 +34791,13 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node[data-operon-task-card-excalidraw] .markdown-preview-view .el-h1 { display: none; }
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+/* Native Markdown preview spacers belong to note embeds; this card owns its intrinsic padding. */
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view::before,
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view::after { display: none; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer { flex: none; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card button.operon-task-card-title {
+ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
+}
 /* Resolve shared card tokens locally; native harvested Markdown variables may be empty while loading. */
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card {
  --background-primary: var(--color-surface-lowest);

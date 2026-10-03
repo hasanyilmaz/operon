@@ -1,3 +1,4 @@
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { mergeTaskRefreshScopes, type TaskRefreshScope } from '../core/task-refresh-scope';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import type { IndexedTask } from '../types/fields';
@@ -108,7 +109,11 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			if ('options' in this.parsed) this.owner.activate(this.parsed.options.taskId, event.metaKey || event.ctrlKey);
 		});
 		if (typeof this.source === 'string') {
-   this.excalidrawHost = new TaskCardExcalidrawHost(this.owner.deps.app, root, () => this.refresh());
+   this.excalidrawHost = new TaskCardExcalidrawHost(this.owner.deps.app, root, () => this.refresh(), this.owner.deps.controls ? {
+    read: id => this.owner.resolve(id).state === 'ready' ? this.owner.deps.controls?.getTask(id) : undefined,
+    write: (task, color, allowed) => this.owner.run(task.operonId, allowed,
+     () => this.owner.deps.controls?.updateSurfaceFields?.(task.operonId, { taskColor: color }, task, allowed) ?? false),
+   } : undefined);
    this.canvasHost = new TaskCardCanvasHost(this.owner.deps.app, root, () => this.refresh());
   }
 		this.owner.attach(this);
@@ -182,6 +187,10 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 				this.title.dataset.description = title;
 			}
 			setAccessibleLabelWithoutTooltip(this.title, `${title}. ${hint}`);
+   bindOperonHoverTooltip(this.title, { title: t('taskEditor', 'description'),
+    contentElFactory: () => createCompactTaskMarkdownTooltipContent(this.title, this.title.dataset.description ?? ''),
+    taskColor: () => this.card.style.getPropertyValue('--operon-task-card-accent') || null,
+    shouldOpen: () => this.active && this.excalidrawHost?.attached === true && this.title.scrollWidth > this.title.clientWidth });
 			this.signature = signature;
 			this.owner.layout.refresh();
 		} catch { this.showMessage('error', t('errors', 'taskCard_error')); }
@@ -228,6 +237,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 	private lastReady: Extract<TaskCardResolution, { state: 'ready' }> | null = null;
 
 	private showMessage(state: string, text: string): void {
+  cleanupOperonHoverTooltips(this.title);
   if (this.controls) { this.removeChild(this.controls); this.controls = null; }
 		const signature = JSON.stringify([state, text]);
 		if (signature === this.signature) return;
@@ -244,6 +254,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 	onunload(): void {
 		this.active = false;
 		this.lastReady = null;
+  cleanupOperonHoverTooltips(this.title);
   this.canvasHost?.destroy();
   this.excalidrawHost?.destroy();
   if (this.image) { this.image.onload = null; this.image.onerror = null; }
