@@ -50,7 +50,7 @@ export class TaskCardExcalidrawHost implements TaskCardSurfaceAccess {
     this.signature = signatureFor(next.view.excalidrawAPI.getSceneElements().find(element => element.id === next.id), next.view.excalidrawAPI.getAppState());
     this.unsubscribe = next.view.excalidrawAPI.onChange((elements, state) => {
      const element = elements.find(value => value.id === binding.id);
-     this.height?.sceneChanged(element, state.viewModeEnabled);
+     this.height?.sceneChanged(element, state.viewModeEnabled, state.theme);
      // Pan, zoom and geometry updates do not repaint task content or parse Markdown.
      const signature = signatureFor(element, state);
      if (this.signature === signature) return;

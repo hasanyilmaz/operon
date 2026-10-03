@@ -34791,6 +34791,18 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node[data-operon-task-card-excalidraw] .markdown-preview-view .el-h1 { display: none; }
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+/* Resolve shared card tokens locally; native harvested Markdown variables may be empty while loading. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card {
+ --background-primary: var(--color-surface-lowest);
+ --background-secondary: var(--color-surface-mid);
+ --background-modifier-border: var(--color-border-outline-variant);
+ --text-normal: var(--color-on-surface);
+ --text-muted: var(--color-border-outline);
+ --operon-excalidraw-task-stroke: var(--operon-task-card-accent, var(--background-modifier-border));
+}
+/* Excalidraw's global svg-icon color must not replace Operon's configured semantic colors. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card svg.svg-icon { color: inherit; }
+
 /* Embedded cards keep media opaque even when the vault theme dims Markdown images. */
 .canvas-node[data-operon-task-card-excalidraw] .operon-task-card-image img { opacity: 1; }
 

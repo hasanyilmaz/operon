@@ -4,7 +4,7 @@ import { isValidOperonId } from '../core/id-generator';
 
 /** Narrow, feature-detected bridge to the optional Excalidraw plugin. */
 export interface ExcalidrawTaskElement {
- id: string; type: string; x?: number; y?: number; width?: number; height?: number; angle?: number; scale?: readonly number[]; link?: string | null; isDeleted?: boolean; locked?: boolean;
+ id: string; type: string; strokeColor?: string; x?: number; y?: number; width?: number; height?: number; angle?: number; scale?: readonly number[]; link?: string | null; isDeleted?: boolean; locked?: boolean;
 }
 export interface ExcalidrawTaskState {
  viewModeEnabled?: boolean;

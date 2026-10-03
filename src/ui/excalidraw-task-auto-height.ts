@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian';
-import { getOwnerWindow } from '../core/dom-compat';
+import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { measureTaskCardHeight } from './canvas-task-size';
 import type { ExcalidrawTaskElement, ExcalidrawTaskView } from './excalidraw-task-bridge';
@@ -17,7 +17,34 @@ export function planExcalidrawTaskHeight(element: ExcalidrawTaskElement, measure
  return { x: x - Math.sin(angle) * delta / 2, y: y + (Math.cos(angle) - 1) * delta / 2, height: next };
 }
 
-/** Per-card observation; native scene writes are serialized per drawing, never polled. */
+/** Resolve CSS names and modern theme expressions without adding nodes to the observed card. */
+export function resolveExcalidrawTaskStroke(card: HTMLElement): string | null {
+ const style = getOwnerWindow(card).getComputedStyle(card);
+ const token = style.getPropertyValue?.('--operon-excalidraw-task-stroke').trim();
+ if (!token) return null;
+ if (token.toLowerCase() === 'transparent') return 'transparent';
+ if (/^#[a-f0-9]{6}$/i.test(token)) return token.toLowerCase();
+ const canvas = createOwnerElement(card, 'canvas'); canvas.width = 1; canvas.height = 1;
+ const context = canvas.getContext('2d'); if (!context) return null;
+ const color = token.replace(/\bcurrentcolor\b/gi, style.color);
+ // Invalid assignments retain the previous fill. Two different seeds distinguish them from valid black/white.
+ context.fillStyle = '#000000'; context.fillStyle = color; const parsed = context.fillStyle;
+ context.fillStyle = '#ffffff'; context.fillStyle = color;
+ if (context.fillStyle !== parsed) return null;
+ if (/^#[a-f0-9]{6}$/i.test(parsed)) return parsed.toLowerCase();
+ const rgba = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/.exec(parsed);
+ if (rgba) {
+  const alpha = Math.round(Number(rgba[4] ?? 1) * 255); if (!alpha) return 'transparent';
+  const channels = rgba.slice(1, 4).map(Number); if (alpha !== 255) channels.push(alpha);
+  return '#' + channels.map(channel => Math.round(channel).toString(16).padStart(2, '0')).join('');
+ }
+ context.fillRect(0, 0, 1, 1);
+ const pixel = context.getImageData(0, 0, 1, 1).data;
+ if (!pixel[3]) return 'transparent';
+ return '#' + Array.from(pixel.slice(0, pixel[3] === 255 ? 3 : 4), channel => channel.toString(16).padStart(2, '0')).join('');
+}
+
+/** Per-card observation; height and frame color share one native write queue, never polled. */
 export class ExcalidrawTaskAutoHeight {
  private active = true;
  private frame = 0;
@@ -42,10 +69,10 @@ export class ExcalidrawTaskAutoHeight {
   win.addEventListener('pointerup', up); win.addEventListener('pointercancel', up); win.addEventListener('blur', blur);
   this.cleanup.push(() => { view.contentEl.removeEventListener('pointerdown', down, true);
    win.removeEventListener('pointerup', up); win.removeEventListener('pointercancel', up); win.removeEventListener('blur', blur); });
-  this.sceneChanged(view.excalidrawAPI.getSceneElements().find(element => element.id === id), view.excalidrawAPI.getAppState().viewModeEnabled);
+  this.sceneChanged(view.excalidrawAPI.getSceneElements().find(element => element.id === id), view.excalidrawAPI.getAppState().viewModeEnabled, view.excalidrawAPI.getAppState().theme);
  }
- sceneChanged(element: ExcalidrawTaskElement | undefined, readonly: boolean | undefined): void {
-  const signature = JSON.stringify([element?.width, element?.height, element?.scale, element?.locked, element?.isDeleted, readonly]);
+ sceneChanged(element: ExcalidrawTaskElement | undefined, readonly: boolean | undefined, theme?: unknown): void {
+  const signature = JSON.stringify([element?.width, element?.height, element?.scale, element?.locked, element?.isDeleted, element?.strokeColor, readonly, theme]);
   if (signature === this.geometry) return;
   this.geometry = signature; this.schedule();
  }
@@ -76,14 +103,21 @@ export class ExcalidrawTaskAutoHeight {
   const style = outer ? getOwnerWindow(outer).getComputedStyle(outer) : null;
   const inset = style ? (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0) : 0;
   const plan = planExcalidrawTaskHeight(element, measured + inset);
-  if (!plan) return;
+  // Store the configured Task Card color; Excalidraw retains its native dark-mode stroke rendering.
+  const card = this.root.querySelector<HTMLElement>('.operon-task-card');
+  const stroke = card ? resolveExcalidrawTaskStroke(card) : null;
+  const strokeColor = stroke && stroke !== element.strokeColor?.toLowerCase() ? stroke : null;
+  if (!plan && !strokeColor) return;
+  const patch = { ...plan, ...(strokeColor ? { strokeColor } : {}) };
+  const matches = (value: ExcalidrawTaskElement) => value.width === element.width
+   && Object.entries(patch).every(([key, expected]) => value[key as keyof ExcalidrawTaskElement] === expected);
   const ea = this.view.plugin.ea.getAPI(this.view);
   try {
    if (typeof ea.copyViewElementsToEAforEditing !== 'function' || typeof ea.getElement !== 'function') return;
    ea.copyViewElementsToEAforEditing([element]);
    const copy = ea.getElement(this.id); if (!copy || copy === element || !current()) return;
-   Object.assign(copy, plan);
-   if (!await ea.addElementsToView(false, false, false, false, 'NEVER')) throw new Error('Height update failed');
+   Object.assign(copy, patch);
+   if (!await ea.addElementsToView(false, false, false, false, 'NEVER')) throw new Error('Card presentation update failed');
    if (!current()) return;
    await this.view.forceSave(true, true);
    if (!current()) return;
@@ -91,9 +125,9 @@ export class ExcalidrawTaskAutoHeight {
    if (!current()) return;
    const live = this.view.excalidrawAPI.getSceneElements().find(value => value.id === this.id);
    // A subsequent native user edit wins; never retry or restore an older measurement.
-   if (!live || live.height !== plan.height || live.width !== element.width || live.x !== plan.x || live.y !== plan.y) return;
-   if (!saved?.elements.some(value => value.id === this.id && !value.isDeleted && value.height === plan.height && value.width === element.width && value.x === plan.x && value.y === plan.y))
-    throw new Error('Height save could not be verified');
+   if (!live || !matches(live)) return;
+   if (!saved?.elements.some(value => value.id === this.id && !value.isDeleted && matches(value)))
+    throw new Error('Card presentation save could not be verified');
   } finally { ea.destroy(); }
  }
  destroy(): void {
