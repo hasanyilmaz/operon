@@ -35748,8 +35748,7 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 
 /* Native Excalidraw top-right entry; planning panels follow their drawing palette. */
 .excalidraw button.operon-excalidraw-task-pool-button { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--color-on-surface); box-shadow: none; }
-.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) { background: var(--color-surface-high); }
-.excalidraw button.operon-excalidraw-task-pool-button[aria-expanded="true"] { color: var(--interactive-accent); }
-.excalidraw button.operon-excalidraw-task-pool-button[aria-expanded="true"] svg.svg-icon { color: inherit; }
+.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) { background: transparent; color: var(--interactive-accent); }
+.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) svg.svg-icon { color: inherit; }
 .excalidraw button.operon-excalidraw-task-pool-button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
 .excalidraw button.operon-excalidraw-task-pool-button svg { width: var(--lg-icon-size, 1rem); height: var(--lg-icon-size, 1rem); }
