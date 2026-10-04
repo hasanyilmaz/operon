@@ -1,3 +1,5 @@
+import { getOwnerWindow } from '../core/dom-compat';
+import { taskSelectionControls, taskSelectionControlSignature, bindTaskSelectionControl, type TaskSelectionControl } from './task-selection-controls';
 import { ExcalidrawRelationIndicators } from './excalidraw-edge-relation-indicators';
 import { relationArrowPoint, type RelationArrow as BoundArrow } from './excalidraw-edge-relation-geometry';
 import { Component, Notice, type App, type TFile } from 'obsidian';
@@ -19,14 +21,17 @@ interface TaskPair extends ScenePair { a: IndexedTaskSnapshot; b: IndexedTaskSna
 interface Session {
  active: boolean; file: TFile; path: string; api: ExcalidrawTaskAPI; menu: NativeElementMenu; ea: ExcalidrawTaskEA;
  unregister: (() => void) | null; restore: (() => void) | null; life: Component | null;
- controls: TaskEdgeRelationControl[]; actions: ExcalidrawElementAction[];
+ controls: (TaskEdgeRelationControl | TaskSelectionControl)[]; actions: ExcalidrawElementAction[];
+ target: string | null; frame: number | null;
  input: string; data: string | null; signature: string; dirty: boolean; busy: boolean;
 }
-function scenePair(elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): ScenePair | null {
+function selectedElement(elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): ExcalidrawTaskElement | null {
  const selection = state.selectedElementIds as Record<string, boolean> | undefined;
  const ids = Object.keys(selection ?? {}).filter(id => selection?.[id]);
- if (ids.length !== 1) return null;
- const arrow: BoundArrow | undefined = elements.find(element => element.id === ids[0] && !element.isDeleted);
+ return ids.length === 1 ? elements.find(element => element.id === ids[0] && !element.isDeleted) ?? null : null;
+}
+function scenePair(elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): ScenePair | null {
+ const arrow: BoundArrow | null = selectedElement(elements, state);
  if (!arrow || arrow.type !== 'arrow') return null;
  const from = arrow.startBinding?.elementId, to = arrow.endBinding?.elementId;
  if (!from || !to || from === to) return null;
@@ -34,7 +39,7 @@ function scenePair(elements: readonly ExcalidrawTaskElement[], state: Excalidraw
  return start && end ? { arrow, start, end } : null;
 }
 
-/** Native selected-element extension; the task relation implementation is shared with Canvas. */
+/** Native task and arrow selection controls share their operation models with Canvas. */
 export class ExcalidrawEdgeRelations extends Component {
  private indicators: ExcalidrawRelationIndicators | null = null;
  private active = false;
@@ -82,15 +87,18 @@ export class ExcalidrawEdgeRelations extends Component {
    try { ea = this.view.plugin.ea.getAPI(this.view); } catch { this.unsupportedMenu = native; this.warn(); return; }
    if (typeof ea.registerElementActionProvider !== 'function') { ea.destroy(); this.unsupportedMenu = native; this.warn(); return; }
    const session: Session = { active: true, file: this.view.file!, path: this.view.file!.path, api, menu: native as NativeElementMenu, ea,
-    unregister: null, restore: null, life: null, controls: [], actions: [], input: '', data: null, signature: '', dirty: true, busy: false };
+    unregister: null, restore: null, life: null, controls: [], actions: [], target: null, frame: null, input: '', data: null, signature: '', dirty: true, busy: false };
    this.session = session;
    try {
     this.bindMenu(session);
-    session.unregister = ea.registerElementActionProvider(element => this.current(session) && session.controls.length && element.id === this.selectedPair()?.arrow.id ? session.actions : []);
+    session.unregister = ea.registerElementActionProvider(element => this.current(session) && session.controls.length && element.id === session.target ? session.actions : []);
     if (!session.unregister) { this.release(); this.unsupportedMenu = native; this.warn(); return; }
    } catch { this.release(); this.unsupportedMenu = native; this.warn(); return; }
   }
-  if (this.session?.active) this.session.menu.update(api.getSceneElements(), api.getAppState());
+  if (this.session?.active) {
+   this.session.menu.update(api.getSceneElements(), api.getAppState());
+   this.schedulePosition(this.session);
+  }
  }
  private current(session: Session): boolean {
   return session.active && this.session === session && this.available() && this.view.file === session.file && session.file.path === session.path
@@ -106,14 +114,14 @@ export class ExcalidrawEdgeRelations extends Component {
  }
  private prepare(session: Session, elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): void {
   if (!this.current(session)) return;
-  const pair = scenePair(elements, state);
-  const input = JSON.stringify([pair?.arrow.id, pair?.arrow.locked, pair?.start.id, pair?.start.link, pair?.start.locked,
+  const pair = scenePair(elements, state), selected = selectedElement(elements, state);
+  const input = JSON.stringify([selected?.id, selected?.link, selected?.locked, selected?.type, pair?.arrow.id, pair?.arrow.locked, pair?.start.id, pair?.start.link, pair?.start.locked,
    pair?.end.id, pair?.end.link, pair?.end.locked, state.viewModeEnabled, session.busy]);
   if (!session.dirty && session.input === input && session.data === this.view.data) return;
   session.dirty = false; session.input = input; session.data = this.view.data;
   const tasks = this.taskPair(pair);
   const locked = !!pair && [pair.arrow, pair.start, pair.end].some(element => element.locked !== false);
-  const controls = tasks ? taskEdgeRelationControls({
+  const relations = tasks ? taskEdgeRelationControls({
    a: tasks.a, b: tasks.b, surface: 'Excalidraw', keyMappings: this.deps.cards.deps.getSettings().keyMappings,
    relationIssue: this.deps.relationIssue, changeRelation: this.deps.changeRelation, readOnly: state.viewModeEnabled !== false, locked,
    parentName: id => { const parent = this.deps.cards.resolve(id); return parent.state === 'ready' ? parent.task.description || id : id; },
@@ -127,16 +135,38 @@ export class ExcalidrawEdgeRelations extends Component {
      && [fresh.arrow, fresh.start, fresh.end].every(element => element.locked === false);
    },
   }) : [];
-  const signature = JSON.stringify([pair?.arrow.id, pair?.start.id, pair?.end.id, taskEdgeRelationControlSignature(controls)]);
+  let controls: (TaskEdgeRelationControl | TaskSelectionControl)[] = relations;
+  let controlSignature = taskEdgeRelationControlSignature(relations);
+  const id = selected && excalidrawSceneTaskId(this.deps.app, this.view, selected);
+  if (selected && id && this.deps.cards.resolve(id).state === 'ready') {
+   const current = () => {
+    if (!this.current(session)) return false;
+    const fresh = selectedElement(session.api.getSceneElements(), session.api.getAppState());
+    return !!fresh && fresh.id === selected.id && excalidrawSceneTaskId(this.deps.app, this.view, fresh) === id;
+   };
+   const models = taskSelectionControls({
+    cards: this.deps.cards, taskId: id, current,
+    writable: () => session.api.getAppState().viewModeEnabled === false
+     && selectedElement(session.api.getSceneElements(), session.api.getAppState())?.locked === false,
+    isBusy: () => session.busy,
+    setBusy: value => { session.busy = value; if (this.current(session)) { session.dirty = true; this.sync(); } },
+   });
+   controls = models; controlSignature = taskSelectionControlSignature(models);
+  }
+  const signature = JSON.stringify([selected?.id, pair?.start.id, pair?.end.id, controlSignature]);
   if (signature === session.signature) return;
   this.clearButtons(session);
-  session.signature = signature; session.controls = controls;
+  session.signature = signature; session.controls = controls; session.target = selected?.id ?? null;
   session.actions = controls.map(control => ({ id: control.id, title: control.title, icon: control.icon, action: control.run }));
   // Native caching otherwise misses binding and task changes while the same arrow stays selected.
   session.menu.selectedElementId = null;
  }
  private clearButtons(session: Session): void { if (session.life) this.removeChild(session.life); session.life = null; }
  private positionMenu(session: Session, elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): void {
+  const selected = selectedElement(elements, state);
+  if (selected?.type === 'embeddable') {
+   this.positionTaskMenu(session, selected, state); return;
+  }
   const menu = session.menu.menuEl, pair = scenePair(elements, state), anchor = pair && relationArrowPoint(pair.arrow, .5);
   if (!session.life || !session.controls.length || !menu || menu.hidden || !pair || !anchor) return;
   const zoom = (state.zoom as { value?: number } | undefined)?.value, { scrollX, scrollY } = state;
@@ -150,6 +180,26 @@ export class ExcalidrawEdgeRelations extends Component {
   if (menu.style.left !== targetLeft) menu.style.left = targetLeft;
   if (menu.style.top !== targetTop) menu.style.top = targetTop;
  }
+ private positionTaskMenu(session: Session, selected: ExcalidrawTaskElement, state: ExcalidrawTaskState): void {
+  const menu = session.menu.menuEl;
+  if (!session.life || !menu || menu.hidden || !session.controls.length) return;
+  const zoom = (state.zoom as { value?: number } | undefined)?.value, scrollX = state.scrollX;
+  if (typeof zoom !== 'number' || typeof scrollX !== 'number' || typeof selected.x !== 'number'
+   || ![zoom, scrollX, selected.x].every(Number.isFinite) || zoom <= 0) return;
+  const active = state.activeEmbeddable as { element?: { id?: string }; state?: string } | undefined;
+  const ref = Reflect.get(this.view, 'embeddableMenuRef') as { current?: HTMLElement } | undefined;
+  const native = ref?.current;
+  // The active embed menu is a separate native React surface. Keep both groups on its row.
+  const beside = active?.state === 'active' && active.element?.id === selected.id && native?.isConnected;
+  menu.style.left = `${(selected.x + scrollX) * zoom + (beside ? native.offsetWidth + 8 : 0)}px`;
+ }
+ private schedulePosition(session: Session): void {
+  if (!this.current(session) || session.frame !== null || !session.controls.some(control => !('lines' in control))) return;
+  session.frame = getOwnerWindow(this.view.contentEl).requestAnimationFrame(() => {
+   session.frame = null;
+   if (this.current(session)) this.positionMenu(session, session.api.getSceneElements(), session.api.getAppState());
+  });
+ }
  private bindMenu(session: Session): void {
   const menu = session.menu, originalUpdate = menu.update, originalRender = menu.renderActions;
   const updateDescriptor = Object.getOwnPropertyDescriptor(menu, 'update'), renderDescriptor = Object.getOwnPropertyDescriptor(menu, 'renderActions');
@@ -159,7 +209,8 @@ export class ExcalidrawEdgeRelations extends Component {
    if (this.current(session)) this.positionMenu(session, elements, state);
   };
   const render: NativeElementMenu['renderActions'] = actions => {
-   const focused = menu.actionsEl?.ownerDocument.activeElement?.getAttribute('data-operon-edge-relation');
+   const active = menu.actionsEl?.ownerDocument.activeElement;
+   const focused = active?.getAttribute('data-operon-edge-relation') ?? active?.getAttribute('data-operon-task-action');
    this.clearButtons(session); originalRender.call(menu, actions);
    if (!this.current(session) || !menu.actionsEl || !session.actions.length) return;
    const children = Array.from(menu.actionsEl.children);
@@ -173,25 +224,41 @@ export class ExcalidrawEdgeRelations extends Component {
     !button || button.tagName !== 'BUTTON' || button.getAttribute('aria-label') !== model.title || index !== own[0].index + i)) { this.disable(session); return; }
    const life = session.life = new Component(); this.addChild(life);
    const group = menu.actionsEl.createSpan('operon-excalidraw-edge-relations-controls');
+   if (session.controls.some(control => !('lines' in control))) group.classList.add('operon-excalidraw-task-controls');
    menu.actionsEl.insertBefore(group, own[0].button);
    for (const { button, model } of own) {
     group.appendChild(button);
-    bindTaskEdgeRelationControl(button as HTMLButtonElement, model, life, { nativeClick: true,
-     bindTheme: tooltip => { const theme = new Component(); theme.load(); bindExcalidrawPoolTheme(this.view.contentEl, tooltip, theme); return () => theme.unload(); },
-    });
+    const options = { nativeClick: true,
+     bindTheme: (tooltip: HTMLElement) => { const theme = new Component(); theme.load(); bindExcalidrawPoolTheme(this.view.contentEl, tooltip, theme); return () => theme.unload(); },
+    };
+    if ('lines' in model) bindTaskEdgeRelationControl(button as HTMLButtonElement, model, life, options);
+    else bindTaskSelectionControl(button as HTMLButtonElement, model, life, options);
    }
    bindExcalidrawPoolTheme(this.view.contentEl, group, life);
-   if (focused) group.querySelector<HTMLButtonElement>(`[data-operon-edge-relation="${focused}"]`)?.focus({ preventScroll: true });
+   if (focused) group.querySelector<HTMLButtonElement>(`[data-operon-edge-relation="${focused}"], [data-operon-task-action="${focused}"]`)?.focus({ preventScroll: true });
   };
   try { menu.update = update; menu.renderActions = render; }
   catch {
    if (menu.update === update) { if (updateDescriptor) Object.defineProperty(menu, 'update', updateDescriptor); else Reflect.deleteProperty(menu, 'update'); }
    throw new Error(taskEdgeRelationUnavailable);
   }
+  const renderEmbed = Reflect.get(this.view, 'renderEmbeddableMenu') as ((state: ExcalidrawTaskState) => unknown) | undefined;
+  const embedDescriptor = Object.getOwnPropertyDescriptor(this.view, 'renderEmbeddableMenu');
+  const renderWithPosition = (state: ExcalidrawTaskState): unknown => {
+   const result: unknown = renderEmbed?.call(this.view, state);
+   this.schedulePosition(session); return result;
+  };
   session.restore = () => {
+   if (session.frame !== null) getOwnerWindow(this.view.contentEl).cancelAnimationFrame(session.frame);
+   session.frame = null;
+   if (Reflect.get(this.view, 'renderEmbeddableMenu') === renderWithPosition) {
+    if (embedDescriptor) Object.defineProperty(this.view, 'renderEmbeddableMenu', embedDescriptor);
+    else Reflect.deleteProperty(this.view, 'renderEmbeddableMenu');
+   }
    if (menu.update === update) { if (updateDescriptor) Object.defineProperty(menu, 'update', updateDescriptor); else Reflect.deleteProperty(menu, 'update'); }
    if (menu.renderActions === render) { if (renderDescriptor) Object.defineProperty(menu, 'renderActions', renderDescriptor); else Reflect.deleteProperty(menu, 'renderActions'); }
   };
+  if (typeof renderEmbed === 'function') Reflect.set(this.view, 'renderEmbeddableMenu', renderWithPosition);
  }
  private disable(session: Session): void {
   session.active = false; this.unsupportedMenu = session.menu; this.warn();

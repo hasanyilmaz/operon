@@ -34910,7 +34910,10 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 
 /* Owned controls retain native Excalidraw sizing and use the same relation states. */
 .operon-excalidraw-edge-relations-controls { display: flex; gap: 1px; }
-.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button.is-active { --icon-fill-color: var(--interactive-accent); color: var(--interactive-accent); background: var(--background-modifier-hover); }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button { background: transparent; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button .ToolIcon__icon, .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) .ToolIcon__icon { background: transparent; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) { background: transparent; --icon-fill-color: var(--interactive-accent); color: var(--interactive-accent); }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) svg.svg-icon { color: inherit; }
 .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button[aria-disabled="true"] { cursor: default; }
 
 
