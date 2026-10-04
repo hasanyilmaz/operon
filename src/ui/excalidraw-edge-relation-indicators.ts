@@ -12,9 +12,10 @@ interface Projection {
  arrow: RelationArrow; endpoints: string; taskIds: string[]; marks: TaskRelationMark[];
  elements: Map<string, HTMLElement>; geometry: string; route: RelationRoute | null; pending: string | null;
 }
+type IndicatorLibrary = RelationSvgLibrary & { applyDarkModeFilter?: (color: string, dark: boolean) => string };
 interface LayerSession {
  file: TFile; path: string; api: ExcalidrawTaskAPI; host: HTMLElement; layer: HTMLElement; life: Component;
- library: RelationSvgLibrary | undefined; data: string; full: boolean; dirty: Set<string>;
+ library: IndicatorLibrary | undefined; data: string; full: boolean; dirty: Set<string>;
  projections: Map<string, Projection>; byTask: Map<string, Set<string>>; queue: Set<Projection>; running: number;
 }
 const prefix = 'operon-excalidraw-edge-relations';
@@ -30,7 +31,7 @@ export class ExcalidrawRelationIndicators extends Component {
  sync(): void {
   if (!this.active) return;
   const host = Reflect.get(this.view, 'excalidrawContainer') as HTMLElement | undefined;
-  const library = (this.view as ExcalidrawTaskView & { packages?: { excalidrawLib?: RelationSvgLibrary } }).packages?.excalidrawLib;
+  const library = (this.view as ExcalidrawTaskView & { packages?: { excalidrawLib?: IndicatorLibrary } }).packages?.excalidrawLib;
   const previous = this.session;
   if (previous && (!this.available() || previous.file !== this.view.file || previous.path !== this.view.file?.path
    || previous.api !== this.view.excalidrawAPI || previous.host !== host || previous.library !== library)) this.clear();
@@ -68,6 +69,14 @@ export class ExcalidrawRelationIndicators extends Component {
  private draw(): void {
   const session = this.session;
   if (!session || !this.current(session)) { this.clear(); return; }
+  const state = session.api.getAppState();
+  const color = typeof state.viewBackgroundColor === 'string' ? state.viewBackgroundColor : '#ffffff';
+  // Match the actual scene, including native dark-mode conversion, rather than the UI palette.
+  const background = session.library?.applyDarkModeFilter?.(color, state.theme === 'dark')
+   ?? (state.theme === 'dark' ? 'var(--background-primary)' : color);
+  if (session.layer.style.getPropertyValue('--operon-excalidraw-scene-background') !== background) {
+   session.layer.style.setProperty('--operon-excalidraw-scene-background', background);
+  }
   const elements = session.api.getSceneElements(), byId = new Map(elements.filter(element => !element.isDeleted).map(element => [element.id, element]));
   const seen = new Set<string>(), resolutions = new Map<string, TaskCardResolution>();
   const resolve = (id: string) => { let result = resolutions.get(id); if (!result) { result = this.deps.cards.resolve(id); resolutions.set(id, result); } return result; };
