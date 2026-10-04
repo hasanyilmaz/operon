@@ -34900,6 +34900,12 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
+/* Owned controls retain native Excalidraw sizing and use the same relation states. */
+.operon-excalidraw-edge-relations-controls { display: flex; gap: 1px; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button.is-active { --icon-fill-color: var(--interactive-accent); color: var(--interactive-accent); background: var(--background-modifier-hover); }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button[aria-disabled="true"] { cursor: default; }
+
+
 .canvas-menu.operon-canvas-task-toolbar { position: fixed; }
 
 /* Empty Canvas actions remain available without competing with populated content. */
@@ -34915,7 +34921,8 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  body .operon-canvas-task-pool button,
  body .operon-canvas-task-pool button.operon-canvas-task-pool-status,
  body .operon-canvas-task-pool button.operon-canvas-task-pool-title,
- .canvas-menu .operon-canvas-edge-relations-controls button { min-height: 44px; min-width: 44px; }
+ .canvas-menu .operon-canvas-edge-relations-controls button,
+ .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button { min-height: 44px; min-width: 44px; }
  body .operon-canvas-task-pool .operon-canvas-task-pool-modes button { min-width: 0; }
  .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
  .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }

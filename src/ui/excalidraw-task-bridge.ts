@@ -22,6 +22,7 @@ export interface ExcalidrawTaskAPI {
  onChange(listener: (elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState) => void): () => void;
  selectElements(elements: ExcalidrawTaskElement[]): void;
 }
+export interface ExcalidrawElementAction { id: string; title: string; icon: string; action: () => void; }
 export interface ExcalidrawTaskEA {
  style: Record<string, unknown>;
  getViewLastPointerPosition?(): { x: number; y: number };
@@ -30,6 +31,7 @@ export interface ExcalidrawTaskEA {
  addElementsToView(reposition: boolean, save: boolean, onTop: boolean, restore?: boolean, captureUpdate?: 'NEVER'): Promise<boolean>;
  copyViewElementsToEAforEditing?(elements: readonly ExcalidrawTaskElement[]): void;
  getElement?(id: string): ExcalidrawTaskElement | undefined;
+ registerElementActionProvider?(getActions: (element: ExcalidrawTaskElement) => readonly ExcalidrawElementAction[]): (() => void) | null;
  getSceneFromFile(file: TFile): Promise<{ elements: ExcalidrawTaskElement[] } | null>;
  destroy(): void;
 }
@@ -94,11 +96,15 @@ export function isExcalidrawTaskLink(app: App, view: ExcalidrawTaskView, link: s
   && app.metadataCache.getFirstLinkpathDest(match[1], view.file.path) === view.file
   && excalidrawTaskReference(view.data, id) === 'present';
 }
+/** A scene reference is valid even when its embedded card is offscreen. */
+export function excalidrawSceneTaskId(app: App, view: ExcalidrawTaskView, element: ExcalidrawTaskElement): string | null {
+ const id = /#Operon task ([a-z0-9]{7})\]\]$/.exec(element.link ?? '')?.[1];
+ return !element.isDeleted && element.type === 'embeddable' && id && isExcalidrawTaskLink(app, view, element.link, id) ? id : null;
+}
 /** Resolve native embed ownership and its single reference without mounting another card. */
 export function readExcalidrawCardReference(app: App, view: ExcalidrawTaskView, element: ExcalidrawTaskElement, expectedId?: string): { taskId: string; node: HTMLElement; container: HTMLElement } | null {
- const taskId = /#Operon task ([a-z0-9]{7})\]\]$/.exec(element.link ?? '')?.[1];
- if (element.isDeleted || element.type !== 'embeddable' || !taskId || expectedId && taskId !== expectedId
-  || !isExcalidrawTaskLink(app, view, element.link, taskId)) return null;
+ const taskId = excalidrawSceneTaskId(app, view, element);
+ if (!taskId || expectedId && taskId !== expectedId) return null;
  const ref = view.getEmbeddableLeafElementById(element.id)?.node;
  const container = ref?.containerEl, node = container?.closest<HTMLElement>('.canvas-node');
  return ref?.file === view.file && container && node?.isConnected && view.contentEl.contains(node) ? { taskId, node, container } : null;

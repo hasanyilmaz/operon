@@ -1,3 +1,5 @@
+import { ExcalidrawEdgeRelations } from './excalidraw-edge-relations';
+import type { TaskEdgeRelationOperations } from './task-edge-relation-controls';
 import { ExcalidrawTaskCleanup, type ExcalidrawCleanupDeps, type TaskRemovalEvidence } from './excalidraw-task-cleanup';
 import type { IndexedTask } from '../types/fields';
 import { ExcalidrawPropertyPool } from './excalidraw-property-pool';
@@ -16,10 +18,11 @@ export class ExcalidrawTaskIntegration extends Component {
  private cleanup: ExcalidrawTaskCleanup | null = null;
  private active = false;
  private pending = false;
+ private relations = new Map<ExcalidrawTaskView, ExcalidrawEdgeRelations>();
  private pools = new Map<ExcalidrawTaskView, ExcalidrawTaskPool<TaskPoolTarget>>();
  private menus = new Map<ExcalidrawTaskView, () => void>();
  private unsupported = new WeakSet<ExcalidrawTaskView>();
- constructor(private deps: { cleanup?: ExcalidrawCleanupDeps; app: App; cards: TaskCardEmbeds; openFinder(select: (id: string) => void | Promise<void>): void;
+ constructor(private deps: TaskEdgeRelationOperations & { cleanup?: ExcalidrawCleanupDeps; app: App; cards: TaskCardEmbeds; openFinder(select: (id: string) => void | Promise<void>): void;
   fileAction?(file: TFile, readOnly: boolean): ExcalidrawFileAction | null;
   propertyValuePool?: CanvasPropertyValuePoolPreferences;
   openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>, view?: ExcalidrawTaskView): void }) { super(); }
@@ -35,7 +38,7 @@ export class ExcalidrawTaskIntegration extends Component {
    workspace.onLayoutReady(() => { if (this.active) this.sync(); });
   }
  }
- onunload(): void { this.active = false; this.cleanup?.destroy(); this.cleanup = null; for (const cleanup of this.menus.values()) cleanup(); this.menus.clear(); for (const pool of this.pools.values()) this.removeChild(pool); this.pools.clear(); }
+ onunload(): void { this.active = false; this.cleanup?.destroy(); this.cleanup = null; for (const relations of this.relations.values()) this.removeChild(relations); this.relations.clear(); for (const cleanup of this.menus.values()) cleanup(); this.menus.clear(); for (const pool of this.pools.values()) this.removeChild(pool); this.pools.clear(); }
  beginDeletion(tasks: readonly IndexedTask[]): (committed?: boolean) => void { return this.cleanup?.beginDeletion(tasks) ?? (() => {}); }
  confirmDeleted(tasks: readonly IndexedTask[], evidence: TaskRemovalEvidence): void { void this.cleanup?.confirmRemoved(tasks, evidence); }
  private sync(): void {
@@ -47,9 +50,13 @@ export class ExcalidrawTaskIntegration extends Component {
   const plugin = (app as App & { plugins?: { plugins?: Record<string, unknown> } }).plugins?.plugins?.['obsidian-excalidraw-plugin'];
   const views = new Set(app.workspace.getLeavesOfType('excalidraw').map(leaf => leaf.view as unknown as ExcalidrawTaskView)
    .filter(view => !!plugin && view.plugin === plugin && view.getViewType?.() === 'excalidraw'));
+  for (const [view, relations] of this.relations) if (!views.has(view)) { this.removeChild(relations); this.relations.delete(view); }
   for (const [view, cleanup] of this.menus) if (!views.has(view)) { cleanup(); this.menus.delete(view); }
   for (const [view, pool] of this.pools) if (!views.has(view)) { this.removeChild(pool); this.pools.delete(view); }
   for (const view of views) {
+   if (!this.relations.has(view)) {
+    const relations = new ExcalidrawEdgeRelations(view, this.deps); this.relations.set(view, relations); this.addChild(relations);
+   } else this.relations.get(view)?.sync();
    if (!this.pools.has(view) && typeof Reflect.get(view, 'renderTopRightUI') === 'function') this.mountPool(view);
    else this.pools.get(view)?.sync();
    if (this.menus.has(view)) continue;
@@ -80,7 +87,7 @@ export class ExcalidrawTaskIntegration extends Component {
      || hit.closest('button, input, textarea, select, a, .Island, .App-menu, .App-toolbar, .layer-ui__wrapper, .context-menu, .embeddable-menu, .operon-canvas-task-pool, .operon-canvas-property-pool, .operon-floating-panel')) return null;
     return excalidrawPoolScenePoint(view.excalidrawAPI.getAppState(), point);
    },
-  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined, this.deps.fileAction ? () => view.file && this.isAvailable(view) ? this.deps.fileAction!(view.file, !this.isCurrent(view)) : null : undefined, () => this.cleanup?.sync());
+  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined, this.deps.fileAction ? () => view.file && this.isAvailable(view) ? this.deps.fileAction!(view.file, !this.isCurrent(view)) : null : undefined, () => { this.cleanup?.sync(); this.relations.get(view)?.sync(); });
   this.pools.set(view, pool); this.addChild(pool);
  }
  openPool(checking: boolean, kind: 'task' | 'property' = 'task'): boolean {

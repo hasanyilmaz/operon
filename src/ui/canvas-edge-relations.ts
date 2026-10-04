@@ -4,11 +4,10 @@ import { CONTEXTUAL_MENU_ACTIONS, getContextualMenuActionIcon, getContextualMenu
 import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
-import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
-import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getOwnerWindow } from '../core/dom-compat';
 import { resolveBlockedByVisualState, resolveBlockedByVisualStateColor } from '../core/blocked-by-visual-state';
-import { INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_CREATOR_FALLBACK_FIELD_ICONS } from '../types/settings';
-import { edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from '../systems/canvas-edge-relations';
+import { edgeRelationship, type EdgeRelationKind } from '../systems/canvas-edge-relations';
+import { taskEdgeRelationControls, taskEdgeRelationControlSignature, taskEdgeRelationIcon, mountTaskEdgeRelationControl } from './task-edge-relation-controls';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -25,7 +24,6 @@ interface NativeEdge {
 }
 interface NativeMenu { menuEl: HTMLElement; render(force?: boolean): void }
 const prefix = 'operon-canvas-edge-relations';
-const text = (key: string) => t('settings', `edgeRelations${key}`);
 
 interface RelationMark { key: EdgeRelationKind | 'blockedBy'; atSource: boolean; color: string | null }
 interface EdgeProjection {
@@ -164,9 +162,7 @@ export class CanvasEdgeRelations extends Component {
   return a.state === 'ready' && b.state === 'ready' ? { a: a.task, b: b.task } : null;
  }
  private icon(key: EdgeRelationKind | 'blockedBy'): string {
-  const canonicalKey = key;
-  return getConfiguredKeyMappingIcon(canonicalKey, this.cards.deps.getSettings().keyMappings)
-   || (key === 'parentTask' ? TASK_CREATOR_FALLBACK_FIELD_ICONS.parentTask : INLINE_TASK_COMPACT_FALLBACK_ICONS[key]);
+  return taskEdgeRelationIcon(key, this.cards.deps.getSettings().keyMappings);
  }
  private sync(force = true): void {
   if (!this.layer || !this.active) return;
@@ -387,80 +383,27 @@ export class CanvasEdgeRelations extends Component {
   const pair = edge && this.read(edge), menu = this.menu?.menuEl;
   if (!edge || !pair || !menu?.isConnected || !edge.path?.display?.getScreenCTM()) { this.clearControls(); return; }
   const { a, b } = pair;
-  const file = this.view.file, filePath = this.view.file?.path;
-  const snapshot = edgeRelationSnapshot(a, b), fromNode = edge.from.node, toNode = edge.to.node;
-  const issues = (['parentTask', 'blocking'] as const).flatMap(kind => [this.owner.deps.relationIssue?.(a.operonId, b.operonId, kind), this.owner.deps.relationIssue?.(b.operonId, a.operonId, kind)]);
-  const signature = JSON.stringify([edge.id, snapshot, issues, a.description, b.description, this.busy, this.canvas.readonly, this.icon('parentTask'), this.icon('blocking'), this.icon('blockedBy'), getConfiguredKeyMappingIcon('subtasks', this.cards.deps.getSettings().keyMappings)]);
+  const file = this.view.file, filePath = file?.path, fromNode = edge.from.node, toNode = edge.to.node;
+  const models = taskEdgeRelationControls({
+   a, b, surface: 'Canvas', keyMappings: this.cards.deps.getSettings().keyMappings,
+   readOnly: this.canvas.readonly,
+   relationIssue: this.owner.deps.relationIssue ? (from, to, kind) => this.owner.deps.relationIssue!(from, to, kind) : undefined,
+   changeRelation: this.owner.deps.changeRelation ? (from, to, kind, snapshot, allowed) => this.owner.deps.changeRelation!(from, to, kind, snapshot, allowed) : undefined,
+   parentName: id => { const parent = this.cards.resolve(id); return parent.state === 'ready' ? parent.task.description || id : id; },
+   isBusy: () => this.busy, setBusy: value => { this.busy = value; this.schedule(); },
+   allowed: () => {
+    if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode
+     || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)) return false;
+    const fresh = this.read(edge);
+    return !!fresh && fresh.a.operonId === a.operonId && fresh.b.operonId === b.operonId;
+   },
+  });
+  const signature = edge.id + taskEdgeRelationControlSignature(models);
   if (signature === this.signature && this.controls?.parentElement === menu) return;
   this.clearControls(); this.signature = signature;
   const life = this.controlLife = new Component(); this.addChild(life);
   const controls = this.controls = menu.createSpan(prefix + '-controls');
-  for (const [kind, reverse] of [['parentTask', false], ['parentTask', true], ['blocking', false], ['blocking', true]] as const) {
-   const source = reverse ? b : a, target = reverse ? a : b;
-   const relationSnapshot = edgeRelationSnapshot(source, target);
-   const has = edgeRelationship(source, target, kind), reversed = edgeRelationship(target, source, kind);
-   const existingParent = kind === 'parentTask' && !has ? target.fieldValues.parentTask?.trim() : '';
-   const issue = issues[(kind === 'parentTask' ? 0 : 2) + Number(reverse)] ?? (reversed ? 'reverse' : existingParent ? 'parent' : null);
-   const messages = {
-    reverse: 'A relation already exists in the opposite direction. Remove it before reversing the relationship.',
-    'parent-cycle': 'This would create a parent–child loop. Remove the conflicting parent relation first.',
-    'dependency-cycle': 'This would create a dependency loop. Remove a conflicting blocking relation first.',
-    'parent-missing': 'A task in the parent chain could not be found. Restore it or correct the parent reference.',
-    missing: 'A source task could not be found. Restore it or reconnect the Canvas card.',
-    duplicate: 'Multiple tasks share the same Operon ID. Resolve the duplicate ID before changing this relation.',
-    parent: '',
-   };
-   const unavailable = this.busy || this.canvas.readonly || !this.owner.deps.changeRelation || !!issue;
-   const title = this.busy ? 'Updating Relation…' : this.canvas.readonly ? 'Canvas Is Read-only'
-    : issue === 'parent-missing' || issue === 'missing' ? 'Cannot Verify Relation'
-    : unavailable ? has ? 'Cannot Update Relation' : 'Cannot Add Relation' : has ? 'Current Relation' : 'Add Relation';
-   const roles = kind === 'parentTask' ? ['Parent', 'Child'] : ['Blocked by', 'Blocking'];
-   const lines = [`${roles[0]}: ${source.description || source.operonId}`, `${roles[1]}: ${target.description || target.operonId}`];
-   const tooltipLines = () => {
-    if (this.busy) return [...lines, 'Wait for the current change to finish.'];
-    if (this.canvas.readonly) return [...lines, 'Switch this Canvas to editing mode to change relations.'];
-    if (!this.owner.deps.changeRelation) return [...lines, 'Relation editing is currently unavailable.'];
-    if (issue && issue !== 'parent') return [...lines, messages[issue]];
-    if (!existingParent) return lines;
-    const parent = this.cards.resolve(existingParent);
-    return [...lines, `This child already has a parent: ${parent.state === 'ready' ? parent.task.description || existingParent : existingParent}.`, text('Parent')];
-   };
-   const button = controls.createEl('button', { cls: 'clickable-icon', attr: { type: 'button', 'aria-pressed': String(has) } });
-   const icon = kind === 'parentTask' && reverse
-    ? getConfiguredKeyMappingIcon('subtasks', this.cards.deps.getSettings().keyMappings) || TASK_CREATOR_FALLBACK_FIELD_ICONS.subtasks
-    : this.icon(kind === 'blocking' && reverse ? 'blockedBy' : kind);
-   setIcon(button, icon); button.classList.toggle('is-active', has);
-   button.setAttribute('aria-disabled', String(unavailable));
-   button.classList.toggle('is-unavailable', !!existingParent);
-   setAccessibleLabelWithoutTooltip(button, `${title}. ${tooltipLines().join('. ')}`);
-   bindOperonHoverTooltip(button, {
-    title, taskColor: null,
-    contentElFactory: () => {
-     const content = createOwnerElement(button, 'div');
-     for (const line of tooltipLines()) {
-      const row = content.createDiv();
-      row.textContent = line;
-     }
-     return content;
-    },
-   });
-   life.registerDomEvent(button, 'pointerdown', event => event.stopPropagation());
-   life.registerDomEvent(button, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
-   life.registerDomEvent(button, 'click', event => {
-    event.stopPropagation(); if (unavailable || this.busy) { event.preventDefault(); return; }
-    const allowed = () => {
-     if (!this.current() || this.view.file !== file || this.view.file?.path !== filePath || edge.from.node !== fromNode || edge.to.node !== toNode || this.canvas.readonly || this.canvas.selection?.size !== 1 || !this.canvas.selection.has(edge)) return false;
-     const fresh = this.read(edge); if (!fresh) return false;
-     return fresh.a.operonId === a.operonId && fresh.b.operonId === b.operonId;
-    };
-    this.busy = true; this.schedule();
-    void (async () => {
-     try { if (!allowed() || !await this.owner.deps.changeRelation!(source.operonId, target.operonId, kind, relationSnapshot, allowed)) new Notice(text('Failed')); }
-     catch { new Notice(text('Failed')); }
-     finally { this.busy = false; this.schedule(); }
-    })();
-   });
-  }
+  for (const model of models) mountTaskEdgeRelationControl(controls, model, life);
  }
  onunload(): void {
   this.clearProjection();

@@ -16746,6 +16746,8 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.addChild(this.canvasTaskIntegration);
   this.excalidrawTaskIntegration = new ExcalidrawTaskIntegration({
+   relationIssue: (from, to, kind) => edgeRelationIssue(from, to, kind, id => this.indexer.getTask(id), id => this.indexer.hasDuplicateOperonIdConflict(id), (id, field, before, after) => this.dependencyManager.validateDependencyChange(id, field, before, after).ok),
+   changeRelation: (from, to, kind, snapshot, allowed) => this.updateCanvasRelation(from, to, kind, snapshot, allowed),
    cleanup: { app: this.app, getSettings: () => this.settings,
     awaitSettlement: () => this.indexer.awaitRamSettlement(),
     isSourceTransitionActive: id => this.indexer.isTaskSourceTransitionActive(id),
