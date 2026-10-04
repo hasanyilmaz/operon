@@ -1,13 +1,12 @@
 import type { TaskRefreshScope } from '../core/task-refresh-scope';
 import type { TaskCardResolution } from './task-card-embed-model';
 import { CONTEXTUAL_MENU_ACTIONS, getContextualMenuActionIcon, getContextualMenuActionLabel } from '../core/contextual-menu-engine';
-import { canvasRelationAnchor, canvasRelationPoint, canvasRelationSlot } from './canvas-edge-relation-geometry';
+import { canvasRelationAnchor, canvasRelationPoint } from './canvas-edge-relation-geometry';
 import { Component, Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
-import { resolveBlockedByVisualState, resolveBlockedByVisualStateColor } from '../core/blocked-by-visual-state';
-import { edgeRelationship, type EdgeRelationKind } from '../systems/canvas-edge-relations';
-import { taskEdgeRelationControls, taskEdgeRelationControlSignature, taskEdgeRelationIcon, mountTaskEdgeRelationControl } from './task-edge-relation-controls';
+import { taskRelationMarks, type TaskRelationMark } from './task-edge-relation-marks';
+import { taskEdgeRelationControls, taskEdgeRelationControlSignature, mountTaskEdgeRelationControl } from './task-edge-relation-controls';
 import { canvasRelationTaskId } from '../systems/canvas-task-relations';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -25,11 +24,10 @@ interface NativeEdge {
 interface NativeMenu { menuEl: HTMLElement; render(force?: boolean): void }
 const prefix = 'operon-canvas-edge-relations';
 
-interface RelationMark { key: EdgeRelationKind | 'blockedBy'; atSource: boolean; color: string | null }
 interface EdgeProjection {
  taskIds: string[];
  endpoints?: [CanvasTaskNode, CanvasTaskNode];
- marks: RelationMark[];
+ marks: TaskRelationMark[];
  elements: Map<string, HTMLElement>;
  geometry: string;
  path: SVGPathElement | undefined;
@@ -161,9 +159,6 @@ export class CanvasEdgeRelations extends Component {
   const a = this.resolve(aId), b = this.resolve(bId);
   return a.state === 'ready' && b.state === 'ready' ? { a: a.task, b: b.task } : null;
  }
- private icon(key: EdgeRelationKind | 'blockedBy'): string {
-  return taskEdgeRelationIcon(key, this.cards.deps.getSettings().keyMappings);
- }
  private sync(force = true): void {
   if (!this.layer || !this.active) return;
   if (force) this.full = true;
@@ -215,26 +210,17 @@ export class CanvasEdgeRelations extends Component {
     const projection = this.projections.get(edge); if (!projection) continue;
     projection.taskIds = this.taskIds(edge);
     projection.endpoints = edge.from?.node && edge.to?.node ? [edge.from.node, edge.to.node] : undefined;
-    const pair = this.read(edge), marks: RelationMark[] = [];
-    if (pair) {
-     if (edgeRelationship(pair.a, pair.b, 'parentTask')) marks.push({ key: 'parentTask', atSource: true, color: null });
-     else if (edgeRelationship(pair.b, pair.a, 'parentTask')) marks.push({ key: 'parentTask', atSource: false, color: null });
-     const forward = edgeRelationship(pair.a, pair.b, 'blocking'), reverse = edgeRelationship(pair.b, pair.a, 'blocking');
-     if (forward || reverse) {
-      const task = forward ? pair.a : pair.b;
-      const state = resolveBlockedByVisualState({ ...task, tags: [...task.tags] }, this.cards.deps.getSettings().pipelines);
-      marks.push({ key: state === 'resolved' ? 'blockedBy' : 'blocking', atSource: forward, color: resolveBlockedByVisualStateColor(state) });
-     }
-    }
+    const pair = this.read(edge);
+    const marks = pair ? taskRelationMarks(pair.a, pair.b, this.cards.deps.getSettings()) : [];
     if (JSON.stringify(marks) !== JSON.stringify(projection.marks)) projection.geometry = '';
     projection.marks = marks;
     const keys = new Set(marks.map(mark => mark.key));
-    for (const [key, element] of projection.elements) if (!keys.has(key as RelationMark['key'])) { element.remove(); projection.elements.delete(key); }
+    for (const [key, element] of projection.elements) if (!keys.has(key as TaskRelationMark['key'])) { element.remove(); projection.elements.delete(key); }
     for (const mark of marks) {
      let element = projection.elements.get(mark.key);
      if (!element) { element = this.layer.createSpan(`${prefix}-mark`); projection.elements.set(mark.key, element); projection.geometry = '';
       if (this.zoom > 0) element.style.transform = `translate(-50%, -50%) scale(${1 / this.zoom})`; }
-     const icon = this.icon(mark.key);
+     const icon = mark.icon;
      if (element.dataset.relationIcon !== icon) { setIcon(element, icon); element.dataset.relationIcon = icon; }
      if (element.style.color !== (mark.color ?? '')) element.style.color = mark.color ?? '';
     }
@@ -254,9 +240,8 @@ export class CanvasEdgeRelations extends Component {
      if (projection.marks.length) {
       const length = path.getTotalLength();
       if (!Number.isFinite(length) || length <= 0) { for (const element of projection.elements.values()) element.hidden = true; projection.geometry = ''; continue; }
-      projection.marks.forEach((mark, index) => {
-       const paired = projection.marks.length === 2 && projection.marks[0].atSource === projection.marks[1].atSource;
-       const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, canvasRelationSlot(mark.atSource, paired, index));
+      projection.marks.forEach(mark => {
+       const point = canvasRelationPoint(length, distance => path.getPointAtLength(distance), from, to, mark.fraction);
        const element = projection.elements.get(mark.key)!; element.hidden = false;
        element.style.left = `${point.x}px`; element.style.top = `${point.y}px`;
       });

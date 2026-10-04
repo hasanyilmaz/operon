@@ -34900,6 +34900,12 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
+/* Viewport-only relationship indicators never enter the drawing or its exports. */
+.operon-excalidraw-edge-relations { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.operon-excalidraw-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--background-primary); pointer-events: none; }
+.operon-excalidraw-edge-relations-mark[hidden] { display: none; }
+.operon-excalidraw-edge-relations-mark svg { width: 18px; height: 18px; }
+
 /* Owned controls retain native Excalidraw sizing and use the same relation states. */
 .operon-excalidraw-edge-relations-controls { display: flex; gap: 1px; }
 .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button.is-active { --icon-fill-color: var(--interactive-accent); color: var(--interactive-accent); background: var(--background-modifier-hover); }

@@ -1,3 +1,5 @@
+import { ExcalidrawRelationIndicators } from './excalidraw-edge-relation-indicators';
+import { relationArrowPoint, type RelationArrow as BoundArrow } from './excalidraw-edge-relation-geometry';
 import { Component, Notice, type App, type TFile } from 'obsidian';
 import type { TaskCardEmbeds } from './task-card-embed';
 import type { IndexedTaskSnapshot } from '../indexer/indexer';
@@ -11,10 +13,6 @@ interface NativeElementMenu {
  menuEl: HTMLElement | null; actionsEl: HTMLElement | null; selectedElementId: string | null;
  update: (elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState) => void;
  renderActions: (actions: readonly ExcalidrawElementAction[]) => void;
-}
-interface BoundArrow extends ExcalidrawTaskElement {
- points?: readonly (readonly [number, number])[];
- startBinding?: { elementId: string } | null; endBinding?: { elementId: string } | null;
 }
 interface ScenePair { arrow: BoundArrow; start: ExcalidrawTaskElement; end: ExcalidrawTaskElement }
 interface TaskPair extends ScenePair { a: IndexedTaskSnapshot; b: IndexedTaskSnapshot }
@@ -36,27 +34,9 @@ function scenePair(elements: readonly ExcalidrawTaskElement[], state: Excalidraw
  return start && end ? { arrow, start, end } : null;
 }
 
-/** Follow the middle of the point route, including bends and element rotation. */
-function arrowMidpoint(arrow: BoundArrow): { x: number; y: number } | null {
- const { points, x, y } = arrow, angle = arrow.angle ?? 0;
- if (typeof x !== 'number' || typeof y !== 'number' || ![x, y, angle].every(Number.isFinite)
-  || !points || points.length < 2 || !points.every(point => point.length === 2 && point.every(Number.isFinite))) return null;
- const lengths = points.slice(1).map((point, i) => Math.hypot(point[0] - points[i][0], point[1] - points[i][1]));
- let remaining = lengths.reduce((sum, length) => sum + length, 0) / 2, at = points[0];
- for (let i = 0; i < lengths.length; i++) {
-  if (remaining > lengths[i]) { remaining -= lengths[i]; continue; }
-  const ratio = lengths[i] ? remaining / lengths[i] : 0;
-  at = [points[i][0] + (points[i + 1][0] - points[i][0]) * ratio, points[i][1] + (points[i + 1][1] - points[i][1]) * ratio];
-  break;
- }
- const xs = points.map(point => point[0]), ys = points.map(point => point[1]);
- const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
- return { x: x + cx + (at[0] - cx) * Math.cos(angle) - (at[1] - cy) * Math.sin(angle),
-  y: y + cy + (at[0] - cx) * Math.sin(angle) + (at[1] - cy) * Math.cos(angle) };
-}
-
 /** Native selected-element extension; the task relation implementation is shared with Canvas. */
 export class ExcalidrawEdgeRelations extends Component {
+ private indicators: ExcalidrawRelationIndicators | null = null;
  private active = false;
  private warned = false;
  private session: Session | null = null;
@@ -66,7 +46,8 @@ export class ExcalidrawEdgeRelations extends Component {
  constructor(private view: ExcalidrawTaskView, private deps: TaskEdgeRelationOperations & { app: App; cards: TaskCardEmbeds }) { super(); }
  onload(): void {
   this.active = true;
-  this.register(this.deps.cards.onRefresh(() => { if (this.session) this.session.dirty = true; this.sync(); }));
+  this.indicators = this.addChild(new ExcalidrawRelationIndicators(this.view, this.deps, () => this.available()));
+  this.register(this.deps.cards.onRefresh(scope => { if (this.session) this.session.dirty = true; this.indicators?.refresh(scope); this.sync(); }));
   this.sync();
  }
  private warn(): void { if (!this.warned) { this.warned = true; new Notice(taskEdgeRelationUnavailable); } }
@@ -84,6 +65,7 @@ export class ExcalidrawEdgeRelations extends Component {
    this.release();
    if (typeof api?.onChange === 'function') this.stopScene = api.onChange(() => this.sync());
   }
+  this.indicators?.sync();
   if (!this.available()) { this.release(); return; }
   const native = Reflect.get(this.view, 'selectedElementActionsMenu') as Partial<NativeElementMenu> | null;
   const existing = this.session;
@@ -155,7 +137,7 @@ export class ExcalidrawEdgeRelations extends Component {
  }
  private clearButtons(session: Session): void { if (session.life) this.removeChild(session.life); session.life = null; }
  private positionMenu(session: Session, elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): void {
-  const menu = session.menu.menuEl, pair = scenePair(elements, state), anchor = pair && arrowMidpoint(pair.arrow);
+  const menu = session.menu.menuEl, pair = scenePair(elements, state), anchor = pair && relationArrowPoint(pair.arrow, .5);
   if (!session.life || !session.controls.length || !menu || menu.hidden || !pair || !anchor) return;
   const zoom = (state.zoom as { value?: number } | undefined)?.value, { scrollX, scrollY } = state;
   if (typeof zoom !== 'number' || zoom <= 0 || typeof scrollX !== 'number' || typeof scrollY !== 'number'
@@ -228,6 +210,7 @@ export class ExcalidrawEdgeRelations extends Component {
   }
  }
  onunload(): void {
+  if (this.indicators) this.removeChild(this.indicators); this.indicators = null;
   this.active = false; this.stopScene?.(); this.stopScene = null; this.observedAPI = null; this.unsupportedMenu = null; this.release();
  }
 }
