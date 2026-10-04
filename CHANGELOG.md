@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Full local Plugin checks, production build, release guard, and code review passed, along with **4,419/4,419** local regression tests.
 
+- All **5/5** final manual checks passed for Excalidraw arrow relationships and their Canvas comparison.
+
 ## [3.11.0] - 2026-10-01
 
 I have mixed feelings about Obsidian’s new approach to settings, and I still prefer parts of the old layout.
