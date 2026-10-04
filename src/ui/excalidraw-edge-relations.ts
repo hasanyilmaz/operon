@@ -188,9 +188,9 @@ export class ExcalidrawEdgeRelations extends Component {
   if (typeof zoom !== 'number' || typeof scrollX !== 'number' || typeof scrollY !== 'number'
    || typeof x !== 'number' || typeof y !== 'number' || typeof width !== 'number' || typeof height !== 'number'
    || ![zoom, scrollX, scrollY, x, y, width, height, angle].every(Number.isFinite) || zoom <= 0) return;
-  // Screen-aligned below the rotated card, with Canvas's constant twelve-pixel gap.
+  // Match the native menu's left anchor, below the rotated card with a twelve-pixel gap.
   const bottom = y + height / 2 + (Math.abs(width * Math.sin(angle)) + Math.abs(height * Math.cos(angle))) / 2;
-  const left = `${(x + width / 2 + scrollX) * zoom - menu.offsetWidth / 2}px`;
+  const left = `${(x + scrollX) * zoom}px`;
   const top = `${(bottom + scrollY) * zoom + 12}px`;
   if (menu.style.left !== left) menu.style.left = left;
   if (menu.style.top !== top) menu.style.top = top;
