@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Excalidraw task cards** keep their position and style when tasks are moved, renamed, or converted between inline and file tasks, while their controls follow the current source.
 
+- **Excalidraw task cards** are removed when their source tasks are deleted and restored in their original positions when those tasks return, while manually deleted cards stay removed.
+
 ### Fixed
 
 - Removed expensive CSS selectors from **Settings** while preserving control alignment and multiline editor layouts.
