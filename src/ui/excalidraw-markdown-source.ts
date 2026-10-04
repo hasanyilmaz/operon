@@ -221,10 +221,14 @@ export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawT
  if (originalApp !== app || typeof app.vault.process !== 'function') throw new ExcalidrawSourceError('Native drawing persistence is unavailable.');
  const originalLease = Reflect.get(native, 'withPersistenceWriteLease');
  const leaseDescriptor = Object.getOwnPropertyDescriptor(native, 'withPersistenceWriteLease');
+ const originalExecute: unknown = Reflect.get(native, 'executeSaveRequest');
+ const executeDescriptor = Object.getOwnPropertyDescriptor(native, 'executeSaveRequest');
  const state: { failure: Error | null; canceled: boolean } = { failure: null, canceled: false };
+ const cancellation = new ExcalidrawSourceError('The drawing operation ended before saving.');
+ const ended = () => !allowed() || view.file !== file || file.path !== path || view._loaded === false || native.semaphores?.windowMigrating;
  const coordinator = native.saveCoordinator, preparedDescriptor = Object.getOwnPropertyDescriptor(coordinator, 'observePreparedSave');
  const originalPrepared = Reflect.get(coordinator, 'observePreparedSave');
- if (typeof originalPrepared !== 'function') throw new ExcalidrawSourceError('Native drawing save preparation is unavailable.');
+ if (typeof originalPrepared !== 'function' || typeof originalExecute !== 'function') throw new ExcalidrawSourceError('Native drawing save preparation is unavailable.');
  // Keep the native serializer and prepared-save identity. Only this view's final
  // Markdown persistence uses Obsidian's atomic read/modify/save instead of modify,
  // closing the gap between checking the source and writing the native snapshot.
@@ -232,7 +236,7 @@ export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawT
   if (target !== file) return app.vault.modify(target, text, options);
   try {
    const saved = await app.vault.process(file, content => {
-    if (!allowed() || view.file !== file || file.path !== path) throw new ExcalidrawSourceError('The drawing changed before saving.');
+    if (ended()) { state.canceled = true; throw cancellation; }
     const before = readExcalidrawMarkdownSections(expected), live = readExcalidrawMarkdownSections(content);
     if (expected.slice(0, before.dataStart) !== content.slice(0, live.dataStart)) {
      throw new ExcalidrawSourceError('The drawing Markdown changed during the save. The newer source was preserved.');
@@ -240,7 +244,10 @@ export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawT
     return text;
    }, options);
    if (saved !== text) throw new ExcalidrawSourceError('The native drawing save could not be verified.');
-  } catch (error) { state.failure = error instanceof Error ? error : new Error(String(error)); throw error; }
+  } catch (error) {
+   if (error !== cancellation) state.failure = error instanceof Error ? error : new Error(String(error));
+   throw error;
+  }
  };
  const vault = new Proxy(app.vault, { get(target, key) {
   if (key === 'modify') return modify;
@@ -254,31 +261,60 @@ export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawT
  } });
  // A closing/migrating view can hand its prepared text to a plugin-level writer,
  // outside the scoped App. Do not enqueue an obsolete operation after its owner ends.
- const lease = <T>(target: string, operation: () => Promise<T>): Promise<T> => originalLease.call(native, target, () => {
-  if (target === path && (!allowed() || view.file !== file || file.path !== path || view._loaded === false)) {
-   state.canceled = true; state.failure = new ExcalidrawSourceError('The drawing operation ended before saving.');
-   return Promise.reject(state.failure);
+ const lease = <T>(target: string, operation: () => Promise<T>): Promise<T> => originalLease.call(native, target, async () => {
+  if (state.canceled || ended()) {
+   state.canceled = true; return { status: 'skipped' } as T;
   }
-  return operation();
+  // Catch only our late cancellation inside the native write lease, before it
+  // reaches Excalidraw's serious-error handler. Real write failures still throw.
+  try { return await operation(); }
+  catch (error) { if (error === cancellation) return { status: 'skipped' } as T; throw error; }
  }) as Promise<T>;
  const prepared = (snapshot: unknown): void => {
   // Cross-window migration hands off before the native persistence lease. End our
-  // operation at preparation, while native failure handling still retains dirty state.
-  if (!allowed() || view.file !== file || file.path !== path || view._loaded === false || native.semaphores?.windowMigrating) {
-   state.canceled = true; state.failure = new ExcalidrawSourceError('The drawing operation ended before saving.');
-   throw state.failure;
-  }
+  // operation at preparation; the native coordinator receives skipped, not failed.
+  if (ended()) { state.canceled = true; return; }
   originalPrepared.call(coordinator, snapshot);
+ };
+ // The receiver is scoped to this execute call. Keep the real view/plugin
+ // identities untouched, including other panes sharing the same plugin.
+ const plugin = new Proxy(native.plugin, { get(target, key) {
+  const value: unknown = Reflect.get(target, key, target);
+  if (key === 'registerViewMigrationPersistenceHandoff' && typeof value === 'function') {
+   return (...args: unknown[]) => state.canceled ? undefined : value.apply(target, args) as unknown;
+  }
+  return typeof value === 'function' ? value.bind(target) as unknown : value;
+ } });
+ const receiver = new Proxy(native, { get(target, key) {
+  if (key === 'plugin') return plugin;
+  const value: unknown = Reflect.get(target, key, target);
+  return typeof value === 'function' ? value.bind(target) as unknown : value;
+ } });
+ const execute = async (...args: unknown[]): Promise<unknown> => {
+  if (ended()) { state.canceled = true; return { status: 'skipped' }; }
+  const result: unknown = await originalExecute.apply(receiver, args);
+  if (result && typeof result === 'object' && Reflect.get(result, 'status') === 'failed') {
+   state.failure ??= new ExcalidrawSourceError('The native drawing save failed.');
+   return result;
+  }
+  // Omit preparedSave so the coordinator cannot mark an unwritten snapshot
+  // successful or handed off, and leaves its dirty revision available to save.
+  return state.canceled ? { status: 'skipped' } : result;
  };
  if (!Reflect.set(native, 'app', scopedApp)) throw new ExcalidrawSourceError('Native drawing persistence is unavailable.');
  native.withPersistenceWriteLease = lease; coordinator.observePreparedSave = prepared;
  try {
+  if (!Reflect.set(native, 'executeSaveRequest', execute)) throw new ExcalidrawSourceError('Native drawing save cancellation is unavailable.');
   await view.forceSave(true, true);
-  if (state.canceled) return false;
   if (state.failure) throw state.failure; // Native forceSave can swallow its write failure.
+  if (state.canceled) return false;
   return true;
- } catch (error) { if (!allowed()) return false; throw error; }
+ } catch (error) { if (!allowed() && !state.failure) return false; throw error; }
  finally {
+  if (Reflect.get(native, 'executeSaveRequest') === execute) {
+   if (executeDescriptor) Object.defineProperty(native, 'executeSaveRequest', executeDescriptor);
+   else Reflect.deleteProperty(native, 'executeSaveRequest');
+  }
   if (coordinator.observePreparedSave === prepared) {
    if (preparedDescriptor) Object.defineProperty(coordinator, 'observePreparedSave', preparedDescriptor);
    else Reflect.deleteProperty(coordinator, 'observePreparedSave');
@@ -291,7 +327,7 @@ export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawT
    if (descriptor) Object.defineProperty(native, 'app', descriptor);
    else Reflect.deleteProperty(native, 'app');
   }
-  if (state.failure && view.file === file && file.path === path) {
+  if ((state.failure || state.canceled) && view.file === file && file.path === path) {
    try {
     const saved = await app.vault.read(file); readExcalidrawMarkdownSections(saved);
     for (const leaf of app.workspace.getLeavesOfType('excalidraw')) {
