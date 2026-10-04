@@ -8,7 +8,7 @@ import { scanFileWithMappings } from '../indexer/file-scanner';
 import { t } from '../core/i18n';
 import { ExcalidrawTaskCardCleanupStore, cloneCleanupValue, type ExcalidrawCleanupCard } from '../storage/excalidraw-task-card-cleanup-store';
 import { isExcalidrawTaskLink, readExcalidrawTaskView, type ExcalidrawTaskElement, type ExcalidrawTaskView } from './excalidraw-task-bridge';
-import { serializeExcalidrawSource } from './excalidraw-markdown-source';
+import { saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 
 export type TaskRemovalEvidence = 'source-scan' | 'file-delete' | 'committed';
 export interface ExcalidrawCleanupDeps {
@@ -169,6 +169,12 @@ export class ExcalidrawTaskCleanup {
   const records = state.cards.filter(card => card.drawingPath === file.path);
   const hasRemoval = view.excalidrawAPI.getSceneElements().some(element => !element.isDeleted && deletions.has(taskId(element) ?? '') && this.canRemove(taskId(element) ?? ''));
   if (!hasRemoval && !records.some(record => this.deps.taskState(record.taskId) === 'ready' || record.status !== 'removed')) return;
+  // Wait for another pane of this drawing to finish loading; readiness changes
+  // reconnect through sync(), rather than permanently failing a healthy drawing.
+  if (this.deps.app.workspace.getLeavesOfType('excalidraw').some(leaf => {
+   const peer = leaf.view as unknown as ExcalidrawTaskView;
+   return peer.file === file && peer.plugin === view.plugin && !readExcalidrawTaskView(this.deps.app, peer);
+  })) return;
   if (typeof view.excalidrawAPI.getSceneElementsIncludingDeleted !== 'function') throw new Error('Native deleted-element API unavailable');
   const peers = [...this.bindings.keys()].filter(peer => peer.file === file && this.current(peer, file));
   for (const peer of peers) {
@@ -186,7 +192,7 @@ export class ExcalidrawTaskCleanup {
   };
   // Native peer autosave must settle before we save one view over another's newer scene.
   if (!scenesAgree()) return;
-  await view.forceSave(true, true);
+  if (!await saveExcalidrawTaskSceneInQueue(this.deps.app, view, current)) return;
   if (!current()) { this.dirty = true; return; }
   const all = view.excalidrawAPI.getSceneElementsIncludingDeleted(), byId = new Map(all.map(element => [element.id, element]));
   const settled: ExcalidrawCleanupCard[] = [], remove: ExcalidrawCleanupCard[] = [], restore: ExcalidrawCleanupCard[] = [], retire = new Set<string>();
@@ -272,7 +278,7 @@ export class ExcalidrawTaskCleanup {
    if (saved) saved.status = 'applied';
   } });
   if (!current()) { this.dirty = true; return; }
-  await view.forceSave(true, true);
+  if (!await saveExcalidrawTaskSceneInQueue(this.deps.app, view, current)) return;
   if (!current()) { this.dirty = true; return; }
   const ea = view.plugin.ea.getAPI(view);
   let saved: Awaited<ReturnType<typeof ea.getSceneFromFile>>;

@@ -100,11 +100,8 @@ export async function writeTextSafely(
 								tempWritten = false;
 								return;
 							}
-							if (observedTarget !== null) {
-								await adapter.remove(path);
-								await adapter.rename(backupPath, path);
-								originalMoved = false;
-							}
+							// Different content may belong to a newer writer. Keep it and
+							// the preimage; never erase it to restore our older backup.
 						} else {
 							await adapter.rename(backupPath, path);
 							originalMoved = false;

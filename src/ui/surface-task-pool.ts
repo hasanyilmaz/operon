@@ -66,7 +66,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   && this.surface.file() === this.panelFile && this.panelFile?.path === this.panelPath;
  onload(): void {
   this.active = true;
-  this.register(this.cards.onRefresh(() => { this.settingsSnapshot = null; if (this.mode === 'pinned') this.queryKey = ''; this.refresh(); }));
+  this.register(this.cards.onRefresh(() => { this.settingsSnapshot = null; this.queryKey = ''; this.refresh(); }));
   this.sync();
  }
  protected get hasButton(): boolean { return !!this.button; }
@@ -293,15 +293,20 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   const target = this.surface.capture(); if (!target) return;
   event.preventDefault(); event.stopPropagation();
   const doc = row.ownerDocument, x = event.clientX, y = event.clientY;
+  const lifetime = new Component(); lifetime.load();
   let ghost: HTMLElement | null = null;
   const move = (next: PointerEvent): void => {
    if (next.pointerId !== event.pointerId) return;
+   if ((next.buttons & 1) === 0) { cancel(); return; }
    if (!ghost && Math.hypot(next.clientX - x, next.clientY - y) < 5) return;
    row.dataset.dragged = 'true';
-   if (!ghost) ghost = doc.body.createDiv({ cls: 'operon-canvas-task-pool-drag', text: task.description || task.operonId });
+   if (!ghost) {
+    ghost = doc.body.createDiv({ cls: 'operon-canvas-task-pool-drag', text: task.description || task.operonId });
+    this.surface.bindPanelTheme?.(ghost, lifetime);
+   }
    ghost.style.left = `${next.clientX + 12}px`; ghost.style.top = `${next.clientY + 12}px`;
   };
-  const cancel = (): void => { doc.removeEventListener('pointermove', move); doc.removeEventListener('pointerup', up); doc.removeEventListener('pointercancel', cancel); this.win.removeEventListener('blur', cancel); ghost?.remove(); this.cancelDrag = null; };
+  const cancel = (): void => { doc.removeEventListener('pointermove', move); doc.removeEventListener('pointerup', up); doc.removeEventListener('pointercancel', cancel); doc.removeEventListener('pointerdown', cancel, true); this.win.removeEventListener('blur', cancel); lifetime.unload(); ghost?.remove(); this.cancelDrag = null; };
   const up = (next: PointerEvent): void => {
    if (next.pointerId !== event.pointerId) return;
    const moved = !!ghost; const hit = doc.elementFromPoint(next.clientX, next.clientY);
@@ -312,7 +317,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
    target.point = { ...point }; void this.add(target, task.operonId);
   };
   this.cancelDrag?.(); this.cancelDrag = cancel;
-  doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', cancel); this.win.addEventListener('blur', cancel);
+  doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', cancel); doc.addEventListener('pointerdown', cancel, true); this.win.addEventListener('blur', cancel);
  }
  private updatePin(): void {
   if (!this.pinButton) return;

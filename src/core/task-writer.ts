@@ -55,6 +55,8 @@ export interface TaskWriteOptions {
 
 export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
+    /** Optional native file transaction; the per-file writer queue already owns this operation. */
+    withMarkdownSource?<T>(file: TFile, operation: (source?: TaskMarkdownSource) => Promise<T>): Promise<T>;
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
 	validatePluginWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
@@ -672,14 +674,27 @@ export class TaskWriter {
         operation: () => Promise<T>,
         permit?: TaskWriterExclusiveMutationPermit | TaskWriterSharedMutationPermit,
     ): Promise<T> {
+        const coordinated = async (): Promise<T> => {
+            if (!this.hooks.withMarkdownSource) return operation();
+            const file = this.app.vault.getAbstractFileByPath(key.slice('task-file:'.length));
+            if (!(file instanceof TFile) || this.markdownSources.has(file)) return operation();
+            return this.hooks.withMarkdownSource(file, async source => {
+                if (!source) return operation();
+                // Do not drain the queue we are currently running in. Compound callers
+                // retain their existing binding; ordinary writes borrow this native lease.
+                this.markdownSources.set(file, source);
+                try { return await operation(); }
+                finally { this.markdownSources.delete(file); }
+            });
+        };
         if (
             permit?.token === this.activeExclusiveMutationToken
             || (permit && this.activeSharedMutationTokens.has(permit.token))
         ) {
-            return await this.fileWriteQueue.enqueue(key, operation);
+            return await this.fileWriteQueue.enqueue(key, coordinated);
         }
         return await this.fileMutationGate.runShared(async () => (
-            await this.fileWriteQueue.enqueue(key, operation)
+            await this.fileWriteQueue.enqueue(key, coordinated)
         ));
     }
 

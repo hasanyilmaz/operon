@@ -1,4 +1,4 @@
-import { serializeExcalidrawSource } from './excalidraw-markdown-source';
+import { saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import type { App } from 'obsidian';
 import { isExcalidrawTaskStrokeEditing } from './excalidraw-task-colors';
 import { Notice } from 'obsidian';
@@ -128,7 +128,8 @@ export class ExcalidrawTaskAutoHeight {
    Object.assign(copy, patch);
    if (!await ea.addElementsToView(false, false, false, false, 'NEVER')) throw new Error('Card presentation update failed');
    if (!current()) return;
-   await this.view.forceSave(true, true);
+   if (this.app) { if (!await saveExcalidrawTaskSceneInQueue(this.app, this.view, current)) return; }
+   else await this.view.forceSave(true, true);
    if (!current()) return;
    const saved = await ea.getSceneFromFile(file);
    if (!current()) return;

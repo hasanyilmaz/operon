@@ -1,8 +1,8 @@
 import { getOwnerWindow } from '../core/dom-compat';
 
-/** Track native Canvas transforms without reading or writing the Canvas data model. */
+/** Track native board transforms without reading or writing their data models. */
 export function observeTaskCardAnchor(anchor: HTMLElement, changed: () => void): () => void {
- const canvas = anchor.closest<HTMLElement>('.canvas-wrapper, .canvas');
+ const canvas = anchor.closest<HTMLElement>('.canvas-wrapper, .canvas, .excalidraw');
  if (!canvas) return () => undefined;
  const win = getOwnerWindow(anchor) as Window & { MutationObserver: typeof MutationObserver; ResizeObserver: typeof ResizeObserver };
  let frame = 0;

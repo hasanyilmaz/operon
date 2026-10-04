@@ -1,4 +1,4 @@
-import { readExcalidrawMarkdownSections, serializeExcalidrawSource } from './excalidraw-markdown-source';
+import { readExcalidrawMarkdownSections, saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import { TFile, type App } from 'obsidian';
 import { isValidOperonId } from '../core/id-generator';
 
@@ -120,7 +120,7 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
  try {
   for (const method of ['getViewCenterPosition', 'addEmbeddable', 'addElementsToView', 'getSceneFromFile', 'destroy'] as const)
    if (typeof ea?.[method] !== 'function') throw new Error('Excalidraw API unavailable');
-  await view.forceSave(true, true);
+  if (!await saveExcalidrawTaskSceneInQueue(app, view, current)) throw new Error('Drawing changed');
   if (!current()) throw new Error('Drawing changed');
   // Use the native TextFileView buffer and native serializer, without replacing the file externally.
   const data = appendExcalidrawTaskReference(view.data, id);

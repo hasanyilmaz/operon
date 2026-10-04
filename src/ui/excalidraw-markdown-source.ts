@@ -1,4 +1,4 @@
-import { TFile, type App } from 'obsidian';
+import { TFile, type App, type DataWriteOptions } from 'obsidian';
 import type { TaskWriter } from '../core/task-writer';
 import { setWindowTimeout } from '../core/dom-compat';
 import type { TaskMarkdownSource } from '../core/task-markdown-source';
@@ -71,7 +71,8 @@ type NativeSourceView = ExcalidrawTaskView & {
  preparedSaveText: string;
  lastSavedData: string;
  isSameFileEditingActive(): boolean;
- saveCoordinator: { isSaveInProgress: boolean };
+ saveCoordinator: { isSaveInProgress: boolean; observePreparedSave?(prepared: unknown): void };
+ semaphores?: { windowMigrating?: boolean };
  acquireSynchronization(path: string): Promise<boolean>;
  withPersistenceWriteLease<T>(path: string, operation: () => Promise<T>): Promise<T>;
 };
@@ -85,18 +86,19 @@ export interface InlineMarkdownSource extends TaskMarkdownSource {
  * Scene JSON is never generated here. Pending scene edits stay in the native scene and the next
  * native save uses the updated Markdown buffer. No tentative text is installed before persistence.
  */
-export function createExcalidrawMarkdownSource(app: App, view: ExcalidrawTaskView, allowed: () => boolean): InlineMarkdownSource {
+export function createExcalidrawMarkdownSource(app: App, view: ExcalidrawTaskView, allowed: () => boolean, options: { sourceQueueOwned?: boolean; enforceViewMode?: boolean } = {}): InlineMarkdownSource {
  const file = view.file, path = file?.path;
  if (!file || !path) throw new ExcalidrawSourceError('The drawing is no longer available.');
  let disposed = false, attempted = false;
  let failure: Error | null = null;
  let leasedViews: NativeSourceView[] | null = null;
 
- const current = () => !disposed && allowed() && view.excalidrawAPI.getAppState().viewModeEnabled === false && view.file === file && file.path === path && app.vault.getAbstractFileByPath(path) === file;
+ const ready = (peer: ExcalidrawTaskView) => peer._loaded !== false && typeof peer.excalidrawAPI?.getAppState === 'function';
+ const current = () => !disposed && allowed() && ready(view) && (options.enforceViewMode === false || view.excalidrawAPI.getAppState().viewModeEnabled === false) && view.file === file && file.path === path && app.vault.getAbstractFileByPath(path) === file;
  const check = () => { if (failure) throw failure; if (!current()) throw new ExcalidrawSourceError('The drawing changed or became read-only. The operation was stopped.'); };
  const peers = (): NativeSourceView[] => app.workspace.getLeavesOfType('excalidraw')
-  .map(leaf => leaf.view as unknown as NativeSourceView).filter(peer => peer.file === file);
- const acquire = <T>(operation: (views: NativeSourceView[]) => Promise<T>): Promise<T> => serializeExcalidrawSource(app, file, async () => {
+  .map(leaf => leaf.view as unknown as NativeSourceView).filter(peer => peer.file === file && ready(peer));
+ const acquireLeases = async <T>(operation: (views: NativeSourceView[]) => Promise<T>): Promise<T> => {
   check(); const views = peers(), owned: NativeSourceView[] = [];
   if (!views.includes(view as NativeSourceView) || views.some(peer => peer.plugin !== view.plugin
    || typeof peer.acquireSynchronization !== 'function' || typeof peer.withPersistenceWriteLease !== 'function'
@@ -139,7 +141,9 @@ export function createExcalidrawMarkdownSource(app: App, view: ExcalidrawTaskVie
     return operation(views);
    });
   } finally { for (const peer of owned) peer.isSynchronizing = false; }
- });
+ };
+ const acquire = <T>(operation: (views: NativeSourceView[]) => Promise<T>): Promise<T> => options.sourceQueueOwned
+  ? acquireLeases(operation) : serializeExcalidrawSource(app, file, () => acquireLeases(operation));
  // One conversion owns the native save boundary through target creation, source
  // replacement and verification. Its individual writer calls reuse that lease.
  const transaction = async <T>(operation: (views: NativeSourceView[]) => Promise<T>): Promise<T> => {
@@ -164,8 +168,11 @@ export function createExcalidrawMarkdownSource(app: App, view: ExcalidrawTaskVie
    finally { leasedViews = null; }
   }),
   read: () => transaction(async views => {
-   const source = await app.vault.read(file); check(); readExcalidrawMarkdownSections(source);
-   if (views.some(peer => peer.data !== source)) throw new ExcalidrawSourceError('The drawing has unsynchronized Markdown changes. Wait for synchronization before changing the task.');
+   const source = await app.vault.read(file); readExcalidrawMarkdownSections(source);
+   // Incremental native synchronization merges the scene but can retain an old
+   // Markdown header. Native save/edit leases are owned here, so adopt the disk
+   // source instead of treating that routine synchronization lag as a conflict.
+   adopt(views, source); check();
    return source;
   }),
   write: (expected, next, canCommit) => transaction(async views => {
@@ -195,6 +202,112 @@ export function createExcalidrawMarkdownSource(app: App, view: ExcalidrawTaskVie
    }
   }).catch(error => { failure = error instanceof Error ? error : new Error(String(error)); throw failure; }),
  };
+}
+
+/** The caller owns serializeExcalidrawSource throughout reconciliation and save.
+ * Release native synchronization before forceSave, which needs that gate itself. */
+export async function saveExcalidrawTaskSceneInQueue(app: App, view: ExcalidrawTaskView, allowed: () => boolean): Promise<boolean> {
+ const file = view.file;
+ if (!file || !allowed()) return false;
+ const source = createExcalidrawMarkdownSource(app, view, allowed, { sourceQueueOwned: true });
+ let expected: string;
+ try { expected = await source.runExclusive(() => source.read()); }
+ catch (error) { if (!allowed()) return false; throw error; }
+ finally { source.dispose(); }
+ if (!allowed()) return false;
+ const native = view as NativeSourceView, path = file.path;
+ const originalApp: unknown = Reflect.get(native, 'app');
+ const descriptor = Object.getOwnPropertyDescriptor(native, 'app');
+ if (originalApp !== app || typeof app.vault.process !== 'function') throw new ExcalidrawSourceError('Native drawing persistence is unavailable.');
+ const originalLease = Reflect.get(native, 'withPersistenceWriteLease');
+ const leaseDescriptor = Object.getOwnPropertyDescriptor(native, 'withPersistenceWriteLease');
+ const state: { failure: Error | null; canceled: boolean } = { failure: null, canceled: false };
+ const coordinator = native.saveCoordinator, preparedDescriptor = Object.getOwnPropertyDescriptor(coordinator, 'observePreparedSave');
+ const originalPrepared = Reflect.get(coordinator, 'observePreparedSave');
+ if (typeof originalPrepared !== 'function') throw new ExcalidrawSourceError('Native drawing save preparation is unavailable.');
+ // Keep the native serializer and prepared-save identity. Only this view's final
+ // Markdown persistence uses Obsidian's atomic read/modify/save instead of modify,
+ // closing the gap between checking the source and writing the native snapshot.
+ const modify = async (target: TFile, text: string, options?: DataWriteOptions): Promise<void> => {
+  if (target !== file) return app.vault.modify(target, text, options);
+  try {
+   const saved = await app.vault.process(file, content => {
+    if (!allowed() || view.file !== file || file.path !== path) throw new ExcalidrawSourceError('The drawing changed before saving.');
+    const before = readExcalidrawMarkdownSections(expected), live = readExcalidrawMarkdownSections(content);
+    if (expected.slice(0, before.dataStart) !== content.slice(0, live.dataStart)) {
+     throw new ExcalidrawSourceError('The drawing Markdown changed during the save. The newer source was preserved.');
+    }
+    return text;
+   }, options);
+   if (saved !== text) throw new ExcalidrawSourceError('The native drawing save could not be verified.');
+  } catch (error) { state.failure = error instanceof Error ? error : new Error(String(error)); throw error; }
+ };
+ const vault = new Proxy(app.vault, { get(target, key) {
+  if (key === 'modify') return modify;
+  const value: unknown = Reflect.get(target, key, target);
+  return typeof value === 'function' ? value.bind(target) as unknown : value;
+ } });
+ const scopedApp = new Proxy(app, { get(target, key) {
+  if (key === 'vault') return vault;
+  const value: unknown = Reflect.get(target, key, target);
+  return typeof value === 'function' ? value.bind(target) as unknown : value;
+ } });
+ // A closing/migrating view can hand its prepared text to a plugin-level writer,
+ // outside the scoped App. Do not enqueue an obsolete operation after its owner ends.
+ const lease = <T>(target: string, operation: () => Promise<T>): Promise<T> => originalLease.call(native, target, () => {
+  if (target === path && (!allowed() || view.file !== file || file.path !== path || view._loaded === false)) {
+   state.canceled = true; state.failure = new ExcalidrawSourceError('The drawing operation ended before saving.');
+   return Promise.reject(state.failure);
+  }
+  return operation();
+ }) as Promise<T>;
+ const prepared = (snapshot: unknown): void => {
+  // Cross-window migration hands off before the native persistence lease. End our
+  // operation at preparation, while native failure handling still retains dirty state.
+  if (!allowed() || view.file !== file || file.path !== path || view._loaded === false || native.semaphores?.windowMigrating) {
+   state.canceled = true; state.failure = new ExcalidrawSourceError('The drawing operation ended before saving.');
+   throw state.failure;
+  }
+  originalPrepared.call(coordinator, snapshot);
+ };
+ if (!Reflect.set(native, 'app', scopedApp)) throw new ExcalidrawSourceError('Native drawing persistence is unavailable.');
+ native.withPersistenceWriteLease = lease; coordinator.observePreparedSave = prepared;
+ try {
+  await view.forceSave(true, true);
+  if (state.canceled) return false;
+  if (state.failure) throw state.failure; // Native forceSave can swallow its write failure.
+  return true;
+ } catch (error) { if (!allowed()) return false; throw error; }
+ finally {
+  if (coordinator.observePreparedSave === prepared) {
+   if (preparedDescriptor) Object.defineProperty(coordinator, 'observePreparedSave', preparedDescriptor);
+   else Reflect.deleteProperty(coordinator, 'observePreparedSave');
+  }
+  if (native.withPersistenceWriteLease === lease) {
+   if (leaseDescriptor) Object.defineProperty(native, 'withPersistenceWriteLease', leaseDescriptor);
+   else Reflect.deleteProperty(native, 'withPersistenceWriteLease');
+  }
+  if (Reflect.get(native, 'app') === scopedApp) {
+   if (descriptor) Object.defineProperty(native, 'app', descriptor);
+   else Reflect.deleteProperty(native, 'app');
+  }
+  if (state.failure && view.file === file && file.path === path) {
+   try {
+    const saved = await app.vault.read(file); readExcalidrawMarkdownSections(saved);
+    for (const leaf of app.workspace.getLeavesOfType('excalidraw')) {
+     const peer = leaf.view as unknown as NativeSourceView;
+     if (peer.file === file && peer._loaded !== false && peer.excalidrawAPI) {
+      peer.data = saved; peer.preparedSaveText = saved; peer.lastSavedData = saved;
+     }
+    }
+   } catch {
+    for (const leaf of app.workspace.getLeavesOfType('excalidraw')) {
+     const peer = leaf.view as unknown as NativeSourceView;
+     if (peer.file === file && peer._loaded !== false && peer.excalidrawAPI) guardUnknownDrawingWrite(app, peer, file, path);
+    }
+   }
+  }
+ }
 }
 
 /** If even the post-write read failed, block one native persistence attempt until its

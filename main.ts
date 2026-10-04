@@ -16429,6 +16429,22 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.writer = new TaskWriter(this.app, this.indexer, this.settings.keyMappings, {
 			onBeforeWriteFile: filePath => this.markInternalTaskWrite(filePath),
+			withMarkdownSource: async (file, operation) => {
+				if (!this.isExcalidrawTaskSource(file)) return operation();
+				const view = this.app.workspace.getLeavesOfType('excalidraw')
+					.map(leaf => leaf.view as unknown as ExcalidrawTaskView).find(view => view.file === file && view._loaded !== false && view.excalidrawAPI);
+				if (!view) return operation();
+				const source = createExcalidrawMarkdownSource(this.app, view, () => this.agentRuntimeLifecycle?.getPhase() !== 'unloading', { enforceViewMode: false });
+				try {
+					return await source.runExclusive(async () => {
+						await source.read();
+						try { return await operation(source); }
+						finally {
+							if (!source.attempted && this.app.vault.getAbstractFileByPath(file.path) === file) await source.read();
+						}
+					});
+				} finally { source.dispose(); }
+			},
 			validatePluginWritePath: (filePath, allowAbsent) => this.isPluginTaskWritePathContained(filePath, allowAbsent),
 			validateWritePath: async (filePath, allowAbsent) => (
 				await this.isAgentRuntimeMutationPathContained(filePath, allowAbsent)
