@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added four **Excalidraw arrow relationship controls** for editing parent/child and blocking relationships with the same icons and rules as Canvas, directly from the center of a selected arrow.
 
+- Added **Excalidraw arrow relationship indicators** so parent/child and blocking relationships stay visible without selecting an arrow, using Canvas icons and red or blue blocker colors on a background that matches the drawing.
+
 - Added **Excalidraw task cards** to create or display Operon tasks with native frames and task colors, automatic height, editable fields, full task menus, and independent menu preferences while keeping tasks in their Markdown sources. Clicking an empty area of an active card opens Task Editor.
 
 - Added **inline tasks in Excalidraw Markdown**, using normal task creation and parent rules, with automatic task cards and task headings placed before drawing data.
@@ -33,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, and code review passed, along with **4,406/4,406** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **4,419/4,419** local regression tests.
 
 ## [3.11.0] - 2026-10-01
 
