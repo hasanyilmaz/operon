@@ -13,6 +13,7 @@ interface NativeElementMenu {
  renderActions: (actions: readonly ExcalidrawElementAction[]) => void;
 }
 interface BoundArrow extends ExcalidrawTaskElement {
+ points?: readonly (readonly [number, number])[];
  startBinding?: { elementId: string } | null; endBinding?: { elementId: string } | null;
 }
 interface ScenePair { arrow: BoundArrow; start: ExcalidrawTaskElement; end: ExcalidrawTaskElement }
@@ -33,6 +34,25 @@ function scenePair(elements: readonly ExcalidrawTaskElement[], state: Excalidraw
  if (!from || !to || from === to) return null;
  const start = elements.find(element => element.id === from && !element.isDeleted), end = elements.find(element => element.id === to && !element.isDeleted);
  return start && end ? { arrow, start, end } : null;
+}
+
+/** Follow the middle of the point route, including bends and element rotation. */
+function arrowMidpoint(arrow: BoundArrow): { x: number; y: number } | null {
+ const { points, x, y } = arrow, angle = arrow.angle ?? 0;
+ if (typeof x !== 'number' || typeof y !== 'number' || ![x, y, angle].every(Number.isFinite)
+  || !points || points.length < 2 || !points.every(point => point.length === 2 && point.every(Number.isFinite))) return null;
+ const lengths = points.slice(1).map((point, i) => Math.hypot(point[0] - points[i][0], point[1] - points[i][1]));
+ let remaining = lengths.reduce((sum, length) => sum + length, 0) / 2, at = points[0];
+ for (let i = 0; i < lengths.length; i++) {
+  if (remaining > lengths[i]) { remaining -= lengths[i]; continue; }
+  const ratio = lengths[i] ? remaining / lengths[i] : 0;
+  at = [points[i][0] + (points[i + 1][0] - points[i][0]) * ratio, points[i][1] + (points[i + 1][1] - points[i][1]) * ratio];
+  break;
+ }
+ const xs = points.map(point => point[0]), ys = points.map(point => point[1]);
+ const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+ return { x: x + cx + (at[0] - cx) * Math.cos(angle) - (at[1] - cy) * Math.sin(angle),
+  y: y + cy + (at[0] - cx) * Math.sin(angle) + (at[1] - cy) * Math.cos(angle) };
 }
 
 /** Native selected-element extension; the task relation implementation is shared with Canvas. */
@@ -134,12 +154,49 @@ export class ExcalidrawEdgeRelations extends Component {
   session.menu.selectedElementId = null;
  }
  private clearButtons(session: Session): void { if (session.life) this.removeChild(session.life); session.life = null; }
+ private positionMenu(session: Session, elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): void {
+  const menu = session.menu.menuEl, pair = scenePair(elements, state), anchor = pair && arrowMidpoint(pair.arrow);
+  if (!session.life || !session.controls.length || !menu || menu.hidden || !pair || !anchor) return;
+  const zoom = (state.zoom as { value?: number } | undefined)?.value, { scrollX, scrollY } = state;
+  if (typeof zoom !== 'number' || zoom <= 0 || typeof scrollX !== 'number' || typeof scrollY !== 'number'
+   || ![zoom, scrollX, scrollY].every(Number.isFinite)) return;
+  // The native menu host uses pane-local viewport pixels, so pane offsets cancel out.
+  const x = (anchor.x + scrollX) * zoom, y = (anchor.y + scrollY) * zoom;
+  const width = menu.offsetWidth, height = menu.offsetHeight, host = menu.parentElement;
+  if (!host || !width || !height) return;
+  const padding = 8, gap = 16, top = Math.max(padding, Math.min(y - height / 2, host.clientHeight - height - padding));
+  let right = x + gap, left = x - gap - width;
+  // Keep the arrow's label and endpoint cards clear, including short or rotated connections.
+  const obstacles = [pair.start, pair.end, ...elements.filter(element => !element.isDeleted && element.type === 'text' && element.containerId === pair.arrow.id)];
+  const ranges: Array<{ left: number; right: number }> = [];
+  for (const element of obstacles) {
+   const { x: ex, y: ey, width: ew, height: eh } = element, angle = element.angle ?? 0;
+   if (typeof ex !== 'number' || typeof ey !== 'number' || typeof ew !== 'number' || typeof eh !== 'number'
+    || ![ex, ey, ew, eh, angle].every(Number.isFinite)) continue;
+   const halfWidth = (Math.abs(ew * Math.cos(angle)) + Math.abs(eh * Math.sin(angle))) * zoom / 2;
+   const halfHeight = (Math.abs(ew * Math.sin(angle)) + Math.abs(eh * Math.cos(angle))) * zoom / 2;
+   const cx = (ex + ew / 2 + scrollX) * zoom, cy = (ey + eh / 2 + scrollY) * zoom;
+   if (cy + halfHeight < top || cy - halfHeight > top + height) continue;
+   ranges.push({ left: cx - halfWidth, right: cx + halfWidth });
+  }
+  for (const range of ranges.sort((a, b) => a.left - b.left)) {
+   if (range.right >= right && range.left <= right + width) right = range.right + gap;
+  }
+  for (const range of ranges.sort((a, b) => b.right - a.right)) {
+   if (range.right >= left && range.left <= left + width) left = range.left - gap - width;
+  }
+  const side = right + width <= host.clientWidth - padding ? right : left;
+  const targetLeft = `${Math.max(padding, Math.min(side, host.clientWidth - width - padding))}px`, targetTop = `${top}px`;
+  if (menu.style.left !== targetLeft) menu.style.left = targetLeft;
+  if (menu.style.top !== targetTop) menu.style.top = targetTop;
+ }
  private bindMenu(session: Session): void {
   const menu = session.menu, originalUpdate = menu.update, originalRender = menu.renderActions;
   const updateDescriptor = Object.getOwnPropertyDescriptor(menu, 'update'), renderDescriptor = Object.getOwnPropertyDescriptor(menu, 'renderActions');
   const update: NativeElementMenu['update'] = (elements, state) => {
    if (this.current(session)) this.prepare(session, elements, state);
    originalUpdate.call(menu, elements, state);
+   if (this.current(session)) this.positionMenu(session, elements, state);
   };
   const render: NativeElementMenu['renderActions'] = actions => {
    const focused = menu.actionsEl?.ownerDocument.activeElement?.getAttribute('data-operon-edge-relation');
