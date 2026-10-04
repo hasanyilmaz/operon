@@ -133,14 +133,16 @@ export class ExcalidrawRelationIndicators extends Component {
  }
  private drain(session: LayerSession): void {
   // Bound concurrent native exports; queued projections always read their newest geometry.
-  while (this.current(session) && session.running < 4 && session.queue.size) {
-   const projection = session.queue.values().next().value; session.queue.delete(projection);
+  if (!this.current(session)) return;
+  for (const projection of session.queue) {
+   if (session.running >= 4) break;
+   session.queue.delete(projection);
    if (session.projections.get(projection.arrow.id) !== projection || !projection.marks.length || projection.route || projection.pending === projection.geometry) continue;
    const key = projection.geometry, arrow = projection.arrow;
    projection.pending = key; session.running++;
    void relationArrowRoute(arrow, session.library).catch(() => new Map()).then(route => {
     if (!this.current(session) || session.projections.get(arrow.id) !== projection || projection.geometry !== key) return;
-    const current = session.api.getSceneElements().find(element => element.id === arrow.id && !element.isDeleted) as RelationArrow | undefined;
+    const current = session.api.getSceneElements().find(element => element.id === arrow.id && !element.isDeleted);
     if (current && relationArrowGeometryKey(current) === key) projection.route = route;
    }).finally(() => {
     if (projection.pending === key) projection.pending = null;
