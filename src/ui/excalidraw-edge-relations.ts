@@ -162,31 +162,9 @@ export class ExcalidrawEdgeRelations extends Component {
    || ![zoom, scrollX, scrollY].every(Number.isFinite)) return;
   // The native menu host uses pane-local viewport pixels, so pane offsets cancel out.
   const x = (anchor.x + scrollX) * zoom, y = (anchor.y + scrollY) * zoom;
-  const width = menu.offsetWidth, height = menu.offsetHeight, host = menu.parentElement;
-  if (!host || !width || !height) return;
-  const padding = 8, gap = 16, top = Math.max(padding, Math.min(y - height / 2, host.clientHeight - height - padding));
-  let right = x + gap, left = x - gap - width;
-  // Keep the arrow's label and endpoint cards clear, including short or rotated connections.
-  const obstacles = [pair.start, pair.end, ...elements.filter(element => !element.isDeleted && element.type === 'text' && element.containerId === pair.arrow.id)];
-  const ranges: Array<{ left: number; right: number }> = [];
-  for (const element of obstacles) {
-   const { x: ex, y: ey, width: ew, height: eh } = element, angle = element.angle ?? 0;
-   if (typeof ex !== 'number' || typeof ey !== 'number' || typeof ew !== 'number' || typeof eh !== 'number'
-    || ![ex, ey, ew, eh, angle].every(Number.isFinite)) continue;
-   const halfWidth = (Math.abs(ew * Math.cos(angle)) + Math.abs(eh * Math.sin(angle))) * zoom / 2;
-   const halfHeight = (Math.abs(ew * Math.sin(angle)) + Math.abs(eh * Math.cos(angle))) * zoom / 2;
-   const cx = (ex + ew / 2 + scrollX) * zoom, cy = (ey + eh / 2 + scrollY) * zoom;
-   if (cy + halfHeight < top || cy - halfHeight > top + height) continue;
-   ranges.push({ left: cx - halfWidth, right: cx + halfWidth });
-  }
-  for (const range of ranges.sort((a, b) => a.left - b.left)) {
-   if (range.right >= right && range.left <= right + width) right = range.right + gap;
-  }
-  for (const range of ranges.sort((a, b) => b.right - a.right)) {
-   if (range.right >= left && range.left <= left + width) left = range.left - gap - width;
-  }
-  const side = right + width <= host.clientWidth - padding ? right : left;
-  const targetLeft = `${Math.max(padding, Math.min(side, host.clientWidth - width - padding))}px`, targetTop = `${top}px`;
+  const width = menu.offsetWidth, height = menu.offsetHeight;
+  if (!width || !height) return;
+  const targetLeft = `${x - width / 2}px`, targetTop = `${y - height / 2}px`;
   if (menu.style.left !== targetLeft) menu.style.left = targetLeft;
   if (menu.style.top !== targetTop) menu.style.top = targetTop;
  }
