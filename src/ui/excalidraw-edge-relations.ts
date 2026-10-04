@@ -183,15 +183,17 @@ export class ExcalidrawEdgeRelations extends Component {
  private positionTaskMenu(session: Session, selected: ExcalidrawTaskElement, state: ExcalidrawTaskState): void {
   const menu = session.menu.menuEl;
   if (!session.life || !menu || menu.hidden || !session.controls.length) return;
-  const zoom = (state.zoom as { value?: number } | undefined)?.value, scrollX = state.scrollX;
-  if (typeof zoom !== 'number' || typeof scrollX !== 'number' || typeof selected.x !== 'number'
-   || ![zoom, scrollX, selected.x].every(Number.isFinite) || zoom <= 0) return;
-  const active = state.activeEmbeddable as { element?: { id?: string }; state?: string } | undefined;
-  const ref = Reflect.get(this.view, 'embeddableMenuRef') as { current?: HTMLElement } | undefined;
-  const native = ref?.current;
-  // The active embed menu is a separate native React surface. Keep both groups on its row.
-  const beside = active?.state === 'active' && active.element?.id === selected.id && native?.isConnected;
-  menu.style.left = `${(selected.x + scrollX) * zoom + (beside ? native.offsetWidth + 8 : 0)}px`;
+  const zoom = (state.zoom as { value?: number } | undefined)?.value, { scrollX, scrollY } = state;
+  const { x, y, width, height } = selected, angle = selected.angle ?? 0;
+  if (typeof zoom !== 'number' || typeof scrollX !== 'number' || typeof scrollY !== 'number'
+   || typeof x !== 'number' || typeof y !== 'number' || typeof width !== 'number' || typeof height !== 'number'
+   || ![zoom, scrollX, scrollY, x, y, width, height, angle].every(Number.isFinite) || zoom <= 0) return;
+  // Screen-aligned below the rotated card, with Canvas's constant twelve-pixel gap.
+  const bottom = y + height / 2 + (Math.abs(width * Math.sin(angle)) + Math.abs(height * Math.cos(angle))) / 2;
+  const left = `${(x + width / 2 + scrollX) * zoom - menu.offsetWidth / 2}px`;
+  const top = `${(bottom + scrollY) * zoom + 12}px`;
+  if (menu.style.left !== left) menu.style.left = left;
+  if (menu.style.top !== top) menu.style.top = top;
  }
  private schedulePosition(session: Session): void {
   if (!this.current(session) || session.frame !== null || !session.controls.some(control => !('lines' in control))) return;
@@ -242,23 +244,12 @@ export class ExcalidrawEdgeRelations extends Component {
    if (menu.update === update) { if (updateDescriptor) Object.defineProperty(menu, 'update', updateDescriptor); else Reflect.deleteProperty(menu, 'update'); }
    throw new Error(taskEdgeRelationUnavailable);
   }
-  const renderEmbed = Reflect.get(this.view, 'renderEmbeddableMenu') as ((state: ExcalidrawTaskState) => unknown) | undefined;
-  const embedDescriptor = Object.getOwnPropertyDescriptor(this.view, 'renderEmbeddableMenu');
-  const renderWithPosition = (state: ExcalidrawTaskState): unknown => {
-   const result: unknown = renderEmbed?.call(this.view, state);
-   this.schedulePosition(session); return result;
-  };
   session.restore = () => {
    if (session.frame !== null) getOwnerWindow(this.view.contentEl).cancelAnimationFrame(session.frame);
    session.frame = null;
-   if (Reflect.get(this.view, 'renderEmbeddableMenu') === renderWithPosition) {
-    if (embedDescriptor) Object.defineProperty(this.view, 'renderEmbeddableMenu', embedDescriptor);
-    else Reflect.deleteProperty(this.view, 'renderEmbeddableMenu');
-   }
    if (menu.update === update) { if (updateDescriptor) Object.defineProperty(menu, 'update', updateDescriptor); else Reflect.deleteProperty(menu, 'update'); }
    if (menu.renderActions === render) { if (renderDescriptor) Object.defineProperty(menu, 'renderActions', renderDescriptor); else Reflect.deleteProperty(menu, 'renderActions'); }
   };
-  if (typeof renderEmbed === 'function') Reflect.set(this.view, 'renderEmbeddableMenu', renderWithPosition);
  }
  private disable(session: Session): void {
   session.active = false; this.unsupportedMenu = session.menu; this.warn();
