@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Create an Operon task from the **free end of a new Excalidraw arrow**, with the starting task preselected as parent in Task Creator and the new card automatically connected to the arrow.
+
 - Convert selected **Excalidraw text** into an Operon task through Task Creator, with the first line as the description and remaining lines as notes. Drawing parent and inheritance rules are shown before creation, and the new card keeps its position and connections.
 
 - Added four **Excalidraw arrow relationship controls** for editing parent/child and blocking relationships with the same icons and rules as Canvas, directly from the center of a selected arrow, with accent-colored hover and active icons on a consistent background.
@@ -39,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, and code review passed, along with **4,510/4,510** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **4,555/4,555** local regression tests.
 
 - All **5/5** final manual checks passed for Excalidraw arrow relationships and their Canvas comparison.
 
