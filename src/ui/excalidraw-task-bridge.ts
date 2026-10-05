@@ -1,3 +1,4 @@
+import { currentExcalidrawDropArrow, excalidrawDropCardPosition, rememberExcalidrawDropAnchor, type ExcalidrawDropConnection } from './excalidraw-task-drop-connection';
 import { DEFAULT_TASK_CARD_SETTINGS, TASK_CARD_WIDTHS } from '../types/task-card';
 import { readExcalidrawMarkdownSections, saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import { TFile, type App } from 'obsidian';
@@ -120,23 +121,25 @@ export interface ExcalidrawTextReplacement { elementId: string; text: string; }
 export class ExcalidrawTaskSaveError extends Error {}
 
 /** Revalidate after awaits; native save may swallow errors, so verify persisted results. */
-export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement): Promise<void> {
+export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement, connection?: ExcalidrawDropConnection): Promise<void> {
  const file = view.file;
  if (!file) throw new Error('Drawing unavailable');
- return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position, TASK_CARD_WIDTHS.includes(width) ? width : DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement));
+ return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position, TASK_CARD_WIDTHS.includes(width) ? width : DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement, connection));
 }
-async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement): Promise<void> {
+async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement, connection?: ExcalidrawDropConnection): Promise<void> {
  const file = view.file, path = file?.path;
  let applied = false;
  const source = () => view.excalidrawAPI.getSceneElements().find(element => element.id === replacement?.elementId);
  const current = () => !!file && view.file === file && file.path === path && allowed()
-  && (!replacement || applied || !!source() && excalidrawConvertibleText(source()!) === replacement.text);
+  && (!replacement || applied || !!source() && excalidrawConvertibleText(source()!) === replacement.text)
+  && (!connection || applied || !!currentExcalidrawDropArrow(view, connection));
  if (!file || !current()) throw new Error('Drawing unavailable');
  const ea = view.plugin.ea.getAPI(view);
  let writeAttempted = false;
  try {
   for (const method of ['getViewCenterPosition', 'addEmbeddable', 'addElementsToView', 'getSceneFromFile', 'destroy'] as const)
    if (typeof ea?.[method] !== 'function') throw new Error('Excalidraw API unavailable');
+  if (connection && (typeof ea.copyViewElementsToEAforEditing !== 'function' || typeof ea.getElement !== 'function')) throw new Error('Excalidraw editing API unavailable');
   if (replacement && typeof ea.getElement !== 'function') throw new Error('Excalidraw editing API unavailable');
   if (!await saveExcalidrawTaskSceneInQueue(app, view, current)) throw new Error('Drawing changed');
   if (!current()) throw new Error('Drawing changed');
@@ -175,6 +178,19 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
     index: before.index, version: typeof before.version === 'number' ? before.version + 1 : 1 });
    elementId = before.id;
   }
+  if (connection) {
+   const arrow = currentExcalidrawDropArrow(view, connection), element = ea.getElement!(elementId);
+   const source = view.excalidrawAPI.getSceneElements().find(value => value.id === connection.sourceId);
+   if (!arrow || !element || !source || excalidrawSceneTaskId(app, view, source) !== connection.taskId) throw new Error('Arrow changed');
+   Object.assign(element, excalidrawDropCardPosition(connection, width, 300), { angle: 0 });
+   ea.copyViewElementsToEAforEditing!([arrow]);
+   const copy = ea.getElement!(arrow.id);
+   if (!copy || copy === arrow) throw new Error('Arrow editing unavailable');
+   const fixedPoint = connection.side === 'left' ? [0, .5] : connection.side === 'right' ? [1, .5] : connection.side === 'top' ? [.5, 0] : [.5, 1];
+   copy.endBinding = { elementId, mode: 'orbit', fixedPoint };
+   element.boundElements = [{ id: arrow.id, type: 'arrow' }];
+   rememberExcalidrawDropAnchor(view, element, connection);
+  }
   // The only scene mutation is one native undoable replacement; later guards check
   // drawing ownership rather than requiring the replaced text to remain present.
   applied = true;
@@ -185,6 +201,8 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
   const saved = await ea.getSceneFromFile(file);
   if (!current()) throw new Error('Drawing changed');
   if (!saved?.elements.some(element => element.id === elementId && element.type === 'embeddable' && !element.isDeleted && element.link === link)) throw new ExcalidrawTaskSaveError();
+  if (connection && !saved?.elements.some(value => value.id === connection.arrowId && !value.isDeleted
+   && (value.endBinding as { elementId?: string } | null)?.elementId === elementId)) throw new ExcalidrawTaskSaveError();
   const element = view.excalidrawAPI.getSceneElements().find(value => value.id === elementId && !value.isDeleted);
   if (element) view.excalidrawAPI.selectElements([element]);
  } catch (error) {

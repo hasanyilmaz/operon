@@ -16781,7 +16781,7 @@ export default class OperonPlugin extends Plugin {
      this.subtasksFilterModal = modal; modal.open();
     } };
    },
-   openCreator: (allowed, created, view, text = '') => this.openSurfaceTaskCreator(text, allowed, created, undefined, true, true, view),
+   openCreator: (allowed, created, view, text = '', parentId) => this.openSurfaceTaskCreator(text, allowed, created, parentId, true, true, view),
    app: this.app, cards: this.taskCardEmbeds,
    openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
     getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id), preventFocusScroll: true,
@@ -29159,7 +29159,7 @@ export default class OperonPlugin extends Plugin {
   this.openSurfaceTaskCreator(text, allowed, created, parentId, recordTargetHistory);
  }
  private openSurfaceTaskCreator(text: string, allowed: () => boolean, created: (id: string) => Promise<void>, parentId?: string, recordTargetHistory = true, excalidraw = false, drawing?: ExcalidrawTaskView): void {
-  if (parentId) {
+  if (parentId && !drawing) {
    const parent = this.indexer.getTask(parentId);
    if (!allowed() || !parent || this.indexer.hasDuplicateOperonIdConflict(parentId)) { new Notice(t('notifications', 'canvasTaskMissing')); return; }
    const draft = buildSubtaskTaskCreatorDraft(parentId, parent.fieldValues, parent.tags, this.settings);
@@ -29173,13 +29173,16 @@ export default class OperonPlugin extends Plugin {
    });
    return;
   }
-  const draft = { ...createEmptyTaskCreatorDraft(), ...splitTaskCreationText(text) };
-  draft.noteOpen = !!draft.note; draft.explicitFieldKeys = ['description', 'note'];
+  const parent = parentId ? this.indexer.getTask(parentId) : null;
+  if (parentId && (!allowed() || !parent || this.indexer.hasDuplicateOperonIdConflict(parentId))) { new Notice(t('notifications', 'canvasTaskMissing')); return; }
+  const draft = parent && parentId ? buildSubtaskTaskCreatorDraft(parentId, parent.fieldValues, parent.tags, this.settings)
+   : { ...createEmptyTaskCreatorDraft(), ...splitTaskCreationText(text) };
+  draft.noteOpen = !!draft.note; draft.explicitFieldKeys = [...new Set([...draft.explicitFieldKeys, 'description', 'note'])];
   let submitting = false;
   const drawingFile = drawing?.file;
   const acceptFile = excalidraw ? (file: TFile) => file instanceof TFile && (!this.isExcalidrawTaskSource(file) || file === drawingFile) : undefined;
   const options: OpenTaskCreatorOptions = { ...(excalidraw ? { activeFilePath: null } : {}),
-   getInlineParentPreview: drawing ? value => this.resolveDrawingCreatorParentPreview(value, drawing, allowed) : undefined, applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,
+   getInlineParentPreview: drawing ? value => this.resolveDrawingCreatorParentPreview(value, drawing, allowed) : undefined, applyGenericDefaults: !parentId, submitMode: 'both', preventFocusScroll: true,
    onSubmitInline: async value => {
     if (submitting) return false;
     if (!allowed()) { new Notice(t('notifications', excalidraw ? 'excalidrawTaskUnavailable' : 'canvasTaskUnavailable')); return false; }

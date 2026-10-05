@@ -1,3 +1,4 @@
+import { consumeExcalidrawDropHeight } from './excalidraw-task-drop-connection';
 import { saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import type { App } from 'obsidian';
 import { isExcalidrawTaskStrokeEditing } from './excalidraw-task-colors';
@@ -112,6 +113,8 @@ export class ExcalidrawTaskAutoHeight {
   const style = outer ? getOwnerWindow(outer).getComputedStyle(outer) : null;
   const inset = style ? (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0) : 0;
   const plan = planExcalidrawTaskHeight(element, measured + inset);
+  const anchor = consumeExcalidrawDropHeight(this.view, element, plan?.height ?? element.height!);
+  if (plan && anchor) Object.assign(plan, anchor);
   // Store the configured Task Card color; Excalidraw retains its native dark-mode stroke rendering.
   const card = this.root.querySelector<HTMLElement>('.operon-task-card');
   const stroke = card ? resolveExcalidrawTaskStroke(card) : null;

@@ -26,8 +26,8 @@ export function relationArrowPoint(arrow: RelationArrow, fraction: number): Rela
  const lengths = points.slice(1).map((point, i) => Math.hypot(point[0] - points[i][0], point[1] - points[i][1]));
  let remaining = lengths.reduce((sum, length) => sum + length, 0) * fraction, at = points[0];
  for (let i = 0; i < lengths.length; i++) {
-  if (remaining > lengths[i]) { remaining -= lengths[i]; continue; }
-  const ratio = lengths[i] ? remaining / lengths[i] : 0;
+  if (remaining > lengths[i] && i < lengths.length - 1) { remaining -= lengths[i]; continue; }
+  const ratio = lengths[i] ? Math.min(1, remaining / lengths[i]) : 0;
   at = [points[i][0] + (points[i + 1][0] - points[i][0]) * ratio, points[i][1] + (points[i + 1][1] - points[i][1]) * ratio];
   break;
  }
