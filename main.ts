@@ -1,3 +1,4 @@
+import { pauseExcalidrawTaskPresentation } from './src/ui/excalidraw-task-auto-height';
 import { splitTaskCreationText } from './src/ui/task-creation-text';
 import { ExcalidrawSourceError, rebaseExcalidrawTaskSource, withExcalidrawMarkdownSources, createExcalidrawMarkdownSource, insertExcalidrawInlineTask, readExcalidrawMarkdownSections, type InlineMarkdownSource } from './src/ui/excalidraw-markdown-source';
 import { readExcalidrawTaskView, type ExcalidrawTaskView } from './src/ui/excalidraw-task-bridge';
@@ -1143,6 +1144,7 @@ interface CalendarTaskCreatorOpenOptions extends Pick<OpenTaskCreatorOptions, 'i
 
 interface TaskCreatorInlineCreationOptions {
  source?: InlineMarkdownSource;
+ ownedDrawingSources?: readonly InlineMarkdownSource[];
  onPersisted?: () => void;
  acceptFile?: (file: TFile) => boolean;
 	recordTargetHistory?: boolean;
@@ -29187,23 +29189,36 @@ export default class OperonPlugin extends Plugin {
     if (submitting) return false;
     if (!allowed()) { new Notice(t('notifications', excalidraw ? 'excalidrawTaskUnavailable' : 'canvasTaskUnavailable')); return false; }
     submitting = true;
+    const resume = drawing ? pauseExcalidrawTaskPresentation(drawing) : undefined;
     try {
      if (drawing) return await this.createExcalidrawInlineTask(value, drawing, allowed, created, recordTargetHistory);
      const result = await this.createInlineTaskFromCreatorDraftResult(value, { canCommit: allowed, recordTargetHistory, acceptFile, ...(excalidraw ? { activeFilePath: null } : {}) });
      if (!result) return false;
      await created(result.operonId); return true;
     } catch { new Notice(t('notifications', 'canvasConversionPartial')); return true; }
-    finally { submitting = false; }
+    finally { resume?.(); submitting = false; }
    },
    onSubmitFile: async value => {
     if (submitting) return false;
     if (!allowed()) { new Notice(t('notifications', excalidraw ? 'excalidrawTaskUnavailable' : 'canvasTaskUnavailable')); return false; }
     submitting = true;
-    try { return await this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null,
+    const resume = drawing ? pauseExcalidrawTaskPresentation(drawing) : undefined;
+    let createdId: string | undefined, started = false;
+    const create = (ownedDrawingSources?: readonly InlineMarkdownSource[]) => { started = true; return this.createFileTaskFromCreatorDraft(value, { canCommit: allowed, fallbackFile: null, ownedDrawingSources,
      onUncertain: () => { new Notice(t('notifications', excalidraw ? 'excalidrawTaskCreatedUnbound' : 'canvasConversionPartial')); },
      reopenCreator: preserved => { if (allowed()) this.openTaskCreator(preserved, options); },
-     onCreated: async result => { await created(result.fieldValues.operonId ?? ''); },
-    }); } finally { submitting = false; }
+     onCreated: async result => { if (drawing) createdId = result.fieldValues.operonId ?? ''; else await created(result.fieldValues.operonId ?? ''); },
+    }); };
+    try {
+     const result = drawing ? await this.withExcalidrawCreatorSources(value, drawing, allowed, create) : await create();
+     if (createdId !== undefined) await created(createdId);
+     return result;
+    } catch (error) {
+     if (!drawing) throw error;
+     new Notice(error instanceof ExcalidrawSourceError ? error.message : t('notifications', 'excalidrawTaskCreatedUnbound'));
+     if (!started && allowed()) this.openTaskCreator(value, options);
+     return started;
+    } finally { resume?.(); submitting = false; }
    },
   };
   this.openTaskCreator(draft, options);
@@ -29226,11 +29241,11 @@ export default class OperonPlugin extends Plugin {
    };
    source = createExcalidrawMarkdownSource(this.app, drawing, canCreate);
    const port = source;
-   const result = await this.writer.withMarkdownSource(port, async () => {
-    const result = await this.createInlineTaskFromCreatorDraftResult(draft, { source: port, onPersisted: () => { persisted = true; }, canCommit: allowed, recordTargetHistory, acceptFile: candidate => candidate === file || !this.isExcalidrawTaskSource(candidate), activeFilePath: file.path });
+   const result = await this.withExcalidrawCreatorSources(draft, drawing, canCreate, async ownedDrawingSources => {
+    const result = await this.createInlineTaskFromCreatorDraftResult(draft, { source: port, ownedDrawingSources, onPersisted: () => { persisted = true; }, canCommit: allowed, recordTargetHistory, acceptFile: candidate => candidate === file || !this.isExcalidrawTaskSource(candidate), activeFilePath: file.path });
     if (result) port.assertCurrent();
     return result;
-   });
+   }, port);
    source.dispose();
    if (!result) return false;
    await created(result.operonId);
@@ -29240,6 +29255,34 @@ export default class OperonPlugin extends Plugin {
    new Notice(error instanceof ExcalidrawSourceError ? error.message + (uncertain ? '\n' + t('notifications', 'excalidrawTaskCreatedUnbound') : '') : t('notifications', 'excalidrawTaskCreatedUnbound'));
    return uncertain || !(error instanceof ExcalidrawSourceError);
   } finally { source?.dispose(); this.excalidrawCreatorSubmissions.delete(file); }
+ }
+ /** Register open ancestor drawings through the existing writer; individual native writes stay queued. */
+ private async withExcalidrawCreatorSources<T>(draft: TaskCreatorDraft, drawing: ExcalidrawTaskView, allowed: () => boolean, operation: (sources: readonly InlineMarkdownSource[]) => Promise<T>, primary?: InlineMarkdownSource): Promise<T> {
+  const paths = new Set<string>(drawing.file ? [drawing.file.path] : []);
+  const ancestors = new Map<string, { path: string; format: string }>();
+  let id = draft.fieldValues.parentTask?.trim();
+  while (id && !ancestors.has(id)) {
+   const task = this.indexer.getTask(id);
+   if (!task || this.indexer.hasDuplicateOperonIdConflict(id)) throw new ExcalidrawSourceError('The selected parent task is missing or ambiguous.');
+   ancestors.set(id, { path: task.primary.filePath, format: task.primary.format });
+   paths.add(task.primary.filePath); id = task.fieldValues.parentTask?.trim();
+  }
+  const current = () => allowed() && [...ancestors].every(([key, before]) => {
+   const task = this.indexer.getTask(key);
+   return !!task && task.primary.filePath === before.path && task.primary.format === before.format && !this.indexer.hasDuplicateOperonIdConflict(key);
+  });
+  const sources: InlineMarkdownSource[] = primary ? [primary] : [];
+  try {
+   for (const path of [...paths].sort()) {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile) || file === primary?.file || !this.isExcalidrawTaskSource(file)) continue;
+    const view = this.app.workspace.getLeavesOfType('excalidraw').map(leaf => leaf.view as unknown as ExcalidrawTaskView).find(view => view.file === file);
+    if (view) sources.push(createExcalidrawMarkdownSource(this.app, view, current));
+   }
+   await this.writer.waitForMarkdownSources([...paths]);
+   if (!current()) throw new ExcalidrawSourceError('The task source changed during the operation.');
+   return await this.writer.withMarkdownSources(sources.sort((a, b) => a.file.path.localeCompare(b.file.path)), () => operation(sources));
+  } finally { for (const source of sources) if (source !== primary) source.dispose(); }
  }
  private async confirmCanvasConversionDelete(receipt: CanvasConversionReceipt): Promise<boolean> {
   if (!this.canvasConversionEligible(receipt)) { new Notice(t('notifications', 'canvasConversionBlocked')); return false; }
@@ -29378,12 +29421,12 @@ export default class OperonPlugin extends Plugin {
 		return buildTaskCreatorSubmitFieldSeed(draft).fieldValues;
 	}
 
-	private async writeParentToExistingChildTask(childId: string, parentId: string | null, canCommit?: () => boolean, source?: InlineMarkdownSource): Promise<void> {
+	private async writeParentToExistingChildTask(childId: string, parentId: string | null, canCommit?: () => boolean, source?: InlineMarkdownSource, ownedDrawingSources?: readonly InlineMarkdownSource[]): Promise<void> {
 		const child = this.indexer.getTask(childId);
 		if (!child) return;
 
 		if ((this.settings.inheritPropertiesOnParentLink || this.settings.keepInlineTasksWithParent) && parentId?.trim() && parentId.trim() !== (child.fieldValues.parentTask ?? '').trim()) {
-			await this.updateDirectTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() }, { canCommit, ownedDrawingSources: source ? [source] : undefined });
+			await this.updateDirectTaskFieldsAndRefresh(childId, { parentTask: parentId.trim() }, { canCommit, ownedDrawingSources: ownedDrawingSources ?? (source ? [source] : undefined) });
 			return;
 		}
 
@@ -29652,6 +29695,7 @@ export default class OperonPlugin extends Plugin {
 		parentTaskId?: string | null,
         canCommit?: () => boolean,
         source?: InlineMarkdownSource,
+        ownedDrawingSources?: readonly InlineMarkdownSource[],
 	): Promise<void> {
 		const normalizedParentId = parentId.trim();
 		if (!normalizedParentId) return;
@@ -29665,7 +29709,7 @@ export default class OperonPlugin extends Plugin {
 			.filter(subtaskId => !excludedIds.has(subtaskId));
 		for (const subtaskId of uniqueSubtaskIds) {
 			if (canCommit?.() === false) throw new Error('Task creation permission expired');
-            await this.writeParentToExistingChildTask(subtaskId, normalizedParentId, canCommit, source);
+            await this.writeParentToExistingChildTask(subtaskId, normalizedParentId, canCommit, source, ownedDrawingSources);
 		}
 	}
 
@@ -29694,10 +29738,10 @@ export default class OperonPlugin extends Plugin {
         } else await this.pinnedCache.pin(normalizedTaskId);
 	}
 
-	private async finalizeCreatedFileTask(created: CreatedCalendarFileTask, draft: TaskCreatorDraft): Promise<void> {
+	private async finalizeCreatedFileTask(created: CreatedCalendarFileTask, draft: TaskCreatorDraft, ownedDrawingSources?: readonly InlineMarkdownSource[]): Promise<void> {
 		await this.indexer.forceReindexFilePathAfterMutation(created.file.path, { notify: false });
 		await this.finalizeTaskCreatorCreatedTask(
-			(created.fieldValues['operonId'] ?? '').trim(), draft, created.fieldValues['parentTask'], created,
+			(created.fieldValues['operonId'] ?? '').trim(), draft, created.fieldValues['parentTask'], created, undefined, undefined, ownedDrawingSources,
 		);
 	}
 
@@ -29708,6 +29752,7 @@ export default class OperonPlugin extends Plugin {
 		createdFile?: CreatedCalendarFileTask,
         canCommit?: () => boolean,
         source?: InlineMarkdownSource,
+        ownedDrawingSources?: readonly InlineMarkdownSource[],
 	): Promise<void> {
         const check = () => { if (canCommit?.() === false) throw new Error('Task creation permission expired'); };
         check();
@@ -29736,7 +29781,7 @@ export default class OperonPlugin extends Plugin {
 				normalizedOperonId,
 				draft.subtaskIds,
 				parentTaskId,
-                canCommit, source,
+                canCommit, source, ownedDrawingSources,
 			);
 		}
         check();
@@ -29844,6 +29889,7 @@ export default class OperonPlugin extends Plugin {
 			fallbackFile?: TFile | null;
    canCommit?: () => boolean;
    onUncertain?: () => void;
+   ownedDrawingSources?: readonly InlineMarkdownSource[];
 			reopenCreator: (draft: TaskCreatorDraft) => void | Promise<void>;
 			seedTagsPresent?: boolean;
 			onCreated?: (created: CreatedCalendarFileTask, draft: TaskCreatorDraft) => void | Promise<void>;
@@ -29882,7 +29928,7 @@ export default class OperonPlugin extends Plugin {
 			}
 			const createdOperonId = (created.fieldValues['operonId'] ?? '').trim();
 			try {
-				await this.finalizeCreatedFileTask(created, preservedDraft);
+				await this.finalizeCreatedFileTask(created, preservedDraft, options.ownedDrawingSources);
 				await options.onCreated?.(created, preservedDraft);
 			} catch (error) {
 				console.error('Operon: file task was created but creator follow-up failed', error);
@@ -30504,8 +30550,6 @@ export default class OperonPlugin extends Plugin {
          const parent = parentId ? this.indexer.getTask(parentId) : null;
          if (parentId && (!parent || this.indexer.hasDuplicateOperonIdConflict(parentId))) throw new ExcalidrawSourceError('The selected parent task is missing or ambiguous.');
          const parentPath = parent?.primary.filePath, parentFormat = parent?.primary.format;
-         const parentFile = parentPath ? this.app.vault.getAbstractFileByPath(parentPath) : null;
-         if (parentFile instanceof TFile && parentFile !== file && this.isExcalidrawTaskSource(parentFile)) throw new ExcalidrawSourceError('A different drawing cannot be updated by this creation session.');
          const canCommit = () => {
           source.assertCurrent();
           const currentParent = parentId ? this.indexer.getTask(parentId) : null;
@@ -30606,7 +30650,7 @@ export default class OperonPlugin extends Plugin {
          return options.canCommit?.() !== false && !!task && task.primary.filePath === createdFilePath && !this.indexer.hasDuplicateOperonIdConflict(created.operonId);
         } : undefined;
         if (options.source && options.canCommit?.() === false) throw new ExcalidrawSourceError('The task was saved, but its drawing is no longer available.');
-        await this.finalizeTaskCreatorCreatedTask(created.operonId, draft, createdTask?.fieldValues['parentTask'], undefined, canFinalize, options.source);
+        await this.finalizeTaskCreatorCreatedTask(created.operonId, draft, createdTask?.fieldValues['parentTask'], undefined, canFinalize, options.source, options.ownedDrawingSources);
         if (options.source && createdFilePath === options.source.file.path) {
          await this.indexer.forceReindexFilePathAfterMutation(createdFilePath, { notify: false });
          const verified = this.indexer.getTask(created.operonId);

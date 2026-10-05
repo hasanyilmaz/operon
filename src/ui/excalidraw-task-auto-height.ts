@@ -10,6 +10,21 @@ import type { ExcalidrawTaskElement, ExcalidrawTaskView } from './excalidraw-tas
 
 const queues = new WeakMap<ExcalidrawTaskView, Promise<void>>();
 const failed = new WeakSet<ExcalidrawTaskView>();
+const paused = new WeakMap<ExcalidrawTaskView, { count: number; resume: Set<() => void> }>();
+
+/** Creating a child can resize its parent and move a bound arrow before card insertion. */
+export function pauseExcalidrawTaskPresentation(view: ExcalidrawTaskView): () => void {
+ const state = paused.get(view) ?? { count: 0, resume: new Set<() => void>() };
+ state.count++; paused.set(view, state);
+ let released = false;
+ return () => {
+  if (released) return; released = true;
+  if (--state.count) return;
+  paused.delete(view);
+  for (const resume of state.resume) resume();
+  state.resume.clear();
+ };
+}
 
 /** Keep the rotated top edge fixed while preserving the user's width and native scale. */
 export function planExcalidrawTaskHeight(element: ExcalidrawTaskElement, measuredHeight: number): { x: number; y: number; height: number } | null {
@@ -51,6 +66,7 @@ export function resolveExcalidrawTaskStroke(card: HTMLElement): string | null {
 /** Per-card observation; height and frame color share one native write queue, never polled. */
 export class ExcalidrawTaskAutoHeight {
  private active = true;
+ private resume = () => this.schedule();
  private frame = 0;
  private busy = false;
  private dirty = false;
@@ -83,6 +99,8 @@ export class ExcalidrawTaskAutoHeight {
  schedule(): void {
   if (!this.active || failed.has(this.view)) return;
   this.dirty = true;
+  const pause = paused.get(this.view);
+  if (pause) { pause.resume.add(this.resume); return; }
   if (this.frame || this.busy || this.pointers.size > 0) return;
   this.frame = getOwnerWindow(this.root).requestAnimationFrame(() => {
    this.frame = 0;
@@ -102,6 +120,7 @@ export class ExcalidrawTaskAutoHeight {
   });
  }
  private async fit(): Promise<void> {
+  if (paused.has(this.view)) { this.schedule(); return; }
   const file = this.view.file, path = file?.path;
   const current = () => this.active && this.pointers.size === 0 && !failed.has(this.view) && this.view.file === file && file?.path === path && this.allowed();
   if (!file || !current()) return;
@@ -144,7 +163,7 @@ export class ExcalidrawTaskAutoHeight {
   } finally { ea.destroy(); }
  }
  destroy(): void {
-  this.active = false; this.observer?.disconnect();
+  this.active = false; paused.get(this.view)?.resume.delete(this.resume); this.observer?.disconnect();
   if (this.frame) getOwnerWindow(this.root).cancelAnimationFrame(this.frame);
   this.frame = 0; for (const cleanup of this.cleanup) cleanup(); this.cleanup = [];
  }
