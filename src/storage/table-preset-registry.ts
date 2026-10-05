@@ -239,11 +239,14 @@ export class TablePresetRegistry<TDescriptor extends OperonTableFileDescriptor =
 				if (this.pendingPatches.get(key) === pending) this.pendingPatches.delete(key);
 				this.publishProjectedEntries();
 			})
-			.catch(error => {
+			.catch((error: unknown) => {
 				if (this.pendingPatches.get(key) === pending) this.pendingPatches.delete(key);
 				this.publishProjectedEntries();
-				for (const hooks of pending.hooks) hooks.onError?.(error);
-				throw error;
+				// One failure identity per save, shared by hooks and the caller. An
+				// adapter may reject with a primitive or reuse an Error across saves.
+				const failure = Object.assign(new Error(error instanceof Error ? error.message : String(error)), { cause: error });
+				for (const hooks of pending.hooks) hooks.onError?.(failure);
+				throw failure;
 			})
 			.then(() => undefined);
 		return pending.promise;

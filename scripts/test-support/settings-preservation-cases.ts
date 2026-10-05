@@ -9,6 +9,7 @@ import {
  withSettingsFixture, type ReadFault, type WriteFault,
 } from './settings-preservation-harness';
 import type { OperonStorage } from '../../src/storage/operon-storage';
+import { tableSettingsSaveCases } from './table-settings-save-cases';
 
 export interface SettingsPreservationCase {
  name: string;
@@ -16,7 +17,7 @@ export interface SettingsPreservationCase {
 }
 
 /** These are safety assertions, never assertions that the known data loss is desirable. */
-export const settingsPreservationCases: SettingsPreservationCase[] = [];
+export const settingsPreservationCases: SettingsPreservationCase[] = [...tableSettingsSaveCases];
 const add = (name: string, run: () => Promise<void>): void => {
  settingsPreservationCases.push({ name, run });
 };

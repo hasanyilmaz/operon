@@ -235,10 +235,12 @@ export class FuzzySuggestModal<T> extends Modal {
 }
 
 export class Notice {
+	static onNotice: ((message: string) => void) | null = null;
 	message: string;
 
 	constructor(message: string) {
 		this.message = message;
+		Notice.onNotice?.(message);
 	}
 }
 
