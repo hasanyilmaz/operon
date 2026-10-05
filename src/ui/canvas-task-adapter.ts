@@ -147,8 +147,10 @@ class CanvasTaskSurface extends Component {
    if (!scope || scope.kind === 'full') this.autoHeight?.invalidate();
   }));
   this.registerEvent(this.owner.deps.app.workspace.on('css-change', () => this.autoHeight?.invalidate()));
-  this.addChild(new CanvasEdgeRelations(this.view, this.owner));
-  if (this.owner.deps.conversion && this.history.supported) this.addChild(new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion));
+  const conversion = this.owner.deps.conversion && this.history.supported
+   ? new CanvasTaskConversion(this.view, this.owner, this.history, this.owner.deps.conversion) : undefined;
+  if (conversion) this.addChild(conversion);
+  this.addChild(new CanvasEdgeRelations(this.view, this.owner, conversion));
   if (this.owner.deps.changeColor) {
    this.colors = new CanvasTaskColors(this.view, {
     read: id => { const result = this.owner.deps.cards.resolve(id); return result.state === 'ready' ? result.task.fieldValues.taskColor ?? '' : null; },

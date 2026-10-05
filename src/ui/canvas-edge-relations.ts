@@ -1,3 +1,4 @@
+import type { CanvasTaskConversion } from './canvas-task-conversion';
 import type { TaskRefreshScope } from '../core/task-refresh-scope';
 import type { TaskCardResolution } from './task-card-embed-model';
 import { taskSelectionControls, taskSelectionControlSignature, mountTaskSelectionControl } from './task-selection-controls';
@@ -71,7 +72,7 @@ export class CanvasEdgeRelations extends Component {
  private readonly canvas;
  private file;
  private path;
- constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration) {
+ constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private conversion?: CanvasTaskConversion) {
   super(); this.canvas = view.canvas; this.file = view.file; this.path = view.file?.path;
  }
  private get cards() { return this.owner.deps.cards; }
@@ -301,10 +302,11 @@ export class CanvasEdgeRelations extends Component {
  }
  private renderNodeControls(node: CanvasTaskNode): void {
   const id = canvasRelationTaskId(node), menu = this.menu?.menuEl;
-  if (!id || this.resolve(id).state !== 'ready' || !menu?.isConnected) { this.clearControls(); return; }
+  const conversion = !id ? this.conversion?.selectionControl(node) : null;
+  if ((!conversion && (!id || this.resolve(id).state !== 'ready')) || !menu?.isConnected) { this.clearControls(); return; }
   const file = this.view.file, path = file?.path;
-  const models = taskSelectionControls({
-   cards: this.cards, taskId: id,
+  const models = conversion ? [conversion] : taskSelectionControls({
+   cards: this.cards, taskId: id!,
    current: () => this.current() && this.view.file === file && file?.path === path
     && this.canvas.nodes.get(node.id) === node && this.canvas.selection?.size === 1 && this.canvas.selection.has(node)
     && canvasRelationTaskId(node) === id,
