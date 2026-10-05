@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Convert a selected **Canvas text card** into an Operon task using a button centered below the card, replacing the right-click action while preserving Task Creator defaults, parent inheritance, and Canvas undo behavior.
+
 - **Excalidraw task cards** keep their position and style when tasks are moved, renamed, or converted between inline and file tasks, while their controls follow the current source.
 
 - **Excalidraw task cards** are removed when their source tasks are deleted and restored in their original positions when those tasks return, while manually deleted cards stay removed.
@@ -37,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, and code review passed, along with **4,419/4,419** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **4,510/4,510** local regression tests.
 
 - All **5/5** final manual checks passed for Excalidraw arrow relationships and their Canvas comparison.
 
