@@ -110,23 +110,34 @@ export function readExcalidrawCardReference(app: App, view: ExcalidrawTaskView, 
  const container = ref?.containerEl, node = container?.closest<HTMLElement>('.canvas-node');
  return ref?.file === view.file && container && node?.isConnected && view.contentEl.contains(node) ? { taskId, node, container } : null;
 }
+/** originalText contains explicit newlines, unlike the display text after wrapping. */
+export function excalidrawConvertibleText(element: ExcalidrawTaskElement): string | null {
+ if (element.type !== 'text' || element.isDeleted || element.locked !== false || element.containerId != null) return null;
+ const text = typeof element.originalText === 'string' ? element.originalText : element.text;
+ return typeof text === 'string' && text.trim() ? text : null;
+}
+export interface ExcalidrawTextReplacement { elementId: string; text: string; }
 export class ExcalidrawTaskSaveError extends Error {}
 
 /** Revalidate after awaits; native save may swallow errors, so verify persisted results. */
-export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth): Promise<void> {
+export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement): Promise<void> {
  const file = view.file;
  if (!file) throw new Error('Drawing unavailable');
- return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position, TASK_CARD_WIDTHS.includes(width) ? width : DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth));
+ return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position, TASK_CARD_WIDTHS.includes(width) ? width : DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement));
 }
-async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth): Promise<void> {
+async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth, replacement?: ExcalidrawTextReplacement): Promise<void> {
  const file = view.file, path = file?.path;
- const current = () => !!file && view.file === file && file.path === path && allowed();
+ let applied = false;
+ const source = () => view.excalidrawAPI.getSceneElements().find(element => element.id === replacement?.elementId);
+ const current = () => !!file && view.file === file && file.path === path && allowed()
+  && (!replacement || applied || !!source() && excalidrawConvertibleText(source()!) === replacement.text);
  if (!file || !current()) throw new Error('Drawing unavailable');
  const ea = view.plugin.ea.getAPI(view);
  let writeAttempted = false;
  try {
   for (const method of ['getViewCenterPosition', 'addEmbeddable', 'addElementsToView', 'getSceneFromFile', 'destroy'] as const)
    if (typeof ea?.[method] !== 'function') throw new Error('Excalidraw API unavailable');
+  if (replacement && typeof ea.getElement !== 'function') throw new Error('Excalidraw editing API unavailable');
   if (!await saveExcalidrawTaskSceneInQueue(app, view, current)) throw new Error('Drawing changed');
   if (!current()) throw new Error('Drawing changed');
   // Use the native TextFileView buffer and native serializer, without replacing the file externally.
@@ -149,18 +160,31 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
   if (roundness === 'round' || roundness === 'sharp') ea.style.strokeSharpness = roundness;
   else if (roundness !== undefined) { ea.style.strokeSharpness = undefined; ea.style.roundness = roundness; }
   const link = `[[${path}#${excalidrawTaskHeading(id)}]]`;
-  const elementId = ea.addEmbeddable(point.x - width / 2, point.y - 150, width, 300, link, undefined, {
+  let elementId = ea.addEmbeddable(point.x - width / 2, point.y - 150, width, 300, link, undefined, {
    useObsidianDefaults: false, backgroundMatchElement: true, backgroundOpacity: 100,
    borderMatchElement: true, borderOpacity: 0, filenameVisible: false, propertiesVisible: false, lockedReadingMode: true,
   });
   if (!elementId || !current()) throw new Error('Drawing changed');
+  if (replacement) {
+   const before = source()!, element = ea.getElement!(elementId);
+   if (!element || ![before.x, before.y, before.angle ?? 0].every(value => typeof value === 'number' && Number.isFinite(value))) throw new Error('Drawing coordinates unavailable');
+   // EA inserts its staged values by element.id. Reusing the source identity keeps
+   // the native scene order, bindings and history while discarding text-only fields.
+   Object.assign(element, { id: before.id, x: before.x, y: before.y, angle: before.angle ?? 0,
+    groupIds: before.groupIds, frameId: before.frameId, boundElements: before.boundElements,
+    index: before.index, version: typeof before.version === 'number' ? before.version + 1 : 1 });
+   elementId = before.id;
+  }
+  // The only scene mutation is one native undoable replacement; later guards check
+  // drawing ownership rather than requiring the replaced text to remain present.
+  applied = true;
   if (!await ea.addElementsToView(false, false, true)) throw new ExcalidrawTaskSaveError();
   if (!current()) throw new Error('Drawing changed');
   await view.forceSave(true, true);
   if (!current()) throw new Error('Drawing changed');
   const saved = await ea.getSceneFromFile(file);
   if (!current()) throw new Error('Drawing changed');
-  if (!saved?.elements.some(element => element.id === elementId && !element.isDeleted && element.link === link)) throw new ExcalidrawTaskSaveError();
+  if (!saved?.elements.some(element => element.id === elementId && element.type === 'embeddable' && !element.isDeleted && element.link === link)) throw new ExcalidrawTaskSaveError();
   const element = view.excalidrawAPI.getSceneElements().find(value => value.id === elementId && !value.isDeleted);
   if (element) view.excalidrawAPI.selectElements([element]);
  } catch (error) {

@@ -1,3 +1,4 @@
+import { splitTaskCreationText } from './src/ui/task-creation-text';
 import { ExcalidrawSourceError, rebaseExcalidrawTaskSource, withExcalidrawMarkdownSources, createExcalidrawMarkdownSource, insertExcalidrawInlineTask, readExcalidrawMarkdownSections, type InlineMarkdownSource } from './src/ui/excalidraw-markdown-source';
 import { readExcalidrawTaskView, type ExcalidrawTaskView } from './src/ui/excalidraw-task-bridge';
 import { rankInlineTaskTargets, type InlineTargetDestination } from './src/core/inline-task-targets';
@@ -35,7 +36,7 @@ import { UpcomingTasksStatusBar } from './src/ui/upcoming-tasks-status-bar';
 import { UpcomingTasksSidebarView, openUpcomingTasksSidebar, UPCOMING_TASKS_SIDEBAR_VIEW_TYPE } from './src/ui/upcoming-tasks-sidebar-view';
 import type { DependencyChangeOptions } from './src/systems/dependency-manager';
 import { edgeRelationIssue, edgeRelationship, edgeRelationSnapshot, type EdgeRelationKind } from './src/systems/canvas-edge-relations';
-import { splitCanvasTaskText, type CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
+import type { CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
 /**
  * Operon is a task management system for humans and agents in Obsidian, built around inline tasks,
  * file tasks, reusable filters, customizable pipelines, pinned task workflows, unique calendar and
@@ -16779,7 +16780,7 @@ export default class OperonPlugin extends Plugin {
      this.subtasksFilterModal = modal; modal.open();
     } };
    },
-   openCreator: (allowed, created, view) => this.openSurfaceTaskCreator('', allowed, created, undefined, true, true, view),
+   openCreator: (allowed, created, view, text = '') => this.openSurfaceTaskCreator(text, allowed, created, undefined, true, true, view),
    app: this.app, cards: this.taskCardEmbeds,
    openFinder: select => openTaskFinder(this.app, this.indexer, () => this.settings, select, {
     getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id), preventFocusScroll: true,
@@ -29171,7 +29172,7 @@ export default class OperonPlugin extends Plugin {
    });
    return;
   }
-  const draft = { ...createEmptyTaskCreatorDraft(), ...splitCanvasTaskText(text) };
+  const draft = { ...createEmptyTaskCreatorDraft(), ...splitTaskCreationText(text) };
   draft.noteOpen = !!draft.note; draft.explicitFieldKeys = ['description', 'note'];
   let submitting = false;
   const drawingFile = drawing?.file;

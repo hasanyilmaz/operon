@@ -1,3 +1,4 @@
+import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { taskSelectionControls, taskSelectionControlSignature, bindTaskSelectionControl, type TaskSelectionControl } from './task-selection-controls';
 import { ExcalidrawRelationIndicators } from './excalidraw-edge-relation-indicators';
@@ -6,7 +7,7 @@ import { Component, Notice, type App, type TFile } from 'obsidian';
 import type { TaskCardEmbeds } from './task-card-embed';
 import type { IndexedTaskSnapshot } from '../indexer/indexer';
 import { bindExcalidrawPoolTheme } from './excalidraw-pool-theme';
-import { excalidrawSceneTaskId, readExcalidrawTaskView, type ExcalidrawElementAction, type ExcalidrawTaskAPI,
+import { excalidrawConvertibleText, excalidrawSceneTaskId, readExcalidrawTaskView, type ExcalidrawElementAction, type ExcalidrawTaskAPI,
  type ExcalidrawTaskEA, type ExcalidrawTaskElement, type ExcalidrawTaskState, type ExcalidrawTaskView } from './excalidraw-task-bridge';
 import { bindTaskEdgeRelationControl, taskEdgeRelationControls, taskEdgeRelationControlSignature, taskEdgeRelationUnavailable,
  type TaskEdgeRelationControl, type TaskEdgeRelationOperations } from './task-edge-relation-controls';
@@ -48,7 +49,7 @@ export class ExcalidrawEdgeRelations extends Component {
  private observedAPI: ExcalidrawTaskAPI | null = null;
  private unsupportedMenu: object | null = null;
  private stopScene: (() => void) | null = null;
- constructor(private view: ExcalidrawTaskView, private deps: TaskEdgeRelationOperations & { app: App; cards: TaskCardEmbeds }) { super(); }
+ constructor(private view: ExcalidrawTaskView, private deps: TaskEdgeRelationOperations & { app: App; cards: TaskCardEmbeds; convertText?(element: ExcalidrawTaskElement): void }) { super(); }
  onload(): void {
   this.active = true;
   this.indicators = this.addChild(new ExcalidrawRelationIndicators(this.view, this.deps, () => this.available()));
@@ -116,7 +117,7 @@ export class ExcalidrawEdgeRelations extends Component {
   if (!this.current(session)) return;
   const pair = scenePair(elements, state), selected = selectedElement(elements, state);
   const input = JSON.stringify([selected?.id, selected?.link, selected?.locked, selected?.type, pair?.arrow.id, pair?.arrow.locked, pair?.start.id, pair?.start.link, pair?.start.locked,
-   pair?.end.id, pair?.end.link, pair?.end.locked, state.viewModeEnabled, session.busy]);
+   pair?.end.id, pair?.end.link, pair?.end.locked, state.viewModeEnabled, state.editingTextElement, selected?.originalText, selected?.text, selected?.containerId, session.busy]);
   if (!session.dirty && session.input === input && session.data === this.view.data) return;
   session.dirty = false; session.input = input; session.data = this.view.data;
   const tasks = this.taskPair(pair);
@@ -153,6 +154,16 @@ export class ExcalidrawEdgeRelations extends Component {
    });
    controls = models; controlSignature = taskSelectionControlSignature(models);
   }
+  if (selected && this.deps.convertText && state.viewModeEnabled === false && !state.editingTextElement && excalidrawConvertibleText(selected) !== null) {
+   const model: TaskSelectionControl = { id: 'operon-task-convert-text', icon: 'id-card', title: t('commands', 'convertCanvasTask'), unavailable: false,
+    run: () => {
+     if (!this.current(session) || session.api.getAppState().viewModeEnabled !== false || session.api.getAppState().editingTextElement) return;
+     const fresh = selectedElement(session.api.getSceneElements(), session.api.getAppState());
+     if (fresh?.id === selected.id && excalidrawConvertibleText(fresh) !== null) this.deps.convertText?.(fresh);
+    },
+   };
+   controls = [model]; controlSignature = taskSelectionControlSignature(controls);
+  }
   const signature = JSON.stringify([selected?.id, pair?.start.id, pair?.end.id, controlSignature]);
   if (signature === session.signature) return;
   this.clearButtons(session);
@@ -164,7 +175,7 @@ export class ExcalidrawEdgeRelations extends Component {
  private clearButtons(session: Session): void { if (session.life) this.removeChild(session.life); session.life = null; }
  private positionMenu(session: Session, elements: readonly ExcalidrawTaskElement[], state: ExcalidrawTaskState): void {
   const selected = selectedElement(elements, state);
-  if (selected?.type === 'embeddable') {
+  if (selected?.type === 'embeddable' || selected?.type === 'text') {
    this.positionTaskMenu(session, selected, state); return;
   }
   const menu = session.menu.menuEl, pair = scenePair(elements, state), anchor = pair && relationArrowPoint(pair.arrow, .5);
@@ -190,7 +201,7 @@ export class ExcalidrawEdgeRelations extends Component {
    || ![zoom, scrollX, scrollY, x, y, width, height, angle].every(Number.isFinite) || zoom <= 0) return;
   // Match the native menu's left anchor, below the rotated card with a twelve-pixel gap.
   const bottom = y + height / 2 + (Math.abs(width * Math.sin(angle)) + Math.abs(height * Math.cos(angle))) / 2;
-  const left = `${(x + scrollX) * zoom}px`;
+  const left = `${(x + scrollX) * zoom + (selected.type === 'text' ? width * zoom / 2 - menu.offsetWidth / 2 : 0)}px`;
   const top = `${(bottom + scrollY) * zoom + 12}px`;
   if (menu.style.left !== left) menu.style.left = left;
   if (menu.style.top !== top) menu.style.top = top;

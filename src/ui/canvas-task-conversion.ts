@@ -16,9 +16,7 @@ export interface CanvasConversionBridge {
  remove(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean>;
  restore(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean>;
 }
-export function splitCanvasTaskText(text: string): { description: string; note: string } {
- const lines = text.replace(/\r\n?/g, '\n').split('\n'); return { description: lines.shift() ?? '', note: lines.join('\n') };
-}
+export { splitTaskCreationText as splitCanvasTaskText } from './task-creation-text';
 export function isConvertibleCanvasText(data: Record<string, unknown>): boolean {
  return data.type === 'text' && typeof data.text === 'string' && !('operonTask' in data) && !readCanvasTaskId(data.text);
 }

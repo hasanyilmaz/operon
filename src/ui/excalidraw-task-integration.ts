@@ -9,11 +9,11 @@ import { bindExcalidrawPoolTheme } from './excalidraw-pool-theme';
 import { ExcalidrawTaskPool, excalidrawPoolScenePoint, type ExcalidrawFileAction } from './excalidraw-task-pool';
 import type { TaskPoolTarget } from './surface-task-pool';
 import { bindExcalidrawCreationMenu } from './excalidraw-task-menu';
-import type { ExcalidrawTaskView } from './excalidraw-task-bridge';
+import type { ExcalidrawTaskView, ExcalidrawTaskElement, ExcalidrawTextReplacement } from './excalidraw-task-bridge';
 import { Component, ItemView, Notice, type App, type TFile } from 'obsidian';
 import { t } from '../core/i18n';
 import type { TaskCardEmbeds } from './task-card-embed';
-import { ExcalidrawTaskSaveError, insertExcalidrawTask, readExcalidrawTaskView } from './excalidraw-task-bridge';
+import { ExcalidrawTaskSaveError, excalidrawConvertibleText, insertExcalidrawTask, readExcalidrawTaskView } from './excalidraw-task-bridge';
 
 export class ExcalidrawTaskIntegration extends Component {
  private cleanup: ExcalidrawTaskCleanup | null = null;
@@ -26,7 +26,7 @@ export class ExcalidrawTaskIntegration extends Component {
  constructor(private deps: TaskEdgeRelationOperations & { cleanup?: ExcalidrawCleanupDeps; app: App; cards: TaskCardEmbeds; openFinder(select: (id: string) => void | Promise<void>): void;
   fileAction?(file: TFile, readOnly: boolean): ExcalidrawFileAction | null;
   propertyValuePool?: CanvasPropertyValuePoolPreferences;
-  openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>, view?: ExcalidrawTaskView): void }) { super(); }
+  openCreator?(allowed: () => boolean, created: (id: string) => Promise<void>, view?: ExcalidrawTaskView, text?: string): void }) { super(); }
  onload(): void {
   this.active = true;
   if (this.deps.cleanup) this.cleanup = new ExcalidrawTaskCleanup(this.deps.cleanup);
@@ -56,7 +56,7 @@ export class ExcalidrawTaskIntegration extends Component {
   for (const [view, pool] of this.pools) if (!views.has(view)) { this.removeChild(pool); this.pools.delete(view); }
   for (const view of views) {
    if (!this.relations.has(view)) {
-    const relations = new ExcalidrawEdgeRelations(view, this.deps); this.relations.set(view, relations); this.addChild(relations);
+    const relations = new ExcalidrawEdgeRelations(view, { ...this.deps, convertText: this.deps.openCreator ? element => this.convertText(view, element) : undefined }); this.relations.set(view, relations); this.addChild(relations);
    } else this.relations.get(view)?.sync();
    if (!this.pools.has(view) && typeof Reflect.get(view, 'renderTopRightUI') === 'function') this.mountPool(view);
    else this.pools.get(view)?.sync();
@@ -125,23 +125,35 @@ export class ExcalidrawTaskIntegration extends Component {
   this.deps.openCreator(context.allowed, context.created, view);
   return true;
  }
- captureCreation(target?: ExcalidrawTaskView, position?: { x: number; y: number }, notify = false): { view: ExcalidrawTaskView; file: NonNullable<ExcalidrawTaskView['file']>; allowed: () => boolean; created: (id: string) => Promise<void> } | null {
+ private convertText(view: ExcalidrawTaskView, element: ExcalidrawTaskElement): void {
+  const text = excalidrawConvertibleText(element);
+  if (text === null || !this.deps.openCreator) return;
+  const context = this.captureCreation(view, { x: element.x ?? NaN, y: element.y ?? NaN }, true, { elementId: element.id, text });
+  if (context) this.deps.openCreator(context.allowed, context.created, view, text);
+ }
+ captureCreation(target?: ExcalidrawTaskView, position?: { x: number; y: number }, notify = false, replacement?: ExcalidrawTextReplacement): { view: ExcalidrawTaskView; file: NonNullable<ExcalidrawTaskView['file']>; allowed: () => boolean; created: (id: string) => Promise<void> } | null {
   const view = target ?? readExcalidrawTaskView(this.deps.app, this.deps.app.workspace.getActiveViewOfType(ItemView));
   if (!view || !this.isCurrent(view) || this.pending) return null;
-  const file = view.file!, path = file.path;
+  const file = view.file!, path = file.path, api = view.excalidrawAPI;
   let point = position;
   if (!point) {
    try { const ea = view.plugin.ea.getAPI(view); try { point = ea.getViewCenterPosition() ?? undefined; } finally { ea?.destroy?.(); } }
    catch { if (notify) new Notice(t('notifications', 'excalidrawTaskUnavailable')); return null; }
   }
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) { if (notify) new Notice(t('notifications', 'excalidrawTaskUnavailable')); return null; }
-  const captured = { ...point }, allowed = () => this.isCurrent(view) && view.file === file && file.path === path && view.excalidrawAPI.getAppState().viewModeEnabled === false;
+  const captured = { ...point }, current = () => this.isCurrent(view) && view.file === file && file.path === path && view.excalidrawAPI === api;
+  const allowed = () => {
+   if (!current()) return false;
+   if (!replacement) return true;
+   const element = api.getSceneElements().find(value => value.id === replacement.elementId);
+   return !!element && excalidrawConvertibleText(element) === replacement.text;
+  };
   let consumed = false;
   const created = async (id: string) => {
    if (consumed) return; consumed = true;
    if (this.pending || !this.isCurrent(view) || !allowed() || this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); return; }
    this.pending = true;
-   try { await insertExcalidrawTask(this.deps.app, view, id, () => allowed() && this.deps.cards.resolve(id).state === 'ready', captured, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).excalidrawTaskCardWidth); }
+   try { await insertExcalidrawTask(this.deps.app, view, id, () => current() && this.deps.cards.resolve(id).state === 'ready', captured, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).excalidrawTaskCardWidth, replacement); }
    catch { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); }
    finally { this.pending = false; }
   };
