@@ -1126,6 +1126,7 @@ interface CreateFileTaskOptions {
 }
 
 interface OpenTaskCreatorOptions {
+ getInlineParentPreview?: (draft: TaskCreatorDraft) => string | null;
 	activeFilePath?: string | null;
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
@@ -29177,7 +29178,8 @@ export default class OperonPlugin extends Plugin {
   let submitting = false;
   const drawingFile = drawing?.file;
   const acceptFile = excalidraw ? (file: TFile) => file instanceof TFile && (!this.isExcalidrawTaskSource(file) || file === drawingFile) : undefined;
-  const options: OpenTaskCreatorOptions = { ...(excalidraw ? { activeFilePath: null } : {}), applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,
+  const options: OpenTaskCreatorOptions = { ...(excalidraw ? { activeFilePath: null } : {}),
+   getInlineParentPreview: drawing ? value => this.resolveDrawingCreatorParentPreview(value, drawing, allowed) : undefined, applyGenericDefaults: true, submitMode: 'both', preventFocusScroll: true,
    onSubmitInline: async value => {
     if (submitting) return false;
     if (!allowed()) { new Notice(t('notifications', excalidraw ? 'excalidrawTaskUnavailable' : 'canvasTaskUnavailable')); return false; }
@@ -29289,6 +29291,18 @@ export default class OperonPlugin extends Plugin {
 		this.openTaskCreator();
 	}
 
+ private resolveDrawingCreatorParentPreview(draft: TaskCreatorDraft, drawing: ExcalidrawTaskView, allowed: () => boolean): string | null {
+  const file = drawing.file;
+  if (!file || !allowed()) return null;
+  // Scheduled periodic parenting is resolved by the existing creation route;
+  // do not advertise the drawing as parent while that route can take precedence.
+  const mode = this.resolveEffectiveInlineTaskSaveMode();
+  if (isPeriodicNoteDateKey((draft.fieldValues.dateScheduled ?? '').trim()) && (mode === 'daily-notes' || mode === 'weekly-notes')) return null;
+  const id = resolveFileTaskAutoParentOperonId({ enabled: this.settings.autoParentFileTask, filePath: file.path,
+   tasks: this.indexer.getAllTasks(), frontmatter: this.app.metadataCache.getFileCache(file)?.frontmatter ?? null, keyMappings: this.settings.keyMappings });
+  return id && !this.indexer.hasDuplicateOperonIdConflict(id) ? id : null;
+ }
+
 	private openTaskCreator(
 		initialDraft: TaskCreatorDraft | null = null,
 		options: OpenTaskCreatorOptions = {},
@@ -29311,6 +29325,7 @@ export default class OperonPlugin extends Plugin {
 			getAllTasks: () => this.indexer.getAllTasks(),
 			subscribeIndexUpdates: listener => this.indexer.subscribeIndexUpdates(listener),
 			initialDraft,
+   getInlineParentPreview: options.getInlineParentPreview,
 			submitMode: options.submitMode,
 			initialCreateType: shouldApplyGenericDefaults && this.settings.taskCreatorDefaultToFileTask
 				? 'file'
