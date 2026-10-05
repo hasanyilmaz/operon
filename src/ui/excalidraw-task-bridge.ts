@@ -1,3 +1,4 @@
+import { DEFAULT_TASK_CARD_SETTINGS, TASK_CARD_WIDTHS } from '../types/task-card';
 import { readExcalidrawMarkdownSections, saveExcalidrawTaskSceneInQueue, serializeExcalidrawSource } from './excalidraw-markdown-source';
 import { TFile, type App } from 'obsidian';
 import { isValidOperonId } from '../core/id-generator';
@@ -112,12 +113,12 @@ export function readExcalidrawCardReference(app: App, view: ExcalidrawTaskView, 
 export class ExcalidrawTaskSaveError extends Error {}
 
 /** Revalidate after awaits; native save may swallow errors, so verify persisted results. */
-export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }): Promise<void> {
+export async function insertExcalidrawTask(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth): Promise<void> {
  const file = view.file;
  if (!file) throw new Error('Drawing unavailable');
- return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position));
+ return serializeExcalidrawSource(app, file, () => insertExcalidrawTaskInQueue(app, view, id, allowed, position, TASK_CARD_WIDTHS.includes(width) ? width : DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth));
 }
-async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }): Promise<void> {
+async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, id: string, allowed: () => boolean, position?: { x: number; y: number }, width = DEFAULT_TASK_CARD_SETTINGS.excalidrawTaskCardWidth): Promise<void> {
  const file = view.file, path = file?.path;
  const current = () => !!file && view.file === file && file.path === path && allowed();
  if (!file || !current()) throw new Error('Drawing unavailable');
@@ -148,7 +149,7 @@ async function insertExcalidrawTaskInQueue(app: App, view: ExcalidrawTaskView, i
   if (roundness === 'round' || roundness === 'sharp') ea.style.strokeSharpness = roundness;
   else if (roundness !== undefined) { ea.style.strokeSharpness = undefined; ea.style.roundness = roundness; }
   const link = `[[${path}#${excalidrawTaskHeading(id)}]]`;
-  const elementId = ea.addEmbeddable(point.x - 200, point.y - 150, 400, 300, link, undefined, {
+  const elementId = ea.addEmbeddable(point.x - width / 2, point.y - 150, width, 300, link, undefined, {
    useObsidianDefaults: false, backgroundMatchElement: true, backgroundOpacity: 100,
    borderMatchElement: true, borderOpacity: 0, filenameVisible: false, propertiesVisible: false, lockedReadingMode: true,
   });

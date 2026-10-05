@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Anzahl der vor dem Scrollen sichtbaren Eigenschafts- und Wertzeilen in Canvas- und Excalidraw-Property-Pools.",
       "canvasPropertyPoolWidth": "Panelbreite",
       "canvasPropertyPoolWidthDesc": "Gemeinsame Breite der Canvas- und Excalidraw-Property-Pools in Pixeln, begrenzt durch den verfügbaren Platz.",
+      "canvasTaskCardWidth": "Standardbreite von Canvas-Karten",
+      "canvasTaskCardWidthDesc": "Anfangsbreite neuer Canvas-Aufgabenkarten. Vorhandene Karten behalten ihre Größe.",
       "canvasTaskPool": "Canvas-Aufgabenpool",
       "canvasTaskPoolClose": "Aufgabenpool schließen",
       "canvasTaskPoolKeepOpen": "Nach dem Hinzufügen geöffnet lassen",
@@ -1452,6 +1454,8 @@
       "estimation": "Schätzung",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "Auf eine einzelne, unverdeckte Operon-Aufgabenkarte in dieser Zeichnung ziehen.",
+      "excalidrawTaskCardWidth": "Standardbreite von Excalidraw-Karten",
+      "excalidrawTaskCardWidthDesc": "Anfangsbreite neuer Excalidraw-Aufgabenkarten. Vorhandene Karten behalten ihre Größe.",
       "excalidrawTaskPool": "Excalidraw-Aufgabenpool",
       "excludedFileTasksFolderBlocked": "{{folder}} ist der Ordner für Datei-Aufgaben oder enthält ihn und kann daher nicht ausgeschlossen werden.",
       "excludedFileTasksFolderRemoved": "Der Ordner für Datei-Aufgaben wurde aus den ausgeschlossenen Ordnern entfernt.",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "Aktion zum Hinzufügen einer Unteraufgabe anzeigen.",
       "taskCardTaskProgress": "Aufgabenfortschritt",
       "taskCardVisibilityDesc": "Diesen Abschnitt anzeigen, wenn Fortschrittsdaten vorliegen.",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "Standardbreite eingebetteter Karten",
+      "taskCardWidthDesc": "Standardbreite für Karten in Markdown-Notizen. Karten mit ausdrücklich festgelegter Breite behalten ihre Größe.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "e6d8fe17d8db12c0dc3318740f41632ac7cd9d43fa9cba3083672d81cef6e7c8"
+  "sourceVersion": "5c5520007f65a575127d91ce95709456170b024a05d07cddbd5e0d32925f8c23"
 }

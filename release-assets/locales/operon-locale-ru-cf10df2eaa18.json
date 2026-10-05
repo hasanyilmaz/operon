@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Количество строк свойств и значений, видимых до прокрутки в Property Pool для Canvas и Excalidraw.",
       "canvasPropertyPoolWidth": "Ширина панели",
       "canvasPropertyPoolWidthDesc": "Общая ширина панелей Property Pool в Canvas и Excalidraw в пикселях, ограниченная доступным пространством.",
+      "canvasTaskCardWidth": "Ширина карточек Canvas по умолчанию",
+      "canvasTaskCardWidthDesc": "Начальная ширина новых карточек задач Canvas. Существующие карточки сохраняют свой размер.",
       "canvasTaskPool": "Пул задач Canvas",
       "canvasTaskPoolClose": "Закрыть пул задач",
       "canvasTaskPoolKeepOpen": "Оставлять открытым после добавления",
@@ -1452,6 +1454,8 @@
       "estimation": "Оценка",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "Перетащите на одну неперекрытую карточку задачи Operon на этом рисунке.",
+      "excalidrawTaskCardWidth": "Ширина карточек Excalidraw по умолчанию",
+      "excalidrawTaskCardWidthDesc": "Начальная ширина новых карточек задач Excalidraw. Существующие карточки сохраняют свой размер.",
       "excalidrawTaskPool": "Пул задач Excalidraw",
       "excludedFileTasksFolderBlocked": "{{folder}} является папкой файловых задач или содержит её, поэтому её нельзя исключить.",
       "excludedFileTasksFolderRemoved": "Папка файловых задач удалена из исключённых папок.",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "Показывать действие добавления подзадачи.",
       "taskCardTaskProgress": "Прогресс задачи",
       "taskCardVisibilityDesc": "Показывать этот раздел при наличии данных о прогрессе.",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "Ширина встроенных карточек по умолчанию",
+      "taskCardWidthDesc": "Ширина карточек в заметках Markdown по умолчанию. Карточки с явно заданной шириной сохраняют свой размер.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "57a78f68bffd8a8d5cdc2ddb0a17a5d8771c76c1cdafba5dcec39f9eb12b3d39"
+  "sourceVersion": "46c93c295b37d8c1f9237c763b325803969b6130812d15b6fccffc0824dc7daf"
 }

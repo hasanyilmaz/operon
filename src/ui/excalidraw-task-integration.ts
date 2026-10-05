@@ -1,3 +1,4 @@
+import { normalizeTaskCardSettings } from '../types/task-card';
 import { ExcalidrawEdgeRelations } from './excalidraw-edge-relations';
 import type { TaskEdgeRelationOperations } from './task-edge-relation-controls';
 import { ExcalidrawTaskCleanup, type ExcalidrawCleanupDeps, type TaskRemovalEvidence } from './excalidraw-task-cleanup';
@@ -102,7 +103,7 @@ export class ExcalidrawTaskIntegration extends Component {
  private async add(view: ExcalidrawTaskView, id: string, allowed: () => boolean, point?: { x: number; y: number }): Promise<boolean> {
   if (this.pending || !this.isCurrent(view) || !allowed() || this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'excalidrawTaskUnavailable')); return false; }
   this.pending = true;
-  try { await insertExcalidrawTask(this.deps.app, view, id, () => this.isCurrent(view) && allowed() && this.deps.cards.resolve(id).state === 'ready', point); return true; }
+  try { await insertExcalidrawTask(this.deps.app, view, id, () => this.isCurrent(view) && allowed() && this.deps.cards.resolve(id).state === 'ready', point, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).excalidrawTaskCardWidth); return true; }
   catch (error) { new Notice(t('notifications', error instanceof ExcalidrawTaskSaveError ? 'excalidrawTaskSaveFailed' : 'excalidrawTaskUnavailable')); return false; }
   finally { this.pending = false; }
  }
@@ -140,7 +141,7 @@ export class ExcalidrawTaskIntegration extends Component {
    if (consumed) return; consumed = true;
    if (this.pending || !this.isCurrent(view) || !allowed() || this.deps.cards.resolve(id).state !== 'ready') { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); return; }
    this.pending = true;
-   try { await insertExcalidrawTask(this.deps.app, view, id, () => allowed() && this.deps.cards.resolve(id).state === 'ready', captured); }
+   try { await insertExcalidrawTask(this.deps.app, view, id, () => allowed() && this.deps.cards.resolve(id).state === 'ready', captured, normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).excalidrawTaskCardWidth); }
    catch { new Notice(t('notifications', 'excalidrawTaskCreatedUnbound')); }
    finally { this.pending = false; }
   };

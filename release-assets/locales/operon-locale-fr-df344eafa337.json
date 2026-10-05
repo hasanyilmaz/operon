@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Nombre de lignes de propriétés et de valeurs visibles avant défilement dans les Property Pool de Canvas et Excalidraw.",
       "canvasPropertyPoolWidth": "Largeur du panneau",
       "canvasPropertyPoolWidthDesc": "Largeur commune des panneaux Property Pool de Canvas et Excalidraw en pixels, limitée à l’espace disponible.",
+      "canvasTaskCardWidth": "Largeur par défaut des cartes Canvas",
+      "canvasTaskCardWidthDesc": "Largeur initiale des nouvelles cartes de tâche Canvas. Les cartes existantes conservent leur taille.",
       "canvasTaskPool": "Réserve de tâches Canvas",
       "canvasTaskPoolClose": "Fermer la réserve de tâches",
       "canvasTaskPoolKeepOpen": "Garder ouvert après l’ajout",
@@ -1452,6 +1454,8 @@
       "estimation": "Estimation",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "Déposez sur une seule carte de tâche Operon non masquée dans ce dessin.",
+      "excalidrawTaskCardWidth": "Largeur par défaut des cartes Excalidraw",
+      "excalidrawTaskCardWidthDesc": "Largeur initiale des nouvelles cartes de tâche Excalidraw. Les cartes existantes conservent leur taille.",
       "excalidrawTaskPool": "Réservoir de tâches Excalidraw",
       "excludedFileTasksFolderBlocked": "{{folder}} est le dossier des tâches-fichiers ou le contient, il ne peut donc pas être exclu.",
       "excludedFileTasksFolderRemoved": "Dossier des tâches-fichiers retiré des dossiers exclus.",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "Afficher l’action d’ajout de sous-tâche.",
       "taskCardTaskProgress": "Progression des tâches",
       "taskCardVisibilityDesc": "Afficher cette section si des données de progression existent.",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "Largeur par défaut des cartes intégrées",
+      "taskCardWidthDesc": "Largeur par défaut des cartes dans les notes Markdown. Les cartes avec une largeur explicite conservent leur taille.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "e029573d82ead6ff33ca0b9ec2c509a1ba58a950dba9a7e1a4a1daaa61af7c33"
+  "sourceVersion": "d6a1ffea14adb0b80250f0930b7592e15b7a6e3af853207fd337f06f363ef383"
 }

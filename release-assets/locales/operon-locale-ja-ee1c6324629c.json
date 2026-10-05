@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "CanvasとExcalidrawのProperty Poolでスクロール前に表示するプロパティと値の行数。",
       "canvasPropertyPoolWidth": "パネルの幅",
       "canvasPropertyPoolWidthDesc": "CanvasとExcalidrawのProperty Poolで共有するパネル幅（ピクセル）。利用可能な領域に制限されます。",
+      "canvasTaskCardWidth": "Canvasカードの既定の幅",
+      "canvasTaskCardWidthDesc": "新しいCanvasタスクカードの初期幅。既存のカードのサイズは変わりません。",
       "canvasTaskPool": "Canvas タスクプール",
       "canvasTaskPoolClose": "タスクプールを閉じる",
       "canvasTaskPoolKeepOpen": "追加後も開いたままにする",
@@ -1452,6 +1454,8 @@
       "estimation": "見積もり",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "この図内の、他の要素に隠れていない1枚のOperonタスクカードにドロップしてください。",
+      "excalidrawTaskCardWidth": "Excalidrawカードの既定の幅",
+      "excalidrawTaskCardWidthDesc": "新しいExcalidrawタスクカードの初期幅。既存のカードのサイズは変わりません。",
       "excalidrawTaskPool": "Excalidrawタスクプール",
       "excludedFileTasksFolderBlocked": "{{folder}} はファイルタスクのフォルダーであるか、それを含むため、除外できません。",
       "excludedFileTasksFolderRemoved": "ファイルタスクのフォルダーを除外フォルダーから削除しました。",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "サブタスク追加アクションを表示します。",
       "taskCardTaskProgress": "タスクの進捗",
       "taskCardVisibilityDesc": "進捗データがある場合にこのセクションを表示します。",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "埋め込みカードの既定の幅",
+      "taskCardWidthDesc": "Markdownノート内のカードの既定の幅。幅を個別に指定したカードのサイズは変わりません。",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c3e038f189a48c37a6bfd065eab7091e9e8467e36eef16d1260228ac00e42c6e"
+  "sourceVersion": "0a70f9a9a48e51b77a8d209ad7dfeb3910ed9d5c48f3eb8d753045d06ce1ffab"
 }

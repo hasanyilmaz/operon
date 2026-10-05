@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Canvas 和 Excalidraw Property Pool 在捲動前顯示的屬性和值列數。",
       "canvasPropertyPoolWidth": "面板寬度",
       "canvasPropertyPoolWidthDesc": "Canvas 和 Excalidraw Property Pool 共用的面板寬度（像素），受可用空間限制。",
+      "canvasTaskCardWidth": "Canvas 卡片預設寬度",
+      "canvasTaskCardWidthDesc": "新建 Canvas 任務卡片的初始寬度。現有卡片將保留其大小。",
       "canvasTaskPool": "Canvas 任務池",
       "canvasTaskPoolClose": "關閉任務池",
       "canvasTaskPoolKeepOpen": "新增後保持開啟",
@@ -1452,6 +1454,8 @@
       "estimation": "預估",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "請放到此繪圖中一張未被遮擋的 Operon 任務卡片上。",
+      "excalidrawTaskCardWidth": "Excalidraw 卡片預設寬度",
+      "excalidrawTaskCardWidthDesc": "新建 Excalidraw 任務卡片的初始寬度。現有卡片將保留其大小。",
       "excalidrawTaskPool": "Excalidraw 任務池",
       "excludedFileTasksFolderBlocked": "{{folder}} 是檔案任務資料夾或包含它，因此無法被排除。",
       "excludedFileTasksFolderRemoved": "已從排除的資料夾中移除檔案任務資料夾。",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "顯示新增子任務操作。",
       "taskCardTaskProgress": "任務進度",
       "taskCardVisibilityDesc": "有進度資料時顯示此區塊。",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "嵌入卡片預設寬度",
+      "taskCardWidthDesc": "Markdown 筆記中卡片的預設寬度。明確指定寬度的卡片將保留其大小。",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "957ca18b2b894af7c21a8b9cb27a7975e4aded0a1a3417963c1eaaec23a59911"
+  "sourceVersion": "6245890f02aa306090fddd1c3671dd339ce8273b176b9aacaf2873647573cec3"
 }

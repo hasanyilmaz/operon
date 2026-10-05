@@ -379,7 +379,7 @@ export class CanvasTaskIntegration extends Component {
    this.leafRestores.set(leaf, () => { if (leaf.setViewState !== wrapper) return; if (descriptor) Object.defineProperty(leaf, 'setViewState', descriptor); else Reflect.deleteProperty(leaf, 'setViewState'); });
   }
  }
- get cardWidth(): number { return normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).taskCardWidth; }
+ get cardWidth(): number { return normalizeTaskCardSettings(this.deps.cards.deps.getSettings()).canvasTaskCardWidth; }
  fitNewNode(view: TaskCanvasView, node: CanvasTaskNode): void { this.surfaces.get(view)?.fitNew(node); }
  capture(view: TaskCanvasView, point = view.canvas.posCenter()): CanvasTaskTarget | null {
   if (!this.isCurrent(view) || !view.file || view.canvas.readonly || view.saving || view.lastSavedData === null) return null;

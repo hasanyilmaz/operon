@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Canvas 和 Excalidraw Property Pool 在滚动前显示的属性和值行数。",
       "canvasPropertyPoolWidth": "面板宽度",
       "canvasPropertyPoolWidthDesc": "Canvas 和 Excalidraw Property Pool 共享的面板宽度（像素），受可用空间限制。",
+      "canvasTaskCardWidth": "Canvas 卡片默认宽度",
+      "canvasTaskCardWidthDesc": "新建 Canvas 任务卡片的初始宽度。现有卡片将保留其大小。",
       "canvasTaskPool": "Canvas 任务池",
       "canvasTaskPoolClose": "关闭任务池",
       "canvasTaskPoolKeepOpen": "添加后保持打开",
@@ -1452,6 +1454,8 @@
       "estimation": "预估",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "请放到此绘图中一张未被遮挡的 Operon 任务卡片上。",
+      "excalidrawTaskCardWidth": "Excalidraw 卡片默认宽度",
+      "excalidrawTaskCardWidthDesc": "新建 Excalidraw 任务卡片的初始宽度。现有卡片将保留其大小。",
       "excalidrawTaskPool": "Excalidraw 任务池",
       "excludedFileTasksFolderBlocked": "{{folder}} 是文件任务文件夹或包含它，因此无法被排除。",
       "excludedFileTasksFolderRemoved": "已从排除的文件夹中移除文件任务文件夹。",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "显示添加子任务操作。",
       "taskCardTaskProgress": "任务进度",
       "taskCardVisibilityDesc": "有进度数据时显示此部分。",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "嵌入卡片默认宽度",
+      "taskCardWidthDesc": "Markdown 笔记中卡片的默认宽度。明确指定宽度的卡片将保留其大小。",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "18b3c4afe203501625c428914bfe921af84f0f5352a32de2d7d3cc389f89e0e2"
+  "sourceVersion": "060855bd22710752b07019aa57a6e5c3bc47b9979e510dbcfaf1163d0d115190"
 }

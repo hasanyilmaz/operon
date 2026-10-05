@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3551,
-  "keyFingerprint": "d3ac92f7070854d73582ea1fed3e9b28b7a4a2dff662efc871774a1b64e322e2",
+  "keyCount": 3555,
+  "keyFingerprint": "034da33e686f9ab52e8ba7c7bb7728c17c287d0a27887693795a7b5fb6abc166",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1213,6 +1213,8 @@
       "canvasPropertyPoolRowsDesc": "Canvas ve Excalidraw Property Pool panellerinde kaydırmadan önce görünen özellik ve değer satırı sayısı.",
       "canvasPropertyPoolWidth": "Panel genişliği",
       "canvasPropertyPoolWidthDesc": "Canvas ve Excalidraw Property Pool panellerinin kullanılabilir alanla sınırlanan ortak piksel genişliği.",
+      "canvasTaskCardWidth": "Varsayılan Canvas kart genişliği",
+      "canvasTaskCardWidthDesc": "Yeni Canvas görev kartlarının başlangıç genişliği. Mevcut kartlar boyutlarını korur.",
       "canvasTaskPool": "Canvas Task Pool",
       "canvasTaskPoolClose": "Task Pool’u kapat",
       "canvasTaskPoolKeepOpen": "Ekledikten sonra açık tut",
@@ -1452,6 +1454,8 @@
       "estimation": "Tahminleme",
       "excalidrawPropertyPool": "Excalidraw Property Pool",
       "excalidrawPropertyTargetRequired": "Bu çizimde üzeri örtülmemiş tek bir Operon görev kartına bırakın.",
+      "excalidrawTaskCardWidth": "Varsayılan Excalidraw kart genişliği",
+      "excalidrawTaskCardWidthDesc": "Yeni Excalidraw görev kartlarının başlangıç genişliği. Mevcut kartlar boyutlarını korur.",
       "excalidrawTaskPool": "Excalidraw Görev Havuzu",
       "excludedFileTasksFolderBlocked": "{{folder}} dosya görevi klasörü veya onu kapsayan bir klasör olduğu için hariç tutulamaz.",
       "excludedFileTasksFolderRemoved": "Dosya görevi klasörü hariç tutulan klasörlerden kaldırıldı.",
@@ -2599,8 +2603,8 @@
       "taskCardSubtaskActionDesc": "Alt görev ekleme eylemini göster.",
       "taskCardTaskProgress": "Görev ilerlemesi",
       "taskCardVisibilityDesc": "İlerleme verisi varsa bu bölümü göster.",
-      "taskCardWidth": "Default width",
-      "taskCardWidthDesc": "Default width for cards and new Canvas task nodes. Existing Canvas nodes keep their size.",
+      "taskCardWidth": "Varsayılan gömülü kart genişliği",
+      "taskCardWidthDesc": "Markdown notlarındaki kartların varsayılan genişliği. Özel genişliği belirtilen kartlar boyutlarını korur.",
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
@@ -3596,5 +3600,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "96eaaf361d4b5f39a3c33bca360d41cc8c47d26893f0786ef9eec08fb979e865"
+  "sourceVersion": "0005724660c959356532772085b6f01c2f2390f372ee1bafb610f4a9bf70de6f"
 }

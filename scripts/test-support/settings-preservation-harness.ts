@@ -49,7 +49,7 @@ export function sourcePackage(version: SourceVersion = '3.8.0'): OperonDataPacka
 export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, expected: OperonDataPackageV1): void {
 	const slices = (value: OperonDataPackageV1): Record<string, unknown> => ({
 		schemaVersion: value.schemaVersion,
-		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion', 'canvasPropertyPoolWidth', 'canvasPropertyPoolRows']),
+		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion', 'canvasPropertyPoolWidth', 'canvasPropertyPoolRows', 'canvasTaskCardWidth', 'excalidrawTaskCardWidth']),
 		taxonomy: value.taxonomy,
 		views: value.views,
 		ui: {
@@ -65,6 +65,10 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	for (const [key, fallback] of [['canvasPropertyPoolWidth', 320], ['canvasPropertyPoolRows', 5]] as const) {
 		const before = expected.settings[key], after = actual.settings[key];
 		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `User setting changed: ${key}`);
+	}
+	for (const [key, fallback] of [['canvasTaskCardWidth', expected.settings.taskCardWidth ?? 350], ['excalidrawTaskCardWidth', 375]] as const) {
+		const before = expected.settings[key], after = actual.settings[key];
+		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `Card width migration changed: ${key}`);
 	}
 	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
 		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');

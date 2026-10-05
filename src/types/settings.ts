@@ -2506,6 +2506,8 @@ export interface NumericConstraint {
 
 export const NUMERIC_CONSTRAINTS = {
 	taskCardWidth: { min: 300, max: 400 },
+	canvasTaskCardWidth: { min: 300, max: 400 },
+	excalidrawTaskCardWidth: { min: 300, max: 400 },
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },

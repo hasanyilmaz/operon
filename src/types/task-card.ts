@@ -13,6 +13,8 @@ export interface TaskCardSettings {
  taskCardShowChips: boolean;
  taskCardShowCheckboxProgress: boolean;
  taskCardWidth: number;
+ canvasTaskCardWidth: number;
+ excalidrawTaskCardWidth: number;
  taskCardAlign: 'left' | 'center' | 'right';
  taskCardWrap: boolean;
  taskCardColorSource: KanbanTaskColorSource;
@@ -27,7 +29,7 @@ export const DEFAULT_TASK_CARD_SETTINGS: TaskCardSettings = {
  canvasPropertyPoolWidth: 320, canvasPropertyPoolRows: 5,
  canvasTaskPoolWidth: 320, canvasTaskPoolRows: 5, canvasTaskPoolKeepOpen: true,
  taskCardShowTaskProgress: true, taskCardShowChips: true, taskCardShowCheckboxProgress: true,
- taskCardWidth: 350, taskCardAlign: 'left', taskCardWrap: false,
+ taskCardWidth: 350, canvasTaskCardWidth: 350, excalidrawTaskCardWidth: 375, taskCardAlign: 'left', taskCardWrap: false,
  taskCardColorSource: 'taskColor', taskCardImageSource: 'taskImage',
  taskCardImageRatio: 'original', taskCardItemOrder: ['image', 'header', 'taskProgress', 'chips', 'checkboxProgress'],
 };
@@ -51,6 +53,9 @@ export function normalizeTaskCardSettings(source: Partial<Record<keyof TaskCardS
   taskCardShowChips: typeof source.taskCardShowChips === 'boolean' ? source.taskCardShowChips : true,
   taskCardShowCheckboxProgress: typeof source.taskCardShowCheckboxProgress === 'boolean' ? source.taskCardShowCheckboxProgress : true,
   taskCardWidth: TASK_CARD_WIDTHS.includes(source.taskCardWidth as number) ? source.taskCardWidth as number : defaults.taskCardWidth,
+  canvasTaskCardWidth: TASK_CARD_WIDTHS.includes(source.canvasTaskCardWidth as number) ? source.canvasTaskCardWidth as number
+   : TASK_CARD_WIDTHS.includes(source.taskCardWidth as number) ? source.taskCardWidth as number : defaults.canvasTaskCardWidth,
+  excalidrawTaskCardWidth: TASK_CARD_WIDTHS.includes(source.excalidrawTaskCardWidth as number) ? source.excalidrawTaskCardWidth as number : defaults.excalidrawTaskCardWidth,
   taskCardAlign: align, taskCardWrap: align !== 'center' && source.taskCardWrap === true,
   taskCardColorSource: select(source.taskCardColorSource, ['noColor', 'taskColor', 'statusColor', 'priorityColor'], defaults.taskCardColorSource),
   taskCardImageSource: select(source.taskCardImageSource, ['none', 'taskImage', 'taskGalleryFirst', 'taskGalleryLast'], defaults.taskCardImageSource),

@@ -395,6 +395,8 @@ export function composeOperonSettingsFromDataPackage(
 	return migrateSettings({
 		...defaults,
 		...packageSettings,
+		// Preserve the former shared width before defaults hide an absent Canvas preference.
+		canvasTaskCardWidth: packageSettings.canvasTaskCardWidth ?? packageSettings.taskCardWidth ?? defaults.canvasTaskCardWidth,
 		keyMappings: keyMappings.length > 0 ? keyMappings : defaults.keyMappings,
 		filterSets,
 		priorities: readArray(dataPackage.taxonomy.priorities.priorities, defaults.priorities),
