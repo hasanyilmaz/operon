@@ -9,7 +9,9 @@ export interface RecoveredStoreWriteOptions {
 
 export interface SafeTextWriteOptions {
 	forceAtomicReplacement?: boolean;
+ canCommit?: () => boolean;
 	verifyAtomicReplacement?: boolean;
+ beforeAtomicReplace?: (temporaryPath: string) => Promise<void>;
 }
 
 function buildTempPath(path: string): string {
@@ -26,8 +28,10 @@ export async function writeTextSafely(
 	data: string,
 	options: SafeTextWriteOptions = {},
 ): Promise<void> {
+ const check = () => { if (options.canCommit?.() === false) throw new Error('Write permission expired'); };
+ check();
 	if (!options.forceAtomicReplacement && typeof adapter.process === 'function' && await adapter.exists(path)) {
-		await adapter.process(path, () => data);
+		await adapter.process(path, () => { check(); return data; });
 		return;
 	}
 
@@ -35,6 +39,7 @@ export async function writeTextSafely(
 		if (options.forceAtomicReplacement) {
 			throw new Error('Atomic replacement requires adapter rename support');
 		}
+		check();
 		await adapter.write(path, data);
 		return;
 	}
@@ -47,12 +52,16 @@ export async function writeTextSafely(
 	let tempWritten = false;
 	let originalMoved = false;
 	try {
+		check();
 		await adapter.write(tempPath, data);
 		tempWritten = true;
 		if (options.verifyAtomicReplacement === true && await adapter.read!(tempPath) !== data) {
 			throw new Error('Atomic replacement temporary write was not observed exactly');
 		}
-		if (await adapter.exists(path)) {
+		const exists = await adapter.exists(path);
+  await options.beforeAtomicReplace?.(tempPath);
+  check();
+		if (exists) {
 			await adapter.rename(path, backupPath);
 			originalMoved = true;
 		}
@@ -91,11 +100,8 @@ export async function writeTextSafely(
 								tempWritten = false;
 								return;
 							}
-							if (observedTarget !== null) {
-								await adapter.remove(path);
-								await adapter.rename(backupPath, path);
-								originalMoved = false;
-							}
+							// Different content may belong to a newer writer. Keep it and
+							// the preimage; never erase it to restore our older backup.
 						} else {
 							await adapter.rename(backupPath, path);
 							originalMoved = false;
@@ -126,9 +132,10 @@ export async function writeJsonSafely(
 	adapter: StorageAdapter,
 	path: string,
 	data: unknown,
+ options: SafeTextWriteOptions = {},
 ): Promise<string> {
 	const json = JSON.stringify(data, null, '\t');
-	await writeTextSafely(adapter, path, json);
+	await writeTextSafely(adapter, path, json, options);
 	return json;
 }
 

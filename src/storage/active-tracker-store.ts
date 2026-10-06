@@ -19,8 +19,8 @@ export interface ActiveTrackerStoreLike {
 		userName?: string;
 		createdAt?: string;
 		updatedAt?: string;
-	}): Promise<ActiveTrackerRecord>;
-	clearActiveForUser(userId?: string): Promise<void>;
+	}, canCommit?: () => boolean): Promise<ActiveTrackerRecord>;
+	clearActiveForUser(userId?: string, canCommit?: () => boolean): Promise<void>;
 	getGeneration(): number;
 	drain(): Promise<void>;
 	subscribe(listener: () => void): () => void;
@@ -94,7 +94,7 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		userName?: string;
 		createdAt?: string;
 		updatedAt?: string;
-	}): Promise<ActiveTrackerRecord> {
+	}, canCommit?: () => boolean): Promise<ActiveTrackerRecord> {
 		let committed: ActiveTrackerRecord | null = null;
 		await this.mutateActive(current => {
 			const now = record.updatedAt?.trim() || record.createdAt?.trim() || new Date().toISOString();
@@ -117,13 +117,13 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 				...current.filter(entry => entry.userId !== userId),
 				nextRecord,
 			];
-		});
+		}, canCommit);
 		return committed!;
 	}
 
-	async clearActiveForUser(userId = CURRENT_USER_ID): Promise<void> {
+	async clearActiveForUser(userId = CURRENT_USER_ID, canCommit?: () => boolean): Promise<void> {
 		const normalizedUserId = normalizeUserId(userId);
-		await this.mutateActive(current => current.filter(record => record.userId !== normalizedUserId));
+		await this.mutateActive(current => current.filter(record => record.userId !== normalizedUserId), canCommit);
 	}
 
 	getGeneration(): number {
@@ -141,23 +141,24 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		};
 	}
 
-	private async mutateActive(transform: (current: ActiveTrackerRecord[]) => ActiveTrackerRecord[]): Promise<void> {
+	private async mutateActive(transform: (current: ActiveTrackerRecord[]) => ActiveTrackerRecord[], canCommit?: () => boolean): Promise<void> {
 		const run = this.mutationQueue.then(async () => {
+			if (canCommit && !canCommit()) throw new Error('Active tracker write is no longer allowed');
 			const next = this.normalizeRecords(transform(this.active.map(record => ({ ...record }))));
 			if (this.sameRecords(next)) return;
-			await this.commit(next);
+			await this.commit(next, canCommit);
 		});
 		this.mutationQueue = run.catch(() => {});
 		await run;
 	}
 
-	private async commit(next: ActiveTrackerRecord[]): Promise<void> {
-		await this.flush(next);
+	private async commit(next: ActiveTrackerRecord[], canCommit?: () => boolean): Promise<void> {
+		await this.flush(next, canCommit);
 		this.active = next;
 		this.bumpGeneration();
 	}
 
-	private async flush(active: ActiveTrackerRecord[]): Promise<void> {
+	private async flush(active: ActiveTrackerRecord[], canCommit?: () => boolean): Promise<void> {
 		if (this.writesSuspended) {
 			throw new Error('Active tracker writes are suspended');
 		}
@@ -166,7 +167,7 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 			active,
 		};
 		await this.writeQueue.enqueue(this.filePath, async () => {
-			await writeJsonSafely(this.app.vault.adapter, this.filePath, data);
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, data, { canCommit });
 		});
 	}
 

@@ -17,6 +17,20 @@ export function scopeSettingsModal<T extends { modalEl: HTMLElement }>(modal: T,
 	return modal;
 }
 
+/** Classify custom rows once after rendering, without observing DOM mutations. */
+export function markSettingsRowLayout(root: HTMLElement): void {
+	const rows = root.matches('.setting-item') ? [root] : [];
+	rows.push(...Array.from(root.querySelectorAll<HTMLElement>('.setting-item')));
+	for (const row of rows) {
+		const control = Array.from(row.children).find(child => child.classList.contains('setting-item-control'));
+		const hasInfo = Array.from(row.children).some(child => child.classList.contains('setting-item-info'));
+		const standard = hasInfo && !!control
+			&& Array.from(control.children).some(child => child.matches('input, select, button, .checkbox-container'))
+			&& !control.querySelector('textarea');
+		row.classList.toggle('operon-settings-nonstandard-row', !standard);
+	}
+}
+
 /** Decorate only fresh definitions; retain native controls and renderer cleanup results. */
 export function scopeSettingsDefinitions(items: SettingDefinitionItem[]): SettingDefinitionItem[] {
 	for (const item of items) {
@@ -31,7 +45,9 @@ export function scopeSettingsDefinitions(items: SettingDefinitionItem[]): Settin
 			const render = item.render;
 			item.render = (setting, context) => {
 				setSettingsScope(setting.settingEl, true);
-				return render(setting, context);
+				const cleanup = render(setting, context);
+				markSettingsRowLayout(setting.settingEl);
+				return cleanup;
 			};
 		}
 	}

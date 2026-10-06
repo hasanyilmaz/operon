@@ -1945,11 +1945,14 @@ async function fileTaskArchiverUsesPipelineTargetsAndDurableBulkReconciliation()
 			replacementFailureArchiver.destroy();
 			markerReadMode = 'normal';
 		}
-		assert.equal(markerFiles.get(markerPath), priorMarker, 'a corrupt replacement restores the prior valid marker exactly');
+		const preservedMarker = markerFiles.get(markerPath);
+		assert.ok(preservedMarker && preservedMarker !== priorMarker, 'an unverified target is preserved instead of replaced with older marker data');
+		assert.equal(JSON.parse(preservedMarker).version, 1, 'the actual newer marker remains valid');
+		assert.equal([...markerFiles].find(([path]) => path.startsWith(markerPath + '.replace-backup.tmp-'))?.[1], priorMarker, 'the exact preimage remains available for recovery');
 		const restoredMarkerArchiver = new FileTaskArchiver(app, indexer, () => configuredSettings);
 		try {
 			await restoredMarkerArchiver.resumePendingReconciliation();
-			assert.equal(timers.size, 1, 'the restored valid marker remains safely resumable after restart');
+			assert.equal(timers.size, 1, 'the preserved valid marker remains safely resumable after restart');
 		} finally {
 			restoredMarkerArchiver.destroy();
 		}
@@ -2139,11 +2142,11 @@ async function writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifi
 				if (mode === 'restore-failure' && isBackupRestore) {
 					throw new Error('RESTORE_FAILED');
 				}
-				if (mode === 'missing-target' && isReplacement) {
+				if ((mode === 'missing-target' || mode === 'restore-failure') && isReplacement) {
 					files.delete(from);
 					throw new Error('RENAME_ACK_LOST');
 				}
-				files.set(to, (mode === 'verified-corrupt' || mode === 'restore-failure') && isReplacement ? '{' : value);
+				files.set(to, mode === 'verified-corrupt' && isReplacement ? '{' : value);
 				files.delete(from);
 				if (isReplacement && (
 					mode === 'verified-exact'
@@ -2209,8 +2212,8 @@ async function writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifi
 		}),
 		/Atomic replacement target write was not observed exactly/u,
 	);
-	assert.equal(verifiedCorrupt.files.get(verifiedCorrupt.targetPath), priorBytes, 'a corrupted replacement target must restore exact prior bytes');
-	assert.deepEqual(backupEntries(verifiedCorrupt.files, verifiedCorrupt.targetPath), []);
+	assert.equal(verifiedCorrupt.files.get(verifiedCorrupt.targetPath), '{', 'a different target is preserved instead of overwritten with older bytes');
+	assert.deepEqual(backupEntries(verifiedCorrupt.files, verifiedCorrupt.targetPath).map(([, bytes]) => bytes), [priorBytes], 'an unverified target retains exact prior backup evidence');
 
 	const backupRemoveFailure = createAdapter('backup-remove-failure');
 	await writeTextSafely(backupRemoveFailure.adapter, backupRemoveFailure.targetPath, replacementBytes, {
@@ -2226,13 +2229,10 @@ async function writeTextSafelyRecoversAcknowledgementLossWithoutDiscardingVerifi
 			forceAtomicReplacement: true,
 			verifyAtomicReplacement: true,
 		}),
-		/Atomic replacement target write was not observed exactly/u,
+		/RENAME_ACK_LOST/u,
 	);
-	assert.ok(
-		restoreFailure.files.get(restoreFailure.targetPath) === priorBytes
-			|| backupEntries(restoreFailure.files, restoreFailure.targetPath).some(([, bytes]) => bytes === priorBytes),
-		'a failed restoration must retain exact prior bytes at the target or its backup',
-	);
+	assert.equal(restoreFailure.files.has(restoreFailure.targetPath), false, 'the failed restore does not invent a successful target');
+	assert.deepEqual(backupEntries(restoreFailure.files, restoreFailure.targetPath).map(([, bytes]) => bytes), [priorBytes], 'a failed restoration retains exact prior backup evidence');
 }
 
 async function run(): Promise<void> {

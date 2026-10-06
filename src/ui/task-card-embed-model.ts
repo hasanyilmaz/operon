@@ -52,6 +52,7 @@ export interface TaskCardReader {
 	getIndexState: () => TaskCardIndexState;
 	getTask: (id: string) => IndexedTaskSnapshot | undefined;
 	hasDuplicate: (id: string) => boolean;
+	isSourceTransitionActive?: (id: string) => boolean;
 }
 export type TaskCardResolution = { state: 'ready'; task: IndexedTaskSnapshot }
 	| { state: 'loading' | 'missing' | 'duplicate' | 'error' };

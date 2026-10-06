@@ -42,7 +42,8 @@ import test from 'node:test';
 import {TFile,TFolder} from 'obsidian';
 import {OperonIndexer} from './src/indexer/indexer';
 import {TaskWriter} from './src/core/task-writer';
-import {RuntimeMutationGatewayV1} from './src/agent-runtime/runtime/mutation-gateway';
+import {withExcalidrawMarkdownSources,rebaseExcalidrawTaskSource} from './src/ui/excalidraw-markdown-source';
+import {RuntimeMutationGatewayV1,withRuntimeVaultMutationLockV1} from './src/agent-runtime/runtime/mutation-gateway';
 import {IndexedDbMutationReceiptStoreV1} from './src/agent-runtime/runtime/receipts';
 import {decodeMutationApplyRequestV1} from './src/agent-runtime/contracts/v1';
 import {conversionPreparationFailure} from './src/systems/plugin-ui-conversion-transaction';
@@ -90,7 +91,7 @@ async function fixture({direction='inline-to-file',child=true,checkbox=true,carr
  const indexer=new OperonIndexer(app,{getSettings:()=>settings});
  const reindex=async p=>{const file=files.get(p);if(file)await indexer.forceReindexKnownFileAfterMutation(file,{notify:false},contents.get(p));else await indexer.forceRemoveFilePathAfterMutation(p,{notify:false});};
  for(const p of files.keys())await reindex(p);
- const probe=new Probe();Object.assign(probe,{app,indexer,settings,writer:new TaskWriter(app,indexer,[]),readAgentRuntimeMutationSource:async p=>({content:contents.get(p)??null})});
+ const probe=new Probe();Object.assign(probe,{app,indexer,settings,writer:new TaskWriter(app,indexer,[]),isExcalidrawTaskSource:()=>false,agentRuntimeVaultIdentityHash:sha256HexV1('conversion-vault'),readAgentRuntimeMutationSource:async p=>({content:contents.get(p)??null})});
  const steps=[{stepId:'target',groupId:'target',resourceKind:'task-source',resourceKey:'Target.md',operation:targetBefore===null?'create':'modify',before:state(targetBefore),after:state(targetAfter)},
  {stepId:'source',groupId:'source',resourceKind:'task-source',resourceKey:'Source.md',operation:sourceAfter===null?'delete':'modify',before:state(sourceBefore),after:state(sourceAfter)}];
  const journal={phase:'prepared',completedStepCount:0,steps};

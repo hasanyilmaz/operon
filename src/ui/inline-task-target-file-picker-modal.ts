@@ -2,6 +2,7 @@ import { App, FuzzyMatch, FuzzySuggestModal, TFile } from 'obsidian';
 import { t } from '../core/i18n';
 
 export interface InlineTaskTargetFilePickerOptions {
+ acceptFile?: (file: TFile) => boolean;
 	excludedFilePath?: string | null;
 	onChooseFile: (file: TFile) => void;
 	onCancel?: () => void;
@@ -26,7 +27,7 @@ export class InlineTaskTargetFilePickerModal extends FuzzySuggestModal<TFile> {
 	getItems(): TFile[] {
 		const excludedFilePath = this.options.excludedFilePath?.trim() ?? '';
 		return this.app.vault.getMarkdownFiles()
-			.filter(file => file.path !== excludedFilePath)
+			.filter(file => file.path !== excludedFilePath && this.options.acceptFile?.(file) !== false)
 			.sort((left, right) => left.path.localeCompare(right.path));
 	}
 

@@ -1,3 +1,4 @@
+import type { TaskWriterExclusiveMutationPermit } from '../../core/task-writer';
 import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import {
 	canonicalJsonV1,
@@ -141,7 +142,10 @@ export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
 	readonly detachDirectChildrenOnDelete?: boolean;
 	readonly checkboxOwnership?: 'contiguous';
+	readonly vaultMutationLease?: RuntimeVaultMutationLeaseV1;
+	readonly inlineDrawingTarget?: string;
 	readonly conversionSources?: {
+		readonly writePermit?: TaskWriterExclusiveMutationPermit;
 		canWrite(filePath: string, expectedContent: string | null): boolean;
 		didWrite(filePath: string, before: string | null, after: string | null): boolean;
 	};
@@ -236,6 +240,7 @@ export interface RuntimeMutationGatewayPortsV1 {
 		request: MutationApplyRequestV1,
 		journal: GraphTransactionJournalV1,
 		checkpoint: (value: RuntimeGraphTransactionCheckpointV1) => Promise<void>,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<RuntimeGraphTransactionRecoveryV1>;
 	verifyMutationTransactionState?(
 		journal: GraphTransactionJournalV1,
@@ -858,6 +863,7 @@ export class RuntimeMutationGatewayV1 {
 						vaultIdentityHash,
 						journalLeaseOwner,
 						admissionToken,
+						internalPolicy,
 					);
 		}
 		if (isRuntimeMutationPlanExpiredV1(request, nowEpochMs)) {
@@ -1372,7 +1378,7 @@ export class RuntimeMutationGatewayV1 {
 			);
 		}
 			})
-		));
+		), internalPolicy?.vaultMutationLease);
 	}
 
 	private async recoverCreationGraphTransaction(
@@ -1715,6 +1721,7 @@ export class RuntimeMutationGatewayV1 {
 		vaultIdentityHash: string,
 		journalLeaseOwner: string,
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		if (!this.ports.verifyRecoveredMutationTransaction) {
 			return mutationOutcomeUnknown(
@@ -1732,7 +1739,7 @@ export class RuntimeMutationGatewayV1 {
 			admissionToken,
 			this.ports.recoverMutationTransaction
 				? (applyRequest, journal, checkpoint) => (
-					this.ports.recoverMutationTransaction!(applyRequest, journal, checkpoint)
+					this.ports.recoverMutationTransaction!(applyRequest, journal, checkpoint, internalPolicy)
 				)
 				: undefined,
 			this.ports.verifyMutationTransactionState
@@ -2417,10 +2424,14 @@ export class RuntimeMutationGatewayV1 {
 
 }
 
+export interface RuntimeVaultMutationLeaseV1 { readonly vaultIdentityHash: string }
+const ACTIVE_VAULT_MUTATION_LEASES_V1 = new WeakSet<RuntimeVaultMutationLeaseV1>();
 export async function withRuntimeVaultMutationLockV1<T>(
 	vaultIdentityHash: string,
-	operation: () => Promise<T>,
+	operation: (lease: RuntimeVaultMutationLeaseV1) => Promise<T>,
+	ownedLease?: RuntimeVaultMutationLeaseV1,
 ): Promise<T> {
+	if (ownedLease?.vaultIdentityHash === vaultIdentityHash && ACTIVE_VAULT_MUTATION_LEASES_V1.has(ownedLease)) return operation(ownedLease);
 	const previous = VAULT_MUTATION_TAILS_V1.get(vaultIdentityHash) ?? Promise.resolve();
 	let release = (): void => undefined;
 	const current = new Promise<void>(resolve => {
@@ -2429,9 +2440,12 @@ export async function withRuntimeVaultMutationLockV1<T>(
 	const tail = previous.then(() => current);
 	VAULT_MUTATION_TAILS_V1.set(vaultIdentityHash, tail);
 	await previous;
+	const lease = Object.freeze({ vaultIdentityHash });
+	ACTIVE_VAULT_MUTATION_LEASES_V1.add(lease);
 	try {
-		return await operation();
+		return await operation(lease);
 	} finally {
+		ACTIVE_VAULT_MUTATION_LEASES_V1.delete(lease);
 		release();
 		if (VAULT_MUTATION_TAILS_V1.get(vaultIdentityHash) === tail) {
 			VAULT_MUTATION_TAILS_V1.delete(vaultIdentityHash);

@@ -1,4 +1,5 @@
-import { Component, Notice, type Menu, type EventRef } from 'obsidian';
+import { Component, Notice } from 'obsidian';
+import type { TaskSelectionControl } from './task-selection-controls';
 import { t } from '../core/i18n';
 import { canvasTaskData } from './canvas-task-node';
 import { readCanvasTaskId } from './task-card-canvas';
@@ -16,11 +17,9 @@ export interface CanvasConversionBridge {
  remove(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean>;
  restore(receipt: CanvasConversionReceipt, allowed: () => boolean): Promise<boolean>;
 }
-export function splitCanvasTaskText(text: string): { description: string; note: string } {
- const lines = text.replace(/\r\n?/g, '\n').split('\n'); return { description: lines.shift() ?? '', note: lines.join('\n') };
-}
+export { splitTaskCreationText as splitCanvasTaskText } from './task-creation-text';
 export function isConvertibleCanvasText(data: Record<string, unknown>): boolean {
- return data.type === 'text' && typeof data.text === 'string' && !('operonTask' in data) && !readCanvasTaskId(data.text);
+ return data.type === 'text' && typeof data.text === 'string' && !!data.text.trim() && data.locked !== true && !('operonTask' in data) && !readCanvasTaskId(data.text);
 }
 interface Entry { before: unknown; after: unknown; nodeId: string; receipt: CanvasConversionReceipt }
 /** Conversion receipts never enter the Canvas JSON or a persistent store. */
@@ -31,14 +30,6 @@ export class CanvasTaskConversion extends Component {
  constructor(private view: TaskCanvasView, private owner: CanvasTaskIntegration, private history: CanvasTaskHistory, private bridge: CanvasConversionBridge) { super(); }
  onload(): void {
   this.active = true;
-  const workspace = this.owner.deps.app.workspace as unknown as { on(name: 'canvas:node-menu', callback: (menu: Menu, node: CanvasTaskNode) => void): EventRef };
-  const event = workspace.on('canvas:node-menu', (menu: Menu, node: CanvasTaskNode) => {
-   if (!this.valid() || this.view.canvas.nodes.get(node.id) !== node || !this.history.supported || !isConvertibleCanvasText(node.getData())) return;
-   const selection = (this.view.canvas as typeof this.view.canvas & { selection?: Set<unknown> }).selection;
-   if (selection && selection.size > 1) return;
-   menu.addItem(item => item.setTitle(t('commands', 'convertCanvasTask')).setIcon('id-card').setDisabled(this.view.canvas.readonly).onClick(() => this.open(node)));
-  });
-  this.registerEvent(event);
   const vault = this.owner.deps.app.vault;
   const changed = (file: { path: string }, oldPath?: string) => {
    for (const { receipt } of this.entries) if (receipt.phase !== 'working' && (receipt.path === file.path || receipt.path === oldPath)) receipt.invalid = true;
@@ -51,6 +42,14 @@ export class CanvasTaskConversion extends Component {
    const entry = this.entries.find(value => step.direction === 'undo' ? value.after === step.current && value.before === step.next : value.before === step.current && value.after === step.next);
    return entry ? () => this.travel(entry, step) : null;
   }));
+ }
+ selectionControl(node: CanvasTaskNode): TaskSelectionControl | null {
+  const eligible = () => this.valid() && this.history.supported && !this.view.canvas.readonly && !node.isEditing
+   && this.view.canvas.selection?.size === 1 && this.view.canvas.selection.has(node)
+   && this.view.canvas.nodes.get(node.id) === node && isConvertibleCanvasText(node.getData());
+  if (!eligible()) return null;
+  return { id: 'operon-task-convert-text', icon: 'id-card', title: t('commands', 'convertCanvasTask'), unavailable: false,
+   run: () => { if (eligible()) this.open(node); } };
  }
  private valid(): boolean { return this.active && this.owner.isCurrent(this.view) && this.view.canvas === this.history.canvas; }
  private writable(): boolean { return this.valid() && !this.view.canvas.readonly && !this.view.saving && this.view.lastSavedData !== null; }

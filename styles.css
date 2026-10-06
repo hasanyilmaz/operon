@@ -34782,6 +34782,37 @@ body .modal.operon-table-preset-settings-modal button.operon-table-preset-column
 .canvas-node.operon-task-card-canvas-node .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
 .canvas-node.operon-task-card-canvas-node .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
 
+/* Excalidraw owns the outer stroke, fill and geometry. Only verified task embeds opt in. */
+.canvas-node[data-operon-task-card-excalidraw] > .canvas-node-container { border: 0; border-radius: inherit; box-shadow: none; background: transparent; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content { padding: 0; overflow-y: auto; overflow-x: hidden; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view { padding: 0; background: transparent; }
+.canvas-node[data-operon-task-card-excalidraw] .markdown-preview-sizer { padding: 0; margin: 0; max-width: none; min-height: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .el-pre { margin: 0; padding: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .markdown-preview-view .el-h1 { display: none; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card-embed { width: 100%; max-width: none; margin: 0; padding: 0; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card { width: 100%; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+/* Native Markdown preview spacers belong to note embeds; this card owns its intrinsic padding. */
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view::before,
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view::after { display: none; }
+.canvas-node[data-operon-task-card-excalidraw] .canvas-node-content .markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer { flex: none; }
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card button.operon-task-card-title {
+ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
+}
+/* Resolve shared card tokens locally; native harvested Markdown variables may be empty while loading. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card {
+ --background-primary: var(--color-surface-lowest);
+ --background-secondary: var(--color-surface-mid);
+ --background-modifier-border: var(--color-border-outline-variant);
+ --text-normal: var(--color-on-surface);
+ --text-muted: var(--color-border-outline);
+ --operon-excalidraw-task-stroke: var(--operon-task-card-accent, var(--background-modifier-border));
+}
+/* Excalidraw's global svg-icon color must not replace Operon's configured semantic colors. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card svg.svg-icon { color: inherit; }
+
+/* Embedded cards keep media opaque even when the vault theme dims Markdown images. */
+.canvas-node[data-operon-task-card-excalidraw] .operon-task-card-image img { opacity: 1; }
+
 /* Metadata-backed Canvas tasks use the native node surface, without a Markdown editor. */
 .canvas-node.operon-canvas-task-node .canvas-node-content > :not(.operon-canvas-task-content) { display: none; }
 .canvas-node.operon-canvas-task-node .operon-canvas-task-content { min-height: 100%; }
@@ -34869,6 +34900,23 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .canvas-menu .operon-canvas-edge-relations-controls button { height: auto; box-shadow: none; }
 .canvas-menu .operon-canvas-edge-relations-controls button.is-active { color: var(--interactive-accent); background: var(--background-modifier-hover); }
 
+/* Viewport-only relationship indicators never enter the drawing or its exports. */
+.operon-excalidraw-edge-relations { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.operon-excalidraw-edge-relations-mark { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--text-muted); background: var(--operon-excalidraw-scene-background, var(--background-primary)); pointer-events: none; }
+.operon-excalidraw-edge-relations-mark[hidden] { display: none; }
+.operon-excalidraw-edge-relations-mark svg { width: 18px; height: 18px; }
+/* Native svg-icon styles must preserve the shared relationship state color. */
+.operon-excalidraw-edge-relations .operon-excalidraw-edge-relations-mark svg.svg-icon { color: inherit; }
+
+/* Owned controls retain native Excalidraw sizing and use the same relation states. */
+.operon-excalidraw-edge-relations-controls { display: flex; gap: 1px; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button { background: transparent; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button .ToolIcon__icon, .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) .ToolIcon__icon { background: transparent; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) { background: transparent; --icon-fill-color: var(--interactive-accent); color: var(--interactive-accent); }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button:is(:hover, :active, .is-active) svg.svg-icon { color: inherit; }
+.excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button[aria-disabled="true"] { cursor: default; }
+
+
 .canvas-menu.operon-canvas-task-toolbar { position: fixed; }
 
 /* Empty Canvas actions remain available without competing with populated content. */
@@ -34884,7 +34932,8 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
  body .operon-canvas-task-pool button,
  body .operon-canvas-task-pool button.operon-canvas-task-pool-status,
  body .operon-canvas-task-pool button.operon-canvas-task-pool-title,
- .canvas-menu .operon-canvas-edge-relations-controls button { min-height: 44px; min-width: 44px; }
+ .canvas-menu .operon-canvas-edge-relations-controls button,
+ .excalidraw-selected-element-menu .operon-excalidraw-edge-relations-controls button { min-height: 44px; min-width: 44px; }
  body .operon-canvas-task-pool .operon-canvas-task-pool-modes button { min-width: 0; }
  .operon-canvas-task-pool-row { height: 56px; min-height: 56px; }
  .operon-canvas-task-pool-list { max-height: calc(var(--operon-canvas-task-pool-rows, 5) * 62px - 6px); }
@@ -35696,6 +35745,13 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
  * Keep headings, vertical editors, multiline inputs and custom grids independent.
  * A group owner is required so shared modal and task surfaces stay unchanged.
  */
-:where(.setting-group.operon-settings-scope) .setting-item:not(.setting-item-heading, .mod-vertical, .operon-settings-long-text-setting):has(> .setting-item-info) > .setting-item-control:has(> :is(input, select, button, .checkbox-container)):not(:has(textarea)) {
+:where(.setting-group.operon-settings-scope) .setting-item:not(.setting-item-heading, .mod-vertical, .operon-settings-long-text-setting, .operon-settings-nonstandard-row) > .setting-item-info ~ .setting-item-control {
 	align-self: center;
 }
+
+/* Native Excalidraw top-right entry; planning panels follow their drawing palette. */
+.excalidraw button.operon-excalidraw-task-pool-button { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--color-on-surface); box-shadow: none; }
+.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) { background: transparent; color: var(--interactive-accent); }
+.excalidraw button.operon-excalidraw-task-pool-button:is(:hover, [aria-expanded="true"]) svg.svg-icon { color: inherit; }
+.excalidraw button.operon-excalidraw-task-pool-button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.excalidraw button.operon-excalidraw-task-pool-button svg { width: var(--lg-icon-size, 1rem); height: var(--lg-icon-size, 1rem); }

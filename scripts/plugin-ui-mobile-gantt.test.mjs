@@ -31,6 +31,7 @@ export async function runMobileGanttTests(rootDir) {
    stdin: { resolveDir: rootDir, loader: 'ts', contents: `
 import assert from 'node:assert/strict';
 import {TFile,TFolder} from 'obsidian';
+import {withExcalidrawMarkdownSources,rebaseExcalidrawTaskSource} from './src/ui/excalidraw-markdown-source';
 import {TaskWriter} from './src/core/task-writer';
 import {validateVaultRelativePathV1} from './src/agent-runtime/contracts/v1/identity';
 import {executeTableGanttCascadeTransaction} from './src/ui/table/table-gantt-cascade-transaction';
@@ -40,9 +41,9 @@ const files=new Map([['A.md',new TFile('A.md')],['B.md',new TFile('B.md')]]);con
 let writes=0,fail=false,external=false,series='before';
 const filePlans=[{filePath:'A.md',expectedContent:'a before',nextContent:'a after'},{filePath:'B.md',expectedContent:'b before',nextContent:'b after'}];
 const recurrencePlans=[{seriesId:'series1',begin:async()=>{series='after';return {before:'before'}},rollback:async()=>{series='before';return true}}];
-const app={vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>contents.get(f.path),process:async(f,cb)=>{if(fail&&f.path==='B.md'){if(external)contents.set('A.md','User change');throw Error('Injected failure')}const next=cb(contents.get(f.path));contents.set(f.path,next);writes++;return next;}}};
+const app={workspace:{getLeavesOfType:()=>[]},vault:{getAbstractFileByPath:p=>files.get(p)??null,read:async f=>contents.get(f.path),process:async(f,cb)=>{if(fail&&f.path==='B.md'){if(external)contents.set('A.md','User change');throw Error('Injected failure')}const next=cb(contents.get(f.path));contents.set(f.path,next);writes++;return next;}}};
 const indexer={hasDuplicateOperonIdConflict:()=>false,isPathIndexable:()=>true};
-const probe=new Probe();Object.assign(probe,{app,isAgentRuntimeMutationPathContained:async()=>false});probe.writer=new TaskWriter(app,indexer,[],{validateWritePath:()=>false,validatePluginWritePath:(p,a)=>probe.isPluginTaskWritePathContained(p,a)});
+const probe=new Probe();Object.assign(probe,{app,isExcalidrawTaskSource:()=>false,isAgentRuntimeMutationPathContained:async()=>false});probe.writer=new TaskWriter(app,indexer,[],{validateWritePath:()=>false,validatePluginWritePath:(p,a)=>probe.isPluginTaskWritePathContained(p,a)});
 const reset=()=>{contents.set('A.md','a before');contents.set('B.md','b before');writes=0;fail=false;external=false;series='before';};
 reset();assert.equal(await probe.run(),'committed');assert.equal(contents.get('A.md'),'a after');assert.equal(contents.get('B.md'),'b after');assert.equal(series,'after');assert.equal(writes,2);
 const oldError=console.error;try{console.error=()=>{};

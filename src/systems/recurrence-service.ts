@@ -751,6 +751,7 @@ export class RecurrenceService {
 		task: IndexedTask,
 		preferredSeriesId?: string | null,
 		completionTimestamp?: string,
+        canCommit?: () => boolean,
 	): Promise<RepeatSeriesEntry | null> {
 		const rule = parseRepeatRule(task.fieldValues['repeat']);
 		if (!rule) return null;
@@ -776,11 +777,11 @@ export class RecurrenceService {
 			baseTemporalTemplate: completionTemplate
 				?? deriveTemporalTemplateFromTaskAtOccurrence(task, resolveMaterializationTemporalAnchor(rule, task.fieldValues)),
 			now,
-		});
+		}, canCommit);
 		if (!completionTemplate || temporalTemplatesEqual(entry.baseTemporalTemplate, completionTemplate)) {
 			return entry;
 		}
-		await this.storage.repeatSeries.updateBaseTemporalTemplate(entry.seriesId, completionTemplate, now);
+		await this.storage.repeatSeries.updateBaseTemporalTemplate(entry.seriesId, completionTemplate, now, canCommit);
 		return {
 			...entry,
 			baseTemporalTemplate: { ...completionTemplate },

@@ -6,6 +6,7 @@ import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 type OperonHoverTooltipColor = string | null | (() => string | null);
 
 interface OperonHoverTooltipOptions {
+ bindTheme?: (tooltip: HTMLElement) => void | (() => void);
 	title?: string;
 	titleIcon?: string;
 	content?: string;
@@ -31,10 +32,26 @@ export function showOperonPointerTooltip(target: HTMLElement, options: OperonHov
 	tooltip.classList.add('operon-hover-tooltip--floating', 'is-visible');
 	const color = resolveOperonHoverTooltipColor(options.taskColor);
 	if (color) tooltip.setCssProps({ '--operon-live-hover-border': color });
+	inheritExcalidrawSurfaceTheme(target, tooltip);
+ const cleanupTheme = options.bindTheme?.(tooltip);
 	getOwnerBody(target).appendChild(tooltip);
 	const position = () => positionFloatingTooltip(target, tooltip, options, null);
 	position();
-	return { position, close: () => tooltip.remove() };
+	return { position, close: () => { cleanupTheme?.(); tooltip.remove(); } };
+}
+
+/** Floating tooltips live outside the native embed, which can override the vault theme. */
+export function inheritExcalidrawSurfaceTheme(target: HTMLElement, tooltip: HTMLElement): void {
+	if (!target.closest('[data-operon-task-card-excalidraw], [data-operon-excalidraw-pool]')) return;
+	const style = getOwnerWindow(target).getComputedStyle(target);
+	for (const key of ['--background-primary', '--background-modifier-border', '--text-normal', '--interactive-accent', '--link-color', '--code-background', '--code-normal', '--text-highlight-bg']) {
+		const value = style.getPropertyValue(key).trim();
+		// Excalidraw injects the native palette with a 90% alpha hex background.
+		// Floating Operon surfaces must keep that hue without inheriting translucency.
+		const surfaceValue = key === '--background-primary'
+			? value.replace(/^#([\da-f]{6})[\da-f]{2}$/i, '#$1').replace(/^#([\da-f]{3})[\da-f]$/i, '#$1') : value;
+		if (surfaceValue) tooltip.style.setProperty(key, surfaceValue);
+	}
 }
 
 interface OperonFloatingTooltipHorizontalPlacementOptions {
@@ -183,6 +200,7 @@ export function bindOperonHoverTooltip(
 		if (taskColor) {
 			tooltip.setCssProps({ '--operon-live-hover-border': taskColor });
 		}
+		inheritExcalidrawSurfaceTheme(target, tooltip);
 		getOwnerBody(target).appendChild(tooltip);
 		positionFloatingTooltip(target, tooltip, options, pointerClientX);
 		ownerWindow.addEventListener('scroll', close, true);

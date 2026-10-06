@@ -250,6 +250,7 @@ export function scheduleTaskEditorReminderFocus(options: {
 }
 
 export interface TaskEditorSubtaskRequest {
+ acceptFile?: (file: import('obsidian').TFile) => boolean;
 	canCommit?: () => boolean;
 	parentOperonId: string;
 	parentDescription: string;

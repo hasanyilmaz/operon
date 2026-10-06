@@ -251,7 +251,11 @@ function resolveRect(anchor: HTMLElement | DOMRect): DOMRect {
 
 export function resolveSurfaceFloatingHostOptions(anchorEl: HTMLElement): FloatingHostOptions {
 	const pagePreviewHost = asHTMLElement(anchorEl.closest('.hover-popover, .popover.hover-popover'), anchorEl);
-	if (!pagePreviewHost) return {};
+ if (!pagePreviewHost) {
+  const excalidraw = anchorEl.closest('[data-operon-task-card-excalidraw]')?.closest('.view-content');
+  const host = asHTMLElement(excalidraw ?? null, anchorEl);
+  return host ? { floatingHost: host, floatingScrollHost: getOwnerWindow(host), constrainToFloatingHost: true } : {};
+ }
 	const scrollHost = asHTMLElement(
 		anchorEl.closest('.popover-content, .view-content, .markdown-preview-view'),
 		anchorEl,

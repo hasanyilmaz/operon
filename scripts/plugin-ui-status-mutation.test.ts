@@ -91,8 +91,8 @@ for (const [name, body] of [
 
 equal(
 	(mainSource.match(/updatePluginUiTaskStatusAndRefresh\(/gu) ?? []).length,
-	8,
-	'The helper has exactly seven UI call sites plus its declaration.',
+	9,
+	'The helper has exactly eight UI call sites including Excalidraw chips plus its declaration.',
 );
 includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Terminal status writes finalize active timers transactionally.');
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');

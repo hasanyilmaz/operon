@@ -1,3 +1,4 @@
+import { inheritExcalidrawSurfaceTheme } from './operon-hover-tooltip';
 import { observeTaskCardAnchor } from './task-card-anchor';
 import { Platform, setIcon } from 'obsidian';
 import { localNow } from '../core/local-time';
@@ -38,6 +39,7 @@ type ContextualHoverMenuSettings = Pick<
 >;
 
 export interface ContextualHoverMenuBindOptions {
+ captureWriteGuard?: () => (() => boolean);
 	/** Optional trigger identity, independent of the shared action surface. */
 	menuKey?: string;
 	surface: ContextualMenuSurface;
@@ -60,6 +62,7 @@ interface ContextualHoverMenuControllerOptions {
 }
 
 interface ContextualHoverMenuShowOptions {
+ themeTarget?: HTMLElement;
  followAnchor?: HTMLElement;
 	key: string;
 	taskId: string;
@@ -309,6 +312,7 @@ export class ContextualHoverMenuController {
 			const host = options.host ?? this.options.getHost?.();
 			if (host && (!this.activeMenuEl.isConnected || this.activeMenuEl.parentElement !== host)) host.appendChild(this.activeMenuEl);
 			this.updateActions(this.activeMenuEl, options);
+   if (options.themeTarget) inheritExcalidrawSurfaceTheme(options.themeTarget, this.activeMenuEl);
 			this.activeMenuGuardTargets = options.mobileInteraction?.guardTargets ?? [];
 			for (const element of this.activeMenuSelectionGuardElements) element.classList.remove(CONTEXTUAL_MENU_MOBILE_SELECTION_GUARD_CLASS);
 			this.activeMenuSelectionGuardElements = options.mobileInteraction ? [this.activeMenuEl, ...this.activeMenuGuardTargets] : [];
@@ -330,6 +334,7 @@ export class ContextualHoverMenuController {
 		const menu = hostDocument.win.createDiv();
 		menu.className = this.options.menuClassName ?? 'operon-calendar-hover-menu';
 		menu.tabIndex = -1;
+  if (options.themeTarget) inheritExcalidrawSurfaceTheme(options.themeTarget, menu);
 		applyContextualMenuAccent(menu, options.context);
 		const usesPointerLeaveHide = !options.mobileInteraction;
 		if (this.options.menuPosition) {
@@ -716,15 +721,17 @@ export function showTaskContextualHoverMenu(
 		settings.contextualMenuSurfaceActionMatrix,
 		settings.keyMappings,
 	);
+	const canMutate = options.captureWriteGuard?.();
 	const opened = sharedTaskHoverMenu.show({
-  followAnchor: options.surface === 'taskCard' ? triggerEl : undefined,
+  themeTarget: triggerEl,
+  followAnchor: options.surface === 'taskCard' || options.surface === 'excalidrawTask' ? triggerEl : undefined,
 		key: menuKey,
 		taskId: options.taskId,
 		actions,
 		anchorRect: options.resolveAnchorRect?.() ?? triggerEl.getBoundingClientRect(),
 		host: getOwnerBody(triggerEl),
 		context,
-		onAction: options.onAction,
+		onAction: (id, action, context, invocation) => options.onAction(id, action, context, { ...invocation, ...(canMutate ? { canMutate } : {}) }),
 		mobileInteraction: mobile
 			? {
 				transitionGraceMs: settings.contextualMenuMobileTransitionGraceMs,

@@ -184,8 +184,10 @@ export class AggregateCoordinator {
 		createdTasks: readonly CreationAggregateProjectionTask[],
 		modifiedTimestamp: string,
 		additionalAffectedOperonIds: readonly string[] = [],
+		removedTaskIds: readonly string[] = [],
 	): CreationAggregateProjectionPatch[] {
 		const tasks = new Map(this.indexer.getAllTasks().map(task => [task.operonId, task]));
+		for (const id of removedTaskIds) tasks.delete(id);
 		for (const task of createdTasks) {
 			tasks.set(task.operonId, {
 				operonId: task.operonId,

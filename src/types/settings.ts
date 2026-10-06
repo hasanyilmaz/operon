@@ -2506,6 +2506,8 @@ export interface NumericConstraint {
 
 export const NUMERIC_CONSTRAINTS = {
 	taskCardWidth: { min: 300, max: 400 },
+	canvasTaskCardWidth: { min: 300, max: 400 },
+	excalidrawTaskCardWidth: { min: 300, max: 400 },
 	taskCreateDebounceMs: { min: 150, max: 3000 },
 	dockHoverOpenDelayMs: { min: 0, max: 2000 },
 	floatingAutoCloseSec: { min: 5, max: 600 },
@@ -3439,6 +3441,7 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		filterTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		tableTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		taskCard: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
+	excalidrawTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		kanbanCard: [...DEFAULT_CONTEXTUAL_MENU_KANBAN_ACTIONS],
 		calendarTimedItem: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		calendarAllDayScheduledItem: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
