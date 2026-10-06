@@ -13,6 +13,54 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '3.12.0',
+		date: '2026-10-06',
+		title: 'Operon 3.12.0 — Tasks Meet Excalidraw',
+		showOnUpdate: true,
+		bannerUrl: 'operon-3-12-0-excalidraw-integration.png',
+		body: `
+Bring your tasks into Excalidraw alongside sketches, handwritten notes, and connected ideas. Create and edit real Operon tasks without leaving your drawing.
+
+### New
+
+- **Excalidraw task cards** bring editable task fields, images, and automatic card sizing into your drawings while keeping tasks in their Markdown sources.
+- **Task Pool and Property Value Pool** let you add existing tasks and drag property values onto cards, sharing your Canvas favorites and shortcuts.
+- **Drawing and card shortcuts** give you quick access to Task Creator, pools, timers, pinning, Task Editor, and task sources.
+- **Create tasks inside drawings**, or turn a drawing into a file task using Operon’s existing creation and parent rules.
+- **Convert selected drawing text into a task.** Task Creator uses the first line as the description and the remaining lines as notes, with parent and inheritance settings visible before creation.
+- **Create a task from an arrow’s free end.** The starting task is preselected as parent, and the new card connects to the existing arrow.
+- **Edit parent–child and blocking relationships** from the center of a selected arrow. Relationship indicators remain visible when the arrow is not selected, including active and resolved blocker colors.
+
+### Improved
+
+- **Separate default card widths** for embedded cards, Canvas, and Excalidraw. New Excalidraw cards default to 375 px; existing drawing cards keep their sizes.
+- **Canvas text conversion** is now available from a button below the selected card.
+- **Property Pool status changes** follow file-task pipeline folder rules, including Undo and Redo.
+
+### Fixed
+
+- Table settings saves are no longer unnecessarily blocked after a rejected settings write, and save failures no longer produce duplicate notifications.
+- Property Pool edits work correctly for file tasks outside their configured pipeline folders.
+- Task Pool results refresh after task changes.
+- Failed-write recovery no longer replaces newer saved content with an older backup.
+- Settings respond more smoothly while preserving control alignment and multiline editor layouts.
+
+### New Docs
+
+- [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]
+- [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]]
+
+### Updated Docs
+
+- [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]]
+- [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
+- [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
+- [[DOCS-023 Create tasks from selected text|Create tasks from selected text]]
+- [[DOCS-041 Task chips display and behavior|Task chips display and behavior]]
+- And 12 more updated docs.
+`.trim(),
+	},
+	{
 		version: '3.11.0',
 		date: '2026-10-01',
 		title: 'Operon 3.11.0 — Settings, Reorganized',
