@@ -42,7 +42,7 @@ test('Windows CI runs one platform validator instead of the broad Plugin suite',
 	const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 	assert.match(
 		workflow,
-		/- name: Run canonical Windows Plugin validation\s+run: npm run validate:windows:plugin/u,
+		/- name: Run canonical Windows Plugin validation\s+if: needs\.surface\.outputs\.docs_only != 'true'\s+run: npm run validate:windows:plugin/u,
 	);
 	assert.doesNotMatch(
 		workflow,
