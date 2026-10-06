@@ -1,3 +1,4 @@
+import type { TaskMarkdownSource } from './task-markdown-source';
 /**
  * Direct task writer for Operon.
  * Writes field values directly to a task's source file (inline or YAML).
@@ -54,6 +55,8 @@ export interface TaskWriteOptions {
 
 export interface TaskWriterHooks {
 	onBeforeWriteFile?: (filePath: string) => void;
+    /** Optional native file transaction; the per-file writer queue already owns this operation. */
+    withMarkdownSource?<T>(file: TFile, operation: (source?: TaskMarkdownSource) => Promise<T>): Promise<T>;
 	validateWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
 	validatePluginWritePath?: (filePath: string, allowAbsent: boolean) => Promise<boolean>;
     onDuplicateConflict?: (operonId: string) => void;
@@ -559,6 +562,85 @@ export class TaskWriter {
         this.hooks = hooks;
     }
 
+    private markdownSources = new Map<TFile, TaskMarkdownSource>();
+    private markdownSourceCompletions = new Map<TFile, Promise<void>>();
+
+    /** Wait before entering the compound writer gate, so a creator can finish its
+     * existing queued parent writes. Never wait for a foreign binding while locked. */
+    async waitForMarkdownSources(paths: readonly string[], ownedSources: readonly TaskMarkdownSource[] = []): Promise<void> {
+        const wanted = new Set(paths);
+        for (;;) {
+            const pending = [...this.markdownSourceCompletions].filter(([file]) => wanted.has(file.path) && !ownedSources.some(source => source.file === file && this.isMarkdownSourceOwner(source))).map(([, done]) => done);
+            if (!pending.length) return;
+            await Promise.all(pending);
+        }
+    }
+
+    async withMarkdownSource<T>(source: TaskMarkdownSource, operation: () => Promise<T>): Promise<T> {
+        return this.withMarkdownSources([source], operation);
+    }
+
+    hasMarkdownSource(file: TFile): boolean { return this.markdownSources.has(file); }
+
+    isMarkdownSourceOwner(source: TaskMarkdownSource): boolean { return this.markdownSources.get(source.file) === source; }
+
+    /** Callers coordinate compound writes under their existing mutation permit. Drain
+     * every writer queue before taking any native drawing synchronization lease. */
+    async withMarkdownSources<T>(sources: readonly TaskMarkdownSource[], operation: () => Promise<T>): Promise<T> {
+        for (const source of sources) await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(source.file.path), async () => {});
+        if (sources.some(source => this.markdownSources.has(source.file))) throw new Error('A drawing task operation is already pending');
+        const releases = new Map<TFile, () => void>();
+        for (const source of sources) {
+            this.markdownSources.set(source.file, source);
+            this.markdownSourceCompletions.set(source.file, new Promise<void>(resolve => releases.set(source.file, resolve)));
+        }
+        try { return await operation(); }
+        finally {
+            for (const source of sources) {
+                await this.fileWriteQueue.enqueue(this.getFileWriteQueueKey(source.file.path), async () => {});
+                this.markdownSources.delete(source.file);
+                this.markdownSourceCompletions.delete(source.file);
+                releases.get(source.file)?.();
+            }
+        }
+    }
+
+    readTaskMarkdownSource(file: TFile): Promise<string> { return this.readMarkdown(file); }
+
+    private readMarkdown(file: TFile): Promise<string> {
+        return this.markdownSources.get(file)?.read() ?? this.app.vault.read(file);
+    }
+
+    private async modifyMarkdown(file: TFile, expected: string, next: string): Promise<void> {
+        const source = this.markdownSources.get(file);
+        if (source) await source.write(expected, next);
+        else await this.app.vault.modify(file, next);
+    }
+
+    private async processMarkdown(file: TFile, transform: (content: string) => string): Promise<string> {
+        const source = this.markdownSources.get(file);
+        if (!source) return this.app.vault.process(file, transform);
+        const expected = await source.read();
+        const next = transform(expected);
+        return next === expected ? expected : source.write(expected, next);
+    }
+
+    private async processMarkdownFrontmatter(file: TFile, transform: (frontmatter: Record<string, unknown>) => void): Promise<void> {
+        if (!this.markdownSources.has(file)) return this.app.fileManager.processFrontMatter(file, transform);
+        await this.processMarkdown(file, content => {
+            const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+            if (!match) throw new Error('Drawing frontmatter missing');
+            const parsed: unknown = parseYaml(match[1]);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Drawing frontmatter invalid');
+            const frontmatter = parsed as Record<string, unknown>;
+            const before = JSON.stringify(frontmatter);
+            transform(frontmatter);
+            if (before === JSON.stringify(frontmatter)) return content;
+            const newline = content.includes('\r\n') ? '\r\n' : '\n';
+            return '---' + newline + stringifyYaml(frontmatter).trimEnd().replace(/\r?\n/g, newline) + newline + '---' + newline + content.slice(match[0].length);
+        });
+    }
+
     async runExclusiveTaskMutation<T>(
         operation: (permit: TaskWriterExclusiveMutationPermit) => Promise<T>,
     ): Promise<T> {
@@ -592,14 +674,27 @@ export class TaskWriter {
         operation: () => Promise<T>,
         permit?: TaskWriterExclusiveMutationPermit | TaskWriterSharedMutationPermit,
     ): Promise<T> {
+        const coordinated = async (): Promise<T> => {
+            if (!this.hooks.withMarkdownSource) return operation();
+            const file = this.app.vault.getAbstractFileByPath(key.slice('task-file:'.length));
+            if (!(file instanceof TFile) || this.markdownSources.has(file)) return operation();
+            return this.hooks.withMarkdownSource(file, async source => {
+                if (!source) return operation();
+                // Do not drain the queue we are currently running in. Compound callers
+                // retain their existing binding; ordinary writes borrow this native lease.
+                this.markdownSources.set(file, source);
+                try { return await operation(); }
+                finally { this.markdownSources.delete(file); }
+            });
+        };
         if (
             permit?.token === this.activeExclusiveMutationToken
             || (permit && this.activeSharedMutationTokens.has(permit.token))
         ) {
-            return await this.fileWriteQueue.enqueue(key, operation);
+            return await this.fileWriteQueue.enqueue(key, coordinated);
         }
         return await this.fileMutationGate.runShared(async () => (
-            await this.fileWriteQueue.enqueue(key, operation)
+            await this.fileWriteQueue.enqueue(key, coordinated)
         ));
     }
 
@@ -752,7 +847,14 @@ export class TaskWriter {
                     return { outcome: 'missing', filePath };
                 }
                 try {
-                    const committedContent = await this.app.vault.process(file, currentContent => {
+                    const source = this.markdownSources.get(file);
+                    const committedContent = source
+                        ? await source.write(expectedContent, nextContent, () => {
+                            if (guard && !guard()) return false;
+                            this.hooks.onBeforeWriteFile?.(file.path);
+                            return true;
+                        })
+                        : await this.app.vault.process(file, currentContent => {
                         if (currentContent !== expectedContent || (guard && !guard())) {
                             throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
                         }
@@ -892,7 +994,9 @@ export class TaskWriter {
                 return { outcome: 'conflict', filePath, previousContent: validatedContent };
             }
             this.hooks.onBeforeWriteFile?.(filePath);
-            await this.app.vault.modify(validatedCurrent, mutation.nextContent);
+            const source = this.markdownSources.get(validatedCurrent);
+            if (source) await source.write(mutation.expectedContent, mutation.nextContent, guard);
+            else await this.app.vault.modify(validatedCurrent, mutation.nextContent);
             this.recordSourceRelationshipTargets(relationshipAuthority.relationships);
             return {
                 outcome: 'committed',
@@ -1285,7 +1389,7 @@ export class TaskWriter {
         return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             if (options.canCommit?.() === false || this.blockDuplicateConflict(task.operonId)) return false;
             let wrote = false;
-            await this.app.vault.process(file, content => {
+            await this.processMarkdown(file, content => {
                 const current = this.indexer.getTask(task.operonId);
                 if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
                     || this.blockDuplicateConflict(task.operonId)) return content;
@@ -1478,7 +1582,7 @@ export class TaskWriter {
         if (!(file instanceof TFile)) return false;
 
         return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
-            const content = await this.app.vault.read(file);
+            const content = await this.readMarkdown(file);
             if (task.primary.format === 'yaml') {
                 const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
                 if (!match) return false;
@@ -1571,7 +1675,7 @@ export class TaskWriter {
                 current: { present: false, value: undefined },
 			};
 			this.hooks.onBeforeWriteFile?.(file.path);
-            await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+            await this.processMarkdownFrontmatter(file, (frontmatter: Record<string, unknown>) => {
                 if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return;
                 const current = readRawYamlPropertyExpectation(frontmatter, propertyName);
                 if (!current) {
@@ -1648,7 +1752,7 @@ export class TaskWriter {
 
         const mode = options.mode ?? 'merge';
         const result = await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
-            const content = await this.app.vault.read(file);
+            const content = await this.readMarkdown(file);
             const inlinePatch = tryPatchInlineTaskLineContent(
                 content,
                 file.path,
@@ -1674,7 +1778,7 @@ export class TaskWriter {
 
             if (yamlPatch.content !== content) {
 				this.hooks.onBeforeWriteFile?.(file.path);
-				await this.app.vault.modify(file, yamlPatch.content);
+				await this.modifyMarkdown(file, content, yamlPatch.content);
             }
             return { wrote: true, fallbackReason: 'none' };
         });
@@ -1734,7 +1838,7 @@ export class TaskWriter {
 
         if (inlineEntries.length > 0 || yamlEntries.length > 0) {
             await this.enqueueFileMutation(this.getFileWriteQueueKey(filePath), async () => {
-                const original = await this.app.vault.read(file);
+                const original = await this.readMarkdown(file);
                 let content = original;
                 for (const entry of inlineEntries) {
                     const patch = tryPatchInlineTaskLineContent(
@@ -1770,7 +1874,7 @@ export class TaskWriter {
                 if (wroteOperonIds.length > 0 && content !== original) {
                     lineNumbersShifted = content.split('\n').length !== original.split('\n').length;
 					this.hooks.onBeforeWriteFile?.(file.path);
-					await this.app.vault.modify(file, content);
+					await this.modifyMarkdown(file, original, content);
                 }
             });
         }
@@ -1932,12 +2036,12 @@ export class TaskWriter {
             let yamlFastPath: YamlFastPathState = 'none';
             let fallbackReason = 'none';
             if (options.yamlAggregateFastPath && mode === 'merge') {
-				const content = await this.app.vault.read(file);
+				const content = await this.readMarkdown(file);
                 const patchResult = tryPatchAggregateYamlFrontmatter(content, operonId, fieldValues, this.keyMappings);
                 if (patchResult.ok) {
                     if (patchResult.content !== content) {
 						this.hooks.onBeforeWriteFile?.(file.path);
-						await this.app.vault.modify(file, patchResult.content);
+						await this.modifyMarkdown(file, content, patchResult.content);
                     }
                     return {
                         wrote: true,
@@ -1955,7 +2059,7 @@ export class TaskWriter {
             const nextFieldValues: Record<string, string> = { ...fieldValues };
             let wroteTask = false;
 			this.hooks.onBeforeWriteFile?.(file.path);
-			await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			await this.processMarkdownFrontmatter(file, (fm: Record<string, unknown>) => {
                 if (!this.frontmatterMatchesOperonId(fm, operonId)) {
                     return;
                 }
@@ -1981,11 +2085,11 @@ export class TaskWriter {
                 return { wrote: false, yamlFastPath, fallbackReason };
             }
             if (formattingPlan.blankYamlKeys.size > 0 || formattingPlan.removedYamlKeys.size > 0) {
-                const content = await this.app.vault.read(file);
+                const content = await this.readMarkdown(file);
                 const normalized = normalizeYamlFrontmatterFormatting(content, formattingPlan);
                 if (normalized !== content) {
 					this.hooks.onBeforeWriteFile?.(file.path);
-                    await this.app.vault.modify(file, normalized);
+                    await this.modifyMarkdown(file, content, normalized);
                 }
             }
             return { wrote: true, yamlFastPath, fallbackReason };
@@ -2004,7 +2108,7 @@ export class TaskWriter {
         permit?: TaskWriterSharedMutationPermit,
     ): Promise<boolean> {
         return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
-            const content = await this.app.vault.read(file);
+            const content = await this.readMarkdown(file);
             const patch = tryPatchInlineTaskLineContent(
                 content,
                 file.path,
@@ -2017,7 +2121,7 @@ export class TaskWriter {
 			if (!patch.ok) return false;
 			if (patch.content !== content) {
 				this.hooks.onBeforeWriteFile?.(file.path);
-				await this.app.vault.modify(file, patch.content);
+				await this.modifyMarkdown(file, content, patch.content);
 			}
             return true;
         }, permit);
@@ -2039,7 +2143,7 @@ export class TaskWriter {
                 removedYamlKeys: new Set<string>(),
 			};
 			this.hooks.onBeforeWriteFile?.(file.path);
-			await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+			await this.processMarkdownFrontmatter(file, (frontmatter: Record<string, unknown>) => {
                 if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return;
                 for (const [expectedKey, expectedFieldValue] of Object.entries(additionalExpectedValues)) {
                     const expectedResolution = this.readYamlFieldForConditionalWrite(frontmatter, expectedKey);
@@ -2076,11 +2180,11 @@ export class TaskWriter {
                 didUpdate
                 && (formattingPlan.blankYamlKeys.size > 0 || formattingPlan.removedYamlKeys.size > 0)
             ) {
-                const content = await this.app.vault.read(file);
+                const content = await this.readMarkdown(file);
                 const normalized = normalizeYamlFrontmatterFormatting(content, formattingPlan);
 				if (normalized !== content) {
 					this.hooks.onBeforeWriteFile?.(file.path);
-					await this.app.vault.modify(file, normalized);
+					await this.modifyMarkdown(file, content, normalized);
 				}
             }
             return outcome;
@@ -2099,7 +2203,7 @@ export class TaskWriter {
         return this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             let outcome: ConditionalTaskFieldWriteOutcome = 'missing';
 			this.hooks.onBeforeWriteFile?.(file.path);
-			await this.app.vault.process(file, content => {
+			await this.processMarkdown(file, content => {
                 const lines = content.split('\n');
                 const taskLineIndex = findTaskLineIndex(
                     lines,

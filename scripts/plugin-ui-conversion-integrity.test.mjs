@@ -11,7 +11,7 @@ const ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);
 const plugin=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='OperonPlugin');
 const names=['convertInlineTaskToFileTaskById','applyUiCanonicalConversion','showUiConversionResult','refreshUiConversionViews','applyUiTemplateConversion','maybeProcessFileTaskTemplaterContent','withInlineToFileTaskTransitionSafePass','isInlineToFileTaskTransitionContentValid','findInlineTaskLineIndex','normalizeMovedInlineTaskPlainCheckboxLines','getCommonLeadingWhitespace','getCommonPrefix','prependMovedPlainCheckboxLinesToFileTaskContent','getFrontmatterLineCount','buildInlineToFileTaskSourceReplacement','reindexAgentRuntimeTaskSourceWrite'];
 const methods=names.map(name=>{const m=plugin.members.find(n=>n.name?.getText(ast)===name);assert.ok(m,name);return m.getText(ast)}).join('\n');
-const imports=new Set(['splitFrontmatterDocument','parseFrontmatterDocument','sourceRevisionForTaskCreationV1','reindexCommittedRuntimeTaskSourceWriteV1','collectScopedPlainCheckboxMoveLines','removePlainCheckboxMoveLinesFromContent']);
+const imports=new Set(['withExcalidrawMarkdownSources','rebaseExcalidrawTaskSource','withRuntimeVaultMutationLockV1','splitFrontmatterDocument','parseFrontmatterDocument','sourceRevisionForTaskCreationV1','reindexCommittedRuntimeTaskSourceWriteV1','collectScopedPlainCheckboxMoveLines','removePlainCheckboxMoveLinesFromContent']);
 const selected=ast.statements.filter(ts.isImportDeclaration).flatMap(n=>{const b=n.importClause?.namedBindings;if(!b||!ts.isNamedImports(b))return [];const names=b.elements.filter(e=>imports.has(e.name.text)).map(e=>e.getText(ast));return names.length?[`import {${names.join(',')}} from ${n.moduleSpecifier.getText(ast)};`]:[]}).join('\n');
 const dir=await mkdtemp(path.join(tmpdir(),'operon-conversion-ui-'));
 try {
@@ -54,7 +54,7 @@ async function fixture({templater=false,disposition='keep-link',carry=true}={}){
  const reindex=async paths=>{for(const p of paths){const f=files.get(p);if(f)await indexer.forceReindexKnownFileAfterMutation(f,{notify:false},contents.get(p));else await indexer.forceRemoveFilePathAfterMutation(p,{notify:false})}};
  indexer.reindexFilesBatch=reindex;indexer.forceReindexFilePathAfterMutation=async p=>reindex([p]);
  await reindex(['Source.md']);
- const probe=new Probe();Object.assign(probe,{app,indexer,settings,writer:new TaskWriter(app,indexer,[]),
+ const probe=new Probe();Object.assign(probe,{app,indexer,settings,writer:new TaskWriter(app,indexer,[]),isExcalidrawTaskSource:()=>false,agentRuntimeVaultIdentityHash:'conversion-integrity',
  readAgentRuntimeMutationSource:async p=>({content:contents.get(p)??null}),
  parseInlineTaskLine:(l,n,p)=>parseTaskLine(l,n,p,[]),withDuplicateConflictAutoOpenSuppressed:async fn=>fn(),
  taskEditorDeleteOpenViewsMatch:(p,c)=>!buffers.has(p)||buffers.get(p)===c,

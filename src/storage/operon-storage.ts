@@ -495,9 +495,9 @@ export class OperonStorage {
 		);
 		this.pinnedCache.setPackagePersistence({
 			getPackage: () => this.dataPackageStore.getDataPackage().state.pinnedTasks,
-			updatePackage: async (mutator) => {
+			updatePackage: async (mutator, canCommit) => {
 				let nextPinnedTasksPackage = this.pinnedCache.toPackage();
-				await this.dataPackageStore.updateDataPackage(dataPackage => {
+				const mutate = (dataPackage: OperonDataPackageV1): OperonDataPackageV1 => {
 					nextPinnedTasksPackage = mutator(dataPackage.state.pinnedTasks);
 					return {
 						...dataPackage,
@@ -506,7 +506,9 @@ export class OperonStorage {
 							pinnedTasks: nextPinnedTasksPackage,
 						},
 					};
-				});
+				};
+    if (canCommit) await this.dataPackageStore.updateDataPackageCas(mutate, canCommit);
+    else await this.dataPackageStore.updateDataPackage(mutate);
 				return nextPinnedTasksPackage;
 			},
 			canPersist: () => this.dataPackageStore.canPersist(),
@@ -1093,6 +1095,13 @@ export class OperonStorage {
 					pinnedTasks,
 				},
 			};
+			// The new optional surface gets an in-memory default; opening the vault
+			// alone must not persist it. Explicit settings saves use the full matrix.
+			if (_options.forceRecoveredWrite === false && !Object.prototype.hasOwnProperty.call(currentPackage.ui.contextualMenu.contextualMenuSurfaceActionMatrix ?? {}, 'excalidrawTask')) {
+				const matrix = { ...this.settings.contextualMenuSurfaceActionMatrix };
+				delete matrix.excalidrawTask;
+				nextPackage.ui.contextualMenu = { ...nextPackage.ui.contextualMenu, contextualMenuSurfaceActionMatrix: matrix };
+			}
 			return this.tablePresetRecovery.health === 'repaired'
 				? overlayKnownDataPackageFieldsPreservingUnknownV1(currentPackage, nextPackage)
 				: nextPackage;

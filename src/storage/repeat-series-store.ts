@@ -401,7 +401,7 @@ export class RepeatSeriesStore {
 		return new Set(Object.keys(this.data.series));
 	}
 
-	async ensureSeries(input: EnsureRepeatSeriesInput): Promise<RepeatSeriesEntry> {
+	async ensureSeries(input: EnsureRepeatSeriesInput, canCommit?: () => boolean): Promise<RepeatSeriesEntry> {
 		return await this.mutate(async () => {
 			const resolvedId = input.seriesId?.trim() || generateRepeatSeriesId(this.getAllSeriesIds());
 			const existing = this.data.series[resolvedId];
@@ -417,12 +417,12 @@ export class RepeatSeriesStore {
 					inlineCompletionMode: normalizeInlineCompletionMode(existing.inlineCompletionMode),
 					updatedAt: input.now,
 				};
-				await this.commit(next);
+				await this.commit(next, canCommit);
 				return this.cloneEntry(next);
 			}
 
 			const created = this.buildCreatedEntry(input, resolvedId);
-			await this.commit(created);
+			await this.commit(created, canCommit);
 			return this.cloneEntry(created);
 		});
 	}
@@ -513,6 +513,7 @@ export class RepeatSeriesStore {
 		seriesId: string,
 		template: RepeatTemporalTemplate,
 		now: string,
+        canCommit?: () => boolean,
 	): Promise<void> {
 		await this.mutate(async () => {
 			const existing = this.data.series[seriesId];
@@ -521,7 +522,7 @@ export class RepeatSeriesStore {
 				...existing,
 				baseTemporalTemplate: cloneTemporalTemplate(template),
 				updatedAt: now,
-			});
+			}, canCommit);
 		});
 	}
 
@@ -551,6 +552,7 @@ export class RepeatSeriesStore {
 		seriesId: string,
 		mode: InlineRepeatCompletionMode,
 		now: string,
+  canCommit?: () => boolean,
 	): Promise<void> {
 		await this.mutate(async () => {
 			const existing = this.data.series[seriesId];
@@ -559,7 +561,7 @@ export class RepeatSeriesStore {
 				...existing,
 				inlineCompletionMode: normalizeInlineCompletionMode(mode),
 				updatedAt: now,
-			});
+			}, canCommit);
 		});
 	}
 
@@ -862,13 +864,14 @@ export class RepeatSeriesStore {
 		};
 	}
 
-	private async commit(entry: RepeatSeriesEntry): Promise<void> {
+	private async commit(entry: RepeatSeriesEntry, canCommit?: () => boolean): Promise<void> {
+  if (canCommit?.() === false) throw new Error('Write permission expired');
 		const previous = this.data.series[entry.seriesId]
 			? this.cloneEntry(this.data.series[entry.seriesId])
 			: null;
 		this.data.series[entry.seriesId] = this.cloneEntry(entry);
 		try {
-			await this.writeData();
+			await this.writeData(canCommit);
 		} catch (error) {
 			if (previous) this.data.series[entry.seriesId] = previous;
 			else delete this.data.series[entry.seriesId];
@@ -876,14 +879,14 @@ export class RepeatSeriesStore {
 		}
 	}
 
-	private async writeData(): Promise<void> {
+	private async writeData(canCommit?: () => boolean): Promise<void> {
 		this.revision += 1;
 		const snapshot = {
 			version: CURRENT_REPEAT_SERIES_VERSION,
 			series: this.data.series,
 		};
 		await this.writeQueue.enqueue(this.filePath, async () => {
-			await writeJsonSafely(this.app.vault.adapter, this.filePath, snapshot);
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, snapshot, { canCommit });
 		});
 	}
 

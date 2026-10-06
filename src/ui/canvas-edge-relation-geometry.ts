@@ -8,11 +8,7 @@ export function canvasRelationAnchor(node: CanvasTaskNode, side: string | undefi
   y: Number(y) + (side === 'top' ? 0 : side === 'bottom' ? Number(height) : Number(height) / 2) };
 }
 
-/** Slots are fractions of the full card-to-card route, independent of its label. */
-export function canvasRelationSlot(atSource: boolean, paired: boolean, index: number): number {
- if (!paired) return atSource ? .25 : .75;
- return atSource ? (index === 0 ? .35 : .2) : (index === 0 ? .65 : .8);
-}
+export { taskRelationSlot as canvasRelationSlot } from './task-edge-relation-marks';
 
 /** Include native arrowhead gaps when measuring the complete card-to-card route. */
 export function canvasRelationPoint(length: number, pointAt: (distance: number) => CanvasPoint, from: CanvasPoint, to: CanvasPoint, fraction: number): CanvasPoint {

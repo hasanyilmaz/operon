@@ -91,6 +91,7 @@ export interface TaskCreatorSubmitFieldSeed {
 }
 
 export interface TaskCreatorModalOptions {
+	getInlineParentPreview?: (draft: TaskCreatorDraft) => string | null;
 	settings: OperonSettings;
 	allTasks: IndexedTask[];
 	getAllTasks?: () => IndexedTask[];
@@ -501,6 +502,7 @@ export class TaskCreatorModal extends Modal {
 	private readonly submitMode: TaskCreatorSubmitMode;
 	private draft: TaskCreatorDraft;
 	private activeCreateType: TaskCreatorCreateType;
+ private inlineParentPreviewBase: TaskCreatorDraft | null = null;
 	private descriptionHostEl!: HTMLElement;
 	private noteHostEl: HTMLElement | null = null;
 	private descriptionCompactEditor: CompactMarkdownEditorSurface | null = null;
@@ -561,6 +563,7 @@ export class TaskCreatorModal extends Modal {
 			!!this.draft.fileTemplateId,
 		);
 		this.applyDefaultFileTemplateForActiveMode();
+  this.refreshInlineParentPreview();
 	}
 
 	onOpen(): void {
@@ -584,6 +587,7 @@ export class TaskCreatorModal extends Modal {
 		this.indexUpdatesUnsubscribe?.();
 		this.indexUpdatesUnsubscribe = this.options.subscribeIndexUpdates?.(() => {
 			this.refreshBlockedByDependencyControl();
+   if (this.options.getInlineParentPreview) { this.refreshInlineParentPreview(); this.renderFieldButtons(); this.applyThemeColor(); }
 		}) ?? null;
 		this.applyThemeColor();
 		this.allowDirectClose = false;
@@ -972,6 +976,7 @@ export class TaskCreatorModal extends Modal {
 	private setActiveCreateType(nextType: TaskCreatorCreateType): void {
 		if (this.activeCreateType === nextType) return;
 		this.activeCreateType = nextType;
+  if (this.options.getInlineParentPreview) { this.refreshInlineParentPreview(); this.renderFieldButtons(); this.applyThemeColor(); }
 		if (nextType === 'file') {
 			this.applyDefaultFileTemplateForActiveMode();
 		}
@@ -1504,6 +1509,7 @@ export class TaskCreatorModal extends Modal {
 	): void {
 		const normalizedPayload = this.normalizeTerminalDatePayload(payload);
 		if (!normalizedPayload) return;
+		this.removeInlineParentPreview(this.draft);
 		const next = applyTaskFieldPatchToState({
 			currentFields: this.draft.fieldValues,
 			currentTags: this.draft.tags,
@@ -1516,6 +1522,7 @@ export class TaskCreatorModal extends Modal {
 			this.recordExplicitFieldSelection(normalizedPayload);
 		}
 		this.reconcileParentInheritance();
+  this.refreshInlineParentPreview();
 		if (Object.prototype.hasOwnProperty.call(normalizedPayload, 'parentTask')) {
 			this.pruneDraftSubtasksForParent();
 		}
@@ -1538,6 +1545,33 @@ export class TaskCreatorModal extends Modal {
 		this.draft.explicitFieldKeys = Array.from(explicit);
 		this.draft.inheritedFieldKeys = Array.from(inherited);
 	}
+
+ /** Preview implicit inheritance without turning it into an explicit routing choice. */
+ private removeInlineParentPreview(draft: TaskCreatorDraft): void {
+  const base = this.inlineParentPreviewBase;
+  if (!base) return;
+  const explicit = new Set(draft.explicitFieldKeys);
+  for (const key of ['parentTask', ...draft.inheritedFieldKeys]) {
+   if (explicit.has(key)) continue;
+   if (Object.prototype.hasOwnProperty.call(base.fieldValues, key)) draft.fieldValues[key] = base.fieldValues[key];
+   else delete draft.fieldValues[key];
+  }
+  draft.inheritedFieldKeys = base.inheritedFieldKeys.filter(key => !explicit.has(key));
+  if (!explicit.has('tags')) { draft.tags = [...base.tags]; draft.inheritedTags = [...base.inheritedTags]; }
+  draft.taskIcon = draft.fieldValues.taskIcon ?? base.taskIcon;
+  draft.taskColor = draft.fieldValues.taskColor ?? base.taskColor;
+  if (draft === this.draft) this.inlineParentPreviewBase = null;
+ }
+ private refreshInlineParentPreview(): void {
+  this.removeInlineParentPreview(this.draft);
+  if (this.activeCreateType !== 'inline' || !this.options.getInlineParentPreview
+   || this.draft.fieldValues.parentTask?.trim() || this.draft.explicitFieldKeys.includes('parentTask')) return;
+  const id = this.options.getInlineParentPreview(this.draft);
+  const parent = id && (this.options.getAllTasks?.() ?? this.options.allTasks).find(task => task.operonId === id);
+  if (!parent) return;
+  this.inlineParentPreviewBase = cloneTaskCreatorDraft(this.draft);
+  applyTaskCreatorBackgroundParentSeedToDraft(this.draft, parent.operonId, parent.fieldValues, parent.tags, this.options.settings);
+ }
 
 	private reconcileParentInheritance(): void {
 		const parentTaskId = (this.draft.fieldValues['parentTask'] ?? '').trim();
@@ -1814,7 +1848,9 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private getSnapshotForCreateType(createType: TaskCreatorCreateType): TaskCreatorDraft {
-		return buildTaskCreatorSnapshotForCreateType(this.draft, createType);
+		const snapshot = buildTaskCreatorSnapshotForCreateType(this.draft, createType);
+  this.removeInlineParentPreview(snapshot);
+  return snapshot;
 	}
 
 	private ensureDescription(): boolean {

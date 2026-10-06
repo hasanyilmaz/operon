@@ -2,6 +2,7 @@ import { isSettingsScope } from '../settings/settings-scope';
 import { App, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
+import { notifyTablePresetErrorOnce } from './table-preset-error-notice';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import {
 	cloneTablePreset,
@@ -1044,7 +1045,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 			return true;
 		} catch (error) {
 			console.error('Operon: table preset action failed', error);
-			new Notice(t('table', 'presetActionFailed'));
+			notifyTablePresetErrorOnce(error, t('table', 'presetActionFailed'));
 			return false;
 		}
 	}

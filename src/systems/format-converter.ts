@@ -191,7 +191,7 @@ export class FormatConverter {
 	 * Ensure a folder path exists in the vault, creating all intermediate folders.
 	 * e.g. "Operon/Synced Tasks" creates "Operon" then "Operon/Synced Tasks".
 	 */
-	async ensureFolderExists(folderPath: string): Promise<void> {
+	async ensureFolderExists(folderPath: string, canCommit?: () => boolean): Promise<void> {
 		const existing = this.app.vault.getAbstractFileByPath(folderPath);
 		if (this.isFolderNode(existing)) return; // Already exists
 
@@ -205,6 +205,7 @@ export class FormatConverter {
 			if (node) {
 				throw new Error(`Cannot create folder "${current}" because a file exists at this path`);
 			}
+			if (canCommit?.() === false) throw new Error('Folder creation is no longer allowed');
 			try {
 				await this.app.vault.createFolder(current);
 			} catch (error) {

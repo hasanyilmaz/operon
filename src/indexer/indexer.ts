@@ -371,7 +371,7 @@ export class OperonIndexer {
 	onIndexUpdated: (() => void) | null = null;
 	private readonly indexUpdatedListeners = new Set<() => void>();
 	onIndexV8Persisted: (() => void) | null = null;
-	onTasksRemoved: ((removedTasks: IndexedTask[]) => void) | null = null;
+	onTasksRemoved: ((removedTasks: IndexedTask[], evidence?: { kind: 'source-scan' | 'file-delete'; filePaths?: readonly string[] }) => void) | null = null;
 	onTasksChanged: ((changes: IndexedTaskDelta[]) => void) | null = null;
 	private readonly reconciliationListeners = new Set<(event: IndexReconciliationEvent) => void>();
 
@@ -970,7 +970,7 @@ export class OperonIndexer {
 		this.emitIncrementalReconciliation(affectedOperonIds);
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && removedTasks.length > 0) {
-			this.onTasksRemoved?.(removedTasks);
+			this.onTasksRemoved?.(removedTasks, { kind: 'source-scan' });
 		}
 
 		// Notify listeners that the index has changed (e.g. refresh views)
@@ -1264,6 +1264,7 @@ export class OperonIndexer {
 		const pipelines = this.storage.getSettings().pipelines;
 		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(pipelines);
 		const removedTasks: IndexedTask[] = [];
+		const scannedPaths = new Set<string>();
 		const beforeById = new Map<string, IndexedTask | undefined>();
 		const scannedIds = new Set<string>();
 		let mutated = false;
@@ -1304,6 +1305,7 @@ export class OperonIndexer {
 			}
 			removedTasks.push(...this.removeTasksByFile(fp));
 			this.commitFileScanState(staged);
+			scannedPaths.add(fp);
 			for (const operonId of fileScannedIds) {
 				scannedIds.add(operonId);
 			}
@@ -1330,7 +1332,7 @@ export class OperonIndexer {
 		this.emitIncrementalReconciliation(affectedOperonIds);
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && actuallyRemovedTasks.length > 0) {
-			this.onTasksRemoved?.(actuallyRemovedTasks);
+			this.onTasksRemoved?.(actuallyRemovedTasks, { kind: 'source-scan', filePaths: [...scannedPaths] });
 		}
 		if (options.notify !== false) {
 			this.notifyIndexUpdated();
@@ -1369,7 +1371,7 @@ export class OperonIndexer {
 		this.emitIncrementalReconciliation(beforeById.keys());
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && removedTasks.length > 0) {
-			this.onTasksRemoved?.(removedTasks);
+			this.onTasksRemoved?.(removedTasks, { kind: 'file-delete' });
 		}
 	}
 
@@ -2654,6 +2656,10 @@ export class OperonIndexer {
 		return this.duplicateConflicts.has(operonId);
 	}
 
+	isTaskSourceTransitionActive(operonId: string): boolean {
+		return this.expectedDuplicateTransitionInstances.has(operonId);
+	}
+
 	beginExpectedDuplicateOperonIdTransition(operonId: string, locations: TaskLocation[]): () => void {
 		const normalizedOperonId = operonId.trim();
 		if (!normalizedOperonId || locations.length === 0) return () => {};
@@ -2683,14 +2689,14 @@ export class OperonIndexer {
 			if (activeCounts.size === 0) {
 				this.expectedDuplicateTransitionInstances.delete(normalizedOperonId);
 			}
-			this.reconcileExpectedDuplicateTransition(normalizedOperonId);
+			this.reconcileExpectedDuplicateTransition(normalizedOperonId, activeCounts.size === 0);
 		};
 	}
 
-	private reconcileExpectedDuplicateTransition(operonId: string): void {
+	private reconcileExpectedDuplicateTransition(operonId: string, transitionEnded = false): void {
 		const hadConflict = this.duplicateConflicts.has(operonId);
 		this.reconcileOperonId(operonId);
-		if (hadConflict === this.duplicateConflicts.has(operonId)) return;
+		if (hadConflict === this.duplicateConflicts.has(operonId) && !transitionEnded) return;
 		this.generation += 1;
 		this.emitIncrementalReconciliation([operonId]);
 	}

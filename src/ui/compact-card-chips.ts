@@ -53,7 +53,7 @@ export interface CompactCardChipRowCallbacks {
 	onAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (operonId: string) => boolean;
 	isTaskTracking?: (operonId: string) => boolean;
-	toggleTimer?: (operonId: string) => void | Promise<void>;
+	toggleTimer?: (operonId: string, canCommit?: () => boolean) => void | Promise<void>;
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getRepeatSkipDates?: (repeatSeriesId: string) => string[];
 	getRepeatSeriesInlineCompletionMode?: (repeatSeriesId: string) => InlineRepeatCompletionMode;
@@ -78,6 +78,7 @@ export interface CompactCardChipRowOptions {
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	owner?: Node | null;
 	readOnly?: boolean;
+ actionsReadOnly?: boolean;
  allowReadOnlyNavigation?: boolean;
 	mobileLayout?: boolean;
 	noteEditable?: boolean;
@@ -219,7 +220,7 @@ export function buildCompactCardChipRow(
 			callbacks,
 			actionStrip,
 			taskColor,
-			readOnly,
+			options.actionsReadOnly ?? readOnly,
 			options.noteEditable === true,
  options,
 		));

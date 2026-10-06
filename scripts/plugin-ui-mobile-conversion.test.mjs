@@ -12,13 +12,13 @@ export async function runMobileConversionTests(rootDir) {
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
  assert.ok(plugin);
- const names = ['isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
+ const names = ['isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'planSourceTransitionAggregatePatches', 'getFrontmatterLineCount', 'isExcalidrawTaskSource', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
  const methods = names.map(name => {
   const method = plugin.members.find(member => member.name?.getText(ast) === name);
   assert.ok(method, name);
   return method.getText(ast);
  }).join('\n');
- const importNames = new Set(['boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
+ const importNames = new Set(['rebaseExcalidrawTaskSource', 'withExcalidrawMarkdownSources', 'insertExcalidrawInlineTask', 'splitFrontmatterDocument', 'iterateMarkdownLinesOutsideFences', 'boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
  const selectedImports = ast.statements.filter(ts.isImportDeclaration).flatMap(node => {
   const bindings = node.importClause?.namedBindings;
   if (!bindings || !ts.isNamedImports(bindings)) return [];
@@ -52,10 +52,10 @@ let writes=0,confirmed=true,confirmCalls=0,confirmMessage='',changeOnConfirm=fal
 let selectedTemplate={id:'builtin',kind:'builtin-pipeline-minimal'};
 function put(p,c){const f=new TFile(p);f.stat={mtime:0,ctime:0,size:c.length};files.set(p,f);contents.set(p,c);}
 async function reindex(){tasks.clear();for(const [p,f] of files){const scan=await scanFileWithMappings(app,f,[],contents.get(p));if(scan.yamlTask)tasks.set(scan.yamlTask.operonId,{...scan.yamlTask,checkbox:'open',primary:{format:'yaml',filePath:p,lineNumber:0}});for(const [n,line] of contents.get(p).split('\\n').entries()){const task=parseTaskLine(line,n,p,[]);if(task)tasks.set(task.operonId,{...task,fieldValues:Object.fromEntries(task.fields.map(f=>[f.key,f.value])),primary:{format:'inline',filePath:p,lineNumber:n}});}}}
-const app={vault:{adapter:{},getAbstractFileByPath:p=>p===''?root:files.get(p)??null,read:async f=>contents.get(f.path),
+const app={metadataCache:{getFileCache:()=>({})},workspace:{getLeavesOfType:()=>[]},vault:{adapter:{},getAbstractFileByPath:p=>p===''?root:files.get(p)??null,read:async f=>contents.get(f.path),
  create:async(p,c)=>{put(p,c);writes++;return files.get(p);},modify:async(f,c)=>{if(failModify)throw Error('Modify failure');contents.set(f.path,c);writes++;},
 },fileManager:{trashFile:async f=>{if(failTrash)throw Error('Trash failure');files.delete(f.path);contents.delete(f.path);writes++;}}};
-const indexer={getTask:id=>tasks.get(id),getTaskSnapshot:id=>tasks.get(id),hasDuplicateOperonIdConflict:()=>false,isPathIndexable:()=>true,reindexFilesBatch:reindex,forceReindexFilePathAfterMutation:reindex,beginExpectedDuplicateOperonIdTransition:()=>()=>{}};
+const indexer={getAllTasks:()=>[...tasks.values()],getTask:id=>tasks.get(id),getTaskSnapshot:id=>tasks.get(id),hasDuplicateOperonIdConflict:()=>false,isPathIndexable:()=>true,reindexFilesBatch:reindex,forceReindexFilePathAfterMutation:reindex,beginExpectedDuplicateOperonIdTransition:()=>()=>{}};
 const probe=new Probe();
 Object.assign(probe,{app,indexer,settings:{...DEFAULT_SETTINGS,keyMappings:[]},isAgentRuntimeMutationPathContained:async()=>{desktopCalls++;return false;},persistTaskEditorDeleteOpenSources:async()=>true,
  promptConfirmAction:async(title,message)=>{confirmCalls++;confirmMessage=message;if(changeOnConfirm)contents.set('Source.md',yaml+'Changed');return confirmed;},

@@ -8,15 +8,21 @@ export function anchorCanvasTaskAtDrop(node: CanvasTaskNode, point: { x: number;
 }
 
 /** Measure intrinsic content, never the empty space left inside the previous node size. */
-export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, minimum: number, onMeasured?: () => void): boolean {
+export function measureTaskCardHeight(root: HTMLElement, container: HTMLElement, minimum: number): number | null {
  const card = root.querySelector<HTMLElement>('.operon-task-card');
- const container = node.nodeEl.querySelector<HTMLElement>('.canvas-node-container');
- if (!card || !container || !root.isConnected || root.dataset.taskCardState !== 'ready'
-  || card.offsetWidth <= 0 || card.offsetHeight <= 0 || !Number.isFinite(minimum) || minimum <= 0) return false;
+ if (!card || !root.isConnected || root.dataset.taskCardState !== 'ready'
+  || card.offsetWidth <= 0 || card.offsetHeight <= 0 || !Number.isFinite(minimum) || minimum <= 0) return null;
  const style = getOwnerWindow(container).getComputedStyle(container);
  const frame = ['borderTopWidth', 'borderBottomWidth', 'paddingTop', 'paddingBottom'] as const;
  const inset = frame.reduce((total, key) => total + (Number.parseFloat(style[key]) || 0), 0);
  const height = Math.max(minimum, Math.ceil(Math.max(card.offsetHeight, card.scrollHeight) + inset) + 1);
+ return Number.isFinite(height) ? height : null;
+}
+
+export function fitCanvasTaskHeight(node: CanvasTaskNode, root: HTMLElement, minimum: number, onMeasured?: () => void): boolean {
+ const container = node.nodeEl.querySelector<HTMLElement>('.canvas-node-container');
+ const height = container ? measureTaskCardHeight(root, container, minimum) : null;
+ if (height === null) return false;
  const data = node.getData();
  if (!Number.isFinite(height)) return false;
  onMeasured?.();

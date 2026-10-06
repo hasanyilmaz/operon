@@ -1188,7 +1188,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				for (const event of vaultEvents) this.app.vault.offref(event);
 			};
 		}, this.propertyPoolFavoriteLabels ??= new Map(), () => this.updateNativeSettingsDefinitions());
-		return items.map(group => ({ ...group, items: group.items?.map(item => {
+		return items.map(group => ({ ...group,
+			extraButtons: group.heading ? [this.buildDeclarativeSettingsDocsButton(group.heading,
+				'DOCS-145 Canvas and Excalidraw Property Value Pool',
+				'operon-native-settings-declarative-docs-action--inline-heading')] : group.extraButtons,
+			items: group.items?.map(item => {
 			if (!('render' in item) || !item.render) return item;
 			const render = item.render;
 			return { ...item, render: (setting: Setting, group: SettingGroup) => {
@@ -1670,12 +1674,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 			if (isTaskCardSetting(key)) this.configureTaskCardSetting(new Setting(container), key);
 		};
 		const groups = this.buildTaskSettingsGroups([
-			['taskCardGeneralSettings', ['taskCardWidth', 'taskCardAlign', 'taskCardWrap', 'taskCardColorSource'], render],
+			['taskCardGeneralSettings', ['taskCardWidth', 'canvasTaskCardWidth', 'excalidrawTaskCardWidth', 'taskCardAlign', 'taskCardWrap', 'taskCardColorSource'], render],
 			['taskCardImagesSection', ['taskCardImageSource', 'taskCardImageRatio'], render, 'DOCS-138 Task images and galleries'],
 			['taskCardItemOrder', [], render],
-			['canvasTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render],
-			['propertyPoolTitle', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas Property Value Pool'],
-		], entries, t('settings', 'taskCards'), ['DOCS-141 Canvas Task Cards', 'DOCS-142 Embedded Task Cards'], undefined, key => {
+			['visualTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render, 'DOCS-148 Canvas and Excalidraw Task Pool'],
+			['visualPropertyPool', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas and Excalidraw Property Value Pool'],
+		], entries, t('settings', 'taskCards'), ['DOCS-141 Canvas Task Cards', 'DOCS-147 Excalidraw Task Cards', 'DOCS-142 Embedded Task Cards'], undefined, key => {
 			if (key === 'taskCardWrap') return this.settings.taskCardAlign !== 'center';
 			if (key === 'taskCardImageRatio') return this.settings.taskCardImageSource !== 'none';
 			return true;
@@ -2517,7 +2521,7 @@ export class OperonSettingsTab extends PluginSettingTab {
     } })),
    ] },
    { type: 'group', heading: t('settings', 'contextualMenuMatrix'), cls: 'operon-context-settings-group', items: [{
-    name: t('settings', 'contextualMenuMatrix'), desc: t('settings', 'contextualMenuMatrixDesc'), aliases: ['Contextual Menu Matrix', 'context menu matrix'],
+    name: t('settings', 'contextualMenuMatrix'), desc: t('settings', 'contextualMenuMatrixDesc'), aliases: ['Contextual Menu Matrix', 'context menu matrix', 'Excalidraw'],
     render: setting => {
      setting.settingEl.empty(); setting.settingEl.addClass('operon-context-matrix-target');
      setting.settingEl.createDiv({ cls: 'setting-item-description', text: t('settings', 'contextualMenuMatrixDesc') });
@@ -3465,9 +3469,9 @@ export class OperonSettingsTab extends PluginSettingTab {
  private taskCardSaveQueue: Promise<void> = Promise.resolve();
  private saveTaskCardSetting(key: keyof TaskCardSettings, value: unknown): Promise<void> {
   const run = this.taskCardSaveQueue.then(async () => {
-   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows' || key === 'canvasPropertyPoolWidth' || key === 'canvasPropertyPoolRows') ? Number(value) : value };
+   const raw = { ...this.settings, [key]: (key === 'taskCardWidth' || key === 'canvasTaskCardWidth' || key === 'excalidrawTaskCardWidth' || key === 'canvasTaskPoolWidth' || key === 'canvasTaskPoolRows' || key === 'canvasPropertyPoolWidth' || key === 'canvasPropertyPoolRows') ? Number(value) : value };
    if (raw.taskCardAlign === 'center' && raw.taskCardWrap === true) throw new Error(t('errors', 'taskCard_centerWrap'));
-   if (key === 'taskCardWidth' && !TASK_CARD_WIDTHS.includes(raw.taskCardWidth)) throw new Error(t('errors', 'taskCard_width'));
+   if ((key === 'taskCardWidth' || key === 'canvasTaskCardWidth' || key === 'excalidrawTaskCardWidth') && !TASK_CARD_WIDTHS.includes(Number(raw[key]))) throw new Error(t('errors', 'taskCard_width'));
    const normalized = normalizeTaskCardSettings(raw);
    if (JSON.stringify(this.settings[key]) === JSON.stringify(normalized[key])) return;
    await this.storage.updateSettings({ [key]: normalized[key] });
@@ -3483,7 +3487,7 @@ export class OperonSettingsTab extends PluginSettingTab {
   return run;
  }
  private taskCardDropdownOptions(key: keyof TaskCardSettings): Record<string, string> {
-  if (key === 'taskCardWidth') return Object.fromEntries(TASK_CARD_WIDTHS.map(value => [String(value), `${value} px`]));
+  if (key === 'taskCardWidth' || key === 'canvasTaskCardWidth' || key === 'excalidrawTaskCardWidth') return Object.fromEntries(TASK_CARD_WIDTHS.map(value => [String(value), `${value} px`]));
   if (key === 'canvasTaskPoolWidth' || key === 'canvasPropertyPoolWidth') return Object.fromEntries(CANVAS_POOL_WIDTHS.map(value => [String(value), `${value} px`]));
   if (key === 'canvasTaskPoolRows' || key === 'canvasPropertyPoolRows') return Object.fromEntries(CANVAS_POOL_ROWS.map(value => [String(value), String(value)]));
   const choices: Partial<Record<keyof TaskCardSettings, Record<string, string>>> = {

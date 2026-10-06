@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from '../../src/types/settings';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
@@ -48,11 +49,12 @@ export function sourcePackage(version: SourceVersion = '3.8.0'): OperonDataPacka
 export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, expected: OperonDataPackageV1): void {
 	const slices = (value: OperonDataPackageV1): Record<string, unknown> => ({
 		schemaVersion: value.schemaVersion,
-		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion', 'canvasPropertyPoolWidth', 'canvasPropertyPoolRows']),
+		settings: withoutNewFields(value.settings, ['releaseNotesLastShownVersion', 'canvasPropertyPoolWidth', 'canvasPropertyPoolRows', 'canvasTaskCardWidth', 'excalidrawTaskCardWidth']),
 		taxonomy: value.taxonomy,
 		views: value.views,
 		ui: {
 			...value.ui,
+			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask']) },
 			taskCreationProfile: withoutNewFields(value.ui.taskCreationProfile, ['inheritPropertiesOnParentLink']),
 			taskUiPreferences: withoutNewFields(value.ui.taskUiPreferences, ['assigneeImageProperty']),
 		},
@@ -64,8 +66,15 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		const before = expected.settings[key], after = actual.settings[key];
 		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `User setting changed: ${key}`);
 	}
+	for (const [key, fallback] of [['canvasTaskCardWidth', expected.settings.taskCardWidth ?? 350], ['excalidrawTaskCardWidth', 375]] as const) {
+		const before = expected.settings[key], after = actual.settings[key];
+		if (before !== undefined || after !== undefined) assert.equal(after, before ?? fallback, `Card width migration changed: ${key}`);
+	}
 	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
 		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');
+	const expectedExcalidraw = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
+	const actualExcalidraw = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
+	if (expectedExcalidraw !== undefined || actualExcalidraw !== undefined) assert.deepEqual(actualExcalidraw, expectedExcalidraw ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask, 'Excalidraw choices must be preserved or use standard defaults');
 	const expectedSlices = slices(expected);
 	for (const [key, value] of Object.entries(slices(actual))) {
 		assert.equal(sha256(JSON.stringify(value)), sha256(JSON.stringify(expectedSlices[key])), `User settings changed: ${key}`);

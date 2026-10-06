@@ -1510,7 +1510,12 @@ export class OperonDataPackageStore {
 			}
 			return acknowledgementFailed;
 		}
-		if (observed !== expected || !accepted) {
+		if (typeof expected === 'string' && !accepted) {
+			// The conditional transform never offered a write. Adopt a verified
+			// source through reload before allowing another save; never replay this one.
+			this.canonicalSource = undefined;
+			this.suspendWritesUntilReload('Canonical settings could not be verified before save');
+		} else if (observed !== expected || !accepted) {
 			this.canonicalSource = undefined;
 			this.suspendWrites('Canonical settings changed or their commit state could not be verified');
 		} else {

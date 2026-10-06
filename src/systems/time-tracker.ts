@@ -264,12 +264,14 @@ export class TimeTracker {
 		source: TrackerSource = 'command',
 		startOverride?: string | null,
 		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		return this.enqueueTransition(() => this.startInternal(
 			operonId,
 			source,
 			startOverride,
 			statusChangeGuardOverride,
+			canCommit,
 		));
 	}
 
@@ -338,7 +340,9 @@ export class TimeTracker {
 		source: TrackerSource = 'command',
 		startOverride?: string | null,
 		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
+		if (canCommit && !canCommit()) return false;
 		this.syncActiveFromStore();
 		if (
 			typeof (this.indexer as OperonIndexer & { hasDuplicateOperonIdConflict?: (id: string) => boolean }).hasDuplicateOperonIdConflict === 'function'
@@ -356,12 +360,12 @@ export class TimeTracker {
 			const statusChangeAllowed = statusChangeGuardOverride
 				? await this.guardTaskStartStatusChanges(task, statusChangeGuardOverride)
 				: await this.guardTaskStartStatusChanges(task);
-			if (!statusChangeAllowed) {
+			if (!statusChangeAllowed || (canCommit && !canCommit())) {
 				return false;
 			}
 
 			if (this.activeTracker && this.activeTracker.operonId && this.activeTracker.operonId !== operonId) {
-				const stopped = await this.stopActive('switch');
+				const stopped = await this.stopActive('switch', undefined, canCommit);
 				if (!stopped) return false;
 			}
 
@@ -376,7 +380,7 @@ export class TimeTracker {
 			modifiedTimestamp: string;
 		} | null = null;
 		try {
-			await this.setActiveTracker(operonId, start, source);
+			await this.setActiveTracker(operonId, start, source, canCommit);
 			this.setTransitionState({
 				kind: 'starting',
 				taskId: operonId,
@@ -403,6 +407,7 @@ export class TimeTracker {
 		}
 
 		try {
+			if (canCommit && !canCommit()) throw new Error('Timer start is no longer allowed');
 			// Coalesce the terminal reopen and the tracking-status transition into
 			// one write + one reindex instead of two sequential write/reindex cycles.
 			const startPayload: Record<string, string> = {};
@@ -427,8 +432,8 @@ export class TimeTracker {
 				startPayload['datetimeModified'] = modifiedTimestamp;
 				const controlledAggregateChain = this.refreshStartMutation !== null;
 				const wrote = await this.writer.writeTaskFields(operonId, startPayload, controlledAggregateChain
-					? { reindex: 'none', touchAncestors: false }
-					: { reindex: 'none' });
+					? { reindex: 'none', touchAncestors: false, canCommit }
+					: { reindex: 'none', canCommit });
 				if (wrote === false) {
 					throw new Error('Failed to apply task updates before starting timer');
 				}
@@ -493,6 +498,7 @@ export class TimeTracker {
 	private async guardTaskStartStatusChanges(
 		task: IndexedTask,
 		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		const statusChangeGuard = statusChangeGuardOverride ?? this.statusChangeGuard;
 		if (!statusChangeGuard) return true;
@@ -593,10 +599,12 @@ export class TimeTracker {
 	async stop(
 		_reason: TrackerStopReason = 'manual',
 		endOverride?: string | null,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
+		if (canCommit && !canCommit()) return false;
 		if (this.stopPromise) return this.stopPromise;
 		this.stopPromise = this.enqueueTransition(
-			() => this.stopActive(_reason, endOverride),
+			() => this.stopActive(_reason, endOverride, canCommit),
 		).finally(() => {
 			this.stopPromise = null;
 		});
@@ -699,7 +707,9 @@ export class TimeTracker {
 	private async stopActive(
 		_reason: TrackerStopReason,
 		endOverride?: string | null,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
+		if (canCommit && !canCommit()) return false;
 		this.syncActiveFromStore();
 		if (!this.activeTracker) return false;
 
@@ -716,7 +726,7 @@ export class TimeTracker {
 
 		if (!current.operonId) {
 			try {
-				await this.clearActiveTracker();
+				await this.clearActiveTracker(canCommit);
 			} catch (error) {
 				console.error('Operon: Failed to clear unassigned active timer', error);
 				new Notice(t('notifications', 'taskSaveFailed'));
@@ -734,7 +744,7 @@ export class TimeTracker {
 		const task = this.indexer.getTask(current.operonId);
 		if (!task) {
 			try {
-				await this.clearActiveTracker();
+				await this.clearActiveTracker(canCommit);
 			} catch (error) {
 				console.error('Operon: Failed to clear missing-task active timer', error);
 				new Notice(t('notifications', 'taskSaveFailed'));
@@ -762,6 +772,8 @@ export class TimeTracker {
 						...this.buildStoredSessionRanges(current.start, end),
 					]),
 					end,
+					{},
+					canCommit,
 				);
 				this.finalizedActiveRecordIds.add(current.id);
 			} catch (error) {
@@ -919,8 +931,9 @@ export class TimeTracker {
 		});
 	}
 
-	async addSession(operonId: string, start: string, end: string): Promise<boolean> {
+	async addSession(operonId: string, start: string, end: string, canCommit?: () => boolean): Promise<boolean> {
 		return await this.runSessionWrite('add tracker session', async () => {
+			if (canCommit && !canCommit()) return false;
 			const task = this.indexer.getTask(operonId);
 			if (!task) return false;
 
@@ -929,7 +942,7 @@ export class TimeTracker {
 				...existingSessions.map(session => session.raw),
 				...this.buildStoredSessionRanges(start, end),
 			]);
-			await this.persistTaskSessions(task, nextTrackers, localNow());
+			await this.persistTaskSessions(task, nextTrackers, localNow(), {}, canCommit);
 			this.emit('history');
 			this.emit('state');
 			return true;
@@ -1207,6 +1220,7 @@ export class TimeTracker {
 		trackers: string,
 		now: string,
 		extraFields: Record<string, string> = {},
+		canCommit?: () => boolean,
 	): Promise<void> {
 		const duration = trackers ? String(calculateDurationFromTrackers(trackers)) : '';
 		// Ancestor timestamps are handled by the duration aggregate refresh below
@@ -1219,6 +1233,7 @@ export class TimeTracker {
 			...extraFields,
 			}, {
 				reindex: 'none',
+				canCommit,
 				touchAncestors: false,
 			});
 		if (wrote === false) {
@@ -1243,19 +1258,19 @@ export class TimeTracker {
 		this.activeTracker = record ? this.activeRecordToInternal(record) : null;
 	}
 
-	private async setActiveTracker(operonId: string | null, start: string, source: TrackerSource): Promise<void> {
+	private async setActiveTracker(operonId: string | null, start: string, source: TrackerSource, canCommit?: () => boolean): Promise<void> {
 		const record = await this.activeTrackerStore.setActiveForUser({
 			taskId: operonId,
 			start,
 			source,
 			createdAt: start,
 			updatedAt: localNow(),
-		});
+		}, canCommit);
 		this.activeTracker = this.activeRecordToInternal(record);
 	}
 
-	private async clearActiveTracker(): Promise<void> {
-		await this.activeTrackerStore.clearActiveForUser();
+	private async clearActiveTracker(canCommit?: () => boolean): Promise<void> {
+		await this.activeTrackerStore.clearActiveForUser(undefined, canCommit);
 		this.activeTracker = null;
 	}
 
