@@ -2608,7 +2608,7 @@
       "taskCardWrap": "Wrap text",
       "taskCardWrapDesc": "Let following paragraphs flow beside left- or right-aligned cards. Canvas task nodes do not wrap surrounding text.",
       "taskCards": "Task Cards",
-      "taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
+      "taskCardsDesc": "Interactive task cards in notes, Canvas, and Excalidraw. Each surface has its own default card width.",
       "taskColorSource_accentColor": "Akzentfarbe",
       "taskColorSource_noColor": "Keine Farbe",
       "taskColorSource_priorityColor": "Prioritätsfarbe",
@@ -3600,5 +3600,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "5c5520007f65a575127d91ce95709456170b024a05d07cddbd5e0d32925f8c23"
+  "sourceVersion": "17847f2867e6b345f291846fdbd1c932b4e926bf67a75faac0bef88cd1ff0414"
 }

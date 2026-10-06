@@ -2091,7 +2091,7 @@
 		"taskRelationsKeyboard": "Leertaste oder Enter zum Starten, Pfeiltasten zum Bewegen, Enter zum Ablegen, Escape zum Abbrechen",
 		"taskRelationsUnavailable": "Nicht verfügbar",
 		"taskCards": "Task Cards",
-		"taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
+		"taskCardsDesc": "Interactive task cards in notes, Canvas, and Excalidraw. Each surface has its own default card width.",
 		"taskCardWidth": "Standardbreite eingebetteter Karten",
 		"taskCardWidthDesc": "Standardbreite für Karten in Markdown-Notizen. Karten mit ausdrücklich festgelegter Breite behalten ihre Größe.",
 		"canvasTaskCardWidth": "Standardbreite von Canvas-Karten",

@@ -9,41 +9,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Create an Operon task from the **free end of a new Excalidraw arrow**, with the starting task preselected as parent in Task Creator and the new card automatically connected to the arrow.
+- Added **Excalidraw task cards** with native frames, automatic height, editable fields, and configurable task menus while keeping tasks in their Markdown sources. Changing the Stroke color updates the task color across its cards, and clicking an empty area of an active card opens Task Editor.
 
-- Convert selected **Excalidraw text** into an Operon task through Task Creator, with the first line as the description and remaining lines as notes. Drawing parent and inheritance rules are shown before creation, and the new card keeps its position and connections.
+- Added **task shortcuts below selected Excalidraw cards** for the timer, pinning, Task Editor, and opening the task source, matching the actions available in Canvas.
 
-- Added four **Excalidraw arrow relationship controls** for editing parent/child and blocking relationships with the same icons and rules as Canvas, directly from the center of a selected arrow, with accent-colored hover and active icons on a consistent background.
-
-- Added **Excalidraw arrow relationship indicators** so parent/child and blocking relationships stay visible without selecting an arrow, using Canvas icons and red or blue blocker colors on a background that matches the drawing.
-
-- Added **Excalidraw task cards** to create or display Operon tasks with native frames and task colors, automatic height, editable fields, full task menus, and independent menu preferences while keeping tasks in their Markdown sources. Clicking an empty area of an active card opens Task Editor. Selected cards also provide the same timer, pin, Task Editor, and source shortcuts as Canvas. The drawing toolbar also includes a Task Creator shortcut, with accent-colored hover and active icons on a consistent background.
-
-- Added **inline tasks in Excalidraw Markdown**, using normal task creation and parent rules, with automatic task cards and task headings placed before drawing data.
+- Added **Excalidraw drawing toolbar shortcuts** for Task Creator, Task Pool, and Property Pool, with accent-colored hover and active icons on a consistent background.
 
 - Added **Excalidraw Task Pool** with shared Canvas search and task tabs, click, keyboard, or drag-and-drop card insertion, and a movable panel that follows each drawing’s light or dark mode.
 
 - Added **Excalidraw Property Pool** to update existing task cards by dragging property values, with shared Canvas favorites and shortcuts and panels that follow each drawing’s light or dark mode.
 
-- Added an **Excalidraw file task shortcut** that converts the drawing into an Operon file task or opens its dynamic filter using the configured filter icon, with a separate Task Editor shortcut for file task drawings.
+- Added **inline tasks in Excalidraw Markdown**, using normal task creation and parent rules, with automatic task cards and task headings placed before drawing data.
+
+- Added an **Excalidraw file task shortcut** that converts the drawing into an Operon file task or opens its dynamic filter, with a separate Task Editor shortcut for file task drawings.
+
+- Convert selected **Excalidraw text** into an Operon task through Task Creator, with the first line as the description and remaining lines as notes. Parent and inheritance rules are shown before creation, and the new card keeps its position and connections.
+
+- Create an Operon task from the **free end of a new Excalidraw arrow**, with the starting task preselected as parent in Task Creator and the new card automatically connected to the arrow.
+
+- Added four **Excalidraw arrow relationship controls** for editing parent/child and blocking relationships with the same icons and rules as Canvas, directly from the center of a selected arrow.
+
+- Added **Excalidraw arrow relationship indicators** that remain visible in the drawing editor without selecting an arrow, using Canvas icons and red or blue blocker colors. Their backgrounds match the drawing and cover the line beneath each icon.
 
 ### Improved
 
+- Added **separate default widths** for embedded, Canvas, and Excalidraw task cards. New Excalidraw cards default to 375 px, while existing Canvas and Excalidraw cards keep their sizes.
+
 - Convert a selected **Canvas text card** into an Operon task using a button centered below the card, replacing the right-click action while preserving Task Creator defaults, parent inheritance, and Canvas undo behavior.
 
-- **Excalidraw task cards** keep their position and style when tasks are moved, renamed, or converted between inline and file tasks, while their controls follow the current source.
-
-- **Excalidraw task cards** are removed when their source tasks are deleted and restored in their original positions when those tasks return, while manually deleted cards stay removed.
+- **Property Pool** status changes now follow File Task pipeline folder rules, with folder moves coordinated with Undo and Redo.
 
 ### Fixed
 
-- Removed expensive CSS selectors from **Settings** while preserving control alignment and multiline editor layouts.
+- Fixed **Table settings saves** being unnecessarily blocked after a rejected settings write, and prevented duplicate save-failure notifications.
+
+- Fixed **Property Pool** edits being unnecessarily blocked for File Tasks placed outside their configured pipeline folders.
+
+- Fixed **Task Pool** results remaining outdated after task changes.
+
+- Prevented failed-write recovery from replacing newer saved content with an older backup.
+
+- Improved **Settings** responsiveness while preserving control alignment and multiline editor layouts.
 
 ### Validation
 
 - Full local Plugin checks, production build, release guard, and code review passed, along with **4,555/4,555** local regression tests.
-
-- All **5/5** final manual checks passed for Excalidraw arrow relationships and their Canvas comparison.
 
 ## [3.11.0] - 2026-10-01
 

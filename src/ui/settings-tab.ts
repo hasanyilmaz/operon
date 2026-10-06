@@ -1188,7 +1188,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				for (const event of vaultEvents) this.app.vault.offref(event);
 			};
 		}, this.propertyPoolFavoriteLabels ??= new Map(), () => this.updateNativeSettingsDefinitions());
-		return items.map(group => ({ ...group, items: group.items?.map(item => {
+		return items.map(group => ({ ...group,
+			extraButtons: group.heading ? [this.buildDeclarativeSettingsDocsButton(group.heading,
+				'DOCS-145 Canvas and Excalidraw Property Value Pool',
+				'operon-native-settings-declarative-docs-action--inline-heading')] : group.extraButtons,
+			items: group.items?.map(item => {
 			if (!('render' in item) || !item.render) return item;
 			const render = item.render;
 			return { ...item, render: (setting: Setting, group: SettingGroup) => {
@@ -1673,9 +1677,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['taskCardGeneralSettings', ['taskCardWidth', 'canvasTaskCardWidth', 'excalidrawTaskCardWidth', 'taskCardAlign', 'taskCardWrap', 'taskCardColorSource'], render],
 			['taskCardImagesSection', ['taskCardImageSource', 'taskCardImageRatio'], render, 'DOCS-138 Task images and galleries'],
 			['taskCardItemOrder', [], render],
-			['visualTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render],
-			['visualPropertyPool', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas Property Value Pool'],
-		], entries, t('settings', 'taskCards'), ['DOCS-141 Canvas Task Cards', 'DOCS-142 Embedded Task Cards'], undefined, key => {
+			['visualTaskPool', ['canvasTaskPoolWidth', 'canvasTaskPoolRows'], render, 'DOCS-148 Canvas and Excalidraw Task Pool'],
+			['visualPropertyPool', ['canvasPropertyPoolWidth', 'canvasPropertyPoolRows'], render, 'DOCS-145 Canvas and Excalidraw Property Value Pool'],
+		], entries, t('settings', 'taskCards'), ['DOCS-141 Canvas Task Cards', 'DOCS-147 Excalidraw Task Cards', 'DOCS-142 Embedded Task Cards'], undefined, key => {
 			if (key === 'taskCardWrap') return this.settings.taskCardAlign !== 'center';
 			if (key === 'taskCardImageRatio') return this.settings.taskCardImageSource !== 'none';
 			return true;

@@ -2091,7 +2091,7 @@
 		"taskRelationsKeyboard": "Spazio o Invio per iniziare, frecce per spostare, Invio per rilasciare, Esc per annullare",
 		"taskRelationsUnavailable": "Non disponibile",
 		"taskCards": "Task Cards",
-		"taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
+		"taskCardsDesc": "Interactive task cards in notes, Canvas, and Excalidraw. Each surface has its own default card width.",
 		"taskCardWidth": "Larghezza predefinita delle schede incorporate",
 		"taskCardWidthDesc": "Larghezza predefinita delle schede nelle note Markdown. Le schede con larghezza esplicita mantengono le dimensioni.",
 		"canvasTaskCardWidth": "Larghezza predefinita delle schede Canvas",

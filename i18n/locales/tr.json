@@ -2091,7 +2091,7 @@
 		"taskRelationsKeyboard": "Space veya Enter ile başlat, ok tuşlarıyla taşı, Enter ile bırak, Escape ile iptal et",
 		"taskRelationsUnavailable": "Kullanılamıyor",
 		"taskCards": "Task Cards",
-		"taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
+		"taskCardsDesc": "Interactive task cards in notes, Canvas, and Excalidraw. Each surface has its own default card width.",
 		"taskCardWidth": "Varsayılan gömülü kart genişliği",
 		"taskCardWidthDesc": "Markdown notlarındaki kartların varsayılan genişliği. Özel genişliği belirtilen kartlar boyutlarını korur.",
 		"canvasTaskCardWidth": "Varsayılan Canvas kart genişliği",

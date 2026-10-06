@@ -2091,7 +2091,7 @@
 		"taskRelationsKeyboard": "Space または Enter で開始、矢印キーで移動、Enter で配置、Escape でキャンセル",
 		"taskRelationsUnavailable": "利用不可",
 		"taskCards": "Task Cards",
-		"taskCardsDesc": "Independent task cards in notes and Canvas. Canvas text nodes containing one card use the node dimensions.",
+		"taskCardsDesc": "Interactive task cards in notes, Canvas, and Excalidraw. Each surface has its own default card width.",
 		"taskCardWidth": "埋め込みカードの既定の幅",
 		"taskCardWidthDesc": "Markdownノート内のカードの既定の幅。幅を個別に指定したカードのサイズは変わりません。",
 		"canvasTaskCardWidth": "Canvasカードの既定の幅",
