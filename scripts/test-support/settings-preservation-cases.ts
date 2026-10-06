@@ -9,6 +9,7 @@ import {
  withSettingsFixture, type ReadFault, type WriteFault,
 } from './settings-preservation-harness';
 import type { OperonStorage } from '../../src/storage/operon-storage';
+import { tableSettingsSaveCases } from './table-settings-save-cases';
 
 export interface SettingsPreservationCase {
  name: string;
@@ -16,7 +17,7 @@ export interface SettingsPreservationCase {
 }
 
 /** These are safety assertions, never assertions that the known data loss is desirable. */
-export const settingsPreservationCases: SettingsPreservationCase[] = [];
+export const settingsPreservationCases: SettingsPreservationCase[] = [...tableSettingsSaveCases];
 const add = (name: string, run: () => Promise<void>): void => {
  settingsPreservationCases.push({ name, run });
 };
@@ -558,6 +559,49 @@ for (const trigger of ['external-value', 'formatting-only', 'transient-read', 'n
    const committed = fixture.raw();
    await storage.reloadCanonicalSettingsPackage();
    assertBytesEqual(fixture.raw(), committed, 'Repeated reload must be idempotent');
+  });
+ });
+}
+
+for (const trigger of ['external-value', 'formatting-only', 'normalization', 'process-rejected', 'transient-read'] as const) {
+ add(`${trigger} before a changed save recovers after verified reload without replay`, async () => {
+  await withSettingsFixture({}, async fixture => {
+   const storage = fixture.createStorage();
+   await storage.initialize();
+   const store = storage.getDeveloperApiGrantDataStore() as OperonDataPackageStore;
+   const external = fixture.package();
+   if (trigger === 'external-value' || trigger === 'normalization') external.settings.operonDocsFolder = 'Synced Docs';
+   if (trigger === 'normalization') Reflect.deleteProperty(external.ui, 'workspaceTweaks');
+   const raw = trigger === 'process-rejected' || trigger === 'transient-read'
+    ? fixture.raw()!
+    : JSON.stringify(external, null, trigger === 'formatting-only' ? 2 : '\t');
+   fixture.seed(fixture.canonicalPath, raw);
+   const process = fixture.adapter.process;
+   if (trigger === 'process-rejected') fixture.adapter.process = async () => { throw new Error('Rejected before transform'); };
+   if (trigger === 'transient-read') fixture.readFault = 'unreadable';
+   const attempts = fixture.canonicalAttempts;
+   await assert.rejects(storage.updateSettings({ operonDocsFolder: 'Rejected local edit' }));
+   fixture.adapter.process = process;
+   fixture.readFault = 'none';
+   assert.equal(store.canPersist(), false);
+   assert.equal(fixture.canonicalAttempts, attempts, 'No write started');
+   assertBytesEqual(fixture.raw(), raw);
+   await assert.rejects(storage.updateSettings({ releaseNotesLastShownVersion: 'blocked-before-reload' }));
+   fixture.readFault = 'unreadable';
+   await storage.reloadCanonicalSettingsPackage();
+   assert.equal(store.canPersist(), false, 'An unreadable reload must not unlock writes');
+   fixture.readFault = 'none';
+   await storage.reloadCanonicalSettingsPackage();
+   assert.equal(store.canPersist(), true);
+   assert.equal(storage.getSettings().operonDocsFolder, external.settings.operonDocsFolder);
+   assert.equal(fixture.canonicalAttempts, attempts + (trigger === 'normalization' ? 1 : 0));
+   if (trigger !== 'normalization') assertBytesEqual(fixture.raw(), raw);
+   const committed = fixture.raw();
+   await storage.reloadCanonicalSettingsPackage();
+   assertBytesEqual(fixture.raw(), committed, 'Second reload must be idempotent');
+   await storage.updateSettings({ releaseNotesLastShownVersion: 'explicit-new-save' });
+   assert.equal(fixture.package().settings.operonDocsFolder, external.settings.operonDocsFolder, 'The rejected edit must never replay');
+   assert.equal(fixture.package().settings.releaseNotesLastShownVersion, 'explicit-new-save');
   });
  });
 }

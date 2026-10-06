@@ -89,6 +89,7 @@ import {
 	writeCanonicalTableFileWithAcknowledgement,
 } from './src/storage/table-file-write-acknowledgement';
 import { renameCanonicalTableFileWithAcknowledgement } from './src/storage/table-file-rename-acknowledgement';
+import { notifyTablePresetErrorOnce } from './src/ui/table/table-preset-error-notice';
 import {
 	inspectTableFileV3MigrationRecoveryEvidence,
 	migrateOperonTableFilesToV3,
@@ -19425,7 +19426,7 @@ export default class OperonPlugin extends Plugin {
 
 	private handleTablePresetFileWriteFailure(error: unknown): void {
 		console.error('Operon: Table file save failed', error);
-		new Notice(`Operon could not save the Table file. ${error instanceof Error ? error.message : String(error)}`);
+		notifyTablePresetErrorOnce(error, `Operon could not save the Table file. ${error instanceof Error ? error.message : String(error)}`);
 	}
 
 	private async addTablePresetAndRefresh(
