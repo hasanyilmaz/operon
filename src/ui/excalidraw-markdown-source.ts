@@ -35,10 +35,10 @@ export function readExcalidrawMarkdownSections(source: string): ExcalidrawMarkdo
     if (heading && bodyEnd < 0) headings.push({ offset, end: offset + raw.length, text: heading[1] });
    }
    if (comment && line.trim()) commentEmpty = false;
-   for (const match of line.matchAll(/<!--|-->|%%/g)) {
+   for (const match of line.matchAll(/<!--|--!?>|%%/g)) {
     const token = match[0];
-    if (comment === 'html' && token === '-->' || comment === '%%' && token === '%%') comment = '';
-    else if (!comment && token !== '-->') { comment = token === '<!--' ? 'html' : '%%'; commentStart = offset + match.index; commentEmpty = line.trim() === '%%'; }
+    if (comment === 'html' && (token === '-->' || token === '--!>') || comment === '%%' && token === '%%') comment = '';
+    else if (!comment && (token === '<!--' || token === '%%')) { comment = token === '<!--' ? 'html' : '%%'; commentStart = offset + match.index; commentEmpty = line.trim() === '%%'; }
    }
   }
   offset += raw.length;
