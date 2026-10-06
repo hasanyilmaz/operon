@@ -2,7 +2,7 @@
 Notes: Show a person image on assignee chips using a property in the linked person note
 Icon: contact
 Color: "#0F766E"
-Updated: 2026-10-01T13:53:36+02:00
+Updated: 2026-10-06T13:50:07+02:00
 ---
 
 # How to show assignee images
@@ -12,6 +12,8 @@ An assignee chip can show a person's image beside their name. You keep the image
 This guide uses **Bobby** and a property named `photo`. You can choose another property name. The setting applies only to assignees; it does not change other fields or the task's own [[DOCS-138 Task images and galleries|Task Image and Task Gallery]].
 
 > **MEDIA-DOCS-143-1:** Bobby's image displayed in an assignee chip, alongside the person note's photo property and the Assignee image property setting.
+
+![MEDIA-DOCS-143-1 - Assignee image in a task chip and its configuration](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-143-1.png)
 
 ## Step 1: Add an image reference to Bobby's note
 

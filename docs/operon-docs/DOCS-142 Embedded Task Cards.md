@@ -2,7 +2,7 @@
 Notes: Place a live task card inside a note, with local layout options and shared task controls
 Icon: panels-top-left
 Color: "#0284c7"
-Updated: 2026-10-01T13:53:36+02:00
+Updated: 2026-10-06T10:40:55+02:00
 ---
 
 # Embedded Task Cards
@@ -66,7 +66,7 @@ progress: true
 | `chips` | `true`, `false` | Overrides whether the card's configured chip section is shown |
 | `progress` | `true`, `false` | `false` hides progress displays for this card; `true` allows the enabled progress displays when data is available |
 
-With no local width, alignment, or wrapping option, the card follows the corresponding general Task Cards setting. With no local visibility option, it follows the general image, chip, and progress preferences.
+With no local `width`, the card follows `Default embed card width`. Canvas and Excalidraw have separate starting-width settings. Omitted alignment and wrapping options follow the corresponding Task Cards preferences. With no local visibility option, it follows the general image, chip, and progress preferences.
 
 **Copy task card embed writes explicit options.** Those lines remain in the note when you later change general settings. For example, `width: 350` keeps that card's requested width at 350 px. Remove the line if you want that card to follow the global width again.
 
@@ -122,26 +122,6 @@ Each embed answers a different question:
 
 Use separate blocks when a project note needs both its main task card and a filtered list of work. Do not combine `filter` or `filterId` with Task Card options in the same block. See [[DOCS-083 Embed a filter in a note|Embed a filter in a note]] and [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
-## Settings
-
-Open **Settings → Operon → Views → Task Cards** for shared card appearance, organized under **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order**.
-
-| Setting | Purpose |
-| --- | --- |
-| Default width | Starting width when the embed omits `width`; 350 px by default |
-| Default alignment and Wrap text | Default placement when the corresponding embed options are omitted |
-| Color source | Choose the task field or color system used for the card accent in notes |
-| Image source | Choose the task media field, or None to hide images |
-| Image ratio | Original proportions, Landscape (16:9), Square (1:1), or Portrait (2:3) |
-| Card Sections and Order | Arrange the image, header, task progress, chips, and checkbox progress; the task header stays visible |
-| Task progress, chips, and checkbox progress | Choose the optional sections to display when their data is available |
-
-The default-width dropdown offers 300, 325, 350, 375, and 400 px. A local `width` option can use the wider supported range documented above. Fixed image ratios crop around the center; Original shows the full image. See [[DOCS-138 Task images and galleries|Task images and galleries]] for media fields.
-
-Under **Settings → Operon → Interface → Task Chips → Task Card Chips**, configure card chips independently of Inline, Filter, or Kanban chips. **Task Card Actions** is a section within that same subpage. Under **Interface → Context Menu**, use the **Task Cards** surface to configure its task-icon menu. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
-
-The Canvas Task Pool settings on the Task Cards page apply to Canvas, not to embedded cards in notes.
-
 ## FAQ
 
 **Why does the card say the task was not found?** Check that `taskId` is the ID of an existing indexed task. It is not a file path, title, or newly generated ID. If the source was deleted, the embed does not recreate it. See [[DOCS-054 Missing tasks|Missing tasks]].
@@ -157,6 +137,26 @@ The Canvas Task Pool settings on the Task Cards page apply to Canvas, not to emb
 **Why did changing the default width not change this card?** The copied embed includes its own `width` line. Edit it or remove it to inherit the global setting.
 
 **Does copying the embed duplicate the task?** No. Both blocks refer to the same task. Create a new Inline Task or File Task if you need independent work.
+
+## Settings
+
+Open **Settings → Operon → Views → Task Cards** for shared card appearance, organized under **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order**.
+
+| Setting | Purpose |
+| --- | --- |
+| `Default embed card width` | Starting width when the embed omits `width`; 350 px by default |
+| `Default alignment` and `Wrap text` | Default placement when the corresponding embed options are omitted |
+| `Color source` | Choose the task field or color system used for the card accent in notes |
+| `Image source` | Choose the task media field, or None to hide images |
+| `Image ratio` | Original proportions, Landscape (16:9), Square (1:1), or Portrait (2:3) |
+| `Card Sections and Order` | Arrange the image, header, task progress, chips, and checkbox progress; the task header stays visible |
+| Task progress, chips, and checkbox progress | Choose the optional sections to display when their data is available |
+
+The default-width dropdown offers 300, 325, 350, 375, and 400 px. A local `width` option can use the wider supported range documented above. Fixed image ratios crop around the center; Original shows the full image. See [[DOCS-138 Task images and galleries|Task images and galleries]] for media fields.
+
+Under **Settings → Operon → Interface → Task Chips → Task Card Chips**, configure card chips independently of Inline, Filter, or Kanban chips. **Task Card Actions** is a section within that same subpage. Under **Interface → Context Menu**, use the **Task Cards** surface to configure its task-icon menu. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+The shared [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] and [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]] settings control the floating panels on those surfaces, not embedded cards in notes.
 
 ## Related
 

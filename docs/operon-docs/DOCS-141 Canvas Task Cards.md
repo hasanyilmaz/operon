@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-10-01T13:53:36+02:00
+Updated: 2026-10-06T10:40:55+02:00
 ---
 
 # Canvas Task Cards
@@ -17,17 +17,17 @@ A card represents an existing **Inline Task** or **File Task**. It is another vi
 
 ## Add an existing task
 
-Open an editable Canvas, then run **Operon: Add task to Canvas** from the command palette. Choose an Inline Task or File Task in [[DOCS-027 Task Finder|Task Finder]] to place its card on the Canvas. The Canvas creation menu also offers **Add Operon task** for selecting an existing task at that location.
+Open **Canvas Task Pool** from the Canvas controls to find tasks and add their cards while arranging a project. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] for search, task modes, and insertion methods.
+
+As an alternative, run **Operon: Add task to Canvas** from an editable Canvas. Choose an Inline Task or File Task in [[DOCS-027 Task Finder|Task Finder]] to place its card. The Canvas creation menu also offers **Add Operon task** for selecting an existing task at that location.
 
 Adding a card does not move the task out of its source note or make a second task. You can show the same task on more than one Canvas, and each card continues to refer to the same identity. Copying a task card between canvases also keeps that source connection.
-
-For adding several tasks while planning, use the Canvas Task Pool below.
 
 ## Create a task from the Canvas
 
 ### Convert a text card
 
-Open the menu of a normal Canvas text card and choose **Convert to Operon task…**. The [[DOCS-020 Task Creator|Task Creator]] opens with the card's text prepared for the new task: the description comes from its leading text, and the remaining content becomes its Note.
+Select one normal Canvas text card, then click **Convert to Operon task…** in the button centered below it. The [[DOCS-020 Task Creator|Task Creator]] opens with the card's text prepared for the new task: the first source line becomes the description, and subsequent lines become its Note. Visual wrapping does not add new source lines. Cancelling Task Creator leaves the card unchanged.
 
 Review the fields and create an Inline Task or File Task. Operon replaces the text card with a linked task card and keeps its Canvas connections. The new card starts with the configured width and a height fitted to its content. The task's Markdown destination follows the task creation and [[DOCS-136 Task Router|Task Router]] rules.
 
@@ -38,32 +38,6 @@ Drag a connection from a card into empty Canvas space. In the resulting menu, ch
 When the connection starts from an Operon task card, the new task is prepared as its **subtask**, with the parent and configured inheritance applied. Review that context in Task Creator before creating it. A connection from an ordinary Canvas card does not supply an Operon parent.
 
 This is useful for breaking a project down as you think: start from the project card, create its workstreams, and then create the smaller tasks belonging to each workstream. See [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]] for how the task tree works independently of the visual layout.
-
-## Use the Canvas Task Pool
-
-Open **Canvas Task Pool** from the Canvas controls or run **Operon: Open Canvas Task Pool**. The command appears only while a Canvas is active. The pool is a floating, searchable list for bringing existing tasks onto the board.
-
-Five equal icon buttons use the same order as the Calendar Task Pool: **Overdue → Unscheduled → All → Finished → Pinned**. Hover for each mode name. The panel starts in **All** each time it opens.
-
-| Mode | Tasks included |
-| --- | --- |
-| Overdue | Open tasks with a Scheduled or Due date before today |
-| Unscheduled | Open tasks without a Scheduled date |
-| All | All open tasks |
-| Finished | Completed tasks, including those completed on earlier days |
-| Pinned | Pinned tasks in any status, including completed and cancelled tasks |
-
-The Canvas Task Pool is independent of the Calendar's selected date and preset filter. Search narrows the selected mode across its matching tasks, rather than just the rows currently displayed. More results load as you scroll.
-
-For keyboard use, type in the search box to select the first matching result, move through tasks with the **Up** and **Down** arrow keys, and press **Enter** to add the selected task to the Canvas.
-
-Use a row's **+** button to add its task. With a mouse, you can also drag the row onto the desired Canvas position. On touch screens, use **+** to add the task, then arrange its card on the Canvas.
-
-Drag the panel header to move the pool out of your way. **Pin Task Pool** keeps it open while you add several cards or work elsewhere on the Canvas. This panel pin is independent of the **Pinned** task mode. An unpinned pool closes after a successful addition or an outside click. Use **Unpin and close**, or Escape, when you are finished.
-
-Interacting with either the Canvas Task Pool or Canvas Property Value Pool brings that panel in front of the other.
-
-Use [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]] to find existing property values and drag them onto task cards. You can also create groups with a property rule and add values to matching list groups. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]] for group rules and automatic routing. Changing a group rule does not bulk-update the tasks inside it.
 
 ## Work with a task card
 
@@ -78,6 +52,8 @@ Cards can show:
 - Action controls for time tracking, pinning, Notes, creating subtasks, and opening checkboxes.
 
 Only enabled controls that apply to the task appear. Field chips use their normal editing or navigation behavior. Hover over the task icon to use its contextual menu; available actions follow the **Task Cards** surface in the Contextual Menu Matrix. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+Use [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]] to apply reusable values to existing cards. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]] for property-based group rules.
 
 Changes made through these controls update the source task. Moving a card around the Canvas changes its position, not its Scheduled or Due date.
 
@@ -129,54 +105,15 @@ An active blocker uses a red blocking indicator. When the blocker is resolved, t
 
 The icons follow the corresponding canonical field mappings, so changes to Parent, Subtasks, Blocking, and Blocked by icons are also reflected in the appropriate Canvas controls. See [[DOCS-039 Key mappings|Key mappings]].
 
-## Plan a project with the Canvas Task Pool
-
-Use the Task Pool to gather the work already captured across your notes and turn it into a project map. Keep the pool beside the Canvas while deciding which tasks belong in the plan, where they fit, and what depends on them.
-
-For a web app launch, start with **Launch Northstar Web App** and arrange four workstreams beneath it: product definition, core development, release validation, and the public beta. Then build the plan from the pool:
-
-1. **Pin the Task Pool** so it stays open while you add and arrange cards. Move the panel to a free edge of the Canvas to keep the project visible.
-2. **Find the relevant work.** Use All and search to find the launch tasks already in your notes. Use Unscheduled when reviewing work that still needs a place in your schedule, or Overdue when checking what has slipped.
-3. **Bring tasks onto the board.** Drag a row to the workstream where it belongs, or use **+** and then position its card. Adding it to the Canvas does not assign a date or change its existing parent.
-4. **Make the structure explicit.** Connect the cards, then use the relationship controls to assign parents and children. Add blocking relationships across workstreams, such as testing before deployment. Placing cards near each other is visual organization; the relationship controls record the actual task links.
-5. **Review progress in context.** Switch the pool to Finished to bring completed work into the map when it helps explain what is already delivered. Existing cards continue to reflect their source tasks as work progresses.
-
-The pool is a source of tasks for your plan, not a list limited to cards already on this Canvas. Changing its mode or search changes the available results; it does not remove cards you have placed. This lets you gather work in several passes without losing the arrangement.
-
-> **MEDIA-DOCS-141-2:** Canvas Task Pool open beside the Northstar launch plan, showing mode controls, search, and task rows ready to add to the project's workstreams.
-
-![MEDIA-DOCS-141-2 - Plan a project with Canvas Task Pool](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-141-2.png)
-
-Use the Canvas to decide how the work fits together, then use [[DOCS-028 Calendar overview|Calendar]] to place it in time or [[DOCS-139 Gantt view|Gantt]] to review dates and dependencies along a timeline. These surfaces use the same tasks.
-
 ## Appearance, removal, and Undo
 
-Cards start at the configured default width and fit their content. You can arrange and resize them using Canvas controls. Changing the default width later does not resize existing cards.
+Cards start at `Default Canvas card width` and fit their content. This preference is separate from embedded and Excalidraw card widths. You can arrange and resize them using Canvas controls. Changing the default width later does not resize existing cards.
 
 Canvas task cards follow their source **Task Color**. Choosing a Canvas color for a task card updates that task's color, so its other cards follow the change. This does not recolor its subtasks automatically.
 
 Removing a card from a Canvas leaves the source task intact. Use Task Editor's **Remove** action when you intend to delete the task itself and clean its relationships. See [[DOCS-021 Task Editor|Task Editor]].
 
 Normal card placement uses Canvas Undo and Redo. Undoing a text-card conversion also involves the newly created source task, so that operation is guarded: it can be refused if the task or related records changed, or if the conversion's session history is no longer available. Canvas history is not a general rollback of every edit made through a task card.
-
-## Settings
-
-Open **Settings → Operon → Views → Task Cards** for shared appearance and Canvas pool preferences. **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order** configure the cards. **Canvas Task Pool** and **Canvas Property Value Pool** contain each pool's width and row count. **Property Pool Shortcuts** and **Property Pool Favorites** are separate sections; see [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
-
-| Setting | Purpose |
-| --- | --- |
-| Default width | Starting width for new cards; 300, 325, 350, 375, or 400 px, with 350 px as the default |
-| Image source and Image ratio | Choose the task media field and whether to show its original proportions or a fixed crop |
-| Card Sections and Order | Arrange the image, header, task progress, chips, and checkbox progress; the header remains visible |
-| Task progress, chips, and checkbox progress | Control which optional sections are shown when their data is available |
-| Canvas Task Pool — Panel width | Set the pool's width, constrained by the available space |
-| Canvas Task Pool — Visible rows | Set how many rows fit before scrolling; this does not limit the search scope |
-| Canvas Property Value Pool — Panel width | Choose 240, 280, 320, 360, or 400 px; default 320 px, constrained by available space |
-| Canvas Property Value Pool — Visible rows | Choose 5, 7, 11, or 13 rows; default 5, without limiting the search scope |
-
-Default alignment and text wrapping apply to cards embedded in notes. Canvas cards use their Canvas dimensions and positions instead.
-
-Open **Settings → Operon → Interface → Task Chips → Task Card Chips** for chip visibility and order; **Task Card Actions** is a section within that same subpage. Configure task-icon menu actions through the **Task Cards** surface under **Interface → Context Menu**.
 
 ## FAQ
 
@@ -190,7 +127,22 @@ Open **Settings → Operon → Interface → Task Chips → Task Card Chips** fo
 
 **Does deleting the card delete my task?** No. It removes this appearance of the task from the Canvas. Task deletion is a separate action in Task Editor.
 
-**Can I keep adding tasks without reopening the pool?** Yes. Pin the Canvas Task Pool before adding them.
+**Can I keep adding tasks without reopening the pool?** Yes. Use **Pin Task Pool**. See [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]] for panel behavior.
+
+## Settings
+
+Open **Settings → Operon → Views → Task Cards** for shared appearance and Canvas pool preferences. **Card Layout and Appearance**, **Card Images**, and **Card Sections and Order** configure the cards. Task Pool size and row preferences are covered in [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]]. Property Pool size, shortcuts, and favorites are covered in [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
+
+| Setting | Purpose |
+| --- | --- |
+| `Default Canvas card width` | Starting width for new cards; 300, 325, 350, 375, or 400 px, with 350 px as the default |
+| `Image source` and `Image ratio` | Choose the task media field and whether to show its original proportions or a fixed crop |
+| `Card Sections and Order` | Arrange the image, header, task progress, chips, and checkbox progress; the header remains visible |
+| Task progress, chips, and checkbox progress | Control which optional sections are shown when their data is available |
+
+Default alignment and text wrapping apply to cards embedded in notes. Canvas cards use their Canvas dimensions and positions instead.
+
+Open **Settings → Operon → Interface → Task Chips → Task Card Chips** for chip visibility and order; **Task Card Actions** is a section within that same subpage. Configure task-icon menu actions through the **Task Cards** surface under **Interface → Context Menu**.
 
 ## Related
 

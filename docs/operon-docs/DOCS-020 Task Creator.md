@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Task Creator
@@ -25,11 +25,15 @@ Use the Task Creator when:
 
 If the task is already written as a line in a note, the faster path is **Create or edit inline task** instead. See [[DOCS-011 Inline tasks|Inline tasks]].
 
-## Create from a Canvas
+## Create from Canvas or Excalidraw
 
-Task Creator also opens when you choose **Convert to Operon task…** on a normal Canvas text card, or **Add Operon task** after dragging a connection into empty Canvas space. Review the prepared fields, then create an Inline Task or File Task; Operon places its linked card on the Canvas.
+Select a normal Canvas text card or standalone Excalidraw text, then use the conversion button below it. Task Creator opens with the first source line as the description and the remaining lines as the Note. Review the prepared fields before creating the task and replacing the text with a linked card.
 
-When the connection starts from an Operon task card, Task Creator prepares the new task as its subtask with the configured inheritance. By contrast, **Add task to Canvas** from the command palette selects an existing task through Task Finder. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] for both workflows.
+Both surfaces also support **Add Operon task** from a connection ending in empty space. In Excalidraw, this applies to a newly drawn arrow from an Operon task card. The starting task is prepared as parent, with configured inheritance shown before creation. You can change or clear that parent in Task Creator.
+
+Excalidraw additionally provides a Task Creator toolbar shortcut and **Create task in Excalidraw** command. The normal Inline/File choice, templates, destination, and parent rules still apply. When the drawing is a File Task and the creation rules supply it as parent, review that parent and its inheritance indicators in the draft.
+
+Use [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] to add existing tasks instead of creating new ones. For the surface-specific steps and Undo behavior, see [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
 ## What you choose
 

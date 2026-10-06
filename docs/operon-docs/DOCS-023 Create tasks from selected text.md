@@ -2,7 +2,7 @@
 Notes: Turn lines you already wrote into Operon tasks
 Icon: text-cursor-input
 Color: "#ea580c"
-Updated: 2026-09-28T16:40:18+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Create tasks from selected text
@@ -44,6 +44,10 @@ Both commands use the checkbox ownership and indentation rules. Inside an existi
 ## Turn one line into a file task
 
 When a single selected line is really a document waiting to happen, make it a [[DOCS-013 File tasks|file task]] instead. Run **Create file task** with the line selected, and Operon seeds a new note from that text and leaves a wikilink in its place. The line becomes a task with room for a body. See [[DOCS-013 File tasks|File tasks]].
+
+## Convert text on a visual surface
+
+For a normal Canvas text card or standalone Excalidraw text, select it and use the conversion button below it. Task Creator prepares **one task** with the first source line as its description and subsequent lines as its Note. This differs from the Markdown list commands above, which can create several tasks. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
 ## When to use which
 

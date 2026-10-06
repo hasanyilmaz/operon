@@ -2,7 +2,7 @@
 Notes: Create Canvas groups with property rules, apply them to tasks, and follow changes across the board
 Icon: group
 Color: "#0284c7"
-Updated: 2026-10-01T14:00:09+02:00
+Updated: 2026-10-06T10:40:55+02:00
 ---
 
 # Operon Groups in Canvas
@@ -11,7 +11,7 @@ An Operon group is an Obsidian Canvas group whose title contains one property ru
 
 ## Create a group
 
-Open an editable Canvas and choose **Add Operon Group** from its creation menu. [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]] opens in the **Create group** context. Search for a supported value, then click it or press `Enter` to create and select the group. `Escape` or an outside click cancels creation.
+Open an editable Canvas and choose **Add Operon Group** from its creation menu. [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]] opens in the **Create group** context. Search for a supported value, then click it or press `Enter` to create and select the group. `Escape` or an outside click cancels creation.
 
 Alternatively, drag a supported value from the normal pool into empty Canvas space. The preview shows the proposed title and size. The entire group rectangle must fit without overlapping existing cards or groups; touching edges is allowed. A successful drop leaves the pool open.
 
@@ -76,10 +76,6 @@ A successful task drop records the card movement and task changes together in Ca
 > [!tip] Start with one property
 > Begin with a few groups for one property, such as priority A, B, and C. Move one task into a group and review the change before organizing the rest of the board. This makes it easier to understand how group rules affect your tasks.
 
-## Settings
-
-There is no separate group settings page. Use **Settings → Operon → Core → Key Mappings** for property names, **Core → Priority** for priority definitions and colors, and **Core → Pipelines** for statuses and their colors.
-
 ## FAQ
 
 **Why is creation or a drop blocked?** Check the preview, available space, rule compatibility, and Canvas write access.
@@ -90,9 +86,13 @@ There is no separate group settings page. Use **Settings → Operon → Core →
 
 **Why did other groups change color?** Priority/status groups share the definition's color, rather than a separate local color.
 
+## Settings
+
+There is no separate group settings page. Use **Settings → Operon → Core → Key Mappings** for property names, **Core → Priority** for priority definitions and colors, and **Core → Pipelines** for statuses and their colors.
+
 ## Related
 
-- [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]]
+- [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]]
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
 - [[DOCS-039 Key mappings|Key mappings]]
 - [[DOCS-038 Task priorities|Task priorities]]

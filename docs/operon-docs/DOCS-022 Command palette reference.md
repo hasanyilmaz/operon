@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-09-28T16:40:18+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Command palette reference
@@ -22,6 +22,8 @@ This page is the index. The action commands link to a dedicated page with their 
 - [[DOCS-084 Create New Operon Task|Create New Operon Task]]: opens the full [[DOCS-020 Task Creator|Task Creator]]. The safest starting point when you want Operon to guide you through the fields.
 - [[DOCS-085 Create or edit inline task|Create or edit inline task]]: context-aware. On an empty line it creates a task; on plain text or a checkbox it converts or upgrades the line; on an existing task it opens the [[DOCS-021 Task Editor|Task Editor]].
 - [[DOCS-086 Create file task|Create file task]]: creates a task that lives as its own note, optionally seeded from selected text or an inline task. See [[DOCS-013 File tasks|File tasks]].
+
+- **Create task in Excalidraw**: with an editable drawing active, opens Task Creator and adds a card for the created task. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
 ## Create periodic notes
 
@@ -47,6 +49,8 @@ These commands create or open the periodic note itself; they do not require an i
 
 - **Add task to Canvas**: with an editable Canvas active, opens Task Finder to select an existing Inline Task or File Task and place its linked card on that Canvas. It does not create a new task. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 
+- **Add existing task to Excalidraw**: with an editable drawing active, opens Task Finder to select an existing task and add its card. This does not create a new task. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
+
 ## State and time
 
 - [[DOCS-090 Toggle task completion|Toggle task completion]]: completes or reopens the task at the cursor.
@@ -64,10 +68,13 @@ These commands create or open the periodic note itself; they do not require an i
 - **Open Time Session History panel**: review and edit tracked sessions. See [[DOCS-053 Time session history|Time session history]].
 - **Open FlowTime panel**: start a focused work session. See [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]].
 
-The following pool commands appear only when the active view is a Canvas. They are hidden when a note or another view is active:
+Pool commands are available in their corresponding active Canvas or Excalidraw view:
 
-- **Open Canvas Task Pool**: find existing tasks to add to the active Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
-- **Open Canvas Property Value Pool**: find property values to apply to Canvas task cards or use in group rules. See [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
+- **Open Canvas Task Pool**: find existing tasks to add to the active Canvas. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
+- **Open Canvas Property Value Pool**: find property values to apply to Canvas task cards or use in group rules. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
+
+- **Open Excalidraw Task Pool**: find existing tasks to add to the active drawing. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
+- **Open Excalidraw Property Pool**: find reusable values to apply to task cards in the active drawing. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
 
 ## Maintenance
 

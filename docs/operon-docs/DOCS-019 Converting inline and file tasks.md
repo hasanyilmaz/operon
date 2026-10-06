@@ -2,7 +2,7 @@
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-Updated: 2026-09-28T16:40:18+02:00
+Updated: 2026-10-06T10:40:55+02:00
 ---
 
 # Converting inline and file tasks
@@ -42,10 +42,12 @@ When the extra note is no longer pulling its weight, run **Convert file task to 
 
 The reason conversion is safe is the `operonId`. Both directions keep it, so the task stays the same record before and after: its place in filters, the Calendar, the Kanban, recurrence series, and parent links all survive. This is why you should convert through these commands rather than by hand. Manually retyping a task as the other form would give it a different identity and break those links. See [[DOCS-015 Task identity and operonId|Task identity and operonId]].
 
+Cards in [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]] continue to follow the same task identity after an inline/file conversion. The drawing keeps their placement while the source controls follow the converted task.
+
 ## What changes, what does not
 
 - **Stays the same**: the `operonId`, and the task's fields (status, priority, dates, parent, recurrence, and the rest).
-- **Changes**: where the fields are written (inline `{{key:: value}}` versus frontmatter), whether the task has a note body, and—according to **After converting an inline task**—whether the old source position keeps a link or is removed. Promoting adds a body; collapsing removes it and trashes the note.
+- **Changes**: where the fields are written (inline `{{key:: value}}` versus frontmatter), whether the task has a note body, and, according to `After converting an inline task`, whether the old source position keeps a link or is removed. Promoting adds a body; collapsing removes it and trashes the note.
 
 So the conversion is about the task's *container*, not its meaning.
 

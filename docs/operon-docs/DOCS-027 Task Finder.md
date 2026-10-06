@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-10-01T13:53:36+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Task Finder
@@ -21,11 +21,11 @@ Type part of a task's text and the list narrows as you go. Pick a result to jump
 
 What makes the results trustworthy is knowing what they reflect, which is what the next section explains.
 
-## Choose a task for Canvas
+## Choose a task for Canvas or Excalidraw
 
-With an editable Canvas active, run **Add task to Canvas**. Task Finder opens as a picker: selecting a result adds that task's card to the Canvas rather than jumping to its source. The task stays in its original Markdown location.
+Use [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] when gathering tasks for a visual plan. It stays beside the board while you search and add cards.
 
-For adding several tasks while arranging a project, use the floating **Canvas Task Pool** instead. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+Task Finder is an alternative for choosing one task. With an editable Canvas active, run **Add task to Canvas**. With an editable Excalidraw drawing active, run **Add existing task to Excalidraw**. In these picker contexts, selecting a result adds its card rather than jumping to its source. The task stays in its original Markdown location.
 
 ## How matching and ranking work
 

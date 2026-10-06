@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-09-23T10:52:17+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Glossary of Operon terms
@@ -35,8 +35,10 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Calendar**: tasks placed on dates and times. See [[DOCS-028 Calendar overview|Calendar overview]].
 - **Kanban**: tasks shown as cards in columns by status. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Canvas Task Card**: an interactive representation of an Inline Task or File Task on an Obsidian Canvas, linked to its source by `operonId`. It is a view of the task, not a third task type. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
-- **Canvas Task Pool**: the searchable floating panel for adding existing tasks to a Canvas, with Overdue, Unscheduled, All, and Finished modes. It is independent of the Calendar Task Pool. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
-- **Canvas Property Value Pool**: a floating panel for finding and favoriting property values to apply to Canvas task cards or use in group rules. Unlike Canvas Task Pool, it supplies values rather than tasks. See [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
+- **Excalidraw Task Card**: an interactive view of an Inline Task or File Task inside an Excalidraw drawing. It follows the source task while the drawing stores its placement. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
+
+- **Canvas and Excalidraw Task Pool**: a floating list for finding existing tasks and adding their cards to either surface. Modes are Overdue, Unscheduled, All, Finished, and Pinned. It is independent of the Calendar Task Pool. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
+- **Canvas and Excalidraw Property Value Pool**: a floating panel for finding and favoriting reusable property values to apply to task cards. Unlike Task Pool, it supplies values rather than tasks. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
 - **Operon group**: a Canvas group whose title contains one property rule, applied to a task when its card is dropped into the group. It is not a task type or a parent–child relationship. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Group Mismatches**: the Canvas destination for existing cards that no longer match a single-value group when no suitable normal destination is available. It can contain value-specific subgroups; list groups do not trigger this automatic routing. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Embedded Task Card**: a live card for one existing task inside a note, created with an `operon` block containing `view: card` and `taskId`. Removing the embed leaves the task intact. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].

@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "13745e15886945c5b0be857d3d8d99ed68d6dca2a741e12ca1cd3d9965545a75",
-      "bytes": 11228
+      "sha256": "800026a25c713b49a33545410077f037a91c9739fbc129612c032a7b07e1c866",
+      "bytes": 11396
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "c33b579194b7ee8f2d4dc81b18a6aa6041f6075aca0a79bca6f8bbd6f7f30a43",
-      "bytes": 5927
+      "sha256": "e5ea75fc0f939d898a60fed7f44fb21f5124b8f5fa0de51acfb222ea5aba83f3",
+      "bytes": 6176
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -34,8 +34,8 @@
     },
     {
       "path": "DOCS-006 Glossary of Operon terms.md",
-      "sha256": "6c45f04ec7813b7c8454171500b1b241c248758e20e309aed26c0bc5d642455d",
-      "bytes": 8318
+      "sha256": "fee384b0095528641482fa3336ae1b8841704aaa6b41acdd9808bbe680724d0d",
+      "bytes": 8641
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
@@ -99,13 +99,13 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "216849883988790fbef8aa04174040eac2b66c6bb5d7945d1bc54eaf1c077cb6",
-      "bytes": 7012
+      "sha256": "34b39873f39faad6c7c2fd0cfd2b09572063aaa761d0855ba79f6a7e915f9de5",
+      "bytes": 7237
     },
     {
       "path": "DOCS-020 Task Creator.md",
-      "sha256": "f7b44326cbe1263cc24acc4ab5d97b71f5c8d8224b416da80ee6b77747390fc6",
-      "bytes": 6977
+      "sha256": "7735707884324c6ea3e6d0d0d309926285e5d3bf4c4298dcb729080aec9152b2",
+      "bytes": 7628
     },
     {
       "path": "DOCS-021 Task Editor.md",
@@ -114,13 +114,13 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "df336de57e46fd747a1602627ad131e369ab3d2d8f363bac1db0c565d7069a0c",
-      "bytes": 7396
+      "sha256": "94239e28c365911ad487934223535cc44f265fd52015d24887143e013769666e",
+      "bytes": 8199
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
-      "sha256": "731c311b4370e9a25e113655c34ff08ca1114fcc9a0a9c9214f7596ccf14a5df",
-      "bytes": 4330
+      "sha256": "8f8097a0a471f8c4304a7b2efd73a2fa3406d7b2406538f421f90e6c86354899",
+      "bytes": 4793
     },
     {
       "path": "DOCS-024 Task templates.md",
@@ -139,8 +139,8 @@
     },
     {
       "path": "DOCS-027 Task Finder.md",
-      "sha256": "aeb7144590cd29bcf821e9cf488792cd433790570d4d2572e92eb860ad50b805",
-      "bytes": 8800
+      "sha256": "66b6ea62816a7d5fc1b1afabadceee209d56a571ea83b3ab8771f1f4967c3692",
+      "bytes": 8951
     },
     {
       "path": "DOCS-028 Calendar overview.md",
@@ -209,13 +209,13 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "903dddafefdcd803903566e4af0f2ef44a71b85e2ff42c6547877dd34d4bc340",
-      "bytes": 17884
+      "sha256": "d61d057608aa2f944d90c24ccb868274d0e7e9f2f385bea5d65913ed5467917c",
+      "bytes": 18096
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
-      "sha256": "f87f87d1914ec6dd9211dc31753d3e1e71461f76371613c542ed27a31b2770b5",
-      "bytes": 7154
+      "sha256": "1002cb9b6e3507edf1cd410c3b58ec8f6401f0a28516899728d0541d0804b364",
+      "bytes": 7534
     },
     {
       "path": "DOCS-043 Settings search.md",
@@ -234,8 +234,8 @@
     },
     {
       "path": "DOCS-046 Plugin data and state files.md",
-      "sha256": "20905fe39ae5fe033ff16a066a46890f074bb32abb9dc27ce892479ae9d6b21f",
-      "bytes": 4677
+      "sha256": "ef86c4393235d2ff263f4940ea7a1366e9931745f77bc7f73971d66a8a657b0d",
+      "bytes": 5220
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
@@ -684,8 +684,8 @@
     },
     {
       "path": "DOCS-136 Task Router.md",
-      "sha256": "ae4dc681e1caf03d603e9ce27a01d7ba6f60b1a2c001450138d4e9345a5c48e5",
-      "bytes": 11354
+      "sha256": "5896d5882e2664b3fce619ba063325a85ddc5f8afeef0c9186af3c2d68698a25",
+      "bytes": 11821
     },
     {
       "path": "DOCS-137 Daily and Weekly Notes.md",
@@ -709,18 +709,18 @@
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
-      "sha256": "269de11bd0889fc100ad5437931645da7911348c8790d257858e8a96bdc7b7eb",
-      "bytes": 17035
+      "sha256": "2337c50d1674efc0c11322ce7a6f714268c44f84ab532e1245e6f81e88eac383",
+      "bytes": 12510
     },
     {
       "path": "DOCS-142 Embedded Task Cards.md",
-      "sha256": "efe977d9d3dc05e79bb14cbb66aed69d1e03c6a1d778f39e530223a04dcbeeba",
-      "bytes": 11145
+      "sha256": "65da5cf8a70513f8ef6ec54ee1aa77a425439871e1bed9028d49195858a00138",
+      "bytes": 11444
     },
     {
       "path": "DOCS-143 How to show assignee images.md",
-      "sha256": "00817457618c1f426b52c9f2cf3aece4a28ffe78269119d3cbd84d160babe75e",
-      "bytes": 5101
+      "sha256": "2d33a218d567ed1072bb86fe89fc254ad664850b50e2fa19cd3b545d182a8a1a",
+      "bytes": 5267
     },
     {
       "path": "DOCS-144 Supporting Operon.md",
@@ -728,15 +728,25 @@
       "bytes": 2717
     },
     {
-      "path": "DOCS-145 Canvas Property Value Pool.md",
-      "sha256": "040e076ec759fbb9cedb43ba19beae0aa90de8067d3188448f10bd83ace072e8",
-      "bytes": 6693
+      "path": "DOCS-145 Canvas and Excalidraw Property Value Pool.md",
+      "sha256": "47a5c14f72af8e76503e752382ea5e9563bd62a2479fd36fa9bb4c870486d596",
+      "bytes": 8064
     },
     {
       "path": "DOCS-146 Operon Groups in Canvas.md",
-      "sha256": "31e247a7121b32dfb28abb410ab907186056d5fcde1e287f646bba83033392cd",
-      "bytes": 7204
+      "sha256": "dc346891a7d5e07c723f7e484153104f379935f70549ce31eee516f6b9a5e3dd",
+      "bytes": 7264
+    },
+    {
+      "path": "DOCS-147 Excalidraw Task Cards.md",
+      "sha256": "cb21c3e341c420684bab177325b4ef41346ab62104d1ca24ee8d98bedce2c13a",
+      "bytes": 12970
+    },
+    {
+      "path": "DOCS-148 Canvas and Excalidraw Task Pool.md",
+      "sha256": "935606eca45b9ad388d2da5ca2834502095b0d35a4c5224329ea8fc76406d344",
+      "bytes": 7043
     }
   ],
-  "generatedAt": "2026-10-01T12:28:15.597Z"
+  "generatedAt": "2026-10-06T11:57:56.239Z"
 }
