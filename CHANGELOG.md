@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [3.12.0] - 2026-10-06
+
 ### New
 
 - Added **Excalidraw task cards** with native frames, automatic height, editable fields, and configurable task menus while keeping tasks in their Markdown sources. Changing the Stroke color updates the task color across its cards, and clicking an empty area of an active card opens Task Editor.
@@ -53,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, and code review passed, along with **4,555/4,555** local regression tests.
+- Full local Plugin checks, production build, release guard, and code review passed, along with **4,569/4,569** local regression tests.
 
 ## [3.11.0] - 2026-10-01
 
