@@ -95,6 +95,7 @@ export function classifyPullRequestValidationSurface(paths) {
 			|| isPrefixedBy(relativePath, RUNTIME_CONTRACT_SENSITIVE_PREFIXES)
 		)
 	));
+	const docsOnly = changedPaths.length > 0 && changedPaths.every(relativePath => /^(?:docs\/operon-docs\/(?:DOCS-\d{3} [^/]+\.md|manifest\.json)|docs\/media\/[^/]+\.(?:png|jpe?g|gif|webp|svg|mp4|webm|mov))$/u.test(relativePath));
 	const cliCompatReview = cliCompatibilityPaths.length > 0;
 	const runtimeContractReview = !cliCompatReview && runtimeContractPaths.length > 0;
 	const runtimeBaselineMutation = runtimeContractPaths.includes('contracts/agent-runtime/public-v1-baseline.json');
@@ -102,7 +103,8 @@ export function classifyPullRequestValidationSurface(paths) {
 		pluginReleasePaths.length > 0 || runtimeContractReview
 	);
 	return Object.freeze({
-		classification: cliCompatReview
+		docsOnly,
+		classification: docsOnly ? 'docs-only' : cliCompatReview
 			? 'cli-compat-required'
 			: runtimeContractReview
 				? 'runtime-contract-sensitive'
@@ -117,17 +119,19 @@ export function classifyPullRequestValidationSurface(paths) {
 }
 
 export function parseCliArguments(arguments_) {
-	if (arguments_.length !== 4 || arguments_[0] !== '--base' || arguments_[2] !== '--head') {
+	if (![4, 6].includes(arguments_.length) || arguments_[0] !== '--base' || arguments_[2] !== '--head') {
 		throw new Error('Usage: classify-pr-validation-surface.mjs --base <40-character-sha> --head <40-character-sha>');
 	}
 	const [, baseSha, , headSha] = arguments_;
 	for (const [label, value] of [['base', baseSha], ['head', headSha]]) {
 		if (!/^[0-9a-f]{40}$/u.test(value)) throw new Error(`${label} must be a 40-character lowercase Git SHA.`);
 	}
-	return { baseSha, headSha };
+	const event = arguments_.length === 6 ? arguments_[5] : 'pull_request';
+	if (arguments_.length === 6 && (arguments_[4] !== '--event' || !['pull_request', 'push', 'schedule'].includes(event))) throw new Error('Invalid workflow event');
+	return { baseSha, headSha, event };
 }
 
-export function changedPathsBetween(baseSha, headSha, executeGit = defaultExecuteGit) {
+export function changedPathsBetween(baseSha, headSha, executeGit = defaultExecuteGit, direct = false) {
 	try {
 		return executeGit([
 			'diff',
@@ -135,12 +139,12 @@ export function changedPathsBetween(baseSha, headSha, executeGit = defaultExecut
 			'--no-renames',
 			'--name-only',
 			'-z',
-			'--merge-base',
+			...(direct ? [] : ['--merge-base']),
 			baseSha,
 			headSha,
 		]).toString('utf8').split('\0').filter(Boolean);
 	} catch (error) {
-		throw new Error('OPERON_PR_MERGE_BASE_UNAVAILABLE: update the branch with its target base before classifying validation paths.', { cause: error });
+		throw new Error('OPERON_COMPARISON_UNAVAILABLE: cannot classify validation paths without a complete revision comparison.', { cause: error });
 	}
 }
 
@@ -150,6 +154,7 @@ function defaultExecuteGit(arguments_) {
 
 export function formatGitHubOutput(classification) {
 	return [
+		`docs_only=${classification.docsOnly}`,
 		`classification=${classification.classification}`,
 		`plugin_release_guard=${classification.pluginReleaseGuard}`,
 		`cli_compat_review=${classification.cliCompatReview}`,
@@ -159,8 +164,8 @@ export function formatGitHubOutput(classification) {
 }
 
 export function main(options = {}) {
-	const { baseSha, headSha } = parseCliArguments(options.argv ?? process.argv.slice(2));
-	const changedPaths = changedPathsBetween(baseSha, headSha, options.executeGit);
+	const { baseSha, headSha, event } = parseCliArguments(options.argv ?? process.argv.slice(2));
+	const changedPaths = event === 'schedule' ? [] : changedPathsBetween(baseSha, headSha, options.executeGit, event === 'push');
 	const output = `${formatGitHubOutput(classifyPullRequestValidationSurface(changedPaths))}\n`;
 	(options.write ?? process.stdout.write.bind(process.stdout))(output);
 }

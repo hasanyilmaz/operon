@@ -159,7 +159,7 @@ test('Windows CI delegates platform checks to the Plugin-only runner', () => {
 	const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 	assert.match(
 		workflow,
-		/- name: Run canonical Windows Plugin validation\s+run: npm run validate:windows:plugin/u,
+		/- name: Run canonical Windows Plugin validation\s+if: needs\.surface\.outputs\.docs_only != 'true'\s+run: npm run validate:windows:plugin/u,
 	);
 	for (const stepName of [
 		'Run validation',

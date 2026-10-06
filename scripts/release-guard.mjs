@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
+import { checkDocsClassificationGate } from './ci/docs-only-workflow-policy.mjs';
 import { classifyPullRequestValidationSurface } from './ci/classify-pr-validation-surface.mjs';
 import {
 	checkProductionProcessLaunchPolicy,
@@ -437,19 +438,20 @@ function checkContinuousIntegrationWorkflow() {
 	const workflow = '.github/workflows/ci.yml';
 	const workflowText = readText(workflow);
 	const document = readWorkflow(workflow);
+	checkDocsClassificationGate(document, workflow, ['validate', 'windows-native'], {assertEqual, assertNoMatch});
 	const validation = document.jobs?.validate;
 	const windows = document.jobs?.['windows-native'];
 	assertEqual('CI validation gate name', validation?.name, 'Validation gate');
 	const validationSteps = new Map((validation?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI validation checkout history depth', validationSteps.get('Check out repository')?.with?.['fetch-depth'], 0);
-	assertEqual('CI PR surface classifier condition', validationSteps.get('Classify pull-request validation surface')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI PR surface classifier condition', validationSteps.get('Classify pull-request validation surface')?.if, "github.event_name == 'pull_request' && needs.surface.outputs.docs_only != 'true'");
 	assertEqual('CI Runtime baseline boundary condition', validationSteps.get('Require immutable Runtime V1 baseline')?.if, "github.event_name == 'pull_request' && steps.pr-surface.outputs.runtime_baseline_mutation == 'true'");
 	assertEqual('CI CLI compatibility review condition', validationSteps.get('Require explicit CLI compatibility review')?.if, "github.event_name == 'pull_request' && steps.pr-surface.outputs.cli_compat_review == 'true'");
-	assertEqual('CI main validation condition', validationSteps.get('Run main validation')?.if, "github.event_name == 'push'");
+	assertEqual('CI main validation condition', validationSteps.get('Run main validation')?.if, "github.event_name == 'push' && needs.surface.outputs.docs_only != 'true'");
 	assertEqual('CI main validation command', validationSteps.get('Run main validation')?.run, 'npm run check:main');
 	assertEqual('CI main validation base identity', validationSteps.get('Run main validation')?.env?.OPERON_PUSH_BASE_SHA, '${{ github.event.before }}');
 	assertEqual('CI main validation head identity', validationSteps.get('Run main validation')?.env?.OPERON_PUSH_HEAD_SHA, '${{ github.sha }}');
-	assertEqual('CI PR validation condition', validationSteps.get('Run Plugin candidate validation')?.if, "github.event_name == 'pull_request'");
+	assertEqual('CI PR validation condition', validationSteps.get('Run Plugin candidate validation')?.if, "github.event_name == 'pull_request' && needs.surface.outputs.docs_only != 'true'");
 	assertEqual('CI PR validation command', validationSteps.get('Run Plugin candidate validation')?.run, 'npm run check:plugin');
 	assertEqual('CI CLI impact command', validationSteps.get('Report non-blocking CLI impact')?.shell, 'bash');
 	if (!validationSteps.get('Report non-blocking CLI impact')?.run?.includes('npm run --silent agent-runtime:cli-impact')) {
@@ -470,9 +472,13 @@ function checkContinuousIntegrationWorkflow() {
 			"github.event_name == 'pull_request' && steps.pr-surface.outputs.plugin_release_guard == 'true'",
 		);
 	}
+	assertEqual('Windows runner selection', windows?.['runs-on'], "${{ (needs.surface.outputs.docs_only == 'true' || needs.surface.result != 'success') && 'ubuntu-latest' || 'windows-2022' }}");
+	assertEqual('Docs validation condition', validationSteps.get('Validate docs package')?.if, "needs.surface.outputs.docs_only == 'true'");
+	if (!validationSteps.get('Validate docs package')?.run?.includes('node --test scripts/test-operon-docs-package.mjs')) fail('Docs lane must validate the package');
+	for (const name of ['Install dependencies', 'Verify release dependency audit policy']) assertEqual(name + ' condition', validationSteps.get(name)?.if, "needs.surface.outputs.docs_only != 'true'");
 	const windowsSteps = new Map((windows?.steps ?? []).map(step => [step.name, step]));
 	assertEqual('CI Windows checkout history depth', windowsSteps.get('Check out repository')?.with?.['fetch-depth'], 2);
-	assertEqual('Windows Plugin validation condition', windowsSteps.get('Run canonical Windows Plugin validation')?.if, undefined);
+	assertEqual('Windows Plugin validation condition', windowsSteps.get('Run canonical Windows Plugin validation')?.if, "needs.surface.outputs.docs_only != 'true'");
 	assertEqual('Windows Plugin validation command', windowsSteps.get('Run canonical Windows Plugin validation')?.run, 'npm run validate:windows:plugin');
 	if (windowsSteps.has('Run validation') || windowsSteps.has('Run required native transport validation')) {
 		fail('Windows CI must use the single canonical platform validator instead of a broad or duplicate validation step.');
@@ -508,7 +514,7 @@ function checkContinuousIntegrationWorkflow() {
 		/run:\s+npm audit(?:\s|$)/u,
 		'CI must not bypass the canonical dependency audit policy with raw npm audit',
 	);
-	if (!/- name: Run Plugin candidate validation\s+if: github\.event_name == 'pull_request'\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check:plugin/u.test(workflowText)) {
+	if (!/- name: Run Plugin candidate validation\s+if: github\.event_name == 'pull_request' && needs\.surface\.outputs\.docs_only != 'true'\s+env:\s+OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic\s+run: npm run check:plugin/u.test(workflowText)) {
 		fail('CI must keep shared-runner Task Finder timings diagnostic while reference runs enforce performance gates');
 	}
 	assertNoMatch(workflow, /evidence-seal|hosted-evidence|candidate:freeze:check/u, 'CI must use one normal validation lane per commit');
@@ -529,12 +535,14 @@ function checkContinuousIntegrationWorkflow() {
 function checkCodeqlWorkflow() {
 	const workflow = '.github/workflows/codeql.yml';
 	const document = readWorkflow(workflow);
+	checkDocsClassificationGate(document, workflow, ['analyze'], {assertEqual, assertNoMatch});
 	const analyze = document.jobs?.analyze;
 	assertEqual('CodeQL gate name', analyze?.name, 'CodeQL gate');
 	const steps = new Map((analyze?.steps ?? []).map(step => [step.name, step]));
 	if (!steps.has('Check out repository') || !steps.has('Initialize CodeQL') || !steps.has('Perform CodeQL analysis')) {
 		fail('CodeQL gate must check out, initialize, and analyze every target commit');
 	}
+	for (const name of ['Initialize CodeQL', 'Perform CodeQL analysis']) assertEqual(name + ' condition', steps.get(name)?.if, "needs.surface.outputs.docs_only != 'true'");
 	assertNoMatch(workflow, /evidence-seal|classify release evidence/u, 'CodeQL must analyze every release commit without a seal bypass');
 }
 

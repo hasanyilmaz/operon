@@ -10,11 +10,36 @@ permissions:
   contents: read
 
 jobs:
+  surface:
+    name: Classify validation surface
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.surface.outputs.docs_only }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Classify validation surface
+        id: surface
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || github.sha }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/ci/classify-pr-validation-surface.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --event "$EVENT_NAME" >> "$GITHUB_OUTPUT"
+
   validate:
     name: Validation gate
+    needs: surface
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require successful classification
+        if: needs.surface.result != 'success'
+        run: exit 1
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -29,9 +54,16 @@ jobs:
           actual="$(git rev-parse HEAD)"
           test "$actual" = "$expected"
 
+      - name: Validate docs package
+        if: needs.surface.outputs.docs_only == 'true'
+        run: |
+          node --test scripts/test-operon-docs-package.mjs
+          git diff --check "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}" HEAD -- docs/operon-docs docs/media
+          echo "docs-only — package validated; plugin checks not applicable" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Classify pull-request validation surface
         id: pr-surface
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && needs.surface.outputs.docs_only != 'true'
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -58,31 +90,35 @@ jobs:
           exit 1
 
       - name: Set up Node
+        if: needs.surface.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
           cache: npm
 
       - name: Pin canonical npm
+        if: needs.surface.outputs.docs_only != 'true'
         run: npm install --global npm@11.12.1
 
       - name: Install dependencies
+        if: needs.surface.outputs.docs_only != 'true'
         run: npm ci
 
       - name: Run main validation
         run: npm run check:main
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && needs.surface.outputs.docs_only != 'true'
         env:
           OPERON_PUSH_BASE_SHA: ${{ github.event.before }}
           OPERON_PUSH_HEAD_SHA: ${{ github.sha }}
 
       - name: Run Plugin candidate validation
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && needs.surface.outputs.docs_only != 'true'
         env:
           OPERON_TASK_FINDER_PERFORMANCE_MODE: diagnostic
         run: npm run check:plugin
 
       - name: Verify release dependency audit policy
+        if: needs.surface.outputs.docs_only != 'true'
         run: npm run release:audit-policy
 
       - name: Verify release-sensitive Plugin guard
@@ -90,6 +126,7 @@ jobs:
         run: npm run release:guard -- --scope plugin
 
       - name: Report non-blocking CLI impact
+        if: needs.surface.outputs.docs_only != 'true'
         shell: bash
         run: |
           impact="$(npm run --silent agent-runtime:cli-impact)"
@@ -102,10 +139,21 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   windows-native:
-    runs-on: windows-2022
+    needs: surface
+    if: always()
+    runs-on: ${{ (needs.surface.outputs.docs_only == 'true' || needs.surface.result != 'success') && 'ubuntu-latest' || 'windows-2022' }}
 
     steps:
+      - name: Require successful classification
+        if: needs.surface.result != 'success'
+        shell: bash
+        run: exit 1
+      - name: Docs-only Windows validation not applicable
+        if: needs.surface.outputs.docs_only == 'true'
+        shell: bash
+        run: echo "docs-only — Windows validation not applicable" >> "$GITHUB_STEP_SUMMARY"
       - name: Check out repository
+        if: needs.surface.outputs.docs_only != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 2
@@ -113,6 +161,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Verify exact workflow revision
+        if: needs.surface.outputs.docs_only != 'true'
         shell: pwsh
         run: |
           $expected = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
@@ -120,19 +169,23 @@ jobs:
           if ($actual -ne $expected) { throw "Workflow checkout SHA mismatch" }
 
       - name: Set up Node
+        if: needs.surface.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
           cache: npm
 
       - name: Pin canonical npm
+        if: needs.surface.outputs.docs_only != 'true'
         run: npm install --global npm@11.12.1
 
       - name: Verify canonical toolchain
+        if: needs.surface.outputs.docs_only != 'true'
         shell: pwsh
         run: |
           if ((node --version) -ne "v24.18.0") { throw "Unexpected Node version" }
           if ((npm --version) -ne "11.12.1") { throw "Unexpected npm version" }
 
       - name: Run canonical Windows Plugin validation
+        if: needs.surface.outputs.docs_only != 'true'
         run: npm run validate:windows:plugin

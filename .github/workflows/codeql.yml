@@ -13,20 +13,52 @@ permissions:
   security-events: write
 
 jobs:
-  analyze:
-    name: CodeQL gate
+  surface:
+    name: Classify validation surface
     runs-on: ubuntu-latest
-
+    outputs:
+      docs_only: ${{ steps.surface.outputs.docs_only }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Classify validation surface
+        id: surface
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || github.sha }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: node scripts/ci/classify-pr-validation-surface.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --event "$EVENT_NAME" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    name: CodeQL gate
+    needs: surface
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require successful classification
+        if: needs.surface.result != 'success'
+        run: exit 1
+      - name: Docs-only CodeQL analysis not applicable
+        if: needs.surface.outputs.docs_only == 'true'
+        run: echo "docs-only — CodeQL analysis not applicable" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check out repository
+        if: needs.surface.outputs.docs_only != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
+        if: needs.surface.outputs.docs_only != 'true'
         uses: github/codeql-action/init@bce182f857edf1feab116e9795a3393d21977282 # v4
         with:
           languages: javascript-typescript
 
       - name: Perform CodeQL analysis
+        if: needs.surface.outputs.docs_only != 'true'
         uses: github/codeql-action/analyze@bce182f857edf1feab116e9795a3393d21977282 # v4

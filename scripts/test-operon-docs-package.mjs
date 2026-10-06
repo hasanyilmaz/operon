@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -38,11 +38,19 @@ function docTargetFromWikilink(link) {
 
 async function regularFile(target) {
 	try {
-		return (await stat(target)).isFile();
+		return (await lstat(target)).isFile();
 	} catch {
 		return false;
 	}
 }
+
+test('docs and media package entries are regular files, not symlinks or directories', async () => {
+	for (const root of [generatedRoot, mediaRoot]) {
+		for (const entry of await readdir(root, {withFileTypes: true})) {
+			assert.equal(entry.isFile(), true, `${entry.name} must be a regular package file.`);
+		}
+	}
+});
 
 test('generated docs package has contiguous DOCS IDs and an exact manifest', async () => {
 	const files = await managedFiles(generatedRoot);
