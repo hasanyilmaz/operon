@@ -2,7 +2,7 @@
 Notes: Route new and existing inline and file tasks to the right working and archive locations
 Icon: route
 Color: "#2563eb"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Task Router
@@ -36,6 +36,10 @@ The default inline destination can be:
 Daily Notes is available when Operon manages Daily Notes or Obsidian's Core Daily Notes plugin is available. Weekly Notes requires Operon's Weekly Notes management to be enabled.
 
 For Daily Notes, Active File, and Ask Every Time, **Inline task heading** is a heading keyword rather than a whole Markdown heading. Operon inserts under the first heading containing that phrase; if none exists, it creates a level-two heading. Weekly Notes uses the routed daily-date heading described in [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]. Specific File mode uses a linked date heading based on the active Core Daily Notes format, with `YYYY-MM-DD` as fallback.
+
+### Create from an Excalidraw drawing
+
+Creating from Excalidraw uses the same destination and parent-placement rules. The drawing’s Markdown can be a target when selected or resolved by those rules; opening Task Creator from a drawing does not force it to be the destination. For example, a parent-placement rule may send a new inline task to its parent’s note while its card remains in the drawing. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
 ## Choosing with Ask Every Time
 

@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-09-23T10:52:17+02:00
+Updated: 2026-10-06T10:36:57+02:00
 ---
 
 # Operon system map
@@ -26,6 +26,9 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Kanban**: tasks as cards in columns by status, moved through your workflow. Use it to plan *how far along*. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Operon Table**. See [[DOCS-105 Table overview|Table overview]].
 - **Canvas Task Cards**: arrange tasks as a project map, gather existing work from the Canvas Task Pool, and set parent–child or blocking relationships on connections. Run **Add task to Canvas** from an editable Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
+- **Excalidraw Task Cards**: arrange tasks beside sketches, convert drawing text into tasks, and edit relationships on arrows. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
+- **Task Pool**: gather existing tasks for either visual surface using shared search and task modes. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
+
 - **Operon Groups in Canvas**: organize cards with a property rule, apply that rule by dropping a task into the group, and route cards that no longer match a single-value group. Editing the rule does not bulk-update the tasks inside. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Embedded Task Cards**: keep one live task beside the text of a note, with its fields, progress, and controls. Use **Copy task card embed** in Task Editor. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Pinned Task Dock**: keeps chosen tasks always in view. It can float over your notes (run **Toggle Pinned Tasks dock**) or live in a side panel (run **Open Pinned Tasks**, or set it to open in the sidebar). See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
@@ -35,7 +38,7 @@ Planning a day or week by date? Use the Calendar. Planning by stage of work? Use
 
 ## Ways to control and automate
 
-- **Canvas Property Value Pool**: search and favorite property values, then drag them onto Canvas task cards to change their fields. It also supplies values for creating groups or extending matching list rules. Run **Open Canvas Property Value Pool** with a Canvas active. See [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]].
+- **Property Value Pool**: search and favorite reusable values, then apply them to task cards on Canvas or Excalidraw. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
 - **Pipelines and statuses**: the workflow stages a task moves through (for example, the columns you see in Kanban). Set these up once to match how you work. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 - **Recurring tasks**: tasks that repeat on a schedule, such as every Monday. See [[DOCS-033 Recurring tasks|Recurring tasks]].
 - **Time tracking**: start and stop a timer on a task with **Start/stop time tracker**, then review sessions in the **Time Session History** panel. For focused work sessions, open the **FlowTime** panel. See [[DOCS-034 Time tracking|Time tracking]].

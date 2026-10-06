@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-09-23T10:32:47+02:00
+Updated: 2026-10-06T10:33:06+02:00
 ---
 
 # Operon Docs
@@ -109,7 +109,9 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 
 ### Views and planning
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
-- [[DOCS-145 Canvas Property Value Pool|Canvas Property Value Pool]]
+- [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]
+- [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]]
+- [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]]
 - [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]]
 - [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
 - [[DOCS-025 Filter View|Filter View]]
