@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed **custom keys** remaining read-only when Obsidian had no explicit property type assigned. Existing custom keys now receive their selected type automatically when Operon starts, and new custom keys receive it when saved; explicitly different Obsidian types are preserved.
+
 ### Validation
+
+- Full local Plugin checks, production build, release guard, and code review passed, along with **5,071/5,071** local regression tests.
 
 ## [4.0.0] - 2026-10-14
 
