@@ -13,6 +13,37 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '4.0.1',
+		date: '2026-10-14',
+		title: 'Operon 4.0.1 — Bug Fixes',
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: `
+This update fixes calendar timing, custom properties, and task conversion.
+
+### Fixed
+
+- **Calendar times stay exact.** Clicking or tapping a task no longer rounds its saved time. Intentional dragging still uses 15-minute steps.
+- **Resizing preserves the opposite edge.** Changing a task’s start or end no longer shifts the time you left untouched.
+- **Custom key types sync automatically.** Missing Obsidian type assignments are filled when a new key is saved and for existing keys at startup. Explicitly different types are preserved.
+- **New custom keys appear in Additional** before their first use in a note.
+- **Deleted custom keys no longer leave empty placeholders in Task Creator.** Properties supplied by templates or user selections remain available.
+- **Inline-to-file conversion preserves longer filenames**, without Operon’s previous 100-character truncation.
+
+### Improved
+
+- Resolved Obsidian’s CSS and source-code lint warnings while preserving appearance and keyboard focus behavior.
+
+### Updated Docs
+
+- [[DOCS-019 Converting inline and file tasks|Converting Inline and File Tasks]]
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-029 Calendar presets and time grid|Calendar Presets and Time Grid]]
+- [[DOCS-040 Custom keys|Custom Keys]]
+- [[DOCS-115 File task property columns|Vault Properties]]
+`.trim(),
+	},
+	{
 		version: '4.0.0',
 		date: '2026-10-14',
 		title: 'Operon 4.0.0 — Unity',
