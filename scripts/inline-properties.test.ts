@@ -933,3 +933,67 @@ test('registry-only failure and identical recovery refresh native warnings witho
 });
 
 import "./native-property-index.test";
+
+// Explicit custom-key type sync uses Obsidian's native writer, never inferred property types.
+import { syncCustomPropertyType } from '../src/core/custom-property-type-sync';
+function customTypeSyncFixture(initial: Record<string, string> = {}) {
+ let disk = { ...initial }, memory = { ...initial }, writes = 0;
+ let failure: 'read' | 'before' | 'after' | 'verify' | undefined;
+ const mapping: KeyMapping = { canonicalKey: 'customValue', visiblePropertyName: 'Custom Value', type: 'text', isSystem: false, enabled: true, sync: 'yes' };
+ const manager = {
+  getAssignedWidget: (name: string) => Object.entries(memory).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? null,
+  async setType(name: string, type: string) {
+   writes++;
+   if (failure === 'before') throw new Error('write failed');
+   memory[name] = type;
+   if (failure === 'after') throw new Error('uncertain write');
+   if (failure !== 'verify') disk = { ...memory };
+  },
+ };
+ const app = { metadataTypeManager: manager, vault: { configDir: '.settings', adapter: {
+  exists: async () => true,
+  read: async (name: string) => { assert.equal(name, '.settings/types.json'); if (failure === 'read') throw new Error('read failed'); return JSON.stringify({ types: disk }); },
+ } } } as unknown as App;
+ return { app, mapping, manager, writes: () => writes, disk: () => disk,
+  fail: (value: typeof failure) => { failure = value; },
+  memory: (value: Record<string, string>) => { memory = value; },
+ };
+}
+for (const type of ['text', 'list', 'number', 'checkbox', 'date', 'datetime'] as const) {
+ test(`custom type sync assigns explicit ${type} once and preserves unrelated types`, async () => {
+  const f = customTypeSyncFixture({ Existing: 'number' }); f.mapping.type = type;
+  const result = await syncCustomPropertyType(f.app, f.mapping, () => true);
+  assert.equal(result.status, 'updated');
+  assert.deepEqual(f.disk(), { Existing: 'number', 'Custom Value': type === 'list' ? 'multitext' : type });
+  assert.equal((await syncCustomPropertyType(f.app, f.mapping, () => true)).status, 'unchanged');
+  assert.equal(f.writes(), 1);
+ });
+}
+test('custom type sync preserves explicit conflicts through either alias and case', async () => {
+ for (const alias of ['Custom Value','CUSTOMVALUE','custom value']) {
+  const f=customTypeSyncFixture({[alias]:'number'});
+  assert.equal((await syncCustomPropertyType(f.app,f.mapping,()=>true)).status,'conflict');assert.equal(f.writes(),0);
+ }
+});
+test('custom type sync serializes repeated user requests without duplicate writes', async () => {
+ const f=customTypeSyncFixture();
+ const results=await Promise.all([syncCustomPropertyType(f.app,f.mapping,()=>true),syncCustomPropertyType(f.app,f.mapping,()=>true)]);
+ assert.deepEqual(results.map(result=>result.status),['updated','unchanged']);assert.equal(f.writes(),1);
+});
+test('custom type sync refuses stale manager, unavailable API and cancelled mapping', async () => {
+ const f=customTypeSyncFixture({Other:'number'});f.memory({});
+ assert.equal((await syncCustomPropertyType(f.app,f.mapping,()=>true)).status,'failed');assert.equal(f.writes(),0);
+ assert.equal((await syncCustomPropertyType({vault:f.app.vault} as App,f.mapping,()=>true)).status,'failed');
+ assert.equal((await syncCustomPropertyType(f.app,f.mapping,()=>false)).status,'cancelled');
+});
+for (const failure of ['read','before','after','verify'] as const) test(`custom type sync never retries uncertain ${failure} failure`,async()=>{
+ const f=customTypeSyncFixture({Other:'number'});f.fail(failure);
+ assert.equal((await syncCustomPropertyType(f.app,f.mapping,()=>true)).status,'failed');
+ assert.equal(f.writes(),failure==='read'?0:1);assert.deepEqual(f.disk(),{Other:'number'});
+ if(failure!=='read'){f.fail(undefined);const other={...f.mapping,canonicalKey:'another',visiblePropertyName:'Another'};assert.equal((await syncCustomPropertyType(f.app,other,()=>true)).status,'failed');assert.equal(f.writes(),1,'later saves cannot flush an uncertain assignment');}
+});
+test('custom type sync cancels a mapping changed during registry read',async()=>{
+ const f=customTypeSyncFixture();let current=true;const read=f.app.vault.adapter.read.bind(f.app.vault.adapter);
+ f.app.vault.adapter.read=async name=>{const result=await read(name);current=false;return result;};
+ assert.equal((await syncCustomPropertyType(f.app,f.mapping,()=>current)).status,'cancelled');assert.equal(f.writes(),0);
+});

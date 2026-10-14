@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3652,
-  "keyFingerprint": "853b19c5f15756a38938112fa7a11c8f1f0e3c71ab0cb12ea4bb0b5828ac2f31",
+  "keyCount": 3656,
+  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1980,6 +1980,10 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "Afficher dans les couloirs Kanban",
       "keyMappingsShowInKanbanSwimlaneTooltip": "Proposer ce champ personnalisé comme option de groupement en couloir Kanban.",
       "keyMappingsSurfaceCheckboxUnsupported": "Les champs personnalisés de type case à cocher sont enregistrés, mais ne sont pas encore affichés dans l'éditeur, le créateur, les chips ou les couloirs Kanban.",
+      "keyMappingsTypeSync": "Synchroniser les types avec Obsidian",
+      "keyMappingsTypeSyncDesc": "Attribuer les types Obsidian manquants depuis les champs personnalisés. Les types différents existants sont conservés.",
+      "keyMappingsTypeSyncRecovery": "La synchronisation des types n’a pas pu être vérifiée. Redémarrez Obsidian avant de réessayer ; aucun type existant n’a été volontairement remplacé.",
+      "keyMappingsTypeSyncResult": "Types : {{updated}} attribués, {{unchanged}} déjà identiques, {{conflicts}} conflits conservés, {{failed}} non vérifiés.",
       "keyMappingsType_checkbox": "case à cocher",
       "keyMappingsType_date": "date",
       "keyMappingsType_datetime": "date et heure",
@@ -3697,5 +3701,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "66cb807fe4295cb6934c4bb4a581751d07619525f5616bb78f05ce34bc060e30"
+  "sourceVersion": "50fd48e37f434bccf0d25267aad22a4d8bd0d3774c2f20cfbc4dbb46e91d2eb3"
 }

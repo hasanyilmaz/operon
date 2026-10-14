@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3652,
-  "keyFingerprint": "853b19c5f15756a38938112fa7a11c8f1f0e3c71ab0cb12ea4bb0b5828ac2f31",
+  "keyCount": 3656,
+  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1980,6 +1980,10 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "Kanban gruplarında göster",
       "keyMappingsShowInKanbanSwimlaneTooltip": "Bu özel alanı Kanban grup alanı seçeneği olarak sun.",
       "keyMappingsSurfaceCheckboxUnsupported": "Onay kutusu özel alanları saklanır ama henüz editör, oluşturucu, chip veya Kanban grupları yüzeylerinde gösterilmez.",
+      "keyMappingsTypeSync": "Özellik tiplerini Obsidian ile eşitle",
+      "keyMappingsTypeSyncDesc": "Eksik Obsidian tiplerini custom key tanımlarından ata. Mevcut farklı tipler korunur.",
+      "keyMappingsTypeSyncRecovery": "Tip eşitlemesi doğrulanamadı. Yeniden denemeden önce Obsidian’ı yeniden başlatın; mevcut tipler bilerek değiştirilmedi.",
+      "keyMappingsTypeSyncResult": "Özellik tipleri: {{updated}} atandı, {{unchanged}} zaten eşleşiyor, {{conflicts}} çakışma korundu, {{failed}} doğrulanamadı.",
       "keyMappingsType_checkbox": "onay kutusu",
       "keyMappingsType_date": "tarih",
       "keyMappingsType_datetime": "tarih-saat",
@@ -3697,5 +3701,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "03b5ebd24b5d6964e3bef40883a956910a34fe4758f4a2795afee1803f380288"
+  "sourceVersion": "cc725b755c95ec958cafacc163f390e34f6528fe0efe90fdefc476e011b58cc9"
 }

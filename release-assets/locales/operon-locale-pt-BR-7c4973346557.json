@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3652,
-  "keyFingerprint": "853b19c5f15756a38938112fa7a11c8f1f0e3c71ab0cb12ea4bb0b5828ac2f31",
+  "keyCount": 3656,
+  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1980,6 +1980,10 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "Mostrar em Kanban swimlanes",
       "keyMappingsShowInKanbanSwimlaneTooltip": "Oferecer este campo personalizado como opção de agrupamento de Kanban swimlane.",
       "keyMappingsSurfaceCheckboxUnsupported": "Os campos personalizados do tipo caixa de seleção são armazenados, mas ainda não são exibidos nas superfícies do editor, criador, chip ou Kanban swimlane.",
+      "keyMappingsTypeSync": "Sincronizar tipos com o Obsidian",
+      "keyMappingsTypeSyncDesc": "Atribuir tipos ausentes do Obsidian a partir dos campos personalizados. Tipos existentes diferentes são mantidos.",
+      "keyMappingsTypeSyncRecovery": "Não foi possível verificar a sincronização. Reinicie o Obsidian antes de tentar novamente; nenhum tipo existente foi substituído intencionalmente.",
+      "keyMappingsTypeSyncResult": "Tipos: {{updated}} atribuídos, {{unchanged}} já correspondem, {{conflicts}} conflitos mantidos, {{failed}} não verificados.",
       "keyMappingsType_checkbox": "caixa de seleção",
       "keyMappingsType_date": "data",
       "keyMappingsType_datetime": "data/hora",
@@ -3697,5 +3701,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "c983672d0ab263bd53d7ef509283eafe89f88210f69f591322b61ac741834b9b"
+  "sourceVersion": "c12bbf026877a53fb8a0719141cd8973da9d1b04044088a84ab3a70863a20ffe"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3652,
-  "keyFingerprint": "853b19c5f15756a38938112fa7a11c8f1f0e3c71ab0cb12ea4bb0b5828ac2f31",
+  "keyCount": 3656,
+  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1980,6 +1980,10 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "Показывать в дорожках канбана",
       "keyMappingsShowInKanbanSwimlaneTooltip": "Предлагать это пользовательское поле как вариант группировки по дорожкам канбана.",
       "keyMappingsSurfaceCheckboxUnsupported": "Пользовательские поля типа «чекбокс» сохраняются, но пока не отображаются в редакторе, конструкторе, чипах или дорожках канбана.",
+      "keyMappingsTypeSync": "Синхронизировать типы с Obsidian",
+      "keyMappingsTypeSyncDesc": "Назначить отсутствующие типы Obsidian по пользовательским полям. Существующие отличающиеся типы сохраняются.",
+      "keyMappingsTypeSyncRecovery": "Не удалось подтвердить синхронизацию типов. Перезапустите Obsidian перед повторной попыткой; существующие типы намеренно не заменялись.",
+      "keyMappingsTypeSyncResult": "Типы: назначено {{updated}}, уже совпадают {{unchanged}}, сохранено конфликтов {{conflicts}}, не подтверждено {{failed}}.",
       "keyMappingsType_checkbox": "чекбокс",
       "keyMappingsType_date": "дата",
       "keyMappingsType_datetime": "дата и время",
@@ -3697,5 +3701,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3fd863fdb37dc34961bf1266a24c96961c653690cf49fad61acd72a23657eee3"
+  "sourceVersion": "b92edd98cf97f16281a50f05e4490e890b247eabde826a6325dd40844e2abdba"
 }

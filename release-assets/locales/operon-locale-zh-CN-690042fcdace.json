@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3652,
-  "keyFingerprint": "853b19c5f15756a38938112fa7a11c8f1f0e3c71ab0cb12ea4bb0b5828ac2f31",
+  "keyCount": 3656,
+  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1980,6 +1980,10 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "在看板泳道中显示",
       "keyMappingsShowInKanbanSwimlaneTooltip": "将此自定义字段作为看板泳道分组选项提供。",
       "keyMappingsSurfaceCheckboxUnsupported": "复选框自定义字段会被存储，但尚未在编辑器、创建器、标签或看板泳道界面中显示。",
+      "keyMappingsTypeSync": "与 Obsidian 同步属性类型",
+      "keyMappingsTypeSyncDesc": "根据自定义字段设置缺失的 Obsidian 类型。保留已有的不同类型。",
+      "keyMappingsTypeSyncRecovery": "无法验证类型同步。请重启 Obsidian 后再试；未有意替换已有类型。",
+      "keyMappingsTypeSyncResult": "属性类型：已设置 {{updated}} 项，已匹配 {{unchanged}} 项，保留冲突 {{conflicts}} 项，未验证 {{failed}} 项。",
       "keyMappingsType_checkbox": "复选框",
       "keyMappingsType_date": "日期",
       "keyMappingsType_datetime": "日期时间",
@@ -3697,5 +3701,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "371b8583533f059a4255d893ba004d0454704bbc58b0d42cf9c44c1990e41819"
+  "sourceVersion": "3a21edb326abaf7167e76c98bb91fafe6e44de63aa9a7ba979b66957834ccaf9"
 }
