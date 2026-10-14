@@ -27922,8 +27922,7 @@ export default class OperonPlugin extends Plugin {
 		return name
 			.replace(/[\\/:*?"<>|]/g, '')
 			.replace(/\s+/g, ' ')
-			.trim()
-			.substring(0, 100);
+			.trim();
 	}
 
 	private getYamlTaskByFilePath(filePath: string): IndexedTask | null {

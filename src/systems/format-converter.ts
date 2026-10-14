@@ -228,8 +228,7 @@ export class FormatConverter {
 		return name
 			.replace(/[\\/:*?"<>|]/g, '')
 			.replace(/\s+/g, ' ')
-			.trim()
-			.substring(0, 100);
+			.trim();
 	}
 
 	getUniqueFilePath(folderPath: string, baseName: string): string {
@@ -237,8 +236,7 @@ export class FormatConverter {
 		let i = 1;
 		while (this.app.vault.getAbstractFileByPath(candidate)) {
 			const suffix = ` (${i})`;
-			const trimmedBase = baseName.substring(0, Math.max(1, 100 - suffix.length));
-			const nextName = `${trimmedBase}${suffix}`;
+			const nextName = `${baseName}${suffix}`;
 			candidate = folderPath ? `${folderPath}/${nextName}.md` : `${nextName}.md`;
 			i++;
 		}
