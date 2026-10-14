@@ -10019,12 +10019,14 @@ export class CalendarView extends ItemView {
 			if (dragState.dropTarget !== 'timed') return null;
 			const dateKey = visibleDates[dragState.currentDayIndex];
 			if (!dateKey) return null;
-			return buildTimedSlotSelection(
+			// Resize already snaps the dragged edge; preserve the opposite edge's exact minute.
+			const selection = buildTimedSlotSelection(
 				dateKey,
 				dragState.currentStartMinutes,
 				dragState.currentEndMinutes,
-				CALENDAR_TIMED_SNAP_MINUTES,
+				dragState.mode === 'move' ? CALENDAR_TIMED_SNAP_MINUTES : 1,
 			);
+			return { ...selection, slotMinutes: CALENDAR_TIMED_SNAP_MINUTES };
 		};
 
 		const resolveDefaultGridPosition = (clientX: number, clientY: number): { dayIndex: number; minuteOfDay: number } => {
