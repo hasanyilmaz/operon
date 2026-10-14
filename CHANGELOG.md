@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- Resolved Obsidian’s CSS and source-code lint warnings while preserving existing appearance, hover interactions, and keyboard focus behavior.
+
 ### Fixed
 
-- Fixed **custom keys** remaining read-only when Obsidian had no explicit property type assigned. Existing custom keys now receive their selected type automatically when Operon starts, and new custom keys receive it when saved; explicitly different Obsidian types are preserved.
+- Fixed **Calendar** clicks, stationary presses, and small pointer movements rounding saved task times to a 15-minute interval. Intentional dragging still uses 15-minute steps.
+- Fixed **Calendar resizing** changing the untouched start or end time. Only the dragged edge now snaps to 15-minute intervals.
+- Fixed deleted **custom key** placeholders remaining visible in Task Creator, while preserving normal Obsidian properties supplied by templates or user selections.
+- Removed Operon’s 100-character filename truncation when converting **Inline Tasks to File Tasks**, including filenames with duplicate-name suffixes.
+- Fixed newly defined **custom keys** missing from Task Editor’s **Additional → Add existing property** picker before their first use in a note.
+- Fixed **custom keys** remaining read-only because Obsidian had no explicit property type assigned. Existing custom keys now receive their selected type automatically when Operon starts, and new custom keys receive it when saved. Explicitly different Obsidian types are preserved.
 
 ### Validation
 
