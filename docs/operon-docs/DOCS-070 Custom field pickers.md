@@ -2,7 +2,7 @@
 Notes: How a custom key's type decides which picker you get to fill it
 Icon: sliders-horizontal
 Color: "#db2777"
-Updated: 2026-09-15T11:09:13+02:00
+Updated: 2026-10-13T16:29:41+02:00
 ---
 
 # Custom field pickers
@@ -21,7 +21,9 @@ When you create a custom key you pick one of these types. Here is the control ea
 | Date & time | The same date and time picker | One value |
 | List | A list picker you add several entries to | Many values |
 
-A `Checkbox` custom key is stored, but it does not get a picker surface yet, so it is not offered in the editor, creator, or chips. See [[DOCS-040 Custom keys|Custom keys]].
+This table describes the **general Custom Key picker path**. Its selectable types exclude Checkbox. Native Checkbox controls in Task Editor Additional, supported template fields in Task Creator, and Tables are a separate path; their availability does not mean Checkbox has been added to every Custom Key surface. See [[DOCS-115 File task property columns|Vault Properties]].
+
+Canonical fields may have dedicated controls, Custom Keys use their configured types, and Vault Properties require compatible property declarations and values. Sharing an index does not make every picker available for every field. See [[DOCS-018 Task properties|Task properties]] for the comparison.
 
 ## Each type in practice
 
@@ -31,7 +33,7 @@ A text field opens a box where you type the value, with **suggestions** drawn fr
 
 ### Number
 
-A number field takes a quantity. Best for counts, scores, or amounts. This is the same numeric control the built-in `estimate` uses. See [[DOCS-069 Task link and list pickers|Task link and list pickers]].
+A number field takes a quantity. Best for counts, scores, or amounts. A numeric property stores a number; built-in time fields such as `estimate` also have their own units and behavior. See [[DOCS-069 Task link and list pickers|Task link and list pickers]].
 
 ### Date and Date & time
 
@@ -66,7 +68,7 @@ The type is set when you create the key and shapes every entry after, so decide 
 
 **Can a custom field hold more than one value?** Yes, if its type is List. Text, Number, Date, and Date & time hold a single value.
 
-**My checkbox custom field has no control. Why?** Checkbox custom fields are stored but not surfaced in pickers yet.
+**My Checkbox Custom Key has no general picker option. Why?** The general Custom Key surface selector excludes Checkbox. Native Checkbox editing and existing value-dependent icons do not enable that selector or add new surfaces. See [[DOCS-115 File task property columns|Vault Properties]] for supported native controls.
 
 ## Related
 

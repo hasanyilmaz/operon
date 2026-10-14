@@ -2,12 +2,12 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-10-13T16:29:41+02:00
 ---
 
 # Custom keys
 
-A custom key is a task field you define yourself. Operon's built-in fields cover the common task model, but your work may need something they do not have: a client, an effort estimate, a review flag, a department. A custom key adds that field as a real canonical key, not just a loose YAML property, so Operon treats it like any other field. For renaming the built-in fields instead, see [[DOCS-039 Key mappings|Key mappings]].
+A custom key is a task field you define yourself. Operon's built-in fields cover the common task model, but your work may need something they do not have: a client, an effort estimate, a review flag, a department. A custom key adds that field as a real canonical key, not just a loose YAML property, so Operon can expose it through the controls supported for its type and your chosen surfaces. For renaming the built-in fields instead, see [[DOCS-039 Key mappings|Key mappings]].
 
 > **MEDIA-DOCS-040-1:** The Custom Keys settings listing user-defined fields with their types and surfaces.
 
@@ -19,9 +19,9 @@ When you add a custom field, you give it:
 
 - A **visible property name**, which must be unique across all fields.
 - A **type**: Text, Number, Date, Date & time, List, or Checkbox. The type decides how the value is stored and validated. See [[DOCS-018 Task properties|Task properties]].
-- An optional **icon** from Lucide, used in the field's controls and its compact chip. Like every field icon, it is set once and applies wherever Operon shows that field.
+- An optional **icon** from Lucide, used in the field's controls and its compact chip. Supported surfaces use it as the field icon; value-dependent indicators can differ, such as checked and unchecked Checkbox values.
 
-From then on the field behaves like a built-in one. It is written as `{{your-key:: value}}` on an inline task and as frontmatter on a file task, and Operon reads it consistently across both.
+The field now has a defined identity and type. It is written as `{{your-key:: value}}` on an inline task and as frontmatter on a file task, and Operon reads it consistently across both.
 
 For example, with two custom keys `client` (Text) and `effort` (Number), an inline task carries them alongside the built-in fields:
 
@@ -40,7 +40,7 @@ effort: 3
 ---
 ```
 
-Operon validates and displays `client` and `effort` like any built-in field, because they are real canonical keys, not loose YAML.
+Operon uses the definitions of `client` and `effort` to validate and display their values on supported surfaces.
 
 > **MEDIA-DOCS-040-2:** The Add custom field dialog with a name, type, and surface choices.
 
@@ -55,7 +55,7 @@ A custom key is not forced into every surface. You choose where it appears with 
 - **Show in chips**: as a compact chip on the task. See [[DOCS-041 Task chips display and behavior|Task chips]].
 - **Show in Kanban swimlanes**: as a grouping option for [[DOCS-030 Kanban overview|Kanban]] swimlanes.
 
-A Checkbox-type custom field is stored, but it does not yet appear in the editor, creator, chip, or swimlane surfaces.
+The general Custom Key surface selector does not offer Checkbox fields as ordinary custom picker controls. This is separate from native Checkbox editing in Additional, prepared template fields, and Tables. Existing Checkbox value chips in Task Editor use checked/unchecked icons where that rendering path is already available; this does not add new chip surfaces. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-115 File task property columns|Vault Properties]].
 
 ## Description for shared context
 
@@ -71,21 +71,23 @@ You can rename a custom field's visible property name at any time, with the same
 
 ## Deleting a custom key
 
-Deleting a custom field removes only its mapping from Operon settings. The values already written in your files stay exactly where they are. Those properties simply become unmanaged until you recreate the same canonical key, so deleting is reversible in the sense that no data is destroyed.
+Deleting a custom field removes only its mapping from Operon settings. The values already written in your files stay exactly where they are. Removing the definition does not erase source values; recreating a compatible definition is a separate settings action.
 
-An unmanaged property is not necessarily invisible to Operon, though. On a file task, it can still surface on its own as a [[DOCS-115 File task property columns|file task property column]] in Table and filters, just without the Task Editor, Task Creator, chip, and swimlane surfaces a Custom Key gets. See "Not a Custom Key" below.
+Values left in the source may be exposed through [[DOCS-115 File task property columns|Vault Properties]], subject to their names, type declarations, and compatibility. Deleting a Custom Key does not guarantee that every former value becomes editable: Operon preserves stored inline interpretation and refuses incompatible types.
 
-## Not a Custom Key: file task property columns
+## Choosing between a Custom Key and a Vault Property
 
-A Custom Key is not the only way an unmanaged frontmatter property becomes usable. On file tasks, Operon also discovers unmanaged properties automatically and offers them as typed Table columns and filter conditions, with none of the setup a Custom Key needs, a name, a type, an icon, or a surface choice. The tradeoff is reach: a Custom Key behaves like a built-in field everywhere, while a discovered property only reaches Table and filters. Reach for a Custom Key when a field deserves the Task Editor, Task Creator, chips, and swimlanes too; leave it as a discovered property when Table and filters are all you need right now. See [[DOCS-115 File task property columns|File task property columns]] for the full comparison.
+Both participate in the persistent task index. Choose a Custom Key for its explicit field definition and supported surface preferences, such as showing a Text field in selected chip surfaces. Choose a Vault Property when its native Task Editor, template, and Table controls are sufficient. A Vault Property no longer needs to become a Custom Key just to appear in Task Editor.
+
+A shared index is not a promise of identical picker, chip, filter, or swimlane support. The comparison in [[DOCS-018 Task properties|Task properties]] explains the model; [[DOCS-115 File task property columns|Vault Properties]] lists the native surfaces and limits.
 
 ## FAQ
 
-**Is a custom key different from just adding a YAML property?** Yes, in reach. A custom key is a real canonical field with a type and surfaces, so it works in the Task Editor, Task Creator, chips, and swimlanes, the same as a built-in field. An unmanaged property on a file task is not ignored, though: it can still surface on its own in Table and filters as a [[DOCS-115 File task property columns|file task property column]], just without those other surfaces.
+**Is a Custom Key different from adding a source property?** Yes. It creates a configured field with a stable identifier, type, and supported surface preferences. A Vault Property can be managed directly in Additional, supported Creator template fields, and Tables without that Custom Key setup.
 
 **Can I use a custom key on inline tasks too?** Yes. It works as `{{key:: value}}` inline and as frontmatter in file tasks, the same as any field.
 
-**What happens to my data if I delete the field?** Nothing is deleted from your files. The values remain as plain properties and become managed again if you recreate the key.
+**What happens to my data if I delete the field?** Nothing is deleted from your files. The values remain in Markdown. Recreating a compatible definition can restore managed access; incompatible types still require review.
 
 ## Settings
 
@@ -96,4 +98,4 @@ Each custom field has one Settings search result, including its name and descrip
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
-- [[DOCS-115 File task property columns|File task property columns]]
+- [[DOCS-115 File task property columns|Vault Properties]]

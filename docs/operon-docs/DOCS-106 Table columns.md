@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-13T17:01:21+02:00
 ---
 
 # Table columns
@@ -19,7 +19,7 @@ Almost any field a task carries can become a column:
 
 - **Task fields**: the description (shown as **Task**), status, priority, Task Type, Task Image, Task Gallery, the dates (due, scheduled, start, and the completion and cancellation dates), estimate, duration and its rolled-up totals, assignees, contexts, parent, blocking and blocked-by links, location, recurrence, tags, and note.
 - **Your custom keys**: any [[DOCS-040 Custom keys|custom key]] appears as a field you can add as a column, so a table can carry exactly the properties your workflow uses.
-- **File task properties**: frontmatter properties Operon does not manage, found automatically on the file tasks in the preset's current scope, typed and offered as columns with no setup at all. See [[DOCS-115 File task property columns|File task property columns]].
+- **Vault Properties**: additional properties on File and Inline tasks, offered from the current task scope without requiring a Custom Key. Supported native editing uses declared property types; Automatic or conflicting types can remain read-only. See [[DOCS-115 File task property columns|Vault Properties]].
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
 - **Countdown**: a read-only calculated column showing time remaining until a Scheduled or Due target, without adding a task property.
@@ -55,9 +55,13 @@ A past target stays at zero; Earlier date does not skip it to count toward the l
 
 Target selection is saved with the column in the preset. For borders, alignment, units, and the live tooltip, see [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]. Countdown is read-only: clicking or double-clicking its cell does not open an editor or start tracking. It supports sorting by the selected target date, but not grouping, summaries, or a dedicated countdown filter.
 
-## File task properties, without setting anything up
+## Vault Properties from the shared index
 
-The column picker groups discovered frontmatter properties under **File task properties**, separate from your custom keys. You never define these: write a property in a file task's frontmatter, and if that task is in the preset's current scope, the property appears here already typed as Text, Number, Date, Date & time, List, or Checkbox, read from Obsidian's own Properties view or inferred from your data. Editing one opens the same picker its type would use for a custom key, and a Checkbox column gets its own toggle chip right in the cell. This is deliberately lighter than a Custom Key: no name, type, icon, or surface choice to make first. See [[DOCS-115 File task property columns|File task property columns]] for the full picture, including why it differs from Custom Keys and Key mappings, and exactly where it does and does not reach.
+The column picker offers **Vault Properties** separately from mapped task fields. File Tasks contribute their frontmatter; Inline Tasks contribute their own inline properties, not all frontmatter from the containing note. Mapped aliases are resolved so the same field is not offered again as an unrelated native property.
+
+Supported native types are Text, List, Number, Checkbox, Date, and Date & time. Declare the type in Obsidian's Properties controls; a value that looks like a number is not by itself permission to edit an Automatic property as Number. Unsupported values, type conflicts, or an unavailable source remain protected. See [[DOCS-115 File task property columns|Vault Properties]] and [[DOCS-018 Task properties|Task properties]] for the distinction from Canonical keys, Custom keys, and Key Mapping.
+
+Vault Properties are included in the main persistent task index with canonical and mapped custom data. An unchanged, valid cached source does not need a separate note read just because a preset displays Vault Properties. Changing a property updates the source and its indexed representation. The cache improves access; Markdown remains the source of truth. See [[DOCS-046 Plugin data and state files|Plugin data and state files]] for startup and update behavior.
 
 ## Shape a column from its header
 
@@ -134,7 +138,7 @@ To include subtasks, add the separate **Total duration** column. **Total estimat
 Most columns are editable: click a cell to change that field on the spot, as covered in [[DOCS-105 Table overview|Table overview]]. Some columns are read-only by nature and only display their value:
 
 - **Editable task fields** include status, priority, Task Type, Task Image, Task Gallery, description, note, due, scheduled, start, completion and cancellation dates, repeat end, estimate, recurrence, parent and dependency links, tags, contexts, assignees, location, the task icon field, task color, and supported custom date, datetime, number, text, and list fields.
-- **File task property columns** are editable the same way, using the same pickers, but only while their value actually matches the column's type; a value that does not drops to read-only until you fix it in Obsidian's Properties view. See [[DOCS-115 File task property columns|File task property columns]].
+- **Vault Property columns** use type-appropriate controls when the source and declared type are verified and writable. Automatic types, conflicts, and unsupported values remain read-only. See [[DOCS-115 File task property columns|Vault Properties]].
 - **Countdown** is calculated from task dates and has no writable value.
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
 - **Identity, checkbox, progress, Task Tree, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.

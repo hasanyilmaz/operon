@@ -2,12 +2,12 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Task Editor
 
-The Task Editor is where you view and change a task's structured fields without editing Markdown by hand. It works the same for inline and file tasks, because both are the same kind of task record underneath.
+The Task Editor is where you view and change a task's structured fields without editing Markdown by hand. Inline and File tasks share the structured editing workflow. The available source-body controls and layout depend on the device and selected editor layout.
 
 > **MEDIA-DOCS-021-1:** The Task Editor open on a task, showing its fields and, for a file task, the Markdown body.
 
@@ -42,13 +42,41 @@ The Task Editor exposes the canonical fields as proper controls:
 - Task Type as a user-managed Text classification.
 - Task Image as one media reference and Task Gallery as an ordered list. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
-For a file task, the editor can also show the Markdown body alongside the fields, so you edit the work and its metadata together. For an inline task, it can reveal the source note when you need the surrounding context. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
+On desktop and tablet, the editor can show a File Task’s Markdown body or an Inline Task’s source note. With enough room the body can sit beside the fields; a narrow layout uses a panel. On phones, the body button and embedded body panel are unavailable in both editor layouts; task properties remain editable. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
 The editor's Date and Date & time controls follow **Settings → Operon → Core → General → Language & Formats → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
 
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+## Sections and property rows
+
+The desktop-style editor organizes work into sections, with property names and values presented as rows. Under **Interface → Task Editor → Sections and Order**, configure section names, visibility, and order. **Property Visibility & Order** controls the configured property rows. These desktop preferences also apply to tablets and to phones using the desktop-style layout.
+
+Open an editable property's name or value to use its control. On a mouse, the row's interactive styling helps show the target; on touch, action and clear controls remain accessible without hovering. Visibility settings change the presentation, not the stored task values.
+
+### Additional properties
+
+**Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout even though the embedded body is unavailable. Use the section's add control for supported properties and each value's control to edit it. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
+
+Checkbox property icons reflect their value: **true** uses a checked box, **false** an empty box. An unset checkbox uses its configured property icon, whose default is a dashed square. Existing custom icon choices are retained for that unset state; true/false indicators are automatic.
+
+## Finish the current task
+
+In the desktop-style layout, the action immediately before the Description copy controls completes the current task. Its icon follows the current pipeline status icon when one is configured, otherwise the task-state fallback; it uses the editor's action styling. The tooltip says **Click to finish** until completion. Clicking a completed task again does nothing—it does not reopen it or cycle statuses.
+
+This uses the normal completion rules, including applicable workflow and recurrence behavior. It is separate from opening the status picker to choose an arbitrary status.
+
+## Sessions in the editor
+
+The **Sessions** section shows recorded time ranges. In the desktop-style layout, click or tap either a session's duration or its pencil to open the same **Edit session** window. With a mouse, the duration has an underline on hover; touch does not require that hover first. See [[DOCS-053 Time session history|Time session history]] for corrections and other entry points.
+
+## Phone and tablet layouts
+
+Phones use the desktop-style editor by default. To use the existing compact mobile editor instead, enable **Mobile → Task Editor → Use mobile Task Editor on phones**. The choice applies when the next editor opens; an already open editor keeps its layout. The compact layout retains its own mobile toolbar and workflow preferences.
+
+Tablets always use the desktop-style layout. Its touch controls stay the same size when a mouse or trackpad is attached. On phone and tablet, property names move above values when the main editing panel is 420 px wide or narrower; a wider panel uses two columns. This follows the panel width, including a tablet's split view or a body panel beside the fields. See [[DOCS-101 Mobile General|Mobile General]] for the device comparison.
 
 ## Copy a task wikilink
 
@@ -107,9 +135,11 @@ The Task Editor autosaves your changes two seconds after your last edit, so you 
 
 ## Description and Notes
 
-The **Description** is the task's one-line title. **Notes** are a separate multiline field for the detail that belongs with the task but does not belong in its title. In the Notes control, use **Shift+Enter** to insert a line break; pasted multiline text and intentional blank lines are kept. Normal **Enter** keeps the existing action for the surface instead of becoming a second line-break command. In the mobile Task Editor, normal Enter keeps its one-line behavior by inserting a space, while Shift+Enter inserts a note line break.
+The **Description** is the task's one-line title. **Notes** are a separate multiline field for the detail that belongs with the task but does not belong in its title. In the Notes control, use **Shift+Enter** to insert a line break; pasted multiline text and intentional blank lines are kept. Normal **Enter** keeps the existing action for the surface instead of becoming a second line-break command. On phones, normal Enter keeps its one-line behavior by inserting a space, while Shift+Enter inserts a note line break.
 
 For an inline task, those visual line breaks are stored as `\n` escapes inside the `note` field, keeping the entire task on one physical Markdown line. A literal `\n` is written as `\\n`. See [[DOCS-012 Inline task syntax|Inline task syntax]] for the on-disk form and [[DOCS-113 Text field editor popover|Text field editor popover]] for the shared compact editor.
+
+Default and six-color highlights retain their source Markdown. In the Live Preview-style editor, editing a colored highlight exposes Obsidian's color control where supported, rather than hiding it as a read-only display would. Phone textareas can edit the source syntax directly. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the color markers and examples.
 
 ## Why edit here instead of in Markdown
 
@@ -117,7 +147,7 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 ## FAQ
 
-**Is the editor different for inline and file tasks?** The fields are the same. File tasks additionally show the note body; inline tasks can jump to their source line.
+**Is the editor different for inline and file tasks?** Both use structured fields. Desktop and tablet also support embedded source/body editing; phones do not show the body button or panel in either layout.
 
 **Will editing here change my Markdown?** Yes. The Task Editor writes back to the task's Markdown, inline line or file frontmatter, so your notes stay the source of truth.
 
@@ -133,7 +163,7 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Task Editor**, under **File Body** for file-body behavior and **Property Visibility & Order** for property visibility and ordering. The latter was previously called Workflow Pickers.
+Operon settings for this live in **Settings → Operon → Interface → Task Editor**, under **File Body** for file-body behavior and **Property Visibility & Order** for property visibility and ordering. The latter was previously called Workflow Pickers. **Sections and Order** configures the desktop-style sections. The phone layout selector and the existing compact layout’s preferences are under **Mobile → Task Editor**; selecting one layout does not overwrite the other’s preferences.
 
 ## Related
 

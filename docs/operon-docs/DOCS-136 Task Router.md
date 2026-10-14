@@ -2,26 +2,29 @@
 Notes: Route new and existing inline and file tasks to the right working and archive locations
 Icon: route
 Color: "#2563eb"
-Updated: 2026-10-06T10:36:57+02:00
+Updated: 2026-10-14T11:47:37+02:00
 ---
 
 # Task Router
 
-Task Router is the place where Operon decides where tasks belong. It brings inline capture, File Task folders, parent-aware placement, and File Task archiving into one settings page, so the same routing rules govern creation and later lifecycle changes.
+Task Router is the place where Operon decides where tasks belong. It brings inline capture, Daily and Weekly Note configuration, File Task folders, parent-aware placement, and File Task archiving into one settings page, so the same routing rules govern creation and later lifecycle changes.
 
 Routing changes location, not identity. An Operon task keeps its `operonId`, fields, relationships, and history when an eligible File Task moves between configured folders.
 
 ## What Task Router controls
 
-Task Router has five main sections:
+Task Router has six main sections:
 
 - **Inline Task Default Save Location** chooses the normal destination for new inline tasks.
+- **Daily and Weekly Notes** configures Operon management, filename formats, templates, and folders for those destinations.
 - **Parent-Aware Inline Task Placement** controls parent-based placement during creation and the separate option for keeping existing inline tasks with their parent.
 - **File Task Default Save Location** contains the fallback folder and **Pipeline locations** rules.
 - **Parent-Aware File Task Placement** controls parent-based placement when no pipeline folder overrides it.
 - **Archive finished/cancelled File Tasks** contains pipeline archive rules and the fallback archive folder.
 
-Daily and Weekly note creation has its own configuration under **Tasks → File Tasks**. Task Router selects those notes as destinations; [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] explains how Operon resolves and creates them.
+**Daily and Weekly Notes** stays visible directly below **Inline Task Default Save Location**, whichever destination you select. Each management toggle reveals its own format, template, and folder settings. Choosing a destination does not turn management on automatically.
+
+The separate **Daily and Weekly Notes as File Tasks** section under **Tasks → File Tasks** contains only the two toggles that make newly created Daily or Weekly Notes into Operon File Tasks. These control the note itself, not whether it can contain inline tasks. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] for creation and parent behavior.
 
 ## Inline Task destinations
 
@@ -35,7 +38,9 @@ The default inline destination can be:
 
 Daily Notes is available when Operon manages Daily Notes or Obsidian's Core Daily Notes plugin is available. Weekly Notes requires Operon's Weekly Notes management to be enabled.
 
-For Daily Notes, Active File, and Ask Every Time, **Inline task heading** is a heading keyword rather than a whole Markdown heading. Operon inserts under the first heading containing that phrase; if none exists, it creates a level-two heading. Weekly Notes uses the routed daily-date heading described in [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]. Specific File mode uses a linked date heading based on the active Core Daily Notes format, with `YYYY-MM-DD` as fallback.
+For Daily Notes, Active File, and Ask Every Time, **Inline task heading** is a heading keyword rather than a whole Markdown heading. Operon inserts under the first Markdown heading in the note body whose text contains that phrase (case-insensitively), ignoring heading-like text in YAML frontmatter and fenced code blocks; if none exists, it creates a level-two heading where safe. Weekly Notes uses the routed daily-date heading described in [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]. Specific File mode uses a linked date heading based on the active Core Daily Notes format, with `YYYY-MM-DD` as fallback.
+
+If frontmatter is unclosed, or a missing heading would have to be appended inside an unclosed code block, Operon stops the insertion instead of writing the task into metadata or code. Fix the note structure before retrying.
 
 ### Create from an Excalidraw drawing
 
@@ -151,7 +156,9 @@ The rule set remains readable: the matching pipeline wins, then the relevant fal
 
 ## Settings
 
-These settings live in **Settings → Operon → Tasks → Task Router**, in the five sections listed above. Daily and Weekly formats, templates, folders, and container behavior live separately under **Settings → Operon → Tasks → File Tasks**.
+These settings live in **Settings → Operon → Tasks → Task Router**, in the six sections listed above. Configure note management, formats, templates, and folders under **Daily and Weekly Notes**. The two note-as-task toggles remain under **Settings → Operon → Tasks → File Tasks → Daily and Weekly Notes as File Tasks**.
+
+In Settings Search, use `daily`, `daily note`, `daily notes`, `weekly`, `weekly note`, or `weekly notes` to find the corresponding management and note-as-task settings.
 
 ## Related
 

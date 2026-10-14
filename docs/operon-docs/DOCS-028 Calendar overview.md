@@ -2,7 +2,7 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Calendar overview
@@ -14,6 +14,8 @@ Open it with **Operon Calendar** from the command palette.
 > **MEDIA-DOCS-028-1:** The Operon Calendar with all-day items and timed blocks across a week.
 
 ![MEDIA-DOCS-028-1 - The Operon Calendar with all-day items and timed blocks across a week](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-028-1.png)
+
+Rendered task titles support default and six-color highlights. Colored highlights show their color without the leading marker emoji, while the task's source Markdown stays unchanged. See [[DOCS-113 Text field editor popover|Text field editor popover]] for syntax and editing behavior.
 
 ## What the Calendar reads
 

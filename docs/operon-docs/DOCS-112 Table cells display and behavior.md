@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Table cells: display and behavior
@@ -52,7 +52,7 @@ In detailed cell mode, each field type renders its own way:
 | Trackers | One readable duration chip per saved session; hover shows its start and end |
 | Estimate, Total estimate, Total duration | A duration value such as `2h 15m 0s` |
 | Parent task progress | A progress indicator over the task's subtasks or checkboxes |
-| Description | The task's text, with any wikilinks live |
+| Description | The task's formatted text, with any wikilinks live |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
 | Countdown | A bordered, read-only remaining-time value with an hourglass icon; details below |
@@ -61,7 +61,7 @@ In detailed cell mode, each field type renders its own way:
 
 In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
-Built-in and custom task fields typed as **Date** follow **Settings → Operon → Core → General → Language & Formats → Date format**. **Date Time Start**, **Date Time End**, and custom task fields typed as **Date & time** combine that date choice with the existing 12- or 24-hour **Time format**, while keeping the cell's existing time precision. In compact cell mode, a date-and-time cell still shows only the time (`14:30`); its tooltip and accessible label carry the complete formatted date and time. These presentation choices do not change the canonical value used by the picker, sorting, grouping, or export. Arbitrary [[DOCS-115 File task property columns|file task property columns]] keep their stored date text in this version.
+Built-in and custom task fields typed as **Date** follow **Settings → Operon → Core → General → Language & Formats → Date format**. **Date Time Start**, **Date Time End**, and custom task fields typed as **Date & time** combine that date choice with the existing 12- or 24-hour **Time format**, while keeping the cell's existing time precision. In compact cell mode, a date-and-time cell still shows only the time (`14:30`); its tooltip and accessible label carry the complete formatted date and time. These presentation choices do not change the canonical value used by the picker, sorting, grouping, or export. Supported [[DOCS-115 File task property columns|Vault Properties]] typed as Date or Date & time also use the configured date/time presentation; their stored values remain unchanged.
 
 **Task Tree cells show an occurrence, not a writable property.** A task with children gets a circled chevron that expands or collapses that exact visible occurrence. A projected descendant uses a branch marker; a top-level task with no children uses a dot. Detailed mode adds hierarchy numbers such as `1`, `1.2`, and `1.2.1`, while compact mode keeps the structural icon only. The column can use Table color modes, but clicking its control never edits `parentTask`. See [[DOCS-106 Table columns|Table columns]].
 
@@ -72,6 +72,24 @@ Built-in and custom task fields typed as **Date** follow **Settings → Operon �
 On desktop, click a link chip to open its page in an Operon lightbox. Hold **Cmd** on macOS or **Ctrl** on Windows/Linux to open a new **Obsidian Web Viewer** tab instead. **Enter** or **Space** on a focused chip opens the lightbox. Both paths need Obsidian's core Web Viewer plugin enabled; if it is unavailable, Operon shows a short notice. Close the lightbox with **×**; see [[DOCS-041 Task chips display and behavior|Task chips]] for the viewer's behavior.
 
 Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. Compact cells keep their existing editing behavior, and mobile behavior is unchanged. These rules also apply to embedded Tables.
+
+Rendered descriptions support default and six-color highlights, with the leading color marker hidden in the display while the source text stays intact. The compact text editor retains the editing controls supported by Obsidian. See [[DOCS-113 Text field editor popover|Text field editor popover]] for syntax and editing behavior.
+
+## Vault Property cells
+
+[[DOCS-115 File task property columns|Vault Properties]] use the task's indexed property values in both workspace and embedded tables. Supported types open their normal editing controls. A declared Checkbox property shows a checked box for **true**, an empty box for **false**, and a dashed-square empty indicator when unset. Clicking a writable boolean cell changes its value; the property's type/header icon is distinct from these value indicators.
+
+`false` and `0` are values, not empty cells. Missing, null, empty text, and empty lists can have similar empty presentations but remain distinct source states. List order and repeated members are preserved. Automatic types, unsupported values, conflicts, and unavailable sources can make even an empty cell read-only; a blank display is not permission to overwrite an unverified value.
+
+Saving edits writes to the source task and refreshes the shared index. If the source changed while an edit was being prepared, review its current value rather than forcing the older value over it.
+
+## While a task update is being verified
+
+Saving a canonical, mapped custom, or Vault Property value refreshes the task through the shared index. With the same preset and column layout, the table keeps its structure and reuses unaffected rows instead of rebuilding the whole surface. The full table is not dimmed during this update.
+
+If a source is genuinely pending, a brief updating indicator can appear. Affected rows remain visible as a temporary display, but editing and selection on those rows are disabled until their data is verified. Other rows remain usable when Operon can verify them independently. If the affected scope is uncertain, more actions may be temporarily unavailable.
+
+A pending value can also affect filtering, sorting, grouping, or summaries. Retained results are not treated as current, and actions that depend on the complete result, including export and bulk actions, wait for verified data. This applies to both the standalone Table and embedded tables. Initial loading or switching to a different preset can still require a loading state.
 
 ## Duration, estimates, and Trackers
 

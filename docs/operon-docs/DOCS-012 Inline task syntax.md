@@ -2,7 +2,7 @@
 Notes: Complete reference for inline task field syntax and property types, with copy-paste ready examples
 Icon: braces
 Color: "#7c3aed"
-Updated: 2026-08-25T10:33:21+0200
+Updated: 2026-10-13T17:06:30+02:00
 ---
 
 # Inline task syntax
@@ -31,11 +31,11 @@ Operon reads its own fields only inside the `{{key:: value}}` container. That co
 
 Here `{{operonId}}` is a **template variable**, not part of the field syntax itself. What replaces it with a fresh, unique id is Operon, acting through one of its flows: the [[DOCS-020 Task Creator|Task Creator]], templates, conversions, the insertion commands, and the normalization that runs while you live-edit a note. So pasting the line into a note as a real line does resolve it; you never type an id by hand. Text shown inside a code block is never resolved, which is exactly why every copyable example on this page can display the variable safely. See [[DOCS-061 operonId template variables|operonId template variables]].
 
-The field names below are the **canonical** names, and they are exactly what Operon writes in an inline task's `{{key:: value}}`. Operon normalizes only the fields it manages to these canonical names; any custom key of your own is preserved exactly as you wrote it. In a **file task**, the same managed fields can appear under renamed frontmatter property names through [[DOCS-039 Key mappings|Key mappings]], and you can add fields of your own with [[DOCS-040 Custom keys|Custom keys]]. The meaning stays the same everywhere the field appears.
+The field names below are the **canonical** names, and they are exactly what Operon writes in an inline task's `{{key:: value}}`. Built-in and configured custom fields use their stable keys. Additional Vault Properties retain their source names and their own type rules. In a **file task**, the same managed fields can appear under renamed frontmatter property names through [[DOCS-039 Key mappings|Key mappings]], and you can add fields of your own with [[DOCS-040 Custom keys|Custom keys]]. The meaning stays the same everywhere the field appears.
 
 ## Property types
 
-Every field has a **property type** that tells Operon how to store, validate, and display its value, and which editor or picker to show. There are six types, plus Obsidian's automatic detection:
+Every field has a **property type** that tells Operon how to store, validate, and display its value, and which editor or picker to show. There are six supported editing types. Automatic describes a property without a verified native editing type:
 
 | Type | Holds | Example |
 |---|---|---|
@@ -45,14 +45,14 @@ Every field has a **property type** that tells Operon how to store, validate, an
 | **Date & time** | a day and time, `YYYY-MM-DDTHH:MM:SS` | `2026-05-20T09:00:00` |
 | **List** | one or more values | `[[Me]]`, `[[Home]]` |
 | **Checkbox** | a true/false value (mainly for custom fields) | `true` |
-| **Automatic** | Obsidian guesses the type | (auto) |
+| **Automatic** | No verified native editing type; read-only in native controls | (unassigned) |
 
 The type matters in two places:
 
 - **In a file task**, fields live in frontmatter, where Obsidian shows a property type for each property. You can see and change it by right-clicking a property and choosing **Property type**. Operon's [[DOCS-039 Key mappings|Key mappings]] already assign the correct type to every canonical field, so you normally never set it to **Automatic** by hand.
 - **In an inline task**, the same type governs how the `{{key:: value}}` is parsed and validated, and which picker the [[DOCS-021 Task Editor|Task Editor]] shows for it.
 
-When you create a [[DOCS-040 Custom keys|custom key]], you pick its type from this same list.
+When you create a [[DOCS-040 Custom keys|custom key]], you choose its supported type. For Vault Properties, Operon uses the declared property type and preserves existing inline interpretation; it does not make an Automatic field writable by guessing. See [[DOCS-018 Task properties|Task properties]] for the three property groups.
 
 ## Fields you set
 
@@ -126,6 +126,20 @@ The last several (`repeatSeriesId`, `repeatOccurrenceDate`, `timezone`, `activeT
 - **List fields** (`assignees`, `contexts`, `links`, `blocking`, `blockedBy`) hold one or more values separated by a semicolon and a space (`; `). To keep a literal semicolon inside a single value, escape it as `\;`.
 - **Task links** (`parentTask`, `blocking`, `blockedBy`) reference other tasks by their `operonId`, not by title or path.
 
+## Native Vault Property values
+
+Additional native fields use the same `{{key:: value}}` container, but their value rules must not be confused with the older managed list fields above. The following examples assume `Reviewed` is declared Checkbox, `Budget` Number, and `References` List in Obsidian, with no conflicting custom definition:
+
+```md
+- [ ] Review purchase {{operonId:: {{operonId}}}} {{Reviewed:: false}} {{Budget:: 0}} {{References:: Alpha; Alpha; "001"; 1; ""}}
+```
+
+Here `false` and `0` are real values. The native list preserves both `Alpha` entries and their order, the text `001`, the number `1`, and one empty text member. Native list members containing a semicolon must be quoted, such as `"First; second"`; they do not use the managed-list `\;` rule above. Let Operon write escapes for complex text.
+
+A missing container means the property is absent. An empty native Number, Checkbox, Date, or Date & time container represents a null value; an empty Text container represents empty text, and an empty List container represents an empty list. `{{References:: ""}}` instead contains one empty text member. Do not replace an empty Checkbox value with `false` unless that is the intended value.
+
+Existing custom fields can retain their earlier encoding. Do not manually rewrite all custom lists using the native rules or change a type just to make a warning disappear. Use the task controls and review conflicts. See [[DOCS-115 File task property columns|Vault Properties]] for editing and support limits.
+
 ## Notes: multiline text on one task line
 
 The task **description** is the one-line readable text after the checkbox. The separate `note` field is the place for a longer, multiline annotation. Even when a note has several visual lines, an inline task remains **one physical Markdown line**. Operon stores each note line break as the two-character escape `\n` inside the field:
@@ -166,7 +180,7 @@ If your default status is `Project.Brainstorming`, your default priority is `Hig
 - [ ] Follow up with reviewer {{operonId:: a1b2c3d}} {{status:: Project.Brainstorming}} {{priority:: High}} {{dateScheduled:: 2026-06-27}} {{datetimeCreated:: 2026-06-27T13:46:10}} {{datetimeModified:: 2026-06-27T13:46:10}}
 ```
 
-Your real output uses your current Operon defaults and local time. See [[DOCS-061 operonId template variables|operonId template variables]] for the full variable list and the difference between raw pasted inline snippets and file task templates.
+Your real output uses your current Operon defaults and local time. See [[DOCS-061 operonId template variables|operonId template variables]] for the full variable list and the differences between raw pasted inline snippets, prepared Inline template properties, and File Task templates.
 
 A task with tags and a context, which stay as ordinary Markdown:
 
@@ -201,6 +215,7 @@ The safest way to produce correct syntax is to let Operon do it: create with the
 A quick rule of thumb for what is safe to touch by hand:
 
 - **Safe to edit directly:** the readable text, `#tags`, and simple values such as `status`, `priority`, `dateDue`, `dateScheduled`, and `note`.
+- **Native Vault Properties:** use their declared types and native value rules above; preserve the difference between missing, empty, false, and zero.
 - **Task Gallery:** keep its semicolon order and escape a literal semicolon as `\;`; using the pickers is safer for complex paths.
 - **Not a writable field:** `__taskDataType` is a Table-only inline/file helper and must not be added to task Markdown.
 - **Let the Task Editor handle:** `operonId`, `parentTask`, `blocking` and `blockedBy`, `repeat`, and every field in the *Fields Operon manages for you* table above. These carry identity, task links, recurrence, and bookkeeping that has to stay consistent across the whole vault.

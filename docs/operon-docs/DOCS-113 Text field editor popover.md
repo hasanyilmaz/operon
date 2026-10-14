@@ -2,7 +2,7 @@
 Notes: A floating editor for a single free-text field, opened in place across surfaces
 Icon: square-pen
 Color: "#db2777"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Text field editor popover
@@ -41,6 +41,23 @@ The popover is built for a quick edit and out:
 - It **saves when you dismiss it**, by clicking away, pressing **Escape**, or using the close control. There is no separate save step; closing commits your text.
 - Normal **Enter** keeps the existing submit or save behavior of the surface; it is not a second line-break command. In the mobile Task Editor, normal Enter retains its one-line behavior by inserting a space, while Shift+Enter inserts a Note line break.
 - The change is written straight back to the task's Markdown, the same as any other edit, so it shows everywhere the task appears. For inline tasks, a Note's line breaks are stored as `\n` escapes inside the field, which keeps the whole task on one physical Markdown line. To store the visible characters `\n`, write `\\n`.
+
+## Highlight formatting
+
+Use `==text==` for the default highlight. Its appearance follows the theme. For a colored highlight, place one of these six markers immediately after the opening `==`:
+
+| Color | Source text |
+|---|---|
+| Red | `==🔴text==` |
+| Orange | `==🟠text==` |
+| Yellow | `==🟡text==` |
+| Green | `==🟢text==` |
+| Blue | `==🔵text==` |
+| Purple | `==🟣text==` |
+
+Rendered task text in Table descriptions, Calendar, Kanban, and the **Edit session** description uses the chosen highlight color without displaying the leading marker. Rendering preserves the original Markdown; it does not remove the marker from the saved task. An emoji elsewhere in the text is not hidden just because it is a color symbol.
+
+Editing is different from reading. In the Live Preview-style editors used by this popover, [[DOCS-020 Task Creator|Task Creator]], and [[DOCS-021 Task Editor|Task Editor]], Obsidian's highlight color control remains visible when editing the highlight, where that control is supported by the installed Obsidian version. You can use it to change the color. A plain-text input, such as the phone textarea, lets you edit the source syntax directly. The read-only description in **Edit session** has no Live Preview color control.
 
 ## When to use it
 

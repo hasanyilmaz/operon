@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-09-26T13:08:53+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Time session history
@@ -26,6 +26,14 @@ You can also edit a session directly from a table: click its chip in detailed **
 > **MEDIA-DOCS-053-2:** Editing a tracked session's start and end time to correct a forgotten stop.
 
 ![MEDIA-DOCS-053-2 - Edit tracked session time range](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-053-2.png)
+
+The task description at the top of **Edit session** is a formatted, read-only context label. Default and six-color highlights appear in their display form, with the color marker hidden, just as on a Kanban card. This does not alter the source description or the session's times and save behavior. To change the description or its highlight color, use [[DOCS-021 Task Editor|Task Editor]]; see [[DOCS-113 Text field editor popover|Text field editor popover]] for highlight syntax.
+
+## Edit from Task Editor
+
+In the desktop-style [[DOCS-021 Task Editor|Task Editor]], open **Sessions** and click or tap a session's duration, such as **35m 4s**, or its pencil. Both open the same **Edit session** window for that recorded range. With a mouse, the duration is underlined on hover; it is also keyboard-accessible. On the desktop-style phone layout and on tablets, the controls are available without hovering.
+
+The existing compact mobile editor keeps its own session presentation and pencil action. Choosing that phone layout does not change the stored sessions. Correcting a session updates the task's tracked time, regardless of which entry point opened it.
 
 ## Log time you did not track
 

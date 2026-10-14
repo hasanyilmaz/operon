@@ -2,7 +2,7 @@
 Notes: Use Operon task variables and Obsidian Templates-compatible creation variables
 Icon: braces
 Color: "#059669"
-Updated: 2026-10-01T14:00:09+02:00
+Updated: 2026-10-13T17:06:30+02:00
 ---
 
 # Template variables
@@ -32,8 +32,8 @@ These are Operon-native values from the task being created:
 | `{{dateStarted}}` | start date, or blank | task date fields |
 | `{{dateScheduled}}` | scheduled date, or blank | task date fields |
 | `{{dateDue}}` | due date, or blank | task date fields |
-| `{{status}}` | final workflow status | task frontmatter and task lines |
-| `{{priority}}` | final priority value | task frontmatter and task lines |
+| `{{status}}` | workflow status from the creation context described below | task frontmatter and task lines |
+| `{{priority}}` | priority from the creation context described below | task frontmatter and task lines |
 
 If a task-context value is unavailable, Operon writes an empty value rather than leaving the token behind.
 
@@ -43,29 +43,39 @@ Operon recognizes this familiar syntax in its own creation flows. It does **not*
 
 | Syntax | Resolves to | Best place to use it |
 | --- | --- | --- |
-| `{{title}}` | the final created note title/file basename | a heading or `title:` frontmatter |
+| `{{title}}` | final File basename; drafted description in Inline template properties | a heading or `title:` frontmatter |
 | `{{date}}` | local creation date | canonical task dates in File Task/raw-inline use, or prose |
 | `{{time}}` | local creation time | headings, prose, or inline-task notes |
 | `{{date:FORMAT}}` | creation date formatted with Moment | labels, prose, and custom text properties |
 | `{{time:FORMAT}}` | creation time formatted with Moment | labels, prose, and custom text properties |
 
-`{{title}}` has no format suffix: `{{title:...}}` stays literal. `{{title}}` is the final filename after sanitizing and any duplicate-name suffix, while `{{taskDescription}}` is the task text entered in Task Creator. `{{time}}` is `HH:mm` in File Task and raw-inline use; `{{datetime}}` remains the full ISO datetime with seconds.
+`{{title}}` has no format suffix: `{{title:...}}` stays literal. In File creation, `{{title}}` is the final filename after sanitizing and any duplicate-name suffix, while `{{taskDescription}}` is the task text entered in Task Creator. `{{time}}` is `HH:mm` in File Task and raw-inline use; `{{datetime}}` remains the full ISO datetime with seconds.
 
 > [!warning] Keep task dates canonical
-> In a File Task or raw inline snippet, use plain `{{date}}` in an Operon date field such as `dateScheduled`. In a Calendar Daily Note template, use `{{date:YYYY-MM-DD}}` for an Operon date field because plain `{{date}}` follows the Templates Date format setting. A custom format such as `{{date:DD.MM.YYYY}}` is display text, not canonical task-date storage.
+> In a File Task, prepared Inline template property, or raw inline snippet, use plain `{{date}}` in an Operon date field such as `dateScheduled`. In a Calendar Daily Note template, use `{{date:YYYY-MM-DD}}` for an Operon date field because plain `{{date}}` follows the Templates Date format setting. A custom format such as `{{date:DD.MM.YYYY}}` is display text, not canonical task-date storage.
 
 ## Where variables resolve
 
-| Variable family | File Task template | Raw pasted inline task line | Operon-created Daily Note |
-| --- | --- | --- | --- |
-| `operonId` identity variables | Yes, in frontmatter and task lines | Yes | Only where an Operon task is later created |
-| Operon task-context variables | Yes | `{{datetime}}`, `{{status}}`, and `{{priority}}` only | No general task context |
-| Core-compatible `title/date/time` variables | Yes; File Task owns plain `{{date}}` as `YYYY-MM-DD` and `{{time}}` as `HH:mm` | Plain `{{date}}` and `{{time}}` only | Yes; uses the Templates Date and Time format settings |
-| `{{date:FORMAT}}` and `{{time:FORMAT}}` | Yes | No | Yes |
+| Variable family | File Task template | Inline template properties in Creator | Raw pasted inline task line | Operon-created Daily Note |
+| --- | --- | --- | --- | --- |
+| `operonId` identity variables | Yes, in frontmatter and task lines | Deferred until creation; no ids allocated in preview | Yes | Only where an Operon task is later created |
+| Operon task-context variables | Yes, from the File creation context | Yes, from the prepared draft inputs described below | `{{datetime}}`, `{{status}}`, and `{{priority}}` only | No general task context |
+| Core-compatible `title/date/time` variables | Yes; final basename, ISO date, and `HH:mm` | Yes; drafted description, ISO date, and `HH:mm` | Plain `{{date}}` and `{{time}}` only | Yes; uses the Templates Date and Time format settings |
+| `{{date:FORMAT}}` and `{{time:FORMAT}}` | Yes | Yes | No | Yes |
 
 File Task fenced code blocks keep all template tokens literal so examples stay copyable. In an Operon Calendar Daily Note, `{{date}}` is the local **creation date**, not the Calendar day you clicked, the note filename date, or a task's stored scheduled date. See [[DOCS-050 Daily Notes workflows|Daily Notes workflows]].
 
 For File Task templates, `{{status}}` and `{{priority}}` come from the final task draft: Operon considers the source task, selected template, inherited values, automation, and defaults before writing the final values. The creation date, time, and datetime use one timestamp, so they stay consistent inside the same generated task.
+
+## Inline template properties in Creator
+
+This is a separate path from a raw pasted inline snippet. Supported frontmatter values can use Operon task-context variables and compatible `{{title}}`, `{{date}}`, `{{time}}`, `{{date:FORMAT}}`, and `{{time:FORMAT}}` tokens. In this path, `{{title}}` and `{{taskDescription}}` use the drafted description: no new file basename exists. Plain date/time use `YYYY-MM-DD` and `HH:mm`.
+
+Preparation uses a fixed clock for the current template selection; typing more text does not keep advancing its date/time values. Task-context substitutions use the draft's non-template inputs, including deliberate edits, rather than feeding the template's own values back into itself. This differs from the final File creation context described below.
+
+Identity variables are deferred until creation; preview does not allocate task ids. Inline preparation does not execute Templater or copy body text, headings, or subtasks. Empty properties can be shown for editing without being written as empty inline fields; `false` and `0` remain meaningful values. See [[DOCS-150 Using inline task templates|Using inline task templates]] for supported types and skipped or unavailable fields.
+
+The matrix separates this prepared-property path from raw pasted snippets; their supported variables are not interchangeable.
 
 ## Filling task context in a File Task template
 
@@ -117,7 +127,7 @@ note: Confirm owner before kickoff
 
 Task: Prepare launch task
 Created: 2026-06-27 at 13:46
-Display date: Fri, 27 Jun 2026
+Display date: Sat, 27 Jun 2026
 Status: Project.Brainstorming
 
 Confirm owner before kickoff
@@ -165,7 +175,7 @@ With default status `Project.Brainstorming`, default priority `High`, and local 
 
 ## Wiring a parent and its subtasks
 
-Give the parent a suffixed id, then reference that suffix in each child's `parentTask`:
+In a File Task template with body subtasks, give the parent a suffixed id, then reference that suffix in each child's `parentTask`:
 
 ```md
 ---
@@ -181,7 +191,7 @@ When Operon generates this, the parent's `{{operonId1}}` becomes one real id and
 
 ## With Templater and QuickAdd
 
-Variables combine with [Templater](https://github.com/SilentVoid13/Templater) syntax in the same template. Templater fills `<% ... %>` first; Operon then resolves its task variables and compatible title/date/time variables. QuickAdd decides where and when a note is created, Templater fills dynamic content, and Operon ensures the task fields and ids are correct. See [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
+In File Task creation, variables combine with [Templater](https://github.com/SilentVoid13/Templater) syntax in the same template. Templater fills `<% ... %>` first; Operon then resolves its task variables and compatible title/date/time variables. QuickAdd decides where and when a note is created, Templater fills dynamic content, and Operon ensures the task fields and ids are correct. See [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
 
 ## Before you build: check your key mappings
 
@@ -189,7 +199,7 @@ A template writes property names directly, so they must match what Operon reads.
 
 ## FAQ
 
-**When should I use `{{title}}` or `{{taskDescription}}`?** Use `{{title}}` when you need the final note title or filename. Use `{{taskDescription}}` when you need the text entered for the task; it does not change if filename sanitizing or collision handling changes the file basename.
+**When should I use `{{title}}` or `{{taskDescription}}`?** In File creation, use `{{title}}` when you need the final note title or filename. In Inline template properties, it instead uses the drafted description. Use `{{taskDescription}}` when you need the text entered for the task; it does not change if filename sanitizing or collision handling changes the file basename.
 
 **Can I change a date or time format?** Yes. Use `{{date:FORMAT}}` or `{{time:FORMAT}}` with Moment tokens, for example `{{date:DD.MM.YYYY}}` or `{{time:h:mm A}}`. Use a formatted date in an Operon date field only when it produces canonical `YYYY-MM-DD`, such as `{{date:YYYY-MM-DD}}`.
 

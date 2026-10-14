@@ -2,7 +2,7 @@
 Notes: When a task is not showing in Operon's views, and how to fix it
 Icon: search-x
 Color: "#dc2626"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-13T17:01:21+02:00
 ---
 
 # Missing tasks
@@ -11,7 +11,13 @@ A task you expected is not in your filter, Calendar, or Kanban. The good news is
 
 ## Is it indexed?
 
-Operon shows tasks from an index built from your notes. If the index is out of date, a real task can be absent from views. Run **Show index stats** to see the totals Operon currently knows about, and if they look wrong, run **Rebuild full index** to re-scan the vault. This is the first thing to try, and it fixes most cases, especially after editing files outside Obsidian. See [[DOCS-045 Markdown task storage|Markdown task storage]].
+Operon shows tasks from an index built from your notes. Run **Show index stats** to inspect the current totals, and check the source note, exclusions, filters, and identity conflicts below. If the index remains stale after normal refresh, use [[DOCS-091 Rebuild full index|Rebuild full index]]. External edits normally enter the same update flow; they do not always require a manual rebuild.
+
+## Did you just update Operon?
+
+The new persistent layout includes Vault Properties with the other task fields. Its first startup builds a cache automatically when none exists, so rows may take longer to appear once. A normal update does not require manual reindexing. Later startups reuse a valid cache; repeated long waits are worth investigating rather than assuming every restart must rebuild.
+
+Headers appearing before rows, or a loading state in a native-property table, do not by themselves identify the cause. Check index readiness and **Index diagnostics**. Invalid or unsupported persistent data can need guarded repair instead of an ordinary rebuild. See [[DOCS-046 Plugin data and state files|Plugin data and state files]].
 
 ## Is the note in an excluded folder?
 
@@ -31,7 +37,7 @@ If a task shares its `operonId` with another, Operon may block or confuse it unt
 
 ## FAQ
 
-**Did I lose the task?** Almost never. Tasks are in your notes. Check the note directly; if the text is there, the fix is reindexing or a view change.
+**Did I lose the task?** Almost never. Tasks are in your notes. Check the note directly; if the text is there, investigate recognition, filters, exclusions, identity, and index readiness before changing it.
 
 **Rebuild did not bring it back. Now what?** Confirm the note is not in an excluded folder, and that the line is a real Operon task with an `operonId`.
 

@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-09-28T16:47:49+02:00
+Updated: 2026-10-13T17:06:30+02:00
 ---
 
 # How to create a task with Task Creator
@@ -18,6 +18,12 @@ The [[DOCS-020 Task Creator|Task Creator]] is one of the surfaces you will use m
 Run [[DOCS-084 Create New Operon Task|Create New Operon Task]] to open the dialog, and choose whether the task is an [[DOCS-011 Inline tasks|inline task]] or a [[DOCS-013 File tasks|file task]]. You can change everything else as you go.
 
 If you usually create file tasks, set **Default to File Task in Task Creator** in **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**. Then this dialog opens with File selected instead of Inline. You can also set **Default file task template** there, so your usual template is already selected when the creator is in File mode.
+
+## Choose a template and review its fields
+
+Use the bottom template selector before creating the task. Inline and File have independent defaults; an Inline task can also be created without a template. The selected template's supported properties appear in the draft, whether empty or filled. You can fill an empty date, change an amount, or remove a field before saving.
+
+If you change templates, untouched template values update, but deliberate edits and removals are preserved. Switching modes selects that mode's default without discarding deliberate field edits. See [[DOCS-150 Using inline task templates|Using inline task templates]] for the complete example and **Use last used template as default** behavior.
 
 ## Step 1: Write the description
 
@@ -63,11 +69,13 @@ This is where the no-parsing point matters: you do not write "next friday" into 
 
 ## Step 4: The value is set on the field
 
-When you pick a value, it is stored on that field. The description text stays as the task's words; the value does not get written into it. Below the description is a **toolbar with a button for each field**, and that button reflects whether the field is set, so a glance tells you which fields the task already carries. Open a field again to change or clear it.
+When you pick a value, it is stored on that field. The description text stays as the task's words; the value does not get written into it. Below the description, **Task Creator Chips** provides your configured controls and the prepared draft fields. Template-supplied fields can appear even when they are not permanently enabled, and their indicators distinguish set and empty fields. Open a field again to change or clear it.
 
 The toolbar is also a second way to add fields: instead of typing a name, you can click a field's button to open its picker directly. Typing the name and clicking the button reach the same pickers.
 
 Repeat the loop as many times as you like: name a field (or click its button), choose it, and pick a value.
+
+For template-heavy capture, enable a small permanent set under **Interface → Task Chips → Task Creator Chips**. Keep controls you often need outside templates; let the selected template supply the rest. This changes the permanent control list, not which prepared template fields can be reviewed.
 
 ## Set a parent to inherit its fields
 
@@ -87,15 +95,15 @@ A parent can also decide **where** an inline task is saved. Configure **Parent-A
 You finish by choosing the task's shape with the **Inline** and **File** buttons at the bottom, and the two save differently:
 
 - **Inline** creates the task directly as an [[DOCS-011 Inline tasks|inline task]] with the fields you set, following your inline-task settings for where it is placed. With **Ask Every Time**, choose a destination in the searchable target picker; cancelling keeps your draft.
-- **File** creates a [[DOCS-013 File tasks|file task]], a note of its own, from a **file-task template**. A template picker lets you choose which template to use, and the new note is created from it. See [[DOCS-024 Task templates|Task templates]].
+- **File** creates a [[DOCS-013 File tasks|file task]], a note of its own, from a **file-task template**. Review the selected template and its prepared fields before creation; choose a template if none is selected. The new note is created from that template and your edits. See [[DOCS-024 Task templates|Task templates]].
 
 If **Default to File Task in Task Creator** is enabled, the creator reaches this step with **File** already selected. If **Default file task template** is also set, that template is preselected; you can still change it for the current task before saving.
 
-Either way, the canonical `{{key:: value}}` syntax is written for you, and the task appears in your views right away.
+Inline metadata or File frontmatter is written for you, and the task appears in your views right away.
 
 ## Why the flow works this way
 
-It keeps capture fast and deliberate. You stay in one place writing the task, and you reach for a field only when you mean to, without leaving the keyboard or memorizing syntax. Because every value comes from a picker, the data stays consistent across your vault.
+It keeps capture fast and deliberate. You stay in one place writing the task, and you reach for a field only when you mean to, without leaving the keyboard or memorizing syntax. Templates and supported field controls prepare structured values you can review before creation, keeping capture deliberate without hand-writing task syntax.
 
 ## FAQ
 

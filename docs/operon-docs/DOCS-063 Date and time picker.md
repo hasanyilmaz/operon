@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-10-01T14:00:09+02:00
+Updated: 2026-10-13T16:56:39+02:00
 ---
 
 # Date and time picker
@@ -61,6 +61,18 @@ If you would rather see the month, the picker also shows a calendar grid. Move b
 ## Adding a time
 
 For a **Date & time** field, the picker also takes a time, so you set both the day and the moment. This is what turns a task into a timed block on the [[DOCS-028 Calendar overview|Calendar]]. One pairing rule applies: an end time (`datetimeEnd`) only makes sense once a start (`datetimeStart`) is set, so Operon asks for the start first.
+
+## Editing the time input
+
+The time-only and Date & time pickers support editing at the caret, replacing selected text, Backspace/Delete, and pasting a time. You can correct part of a time instead of clearing and retyping the whole value. The same input handling supports phone keyboard edits and composition; choose or confirm a valid value to apply it.
+
+## In Task Editor on phones and tablets
+
+In the desktop-style phone layout, the picker opens on the editor's compact surface. On tablets, a wide editing panel keeps the picker anchored to its control; at 420 px or narrower it uses the compact surface. Picker space follows the visible viewport and its host, including the on-screen keyboard. Scrolling the list is navigation, not a selection.
+
+The calendar keeps seven day columns on narrow screens. Day widths can shrink to fit while their touch height stays at least 44 CSS px. Other independent picker actions retain the larger touch targets. Opening or closing a picker does not deliberately move the Description caret or force focus back into its text field. Keyboard-triggered pickers can return focus to the triggering control.
+
+These desktop-style touch adaptations are separate from the existing compact mobile Task Editor, which remains available through **Use mobile Task Editor on phones**. See [[DOCS-101 Mobile General|Mobile General]] for the layout choice.
 
 ## Removing a date
 

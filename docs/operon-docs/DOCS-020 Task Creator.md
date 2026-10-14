@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-06T10:36:57+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Task Creator
@@ -48,13 +48,27 @@ Date and Date & time controls show their selected task date using **Settings →
 
 Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Type stores one classification, Task Image stores one media reference, and Task Gallery keeps several references in order. See [[DOCS-018 Task properties|Task properties]] and [[DOCS-138 Task images and galleries|Task images and galleries]].
 
+Description and Note support default and colored highlights. In the Live Preview-style editor, the active highlight keeps Obsidian's color control where supported; the saved Markdown retains its color marker. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the six colors and plain-text syntax.
+
+## Review a template before creating
+
+Both **Inline** and **File** mode can prepare a template's properties in Task Creator. Choose the template with the bottom selector, which displays its selected name. The template suggestion in the description's field menu says **Pick a Template**.
+
+The prepared fields include empty properties as well as filled ones: an empty date is a place to add a date, while `false` and `0` are real values. Open supported fields to edit or remove them before creating the task. Canonical fields, mapped Custom keys, and supported Vault Properties can participate; see [[DOCS-018 Task properties|Task properties]] for their differences. Unavailable or unsupported fields have limits described in [[DOCS-150 Using inline task templates|Using inline task templates]]; the preview is not an unrestricted frontmatter editor.
+
+Changing templates refreshes values supplied only by the template. Values you deliberately edited, and fields you deliberately removed, remain your choices. For example, changing a template's Budget from 100 to 200 does not replace a Budget you already set to 250. Untouched fields supplied only by the previous template disappear when it no longer supplies them; deliberate edits and removals remain protected. Switching Inline/File applies that mode's default template while retaining deliberate field edits.
+
+For template-heavy capture, keep only frequently used controls permanently enabled in **Interface → Task Chips → Task Creator Chips**. Template properties appear for the current draft, including empty ones, without changing your saved chip preferences. See [[DOCS-150 Using inline task templates|Using inline task templates]] for a complete example.
+
+Simply opening Creator or switching Inline/File does not count as an unsaved edit. Editing Description/Note, changing a field, or deliberately choosing a different template can require confirmation when closing.
+
 ## Setting reminders while you create
 
 The toolbar carries a button for each kind of reminder, **ReminderDatetimes** for a fixed moment and **ReminderRules** for an offset from one of the task's dates. Reminders you add before saving appear as chips in the creator, and you can click one to change or remove it before the task exists. See [[DOCS-116 Reminders|Reminders]].
 
 Two things worth knowing:
 
-- **Both buttons are hidden by default.** Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage, which is also where you order the toolbar.
+- **Both permanent controls are hidden by default.** A prepared template can still expose its reminder fields for the current draft. Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Chips** subpage, which is also where you order the toolbar.
 - **The rule button stays disabled until the task has a date**, because a rule counts back from one of the task's own dates. Set a due, scheduled, or start date, or a timed block, first, and it becomes available.
 
 If you would rather not set reminders during capture at all, leave the buttons off and add reminders later from the [[DOCS-021 Task Editor|Task Editor]] or directly from a task's chips.
@@ -64,6 +78,10 @@ If you would rather not set reminders during capture at all, leave the buttons o
 Task Creator starts in Inline mode by default, but you can make it open in File mode instead. This is useful if most of your work lives as notes with frontmatter and a body, and you do not want to switch from Inline to File every time.
 
 Turn on **Default to File Task in Task Creator** in **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**. In the same section, **Default file task template** can preselect the template Task Creator uses when it enters File mode. Leave the template setting empty if you still want Task Creator to ask you to pick a template each time.
+
+## Inline and dynamic defaults
+
+Set **Default inline task template** under **Tasks → Inline Tasks** independently of **Default file task template** under **Tasks → File Tasks**. Each has its own **Use last used template as default** toggle, initially off. When enabled, a successfully created task in Creator updates only that mode's saved default. Merely choosing a template, cancelling, or switching modes does not update it. Other flows that consume that default then use its new value; they do not all open Creator. See [[DOCS-150 Using inline task templates|Using inline task templates]] for cancellation, template-free creation, and save-failure details.
 
 ## Where the task lands
 
@@ -85,7 +103,7 @@ Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structu
 
 **Can Task Creator open in File mode by default?** Yes. Enable **Default to File Task in Task Creator** under **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**.
 
-**Where are the reminder buttons?** Hidden by default. Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage.
+**Where are the reminder buttons?** Their permanent controls are hidden by default; templates may expose them in the draft. Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Chips** subpage.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Turn lines you already wrote into Operon tasks
 Icon: text-cursor-input
 Color: "#ea580c"
-Updated: 2026-10-06T10:36:57+02:00
+Updated: 2026-10-13T16:53:09+02:00
 ---
 
 # Create tasks from selected text
@@ -40,6 +40,20 @@ For example:
 The checkbox command converts the last three lines. The first stays a plain bullet; **Complete missing details** becomes a child of **Check documents**.
 
 Both commands use the checkbox ownership and indentation rules. Inside an existing inline task’s [[DOCS-017 Plain checkbox lists|checkbox block]], that owner supplies the parent for top-level converted items, even when it is outside the selection. The parent context does not carry across the end of that block. Outside an owned block, the usual list hierarchy and File Task auto-parent setting apply.
+
+## Template defaults and direct conversion
+
+Both selection commands use **Default inline task template** from **Tasks → Inline Tasks** when one is configured. Supported template properties supplement the converted task; explicitly mapped Tasks emoji values take precedence over conflicting template defaults. The template body is not copied and Templater does not run. Existing Operon tasks remain unchanged. See [[DOCS-150 Using inline task templates|Using inline task templates]].
+
+These commands work directly on the selection. **Open Task Creator before conversion** affects only the two Live Preview conversion icons; it does not open Creator for each selected item. Use an icon with that option enabled when you want to review one source task and change its template before conversion.
+
+The optional dynamic-default toggle can change the saved Inline default after successful Creator creation. Selection commands use that saved value without learning a new template themselves. Check it before running the command.
+
+## A selection is different from a folder batch
+
+For eligible Tasks emoji lines across files or folders, use [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]]. That Settings workflow requires **Scan** and confirmation and leaves tasks independent; it does not reproduce this page's parent inference or convert plain checkboxes without Tasks metadata.
+
+To use different templates for different folders, run separate bulk batches and Scan again after each template or scope change. Bulk recovery controls handle unresolved bulk operations; they are not an Undo interface for these selection commands.
 
 ## Turn one line into a file task
 

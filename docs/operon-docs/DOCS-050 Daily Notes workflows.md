@@ -2,7 +2,7 @@
 Notes: Capture inline tasks into Daily Notes and inherit dates from their note
 Icon: calendar-check
 Color: "#059669"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-14T11:47:37+02:00
 ---
 
 # Daily Notes workflows
@@ -14,6 +14,8 @@ This page focuses on the daily capture habit and date defaults. For Daily and We
 ## Capture into today's note
 
 Choose **Daily Notes** as the inline destination under **Settings → Operon → Tasks → Task Router**. A normal new inline task then routes to today's Daily Note instead of a fixed file. If Operon manages Daily Notes, it uses Operon's configured format and folder. Otherwise it falls back to the Core Daily Notes configuration when that plugin is available.
+
+The **Daily and Weekly Notes** section directly below the destination settings holds **Manage daily notes with Operon** and its format, template, and folder fields. It remains available regardless of your current inline destination. Selecting Daily Notes does not automatically enable Operon management.
 
 The Daily destination is one of five Task Router choices, alongside Weekly Notes, a specific file, the active file, and Ask Every Time. See [[DOCS-136 Task Router|Task Router]].
 
@@ -38,7 +40,9 @@ Task date fields stay in `YYYY-MM-DD` form regardless of the note filename. A fi
 
 An Operon-managed missing Daily Note can start from its configured Daily template. Compatible `{{title}}`, `{{date}}`, and `{{time}}` variables are resolved when the note is created; an existing note is left as it is and its template is not run again.
 
-The optional **Create Daily Notes as Operon Tasks** setting makes a newly created Daily Note a minimal File Task container and parents the inline task placed inside it. An existing plain Markdown Daily Note is never adopted automatically: Operon appends the task without assigning the note as its periodic parent. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] for the complete matrix.
+On the first capture for a date, Operon creates the missing Daily Note before inserting the inline task. Template references can include or omit `.md`; choose the template file to avoid an unresolved reference. The task is placed under a real body heading, not a heading example in YAML or a fenced code block. Unsafe insertion is stopped rather than written into that text.
+
+The optional **Create daily notes as an Operon task** setting under **File Tasks → Daily and Weekly Notes as File Tasks** makes a newly created Daily Note a minimal File Task container and parents the inline task placed inside it. An existing plain Markdown Daily Note is never adopted automatically: Operon appends the task without assigning the note as its periodic parent. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]] for the complete matrix.
 
 ## A simple daily flow
 
@@ -63,7 +67,8 @@ The optional **Create Daily Notes as Operon Tasks** setting makes a newly create
 ## Settings
 
 - Select Daily Notes under **Settings → Operon → Tasks → Task Router**.
-- Configure Operon-managed Daily format, template, folder, and container behavior under **Tasks → File Tasks → Daily Notes**.
+- Configure Operon-managed Daily format, template, and folder under **Tasks → Task Router → Daily and Weekly Notes**.
+- Choose whether new Daily Notes become File Tasks under **Tasks → File Tasks → Daily and Weekly Notes as File Tasks**.
 - Configure start and scheduled date defaults under **Tasks → Inline Tasks → Daily Note Defaults**.
 
 ## Related

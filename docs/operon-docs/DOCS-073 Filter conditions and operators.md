@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-14T11:47:37+02:00
 ---
 
 # Filter conditions and operators
@@ -34,6 +34,16 @@ Groups can be **nested**: a group can hold other groups, so you can express "sta
 > **MEDIA-DOCS-073-2:** A nested filter with an "all" group containing an "any" subgroup.
 
 ![MEDIA-DOCS-073-2 - A nested filter with an "all" group containing an "any" subgroup](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-073-2.png)
+
+### Reading and editing nested groups
+
+Automatic group numbers follow the nesting: top-level groups are **Group 1**, **Group 2**, and so on; children of Group 1 are **Group 1.1**, **Group 1.2**, with deeper children such as **Group 1.1.1**. Numbers follow the current group order, not the number of condition rows. They help you locate a group; they are not persistent identifiers.
+
+Accent-colored scope guides show which conditions and subgroups belong to each **All**, **Any**, or **None** choice, including the outer scope. The active logic choice stays visible, as do the group name/number and its collapse, move, and delete controls. The three logic buttons use equal widths. Condition delete buttons stay at the right edge of their own row, including conditions that need no value input.
+
+On desktop with a mouse or trackpad, inactive logic choices and the **Add Condition**, **Add Group**, copy, and paste controls appear as quiet lines until their group is hovered or receives keyboard focus. Only the innermost hovered or keyboard-focused group reveals those controls: working inside Group 1.1 does not also reveal Group 1's inactive controls. Move back into the parent's own area to reveal its actions. Keyboard focus remains visible, and mobile or touch-only surfaces keep these controls visible without requiring hover.
+
+This presentation is shared wherever Operon uses the filter editor; the underlying All/Any/None logic and saved conditions are unchanged.
 
 ## Operators by property type
 

@@ -2,7 +2,7 @@
 Notes: Common questions across Operon, with links to the full answers
 Icon: circle-question-mark
 Color: "#dc2626"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-13T17:01:21+02:00
 ---
 
 # Operon FAQ
@@ -45,11 +45,17 @@ The questions that come up most, grouped, with a link to the page that answers e
 
 **Is it safe to sync across devices?** Yes, with care. Identity keeps tasks distinct, and the conflict manager resolves duplicates. See [[DOCS-047 Sync conflict safety|Sync conflict safety]].
 
+**Do I need to reindex after updating?** Normally no. The first startup without the new layout automatically builds its cache from current notes. Later startups reuse a valid cache and reconcile changes. A one-time slower opening is different from repeated rebuilding. See [[DOCS-046 Plugin data and state files|Plugin data and state files]].
+
+**Are Vault Properties indexed too?** Yes. They share the persistent task index with canonical and mapped custom fields, for File and Inline tasks. Markdown remains authoritative; editability still depends on a supported, verified type. See [[DOCS-115 File task property columns|Vault Properties]].
+
+**What if the cache is corrupt or from an unsupported version?** Inspect **Index diagnostics** and use its guarded repair path when appropriate. A normal rebuild does not force an unsafe overwrite. Do not delete operational state or recovery evidence to bypass the check. See [[DOCS-091 Rebuild full index|Rebuild full index]].
+
 ## Customization
 
 **Can I rename Operon's property names?** Yes, for file-task frontmatter, through key mappings. See [[DOCS-039 Key mappings|Key mappings]].
 
-**Can I add my own field?** Yes, a custom key. See [[DOCS-040 Custom keys|Custom keys]].
+**Can I add my own field?** Yes. Use a configured Custom key or supported Vault Property, depending on the behavior you need. See [[DOCS-018 Task properties|Task properties]] and [[DOCS-115 File task property columns|Vault Properties]].
 
 **Can I change the statuses and priorities?** Yes, both are yours to define. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]] and [[DOCS-038 Task priorities|Task priorities]].
 
@@ -57,7 +63,7 @@ The questions that come up most, grouped, with a link to the page that answers e
 
 ## When something looks wrong
 
-**A task is not showing up.** Usually the index or a view, not a lost task. Reindex and check exclusions. See [[DOCS-054 Missing tasks|Missing tasks]].
+**A task is not showing up.** Check the source, view filters, exclusions, duplicate identities, and index readiness. Rebuild only when the index remains stale. See [[DOCS-054 Missing tasks|Missing tasks]].
 
 **A task looks wrong on the Calendar or Kanban.** Often a missing date or a status that does not match the pipeline. See [[DOCS-056 Calendar or Kanban rendering issues|Calendar or Kanban rendering issues]].
 

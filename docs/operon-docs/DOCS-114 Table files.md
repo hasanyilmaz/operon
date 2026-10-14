@@ -2,7 +2,7 @@
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-Updated: 2026-08-29T16:53:53
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Table files
@@ -55,16 +55,22 @@ Moving the file to another folder is just a move. Operon notices and keeps track
 
 ## Deleting a Table file
 
-Deleting a Table file with **Delete** from **Edit preset** sends it to **Obsidian's Trash**, not a permanent delete. Deleting it yourself from the file explorer follows Obsidian's own deletion behavior. Either way, once the file is gone Operon removes its stale preset reference rather than leaving a **Missing file** card in Settings.
+Deleting a Table file with **Delete** from **Edit preset** sends it to **Obsidian's Trash**, not a permanent delete. Deleting it yourself from the file explorer follows Obsidian's own deletion behavior. A temporary inability to find or read a file is not treated as this explicit Delete action; see the distinction below.
 
-Deleting also cleans up automatically:
+The explicit **Delete** action in Operon also cleans up automatically:
 
 - The preset's position in the preset order and preset picker disappears with it.
-- If it was the **default preset**, or a **favorite**, that reference is cleared rather than left dangling.
+- Its **favorite** is removed. If it was the **default preset**, another available preset becomes the default.
 - Any open tab that was showing the deleted preset falls back to another available preset.
 - Any `operon-table` **embed** still pointed at the deleted preset shows **Table preset not found** until you point it at a different one. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
-The in-app Delete action does not let you remove the last preset. If you remove Table files outside Operon after the Table system has already been initialized, Operon clears the missing references but does **not** recreate `Default table.table`. The same rule prevents a temporary file-move or sync gap from manufacturing a replacement while your real files are briefly unavailable. A fresh default is created only for a genuinely uninitialized profile with no valid Table file or binding to adopt. Operon never revives or converts an old Settings preset. See [[DOCS-109 Table presets|Table presets]].
+The in-app Delete action does not let you remove the last preset. If you remove Table files outside Operon after the Table system has already been initialized, Operon does **not** recreate `Default table.table`. An unsuccessful scan alone does not erase the saved bindings or preferences. The same rule prevents a temporary file-move or sync gap from manufacturing a replacement while your real files are briefly unavailable. A fresh default is created only for a genuinely uninitialized profile with no valid Table file or binding to adopt. Operon never revives or converts an old Settings preset. See [[DOCS-109 Table presets|Table presets]].
+
+## Temporary unavailability
+
+Startup, sync, a partial write, or a read failure can briefly make a known Table file unavailable. Operon preserves its saved favorite, order, default preference, and file binding through that uncertainty. Once the same file is valid and readable again, it can return to the available presets without having to star it again.
+
+These retained preferences are not a backup copy of the preset: the `.table` file remains authoritative. Operon does not expose an unreadable file as an editable preset, overwrite it with cached settings, or create a replacement default to fill the gap. If a file was actually removed outside Operon, restore it or select another available preset; a failed scan cannot establish that deletion was intentional.
 
 ## When a file cannot be read
 
@@ -101,7 +107,7 @@ A `.table` file is an ordinary vault file as far as Obsidian's linking is concer
 
 **Does moving the file break an embedded table in my notes?** No. Embeds reference a preset by its id, not the file's path, so moving or renaming the file never breaks an `operon-table` embed.
 
-**What happens if I delete a Table file that is still embedded somewhere?** The file goes to Obsidian's Trash. Restore it from there to bring the preset back; otherwise, any note still embedding it shows **Table preset not found** until you point that embed at a different preset.
+**What happens if I delete a Table file that is still embedded somewhere?** Operon's **Delete** action sends it to Obsidian's Trash; deleting it outside Operon follows that tool's deletion behavior. Restore the file to bring the preset back, or point the embed at a different preset. While the preset is unavailable, the embed shows **Table preset not found**.
 
 **Will Operon recreate Default table.table after I delete my last Table file?** No, not after the Table system has been initialized. Default bootstrap is only for a genuinely fresh profile. Restore a file from Trash or create a new preset when you intentionally removed them all.
 

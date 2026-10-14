@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-10-06T10:40:55+02:00
+Updated: 2026-10-13T16:48:42+02:00
 ---
 
 # Task chips: display and behavior
@@ -48,6 +48,12 @@ Because each is independent, you tune the chip row per place rather than once fo
 > **MEDIA-DOCS-041-2:** The Task Chips settings for one surface, toggling visibility, reordering chips, and setting Icon Only.
 
 ![MEDIA-DOCS-041-2 - Task Chips settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-041-2.png)
+
+## Task Creator Chips
+
+**Settings → Operon → Interface → Task Chips → Task Creator Chips** configures the permanent field controls and their order in [[DOCS-020 Task Creator|Task Creator]]. These creation controls are separate from the six saved-task chip surfaces above and their Icon Only options.
+
+If you often use templates, keep this permanent set small: enable fields you regularly add outside templates. Selecting a template exposes its supported fields in the current draft, including empty properties, so you can review and edit them before creation without enabling every possible control. This does not rewrite your saved chip preferences. See [[DOCS-150 Using inline task templates|Using inline task templates]].
 
 ## Showing, hiding, and Icon Only
 

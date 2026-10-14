@@ -2,7 +2,7 @@
 Notes: Notes whose frontmatter makes the file itself a task
 Icon: file-text
 Color: "#7c3aed"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-14T11:47:37+02:00
 ---
 
 # File tasks
@@ -108,7 +108,7 @@ Open **Settings → Operon → Tasks → File Tasks**:
 
 - **New File Task Creation Defaults** sets Task Creator's default File mode and preselected file-task template.
 - **File Task Templates** manages file-task templates.
-- **Daily notes** and **Weekly notes** configure those managed notes.
+- **Daily and Weekly Notes as File Tasks** contains the two toggles for creating new Daily or Weekly Notes as Operon File Tasks. Their management, format, template, and folder settings live under **Tasks → Task Router → Daily and Weekly Notes**; see [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 - **File Task Conversion** contains conversion preferences.
 - **Excluded folders** keeps selected folders outside Operon's task indexing.
 - **Convert notes** provides the note-conversion tools.

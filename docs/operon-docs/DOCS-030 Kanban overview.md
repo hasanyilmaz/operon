@@ -2,7 +2,7 @@
 Notes: Move tasks through status columns on the Kanban
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Kanban overview
@@ -38,6 +38,8 @@ If a task has a Project Serial, the serial appears first as a display-only ident
 Kanban also has a **Kanban Task Actions** section at the end of the same settings page. Those controls can add compact action chips at the trailing edge of the card chip row, such as Play, Pin, Note, Add subtask, and Open checkboxes. On desktop, enabled action chips are usable from the card. The Play action changes to Stop when that task's timer is already running. On mobile, the same card chip area stays visible but read-only, so card tap, scroll, and drag gestures stay predictable.
 
 Main cards can grow a little when chips wrap onto multiple lines; descendant preview cards stay compact and do not show chip rows.
+
+Card descriptions and rendered notes support default and six-color highlights. The leading color marker is hidden in the rendered text, while the original Markdown remains intact. When editing a note, the text popover keeps the supported Live Preview color control. See [[DOCS-113 Text field editor popover|Text field editor popover]].
 
 ## Card images
 

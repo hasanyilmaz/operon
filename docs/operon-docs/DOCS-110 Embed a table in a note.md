@@ -2,7 +2,7 @@
 Notes: Render a preset's live, editable table inside any note
 Icon: panel-top
 Color: "#0284c7"
-Updated: 2026-10-01T14:06:16+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Embed a table in a note
@@ -88,6 +88,12 @@ This does not change the global default preset, edit the preset's settings, crea
 Any preset works, so the embedded table is as focused as the preset behind it. Build the preset once with the filter, columns, grouping, and summaries you want (see [[DOCS-109 Table presets|Table presets]]), then embed it wherever the table belongs.
 
 A common use is a **dashboard note**: embed a few tables, one per question, so a single note becomes a live control panel over your work. Another is a **project note that owns its tasks**: give the project a preset filtered to its task tree and embed it at the foot of the note, so the note is both the context and a working table of the tasks it holds.
+
+## Vault Properties and loading
+
+Embedded tables use the same [[DOCS-115 File task property columns|Vault Properties]] and persistent index as the full Table view. Supported native properties can be displayed and edited for File and Inline tasks without a separate per-embed source scan when their cached sources are valid.
+
+Each embedded surface checks its own task scope before reusing prepared values. Switching presets or sharing a preset with another table does not permit a stale snapshot to replace current data. During an update within the same preset and column layout, the embed keeps its table visible and applies the same row and action safeguards as the full Table. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]. Initial index preparation or a pending changed source can still delay current results; a loading state is not a reason to convert tasks again or routinely rebuild the index. See [[DOCS-046 Plugin data and state files|Plugin data and state files]] and [[DOCS-091 Rebuild full index|Rebuild full index]].
 
 ## If the embed shows an error
 

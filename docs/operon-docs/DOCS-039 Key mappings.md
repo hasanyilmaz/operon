@@ -2,7 +2,7 @@
 Notes: Rename property names without changing what a field means
 Icon: key-round
 Color: "#ca8a04"
-Updated: 2026-10-01T14:06:16+02:00
+Updated: 2026-10-13T17:06:30+02:00
 ---
 
 # Key mappings
@@ -13,7 +13,7 @@ A key mapping is the link between what Operon calls a field internally and what 
 
 ![MEDIA-DOCS-039-1 - The Keymapping settings listing canonical fields beside their visible property names](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-039-1.png)
 
-## The two names of every field
+## The two names of a mapped field
 
 Each field has two names that do different jobs:
 
@@ -41,6 +41,12 @@ Tier: A
 ```
 
 Both lines store the same canonical `priority` field. The file task shows it under the visible name `Tier`, while the inline task keeps the canonical key `priority`. So a visible-name change touches file tasks and UI labels and leaves inline tasks alone. See [[DOCS-012 Inline task syntax|Inline task syntax]].
+
+## Mapping versus defining a property
+
+Key Mapping is a **name-to-key association**, not a fourth category of task data. A built-in field keeps its canonical identifier and behavior when you change its visible name. Custom Keys have their own stable identifiers and visible names; Vault Properties use their source names without requiring a new mapping.
+
+Use [[DOCS-018 Task properties|Task properties]] for the comparison of all three groups. Registering or renaming a mapping is not a bulk conversion of existing note values, and a shared index does not make their surface support identical.
 
 ## What a mapping holds
 
@@ -70,6 +76,8 @@ Since visible names must be unique, Operon has to handle the case where one of t
 ## Field icon
 
 Each field can carry an optional **icon**, chosen from Lucide. Surfaces that use the field’s key mapping share this icon, so you can configure it centrally rather than surface by surface. Leaving it blank does not guarantee an iconless field: some surfaces, including Task Creator and Task Editor controls, use a fallback icon when no mapping icon is set.
+
+For Checkbox properties, the fallback **type icon** is a dashed square. A configured type icon is retained. Supported value controls show a checked box for `true` and an empty box for `false`; that automatic value indicator is distinct from the field's configured type icon. This does not enable a previously unsupported custom-field surface.
 
 ## Renaming a field later
 

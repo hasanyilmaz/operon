@@ -2,7 +2,7 @@
 Notes: Get notified about a task, either at a fixed moment or at an offset from one of its dates
 Icon: alarm-clock
 Color: "#ca8a04"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-13T16:48:42+02:00
 ---
 
 # Reminders
@@ -83,10 +83,10 @@ A fixed reminder shows just the time when it falls today, and the date with the 
 
 ## Where reminders show up
 
-**Reminders are hidden by default on every surface**, including the Task Editor. This is deliberate: most tasks do not carry reminders, and a control or chip slot that is empty most of the time is wasted space. Turn them on where you actually want them:
+**Reminder visibility settings are off by default**, including in the Task Editor. In Task Creator, prepared template reminder fields can still appear for the current draft even when their permanent controls are off. This is deliberate: most tasks do not carry reminders, and a control or chip slot that is empty most of the time is wasted space. Turn them on where you actually want them:
 
 - In the **Task Editor**, from **Settings → Operon → Interface → Task Editor**, in **Property Visibility & Order**.
-- In the **Task Creator**, from **Settings → Operon → Interface → Task Chips**, on the **Task Creator Toolbar** subpage. See [[DOCS-020 Task Creator|Task Creator]].
+- In the **Task Creator**, from **Settings → Operon → Interface → Task Chips**, on the **Task Creator Chips** subpage. See [[DOCS-020 Task Creator|Task Creator]].
 - On **task chips** in reading view, Live Preview, the Filter View, Kanban cards, Task Finder, and the wikilink overlay, each from its own section under **Settings → Operon → Interface → Task Chips**. See [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 Hiding a reminder surface only hides it. The reminders themselves stay on the task and keep firing.
@@ -180,7 +180,7 @@ Both use your real notification and sound settings, and neither creates or opens
 
 **Will I get the same reminder twice on two devices?** No. Delivery is tracked per device, so each one keeps its own record of what it has already shown you.
 
-**I do not see reminder chips on my tasks.** They are hidden by default on every surface. Turn them on for the surfaces you want under **Settings → Operon → Interface**.
+**I do not see reminder chips on my tasks.** Their visibility settings are off by default. Prepared template fields in Creator are separate from saved-task chip visibility. Turn them on for the surfaces you want under **Settings → Operon → Interface**.
 
 ## Settings
 

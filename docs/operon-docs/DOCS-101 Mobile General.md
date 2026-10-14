@@ -2,14 +2,14 @@
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-13T16:56:39+02:00
 ---
 
 # Mobile General
 
-Operon runs the same way on a phone as on the desktop, with a few **phone-first adjustments** layered on top for touch. This page is the home for the general ones: the floating quick-create button, the mobile Task Editor toolbar, and how touch menus behave. The two surfaces with the most mobile-specific behavior, the [[DOCS-096 Mobile Calendar|Calendar]] and the [[DOCS-100 Mobile Kanban|Kanban]] board, have their own pages.
+Operon runs the same way on a phone as on the desktop, with a few **phone-first adjustments** layered on top for touch. This page is the home for the general ones: the floating quick-create button, the two phone Task Editor layouts, tablet editing, and how touch menus behave. The two surfaces with the most mobile-specific behavior, the [[DOCS-096 Mobile Calendar|Calendar]] and the [[DOCS-100 Mobile Kanban|Kanban]] board, have their own pages.
 
-These settings tune the touch interface **without changing your desktop layouts**. Turning them on or off affects phones only.
+Phone-specific settings do not change tablet or desktop layout selection. The desktop-style Task Editor on phones and tablets does use the shared **Interface → Task Editor** preferences, so changes to those shared preferences also affect desktop editing.
 
 > **MEDIA-DOCS-101-1:** A phone showing the floating quick-create button at the bottom-right corner.
 
@@ -23,9 +23,31 @@ On a phone, Operon shows a **floating plus button** that opens the [[DOCS-020 Ta
 - **Hide in Calendar** and **Hide in Kanban** each suppress the button while that view is active, so you can keep it for general use but clear it off the surfaces where it would be in the way. Both are off by default, meaning the button shows everywhere.
 - **Reset position.** You can drag the button to a spot that suits your grip; this puts it back at the default bottom-right corner.
 
+## Choose the phone Task Editor layout
+
+At the top of **Settings → Operon → Mobile → Task Editor**, **Use mobile Task Editor on phones** chooses between two layouts. It is **off by default**, including when an older settings package has no saved choice.
+
+| Device | Toggle off | Toggle on |
+| --- | --- | --- |
+| Phone | Desktop-style editor and its Interface settings | Existing compact mobile editor and its mobile settings |
+| Tablet | Desktop-style editor | Unchanged |
+| Desktop | Desktop editor | Unchanged |
+
+Close and reopen Task Editor after changing the setting. Each open editor keeps the layout it started with. Switching does not reset, copy, or overwrite the other layout's toolbar or workflow preferences; the compact mobile settings stay available even while that layout is off. This is a vault preference, not a separate per-device profile.
+
+On phones, **neither layout offers the embedded file-body button or panel**. This does not disable task-property editing. Tablets retain body editing, including the narrow panel and wider split layout.
+
+## Desktop-style editing with touch
+
+The new phone layout and tablet editor keep action controls visible without hover, including property clear buttons, section actions, and Session editing. Independent action targets are at least 44 × 44 CSS px. In a main panel 420 px wide or narrower, property names sit above their values; wider panels use two columns. Long values and action groups wrap rather than shrinking the controls.
+
+Tablets keep these touch sizes with a mouse, trackpad, or pen attached. Hover feedback and keyboard focus remain available, while the layout follows available panel width rather than the current pointer type.
+
+Pickers adapt to the visible viewport and keyboard space. A wide tablet panel uses an anchored picker; a narrow panel uses the compact surface. Calendar grids retain seven columns with flexible widths and day targets at least 44 px high. Scroll to reach picker content when space is limited. See [[DOCS-063 Date and time picker|Date and time picker]].
+
 ## The mobile Task Editor toolbar
 
-The [[DOCS-021 Task Editor|Task Editor]] on a phone shows a compact **core toolbar** of field and action buttons, the touch equivalent of the desktop editor's tools. Because a phone has little room, you decide which tools earn a place: each core tool can be **shown or hidden**, and you set the **order** they appear in, so the fields and actions you reach for most sit where your thumb lands first.
+When **Use mobile Task Editor on phones** is enabled, the [[DOCS-021 Task Editor|Task Editor]] shows the existing compact **core toolbar** of field and action buttons, the touch equivalent of the desktop editor's tools. Because a phone has little room, you decide which tools earn a place: each core tool can be **shown or hidden**, and you set the **order** they appear in, so the fields and actions you reach for most sit where your thumb lands first.
 
 This is purely about the mobile toolbar's makeup. It does not change what the fields do or how the editor works, only which buttons are present and in what order on a phone.
 
@@ -47,13 +69,13 @@ Two views change enough on a phone to have their own pages:
 Several dialogs also adapt to a phone without needing a page of their own. The [[DOCS-020 Task Creator|Task Creator]], [[DOCS-027 Task Finder|Task Finder]], and [[DOCS-021 Task Editor|Task Editor]] each open as a **full, touch-sized dialog** instead of the centered desktop window, and each **tracks the on-screen keyboard**: as the keyboard or a field picker opens and closes, the dialog resizes to the space that is left so the part you are working on stays in view rather than being pushed off-screen.
 
 - The **Task Finder** sizes its results list to the visible area, so the list stays scrollable above the keyboard while you type a search.
-- The **Task Editor** additionally carries the configurable mobile toolbar described above, so its phone layout is the touch dialog plus whichever core tools you chose to show.
+- The **Task Editor** uses the layout selected above. The compact mobile toolbar appears only when the mobile-layout toggle is on; the default desktop-style layout uses its own sections and field preferences.
 
 The quick-create button settings above are what let you hide the floating button on the Calendar and Kanban surfaces.
 
 ## Settings
 
-These live under **Settings → Operon → Mobile**. **Mobile General → Quick Create Button** holds the button visibility, per-view hiding, and position reset. **Mobile General → Touch Menu** holds mobile context menu auto-hide. Per-view hiding and reset controls are shown when the quick-create button is enabled. **Mobile Task Editor → Toolbar Visibility & Order** controls which mobile toolbar tools appear and their order. The **Mobile Calendar** and **Mobile Kanban** pages are covered on [[DOCS-096 Mobile Calendar|Mobile Calendar]] and [[DOCS-100 Mobile Kanban|Mobile Kanban]].
+These live under **Settings → Operon → Mobile**. **Mobile General → Quick Create Button** holds the button visibility, per-view hiding, and position reset. **Mobile General → Touch Menu** holds mobile context menu auto-hide. Per-view hiding and reset controls are shown when the quick-create button is enabled. **Mobile → Task Editor** holds the layout toggle at the top. Its **Toolbar Visibility & Order** controls the existing compact mobile toolbar; its workflow preferences also remain independent of the desktop-style editor. The **Mobile Calendar** and **Mobile Kanban** pages are covered on [[DOCS-096 Mobile Calendar|Mobile Calendar]] and [[DOCS-100 Mobile Kanban|Mobile Kanban]].
 
 ## FAQ
 
@@ -63,7 +85,7 @@ These live under **Settings → Operon → Mobile**. **Mobile General → Quick 
 
 **My touch menu closes too fast.** Raise the mobile context menu auto-hide time. The reverse lowers it.
 
-**Do these settings change my desktop?** No. They tune the phone and touch interface only.
+**Does the phone layout toggle change my tablet or desktop?** No. It selects only the phone layout. The desktop-style layout uses shared Interface preferences on all three devices.
 
 ## Related
 

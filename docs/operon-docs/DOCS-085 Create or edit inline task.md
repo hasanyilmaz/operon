@@ -2,7 +2,7 @@
 Notes: Context-aware command that creates, converts, upgrades, or edits at the cursor
 Icon: square-pen
 Color: "#475569"
-Updated: 2026-09-28T16:40:18+02:00
+Updated: 2026-10-13T16:53:09+02:00
 ---
 
 # Create or edit inline task
@@ -20,6 +20,14 @@ Updated: 2026-09-28T16:40:18+02:00
 | An existing Operon task | Opens it in the [[DOCS-021 Task Editor\|Task Editor]] |
 
 If a checkbox belongs to an inline task’s [[DOCS-017 Plain checkbox lists|uninterrupted checkbox block]], upgrading it uses that task as its parent. The line and its indentation stay in place. Outside an owned block, the existing File Task auto-parent setting applies.
+
+## Template defaults and Creator review
+
+When this command creates or upgrades an Inline task, it uses the configured **Default inline task template** under **Tasks → Inline Tasks**. Supported properties supply starting values; source values and parent rules still participate. It does not copy the template body or run Templater. Opening an existing task for editing does not reapply the creation template. See [[DOCS-150 Using inline task templates|Using inline task templates]].
+
+This command remains a direct, context-aware action. **Open Task Creator before conversion** only changes the two Live Preview conversion icons. With that option enabled, clicking an icon prepares the source in Creator for review and template selection before replacement; it does not change this command's behavior.
+
+For a Tasks emoji line, use **Convert Tasks emoji line to inline task** when you want explicit emoji conversion. For selected files/folders, use [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]], whose Scan and recovery workflow is separate from this cursor command.
 
 ## When to use it
 

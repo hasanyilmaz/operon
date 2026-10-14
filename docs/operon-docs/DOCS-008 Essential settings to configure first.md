@@ -2,7 +2,7 @@
 Notes: The few settings to set before real use
 Icon: sliders-horizontal
 Color: "#16a34a"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-10-13T16:48:42+02:00
 ---
 
 # Essential settings to configure first
@@ -50,6 +50,12 @@ Open **Core → Key Mappings → Task Property Mapping**. Key mappings set the p
 5. Align key mappings with your property naming, if you have one.
 
 That is enough for a first pass. If you rename a property later, update existing file-task frontmatter to match; changing the mapping alone does not migrate those files.
+
+## Optional: choose capture templates
+
+If you repeat the same kinds of tasks, choose **Default inline task template** under **Tasks → Inline Tasks** and **Default file task template** under **Tasks → File Tasks → New File Task Creation Defaults**. Both use the shared **File Task Templates** folder configured under File Tasks.
+
+Keep **Use last used template as default** off for a fixed default, or enable it independently for either mode to learn from successful Creator creation. Creator shows supported template properties, empty or filled, before saving. A small permanent selection under **Interface → Task Chips → Task Creator Chips** is often enough when templates supply most fields. Start with [[DOCS-150 Using inline task templates|Using inline task templates]].
 
 ## Next step
 

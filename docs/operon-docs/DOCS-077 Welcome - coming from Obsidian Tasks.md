@@ -2,7 +2,7 @@
 Notes: Orientation for users moving from the Obsidian Tasks plugin, with a before and after at a glance
 Icon: move-right
 Color: "#2563eb"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-13T16:53:09+02:00
 ---
 
 # Welcome: coming from Obsidian Tasks
@@ -23,7 +23,7 @@ At a glance, the line you have:
 - [ ] Draft release notes ⏳ 2026-05-20 📅 2026-05-31
 ```
 
-becomes the line Operon keeps:
+becomes an Operon line like this shortened example (defaults, template properties, and bookkeeping may add fields):
 
 ```md
 - [ ] Draft release notes {{operonId:: {{operonId}}}} {{dateScheduled:: 2026-05-20}} {{dateDue:: 2026-05-31}}
@@ -32,6 +32,16 @@ becomes the line Operon keeps:
 Same task, same dates; the emoji become `{{key:: value}}` fields and Operon adds a real `operonId` (shown here as the template variable).
 
 To bring a whole checklist over at once, select it and run **Convert Selection to Operon Tasks**. Indented lines become parent and child tasks, so an outline keeps its structure. See [[DOCS-023 Create tasks from selected text|Create tasks from selected text]].
+
+## Move a folder at a time
+
+Use [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]] to scan selected files or folders and confirm a batch. It converts eligible Tasks emoji lines, leaves plain checkboxes and existing Operon tasks alone, and keeps converted tasks independent rather than creating a parent tree from indentation.
+
+Choose **Default inline task template** before scanning. For example, convert a work folder using Project, then change the default to Personal and run a separate fresh Scan for personal files. Scan again when the template, scope, or relevant settings change. Supported source emoji fields keep precedence over conflicting template defaults. See [[DOCS-150 Using inline task templates|Using inline task templates]].
+
+For one-task review, enable **Open Task Creator before conversion** in **Tasks → Inline Tasks → Checkbox Conversion** and use a Live Preview conversion icon. Commands and bulk conversion remain direct workflows.
+
+Take a backup before a large migration. If a bulk operation is interrupted, follow its recovery controls; **Complete conversion** only keeps an already fully converted result, not a partly written batch. Recovery is not permanent Undo. The bulk guide explains safe restoration and pending view refresh.
 
 ## What carries over
 
@@ -47,7 +57,7 @@ Your emoji metadata maps to Operon fields, so the meaning survives the move:
 | 🔺 ⏫ 🔼 🔽 ⏬ priority | your configured `priority`, matched by rank |
 | 🔁 recurrence | `repeat` |
 
-Recurrence is the one people worry about most, so to be clear: **a 🔁 rule converts into Operon's `repeat` field.** Your repeating tasks keep repeating. Completed and cancelled dates also adopt your configured workflow statuses.
+Recurrence is the one people worry about most, so to be clear: **supported 🔁 rules convert into Operon's `repeat` field.** Unsupported expressions may be kept as information in Note rather than active recurrence; check the conversion messages and result. Completed and cancelled dates also adopt your configured workflow statuses.
 
 ## Your query blocks become views
 

@@ -2,14 +2,14 @@
 Notes: Save a table as a preset and switch between several tables
 Icon: table-2
 Color: "#0284c7"
-Updated: 2026-09-15T11:03:02+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Table presets
 
 A preset saves a table layout and scope. It bundles which tasks appear, which task-field columns show and in what order, how the rows are grouped and sorted, which summaries roll up, how dense the rows are, which Task Tree occurrences are expanded, which search scopes are saved, and how [[DOCS-139 Gantt view|Gantt]] opens beside the Table, all under a name. Presets are what let you keep several tables for different questions and switch between them from the toolbar, and the **default preset** is the one a new table opens with or the **Insert Operon Table embed** command uses.
 
-Each preset is a real file in your vault, with a `.table` extension. That file is the preset's single source of truth, and editing a preset here writes straight to it. Settings lists only files that parse successfully and carry a unique preset id; stale Settings-only entries and bindings whose files no longer exist are removed from the list. New files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**: `Operon/Tables` is the historical default, and a blank setting means the vault root. Changing that destination affects only files created afterward; it does not move any existing preset. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and how invalid or duplicate files are reported.
+Each preset is a real file in your vault, with a `.table` extension. That file is the preset's single source of truth, and editing a preset here writes straight to it. Settings lists only files that parse successfully and carry a unique preset id. An unavailable or invalid file stays out of the editable list, but a scan that cannot read it does not erase its saved favorite, order, or default preference. New files use the configurable **Table default folder** in **Settings → Operon → Views → Tables**: `Operon/Tables` is the historical default, and a blank setting means the vault root. Changing that destination affects only files created afterward; it does not move any existing preset. See [[DOCS-114 Table files|Table files]] for the file itself: where it lives, what happens when you rename or move it, and how invalid or duplicate files are reported.
 
 > **MEDIA-DOCS-109-1:** The table preset settings, with the Filtering, Grouping, Sort, Summaries, Display, and Columns sections.
 
@@ -60,9 +60,21 @@ The **Filtering** section sets the table's scope: choose a saved FilterSet to sh
 
 Use **Choose** to find a saved filter by name. The picker marks the current selection and includes a no-filter choice. Selecting another filter changes which saved filter the preset uses; it does not edit that filter's conditions or reset the other preset options. You can also choose or edit the filter from the [[DOCS-105 Table overview|Table toolbar]].
 
+## Switching presets with Vault Properties
+
+A preset can combine mapped fields with [[DOCS-115 File task property columns|Vault Properties]]. Both use the shared persistent task index; adding a native column does not create a second per-preset index or require a manual reindex.
+
+Each table can reuse its last successful native-property snapshot when returning from a preset without native fields, provided the task scope and indexed data are still valid. Property changes, different task identities or ordering, source moves, and type/mapping changes invalidate stale preparation. This reduces repeat work without treating old values as current.
+
+A real pending source or first-time index build can still require waiting. A column header appearing before rows does not alone prove a full reindex is running. For update/startup behavior and diagnostics, see [[DOCS-046 Plugin data and state files|Plugin data and state files]].
+
+When a task changes within the same preset and column layout, the table keeps its existing structure and reuses unaffected rows. A pending source can still show a brief updating state; see [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]] for which rows and actions remain available.
+
 ## Favorite presets
 
 Any preset can be marked a **favorite** with the star toggle, from its **Edit preset** settings or its row in the **Table Presets** list under **Settings → Operon → Views → Tables**. Favorites are about quick access, not defaults: the toolbar's centered preset shortcuts show only your favorites, so that row stays short even with many saved tables, while the toolbar's preset picker still lists every preset, favorite or not. A preset's favorite status is independent of the default preset described above; a preset can be one, both, or neither.
+
+A temporary read failure, startup scan, or sync gap does not remove a saved star. The preset must become readable and valid again before it is usable; preserving its favorite does not turn an unavailable file into an editable preset. Explicitly deleting a preset is different. See [[DOCS-114 Table files|Table files]].
 
 ## Managing presets
 
@@ -83,7 +95,7 @@ The footer has no "set as default" action: the **default preset** is chosen from
 
 ## The default preset and saved state
 
-The **default preset** is chosen in **Settings → Operon → Views → Tables**. A newly opened Operon Table starts with the default preset, unless that table already has its own saved state. The same default preset is used when the **Insert Operon Table embed** command creates a new embed block; if that default is missing, Operon falls back to the first available Table preset. The preset stores the reusable table shape, saved search scopes, collapsed groups, Task Tree expansion, and Gantt layout. Each open table tab then remembers session state such as its current preset, typed search text, and scroll position, so reopening it or switching back finds that tab as you left it.
+The **default preset** is chosen in **Settings → Operon → Views → Tables**. A newly opened Operon Table starts with the default preset, unless that table already has its own saved state. The same default preset is used when the **Insert Operon Table embed** command creates a new embed block; if that default is unavailable, Operon falls back to the first available Table preset without treating temporary unavailability as a request to erase the saved default. The preset stores the reusable table shape, saved search scopes, collapsed groups, Task Tree expansion, and Gantt layout. Each open table tab then remembers session state such as its current preset, typed search text, and scroll position, so reopening it or switching back finds that tab as you left it.
 
 ## Tips
 

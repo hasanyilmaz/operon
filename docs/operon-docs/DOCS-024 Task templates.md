@@ -1,13 +1,13 @@
 ---
-Notes: Start file tasks from a reusable body and frontmatter
+Notes: Reuse template properties for inline tasks and body plus frontmatter for file tasks
 Icon: file-code
 Color: "#ea580c"
-Updated: 2026-08-21T16:12:57
+Updated: 2026-10-13T16:48:42+02:00
 ---
 
 # Task templates
 
-A file task often follows a shape: a weekly review has the same sections, a release has the same checklist, a client note has the same fields. Task templates let a new [[DOCS-013 File tasks|file task]] start from that shape instead of a blank page. You point Operon at a folder of templates, and the file-task creator offers them when you make a task.
+Task templates give repeated work a reusable starting point. Both Inline and File tasks can use template properties; File tasks also use the Markdown body. Both modes share Operon's template picker and folder. For a practical Inline walkthrough, see [[DOCS-150 Using inline task templates|Using inline task templates]].
 
 > **MEDIA-DOCS-024-1:** The template picker shown while creating a file task, listing available templates.
 
@@ -15,9 +15,14 @@ A file task often follows a shape: a weekly review has the same sections, a rele
 
 ## How templates work
 
-Templates apply to **file tasks**, the ones that have a note body. When you create or convert a file task, Operon can build it from a template: the template's body and frontmatter become the starting point, and Operon fills in the task fields it manages, like the `operonId`.
+| Task shape | What the template supplies |
+| --- | --- |
+| Inline | Supported frontmatter properties become task fields; the Markdown body is not inserted. |
+| File | Frontmatter and Markdown body form the new note; Operon fills managed fields such as task identity. |
 
-There is always at least one built-in option, so the picker is never empty. Operon offers one **minimal template per configured pipeline**, named for that pipeline, so the picker shows one per [[DOCS-037 Pipelines and statuses|pipeline]] you have set up, for example one for `Project` and a separate one for `Personal`. Each minimal option seeds the new file task at that pipeline's own first status, adds the `operonId`, and the created and modified timestamps, so choosing the right pipeline's minimal template also puts the task in that pipeline from the start. Your own templates from the template folder sit alongside these.
+In Task Creator, both modes preview supported properties before creation, including empty fields. You can edit or remove them there. Choosing a different template refreshes template-supplied fields while keeping deliberate user edits and removals. Preview does not create a task or execute Templater.
+
+For each configured pipeline with a usable initial status, Operon offers a **minimal template**, named for that pipeline, so the picker shows one per [[DOCS-037 Pipelines and statuses|pipeline]] you have set up, for example one for `Project` and a separate one for `Personal`. These options retain the name **Minimal File Task** in the shared picker but can also be selected for Inline creation. Each minimal option seeds the new task at that pipeline's own first status, adds the `operonId`, and the created and modified timestamps, so choosing the right pipeline's minimal template also puts the task in that pipeline from the start. Your own templates from the template folder sit alongside these.
 
 ## Set up a template folder
 
@@ -25,17 +30,22 @@ In settings, choose a **template folder**. The top-level Markdown files in that 
 
 - Only **top-level** files in the folder are listed, not files in subfolders.
 - If you leave the folder empty or unset, the picker shows only the built-in per-pipeline minimal templates.
-- When a conversion needs a template without asking, Operon uses the **first file alphabetically** in your template folder as the default, if you have any. Name your everyday template so it sorts first if you want it chosen automatically. If your template folder has no files at all, Operon falls back to your **first configured pipeline's** minimal template instead, in the order your pipelines are arranged in settings, not alphabetically.
+- When an inline-to-file conversion needs a file template without asking, Operon uses the **first file alphabetically** in your template folder as the default, if you have any. Name your everyday template so it sorts first if you want it chosen automatically. If your template folder has no files at all, Operon falls back to your **first configured pipeline's** minimal template instead, in the order your pipelines are arranged in settings, not alphabetically.
 
-## Pick a Task Creator default template
+## Pick independent defaults
 
-If you create file tasks through [[DOCS-020 Task Creator|Task Creator]] often, you can make your usual template the default. In **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**, set **Default file task template** to one of the templates from your file-task template folder. When Task Creator enters File mode, that template is preselected.
+- **Tasks → File Tasks → New File Task Creation Defaults → Default file task template** selects the initial File template in Creator.
+- **Tasks → Inline Tasks → Default inline task template** selects the Inline default used by Creator and applicable Inline creation/conversion paths.
 
-This is separate from the alphabetic fallback above. The fallback is for conversion flows that need a template without asking. **Default file task template** is for Task Creator, where you can still change the selected template for the current task before saving.
+Each setting has an independent **Use last used template as default** toggle, off initially. Enable it to save the template from the next successful Creator creation as that mode's real default. Cancelled, failed, or uncertain creation does not teach a new default; template-free Inline creation keeps the previous one. Turning the toggle off leaves the last saved default fixed. You can still set either default manually.
+
+The alphabetical file-conversion fallback above is separate. Tasks emoji bulk conversion uses the Inline default: to convert different folders with different templates, run separate batches with a fresh Scan after changing the default. See [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]] and [[DOCS-150 Using inline task templates|Using inline task templates]].
 
 ## Templater support
 
-Templates can contain Templater syntax. If the [Templater](https://github.com/SilentVoid13/Templater) plugin is installed, Operon processes that syntax when it builds the task, so a template can insert dates, prompts, and other dynamic content. If Templater is not available but a template uses its syntax, Operon tells you rather than writing raw syntax into your note. For the wider pattern of dynamic templates, see [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
+File Task templates can contain Templater syntax. If the [Templater](https://github.com/SilentVoid13/Templater) plugin is installed, Operon processes that syntax when it builds the task, so a template can insert dates, prompts, and other dynamic content. If Templater is not available but a template uses its syntax, Operon tells you rather than writing raw syntax into your note. For the wider pattern of dynamic templates, see [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]].
+
+Inline template preparation does not run Templater or copy the template body. Properties requiring Templater execution are skipped in Inline mode with a notice; use supported property values or Operon variables instead.
 
 Daily and Weekly Note templates are configured separately from this File Task template folder. Their Runtime/CLI route must stay deterministic and write-free during preview, so a periodic template containing Templater `<% ... %>` expressions is refused on that route rather than executed. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 
@@ -79,15 +89,15 @@ Your actual status, priority, and dates come from the task being created and you
 
 ## FAQ
 
-**Do templates work for inline tasks?** No. Templates are for file tasks, which have a body to fill. Inline tasks are a single line.
+**Do templates work for inline tasks?** Yes. Supported frontmatter properties become inline fields; the body and Templater execution remain File-only. See [[DOCS-150 Using inline task templates|Using inline task templates]].
 
-**What if I do not set a template folder?** You still get a built-in minimal template for each configured pipeline, seeded at that pipeline's own first status. Folder templates are optional.
+**What if I do not set a template folder?** You still get a built-in minimal template for each configured pipeline with a usable initial status. Folder templates are optional.
 
-**Which template is used when Operon does not ask?** For conversion flows, the first file alphabetically in your template folder if you have one, otherwise your first configured pipeline's minimal template. For Task Creator, set **Default file task template** if you want a specific template preselected.
+**Which template is used when Operon does not ask?** For inline-to-file conversion, the first file alphabetically in your template folder if you have one, otherwise your first configured pipeline's minimal template. For Creator, use the separate File and Inline defaults. Tasks emoji conversion uses the Inline default.
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → File Tasks**. **File Task Templates** sets the template folder that fills the picker, and **New File Task Creation Defaults** sets whether Task Creator opens in File mode and which file-task template is preselected.
+Operon settings for this live in **Settings → Operon → Tasks → File Tasks**. **File Task Templates** sets the template folder that fills the picker, and **New File Task Creation Defaults** sets whether Task Creator opens in File mode and which file-task template is preselected. The Inline default is under **Tasks → Inline Tasks**; both default selectors have their own dynamic-default toggle.
 
 ## Related
 

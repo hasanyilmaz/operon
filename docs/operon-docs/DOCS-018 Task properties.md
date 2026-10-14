@@ -1,35 +1,53 @@
 ---
-Notes: What a task property is, the four traits every property has, and the same fields shown both ways
+Notes: Compare built-in canonical keys, Custom Keys, and Vault Properties, and understand Key Mapping
 Icon: table-properties
 Color: "#7c3aed"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-10-13T16:29:41+02:00
 ---
 
 # Task properties
 
 A task property is one structured field on a task: its status, its due date, its priority, its parent. This page explains what a property *is* as a unit, so the syntax in [[DOCS-012 Inline task syntax|Inline task syntax]] and the renaming in [[DOCS-039 Key mappings|Key mappings]] make sense together. The same properties power an inline task and a file task; only where they are written differs.
 
-## Four traits of every property
+## Canonical keys, Custom Keys, and Vault Properties
 
-Each property is defined by four things:
+A task can carry all three groups together. They share Operon's persistent task index, while keeping their own meaning, type rules, and supported controls.
 
-- **Canonical key**: the stable internal name Operon uses everywhere, such as `status` or `dateDue`. This never changes, so the meaning is constant across every surface.
-- **Visible name**: the property name written in a file task's frontmatter, and the field's label in Operon's UI. It can be renamed without changing the canonical key, which is what [[DOCS-039 Key mappings|Key mappings]] does. For example, a vault can show `priority` as `Tier`. Inline tasks still write the canonical key in `{{key:: value}}`.
-- **Type**: how the value is stored and edited. There are six: **Text**, **Number**, **Date**, **Date & time**, **List**, and **Checkbox**. The type decides which picker the [[DOCS-021 Task Editor|Task Editor]] shows and how the value is validated.
-- **Sync policy**: whether the value carries across forms and occurrences. `yes` fields are shared task data; `no` fields belong to one instance and are not copied (for example `datetimeCreated`); `auto` fields are recomputed by Operon.
+| Question | Built-in canonical keys | Custom Keys | Vault Properties |
+|---|---|---|---|
+| Where do they come from? | Operon's built-in task model | Fields you define in Core → Custom Keys | Additional properties stored on a task, without requiring a Custom Key |
+| What are they for? | Status, priority, dates, relationships, recurrence, time tracking, and bookkeeping | Your own reusable fields with configured names, types, and surface preferences | Working with existing or template-supplied properties directly |
+| What defines the type? | Operon's field definition | The Custom Key definition | A supported property type declared in Obsidian, with compatible inline interpretation where needed |
+| How are they named? | A stable canonical key, plus a configurable visible name | A stable custom key, plus its visible name | The source property name |
+| Where are values stored? | Inline fields or File Task frontmatter | Inline fields or File Task frontmatter | Inline fields or File Task frontmatter |
+| Where can I use them? | The controls appropriate to each built-in field | Supported surfaces enabled for that field; availability depends on its type | Task Editor Additional, supported template fields in Task Creator, and main and embedded Tables; see the Vault Properties guide for surface limits |
+| Are they in the persistent index? | Yes | Yes | Yes |
 
-## System and custom properties
+Here, **canonical key** means a field's stable internal identifier. Custom Keys also have canonical identifiers; “built-in canonical keys” distinguishes Operon's supplied fields from the ones you define.
 
-Properties come from two places:
+Sharing the index means task data and Vault Properties can be restored together on subsequent launches. It does not make every field editable in every view, add chips automatically, or give a custom property the behavior of a built-in field. A Checkbox property such as `Reviewed` is a boolean; it does not complete a task like its task checkbox or status does.
 
-- **System properties** are built in. They cover the whole task model: identity, status, priority, dates, scheduling, parent and dependency links, recurrence, time tracking, and the automatic rollup counts. You use and rename them, but you do not create or delete them.
-- **Custom properties** are ones you define when the built-in set is not enough. A custom property is a real canonical key with its own type and behavior, not just a loose YAML field. See [[DOCS-040 Custom keys|Custom keys]].
+See [[DOCS-040 Custom keys|Custom Keys]] for configured custom surfaces and [[DOCS-115 File task property columns|Vault Properties]] for native editing, types, filters, and read-only states.
 
-Three built-in user-managed properties describe the task rather than its lifecycle: **Task Type** is a free Text classification, **Task Image** is one Text media reference, and **Task Gallery** is an ordered List of media references. Task Type might hold values such as `Milestone`, `Bug`, or `Meeting`; Operon does not impose an enum. See [[DOCS-138 Task images and galleries|Task images and galleries]] for the visual fields.
+## Key Mapping connects names; it is not another property type
 
-Do not confuse user-managed **Task Type** with **Task Data Type**. Task Data Type is a read-only Table helper that reports whether the task is inline or file; it is not a property you write to Markdown.
+[[DOCS-039 Key mappings|Key Mapping]] connects a stable field identifier to its visible property name. For example, mapping `priority` to `Importance` keeps the same priority field and behavior. An inline task still writes `{{priority:: A}}`; a File Task can write `Importance: A` in frontmatter.
 
-A third case sits outside this model entirely: a frontmatter property on a file task that is neither of the above, no canonical key, no sync policy. Operon still discovers it and offers it as a typed Table column or filter condition, but only there; it has none of the four traits above, and none of the Task Editor, Task Creator, chip, or swimlane reach a real property gets. See [[DOCS-115 File task property columns|File task property columns]].
+This does not create a new property or turn an arbitrary Vault Property into a priority field. Use a Custom Key when you want a configured custom field; use Vault Properties when their supported native controls meet your needs. Mapping changes do not rewrite existing note content automatically.
+
+## Choosing a property
+
+- Use the **built-in field** when Operon already provides the meaning you need. Use `dateDue` for a task deadline rather than expecting an unrelated `ReviewDate` property to behave as a deadline.
+- Use a **Custom Key** when you want an explicitly configured field and its supported surface preferences, such as a client field shown in selected chip surfaces.
+- Use a **Vault Property** for additional data such as `Budget`, `Reviewed`, or `ReviewDate` that you want to manage directly in the supported task surfaces. It does not need a Custom Key just to appear in Additional or a Table.
+
+For native editing, assign a supported type and keep values compatible with it. Automatic, conflicting, and unsupported values remain protected rather than being silently converted.
+
+## Built-in field rules
+
+Built-in fields have a canonical key, a visible name, a fixed type, and rules for copying or recomputing their values. The sync policy describes this distinction: `yes` fields are shared task data, `no` fields belong to one instance, and `auto` fields are recalculated by Operon. These rules do not automatically apply to every Vault Property.
+
+Three built-in user-managed fields describe the task rather than its lifecycle: **Task Type** is a Text classification, **Task Image** is one media reference, and **Task Gallery** is an ordered List of media references. See [[DOCS-138 Task images and galleries|Task images and galleries]]. **Task Data Type** is different: it is a read-only Table helper reporting Inline or File, not a property to write to Markdown.
 
 ## Set fields versus managed fields
 
@@ -40,9 +58,9 @@ Not every property is yours to fill. Two groups behave very differently:
 
 One idea can be carried by more than one property. **Reminders** are the clearest example: there is no single reminder field, but two, `reminderDatetimes` for reminders at a fixed moment and `reminderRules` for reminders at an offset from one of the task's own dates. They are separate canonical keys with separate values, and a task can use either or both. See [[DOCS-116 Reminders|Reminders]].
 
-## One model, two surfaces
+## One task model, two storage forms
 
-The point of the property model is that an inline task and a file task are the same record underneath. An inline task writes its properties as `{{key:: value}}` on the line; a file task writes them as frontmatter. Because both resolve to the same canonical keys, a task keeps its full meaning when it converts from one form to the other. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
+The point of the property model is that an inline task and a file task are the same record underneath. An inline task writes its properties as `{{key:: value}}` on the line; a file task writes them as frontmatter. Managed fields resolve to their canonical keys. Additional Vault Properties retain their source names and type rules; conversion support must be checked for the particular conversion flow rather than assumed for every possible YAML value. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 
 The same four properties, `status`, `priority`, `dateDue`, and `contexts`, written each way:
 
@@ -67,9 +85,11 @@ The canonical keys are the same on both; only the container differs. In the file
 
 Operon settings for this live in two places under **Settings → Operon → Core**: **Key Mappings → Task Property Mapping** lets you edit visible property names and icons while displaying each field's fixed type. **Custom Keys** creates and manages your own canonical fields; you choose a custom field's type when creating it.
 
+Vault Properties use Obsidian’s property type declarations and the supported task controls; they do not require a Custom Key entry. See [[DOCS-115 File task property columns|Vault Properties]].
+
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
-- [[DOCS-115 File task property columns|File task property columns]]
+- [[DOCS-115 File task property columns|Vault Properties]]
 - [[DOCS-116 Reminders|Reminders]]
 - [[DOCS-138 Task images and galleries|Task images and galleries]]

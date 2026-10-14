@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-10-06T10:33:06+02:00
+Updated: 2026-10-14T11:59:33+02:00
 ---
 
 # Operon Docs
@@ -53,6 +53,8 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-010 Build your first filtered view|Build your first filtered view]]
 
 ### How-to guides
+- [[DOCS-150 Using inline task templates|Using inline task templates]]
+- [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]]
 - [[DOCS-143 How to show assignee images|How to show assignee images]]
 - [[DOCS-094 How to create a task with Task Creator|How to create a task with Task Creator]]
 - [[DOCS-081 Your first 7 days with Operon|Your first 7 days with Operon]]
@@ -69,12 +71,13 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
 - [[DOCS-097 Project serials|Project serials]]
 - [[DOCS-017 Plain checkbox lists|Plain checkbox lists]]
-- [[DOCS-018 Task properties|Task properties]]
+- [[DOCS-018 Task properties|Task properties]]: Canonical keys, Custom Keys, Vault Properties, and the role of Key Mapping
 - [[DOCS-138 Task images and galleries|Task images and galleries]]
 - [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]]
 - [[DOCS-058 Operon inheritance rules|Operon inheritance rules]]
 
 ### Capture and editing
+- [[DOCS-150 Using inline task templates|Using inline task templates]]
 - [[DOCS-020 Task Creator|Task Creator]]
 - [[DOCS-021 Task Editor|Task Editor]]
 - [[DOCS-023 Create tasks from selected text|Create tasks from selected text]]
@@ -105,7 +108,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-068 Location picker|Location picker]]
 - [[DOCS-069 Task link and list pickers|Task link and list pickers]]
 - [[DOCS-070 Custom field pickers|Custom field pickers]]
-- [[DOCS-113 Text field editor popover|Text field editor popover]]
+- [[DOCS-113 Text field editor popover|Text field editor popover]]: single-field editing and default/six-color highlights
 
 ### Views and planning
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
@@ -115,7 +118,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]]
 - [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
 - [[DOCS-025 Filter View|Filter View]]
-- [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]
+- [[DOCS-073 Filter conditions and operators|Filter conditions and operators]]: nested group numbering, logic, and controls
 - [[DOCS-083 Embed a filter in a note|Embed a filter in a note]]
 - [[DOCS-026 Dynamic file task filter|Dynamic file task filter]]
 - [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]
@@ -132,11 +135,11 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-105 Table overview|Table overview]]
 - [[DOCS-139 Gantt view|Gantt view]]
 - [[DOCS-106 Table columns|Table columns]]
-- [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]
+- [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]]: cell editing and safe updates while sources are pending
 - [[DOCS-107 Table grouping and sorting|Table grouping and sorting]]
 - [[DOCS-108 Table summaries|Table summaries]]
 - [[DOCS-109 Table presets|Table presets]]
-- [[DOCS-114 Table files|Table files]]
+- [[DOCS-114 Table files|Table files]]: file authority, temporary unavailability, and deletion
 - [[DOCS-110 Embed a table in a note|Embed a table in a note]]
 - [[DOCS-111 Export a table|Export a table]]
 - [[DOCS-032 Pinned Task Dock|Pinned Task Dock]]
@@ -152,12 +155,12 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-036 Agent-friendly workflows|Agent-friendly workflows]]
 
 ### Settings and customization
-- [[DOCS-136 Task Router|Task Router]]
+- [[DOCS-136 Task Router|Task Router]]: destinations and Daily/Weekly management settings
 - [[DOCS-037 Pipelines and statuses|Pipelines and statuses]]
 - [[DOCS-038 Task priorities|Task priorities]]
 - [[DOCS-039 Key mappings|Key mappings]]
 - [[DOCS-040 Custom keys|Custom keys]]
-- [[DOCS-115 File task property columns|File task property columns]]
+- [[DOCS-115 File task property columns|Vault Properties]]
 - [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]]
 - [[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlay]]
 - [[DOCS-042 Contextual menu actions|Contextual menu actions]]
@@ -174,11 +177,12 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-047 Sync conflict safety|Sync conflict safety]]
 
 ### Integrations and migration
+- [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]]
 - [[DOCS-048 External calendars|External calendars]]
 - [[DOCS-049 Obsidian Tasks migration|Obsidian Tasks migration]]
 - [[DOCS-082 Bulk convert a folder into file tasks|Bulk convert a folder into file tasks]]
 - [[DOCS-050 Daily Notes workflows|Daily Notes workflows]]
-- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]
+- [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]: note creation, templates, and the separate note-as-task options
 - [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]]
 
 ### Agent Runtime and CLI

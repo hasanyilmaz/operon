@@ -2,7 +2,7 @@
 Notes: Tasks written on a single Markdown line
 Icon: list-checks
 Color: "#7c3aed"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-13T16:48:42+02:00
 ---
 
 # Inline tasks
@@ -39,6 +39,12 @@ Run **Create or edit inline task** from the command palette:
 - On an existing inline task, it opens the [[DOCS-021 Task Editor|Task Editor]].
 
 That symmetry matters: the same command is both the way in and the doorway back to structured editing. To turn several lines into tasks at once, use **Convert Selection to Operon Tasks**.
+
+## Start from template properties
+
+[[DOCS-020 Task Creator|Task Creator]] can prepare an Inline task from the same template folder used for File tasks. It shows supported template properties before creation, including empty fields, and lets you edit them. Template changes refresh untouched values while preserving deliberate edits and removals. The template body is not inserted and Templater does not run in Inline mode.
+
+Set **Default inline task template** under **Tasks → Inline Tasks**. Its optional **Use last used template as default** toggle learns only from successful Creator creation. The saved Inline default is also used by applicable conversion paths; Tasks emoji bulk conversion has its own Scan and recovery workflow. See [[DOCS-150 Using inline task templates|Using inline task templates]] and [[DOCS-149 Tasks bulk conversion|Tasks bulk conversion]].
 
 ## Limits and tradeoffs
 

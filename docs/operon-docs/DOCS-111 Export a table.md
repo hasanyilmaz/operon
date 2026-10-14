@@ -2,7 +2,7 @@
 Notes: Copy or download a table as Markdown or CSV, or grab its embed code
 Icon: download
 Color: "#0284c7"
-Updated: 2026-09-26T13:13:00+02:00
+Updated: 2026-10-14T11:54:38+02:00
 ---
 
 # Export a table
@@ -19,6 +19,8 @@ The export control turns the table in front of you into text you can take elsewh
 | Copy table embed code | Copies the `operon-table` code block that embeds this table in a note. See [[DOCS-110 Embed a table in a note\|Embed a table in a note]] |
 
 If the table has no rows, there is nothing to export and Operon tells you so.
+
+Export needs a verified, current table result. While a source update is pending, rows may remain visible for continuity, but that retained display is not used as a fresh export. Wait for the update to finish, then export. The same protection applies when a pending value could change filtering, sorting, grouping, or summaries. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 ## What gets exported
 
