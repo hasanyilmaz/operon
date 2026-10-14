@@ -3633,9 +3633,20 @@ export class TaskEditorContent {
    fields.set((mapping?.canonicalKey ?? sourceName).toLowerCase(), this.nativePropertyField(sourceName, type));
   }
   const index = getNativePropertyIndex(this.app);
+  // Newly defined custom properties may not occur in any note or the Obsidian type registry yet.
+  if (index.typesAvailable()) for (const mapping of this.settings.keyMappings) {
+   if (mapping.showInEditor === false || !this.isNativeCustomProperty(mapping.canonicalKey)) continue;
+   const identity = mapping.canonicalKey.toLowerCase();
+   if (fields.has(identity)) continue;
+   const name = mapping.visiblePropertyName || mapping.canonicalKey;
+   if (nativePropertyReadOnlyReason(name, undefined, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes) !== 'automatic') continue;
+   fields.set(identity, { ...this.nativePropertyField(name, mapping.type), readonly: true, readOnlyReason: 'automatic', icon: 'shield-alert' });
+  }
   if (index.typesAvailable()) for (const field of snapshot.fields) {
-   const name = field.propertyName, identity = name.toLowerCase();
-   if (fields.has(identity) || snapshot.fields.filter(candidate => candidate.propertyName.toLowerCase() === identity).length !== 1) continue;
+   const name = field.propertyName;
+   const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
+   const identity = (mapping?.canonicalKey ?? name).toLowerCase();
+   if (fields.has(identity) || snapshot.fields.filter(candidate => candidate.propertyName.toLowerCase() === name.toLowerCase()).length !== 1) continue;
    if (nativePropertyReadOnlyReason(name, undefined, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes) !== 'automatic') continue;
    fields.set(identity, { ...field, readonly: true, readOnlyReason: 'automatic', icon: 'shield-alert' });
   }
