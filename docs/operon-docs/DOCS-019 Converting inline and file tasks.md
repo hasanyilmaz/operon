@@ -2,7 +2,7 @@
 Notes: Promote an inline task to a file, or collapse a file task back to a line
 Icon: refresh-cw
 Color: "#7c3aed"
-Updated: 2026-10-06T10:40:55+02:00
+Updated: 2026-10-14T19:36:58+02:00
 ---
 
 # Converting inline and file tasks
@@ -12,6 +12,8 @@ A task's first shape is a starting point, not a verdict. When an inline task gro
 ## Promote an inline task to a file task
 
 When a task needs a body for sections, references, or subtasks, run **Edit or convert to file task** on the inline task. Operon creates a Markdown note in your file-task location, writes the task's fields into frontmatter, and keeps the original `operonId` so nothing downstream breaks. The note's body becomes the working space the inline line never had. See [[DOCS-013 File tasks|File tasks]].
+
+The filename derived from the description is no longer cut off at 100 characters, including when a numbered suffix is added to avoid an existing filename. Invalid filename characters are still removed, and filesystem filename limits still apply.
 
 You can also start a file task straight from a plain line with **Create file task**, which seeds the note from that text and leaves a wikilink behind in its place.
 

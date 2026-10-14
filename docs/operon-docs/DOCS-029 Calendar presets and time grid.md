@@ -2,7 +2,7 @@
 Notes: Save Calendar layouts, pick a grid type, and tune the timed grid
 Icon: calendar-cog
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-14T19:36:58+02:00
 ---
 
 # Calendar presets and time grid
@@ -35,6 +35,8 @@ This preserves your place within the available grid. A different grid type or a 
 ## Preset type: Time Grid
 
 The **Time Grid** is the classic timed calendar: days run across as columns, hours run down the side, and each task with a start and end time sits as a block you can drag and resize. Reach for it when you plan by the hour and want to see a day or a week laid out in time.
+
+Clicking or tapping a task preserves its saved time, including minutes between grid steps. Intentional dragging uses 15-minute steps. When you resize a task from its top or bottom edge, only the dragged edge snaps to those steps; the opposite edge keeps its exact saved time.
 
 For Time Grid and Time Tracker Grid, the first setting under **Range & Layout** is **Date range**, available in the main preset settings and **Edit preset** quick settings:
 

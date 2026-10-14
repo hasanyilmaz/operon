@@ -99,8 +99,8 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "34b39873f39faad6c7c2fd0cfd2b09572063aaa761d0855ba79f6a7e915f9de5",
-      "bytes": 7237
+      "sha256": "1c50a4d89a0d19f4951e2ceb20d2e410b0f10e64437327094311fa6244e97df2",
+      "bytes": 7484
     },
     {
       "path": "DOCS-020 Task Creator.md",
@@ -109,8 +109,8 @@
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "8aab345b645d949332dd3b97b72e180684957f8d8fbd6c0d3452cac0838e04dc",
-      "bytes": 15617
+      "sha256": "0f0455af91bf067ec74d9c81957c4b1c241e47ac774c35997540f21f814fbfde",
+      "bytes": 15916
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -149,8 +149,8 @@
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
-      "sha256": "e627ba8efaa9b175ce1b751a82789f08ae970beaffddd304f206b41f0503267d",
-      "bytes": 11729
+      "sha256": "f1e60d95d7061f6e3a6ca96ff220db8407efac5f81671413f6e8e67626b119ec",
+      "bytes": 12006
     },
     {
       "path": "DOCS-030 Kanban overview.md",
@@ -204,8 +204,8 @@
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "12945bd905b826495ed8089c9b16baa812e684ca85813d3e3f5174e19fab7b2c",
-      "bytes": 7547
+      "sha256": "72850c41886e00683661d21185940b8dd217de17b7c00c30bff5c45bb73280e7",
+      "bytes": 8118
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -579,8 +579,8 @@
     },
     {
       "path": "DOCS-115 File task property columns.md",
-      "sha256": "5bafda0a537188aac194912333fec2c655776f26d919aa20b3af6c3abcf5aea5",
-      "bytes": 8375
+      "sha256": "c100ba7b5dd20018d460f85bed8eee9c309d3b704c2147086f72595b7132a8da",
+      "bytes": 8733
     },
     {
       "path": "DOCS-116 Reminders.md",
@@ -758,5 +758,5 @@
       "bytes": 9990
     }
   ],
-  "generatedAt": "2026-10-14T10:14:51.520Z"
+  "generatedAt": "2026-10-14T17:39:33.209Z"
 }

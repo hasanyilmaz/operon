@@ -2,7 +2,7 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-10-13T16:29:41+02:00
+Updated: 2026-10-14T19:36:58+02:00
 ---
 
 # Custom keys
@@ -22,6 +22,8 @@ When you add a custom field, you give it:
 - An optional **icon** from Lucide, used in the field's controls and its compact chip. Supported surfaces use it as the field icon; value-dependent indicators can differ, such as checked and unchecked Checkbox values.
 
 The field now has a defined identity and type. It is written as `{{your-key:: value}}` on an inline task and as frontmatter on a file task, and Operon reads it consistently across both.
+
+When you save a new custom key, Operon also assigns its chosen type in Obsidian if no explicit type exists. Existing custom keys receive missing type assignments automatically when Operon starts; no extra action is needed. An explicitly different Obsidian type is preserved. This property type applies across the vault, while existing note values stay unchanged.
 
 For example, with two custom keys `client` (Text) and `effort` (Number), an inline task carries them alongside the built-in fields:
 
@@ -72,6 +74,8 @@ You can rename a custom field's visible property name at any time, with the same
 ## Deleting a custom key
 
 Deleting a custom field removes only its mapping from Operon settings. The values already written in your files stay exactly where they are. Removing the definition does not erase source values; recreating a compatible definition is a separate settings action.
+
+Task Creator no longer shows an empty placeholder solely because the deleted key was previously configured there. A normal Obsidian property supplied by a template or selected by the user can still appear.
 
 Values left in the source may be exposed through [[DOCS-115 File task property columns|Vault Properties]], subject to their names, type declarations, and compatibility. Deleting a Custom Key does not guarantee that every former value becomes editable: Operon preserves stored inline interpretation and refuses incompatible types.
 

@@ -2,7 +2,7 @@
 Notes: Manage additional File and Inline Task properties, their declared types, supported surfaces, and safe editing
 Icon: scan-search
 Color: "#ca8a04"
-Updated: 2026-10-13T16:29:41+02:00
+Updated: 2026-10-14T19:36:58+02:00
 ---
 
 # Vault Properties
@@ -26,6 +26,8 @@ On an Inline Task, the values belong to that individual task line, not automatic
 ## Types and read-only states
 
 Native editing supports **Text, List, Number, Checkbox, Date, and Date & time**. Assign the property type in Obsidian's Properties controls. Obsidian's `Multitext` declaration corresponds to List. Operon also preserves the interpretation needed to read existing inline values safely.
+
+Configured **Custom Keys** are an exception to manual type assignment: Operon fills missing Obsidian declarations when a new key is saved and for existing keys at startup. Explicitly different types are preserved. Ordinary Vault Properties still need a declared type, and all values must remain compatible with it. See [[DOCS-040 Custom keys|Custom keys]].
 
 | State | What it means |
 |---|---|
