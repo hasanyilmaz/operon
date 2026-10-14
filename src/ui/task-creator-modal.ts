@@ -2061,7 +2061,13 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	private getVisibleToolbarFieldOrder(): TaskCreatorFieldKey[] {
-  if (this.prepared) return this.prepared.visibleKeys(this.activeCreateType).filter(key => this.canRenderToolbarField(key) || this.prepared!.field(key).property.interpretation === 'native');
+  if (this.prepared) {
+   // Orphan toolbar preferences alone must not resurrect a deleted custom key.
+   const nativeKeys = new Set(this.prepared.fields(this.activeCreateType)
+    .filter(field => field.property.interpretation === 'native')
+    .map(field => this.prepared!.key(field)));
+   return this.prepared.visibleKeys(this.activeCreateType).filter(key => this.canRenderToolbarField(key) || nativeKeys.has(key));
+  }
 		return (this.options.settings.taskCreatorToolbar ?? [])
 			.filter(item => item.visible)
 			.map(item => item.key)
