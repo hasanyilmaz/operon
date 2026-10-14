@@ -111,14 +111,15 @@ export function bindTimeInput(input: HTMLInputElement, options: TimeInputOptions
 		if (event.cancelable) { event.preventDefault(); apply(edit); }
 		else pending = edit;
 	});
-	input.addEventListener('input', nativeEvent => {
-		const event = nativeEvent as InputEvent;
-		if (composing || event.isComposing) return;
+	input.addEventListener('input', event => {
+		if (composing || ('isComposing' in event && event.isComposing)) return;
 		const edit = pending;
 		pending = null;
 		if (edit) { apply(edit); return; }
 		if (input.value === format(options.getBuffer())) return;
-		if (event.inputType) { nativeEdit(format(options.getBuffer()), event.inputType); return; }
+		if ('inputType' in event && typeof event.inputType === 'string' && event.inputType) {
+			nativeEdit(format(options.getBuffer()), event.inputType); return;
+		}
 		// Full-value replacement by autofill, accessibility tools or host integrations.
 		const value = input.value.normalize('NFKC').trim();
 		const digits = value.replace(':', '');

@@ -138,3 +138,20 @@ test('repeated forward Delete clears digits even as masked slots become empty', 
 		assert.equal(h.buffer(), '____');
 	}
 });
+
+test('generic input events without InputEvent fields retain autofill replacement', () => {
+	for (const value of ['13:43', '1343', '１３４３']) {
+		const h = harness(); h.input.value = value; h.select(value.length);
+		h.fire('input'); assert.equal(h.buffer(), '1343');
+	}
+	const h = harness(); h.input.value = ''; h.select(0);
+	h.fire('input'); assert.equal(h.buffer(), '____');
+});
+
+test('input event composition flags work without a preceding compositionstart', () => {
+	const h = harness(); h.input.value = '13:43'; h.select(5);
+	h.fire('input', { isComposing: true, inputType: 'insertCompositionText' });
+	assert.equal(h.buffer(), '1415'); assert.equal(h.input.value, '13:43');
+	h.fire('input', { isComposing: false, inputType: 'insertCompositionText' });
+	assert.equal(h.buffer(), '1343');
+});

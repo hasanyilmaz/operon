@@ -5570,7 +5570,7 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 
 .operon-hover-tooltip-shell.is-tooltip-open .operon-hover-tooltip,
 .operon-hover-tooltip-shell:not(.is-tooltip-dismissed):hover .operon-hover-tooltip,
-.operon-hover-tooltip-shell:not(.is-tooltip-dismissed):has(:focus-visible) .operon-hover-tooltip {
+.operon-hover-tooltip-shell:not(.is-tooltip-dismissed).has-descendant-focus-visible .operon-hover-tooltip {
 	opacity: 1;
 	--operon-tooltip-shift-y: 0px;
 	pointer-events: auto;
@@ -11108,7 +11108,7 @@ body .operon-task-editor button.operon-editor-tracking-sessions-add:disabled {
 }
 
 .operon-editor-tracking-session-row:hover,
-.operon-editor-tracking-session-row:has(:focus-visible) {
+.operon-editor-tracking-session-row.has-descendant-focus-visible {
 	border-color: var(--operon-task-editor-tracking-hover-border);
 	box-shadow: 0 0 0 2px var(--operon-task-editor-tracking-focus-ring);
 }
@@ -11126,7 +11126,7 @@ body .operon-task-editor button.operon-editor-tracking-sessions-add:disabled {
 	padding-inline: 8px 0;
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, :has(:focus-visible)) .operon-editor-session-duration {
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, .has-descendant-focus-visible) .operon-editor-session-duration {
 	font-weight: var(--font-bold, 700);
 	text-decoration: underline;
 	text-underline-offset: 3px;
@@ -11151,7 +11151,7 @@ body .operon-task-editor button.operon-editor-tracking-sessions-add:disabled {
 	overflow-wrap: anywhere;
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, :has(:focus-visible)) .operon-editor-tracking-session-body {
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, .has-descendant-focus-visible) .operon-editor-tracking-session-body {
 	border-color: var(--background-modifier-border);
 }
 
@@ -11166,7 +11166,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking
 	box-shadow: none;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, :has(:focus-visible)) .operon-editor-tracking-session-action {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-session-row:is(:hover, .has-descendant-focus-visible) .operon-editor-tracking-session-action {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -11232,7 +11232,7 @@ body .operon-task-editor button.operon-editor-tracking-session-action {
 }
 
 .operon-editor-tracking-session-row:hover .operon-editor-tracking-session-action,
-.operon-editor-tracking-session-row:has(:focus-visible) .operon-editor-tracking-session-action {
+.operon-editor-tracking-session-row.has-descendant-focus-visible .operon-editor-tracking-session-action {
 	opacity: 1;
 }
 
@@ -15720,18 +15720,18 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 		position: relative;
 	}
 
-	body:not(.is-mobile) .operon-filter-group-card:not(:is(:hover:not(:has(.operon-filter-group-card:hover)), :has(:focus-visible):not(:has(.operon-filter-group-card :focus-visible)))) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button) {
+	body:not(.is-mobile) .operon-filter-group-card:not(.is-active-filter-group.is-active-filter-group.is-active-filter-group) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button) {
 		color: transparent;
 		border-color: transparent;
 		background: transparent;
 		box-shadow: none;
 	}
 
-	body:not(.is-mobile) .operon-filter-group-card:not(:is(:hover:not(:has(.operon-filter-group-card:hover)), :has(:focus-visible):not(:has(.operon-filter-group-card :focus-visible)))) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button) svg {
+	body:not(.is-mobile) .operon-filter-group-card:not(.is-active-filter-group.is-active-filter-group.is-active-filter-group) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button) svg {
 		opacity: 0;
 	}
 
-	body:not(.is-mobile) .operon-filter-group-card:not(:is(:hover:not(:has(.operon-filter-group-card:hover)), :has(:focus-visible):not(:has(.operon-filter-group-card :focus-visible)))) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button)::after {
+	body:not(.is-mobile) .operon-filter-group-card:not(.is-active-filter-group.is-active-filter-group.is-active-filter-group) > :is(.operon-filter-group-header, .operon-filter-group-footer) button:is(.operon-filter-modal-logic-button:not(.is-active), .operon-filter-modal-add-button)::after {
 		content: "";
 		position: absolute;
 		inset-inline: 0;
@@ -16674,7 +16674,7 @@ body :is(
 }
 
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-play.is-terminal-task,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-play.is-terminal-task,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-play.is-terminal-task,
 .operon-time-session-history-session-play.is-terminal-task:focus-visible {
 	opacity: 1;
 	pointer-events: auto;
@@ -16699,8 +16699,8 @@ body :is(
 
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-settings,
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-count,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-settings,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-count,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-settings,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-count,
 .operon-time-session-history-session-settings:focus-visible {
 	opacity: 1;
 	pointer-events: auto;
@@ -16763,7 +16763,7 @@ body :is(
 
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:hover,
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-interval-button,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-interval-button,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-interval-button,
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:focus-visible {
 	background: transparent;
 	background-image: none;
@@ -16800,14 +16800,14 @@ body :is(
 
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:hover .operon-time-session-history-session-interval-primary,
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-interval-primary,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-interval-primary,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-interval-primary,
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:focus-visible .operon-time-session-history-session-interval-primary {
 	display: none;
 }
 
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:hover .operon-time-session-history-session-interval-detail,
 .operon-time-session-history-session-card:hover .operon-time-session-history-session-interval-detail,
-.operon-time-session-history-session-card:has(:focus-visible) .operon-time-session-history-session-interval-detail,
+.operon-time-session-history-session-card.has-descendant-focus-visible .operon-time-session-history-session-interval-detail,
 .operon-time-session-history-view button.operon-time-session-history-session-interval-button:focus-visible .operon-time-session-history-session-interval-detail {
 	display: inline-flex;
 }
@@ -35949,7 +35949,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	pointer-events: none;
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-group-header:is(:hover, :has(:focus-visible), :has(.is-picker-open)) :is(.operon-task-editor-workflow-actions, .operon-editor-file-property-add) {
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-group-header:is(:hover, .has-descendant-focus-visible, .has-descendant-picker-open) :is(.operon-task-editor-workflow-actions, .operon-editor-file-property-add) {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -36005,7 +36005,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	border-radius: var(--operon-task-editor-control-radius, 6px);
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, .operon-editor-repeat-skip, .operon-editor-estimate-reallocate, .operon-editor-subtasks-more, .operon-editor-compact-selection-chip, input):is(:hover, :focus-visible, :has(:focus-visible), .is-picker-open) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, .operon-editor-repeat-skip, .operon-editor-estimate-reallocate, .operon-editor-subtasks-more, .operon-editor-compact-selection-chip, input):is(:hover, :focus-visible, .has-descendant-focus-visible, .is-picker-open) {
 	border-color: var(--operon-task-editor-workflow-value-hover-border);
 }
 
@@ -36030,7 +36030,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	box-shadow: none;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value :is(.operon-editor-compact-selection-chip, .operon-editor-picker-chip):is(:hover, :focus-visible, :has(:focus-visible)) :is(.operon-editor-compact-selection-chip-remove, .operon-editor-picker-chip-remove) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value :is(.operon-editor-compact-selection-chip, .operon-editor-picker-chip):is(:hover, :focus-visible, .has-descendant-focus-visible) :is(.operon-editor-compact-selection-chip-remove, .operon-editor-picker-chip-remove) {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -36039,7 +36039,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	color: var(--operon-blocked-by-state-color, var(--text-normal));
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-compact-selection-chip[data-blocked-by-state]:is(:hover, :focus-visible, :has(:focus-visible)) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-compact-selection-chip[data-blocked-by-state]:is(:hover, :focus-visible, .has-descendant-focus-visible) {
 	border-color: var(--operon-blocked-by-state-color, var(--operon-task-editor-workflow-value-hover-border));
 }
 
@@ -36055,11 +36055,11 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	color: var(--text-error);
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-reminder-chip.is-unresolved:is(:hover, :focus-visible, :has(:focus-visible)) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-reminder-chip.is-unresolved:is(:hover, :focus-visible, .has-descendant-focus-visible) {
 	border-color: var(--text-warning);
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-reminder-chip.is-invalid:is(:hover, :focus-visible, :has(:focus-visible)) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-reminder-chip.is-invalid:is(:hover, :focus-visible, .has-descendant-focus-visible) {
 	border-color: var(--text-error);
 }
 
@@ -36088,7 +36088,8 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	}
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) :is(.operon-editor-desktop-commands, .operon-editor-desktop-property-group:not(:has(.operon-editor-desktop-property-row:not([hidden])))) {
+/* Repeated structural state classes preserve the original relational selector specificity. */
+.operon-task-editor:not(.operon-task-editor-mobile) :is(.operon-editor-desktop-commands, .operon-editor-desktop-property-group.is-empty-property-group.is-empty-property-group) {
 	padding-block: 7px;
 }
 
@@ -36152,7 +36153,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-de
 	padding-inline-end: 0;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, :has(:focus-visible), :has(.is-picker-open)) .operon-editor-desktop-property-name {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, .has-descendant-focus-visible, .has-descendant-picker-open) .operon-editor-desktop-property-name {
 	text-decoration: underline;
 	text-underline-offset: 3px;
 	font-weight: var(--font-bold, 700);
@@ -36168,7 +36169,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-de
 	cursor: pointer;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, :has(:focus-visible), :has(.is-picker-open)) .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, .operon-editor-estimate-input-shell, .operon-editor-subtasks-more, .operon-editor-value-token, .operon-editor-compact-selection-chip, .operon-editor-picker-chip, input) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, .has-descendant-focus-visible, .has-descendant-picker-open) .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, .operon-editor-estimate-input-shell, .operon-editor-subtasks-more, .operon-editor-value-token, .operon-editor-compact-selection-chip, .operon-editor-picker-chip, input) {
 	border-color: var(--operon-task-editor-workflow-value-border);
 }
 
@@ -36226,11 +36227,12 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	gap: 3px;
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-value-token:has(> .operon-editor-value-clear:not([hidden])) {
+/* Keep the original clear-action selector specificity without relational matching. */
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-value-token.has-visible-clear.has-visible-clear {
 	padding-inline-end: 9px;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-value-token:has(> .operon-editor-value-clear:not([hidden])) :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, input) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-value-token.has-visible-clear.has-visible-clear :is(.operon-editor-picker-button, .operon-icon-trigger, .operon-color-swatch, .operon-editor-repeat-trigger, input) {
 	padding-inline: 9px 3px;
 }
 
@@ -36239,7 +36241,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-va
 }
 
 body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row.is-list-property .operon-editor-desktop-property-value :is(.operon-editor-compact-selection-chip-remove, .operon-editor-picker-chip-remove),
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, :has(:focus-visible)) .operon-editor-desktop-property-value :is(.operon-editor-value-clear, .operon-editor-compact-selection-chip-remove, .operon-editor-picker-chip-remove) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:is(:hover, .has-descendant-focus-visible) .operon-editor-desktop-property-value :is(.operon-editor-value-clear, .operon-editor-compact-selection-chip-remove, .operon-editor-picker-chip-remove) {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -36300,7 +36302,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-
 	box-shadow: none;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-value-token:is(:hover, :has(:focus-visible), :has(.is-picker-open)) {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-value .operon-editor-value-token:is(:hover, .has-descendant-focus-visible, .has-descendant-picker-open) {
 	border-color: var(--operon-task-editor-workflow-value-hover-border);
 }
 
@@ -36325,7 +36327,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-tr
 	pointer-events: none;
 }
 
-body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-sessions-header:is(:hover, :has(:focus-visible)) button.operon-editor-tracking-sessions-add {
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-tracking-sessions-header:is(:hover, .has-descendant-focus-visible) button.operon-editor-tracking-sessions-add {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -36533,7 +36535,7 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-st
 }
 
 /* Description identity actions share section-header geometry and edit focus. */
-.operon-task-editor:not(.operon-task-editor-mobile) .is-description:is(:hover, :has(.operon-task-editor-compact-text-host:focus-within)) .operon-editor-description-actions {
+.operon-task-editor:not(.operon-task-editor-mobile) .is-description:is(:hover, .has-description-focus.has-description-focus) .operon-editor-description-actions {
 	opacity: 1;
 	pointer-events: auto;
 }
@@ -36578,25 +36580,25 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-tr
 }
 
 /* Date values stay on one line; only a visible weekday competes for their space. */
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-picker-button:has(> .operon-editor-weekday) > .operon-editor-picker-button-text {
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-picker-button.has-weekday > .operon-editor-picker-button-text {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
 
 @media (hover: hover) {
-	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover :is(.operon-editor-picker-button, .operon-editor-compact-selection-chip):has(> .operon-editor-weekday) > :is(.operon-editor-picker-button-text, .operon-inline-compact-chip-label) {
+	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover :is(.operon-editor-picker-button, .operon-editor-compact-selection-chip).has-weekday > :is(.operon-editor-picker-button-text, .operon-inline-compact-chip-label) {
 		flex: 0 0 auto;
 	}
 
-	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-picker-button:has(> .operon-editor-weekday) > .operon-editor-picker-button-text {
+	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-picker-button.has-weekday > .operon-editor-picker-button-text {
 		max-width: calc(100% - 8px);
 	}
 
-	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-compact-selection-chip:has(> .operon-editor-weekday) > .operon-inline-compact-chip-label {
+	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-compact-selection-chip.has-weekday > .operon-inline-compact-chip-label {
 		max-width: calc(100% - 3px);
 	}
 
-	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-compact-selection-chip:has(> .operon-editor-weekday):has(> .operon-editor-compact-selection-chip-remove) > .operon-inline-compact-chip-label {
+	.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row:hover .operon-editor-compact-selection-chip.has-weekday.has-remove-action > .operon-inline-compact-chip-label {
 		/* Reserve the 16px clear action and both 3px gaps. */
 		max-width: calc(100% - 22px);
 	}
@@ -36703,15 +36705,15 @@ body:not(.is-mobile) .operon-task-creator-tool.is-active::after {
 body:not(.is-mobile) .operon-task-creator-tool.is-property-warning::after {
 	background: var(--text-error);
 }
-body:not(.is-mobile) .operon-task-creator:not(:has(.operon-task-creator-toolbar:hover, .operon-task-creator-tool:focus-within)):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool {
 	border-color: transparent;
 	background: transparent;
 	box-shadow: none;
 }
-body:not(.is-mobile) .operon-task-creator:not(:has(.operon-task-creator-toolbar:hover, .operon-task-creator-tool:focus-within)):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool .operon-task-creator-tool-icon {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool .operon-task-creator-tool-icon {
 	opacity: 0;
 }
-body:not(.is-mobile) .operon-task-creator:not(:has(.operon-task-creator-toolbar:hover, .operon-task-creator-tool:focus-within)):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool::after {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool::after {
 	opacity: 1;
 }
 
@@ -36853,7 +36855,7 @@ body .operon-task-editor-phone-desktop.operon-task-editor-touch-desktop :is(inpu
 	box-sizing: border-box;
 }
 
-.operon-task-editor.operon-task-editor-touch-desktop[data-editor-input="touch"] .operon-editor-desktop-property-row:not(:has(:focus-visible, .is-picker-open)) .operon-editor-desktop-property-name {
+.operon-task-editor.operon-task-editor-touch-desktop[data-editor-input="touch"] .operon-editor-desktop-property-row:not(:is(.has-descendant-focus-visible, .has-descendant-picker-open)) .operon-editor-desktop-property-name {
 	text-decoration: none;
 	font-weight: var(--font-normal, 400);
 }

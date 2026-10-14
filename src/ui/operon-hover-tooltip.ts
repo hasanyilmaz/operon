@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { bindDescendantFocusVisible, cleanupDescendantFocusVisible } from './descendant-focus-visible';
 import { createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
@@ -124,7 +125,9 @@ export function createOperonHoverIndicator(options: OperonHoverIndicatorOptions)
 		};
 		wrapper.addEventListener('mouseenter', prepare);
 		wrapper.addEventListener('focusin', prepare);
+		const cleanupShell = (wrapper as BoundTooltipTarget)._operonHoverCleanup;
 		(wrapper as BoundTooltipTarget)._operonHoverCleanup = () => {
+			cleanupShell?.();
 			wrapper.removeEventListener('mouseenter', prepare);
 			wrapper.removeEventListener('focusin', prepare);
 			tooltip?.remove();
@@ -319,6 +322,7 @@ export function resolveOperonFloatingTooltipHorizontalPlacement(
 }
 
 export function cleanupOperonHoverTooltips(root: HTMLElement): void {
+	cleanupDescendantFocusVisible(root);
 	const targets = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))] as BoundTooltipTarget[];
 	for (const target of targets) {
 		const cleanup = target._operonHoverCleanup;
@@ -332,6 +336,7 @@ export function cleanupOperonHoverTooltips(root: HTMLElement): void {
 export function createOperonHoverTooltipShell(options: OperonHoverTooltipOptions, owner?: Node | null): HTMLElement {
 	const wrapper = createOwnerElement(owner, 'span');
 	wrapper.className = 'operon-hover-tooltip-shell';
+	const cleanupFocus = bindDescendantFocusVisible(wrapper);
 	const taskColor = resolveOperonHoverTooltipColor(options.taskColor);
 	if (taskColor) wrapper.setCssProps({ '--operon-live-hover-border': taskColor });
 	wrapper.dataset.tooltipHorizontal = options.preferredHorizontal ?? 'auto';
@@ -356,6 +361,7 @@ export function createOperonHoverTooltipShell(options: OperonHoverTooltipOptions
 	wrapper.addEventListener('pointerdown', dismiss, true);
 	wrapper.addEventListener('click', dismiss, true);
 	(wrapper as BoundTooltipTarget)._operonHoverCleanup = () => {
+		cleanupFocus();
 		ownerDocument.removeEventListener('keydown', onKeyboardNavigation, true);
 	};
 	return wrapper;

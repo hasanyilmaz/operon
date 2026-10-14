@@ -1,3 +1,5 @@
+import { bindEditorInteractionState } from './editor-interaction-state';
+import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import { nativeEditorPropertyTypes, nativePropertyReadOnlyReason, type NativePropertyReadOnlyReason } from '../core/task-editor-native-properties';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../core/vault-property-codec';
@@ -577,6 +579,7 @@ export class TaskEditorContent {
 	private noteCompactHostEl: HTMLElement | null = null;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private rootEl: HTMLElement | null = null;
+	private cleanupInteractionState: (() => void) | null = null;
 	private shellEl: HTMLElement | null = null;
 	private mainPanelEl: HTMLElement | null = null;
 	private mobileNoteWrapEl: HTMLElement | null = null;
@@ -1035,6 +1038,7 @@ export class TaskEditorContent {
 		},
 	): void {
 		button.empty();
+		button.removeClass('has-weekday');
 		if (options.isEmpty || options.showIcon === true) {
 			const iconId = this.getCoreFieldIcon(options.canonicalKey);
 			if (iconId) {
@@ -1055,6 +1059,7 @@ export class TaskEditorContent {
 	}
 
 	private appendWeekdayHint(target: HTMLElement, value: string): void {
+		target.toggleClass('has-weekday', Array.from(target.children).some(child => child.classList.contains('operon-editor-weekday')));
 		if (this.usesMobileLayout || !value) return;
 		const canonical = value.length === 10 ? `${value}T12:00:00`
 			: value.length === 16 ? `${value}:00` : value;
@@ -1062,6 +1067,7 @@ export class TaskEditorContent {
 		if (!date) return;
 		const weekday = new Intl.DateTimeFormat(getAppLocale(this.app), { weekday: 'long' }).format(date);
 		target.createSpan({ cls: 'operon-editor-weekday', text: ` - ${weekday}` });
+		target.addClass('has-weekday');
 	}
 
 	private focusDescriptionField(selectAll = this.selectDescriptionOnMount): boolean {
@@ -2340,6 +2346,7 @@ export class TaskEditorContent {
 	 * Clears the container first, then renders all sections.
 	 */
 	mountInto(container: HTMLElement): void {
+		this.cleanupInteractionState?.();
 		this.closeStatsSubtasks?.();
 		this.closeStatsSubtasks = null;
 		this.refreshStatsCounters = null;
@@ -2358,6 +2365,7 @@ export class TaskEditorContent {
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.rootEl = container;
+		this.cleanupInteractionState = bindEditorInteractionState(container);
 		if (this.usesTouchDesktopLayout) {
 			container.addEventListener('pointerdown', this.touchPointerHandler, true);
 			container.addEventListener('pointermove', this.touchPointerHandler, true);
@@ -2511,6 +2519,8 @@ export class TaskEditorContent {
 	 * Cleanup: clear timers. Call when the container is being torn down.
 	 */
 	destroy(options: { skipCloseSave?: boolean } = {}): void {
+		this.cleanupInteractionState?.();
+		this.cleanupInteractionState = null;
 		let closeSave: Promise<TaskEditorSaveOutcome> | null = null;
 		if (!options.skipCloseSave && this.hasBeenEdited && this.description.trim()) {
 			this.destroyCloseSaveInFlight = true;
@@ -2788,6 +2798,7 @@ export class TaskEditorContent {
 			}));
 			removeButton.addEventListener('click', () => onRemove(value, index));
 			chip.appendChild(removeButton);
+			chip.addClass('has-remove-action');
 			container.appendChild(chip);
 		}
 	}
@@ -3486,6 +3497,7 @@ export class TaskEditorContent {
    this.filePropertyUnavailable = true;
    this.renderDesktopFileProperties(root);
   }
+  this.refreshDesktopPropertyGroupState(root);
  }
 
  private nativePropertyType(name: string): InlinePropertyType | undefined {
@@ -3518,6 +3530,7 @@ export class TaskEditorContent {
   cleanupOperonHoverTooltips(root); root.empty();
   for (const { action } of this.filePropertyRows.values()) { cleanupOperonHoverTooltips(action); action.remove(); }
   this.filePropertyRows.clear();
+  this.refreshDesktopPropertyGroupState(root);
   const actions = this.filePropertyActions;
   if (!actions) return;
   const group = root;
@@ -3552,6 +3565,7 @@ export class TaskEditorContent {
   if (!entry || !surface) return;
   const populated = !isEmptyFilePropertyValue(entry.value);
   surface.row.hidden = !populated;
+  this.refreshDesktopPropertyGroupState(surface.row);
   surface.action.hidden = !populated && !entry.baseline?.present && !entry.inline?.present && !entry.headerSelected;
   surface.action.toggleClass('is-active', populated);
   surface.action.disabled = !this.canEditFileProperty(entry);
@@ -3751,7 +3765,14 @@ export class TaskEditorContent {
 				});
 			}
 		}
+		this.refreshDesktopPropertyGroupState(group);
 		return group;
+	}
+
+	private refreshDesktopPropertyGroupState(container: HTMLElement): void {
+		const group = container.closest<HTMLElement>('.operon-editor-desktop-property-group');
+		if (!group) return;
+		group.toggleClass('is-empty-property-group', Array.from(group.querySelectorAll<HTMLElement>('.operon-editor-desktop-property-row')).every(row => row.hidden));
 	}
 
 	private bindDesktopPropertyInteraction(
@@ -3814,6 +3835,7 @@ export class TaskEditorContent {
 		const token = control.ownerDocument.win.createDiv('operon-editor-value-token');
 		control.parentElement.insertBefore(token, control); token.appendChild(control);
 		const clear = token.createEl('button', { cls: 'operon-editor-value-clear', attr: { type: 'button' } });
+		token.addClass('has-visible-clear');
 		setIcon(clear, 'x'); setAccessibleLabelWithoutTooltip(clear, t('taskEditor', 'removeValue', { value: this.getWorkflowPickerLabel(key) }));
 		clear.addEventListener('click', event => {
 			event.preventDefault(); event.stopPropagation();
@@ -3843,7 +3865,9 @@ export class TaskEditorContent {
 	}
 
 	private refreshDesktopPropertyRows(): void {
+		const groups = new Set<HTMLElement>();
 		for (const [key, entry] of this.desktopPropertyRows) {
+			if (entry.row.parentElement) groups.add(entry.row.parentElement);
 			const hasValue = this.hasWorkflowPickerValue(key);
 			this.refreshDesktopPropertyIcon(key, entry.row, hasValue);
 			entry.row.hidden = !hasValue && !(entry.core && entry.row.contains(entry.row.ownerDocument.activeElement));
@@ -3851,7 +3875,10 @@ export class TaskEditorContent {
 			if (label) label.disabled = (key === 'datetimeEnd' && !this.fieldValues['datetimeStart']) || (key === 'subtasks' && !this.getCurrentOperonId());
 			entry.value.toggleClass('is-readonly', label?.disabled ?? false);
 			const clear = entry.value.querySelector<HTMLButtonElement>('.operon-editor-value-clear');
-			if (clear) clear.hidden = !hasValue;
+			if (clear) {
+				clear.hidden = !hasValue;
+				clear.parentElement?.toggleClass('has-visible-clear', hasValue);
+			}
 			if (entry.core) continue;
 			const signature = JSON.stringify([
 				key === 'subtasks' ? this.getWorkflowSubtaskIds() : key === 'tags' ? this.tags : this.fieldValues[key],
@@ -3878,6 +3905,7 @@ export class TaskEditorContent {
 			else if (custom && isProjectedCustomFieldType(custom)) this.renderCustomWorkflowPicker(entry.value, custom);
 			else this.renderWorkflowPicker(entry.value, key);
 		}
+		for (const group of groups) this.refreshDesktopPropertyGroupState(group);
 		this.refreshWorkflowActionButtonStates();
 	}
 
@@ -4822,6 +4850,7 @@ export class TaskEditorContent {
 						event.preventDefault(); openEditPicker(chip, index, rawValue);
 					});
 					const remove = chip.createEl('button', { cls: 'operon-editor-compact-selection-chip-remove', attr: { type: 'button' } });
+					chip.addClass('has-remove-action');
 					setIcon(remove, 'x'); setAccessibleLabelWithoutTooltip(remove, t('taskEditor', 'removeValue', { value: display.text }));
 					remove.addEventListener('click', event => {
 						event.preventDefault(); event.stopPropagation();
@@ -5920,6 +5949,7 @@ export class TaskEditorContent {
 	private renderTrackingSessionRow(container: HTMLElement, session: TrackerSession): void {
 		const desktop = !this.usesMobileLayout;
 		const row = container.createDiv('operon-editor-tracking-session-row');
+		bindDescendantFocusVisible(row);
 		if (desktop) row.addClass('operon-editor-desktop-property-row');
 		const duration = desktop ? row.createDiv('operon-editor-desktop-property-label operon-editor-session-duration') : null;
 		if (duration) {

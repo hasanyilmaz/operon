@@ -132,10 +132,10 @@ async function fixture() {
  const scan=async(path?:string)=>{settings.inlinePropertyDefinitions=storage.getCommittedInlinePropertyDefinitions();if(path)await indexer.reindexFilePath(path);else await indexer.fullReindex();};
  const snapshot=()=>getTableNativePropertySnapshot({},app,{signature:'base',revision:1,fields:[],getCell:()=>({present:false,rawValue:undefined,normalizedValue:''}),getCandidates:()=>[]},indexer.getAllTasks(),1,settings,()=>{});
  async function editor(id:string) {
-  const e:any={app,indexer,settings,filePropertyRoot:{children:[{}],setAttribute(){},removeAttribute(){},querySelector(){return null;}},filePropertyGeneration:0,fileProperties:new Map(),submittedFileProperties:new Map(),filePropertyRows:new Map(),
+  const e:any={app,indexer,settings,filePropertyRoot:{children:[{}],setAttribute(){},removeAttribute(){},querySelector(){return null;},closest(){return null;}},filePropertyGeneration:0,fileProperties:new Map(),submittedFileProperties:new Map(),filePropertyRows:new Map(),
    getCurrentIndexedTask:()=>indexer.getTask(id),filePropertyTypeResolver:createCachedTableFilePropertyTypeResolver(types),renderDesktopFileProperties(){},refreshFilePropertyValue(){},markEdited(){},isNativeCustomProperty:()=>false};
   const deps={...rawProperties,getNativePropertyIndex,nativePropertyReadOnlyReason,encodeVaultPropertyValue,t};
-  for(const [name,args] of [['refreshDesktopFileProperties',''],['canEditFileProperty','entry'],['setFilePropertyValue','name,value'],['getFilePropertyChanges',''],['getInlinePropertyChanges','']])e[name]=method(name,args,deps,'src/ui/task-editor-content.ts','TaskEditorContent');
+  for(const [name,args] of [['refreshDesktopFileProperties',''],['refreshDesktopPropertyGroupState','container'],['canEditFileProperty','entry'],['setFilePropertyValue','name,value'],['getFilePropertyChanges',''],['getInlinePropertyChanges','']])e[name]=method(name,args,deps,'src/ui/task-editor-content.ts','TaskEditorContent');
   e.nativePropertyField=(name:string,type:string)=>({propertyName:name,type});
   await e.refreshDesktopFileProperties();assert.equal(e.filePropertyUnavailable,false);return e;
  }

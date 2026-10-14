@@ -1,3 +1,4 @@
+import { bindDescendantFocusVisible, cleanupDescendantFocusVisible } from './descendant-focus-visible';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
@@ -98,6 +99,7 @@ export class TimeSessionHistoryView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		cleanupDescendantFocusVisible(this.contentEl);
 		hideTaskContextualHoverMenu(true);
 		this.unsubscribe?.();
 		this.unsubscribe = null;
@@ -136,6 +138,7 @@ export class TimeSessionHistoryView extends ItemView {
 		}
 		this.lastRenderSignature = signature;
 
+		cleanupDescendantFocusVisible(container);
 		cleanupTaskContextualHoverMenus(container);
 		container.empty();
 		container.addClass('operon-time-session-history-view');
@@ -180,6 +183,7 @@ export class TimeSessionHistoryView extends ItemView {
 		context: TimeSessionHistoryRenderContext,
 	): void {
 		const card = container.createDiv('operon-time-session-history-session-card');
+		bindDescendantFocusVisible(card);
 		const isTerminalTask = this.isTerminalTask(session.task, context);
 		if (isTerminalTask) {
 			card.addClass('is-terminal-task');

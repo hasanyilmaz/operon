@@ -1,3 +1,4 @@
+import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { isSettingsScope, scopeSettingsModal } from './settings/settings-scope';
 import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
 import { DATE_OPERATORS } from '../core/filter-display';
@@ -382,6 +383,8 @@ export class FilterSetModal extends Modal {
 		this.options = options;
 	}
 
+	private cleanupInteractionState: (() => void) | null = null;
+
 	onOpen(): void {
 		this.inlineEditor = null;
 		activeFilterSetModals.add(this);
@@ -389,6 +392,8 @@ export class FilterSetModal extends Modal {
 	}
 
 	onClose(): void {
+		this.cleanupInteractionState?.();
+		this.cleanupInteractionState = null;
 		activeFilterSetModals.delete(this);
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
@@ -405,6 +410,8 @@ export class FilterSetModal extends Modal {
 
 	destroyInlineConditionEditor(): void {
 		if (!this.inlineEditor) return;
+		this.cleanupInteractionState?.();
+		this.cleanupInteractionState = null;
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
 		closeFloatingPanelsForRoot(this.inlineEditor.container);
@@ -447,6 +454,8 @@ export class FilterSetModal extends Modal {
 	}
 
 	private renderModal(): void {
+		this.cleanupInteractionState?.();
+		this.cleanupInteractionState = null;
 		const { contentEl } = this;
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
@@ -465,11 +474,14 @@ export class FilterSetModal extends Modal {
 		this.renderSort(contentEl);
 		this.renderUsageInfo(contentEl);
 		this.renderButtons(contentEl);
+		this.cleanupInteractionState = bindFilterGroupInteractionState(contentEl);
 	}
 
 	private renderInlineConditionEditorSurface(): void {
 		const inlineEditor = this.inlineEditor;
 		if (!inlineEditor) return;
+		this.cleanupInteractionState?.();
+		this.cleanupInteractionState = null;
 		const { container } = inlineEditor;
 		this.condObserver?.disconnect();
 		this.refreshCountBadge = null;
@@ -484,6 +496,7 @@ export class FilterSetModal extends Modal {
 		this.renderNameField(container);
 		this.renderConditions(container);
 		this.renderButtons(container);
+		this.cleanupInteractionState = bindFilterGroupInteractionState(container);
 	}
 
 	private renderCurrentSurface(): void {
