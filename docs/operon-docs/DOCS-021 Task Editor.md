@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-14T19:36:58+02:00
 ---
 
 # Task Editor
@@ -59,6 +59,8 @@ Open an editable property's name or value to use its control. On a mouse, the ro
 ### Additional properties
 
 **Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout even though the embedded body is unavailable. Use the section's add control for supported properties and each value's control to edit it. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
+
+**Add existing property** also lists eligible custom keys enabled for the editor before they have been used in any note. Operon automatically fills their missing Obsidian type declarations; see [[DOCS-040 Custom keys|Custom keys]]. Explicit type conflicts and incompatible values remain protected.
 
 Checkbox property icons reflect their value: **true** uses a checked box, **false** an empty box. An unset checkbox uses its configured property icon, whose default is a dashed square. Existing custom icon choices are retained for that unset state; true/false indicators are automatic.
 
