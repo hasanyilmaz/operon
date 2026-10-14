@@ -179,6 +179,7 @@ const CALENDAR_TOUCH_TAP_EDITOR_DELAY_MS = 80;
 const CALENDAR_TOUCH_CLICK_SUPPRESSION_MS = 800;
 const CALENDAR_TOUCH_SCROLL_SELECTOR = '.operon-calendar-surface-scroll, .operon-calendar-mobile-timegrid-viewport';
 const CALENDAR_TRACKED_SESSION_DESKTOP_DRAG_INTENT_DISTANCE_PX = 4;
+const CALENDAR_TIMED_ITEM_DRAG_INTENT_DISTANCE_PX = 4;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_HEIGHT_PX = 38;
 const CALENDAR_DESKTOP_ALL_DAY_TRACK_LANE_INSET_PX = 4;
 const CALENDAR_OPTIMISTIC_PATCH_TTL_MS = 10000;
@@ -9782,12 +9783,16 @@ export class CalendarView extends ItemView {
 	): void {
 		type TimedItemDragMode = 'move' | 'resize-start' | 'resize-end';
 		type TimedItemDragOptions = {
+			hasMovementIntent?: boolean;
 			allowAllDayDrop?: boolean;
 			suppressClickOnFinish?: boolean;
 		};
 		let dragState: {
 			pointerId: number;
 			mode: TimedItemDragMode;
+			initialClientX: number;
+			initialClientY: number;
+			hasMovementIntent: boolean;
 			anchorOffsetMinutes: number;
 			currentDayIndex: number;
 			currentStartMinutes: number;
@@ -9955,6 +9960,7 @@ export class CalendarView extends ItemView {
 		): void => {
 			clearPendingTouchDrag(false);
 			if (!startDragFromPointer(pending.pointerId, clientX, clientY, 'move', {
+				hasMovementIntent: true,
 				allowAllDayDrop: isMobileTimeGridItem,
 				suppressClickOnFinish: true,
 			})) return;
@@ -10044,6 +10050,11 @@ export class CalendarView extends ItemView {
 
 		const updateFromPointer = (clientX: number, clientY: number): void => {
 			if (!dragState) return;
+			// A click, stationary hold or small pointer jitter must preserve exact saved minutes.
+			if (!dragState.hasMovementIntent) {
+				if (Math.hypot(clientX - dragState.initialClientX, clientY - dragState.initialClientY) < CALENDAR_TIMED_ITEM_DRAG_INTENT_DISTANCE_PX) return;
+				dragState.hasMovementIntent = true;
+			}
 			if (dragState.mode === 'move' && dragState.allowAllDayDrop && this.allDayDropContext) {
 				const allDayRect = this.allDayDropContext.body.getBoundingClientRect();
 				const insideAllDay = clientX >= allDayRect.left
@@ -10162,6 +10173,9 @@ export class CalendarView extends ItemView {
 			dragState = {
 				pointerId,
 				mode,
+				initialClientX: clientX,
+				initialClientY: clientY,
+				hasMovementIntent: options.hasMovementIntent ?? false,
 				anchorOffsetMinutes: Math.max(0, position.minuteOfDay - segment.startMinutes),
 				currentDayIndex: segment.dayIndex,
 				currentStartMinutes: segment.startMinutes,
