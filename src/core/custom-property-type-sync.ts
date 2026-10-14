@@ -1,3 +1,4 @@
+import { sha256HexForStorage } from '../storage/storage-sha256';
 import type { App } from 'obsidian';
 import type { KeyMapping } from '../types/settings';
 import { isManagedCustomFieldMapping } from './managed-task-fields';
@@ -13,8 +14,8 @@ interface TypeManager {
 const queues = new WeakMap<App, Promise<unknown>>();
 const uncertain = new WeakSet<App>();
 
-/** Explicit Settings action only. Use Obsidian's writer so its in-memory registry stays coherent. */
-export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent: () => boolean): Promise<Result> {
+/** Use Obsidian's writer so its in-memory registry stays coherent. */
+export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent: () => boolean, backupDirectory?: string): Promise<Result> {
  const snapshot = { ...mapping };
  const operation = async (): Promise<Result> => {
   let writeStarted = false;
@@ -27,6 +28,10 @@ export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent:
    const manager = (app as unknown as { metadataTypeManager?: TypeManager }).metadataTypeManager;
    if (!manager || typeof manager.getAssignedWidget !== 'function' || typeof manager.setType !== 'function') return { status: 'failed' };
    const aliases = new Set([name, snapshot.canonicalKey].map(alias => alias.toLowerCase()));
+   const adapter = app.vault.adapter;
+   const registryPath = `${app.vault.configDir}/types.json`;
+   const readSource = async (): Promise<string | null> => await adapter.exists(registryPath) ? adapter.read(registryPath) : null;
+   const source = backupDirectory ? await readSource() : null;
    const types = await loadPropertyTypeRegistry(app);
    if (!isCurrent()) return { status: 'cancelled' };
    for (const [alias, type] of Object.entries(types)) {
@@ -43,6 +48,28 @@ export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent:
    if (entries.length && assigned === expected) return { status: 'unchanged', types };
    // A stale/uncertain manager must not overwrite a newer on-disk registry.
    if (entries.length || assigned != null) return { status: 'failed' };
+   if (backupDirectory) {
+    // Only the current Obsidian registry shape is safe to round-trip through its writer.
+    const parsed: unknown = source === null ? { types: {} } : JSON.parse(source);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)
+     || Object.keys(parsed).length !== 1 || !('types' in parsed)
+     || JSON.stringify(parsed.types) !== JSON.stringify(types)
+     || Object.values(types).includes('unknown')) return { status: 'failed' };
+    const preimage = JSON.stringify({ version: 1, source });
+    const backupPath = `${backupDirectory}/${await sha256HexForStorage(preimage)}.json`;
+    for (const directory of [backupDirectory.slice(0, backupDirectory.lastIndexOf('/')), backupDirectory]) {
+     if (!await adapter.exists(directory)) await adapter.mkdir(directory);
+    }
+    if (!await adapter.exists(backupPath)) await adapter.write(backupPath, preimage);
+    if (await adapter.read(backupPath) !== preimage) return { status: 'failed' };
+    // Recheck after backup IO; never overwrite a concurrent user assignment or stale mapping.
+    if (!isCurrent()) return { status: 'cancelled' };
+    if (await readSource() !== source
+     || [...aliases].some(alias => { const value = manager.getAssignedWidget(alias); return value != null && value !== expected; })
+     || manager.getAssignedWidget(name) != null
+     || Object.entries(types).some(([alias, type]) => manager.getAssignedWidget(alias) !== type)) return { status: 'failed' };
+    if (!isCurrent()) return { status: 'cancelled' };
+   }
    writeStarted = true;
    await manager.setType(name, expected);
    const verified = await loadPropertyTypeRegistry(app);

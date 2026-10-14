@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3656,
-  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
+  "keyCount": 3654,
+  "keyFingerprint": "ffbb44f4c0d6e099d341aa45a2c4c775e34909f6b5d1fb4ea74710a448e37b1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1980,8 +1980,6 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "Mostra nelle corsie Kanban",
       "keyMappingsShowInKanbanSwimlaneTooltip": "Offri questo campo personalizzato come opzione di raggruppamento per corsia Kanban.",
       "keyMappingsSurfaceCheckboxUnsupported": "I campi personalizzati con casella di controllo sono salvati ma non ancora mostrati nelle superfici editor, creatore, chip o corsia Kanban.",
-      "keyMappingsTypeSync": "Sincronizza i tipi con Obsidian",
-      "keyMappingsTypeSyncDesc": "Assegna i tipi Obsidian mancanti dai campi personalizzati. I tipi esistenti diversi vengono mantenuti.",
       "keyMappingsTypeSyncRecovery": "Impossibile verificare la sincronizzazione. Riavvia Obsidian prima di riprovare; nessun tipo esistente è stato sostituito intenzionalmente.",
       "keyMappingsTypeSyncResult": "Tipi: {{updated}} assegnati, {{unchanged}} già corrispondenti, {{conflicts}} conflitti mantenuti, {{failed}} non verificati.",
       "keyMappingsType_checkbox": "casella di controllo",
@@ -3701,5 +3699,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "62b97d5a02396c25e78b333a2f94e9581a38dc5a96d4eb24dbd009a2d8b78a42"
+  "sourceVersion": "58ae9894250f4981f4c0e9577380639c6996009da920abd15f3fc360213f47d7"
 }

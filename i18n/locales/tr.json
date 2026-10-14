@@ -1155,8 +1155,6 @@
 		"keyMappingsLegendTypeDesc": "Dosya görevi YAML'ında, satır içi görev metadatasında ve Operon görünümlerinde bu alan için kullanılan veri türüdür; metin, sayı, tarih, onay kutusu veya liste gibi. Operon'un doğru düzenleyiciyi, doğrulamayı ve görüntüleme biçimini seçmesine yardımcı olur.",
 		"keyMappingsCustomHeader": "Özel Anahtarlar ({{count}})",
 		"keyMappingsTypeSyncRecovery": "Tip eşitlemesi doğrulanamadı. Yeniden denemeden önce Obsidian’ı yeniden başlatın; mevcut tipler bilerek değiştirilmedi.",
-		"keyMappingsTypeSync": "Özellik tiplerini Obsidian ile eşitle",
-		"keyMappingsTypeSyncDesc": "Eksik Obsidian tiplerini custom key tanımlarından ata. Mevcut farklı tipler korunur.",
 		"keyMappingsTypeSyncResult": "Özellik tipleri: {{updated}} atandı, {{unchanged}} zaten eşleşiyor, {{conflicts}} çakışma korundu, {{failed}} doğrulanamadı.",
 		"keyMappingsAddCustomField": "Özel Alan Ekle",
 		"keyMappingsAddCustomFieldTitle": "Özel alan ekle",

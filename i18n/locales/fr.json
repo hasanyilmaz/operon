@@ -1155,8 +1155,6 @@
 		"keyMappingsLegendTypeDesc": "Type de données utilisé pour ce champ dans le YAML des tâches-fichiers, les métadonnées des tâches en ligne et les vues Operon, comme texte, nombre, date, case à cocher ou liste. Cela aide Operon à choisir le bon éditeur, la bonne validation et le bon format d'affichage.",
 		"keyMappingsCustomHeader": "Clés personnalisées ({{count}})",
 		"keyMappingsTypeSyncRecovery": "La synchronisation des types n’a pas pu être vérifiée. Redémarrez Obsidian avant de réessayer ; aucun type existant n’a été volontairement remplacé.",
-		"keyMappingsTypeSync": "Synchroniser les types avec Obsidian",
-		"keyMappingsTypeSyncDesc": "Attribuer les types Obsidian manquants depuis les champs personnalisés. Les types différents existants sont conservés.",
 		"keyMappingsTypeSyncResult": "Types : {{updated}} attribués, {{unchanged}} déjà identiques, {{conflicts}} conflits conservés, {{failed}} non vérifiés.",
 		"keyMappingsAddCustomField": "Ajouter un champ personnalisé",
 		"keyMappingsAddCustomFieldTitle": "Ajouter un champ personnalisé",

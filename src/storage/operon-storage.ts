@@ -646,6 +646,10 @@ export class OperonStorage {
 	 * Narrow host-owned persistence seam for Developer API grants. The
 	 * controller receives no direct adapter or plugin-data access.
 	 */
+	canPersistSettings(): boolean {
+		return this.dataPackageStore.canPersist();
+	}
+
 	getDeveloperApiGrantDataStore(): Pick<
 		OperonDataPackageStore,
 		'canPersist' | 'getDataPackage' | 'updateDataPackage'

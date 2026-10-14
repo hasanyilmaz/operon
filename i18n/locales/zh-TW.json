@@ -1155,8 +1155,6 @@
 		"keyMappingsLegendTypeDesc": "此欄位在檔案任務 YAML、行內任務後設資料和 Operon 檢視中使用的資料型別，例如文字、數字、日期、核取方塊或列表。這有助於 Operon 選擇正確的編輯器、驗證和顯示格式。",
 		"keyMappingsCustomHeader": "自定義欄位（{{count}}）",
 		"keyMappingsTypeSyncRecovery": "無法驗證類型同步。請重新啟動 Obsidian 後再試；未刻意取代既有類型。",
-		"keyMappingsTypeSync": "與 Obsidian 同步屬性類型",
-		"keyMappingsTypeSyncDesc": "根據自訂欄位設定缺少的 Obsidian 類型。保留既有的不同類型。",
 		"keyMappingsTypeSyncResult": "屬性類型：已設定 {{updated}} 項，已符合 {{unchanged}} 項，保留衝突 {{conflicts}} 項，未驗證 {{failed}} 項。",
 		"keyMappingsAddCustomField": "新增自定義欄位",
 		"keyMappingsAddCustomFieldTitle": "新增自定義欄位",

@@ -1155,8 +1155,6 @@
 		"keyMappingsLegendTypeDesc": "Tipo de dado usado para este campo na tarefa em arquivo YAML, metadados da tarefa inline e visualizações Operon, como texto, número, data, caixa de seleção ou lista. Isso ajuda Operon a escolher o editor, validação e formato de exibição corretos.",
 		"keyMappingsCustomHeader": "Chaves Personalizadas ({{count}})",
 		"keyMappingsTypeSyncRecovery": "Não foi possível verificar a sincronização. Reinicie o Obsidian antes de tentar novamente; nenhum tipo existente foi substituído intencionalmente.",
-		"keyMappingsTypeSync": "Sincronizar tipos com o Obsidian",
-		"keyMappingsTypeSyncDesc": "Atribuir tipos ausentes do Obsidian a partir dos campos personalizados. Tipos existentes diferentes são mantidos.",
 		"keyMappingsTypeSyncResult": "Tipos: {{updated}} atribuídos, {{unchanged}} já correspondem, {{conflicts}} conflitos mantidos, {{failed}} não verificados.",
 		"keyMappingsAddCustomField": "Adicionar campo personalizado",
 		"keyMappingsAddCustomFieldTitle": "Adicionar campo personalizado",

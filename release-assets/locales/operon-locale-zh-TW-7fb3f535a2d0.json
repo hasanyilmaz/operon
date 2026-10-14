@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3656,
-  "keyFingerprint": "476d74630a19e61edf4c1e237afd3ce58705c433f84118737d63eedaff67d6f6",
+  "keyCount": 3654,
+  "keyFingerprint": "ffbb44f4c0d6e099d341aa45a2c4c775e34909f6b5d1fb4ea74710a448e37b1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1980,8 +1980,6 @@
       "keyMappingsShowInKanbanSwimlaneLabel": "在看板泳道中顯示",
       "keyMappingsShowInKanbanSwimlaneTooltip": "將此自定義欄位作為看板泳道分組選項提供。",
       "keyMappingsSurfaceCheckboxUnsupported": "核取方塊自定義欄位會被儲存，但尚未在編輯器、建立器、標籤或看板泳道介面中顯示。",
-      "keyMappingsTypeSync": "與 Obsidian 同步屬性類型",
-      "keyMappingsTypeSyncDesc": "根據自訂欄位設定缺少的 Obsidian 類型。保留既有的不同類型。",
       "keyMappingsTypeSyncRecovery": "無法驗證類型同步。請重新啟動 Obsidian 後再試；未刻意取代既有類型。",
       "keyMappingsTypeSyncResult": "屬性類型：已設定 {{updated}} 項，已符合 {{unchanged}} 項，保留衝突 {{conflicts}} 項，未驗證 {{failed}} 項。",
       "keyMappingsType_checkbox": "核取方塊",
@@ -3701,5 +3699,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "8211682ece581cbef17a8c9f1cd351def500f966b33246a011f88c3b7d6f8430"
+  "sourceVersion": "01bae8c561667a8cad93214db2f2964b9a8ae917f7c82291b9349ce5260f8f7b"
 }
