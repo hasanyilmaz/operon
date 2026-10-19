@@ -2,7 +2,7 @@
 Notes: On-demand pop-up subtask tree for any task
 Icon: git-branch
 Color: "#0284c7"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-19T13:38:56+02:00
 ---
 
 # Dynamic Subtasks Filter
@@ -29,6 +29,10 @@ Run the **Subtasks** action from a task's [[DOCS-042 Contextual menu actions|con
 ![MEDIA-DOCS-059-2 - The Subtasks action in a task's contextual menu, which opens the filter](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-059-2.png)
 
 The action appears only when it can do something useful: the task must be open and must actually have subtasks. A leaf task with no children does not show it.
+
+On desktop, this standalone modal shares the [[DOCS-098 Workspace Tweaks|Background dimming]] setting and adds one layer when opened over another included surface. A supported link can open a [[DOCS-151 Lightbox|lightbox]] above it; Escape returns through the preview before the filter. No Lightbox side controls are added to the filter itself.
+
+The Editor's Subtasks popover, embedded filters, and mobile behavior are separate and are not included in this modal dimming rule.
 
 ## What it shows
 

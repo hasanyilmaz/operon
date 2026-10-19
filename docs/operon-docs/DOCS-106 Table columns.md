@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-10-13T17:01:21+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Table columns
@@ -22,6 +22,7 @@ Almost any field a task carries can become a column:
 - **Vault Properties**: additional properties on File and Inline tasks, offered from the current task scope without requiring a Custom Key. Supported native editing uses declared property types; Automatic or conflicting types can remain read-only. See [[DOCS-115 File task property columns|Vault Properties]].
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
+- **Repeat reference date**: the saved recurrence reference date, shown in your Date format and edited through the Repeat picker. A missing saved date leaves the cell empty.
 - **Countdown**: a read-only calculated column showing time remaining until a Scheduled or Due target, without adding a task property.
 - **Task Tree**: a read-only presentation column that can expand the parent and subtask hierarchy around a row without writing a task field.
 
@@ -143,7 +144,7 @@ Most columns are editable: click a cell to change that field on the spot, as cov
 - **Source and file columns**, which describe where the task is stored rather than a property you set.
 - **Identity, checkbox, progress, Task Tree, and helper columns**, such as operonId, Project Serial, checkbox, subtask progress, line number, task icon helper, and Task Data Type helper columns, are read-only or have their own dedicated action instead of opening a normal field picker.
 
-The source column is still active: clicking it opens the task's source in a new tab.
+The Source column is still active: on desktop, clicking it opens the current source in the [[DOCS-151 Lightbox|lightbox]], including the current line for an Inline Task. Cmd/Ctrl-click opens a new tab. Other source-path and file columns keep their existing display behavior.
 
 ## The three helper columns
 

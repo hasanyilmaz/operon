@@ -2,7 +2,7 @@
 Notes: Plan work in Excalidraw with live task cards, task creation, and editable relationships
 Icon: excalidraw-icon
 Color: "#0284c7"
-Updated: 2026-10-06T13:48:07+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Excalidraw Task Cards
@@ -72,11 +72,13 @@ Drawing the arrow alone does not write a task relationship. The new task's paren
 
 ## Work with a task card
 
-Select a card to show the Operon shortcuts below it: timer, pinning, Task Editor, and opening the task source. Their actions follow the same tasks and settings used in Canvas.
+Select a card to show the Operon shortcuts below it: timer, pinning, Task Editor, and **Open Source**. On desktop, Open Source previews the current task source in the [[DOCS-151 Lightbox|lightbox]]; Cmd-click on macOS or Ctrl-click on Windows/Linux opens a focused Obsidian tab instead. These shortcuts follow the same tasks and settings used in Canvas.
 
 Activate the embedded card to interact with its content. Clicking an empty area of an active card opens [[DOCS-021 Task Editor|Task Editor]]. The description, task icon, chips, and other controls keep their own actions. Hover over the task icon for its contextual menu.
 
-Chips edit or navigate the source task using their normal behavior. Notes, images, progress, and checklist controls follow the shared Task Card preferences. Changes appear on other cards showing the same task.
+On desktop, supported HTTP/HTTPS and existing local links inside the active card's description use the [[DOCS-151 Lightbox|lightbox]], without also triggering the card's outer action. The description outside its links and other controls retain their own behavior. Note popovers share the draft-preserving preview flow described in [[DOCS-113 Text field editor popover|Text field editor popover]].
+
+Chips edit or navigate the source task using their normal behavior. A separate **Source action** in the chip row follows **Task Card Actions** and its shared hover/focus visibility; see [[DOCS-041 Task chips display and behavior|Task chips and actions]]. Notes, images, progress, and checklist controls follow the shared Task Card preferences. Edits appear on other cards showing the same task; opening Source is navigation only.
 
 Use **Excalidraw Property Pool** from the drawing toolbar, or **Operon: Open Excalidraw Property Pool**, to find reusable values and drag them onto task cards. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]] for shared favorites, shortcuts, and value editing. Check the drop preview before applying a value; it changes the task itself.
 

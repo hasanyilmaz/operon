@@ -2,7 +2,7 @@
 Notes: How Operon's data behaves under sync, and how to resolve conflicts
 Icon: shield-check
 Color: "#0891b2"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-10-19T13:40:31+02:00
 ---
 
 # Sync conflict safety
@@ -25,9 +25,17 @@ Sync can still produce a copy: two devices create from the same template, or an 
 
 Operon uses guarded writes for its [[DOCS-046 Plugin data and state files|plugin data and state files]]. Before saving settings, it checks that the stored version still matches the version it read. If another device or sync process has changed it, Operon can suspend settings writes rather than overwrite that newer state. An interruption or uncertain write result may require recovery; these safeguards are not a guarantee against every storage failure.
 
+## An automatic backup conflict is not a settings failure
+
+Automatic settings backup records can conflict, including after synchronization. If Operon can still verify the actual settings file, that backup-only conflict **does not block settings saves or Table startup**. Existing backup files are preserved; automatic backup creation pauses and the console reports that specific condition once. This is separate from the manual export/restore workflow in [[DOCS-134 Backup and restore settings|Backup & Restore]].
+
+The message does not by itself mean settings were lost or a Table file was damaged. Keep the existing backups for inspection rather than deleting them to silence the warning. Verification of the real settings file remains active.
+
 ## When settings saves are suspended
 
 A message such as `Canonical settings changed before an unchanged save` means Operon could not confirm that the stored settings still matched its last read, even though the attempted save matched its committed settings. The file may have changed or could not be read safely. It does not by itself mean your settings were deleted.
+
+A real saving pause is reported once per cause, with the reason in the console. Table setup that needs a settings write waits for that condition; it is not presented as evidence of Table corruption. Genuine Table file errors remain separate and visible.
 
 For this recoverable mismatch, a successful settings reload can read and validate the current stored settings, check that they stayed unchanged during the reload, and adopt that same snapshot in memory before reopening writes. This is not a merge of competing edits. Invalid or unsupported data, an uncertain write, or a failed recovery can keep writes blocked.
 

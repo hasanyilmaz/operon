@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-10-06T10:36:57+02:00
+Updated: 2026-10-19T13:38:56+02:00
 ---
 
 # Task Finder
@@ -20,6 +20,14 @@ Open it with **Task Finder** from the command palette.
 Type part of a task's text and the list narrows as you go. Pick a result to jump to it. That is the whole core loop: search, then go. It is the quickest path back to a task you can describe but cannot find by browsing.
 
 What makes the results trustworthy is knowing what they reflect, which is what the next section explains.
+
+## Result chips
+
+Choose visible metadata and its order under **Interface → Task Chips → Task Finder Chips**. **Project Serial** starts first and visible; **Source** starts last and hidden. Source shows the file name and, for an Inline Task, its one-based line. Both remain Detailed, informational chips: clicking them keeps the result's existing selection action rather than opening a separate preview.
+
+Normal results follow the saved chip order. In **Overdue** and **Happens Today**, a visible, populated Serial appears first, followed by the mode's priority date chips and then the remaining chips in their saved relative order. This temporary order does not change your settings. See [[DOCS-041 Task chips display and behavior|Task chips]].
+
+On desktop, the modal uses the shared [[DOCS-098 Workspace Tweaks|Background dimming]] preference. It does not gain the Lightbox side controls.
 
 ## Choose a task for Canvas or Excalidraw
 

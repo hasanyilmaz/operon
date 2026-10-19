@@ -1,15 +1,15 @@
 ---
-Notes: Optional cosmetic workspace helpers for scrollbars, side dock tab icons, and collapsing Properties
+Notes: Background dimming and optional cosmetic helpers for scrollbars, side dock tabs, and Properties
 Icon: sliders-horizontal
 Color: "#ca8a04"
-Updated: 2026-10-01T14:06:16+02:00
+Updated: 2026-10-19T13:36:12+02:00
 ---
 
 # Workspace Tweaks
 
-**Workspace Tweaks** are a small set of optional, purely cosmetic helpers that tidy up how the Obsidian workspace looks while you work in Operon. They change appearance only: nothing here is written into your notes, no task data is touched. The main tweaks use toggles; Properties behavior also has a scope selector and folder exceptions. Enable a tweak to apply it, or disable it to stop applying that preference.
+**Workspace Tweaks** are a small set of optional, purely cosmetic helpers that tidy up how the Obsidian workspace looks while you work in Operon. They change appearance only: nothing here is written into your notes, no task data is touched. Background dimming uses a level selector; other tweaks use toggles, a Properties scope selector, and folder exceptions.
 
-They are deliberately conservative. None of them is required to use Operon, and leaving them all off changes nothing. Think of them as finishing touches for people who like a quieter, more focused workspace.
+These preferences help keep the workspace focused. Dimming has a starting level; the other cosmetic toggles remain optional and off by default.
 
 ## Where it lives
 
@@ -26,6 +26,18 @@ Hides the scrollbars across the whole Obsidian workspace while keeping scrolling
 Slims the tab header strips in the left and right side docks down to a narrow band, so the side panels give more room to their content. Move the pointer over a slimmed strip and the full tab header area expands back into view, so nothing is lost, it is just out of the way until you reach for it.
 
 This one applies on the desktop app. On mobile, where the side docks behave differently, it has no effect.
+
+### Background dimming
+
+Choose the starting darkness behind desktop Operon lightboxes and Task Creator, Task Finder, Task Editor, and the standalone Dynamic Subtasks Filter modal. The dropdown offers:
+
+**10% · 20% · 30% · 35% · 40% · 45% · 50% — Default · 55% · 60% · 65% · 70% · 80% · 90%**
+
+New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. Lightboxes also offer a lower **+ / number / −** group that steps through these same levels and saves the preference here; the number is the saved starting level, not the extra nesting amount.
+
+Each additional included surface adds **5 percentage points**, capped at **90%**. Starting at 50%, three nested surfaces use 50%, 55%, then 60%. Starting at 80%, they use 80%, 85%, then 90%; further layers stay at 90%. Only the top included backdrop paints the calculated darkness, so overlapping backgrounds do not multiply it. Closing a layer restores the previous level, and each window keeps its own stack.
+
+This includes web, Markdown, Base, Table, and media lightboxes. It does not count mobile surfaces, small media hover previews, Page Preview, pickers, the Editor's Subtasks popover, embedded filters, or other native modals. Blur is not added. See [[DOCS-151 Lightbox|Lightbox]] for the preview controls and nested-view behavior.
 
 ## Properties Panel
 
@@ -56,11 +68,11 @@ A list of folders whose notes are **excluded from automatic Properties collapsin
 
 - They never edit your notes. Collapsing Properties only changes the panel's open or closed state in the view; the frontmatter itself is unchanged.
 - They do not affect your tasks, fields, or filters in any way.
-- They are not synced styling rules baked into files. They are live workspace adjustments, applied while the plugin is running and gone the moment you turn them off.
+- They are not synced styling rules baked into files. They are live workspace adjustments controlled by saved Operon preferences, not changes to note content.
 
 ## Defaults
 
-Out of the box, all of these are off: scrollbars and side dock tabs look normal, and Properties are not collapsed. The collapse scope starts at **Only Operon file tasks** and the excluded folders list starts empty, so the first time you enable the Properties tweak it acts only on your file tasks until you widen the scope.
+Background dimming starts at **50%** for a new or missing preference. The other cosmetic toggles are off: scrollbars and side dock tabs look normal, and Properties are not collapsed. The collapse scope starts at **Only Operon file tasks** and the excluded folders list starts empty, so the first time you enable the Properties tweak it acts only on your file tasks until you widen the scope.
 
 ## FAQ
 
@@ -74,7 +86,7 @@ Out of the box, all of these are off: scrollbars and side dock tabs look normal,
 
 ## Settings
 
-All of these live in **Settings → Operon → Interface → Workspace Tweaks**: Hide Scrollbars, Compact Sidebar Tab Icons, Collapse Properties by Default, the Properties collapse scope, and the Excluded folders list. You can find any of them quickly through [[DOCS-043 Settings search|Settings search]].
+All of these live in **Settings → Operon → Interface → Workspace Tweaks**: Background dimming, Hide Scrollbars, Compact Sidebar Tab Icons, Collapse Properties by Default, the Properties collapse scope, and the Excluded folders list. You can find any of them quickly through [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

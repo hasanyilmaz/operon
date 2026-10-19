@@ -2,7 +2,7 @@
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-Updated: 2026-10-06T10:40:55+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Contextual menu actions
@@ -19,7 +19,7 @@ The menu is **context-aware**: an action only appears when the current task and 
 
 Grouped by what they do:
 
-- **Open and inspect**: **Open editor**, **Jump to source** (go to the task's note), **Copy operonId**.
+- **Open and inspect**: **Open editor**, **Open Source** (preview the task's current source on desktop), **Copy operonId**.
 - **Status and completion**: **Task status**, **Mark done**, **Cancel task**.
 - **Structure**: **Subtasks** (open the task's **Dynamic Subtasks Filter**, a live filtered window of just this task's subtree, locked to its `operonId`; appears only on an open task that has subtasks), **Create subtask**, **Checkboxes** (open or create [[DOCS-017 Plain checkbox lists|plain checkboxes]]). See [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]].
 - **Convert**: **Convert to file**, **Convert to inline**. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
@@ -27,6 +27,8 @@ Grouped by what they do:
 - **Pin and time**: **Pin task** / **Unpin task**, **Start timer** / **Stop timer**, **Log as tracked** (record a planned block as tracked time).
 - **Reminders**: **Fixed Reminder** opens the **ReminderDatetimes** picker, **Relative Reminder** opens the **ReminderRules** picker, each icon following its own canonical property. See [[DOCS-116 Reminders|Reminders]].
 - **Remove**: **Delete task**.
+
+On desktop, **Open Source** opens the [[DOCS-151 Lightbox|shared lightbox]]. For an Inline task, it resolves the current line and places the caret immediately after the description in the editable Markdown view, without selecting text. A File task opens its source file normally. This is navigation, not a task edit; mobile source navigation keeps its existing behavior.
 
 ## Interacting with an open menu
 
@@ -38,7 +40,7 @@ On mobile, enable **Mobile touch menu** to open the menu with a long press. Rele
 
 ## Task Card menus
 
-Hover over a Task Card's task icon to open its contextual menu. With the icon focused, the Context Menu key or **Shift+F10** also opens it. Use **Open editor**, **Jump to source**, or another available action without leaving the card's task context.
+Hover over a Task Card's task icon to open its contextual menu. With the icon focused, the Context Menu key or **Shift+F10** also opens it. Use **Open editor**, **Open Source**, or another available action without leaving the card's task context.
 
 Menu actions operate on the source task. On Canvas and Excalidraw, they respect the surface’s write permissions and applicable element locks; enabling an action in the matrix does not bypass that lock or make an unavailable task editable. The separate **Task Card Actions** settings control the card's inline buttons, not this menu.
 

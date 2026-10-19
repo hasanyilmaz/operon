@@ -2,7 +2,7 @@
 Notes: Build a recurrence rule with controls instead of writing it by hand
 Icon: repeat
 Color: "#db2777"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-19T13:40:31+02:00
 ---
 
 # Recurrence picker
@@ -44,6 +44,14 @@ The picker also sets the rule's **mode**, which decides what the next occurrence
 - **Count**: the series repeats a fixed number of times, then stops.
 
 The modes behave differently in ways worth understanding before you choose one. For each mode with examples, guidance on which to use, and what to watch, see [[DOCS-071 Recurrence rules and modes|Recurrence rules and modes]].
+
+## Reference date and saving
+
+The picker's **Reference date** controls the anchor used by its recurrence configuration. An existing saved reference is retained when the rule is reopened; the picker can suggest an initial date when no reference is saved. A suggestion in the picker does not mean a reference already exists on the task. Done mode still follows its completion-based rule rather than becoming schedule mode.
+
+Tables expose the stored value as **Repeat reference date**, formatted with your preferred Date format and empty when no date is saved. Clicking that column opens this Repeat picker, not a standalone date editor. The same saved value is available in [[DOCS-073 Filter conditions and operators|filter conditions]].
+
+In Task Creator, **Save** and **Clear** update the current draft immediately for both Inline and File tasks. Saved reference dates and Count configuration remain available when reopened; cancelling leaves the previous draft unchanged. The task itself is written only when creation is confirmed. See [[DOCS-020 Task Creator|Task Creator]].
 
 ## Ending the series
 

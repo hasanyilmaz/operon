@@ -2,7 +2,7 @@
 Notes: Pickers that select tasks, notes, and lists of values, plus the estimate picker
 Icon: link
 Color: "#db2777"
-Updated: 2026-09-15T11:09:13+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Task link and list pickers
@@ -44,6 +44,12 @@ Before you type, **Parent Task, Assignees, Tags, and Contexts** use the task-bas
 For Parent Task, the suggestion is the source task's **parent**, not the source task itself. For Assignees, Tags, and Contexts, each leading suggestion is a single eligible item from that task's list, chosen by overall usage. Existing selected values remain hidden where the picker normally excludes them. This only changes suggestion order, not the stored order of your list.
 
 Type to use the usual search, or clear the search to restore the suggestions. **Links, Related, Blocking, and Blocked by** keep their existing ordering.
+
+## Editing a value versus following it
+
+Creator and Task Editor field controls keep these pickers. On interactive desktop task chips and Tables, an Assignee or Context item that is a complete, existing wikilink instead opens the [[DOCS-151 Lightbox|lightbox]]. Plain values and missing targets keep the picker. The same conditional rule applies to Task Type and Custom Text/List; ordinary HTTP text is not a wikilink exception.
+
+A valid **Parent** target opens the current parent's source and, for an Inline parent, its current line. An empty or unresolved parent keeps the Parent picker where a control is available. To change a valid relationship, use Task Editor or the Table cell area outside its link. Previewing does not create a missing file. Blocking, Blocked by, and Related retain their dedicated behavior rather than inheriting this exception.
 
 ## Dependencies: a special list
 

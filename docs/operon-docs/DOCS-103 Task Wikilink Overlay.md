@@ -2,7 +2,7 @@
 Notes: Render task chips and actions on a task wikilink, for file and inline tasks
 Icon: link
 Color: "#ca8a04"
-Updated: 2026-10-01T13:53:36+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Task Wikilink Overlay
@@ -84,14 +84,16 @@ On a decorated link, Operon shows, in order:
 - The **Open checkboxes** action, when enabled, for regular Markdown checkboxes associated with the task.
 - The configured **chips**, the same compact metadata chips used elsewhere.
 - Configured **Task Type**, **Task Image**, and **Task Gallery** chips follow the same field and media-reference rules as inline rows and Kanban cards. On desktop, supported image, video, PDF, and YouTube references use the shared hover preview and lightbox, including labels from named Markdown links.
-- Optional **actions**: start or stop the timer, pin or unpin, show a note indicator when the task has a `note`, and add a subtask.
+- Optional **actions**: start or stop the timer, pin or unpin, show a note indicator when the task has a `note`, add a subtask, and open the source on desktop.
 - An **edit** action that opens the task in Task Editor.
 
 Terminal tasks (done or cancelled) show their state and drop the actions that no longer apply.
 
+On desktop, supported links **inside the task description** use the [[DOCS-151 Lightbox|lightbox]]. The outer task-link label retains its existing action; opening an inner link does not also activate that outer label. Configured Parent, Source, and complete existing Text/List wikilinks follow [[DOCS-041 Task chips display and behavior|the shared chip rules]]. Missing wikilink values keep their picker rather than creating a note.
+
 ## Configure it
 
-The overlay's chips and configurable actions are set in **Settings → Operon → Interface → Task Chips → Task Wikilink Overlay Chips**. There you choose which chips appear and their order, and toggle each configurable action: the checkbox action, the timer, pin, note, and subtask. The task icon and edit buttons remain part of the overlay. The chips follow the same rules as every other surface, covered in [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
+The overlay's chips and configurable actions are set in **Settings → Operon → Interface → Task Chips → Task Wikilink Overlay Chips**. There you choose which chips appear and their order, and toggle each configurable action: the checkbox action, the timer, pin, note, subtask, and Source. The desktop **Source action** starts enabled and follows the row's hover/focus visibility; its setting is independent of the optional Source metadata chip. It opens the [[DOCS-151 Lightbox|lightbox]], or a tab with Cmd/Ctrl. The task icon and edit buttons remain part of the overlay. The chips follow the same rules as every other surface, covered in [[DOCS-041 Task chips display and behavior|Task chips: display and behavior]].
 
 > **MEDIA-DOCS-103-2:** The Task Wikilink Overlay Chips settings, with chip order and the action toggles.
 

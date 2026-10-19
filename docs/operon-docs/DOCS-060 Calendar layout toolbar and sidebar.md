@@ -2,7 +2,7 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-19T13:40:31+02:00
 ---
 
 # Calendar layout: toolbar and sidebar
@@ -18,6 +18,14 @@ In toolbar mode, the toggle is the panel button at the start of the toolbar: **T
 Toolbar mode is the default and the roomiest. A single strip across the top holds the title, the date navigation, and the view controls, and everything below it is grid. Reach for it when the Calendar is your main, full-width surface and you want as much of the day or week visible as possible. A compact preset-picker button sits among those controls; see "Switching presets" below.
 
 With **Calendar week** selected for a Time Grid or Time Tracker Grid preset, date navigation shows one arrow pair: **Previous week**, the central date/**Today** control, and **Next week**. Each arrow moves the selected date by seven calendar days and preserves its weekday, even with weekends hidden. **Today** selects today and opens its week. Choosing a date in the small calendar opens that date's week; the small calendar's month arrows still change months.
+
+## Choose a year or month
+
+On desktop, both toolbar and sidebar date navigation have separate **year** and **month/day** buttons. Click the year to open the year-and-month picker. Browse years with its arrows or neighboring-year choices, then choose a month. The month change keeps the focused day when possible; a day beyond the target month's end uses that month's last day.
+
+The buttons follow **Core → General → Language & Formats → Date format**: year-first formats place the year first, while the other formats place it after the day/month label. Month names follow the interface locale. The picker marks its current year and selected month without changing task dates.
+
+Click the month/day button, whose tooltip is **Go to today**, to return to today. This is separate from choosing a month; previous/next week and range arrows keep their existing navigation rules. Visibility and color quick actions update the Calendar immediately without requiring another interaction.
 
 ## Sidebar mode
 

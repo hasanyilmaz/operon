@@ -2,7 +2,7 @@
 Notes: Show read-only ICS calendars alongside your tasks
 Icon: calendar-sync
 Color: "#059669"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-19T13:40:31+02:00
 ---
 
 # External calendars
@@ -11,18 +11,24 @@ Your tasks are not the only things that take up your time. Meetings, classes, an
 
 ## Add a calendar
 
-You add an external calendar as an **ICS** source: a calendar feed published as an `.ics` link. Operon accepts `https`, `webcal`, or direct `.ics` URLs, which most calendar services (and shared calendars) can give you. Each source has:
+Add an **ICS** source as either a subscribed **URL** or a **vault-local `.ics` file**. URL sources continue to accept calendar feed addresses such as `https` and `webcal`. For a local source, choose the ICS file with the vault file picker. Each source has:
 
 - A **name**, shown in settings.
-- The **ICS URL** of the feed.
+- A **source type** and its **ICS URL** or **vault file path**.
 - A **color**, so its events are distinct from your tasks.
-- A **refresh interval**, how often Operon re-fetches the feed.
+- A **refresh interval** for refreshing the source; local file changes also trigger updates.
 
 Its events then render in the Calendar as timed or all-day blocks, the same shapes your tasks use.
 
 > **MEDIA-DOCS-048-1:** Adding an external calendar source with its ICS URL, color, and refresh interval.
 
 ![MEDIA-DOCS-048-1 - External calendar source settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-048-1.png)
+
+## Vault-local ICS files
+
+A local source is read from the selected vault path. Operon updates it when the file changes, while keeping the calendar read-only: it does not rewrite the ICS, turn events into task records automatically, or synchronize edits back to another service.
+
+If the file is renamed, moved, or deleted, Operon rechecks the configured path. Reselect a moved or renamed file in the source settings; the source does not silently follow an unrelated file or create a replacement. If the path is missing or unreadable, the source reports the problem instead of modifying the file.
 
 ## Per-preset visibility
 
@@ -34,19 +40,21 @@ A source can **hide created events**: when an external event already has a match
 
 ## Refreshing
 
-Operon re-fetches feeds on their refresh interval, and you can pull the latest at any time with **Update External Calendars** from the command palette.
+Operon refreshes enabled sources automatically. URL refreshes can use conditional HTTP caching; local sources read the current file and also react to vault changes. You can use **Update External Calendars** from the command palette.
+
+The source's **Sync now** action requests fresh URL contents rather than reusing an unchanged-response shortcut; for a local source it rereads the file. It uses the **saved** source address, so save a new source or a changed URL/path before using it. A previously empty cached URL result can recover through a fresh request. This does not turn a read-only calendar into two-way synchronization.
 
 ## FAQ
 
 **Can I edit external events in Operon?** No. External calendars are read-only. Operon shows their events; it does not change the source.
 
-**Why don't my external events show up?** Check that the source is enabled in the current preset, since visibility is per preset, and that the ICS URL is valid.
+**Why don't my external events show up?** Check that the source is enabled in the current preset, since visibility is per preset, and that the ICS URL or selected vault file is valid and readable. A moved local file may need to be selected again.
 
-**What calendars can I add?** Any that publish an ICS feed, via an `https`, `webcal`, or `.ics` URL.
+**What calendars can I add?** ICS feeds supplied by URL, and supported `.ics` calendar files stored in your vault. Both remain read-only.
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Views → Calendar**, in the External Calendars section, where you add sources and set each one's URL, color, refresh interval, and behavior. Per-preset visibility is set from that preset's **Edit preset**, in its own **External Calendars** section.
+Operon settings for this live in **Settings → Operon → Views → Calendar**, in the External Calendars section, where you choose each source's type, URL or vault file, color, refresh interval, and behavior. Per-preset visibility is set from that preset's **Edit preset**, in its own **External Calendars** section.
 
 ## Related
 

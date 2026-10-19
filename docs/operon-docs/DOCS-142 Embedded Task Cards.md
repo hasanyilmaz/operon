@@ -2,7 +2,7 @@
 Notes: Place a live task card inside a note, with local layout options and shared task controls
 Icon: panels-top-left
 Color: "#0284c7"
-Updated: 2026-10-06T10:40:55+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Embedded Task Cards
@@ -97,16 +97,19 @@ Use this layout for a standalone project summary. Use a left- or right-aligned w
 
 ## Work with the embedded task
 
-Click the task title to open Task Editor. **Cmd-click** on macOS or **Ctrl-click** on other platforms opens its source in a new tab. This differs from a native Canvas task card, where clicking the description opens its compact text editor.
+Click the task title **outside an inner link** to open Task Editor. **Cmd-click** on macOS or **Ctrl-click** on other platforms opens its source in a new tab. This differs from a native Canvas task card, where clicking the description opens its compact text editor.
 
-The card can show configured field chips, task and checklist progress, and action controls for time tracking, pinning, Notes, creating subtasks, and opening checkboxes. Available controls depend on the task, the enabled settings, and the local visibility options.
+On desktop, a supported HTTP/HTTPS or existing local link inside the title uses the [[DOCS-151 Lightbox|lightbox]] instead of the title's outer action. The link opens once without also opening Task Editor or starting a drag. Description/Note popovers use their current draft for previewing; see [[DOCS-113 Text field editor popover|Text field editor popover]].
+
+The card can show configured field chips, task and checklist progress, and action controls for time tracking, pinning, Source, Notes, creating subtasks, and opening checkboxes. Available controls depend on the task, the enabled settings, and the local visibility options.
 
 - Use field chips to edit or inspect their values through the normal Operon controls.
+- Use the desktop **Source action** in the chip row to preview the current source, or Cmd/Ctrl-click it for a tab. Its toggle and hover/focus visibility are shared through **Task Card Actions**; see [[DOCS-041 Task chips display and behavior|Task chips and actions]]. This is separate from the title-click behavior above.
 - Use the task icon's contextual menu for available task actions, including opening the editor or source.
 - Use the descendant count to open the task's [[DOCS-059 Dynamic Subtasks Filter|subtree]] when it has subtasks.
 - Use the checkbox action to work with the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
-These actions update the source task, not a private copy inside the note. Changing a date or completing the task from a card is reflected in the other Operon surfaces that display it. Editing the embed's width, alignment, or visibility changes only its presentation.
+Edits made through these controls update the source task, not a private copy inside the note. Opening Source is navigation only. Changing a date or completing the task from a card is reflected in the other Operon surfaces that display it. Editing the embed's width, alignment, or visibility changes only its presentation.
 
 Removing the embed block removes the card from that note. It does not delete the source task.
 

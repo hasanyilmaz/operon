@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Time session history
@@ -16,6 +16,12 @@ Tracked time is only useful if it is accurate, and timers are easy to forget. Th
 ## Open the history
 
 Run **Open Time Session History panel** from the command palette. It lists your recent tracked sessions, grouped so you can see where your time went day by day. How far back it reaches is a setting, the history window, measured in days. A **Tracked time** filter in another view does not limit this panel; it keeps its own history window.
+
+## Open a task source
+
+**Task description click action**, under **Settings → Operon → Tasks → Tracker**, chooses whether a task description opens Task Editor or its source. The companion button offers the other action: **Open Source** when the description opens the editor, or **Open task editor** when the description opens the source.
+
+On desktop, both Source entry points open the [[DOCS-151 Lightbox|shared lightbox]] for the current task. Inline source navigation uses the current task line and places the caret after the description in the editable Markdown view, with no text selected. To continue in a tab, use the preview's **Open in new tab** control. Opening Source does not edit the recorded session; mobile navigation is unchanged.
 
 ## Edit a session
 
@@ -35,13 +41,15 @@ In the desktop-style [[DOCS-021 Task Editor|Task Editor]], open **Sessions** and
 
 The existing compact mobile editor keeps its own session presentation and pencil action. Choosing that phone layout does not change the stored sessions. Correcting a session updates the task's tracked time, regardless of which entry point opened it.
 
+Use the desktop-style Sessions header's **clock-plus** button to **Add session**. Its dialog includes the task title and Start/End controls, so you can confirm the task before adding the range. Edit session uses the same compact Start/End arrangement. These controls keep the existing validation and save path; they do not edit the task description.
+
 ## Log time you did not track
 
 Sometimes the work happened but the timer did not. You can record a planned block as tracked time after the fact with the **Log as tracked** action in a task's [[DOCS-042 Contextual menu actions|contextual menu]], so the history reflects what really happened even when you forgot to start a timer.
 
 ## Where sessions come from
 
-Every session in the history was recorded by a timer: a [[DOCS-035 FlowTime focus sessions|FlowTime]] focus session, a TrackTime stopwatch, or a block you logged as tracked. They live on the task itself as tracked time ranges, which is why the history is a view of your tasks, not a separate log. See [[DOCS-034 Time tracking|Time tracking]].
+Sessions can come from a [[DOCS-035 FlowTime focus sessions|FlowTime]] focus session, a TrackTime stopwatch, a block logged as tracked, or a range added through **Add session**. They live on the task itself as tracked time ranges, which is why the history is a view of your tasks, not a separate log. See [[DOCS-034 Time tracking|Time tracking]].
 
 ## FAQ
 

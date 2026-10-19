@@ -2,7 +2,7 @@
 Notes: How a custom key's type decides which picker you get to fill it
 Icon: sliders-horizontal
 Color: "#db2777"
-Updated: 2026-10-13T16:29:41+02:00
+Updated: 2026-10-19T13:38:56+02:00
 ---
 
 # Custom field pickers
@@ -29,7 +29,9 @@ Canonical fields may have dedicated controls, Custom Keys use their configured t
 
 ### Text
 
-A text field opens a box where you type the value, with **suggestions** drawn from values already used for that field on other tasks. So a custom `Client` key learns your client names as you go, and you reuse them with a keystroke instead of retyping. Best for short labels and free text.
+On supported task-chip and Table editing paths, a Text picker shows its **current value above an empty search field**, with **suggestions** drawn from values already used for that field on other tasks. You can search all suggestions immediately without clearing the old value. Click the current-value control to load it into the input with the text selected for editing. So a custom `Client` key learns your client names as you go, and you reuse them with a keystroke instead of retyping. Best for short labels and free text.
+
+A supported multiline current value opens the [[DOCS-113 Text field editor popover|shared text editor]] instead of flattening it into one input line. The same current-value pattern is used for Task Type and supported Vault Property Text editing. Long and multiline values use the existing source-save and conflict checks.
 
 ### Number
 
@@ -47,9 +49,15 @@ A list field opens a **list picker** you add several values to, building a list 
 
 With no search text, custom **Text** and **List** pickers use the same [[DOCS-062 Field pickers overview|task-based suggestion order]] as the supported built-in fields: a value from the latest eligible created task, a different value from the latest eligible modified task, then values used by the most tasks. A List field contributes at most one value to each leading suggestion.
 
-Each custom field is counted independently. Values used for `Client` do not influence suggestions for a different custom field. Typing keeps the normal search behavior, and clearing the search restores the suggestions. A Text picker that opens with its current value already filled continues searching that value until you clear or change it.
+Each custom field is counted independently. Values used for `Client` do not influence suggestions for a different custom field. Typing keeps the normal search behavior, and clearing the search restores the suggestions. The separate current-value control does not prefilter the search; the empty-search suggestions are available as soon as the picker opens.
 
 Number, Date, and Date & time controls are unchanged.
+
+## Existing wikilinks on chips and Tables
+
+On interactive desktop task chips and Tables, a Text value that is a **complete, existing wikilink** opens the [[DOCS-151 Lightbox|lightbox]] instead of the picker. List items are tested separately. Plain text, mixed text, raw HTTP Text values, and missing targets keep their picker; previewing does not create the missing note.
+
+Use Task Editor to change an existing linked value, or click the editable Table cell area outside its link. Creator and Task Editor field controls remain editors; Task Finder chips remain passive. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-112 Table cells display and behavior|Table cells]] for the surface rules.
 
 ## Choosing a type with the picker in mind
 

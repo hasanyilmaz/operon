@@ -2,7 +2,7 @@
 Notes: The dialog for editing every task field
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-14T19:36:58+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Task Editor
@@ -44,11 +44,15 @@ The Task Editor exposes the canonical fields as proper controls:
 
 On desktop and tablet, the editor can show a File Task’s Markdown body or an Inline Task’s source note. With enough room the body can sit beside the fields; a narrow layout uses a panel. On phones, the body button and embedded body panel are unavailable in both editor layouts; task properties remain editable. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
 
+When **File Body** opens for an Inline task, its initial caret is immediately after the description's last character, before trailing metadata, with no text selected. The position follows the task in the current body draft, including after lines have been added or removed. File tasks keep their normal body position. This does not change the file-path header's existing opening behavior. The same Inline position is used by [[DOCS-151 Lightbox|Source previews and Cmd/Ctrl source opening]].
+
 The editor's Date and Date & time controls follow **Settings → Operon → Core → General → Language & Formats → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
 
 > **MEDIA-DOCS-021-3:** The Task Editor on a file task, the fields beside the Markdown body.
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
+
+On desktop, the modal uses the shared [[DOCS-098 Workspace Tweaks|Background dimming]] preference. An Operon chip in **File Body** can open a [[DOCS-151 Lightbox|lightbox]] above the Editor; closing that preview returns to the Editor without dismissing its draft. The Editor's own property and Description/Note controls keep their editing behavior. This does not add Lightbox side controls to the Editor or change non-modal Editor uses.
 
 ## Sections and property rows
 
@@ -73,6 +77,8 @@ This uses the normal completion rules, including applicable workflow and recurre
 ## Sessions in the editor
 
 The **Sessions** section shows recorded time ranges. In the desktop-style layout, click or tap either a session's duration or its pencil to open the same **Edit session** window. With a mouse, the duration has an underline on hover; touch does not require that hover first. See [[DOCS-053 Time session history|Time session history]] for corrections and other entry points.
+
+The desktop-style Sessions header uses a **clock-plus** button for **Add session**, with a tooltip and accessible label. It opens the existing time-range dialog with the task title for context; Start and End controls edit the same saved time range. The compact mobile layout keeps its own labeled action.
 
 ## Phone and tablet layouts
 

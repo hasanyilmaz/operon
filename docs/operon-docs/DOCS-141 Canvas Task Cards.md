@@ -2,7 +2,7 @@
 Notes: Plan projects on Canvas with connected task cards, a searchable Task Pool, and editable relationships
 Icon: workflow
 Color: "#0284c7"
-Updated: 2026-10-06T10:40:55+02:00
+Updated: 2026-10-19T22:28:59+02:00
 ---
 
 # Canvas Task Cards
@@ -41,7 +41,7 @@ This is useful for breaking a project down as you think: start from the project 
 
 ## Work with a task card
 
-Select a card to reveal its task controls. **Open editor** opens the full [[DOCS-021 Task Editor|Task Editor]], and **Jump to source** takes you to the task's Markdown. Clicking the task description on the Canvas opens its compact text editor; dragging the card moves it without editing its title.
+Select a card to reveal its task controls. **Open editor** opens the full [[DOCS-021 Task Editor|Task Editor]], and **Open Source** opens the task's current Markdown in the [[DOCS-151 Lightbox|lightbox]] on desktop. Cmd-click on macOS or Ctrl-click on Windows/Linux opens it in a focused Obsidian tab instead. Clicking the task description outside a supported link opens its compact text editor; dragging the card moves it without editing its title. On desktop, a supported HTTP/HTTPS or existing local link **inside** the description opens the [[DOCS-151 Lightbox|lightbox]] instead, without also editing the title, selecting a new action, or starting a drag. Shared modifier and middle-click rules apply to those links.
 
 Cards can show:
 
@@ -49,13 +49,15 @@ Cards can show:
 - Configured field chips, such as status, priority, dates, and dependencies.
 - Task progress and descendant counts, with access to the task's [[DOCS-059 Dynamic Subtasks Filter|subtree]].
 - Progress for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
-- Action controls for time tracking, pinning, Notes, creating subtasks, and opening checkboxes.
+- Action controls for time tracking, pinning, Source, Notes, creating subtasks, and opening checkboxes.
 
 Only enabled controls that apply to the task appear. Field chips use their normal editing or navigation behavior. Hover over the task icon to use its contextual menu; available actions follow the **Task Cards** surface in the Contextual Menu Matrix. See [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
+The **Source action** inside the card's chip row is separate from the selected-card shortcut. Its visibility comes from **Task Card Actions**; it follows the shared hover/focus rules in [[DOCS-041 Task chips display and behavior|Task chips and actions]].
+
 Use [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]] to apply reusable values to existing cards. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]] for property-based group rules.
 
-Changes made through these controls update the source task. Moving a card around the Canvas changes its position, not its Scheduled or Due date.
+Edits made through these controls update the source task; opening Source is navigation only. Moving a card around the Canvas changes its position, not its Scheduled or Due date.
 
 ## Connect tasks and set relationships
 

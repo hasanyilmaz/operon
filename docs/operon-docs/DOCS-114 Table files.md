@@ -2,7 +2,7 @@
 Notes: How a saved table lives as its own portable .table file in your vault
 Icon: file-cog
 Color: "#0284c7"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Table files
@@ -37,6 +37,12 @@ A few things follow from that:
 - **It restores with your workspace.** If a Table file was open in a tab when you closed Obsidian, it reopens there next time, the same as any other file-backed leaf.
 - **It participates in wikilinks.** A link like `[[Overdue Work]]` to a Table file resolves and creates the link the same as a link to any note. See "Wikilinks and Page Preview" below.
 - **It is not the same thing as an embed.** Opening the file itself gives you the full Table view in its own tab or leaf. Embedding a table inside a note with an `operon-table` code block is a separate feature that references a preset by its id, not by opening the file directly. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
+
+## Preview a Table file
+
+A supported desktop Operon link to an existing `.table` file can open the same editable view in the [[DOCS-151 Lightbox|shared lightbox]]. Its presets, filters, cells, and **Gantt View** toggle remain available; this is not a read-only rendering or a second copy of the preset. Pending Table saves are handled before the preview closes or transfers to a tab or split. A failed save keeps the view open.
+
+This adds a preview route on supported Operon surfaces, not a global replacement for file-explorer or ordinary Obsidian wikilink opening. The lightbox does not add a visible background tab or rearrange the tabs already in your workspace.
 
 ## The file and the preset are the same thing
 

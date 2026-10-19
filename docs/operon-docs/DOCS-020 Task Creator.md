@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-19T13:38:56+02:00
 ---
 
 # Task Creator
@@ -90,6 +90,12 @@ When you save, an inline task follows your [[DOCS-136 Task Router|Task Router]] 
 > **MEDIA-DOCS-020-2:** The Task Creator in inline-task mode (with Parent task selection), showing where the new note will be created.
 
 ![MEDIA-DOCS-020-2 - Task Creator inline task mode](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-020-2.png)
+
+## Mobile controls and desktop focus
+
+On mobile, property icons wrap onto additional rows instead of requiring horizontal scrolling. Their sizes and existing Inline/File template previews stay the same; controls and pickers remain within the available keyboard viewport. The bottom template selector keeps its normal behavior in both modes.
+
+On desktop, Creator uses the shared [[DOCS-098 Workspace Tweaks|Background dimming]] preference while preserving its size, scrolling, pickers, and discard confirmation. It does not gain Lightbox side controls, and its own editing fields do not become preview links.
 
 ## After creating
 

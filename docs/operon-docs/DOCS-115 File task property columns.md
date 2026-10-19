@@ -2,7 +2,7 @@
 Notes: Manage additional File and Inline Task properties, their declared types, supported surfaces, and safe editing
 Icon: scan-search
 Color: "#ca8a04"
-Updated: 2026-10-14T19:36:58+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Vault Properties
@@ -56,6 +56,10 @@ The desktop Task Editor layout also runs on phones when selected. The separate e
 ## Editing and removing values
 
 Open a supported property control to change its value. Its type determines whether you get text, numeric, date, datetime, list, or Checkbox editing. A Table cell's **Remove property** action deletes the property from that task's source; clearing an editable value and removing the property are different operations.
+
+On desktop Tables, a complete, existing wikilink in a **Text** value or individual text **List** item opens the [[DOCS-151 Lightbox|lightbox]]. Plain text, mixed text, HTTP Text values, and missing targets retain the normal editor or picker. List members are evaluated separately; other native member types are not converted to links. The cell area outside the link remains the editing entry point. This changes navigation, not the property's source name, type, or save path.
+
+Text pickers show the current value above an empty search field. Click the current value to edit it; supported multiline values use the shared text editor and retain their content. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-112 Table cells display and behavior|Table cells]]. Task Editor and Creator keep their own property-editing controls.
 
 These distinctions matter:
 

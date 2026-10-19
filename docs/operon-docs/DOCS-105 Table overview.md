@@ -2,7 +2,7 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Table overview
@@ -52,13 +52,13 @@ The Table is not a read-only report. Editing a cell is a real change, written ba
 
 - **Click a cell** in an editable column to change that field on the spot. The matching picker opens: the date picker for a date column, the status or priority picker, the estimate picker, and so on. From the keyboard, most picker cells open with **Enter** or **Space**; text-edit cells can also use **F2**. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 - **Double-click a row** to open the full [[DOCS-021 Task Editor|Task Editor]] for that task.
-- The **Source column** opens the task's source in a new Obsidian tab: the note for a file task, or the exact line for an inline task.
+- The **Source column** opens the current source in the desktop [[DOCS-151 Lightbox|lightbox]]: the note for a File Task, or the current line for an Inline Task. Cmd/Ctrl-click opens it in a new Obsidian tab.
 
 Read-only columns, such as the source and file columns, display their value without opening a picker. Which fields are editable and how each column behaves is covered in [[DOCS-106 Table columns|Table columns]], and exactly what each cell shows and does on click and hover is in [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 The read-only **Task Tree** column is a structural control rather than a task field. Expand a task there to reveal its descendants in context while keeping the original filtered rows, counts, summaries, and export result unchanged.
 
-In the **detailed Links column** on desktop, clicking an existing link chip opens a lightbox; **Cmd/Ctrl-click** opens a Web Viewer tab. Click the cell's empty space to open the picker when editing is allowed. Compact cells keep their usual behavior. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]] for link and assignee image details.
+On desktop, supported link targets inside cells use the shared lightbox; **Cmd/Ctrl-click** opens an Obsidian tab and **middle-click** opens HTTP/HTTPS links in the system browser. The editable cell area outside links still opens its picker. Eligible single-target compact icons navigate, while multi-value summary icons keep the picker. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]] for link and assignee image details.
 
 ## Searching the table
 

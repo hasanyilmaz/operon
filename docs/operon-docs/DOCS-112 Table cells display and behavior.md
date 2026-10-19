@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-19T13:37:14+02:00
 ---
 
 # Table cells: display and behavior
@@ -22,7 +22,7 @@ Icon-bearing task-field columns can use one of two display modes, set from the h
 - **Detailed cell**: the cell shows the full value, as text, a chip, a colored date, or a small control.
 - **Compact cell**: most supported fields show a single icon. Countdown and the duration, estimate, and Trackers columns show one abbreviated time unit instead. Hover a populated control for its **tooltip**; the time-column details are below.
 
-So compact cell mode is how you keep a status, priority, or type column narrow while still reading it on hover. Picker fields keep their normal editor in compact mode. Duration and Trackers have the session actions described below.
+So compact cell mode is how you keep a status, priority, or type column narrow while still reading it on hover. Most picker fields keep their editor in compact mode. Supported single-target navigation icons open that target directly; a multi-value summary icon keeps its picker. Duration and Trackers have the session actions described below.
 
 Do not confuse this with **display density** (compact or comfortable), a preset setting that only changes row height. Density is purely visual; detailed and compact cell modes change what a cell shows.
 
@@ -52,14 +52,16 @@ In detailed cell mode, each field type renders its own way:
 | Trackers | One readable duration chip per saved session; hover shows its start and end |
 | Estimate, Total estimate, Total duration | A duration value such as `2h 15m 0s` |
 | Parent task progress | A progress indicator over the task's subtasks or checkboxes |
-| Description | The task's formatted text, with any wikilinks live |
+| Description, Note | Formatted text with supported HTTP/HTTPS and existing local links |
+| Recurrence | A bordered repeat icon with a readable rule description in detailed mode |
+| Repeat reference date | The saved reference date in your Date format, or an empty cell when none is saved |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
 | Countdown | A bordered, read-only remaining-time value with an hourglass icon; details below |
 | Task Tree | A hierarchy control and, in detailed mode, the occurrence number |
 | Line number, task icon helper, Task Data Type helper | The row number, a status icon, or an inline-or-file icon |
 
-In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
+In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists; Repeat reference date is empty when no date is saved. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
 Built-in and custom task fields typed as **Date** follow **Settings → Operon → Core → General → Language & Formats → Date format**. **Date Time Start**, **Date Time End**, and custom task fields typed as **Date & time** combine that date choice with the existing 12- or 24-hour **Time format**, while keeping the cell's existing time precision. In compact cell mode, a date-and-time cell still shows only the time (`14:30`); its tooltip and accessible label carry the complete formatted date and time. These presentation choices do not change the canonical value used by the picker, sorting, grouping, or export. Supported [[DOCS-115 File task property columns|Vault Properties]] typed as Date or Date & time also use the configured date/time presentation; their stored values remain unchanged.
 
@@ -69,11 +71,32 @@ Built-in and custom task fields typed as **Date** follow **Settings → Operon �
 
 **The Links column turns web links into readable chips.** In detailed cell mode, each entry has a Links icon. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`), and a bare URL shows a tidied address. Long labels end with an ellipsis; hover the chip to see the full URL.
 
-On desktop, click a link chip to open its page in an Operon lightbox. Hold **Cmd** on macOS or **Ctrl** on Windows/Linux to open a new **Obsidian Web Viewer** tab instead. **Enter** or **Space** on a focused chip opens the lightbox. Both paths need Obsidian's core Web Viewer plugin enabled; if it is unavailable, Operon shows a short notice. Close the lightbox with **×**; see [[DOCS-041 Task chips display and behavior|Task chips]] for the viewer's behavior.
+On desktop, a link uses the [[DOCS-151 Lightbox|shared opening rules]]: click for a lightbox, Cmd/Ctrl-click for an Obsidian tab, and middle-click an HTTP/HTTPS link for the system browser. Web previews and web tabs require Web Viewer; middle-click does not. Enter/Space applies when the link itself is focused.
 
-Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. Compact cells keep their existing editing behavior, and mobile behavior is unchanged. These rules also apply to embedded Tables.
+Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. A compact single-target icon uses the same navigation when eligible. A single summary icon for several values keeps the picker; Gallery keeps its first-item target. Description/Note summary icons keep the text editor. Mobile behavior is unchanged. These rules also apply to embedded Tables.
 
 Rendered descriptions support default and six-color highlights, with the leading color marker hidden in the display while the source text stays intact. The compact text editor retains the editing controls supported by Obsidian. See [[DOCS-113 Text field editor popover|Text field editor popover]] for syntax and editing behavior.
+
+## Links and cell editing
+
+The following desktop rules apply in standalone and embedded Tables. A navigation click does not also open the cell editor or Task Editor.
+
+| Field | Link action |
+|---|---|
+| Links | Open the HTTP/HTTPS target, preserving a named link's label |
+| Task Image / Task Gallery | Open the selected media; Gallery keeps separate ordered items |
+| Assignees / Contexts | An item that is a complete, existing wikilink opens its target; other items keep the picker |
+| Task Type / Custom Text / Vault Property Text | A complete, existing wikilink opens its target; plain text, raw HTTP text, mixed text, or a missing target keeps the Text/Type picker |
+| Custom List / Vault Property List | Apply the wikilink test to each text item separately; other items keep their normal list control |
+| Parent | Open the current parent's source, including the current Inline line; an empty or unresolved parent opens its picker |
+| Source | Open the task's current source and Inline line; a missing source gives a short notice |
+| Description / Note | Open the supported HTTP/HTTPS or existing local link itself; the surrounding text opens the editor |
+
+The editable area **outside the link** still opens the cell's normal picker or editor, including Parent's relationship picker. A missing Description/Note wikilink returns to editing without creating a file. Source has no editing area. Blocking, Blocked by, Project Serial, source-path/file columns, and other dedicated controls retain their own actions.
+
+Aliases, relative paths, headings, blocks, and supported PDF page targets are retained. The current task, source, parent, and selected value are checked when activated, so a shortened label or stale list item is not used as a new destination. Supported Markdown, Base, Table, and media targets use the shared viewer; other existing native file types can use the native-opening fallback.
+
+Local modifier-hover follows Page Preview preferences; HTTP links retain their URL tooltip. See [[DOCS-151 Lightbox|Lightbox]] for controls, hover behavior, nested previews, and save protection. Navigation does not write a task field or remove the cell's editing and read-only protections.
 
 ## Vault Property cells
 
@@ -134,16 +157,16 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 
 | Role | Where | Clicking it |
 |---|---|---|
-| Edit in place | status, priority, dates, estimate, recurrence, list, tags, parent/dependency links, and other editable picker fields | Opens that field's picker |
+| Edit in place | The non-link area of editable status, priority, date, estimate, repeat, list, tag, parent/dependency, and other picker cells | Opens that field's picker; Repeat reference date also uses the Repeat picker |
 | Edit a session | individual chips in detailed Duration or Trackers, when editable | Opens that session's time editor |
 | Add time | empty space in an editable Duration or Trackers cell | Opens the add-time window |
-| Edit text | description and note cells | Opens the text editor path; wikilinks inside a description remain live |
-| Navigate from text | wikilinks inside description text | Opens the linked note, creating it if it does not exist yet |
-| Open a web link | a chip in the detailed Links column on desktop | Click opens a lightbox; Cmd/Ctrl-click opens a new Web Viewer tab |
+| Edit text | Non-link text or a summary icon in Description/Note | Opens the existing text editor |
+| Navigate from text | Supported HTTP/HTTPS or existing local links inside Description/Note | Opens the shared lightbox; missing local links return to editing without creating a file |
+| Open a web link | An eligible Links chip or single-target icon on desktop | Click opens the lightbox; Cmd/Ctrl opens an Obsidian tab; middle-click opens the system browser |
 | Open a place | location cell or chip | Opens the map popover, which pins open when you drag it. See [[DOCS-068 Location picker\|Location picker]] |
 | Act on structure | parent task progress | Opens the task's subtasks or checkboxes |
 | Expand hierarchy context | Task Tree column | Expands or collapses the selected visible occurrence without changing the task or base Table result |
-| Go to source | source column | Opens the task's source in a new Obsidian tab: the note for a file task, the exact line for an inline task |
+| Go to source | Source column | Opens the current file or Inline line in the lightbox; Cmd/Ctrl-click opens a new Obsidian tab |
 | Cycle and menu | task icon column | Follows the global task icon click preference; its hover menu is the [[DOCS-042 Contextual menu actions\|contextual menu]] |
 | Open the editor | Task Data Type helper | Opens the [[DOCS-021 Task Editor\|Task Editor]]; Cmd/Ctrl-click opens the source instead |
 
@@ -152,7 +175,7 @@ General row and cell behavior:
 - **Double-click a row** to open the full [[DOCS-021 Task Editor|Task Editor]], except controls that handle the gesture themselves, including read-only Countdown cells.
 - **Read-only cells**, such as the source and file columns and automatic fields like operonId, display their value and do not open a picker. The source cell is the exception: it is read-only as a value but still opens the source.
 
-From the keyboard, focus an editable picker cell and press **Enter** or **Space** to start editing, the same as clicking it. Description and note text cells also support **F2** for their text-editing path.
+From the keyboard, focus an editable picker cell and press **Enter** or **Space** to start editing. When a link inside the cell has focus instead, its activation opens the preview without also editing the cell. Description and note text cells also support **F2** for their text-editing path.
 
 > **MEDIA-DOCS-112-3:** An editable date cell clicked open, showing the date picker anchored to the cell.
 
@@ -168,6 +191,12 @@ The two text fields have deliberately different policies. A **description** is t
 
 ![MEDIA-DOCS-112-4 - The text editor popover on a compact cell](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-112-4.png)
 
+## Text property editing
+
+Task Type, Custom Text, and Vault Property Text use a picker with the **current value above an empty search field**. Suggestions are available immediately; click the current value to edit it. A supported multiline current value opens the shared text editor rather than being forced into one input line.
+
+Long and multiline Text values retain their content through the existing File/Inline save paths in both Table surfaces. Source, mapping, stale-value, cancellation, and conflict checks still apply; changing how the value is displayed does not authorize overwriting a newer source. See [[DOCS-070 Custom field pickers|Custom field pickers]].
+
 ## Hover: tooltips and previews
 
 Hovering a cell can reveal more without a click:
@@ -175,7 +204,7 @@ Hovering a cell can reveal more without a click:
 - **Compact cells** show a tooltip with the field’s details, so a collapsed column stays readable. Countdown uses its date source as the heading and adds live seconds for a timed target.
 - **Wikilinks** inside text cells and wikilink-style task link chips support **Page Preview**: hold **Cmd** or **Ctrl** and hover to get Obsidian's hover preview of the linked note. This needs Obsidian's core **Page Preview** plugin enabled, and the modifier key; a plain hover does not trigger it.
 - **Web link chips** in the Links column show their **full URL** on hover, with a hint for opening the lightbox or a new Web Viewer tab.
-- **Task Image and Task Gallery chips** share the same compact preview for supported local or web images, videos, PDFs, and YouTube links. Named Markdown links show their assigned label. Click the full-width preview header to open the media lightbox; images also keep double-click opening and zoom and pan controls. See [[DOCS-138 Task images and galleries|Task images and galleries]].
+- **Task Image and Task Gallery chips** share the same compact preview for supported local or web images, videos, PDFs, and YouTube links. Named Markdown links show their assigned label. Click the full-width preview header or its image once to open the media lightbox; image zoom and pan remain available inside it. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
 ## How this guides configuration
 
@@ -183,7 +212,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 - Collapse **status**, **priority**, and **type** to compact cell mode. They read at a glance, and the hover tooltip and click behavior stay intact.
 - Keep **description**, **dates**, and any **link or list** fields in detailed cell mode, where the full text and chips are worth the width.
-- Picker fields keep their editing action in compact mode. A compact date also keeps its overdue or due-today color on the icon when it has a value.
+- Most picker fields keep their editing action in compact mode; eligible single-target icons navigate, while multi-value summary icons keep the picker. A compact date keeps its overdue or due-today color when it has a value.
 
 ## Tips
 
@@ -192,7 +221,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 ## FAQ
 
-**Does a compact cell lose information?** No, when the field has a value. Hover it for the full details. Picker fields keep their editor in compact mode; Duration and Trackers use the session actions above. Countdown remains read-only in both modes. If the value is empty, the compact cell can be blank.
+**Does a compact cell lose information?** No, when the field has a value. Hover it for the full details. Most picker fields keep their editor in compact mode; eligible navigation icons follow the rules above, and Duration/Trackers use their session actions. Countdown remains read-only in both modes. If the value is empty, the compact cell can be blank.
 
 **Why is a due date red or blue?** Red means overdue, blue means due today. A finished or cancelled task drops the color.
 
@@ -204,7 +233,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 **How do I get a hover preview of a linked task?** Hold Cmd or Ctrl and hover the wikilink chip, with Obsidian's core Page Preview plugin enabled.
 
-**Why won't a web link in my Links column open?** On desktop, enable Obsidian's core Web Viewer plugin. In a detailed cell, click the link chip for a lightbox or Cmd/Ctrl-click for a new tab. The cell's empty space opens the picker when editing is allowed; compact cells keep their normal editing behavior.
+**Why won't a web link in my Links column open?** On desktop, enable Obsidian's core Web Viewer plugin. Click an eligible link for a lightbox or Cmd/Ctrl-click for a new tab. Middle-click opens an HTTP/HTTPS link in the system browser even without Web Viewer. The editable space outside links still opens the picker; compact single-target and summary icons follow the rules above.
 
 ## Related
 
