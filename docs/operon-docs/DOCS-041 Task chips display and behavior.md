@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-20T14:52:04+02:00
 ---
 
 # Task chips: display and behavior
@@ -143,7 +143,7 @@ When **Add subtask** is enabled, a File task offers separate File and Inline sub
 
 ## Web links in a lightbox
 
-Interactive **Links** chips use the [[DOCS-151 Lightbox|shared desktop lightbox]]: click to preview, Cmd/Ctrl-click for an Obsidian tab, or middle-click an HTTP/HTTPS link for the system browser. Web previews require the core Web Viewer plugin; the middle-click browser shortcut does not. The Lightbox guide covers controls, nested previews, and save protection.
+Interactive **Links** chips use the [[DOCS-151 Lightbox|shared desktop lightbox]]: click to preview, Cmd/Ctrl-click for an Obsidian tab, or middle-click an HTTP/HTTPS link for the system browser. Supported YouTube video links open the embedded player without Web Viewer, preserving a supported start time. Other web-page previews and Obsidian web tabs require the core Web Viewer plugin; middle-click does not. Cmd/Ctrl and middle-click keep the original URL. The Lightbox guide covers size profiles, controls, nested previews, and save protection.
 
 This shared flow also serves the supported Description links and Description/Note popovers, not just the Links field. It does not enable links on passive Finder results, replace general Markdown navigation, or change mobile behavior. Table-specific editing is covered in [[DOCS-112 Table cells display and behavior|Table cells]].
 

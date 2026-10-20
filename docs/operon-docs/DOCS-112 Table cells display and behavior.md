@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-10-19T13:37:14+02:00
+Updated: 2026-10-20T14:52:04+02:00
 ---
 
 # Table cells: display and behavior
@@ -71,7 +71,7 @@ Built-in and custom task fields typed as **Date** follow **Settings â†’ Operon â
 
 **The Links column turns web links into readable chips.** In detailed cell mode, each entry has a Links icon. A named Markdown link, `[Design doc](https://example.com/design)`, shows its **label** (`Design doc`), and a bare URL shows a tidied address. Long labels end with an ellipsis; hover the chip to see the full URL.
 
-On desktop, a link uses the [[DOCS-151 Lightbox|shared opening rules]]: click for a lightbox, Cmd/Ctrl-click for an Obsidian tab, and middle-click an HTTP/HTTPS link for the system browser. Web previews and web tabs require Web Viewer; middle-click does not. Enter/Space applies when the link itself is focused.
+On desktop, a link uses the [[DOCS-151 Lightbox|shared opening rules]]: click for a lightbox, Cmd/Ctrl-click for an Obsidian tab, and middle-click an HTTP/HTTPS link for the system browser. Supported YouTube video links open the embedded player without Web Viewer, preserving a supported start time. Other web-page previews and Obsidian web tabs require Web Viewer; middle-click does not. Cmd/Ctrl and middle-click keep the original URL. Enter/Space applies when the link itself is focused.
 
 Click the cell's **empty space** to open its picker when the cell is editable. Opening a link chip does not also open the picker. A compact single-target icon uses the same navigation when eligible. A single summary icon for several values keeps the picker; Gallery keeps its first-item target. Description/Note summary icons keep the text editor. Mobile behavior is unchanged. These rules also apply to embedded Tables.
 
@@ -233,7 +233,7 @@ Because a cell both shows and acts, the display mode you pick per column has con
 
 **How do I get a hover preview of a linked task?** Hold Cmd or Ctrl and hover the wikilink chip, with Obsidian's core Page Preview plugin enabled.
 
-**Why won't a web link in my Links column open?** On desktop, enable Obsidian's core Web Viewer plugin. Click an eligible link for a lightbox or Cmd/Ctrl-click for a new tab. Middle-click opens an HTTP/HTTPS link in the system browser even without Web Viewer. The editable space outside links still opens the picker; compact single-target and summary icons follow the rules above.
+**Why won't a web link in my Links column open?** Ordinary web-page previews and Obsidian web tabs need the core Web Viewer plugin on desktop. A supported YouTube video link opens its embedded player without it; a YouTube page that is not a supported video uses the ordinary web route. Cmd/Ctrl-click opens the original URL in a new Obsidian tab, and middle-click opens it in the system browser even without Web Viewer. The editable space outside links still opens the picker; compact single-target and summary icons follow the rules above.
 
 ## Related
 

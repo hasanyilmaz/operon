@@ -2,7 +2,7 @@
 Notes: Background dimming and optional cosmetic helpers for scrollbars, side dock tabs, and Properties
 Icon: sliders-horizontal
 Color: "#ca8a04"
-Updated: 2026-10-19T13:36:12+02:00
+Updated: 2026-10-20T14:52:04+02:00
 ---
 
 # Workspace Tweaks
@@ -27,17 +27,19 @@ Slims the tab header strips in the left and right side docks down to a narrow ba
 
 This one applies on the desktop app. On mobile, where the side docks behave differently, it has no effect.
 
-### Background dimming
+### Lightbox background dimming
 
 Choose the starting darkness behind desktop Operon lightboxes and Task Creator, Task Finder, Task Editor, and the standalone Dynamic Subtasks Filter modal. The dropdown offers:
 
 **10% · 20% · 30% · 35% · 40% · 45% · 50% — Default · 55% · 60% · 65% · 70% · 80% · 90%**
 
-New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. Lightboxes also offer a lower **+ / number / −** group that steps through these same levels and saves the preference here; the number is the saved starting level, not the extra nesting amount.
+New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. The lightbox's lower-right **Moon/Sun** controls step through these same dimming levels and save the preference here: Moon darkens, Sun lightens. There is no numeric indicator beside the preview; this dropdown shows the saved starting level.
 
 Each additional included surface adds **5 percentage points**, capped at **90%**. Starting at 50%, three nested surfaces use 50%, 55%, then 60%. Starting at 80%, they use 80%, 85%, then 90%; further layers stay at 90%. Only the top included backdrop paints the calculated darkness, so overlapping backgrounds do not multiply it. Closing a layer restores the previous level, and each window keeps its own stack.
 
-This includes web, Markdown, Base, Table, and media lightboxes. It does not count mobile surfaces, small media hover previews, Page Preview, pickers, the Editor's Subtasks popover, embedded filters, or other native modals. Blur is not added. See [[DOCS-151 Lightbox|Lightbox]] for the preview controls and nested-view behavior.
+This includes web, Markdown, Base, Table, and media lightboxes. It does not count mobile surfaces, small media hover previews, Page Preview, pickers, the Editor's Subtasks popover, embedded filters, or other native modals. Blur is not added.
+
+Preview width and height are adjusted separately on the lightbox itself and remembered by content type; they do not add another Settings menu or change the dimming steps. See [[DOCS-151 Lightbox|Lightbox]] for size profiles, controls, pointer/keyboard visibility, and nested-view behavior.
 
 ## Properties Panel
 
@@ -86,7 +88,7 @@ Background dimming starts at **50%** for a new or missing preference. The other 
 
 ## Settings
 
-All of these live in **Settings → Operon → Interface → Workspace Tweaks**: Background dimming, Hide Scrollbars, Compact Sidebar Tab Icons, Collapse Properties by Default, the Properties collapse scope, and the Excluded folders list. You can find any of them quickly through [[DOCS-043 Settings search|Settings search]].
+All of these live in **Settings → Operon → Interface → Workspace Tweaks**: Lightbox background dimming, Hide Scrollbars, Compact Sidebar Tab Icons, Collapse Properties by Default, the Properties collapse scope, and the Excluded folders list. You can find any of them quickly through [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

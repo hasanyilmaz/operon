@@ -2,12 +2,16 @@
 Notes: Desktop previews, editable file views, navigation controls, and background dimming
 Icon: panels-top-left
 Color: "#0891b2"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-20T14:59:28+02:00
 ---
 
 # Lightbox
 
 A lightbox opens a link over the surface you are working in, so you can inspect a page, file, or image without rearranging your workspace tabs. On desktop, Operon shares this preview across supported task chips, Tables, task descriptions, and Description/Note popovers. Markdown notes, Bases, and Operon Tables use their normal editable views and save behavior inside the preview.
+
+> **MEDIA-DOCS-151-1:** An editable Markdown note in the narrower lightbox frame, with the preview controls visible.
+
+![MEDIA-DOCS-151-1 - Editable Markdown note in the lightbox](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-151-1.png)
 
 ## Where it works
 
@@ -34,6 +38,10 @@ Which chip or cell opens a preview is covered in [[DOCS-041 Task chips display a
 
 Middle-click is an external-browser shortcut for web links using this shared flow. It does not change local wikilinks, Source, Parent Task, or Task Image/Gallery media actions. It works even when Obsidian's Web Viewer is disabled.
 
+> **MEDIA-DOCS-151-2:** A website in the Web Viewer lightbox, showing its navigation toolbar and the preview controls.
+
+![MEDIA-DOCS-151-2 - Website in the lightbox](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-151-2.png)
+
 Inside a text editor, ordinary Enter and Space remain editing keys. The link shortcut does not replace typing or line-break behavior.
 
 Aliases change the visible label, not the destination. Relative paths are resolved from the source note; supported heading, block, PDF page, and Inline task line targets are retained. Missing local targets are not created by previewing them. Depending on the field, Operon returns to its picker or editor, or reports that the target could not be found.
@@ -58,17 +66,51 @@ These are specific navigation controls, not a change to every file link or task 
 
 | Content | Preview |
 |---|---|
-| HTTP/HTTPS page | Obsidian Web Viewer, with its navigation controls |
+| HTTP/HTTPS page, other than a supported YouTube video link | Obsidian Web Viewer, with its navigation controls |
+| Supported YouTube video link | The privacy-enhanced embedded player, including links from the Links field or task text |
 | Markdown note | The normal Obsidian Markdown view, including editing |
 | `.base` file | The native Bases view, including its supported edits |
 | `.table` file | Operon's editable Table, including presets and the Gantt toggle |
-| Supported image, video, PDF, or YouTube reference | The shared media viewer with the relevant viewing controls |
+| Supported image, video, or PDF reference | The shared media viewer with the relevant viewing controls |
 
-Web previews and web tabs require the **Web Viewer** core plugin. Bases require the **Bases** core plugin. If a required view is unavailable, Operon explains what is missing rather than enabling a plugin or silently opening another application.
+Ordinary web-page previews and web tabs require the **Web Viewer** core plugin. Supported YouTube video links instead open the embedded player without Web Viewer, retain a supported start time, and do not autoplay. Cmd/Ctrl-click, middle-click, and the player's tab or split controls keep the original URL: Obsidian web tabs and splits require Web Viewer, while the system-browser shortcut does not. YouTube pages that do not identify a supported video keep the ordinary web-page route.
 
-Existing files with no lightbox host, such as Canvas files, use the supported native file-opening fallback. Markdown and web previews use a narrower frame; Base and Table previews use a wider frame for their rows, columns, and controls. All remain within the available window.
+Bases require the **Bases** core plugin. If a required view is unavailable, Operon explains what is missing rather than enabling a plugin or silently opening another application.
+
+> **MEDIA-DOCS-151-3:** A Base file in the wider lightbox frame, with its native view controls and the preview controls visible.
+
+![MEDIA-DOCS-151-3 - Base file in the lightbox](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-151-3.png)
+
+Existing files with no lightbox host, such as Canvas files, use the supported native file-opening fallback.
 
 For media formats, image zoom and pan, playback, and gallery order, see [[DOCS-138 Task images and galleries|Task images and galleries]]. Opening a preview does not change a media field or reorder its gallery.
+
+## Size and remembered preferences
+
+Desktop previews choose their content profile before loading, so a Markdown note starts in its own frame rather than first appearing at Table width. These defaults apply until you change an axis for that profile:
+
+| Profile | Default width | Default height |
+|---|---|---|
+| Markdown | Up to 1050px or 90% of the window, whichever is smaller | 90% of the window |
+| Base | 90% of the window | 85% of the window |
+| Operon Table | 90% of the window | 85% of the window |
+| Video | The same wide frame as Base and Table | 85% of the window |
+| YouTube | The same wide frame as Video | 85% of the window |
+| Web | Up to 1200px or 90% of the window, whichever is smaller | 85% of the window |
+| PDF | Up to 1200px or 90% of the window, whichever is smaller | 85% of the window |
+| Image | Natural proportions within the window limits | Follows the image proportions and window limits |
+
+Window limits can reduce the actual size to leave room for the controls. The video or image itself keeps its proportions inside a resized frame.
+
+Use the **width controls at the bottom center** to narrow or widen the preview, and the **height controls at the right center** to shorten or lengthen it. Both axes use these percentages of the app window, not the underlying workspace pane:
+
+**40 · 45 · 50 · 55 · 60 · 65 · 70 · 75 · 80 · 85 · 90**
+
+Each button chooses the next smaller or larger step from the current size. For example, a width of 67% narrows to 65% or widens to 70%. A control becomes unavailable when there is no further usable step within the window limits. There is no numeric size indicator.
+
+Each changed axis is saved separately for **Markdown, Base, Table, Web, PDF, Image, Video, and YouTube**. The next preview of that type starts with its saved size, including a different file or URL of the same type. Base and Table remain independent preferences even though their defaults match; Video and YouTube are also independent. Unchanged profiles and axes retain their defaults. Opening a preview or resizing the app window does not save a new preference.
+
+These preferences belong to the vault's Operon settings; another vault has its own preferences unless you transfer a settings backup. Size controls live on the preview, with no additional Settings menu. [[DOCS-134 Backup and restore settings|Settings backups]] include the saved sizes, and **Reset Settings** clears those overrides. A failed preference save reports the problem and leaves the current preview available.
 
 ## Window controls
 
@@ -83,9 +125,13 @@ The upper control group sits beside the preview:
 
 The split controls use the tab from which the preview chain started, even if another tab later became active. If that tab is no longer available in the same window, the preview stays open with a short explanation. The content's supported view state and position carry over when it is opened in a tab or split.
 
-The separate lower group contains **+**, a numeric dimming indicator, and **−**. Plus and minus move to the next available setting and save directly to Workspace Tweaks. The number shows the saved starting level, not the additional dimming from nested layers. It is an indicator, not a reset button. Hover it for the dimming label; plus and minus do not add tooltips.
+The separate lower-right group contains **Moon** to darken the background and **Sun** to lighten it. Each moves to the next available dimming setting and saves directly to **Lightbox background dimming** in Workspace Tweaks. There is no numeric indicator beside the preview; the dropdown shows the saved starting level. Dimming and preview size use separate sets of steps.
 
 The full choice of levels, defaults, and nesting calculation is documented in [[DOCS-098 Workspace Tweaks|Workspace Tweaks]]. Task Creator, Finder, Editor, and the standalone Dynamic Subtasks Filter share that backdrop setting, but do not gain the lightbox's side controls.
+
+The controls use neutral, theme-based backgrounds and borders. With a pointer, they hide while you are over the content and appear when you move over the dimmed backdrop or a control's own area. A control reached with **Tab** stays visible with its focus ring, even over the content.
+
+Opening a preview does not automatically focus Close or another management button. Focus starts in the preview shell or its content; Inline Source opening retains the caret position described above. All available controls remain reachable by keyboard.
 
 ## Nested previews and returning
 

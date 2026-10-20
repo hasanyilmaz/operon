@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-10-20T14:52:04+02:00
 ---
 
 # Back up and restore settings
@@ -26,6 +26,8 @@ External Calendar sources and their URLs are included automatically. A private c
 The file contains portable Operon configuration. This includes general preferences, pipelines, priorities, user-facing key mapping overrides, custom keys, saved filters, Calendar and Kanban presets, applicable preset favorites, global Table and Gantt preferences, and External Calendar sources.
 
 Canvas pool preferences include panel width and visible rows, along with Property Value Pool shortcuts and favorites. Calendar presets retain their **Date range** choice of `Rolling days` or `Calendar week`.
+
+Saved [[DOCS-151 Lightbox|Lightbox]] width and height preferences are also portable settings, separately for Markdown, Base, Table, Web, PDF, Image, Video, and YouTube. They are percentages for content profiles, distinct from the device-local interface positions excluded below. Restoring those settings can transfer the saved sizes to another vault.
 
 Vault-specific paths and references can also appear in the backup. Operon does not assume that a folder, file, or other vault item from the source exists in the target. You review those references before restoring them.
 
@@ -64,6 +66,8 @@ If settings were committed but some Operon features could not refresh, the recov
 ## Reset Operon settings
 
 The **Reset Settings** section returns portable Operon settings to the current defaults. Operon shows a confirmation first. Confirming does not delete notes, tasks, or `.table` files, and it preserves the same target-owned state that restore excludes.
+
+Reset also clears saved Lightbox size overrides, so subsequent previews use their content type's original default dimensions. It does not turn a personal size choice into a new default.
 
 Reset does not provide session Undo. Download a backup first if you may want the current configuration again.
 

@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "37d9a627f8a7bba22b33c8646f7a1f9f78996c88bef13b254ab17c80c632aa4c",
-      "bytes": 22159
+      "sha256": "b61aba56e2482ec240191ad007537b9a05555badc2a45048d025dc9334fb972e",
+      "bytes": 22345
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -494,8 +494,8 @@
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
-      "sha256": "2dd4d60057ac30694db053e0894c2ce86cd07cbfb8115ac8c9c17ee470caa68f",
-      "bytes": 7091
+      "sha256": "191074069fdb8b5fe4c0ddcefafb8871d2b01446a01ffb51dc2f81213f995d40",
+      "bytes": 7361
     },
     {
       "path": "DOCS-099 State Icons.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "c68ca12cc2b24494b417e7b67ba4092dfc44c3eaa7b7ae73f98fc11e5cfa8f2a",
-      "bytes": 26049
+      "sha256": "8b3861168a32101693623b3cfc9cde469833f5ae9d64438a73dffd5d8e303cae",
+      "bytes": 26388
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -674,8 +674,8 @@
     },
     {
       "path": "DOCS-134 Backup and restore settings.md",
-      "sha256": "9bd1b13552c738e87f83c53ed749d5de32a898fec7e7ffea360ea89f48f8c004",
-      "bytes": 6341
+      "sha256": "6f1d5ab2f643a5c01b7d3636faeea565a52db401890bb048df0ef4d144d13450",
+      "bytes": 6880
     },
     {
       "path": "DOCS-135 Convert task to plain.md",
@@ -694,8 +694,8 @@
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
-      "sha256": "67417c00eefdf9e3170f9b35f0299d19122e96fc78bdd6d1aa4a789cb48af0b9",
-      "bytes": 11422
+      "sha256": "a70014f15ae722c4c1d07e77d56bca9cde25f6117d755bc2f0e906c1856c1bb6",
+      "bytes": 12122
     },
     {
       "path": "DOCS-139 Gantt view.md",
@@ -759,9 +759,9 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "bad5d63d200126cd998e043ebea45116992b29055a952fdacafa296da7c77b93",
-      "bytes": 9889
+      "sha256": "01f274f47072f06602db44907c8a9dbb2628b75fb422cf402a7bdc854ea220b3",
+      "bytes": 14166
     }
   ],
-  "generatedAt": "2026-10-19T20:35:25.068Z"
+  "generatedAt": "2026-10-20T14:46:12.368Z"
 }

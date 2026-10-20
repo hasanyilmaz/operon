@@ -2,7 +2,7 @@
 Notes: Add one media item or an ordered gallery to a task and preview it across Operon surfaces
 Icon: images
 Color: "#db2777"
-Updated: 2026-10-19T13:36:12+02:00
+Updated: 2026-10-20T14:52:04+02:00
 ---
 
 # Task images and galleries
@@ -103,7 +103,11 @@ Hovering a Task Image or Task Gallery chip in a supported task or Table surface 
 
 Every preview has the same full-width header. Its left-side open control and the rest of the header surface open the media in a centered, near-fullscreen lightbox; the media title stays centered. A named Markdown link shows its assigned label, while an unnamed reference shows its local label, file name, or web address. Moving the pointer from the chip into the preview keeps the preview available long enough to reach its controls.
 
-Click the preview image once to open the lightbox. Inside the image lightbox, trackpad pinch and **Cmd/Ctrl + wheel** zooming, double-click zoom toggling, and drag or scroll panning remain available. Videos open with their playback controls, PDFs in a large scrollable viewer, and YouTube in a privacy-enhanced 16:9 player. Close any lightbox with its **X**, **Escape**, or a click on the backdrop. Closing stops video playback and releases embedded PDF or YouTube content. Preview and lightbox actions never edit Task Image, reorder Task Gallery, or change the underlying file.
+Click the preview image once to open the lightbox. Inside the image lightbox, trackpad pinch and **Cmd/Ctrl + wheel** zooming, double-click zoom toggling, and drag or scroll panning remain available. Videos open with their playback controls, PDFs in a large scrollable viewer, and YouTube in a privacy-enhanced player. Close any lightbox with its **X**, **Escape**, or a click on the backdrop. Closing stops video playback and releases embedded PDF or YouTube content. Preview and lightbox actions never edit Task Image, reorder Task Gallery, or change the underlying file.
+
+On desktop, Video and YouTube start in the same wide frame as Base and Table. Image, PDF, Video, and YouTube sizes can each be adjusted and remembered independently using the width and height controls; the media keeps its proportions inside the frame. The small hover preview is unchanged. See [[DOCS-151 Lightbox|Lightbox]] for the initial profiles, size steps, and controls that appear over the backdrop or with keyboard focus.
+
+Supported YouTube video links in the Links field and other shared web-link surfaces also open the embedded player, without Web Viewer. Their Cmd/Ctrl and middle-click shortcuts keep the original URL. This does not add middle-click navigation to Task Image/Gallery actions.
 
 Local modifier-hover uses Page Preview when enabled and suppresses the small media preview while that preview is active. With Page Preview disabled, the small preview remains. Shared click/modifier rules, tab and split controls, nested previews, and dimming are in [[DOCS-151 Lightbox|Lightbox]]. The HTTP middle-click browser shortcut applies to web link surfaces, not Task Image/Gallery media actions.
 
