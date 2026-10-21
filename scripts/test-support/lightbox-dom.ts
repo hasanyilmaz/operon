@@ -12,6 +12,7 @@ export function lightboxFixture() {
   removeClass(name: string) { this.classes.delete(name); }
   toggleClass(name: string, yes: boolean) { if (yes) this.classes.add(name); else this.classes.delete(name); }
   closest() { return null; }
+  getClientRects() { return this.attrs.hidden === '' ? [] : [this.getBoundingClientRect()]; }
   getBoundingClientRect() { return {left:10,top:10,bottom:30,width:100,height:80}; }
   querySelectorAll(): Element[] { return this.children.flatMap(el => [el, ...el.querySelectorAll()]); }
   createSpan(options?: any) { return this.createEl('span',options); }

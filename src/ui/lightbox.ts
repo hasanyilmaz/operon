@@ -6,6 +6,7 @@ import { t } from '../core/i18n';
 import { getWindowApp } from '../core/obsidian-app';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { requestFloatingPanelCloseForRoot } from './field-pickers/common';
 
 export interface LightboxOptions {
 	title: string;
@@ -125,10 +126,12 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 		}
 		if (!result) { options.onDispose?.(); return () => true; }
 	}
-	const nativeOverlays = '.menu, .suggestion-container, .hover-popover, .modal-container';
-	const existingOverlays = new Set<Element>(options.nativeView ? Array.from(ownerDocument.querySelectorAll(nativeOverlays)) : []);
-	const hasNativeOverlay = (): boolean => !!options.nativeView && Array.from(ownerDocument.querySelectorAll(nativeOverlays))
-		.some(el => !existingOverlays.has(el) && el !== lightbox && !lightbox.contains(el));
+	const nativeOverlays = '.menu, .suggestion-container, .hover-popover, .modal-container, .cm-tooltip-autocomplete, .cm-search';
+ const isVisibleOverlay = (el: Element): boolean => el.getClientRects().length > 0
+  && getOwnerWindow(anchor).getComputedStyle(el).visibility !== 'hidden';
+	const existingOverlays = new Set<Element>(Array.from(ownerDocument.querySelectorAll(nativeOverlays)).filter(isVisibleOverlay));
+	const hasNativeOverlay = (): boolean => Array.from(ownerDocument.querySelectorAll(nativeOverlays))
+		.some(el => !existingOverlays.has(el) && el !== lightbox && isVisibleOverlay(el));
 	const lightbox = getOwnerBody(anchor).createDiv('operon-task-media-lightbox');
  const releaseBackdrop = registerDesktopBackdrop(lightbox);
 	if (options.className) lightbox.addClass(options.className);
@@ -193,8 +196,9 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
  bindOperonHoverTooltip(closeButton, {content: t('buttons', 'close'), taskColor: null});
  let disposePosition: (() => void) | null = null;
  let disposeControlHover: (() => void) | null = null;
- // A child preview must not inherit the underlying modal's Escape or Tab trap.
- const modalApp = modalOwner ? getWindowApp(getOwnerWindow(anchor)) : undefined;
+ // Own Escape before the native editor consumes it; keep child menus/pickers first.
+ // Child previews must also avoid the underlying modal's Escape or Tab trap.
+ const modalApp = getWindowApp(getOwnerWindow(anchor));
  const modalScope = modalApp?.keymap ? new Scope(modalApp.scope) : null;
  let modalScopeActive = false;
 
@@ -303,13 +307,24 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
    for (let current: LightboxRecord | undefined = record; current; current = current.parent) if (!await current.close()) break;
   })();
  };
-	const closeOnKeydown = (event: KeyboardEvent): void => {
-		if (activeLightboxes.get(ownerDocument) === close && event.key === 'Escape' && !event.isComposing && Reflect.get(event, 'keyCode') !== 229 && !event.defaultPrevented && !hasNativeOverlay()) {
-			event.preventDefault();
-			event.stopPropagation();
-			void close();
-		}
-	};
+ const handleEscape = (event: KeyboardEvent): boolean => {
+  if (activeLightboxes.get(ownerDocument) !== close || event.isComposing
+   || Reflect.get(event, 'keyCode') === 229 || event.defaultPrevented || hasNativeOverlay()) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation?.();
+  if (!requestFloatingPanelCloseForRoot(lightbox, 'escape', true)) void close();
+  return true;
+ };
+ const closeOnKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Escape') handleEscape(event);
+ };
+ modalScope?.register(null, 'Escape', event => {
+  // Compact editors already route Escape intents after their own editing interactions.
+  const target = asHTMLElement(event.target, lightbox);
+  if (target?.closest('.operon-compact-markdown-editor, .operon-compact-markdown-editor-fallback')) return true;
+  return !handleEscape(event);
+ });
  const focusShell = (): void => {
   (Platform.isDesktopApp ? lightbox : closeButton).focus({ preventScroll: true });
  };

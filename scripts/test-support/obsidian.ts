@@ -21,8 +21,11 @@ export const editorInfoField = StateField.define<{ file: { path: string } | null
 export type KeymapEventHandler = (...args: any[]) => any;
 
 export class Scope {
+ readonly handlers: Array<{ key: string; callback: (event: KeyboardEvent) => boolean | void }> = [];
 	constructor(_parent?: Scope) {}
-	register(): void {}
+	register(_modifiers?: unknown, key = '', callback: (event: KeyboardEvent) => boolean | void = () => {}) {
+  const handler = {key, callback}; this.handlers.push(handler); return handler;
+ }
 	unregister(): void {}
 }
 

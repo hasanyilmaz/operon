@@ -258,3 +258,71 @@ test('mobile installs no control-hover listeners and retains the existing openin
   assert.equal(f.doc.activeElement,root.children[1]);close();
  }finally{Platform.isDesktopApp=previous;}
 });
+
+function scopedFixture() {
+ const f = fixture();
+ const scopes: Array<{ handlers: Array<{ key: string; callback: (event: KeyboardEvent) => boolean | void }> }> = [];
+ f.doc.defaultView.app = { scope: {}, keymap: {
+  pushScope(scope: (typeof scopes)[number]) { scopes.push(scope); },
+  popScope(scope: (typeof scopes)[number]) { scopes.splice(scopes.indexOf(scope), 1); },
+ } };
+ const escape = (overrides: Record<string, unknown> = {}) => {
+  const event = {key: 'Escape', defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() {}, ...overrides};
+  return scopes.at(-1)?.handlers.find(handler => handler.key === 'Escape')?.callback(event as KeyboardEvent);
+ };
+ return {...f, scopes, escape};
+}
+
+test('source-only native Escape has an owned keymap route before editor consumption', () => {
+ const f = scopedFixture(); let disposed = 0;
+ openLightbox(f.anchor, {title: 'Source', nativeView: true, onDispose: () => disposed++, render: () => null});
+ assert.equal(f.scopes.length, 1);
+ assert.equal(f.escape(), false);
+ assert.equal(disposed, 1);
+ assert.equal(f.scopes.length, 0);
+ assert.equal(f.listeners.get('keydown')!.size, 0);
+});
+
+test('owned Escape closes only the top native/media layer', () => {
+ const previous = Platform.isDesktopApp; Platform.isDesktopApp = true;
+ const f = scopedFixture(); let parent!: HTMLElement; const disposed: string[] = [];
+ try {
+  const closeParent = openLightbox(f.anchor, {title: 'Parent', nativeView: true, render: el => {parent = el; return null;}, onDispose: () => disposed.push('parent')});
+  openLightbox(parent, {title: 'Image', render: () => null, onDispose: () => disposed.push('child')});
+  assert.equal(f.scopes.length, 2);
+  f.escape(); assert.deepEqual(disposed, ['child']); assert.equal(f.scopes.length, 1);
+  assert.equal(parent.inert, false);
+  closeParent(); assert.equal(f.scopes.length, 0);
+ } finally {Platform.isDesktopApp = previous;}
+});
+
+test('owned Escape retains IME and visible child overlays; hidden overlays do not block', () => {
+ const f = scopedFixture(); const overlays: Element[] = []; f.doc.querySelectorAll = () => overlays;
+ const close = openLightbox(f.anchor, {title: 'Source', nativeView: true, render: () => null});
+ assert.equal(f.escape({isComposing: true}), true);
+ assert.equal(f.escape({keyCode: 229}), true);
+ assert.equal(f.escape({defaultPrevented: true}), true);
+ const menu = f.doc.body.createDiv(); overlays.push(menu);
+ assert.equal(f.escape(), true); assert.equal(f.scopes.length, 1);
+ menu.setAttribute('hidden', '');
+ assert.equal(f.escape(), false); assert.equal(f.scopes.length, 0); close();
+});
+
+test('owned Escape uses one pending save and retains the surface after rejection', async () => {
+ const f = scopedFixture(); let resolve!: (value: boolean) => void; let saves = 0; let disposed = 0;
+ const close = openLightbox(f.anchor, {title: 'Source', nativeView: true, beforeClose: () => {saves++; return new Promise<boolean>(done => {resolve = done;});}, render: () => null, onDispose: () => disposed++});
+ f.escape(); f.escape(); assert.equal(saves, 1); assert.equal(disposed, 0);
+ resolve(false); await new Promise<void>(done => setTimeout(done, 0));
+ assert.equal(disposed, 0); assert.equal(f.scopes.length, 1);
+ f.escape(); assert.equal(saves, 2); resolve(true); await close();
+ assert.equal(disposed, 1); assert.equal(f.scopes.length, 0);
+});
+
+test('media Escape leaves visible menus first, including a previously hidden menu node', () => {
+ const f = scopedFixture(); const menu = f.doc.body.createDiv(); menu.setAttribute('hidden', '');
+ f.doc.querySelectorAll = () => [menu];
+ const close = openLightbox(f.anchor, {title: 'Image', render: () => null});
+ menu.removeAttribute('hidden');
+ assert.equal(f.escape(), true); assert.equal(f.scopes.length, 1);
+ menu.setAttribute('hidden', ''); assert.equal(f.escape(), false); assert.equal(f.scopes.length, 0); close();
+});

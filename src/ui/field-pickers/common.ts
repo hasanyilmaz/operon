@@ -836,13 +836,15 @@ export function closeFloatingPanelsForRoot(root: ParentNode): boolean {
 	return closed;
 }
 
-export function requestFloatingPanelCloseForRoot(root: ParentNode, reason: FloatingPanelCloseReason): boolean {
+export function requestFloatingPanelCloseForRoot(root: ParentNode, reason: FloatingPanelCloseReason, topmostOnly = false): boolean {
 	const rootNode = root as Node;
 	let handled = false;
-	for (const record of Array.from(activeFloatingPanels)) {
+ const records = Array.from(activeFloatingPanels);
+	for (const record of topmostOnly ? records.reverse() : records) {
 		if (floatingPanelBelongsToRoot(rootNode, record)) {
 			handled = true;
 			record.requestClose(reason);
+   if (topmostOnly) break;
 		} else if (hasDisconnectedAnchor(record)) {
 			record.close();
 		}

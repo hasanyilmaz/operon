@@ -59,7 +59,12 @@ try {
     window.modalScope={name:'underlying-modal'};window.scopeStack=[modalScope];window.parentCloses=0;
     window.app={scope:{name:'app'},keymap:{pushScope(s){scopeStack.push(s);},popScope(s){scopeStack.splice(scopeStack.indexOf(s),1);}}};
     // Model the native modal's keymap trap, which runs before document bubble handlers.
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&scopeStack.at(-1)===modalScope){window.parentCloses++;}},true);
+    document.addEventListener('keydown',e=>{
+     if(e.key==='Escape'&&scopeStack.at(-1)===modalScope){window.parentCloses++;}
+     for(const handler of scopeStack.at(-1)?.handlers||[]){
+      if(handler.key===e.key&&handler.callback(e)===false){e.preventDefault();break;}
+     }
+    },true);
    });
    await page.locator('#note').focus();
    await page.evaluate(()=>{window.previewClosed=0;window.closePreview=Subject.openLightbox(document.getElementById('note'),{title:'Preview',className:'is-native',nativeView:true,onDispose(){window.previewClosed++;},render(shell){shell.createDiv('operon-task-media-lightbox-content operon-native-lightbox-host').createEl('button',{text:'Content'});return null;}});});
@@ -79,6 +84,13 @@ try {
     await page.evaluate(()=>{const anchor=document.querySelector('.operon-task-media-lightbox-content button');window.previewPicker=Subject.createFloatingPanel(anchor,'operon-floating-panel',()=>{});previewPicker.panel.id='preview-picker';previewPicker.panel.createEl('input',{attr:{id:'preview-picker-input'}}).focus();});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     assert.equal(await page.locator('#preview-picker').evaluate(el=>!!el.closest('.operon-native-lightbox-host')),true);
+    await page.evaluate(()=>{
+     const anchor=previewPicker.panel.createEl('button',{text:'Nested picker'});
+     window.nestedPicker=Subject.createFloatingPanel(anchor,'operon-floating-panel',()=>{});
+     nestedPicker.panel.id='nested-picker';nestedPicker.panel.createEl('input',{attr:{id:'nested-picker-input'}}).focus();
+    });
+    await page.keyboard.press('Escape');
+    assert.deepEqual(await page.evaluate(()=>[!!document.getElementById('nested-picker'),!!document.getElementById('preview-picker'),previewClosed]),[false,true,0],'only the top picker consumes Escape');
     await page.keyboard.press('Escape');
     assert.deepEqual(await page.evaluate(()=>[!!document.getElementById('preview-picker'),window.previewClosed,window.parentCloses,scopeStack.length]),[false,0,0,2]);
     // A native dialog opened afterwards is above the preview; closing it keeps the preview.
@@ -98,6 +110,29 @@ try {
    if(desktop)assert.deepEqual(await page.evaluate(()=>[window.parentCloses,scopeStack.length]),[0,1]);
    assert.deepEqual(await page.evaluate(()=>[window.previewClosed,document.activeElement.id,document.getElementById('note').value]),[1,'note','Note draft']);
    if(desktop){
+    // Standalone sources own Escape even when their editor would consume it.
+    await page.evaluate(()=>{
+     window.nativeConsumes=0;window.standaloneClosed=0;
+     window.standaloneClose=Subject.openLightbox(document.getElementById('outside'),{title:'Source only',nativeView:true,render(shell){
+      const host=shell.createDiv('operon-task-media-lightbox-content operon-native-lightbox-host');
+      const input=host.createEl('textarea',{attr:{id:'native-source'}});
+      input.addEventListener('keydown',e=>{if(e.key==='Escape'){nativeConsumes++;e.preventDefault();e.stopPropagation();}});
+      return null;
+     },onDispose(){standaloneClosed++;}});
+     document.getElementById('native-source').focus();
+    });
+    await page.locator('#native-source').evaluate(el=>el.classList.add('operon-compact-markdown-editor'));
+    await page.keyboard.press('Escape');
+    assert.deepEqual(await page.evaluate(()=>[standaloneClosed,nativeConsumes,scopeStack.length]),[0,1,2],'compact editor keeps its own Escape interaction');
+    await page.locator('#native-source').evaluate(el=>{
+     el.classList.remove('operon-compact-markdown-editor');
+     const suggestions=el.parentElement.createDiv('cm-tooltip-autocomplete');suggestions.textContent='Native suggestion';
+     el.addEventListener('keydown',()=>suggestions.remove(),{once:true});
+    });
+    await page.keyboard.press('Escape');
+    assert.deepEqual(await page.evaluate(()=>[standaloneClosed,nativeConsumes,scopeStack.length]),[0,2,2],'native autocomplete consumes Escape first');
+    await page.keyboard.press('Escape');
+    assert.deepEqual(await page.evaluate(()=>[standaloneClosed,nativeConsumes,scopeStack.length,parentCloses]),[1,2,1,0]);
     // Real dimming events keep the existing preference queue without numeric controls.
     await page.evaluate(()=>{
      window.savedDimming=50;window.dimmingWrites=[];window.failDimming=false;

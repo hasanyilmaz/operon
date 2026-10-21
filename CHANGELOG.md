@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Responsive workspaces** mirror with the selected editor side, preserve saved Markdown sizes, and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
 - Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a half-second initial hover delay keeps opening calm without delaying keyboard access.
 
+- Improved **lightbox Escape handling** so only the top level closes through its normal save checks. Menus, suggestions, and nested pickers keep priority, and hidden overlays no longer block closing.
+
 ### Removed
 
 - Retired the legacy **Task Editor File Body** panel and its panel-specific controls and previews. Native Markdown provides the desktop source view; Description/Notes and checkbox popovers retain their shared Markdown editor.
@@ -27,8 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace and Escape checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
+- Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 
 ## [4.1.0] - 2026-10-20
 
