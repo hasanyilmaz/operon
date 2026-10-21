@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { mergeTaskEditorSource, taskEditorChangedKeys, type TaskEditorSourceState } from '../src/ui/task-editor-source-sync';
 import { createTaskEditorMarkdownSource } from '../src/ui/task-editor-markdown-source';
-import { TFile, type App, type MarkdownView } from 'obsidian';
+import { TFile, type App, type EditorPosition, type MarkdownView } from 'obsidian';
 import { scanFileWithMappings } from '../src/indexer/file-scanner';
 import { parseTaskLine } from '../src/core/parser';
 import { serializeTask } from '../src/core/serializer';
@@ -13,6 +13,10 @@ import { readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches } from '.
 import { isManagedYamlCanonicalKey } from '../src/core/yaml-fields';
 import { resolveWorkflowStatus } from '../src/types/pipeline';
 import { readTaskEditorMarkdown } from '../src/ui/task-editor-markdown-source';
+import { EditorState } from '@codemirror/state';
+import { editorInfoField } from 'obsidian';
+import { NativeLightboxLifecycle } from '../src/ui/native-lightbox-lifecycle';
+import { lightboxBodyStart, nativeLightboxBodyExtension } from '../src/ui/native-lightbox-body';
 
 const state = (fields: Record<string, string> = {}): TaskEditorSourceState => ({ description: 'before', checkbox: 'open', tags: ['one'], fieldValues: { operonId: 'task1', priority: 'A', note: 'old note', ...fields } });
 const baseline = state();
@@ -49,11 +53,13 @@ function nativeFixture(initial = '---\nid: task1\n---\nbody') {
  } } as unknown as App;
  function addView(value = initial) {
   let text = value;
-  const view = { file, editor: { getValue: () => text, offsetToPos: (offset: number) => offset,
-   transaction: (spec: { changes: { from: number; to: number; text: string }[]; selection?: unknown }, origin?: string) => {
-    assert.equal(origin, undefined, 'native YAML update is a programmatic Editor transaction');
+  const view = { file, editor: { getValue: () => text, offsetToPos: (offset: number) => {
+   const prefix = text.slice(0, offset).split('\n'); return { line: prefix.length - 1, ch: prefix.at(-1)!.length };
+  },
+   transaction: (spec: { changes: { from: EditorPosition; to: EditorPosition; text: string }[]; selection?: unknown }) => {
     assert.equal(spec.selection, undefined, 'selection is mapped by the native editor');
-    for (const change of spec.changes) text = text.slice(0, change.from) + change.text + text.slice(change.to);
+    const offset = (pos: EditorPosition) => text.split('\n').slice(0, pos.line).reduce((sum, line) => sum + line.length + 1, 0) + pos.ch;
+    for (const change of spec.changes) text = text.slice(0, offset(change.from)) + change.text + text.slice(change.to ? offset(change.to) : offset(change.from));
     transactions++;
    },
   }, save: async () => { disk = text; saves++; } } as unknown as MarkdownView;
@@ -61,6 +67,106 @@ function nativeFixture(initial = '---\nid: task1\n---\nbody') {
  }
  return { app, file, views, addView, source: () => createTaskEditorMarkdownSource(app, file, () => views), disk: () => disk, changeDisk: (value: string) => { disk = value; }, counts: () => ({ writes, transactions, saves }) };
 }
+
+// Reproduce the native Properties guard observed in Obsidian: a selection
+// mapped into the old frontmatter extent rejects an unmarked YAML edit.
+function propertiesSourceFixture() {
+ const initial = '---\noperonId: task1\nUp:\n  - "[[One]]"\nTier: A\nStatus: Planned\nScheduled: 2026-10-22\nEstimate: 1\nCustom: old\nNotes: ""\n---\nunsaved body';
+ const f = nativeFixture(initial);
+ f.addView();
+ const editor = {} as MarkdownView['editor'];
+ const view = { file: f.file, editor, getViewType: () => 'markdown', save: async () => {} } as unknown as MarkdownView;
+ const lifecycle = new NativeLightboxLifecycle(f.app, { view } as never);
+ let rejected = 0;
+ let cm = EditorState.create({ doc: initial, extensions: [
+  editorInfoField.init(() => ({ app: f.app, file: f.file, editor, hoverPopover: null })),
+  nativeLightboxBodyExtension(f.app),
+  EditorState.transactionFilter.of(transaction => {
+   if (!transaction.docChanged || transaction.isUserEvent('set')) return transaction;
+   const oldEnd = lightboxBodyStart(transaction.startState.doc) - 1;
+   let yamlChange = false;
+   transaction.changes.iterChangedRanges((from, to) => { if (from >= 3 && to < oldEnd) yamlChange = true; });
+   if (yamlChange && transaction.newSelection.ranges.some(range => range.from <= oldEnd)) { rejected++; return []; }
+   return transaction;
+  }),
+ ] });
+ cm = cm.update({ selection: { anchor: lightboxBodyStart(cm.doc) } }).state;
+ const origins: (string | undefined)[] = [];
+ editor.getValue = () => cm.doc.toString();
+ editor.offsetToPos = offset => { const line = cm.doc.lineAt(offset); return { line: line.number - 1, ch: offset - line.from }; };
+ editor.transaction = (spec, origin) => {
+  origins.push(origin);
+  cm = cm.update({ changes: spec.changes?.map(change => ({
+   from: cm.doc.line(change.from.line + 1).from + change.from.ch,
+   to: change.to ? cm.doc.line(change.to.line + 1).from + change.to.ch : cm.doc.line(change.from.line + 1).from + change.from.ch,
+   insert: change.text,
+  })), userEvent: origin }).state;
+ };
+ f.views.push(view);
+ return { ...f, initial, lifecycle, origins, state: () => cm, rejected: () => rejected };
+}
+
+for (const [field, before, after] of [
+ ['contexts', '  - "[[One]]"', '  - "[[One]]"\n  - "[[Two]]"'],
+ ['priority', 'Tier: A', 'Tier: B'], ['status', 'Status: Planned', 'Status: Finished'],
+ ['scheduled', 'Scheduled: 2026-10-22', 'Scheduled: 2026-10-23'],
+ ['estimate', 'Estimate: 1', 'Estimate: 2'], ['additional', 'Custom: old', 'Custom: new'],
+] as const) test(`native Properties permits ${field} save followed by shrinking empty-field normalization`, async () => {
+ const f = propertiesSourceFixture();
+ try {
+  const port = await f.source();
+  const changed = f.initial.replace(before, after);
+  await port.write(f.initial, changed);
+  const normalized = changed.replace('Notes: ""', 'Notes:');
+  await port.write(changed, normalized);
+  assert.equal(f.rejected(), 0);
+  assert.deepEqual(f.origins, ['set', 'set']);
+  assert.equal(await port.read(), normalized);
+  assert.equal(f.disk(), normalized);
+  assert.ok(f.views.every(view => view.editor.getValue() === normalized));
+  assert.ok(f.state().selection.main.from >= lightboxBodyStart(f.state().doc));
+  assert.ok(normalized.endsWith('unsaved body'));
+  for (const userEvent of ['input.type', 'input.paste', 'delete.cut', 'input.replace.all']) {
+   const blocked = f.state().update({ changes: { from: 4, to: 14, insert: 'lost' }, userEvent });
+   assert.equal(blocked.newDoc.toString(), normalized, `${userEvent} must still protect YAML`);
+  }
+ } finally { f.lifecycle.dispose(); }
+});
+
+test('body-only source patches keep their existing native origin and preserve frontmatter', async () => {
+ const f = propertiesSourceFixture();
+ try {
+  const port = await f.source();
+  const next = f.initial.replace('unsaved body', 'inline task change');
+  await port.write(f.initial, next);
+  assert.deepEqual(f.origins, [undefined]);
+  assert.equal(await port.read(), next);
+ } finally { f.lifecycle.dispose(); }
+});
+
+test('trusted YAML origin cannot overwrite a newer body edit shared by both native views', async () => {
+ const f = propertiesSourceFixture();
+ try {
+  const port = await f.source();
+  for (const view of f.views) view.editor.transaction({ changes: [{ from: view.editor.offsetToPos(f.initial.length), text: ' newer' }] }, 'input.type');
+  await assert.rejects(port.write(f.initial, f.initial.replace('Tier: A', 'Tier: B')), /changed during save/);
+  assert.ok(f.views.every(view => view.editor.getValue() === f.initial + ' newer'));
+  assert.deepEqual(f.origins, ['input.type']);
+  assert.equal(f.counts().saves, 0);
+  assert.equal(f.disk(), f.initial);
+ } finally { f.lifecycle.dispose(); }
+});
+
+test('cancelled YAML source save never reaches the native Properties update', async () => {
+ const f = propertiesSourceFixture();
+ try {
+  const port = await f.source();
+  await assert.rejects(port.write(f.initial, f.initial.replace('Tier: A', 'Tier: B'), () => false), /changed during save/);
+  assert.deepEqual(f.origins, []);
+  assert.equal(f.counts().transactions, 0);
+  assert.equal(f.disk(), f.initial);
+ } finally { f.lifecycle.dispose(); }
+});
 test('native unsaved body is the source and YAML writes preserve it in all owned views', async () => {
  const f = nativeFixture(); f.addView('---\nid: task1\n---\nunsaved'); f.addView('---\nid: task1\n---\nunsaved');
  const source = await f.source(), before = await source.read();

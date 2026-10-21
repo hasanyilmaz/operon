@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
-- **Task Editor and source editing** stay synchronized without overwriting untouched source fields or newer drafts. Unsaved Task Editor edits win same-field conflicts; task identity, moves, Additional properties, and shared native buffers retain their save protections.
+- **Task Editor and source editing** stay synchronized without overwriting untouched source fields or newer drafts. Unsaved Task Editor edits win same-field conflicts; task identity, moves, Additional properties, and shared native buffers retain their save protections. Saving **Contexts and other task fields** works with the native Properties view without false conflict warnings, while genuine conflicts and YAML protection remain enforced.
 - Improved **Task Editor opening responsiveness** by preparing native Markdown only when needed and reusing eligible recently closed Markdown views for faster reopening. Panels appear together when ready, with fresh selection, scroll, and undo state for each new session.
 - **Responsive workspaces** mirror with the selected editor side, preserve saved Markdown sizes, and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
 - Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a half-second initial hover delay keeps opening calm without delaying keyboard access.
@@ -29,9 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace and Escape checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace, Escape, and Contexts checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
+- Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
 
 ## [4.1.0] - 2026-10-20
 

@@ -1,5 +1,6 @@
 import type { App, MarkdownView, TFile } from 'obsidian';
 import type { TaskMarkdownSource } from '../core/task-markdown-source';
+import { markdownBodyStartLine } from '../core/markdown-body';
 
 export async function readTaskEditorMarkdown(
 	app: App, file: TFile, views: readonly MarkdownView[],
@@ -19,7 +20,12 @@ export function updateTaskEditorMarkdownView(view: MarkdownView, before: string,
 	let start = 0, end = before.length, nextEnd = after.length;
 	while (start < end && start < nextEnd && before[start] === after[start]) start++;
 	while (end > start && nextEnd > start && before[end - 1] === after[nextEnd - 1]) { end--; nextEnd--; }
-	view.editor.transaction({ changes: [{ from: view.editor.offsetToPos(start), to: view.editor.offsetToPos(end), text: after.slice(start, nextEnd) }] });
+	const from = view.editor.offsetToPos(start);
+	const bodyLine = markdownBodyStartLine(before.split(/\r?\n/u), true) ?? 0;
+	// Obsidian's Properties guard compares the mapped caret with the old YAML
+	// boundary. Mark trusted YAML patches as native document updates so shrinking
+	// frontmatter is accepted; retain normal filtering for body-only patches.
+	view.editor.transaction({ changes: [{ from, to: view.editor.offsetToPos(end), text: after.slice(start, nextEnd) }] }, from.line < bodyLine ? 'set' : undefined);
 }
 
 /** Reuse the existing writer's operation-scoped source port, including unsaved body text. */
