@@ -38,18 +38,20 @@ try {
      else if(profile!=='image')host.createEl('input',{attr:{id:'content-input',value:'Unsaved draft'}});
      return null;
     }});
+    Subject.markLightboxControlsReady(document.querySelector('.operon-task-media-lightbox'));
     // Model the real setIcon SVG path, including a target that is not an HTMLElement.
     for(const control of document.querySelectorAll('.operon-task-media-lightbox-control')){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','16');svg.setAttribute('height','16');const rect=document.createElementNS(svg.namespaceURI,'rect');rect.setAttribute('width','16');rect.setAttribute('height','16');svg.appendChild(rect);control.appendChild(svg);}
    },profile);
-   const shell=page.locator('.operon-task-media-lightbox:not([hidden])');
+   const shell=page.locator('.operon-task-media-lightbox:not([hidden]):not([inert])');
    const content=()=>page.locator('#content');
    const opacities=()=>shell.locator('.operon-task-media-lightbox-control').evaluateAll(els=>els.map(e=>getComputedStyle(e).opacity));
-   const settleHide=()=>page.waitForFunction(()=>!document.querySelector('.operon-task-media-lightbox:not([hidden])').classList.contains('are-controls-hovered'),null,{timeout:3000});
+   const settleHide=()=>page.waitForFunction(()=>!document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])').classList.contains('are-controls-hovered'),null,{timeout:3000});
    const contentPoint=await content().evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};});
    await page.mouse.move(contentPoint.x,contentPoint.y);await settleHide();
    assert.deepEqual(await opacities(),Array(10).fill('0'),`${profile}: content hides all groups`);
    assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('operon-task-media-lightbox-control')),false,'content entry never focuses a side control');
    await page.mouse.move(8,8);
+   await page.waitForFunction(()=>!document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])').classList.contains('are-controls-pending'));
    assert.deepEqual(await opacities(),Array(10).fill('1'));
    const colors=await shell.locator('.operon-task-media-lightbox-close').evaluate(el=>{const s=getComputedStyle(el);return[s.backgroundColor,s.borderTopColor,s.backgroundImage,s.boxShadow,s.filter];});
    assert.deepEqual(colors,[dark?'rgb(41, 41, 41)':'rgb(236, 236, 236)','rgb(119, 119, 119)','none','none','none']);
@@ -90,7 +92,9 @@ try {
     await page.evaluate(()=>{window.picker=Subject.createFloatingPanel(document.getElementById('content-input'),'operon-floating-panel',()=>{});picker.panel.createEl('input',{attr:{id:'picker-input'}});});
     await page.locator('#picker-input').hover();assert.deepEqual(await opacities(),Array(10).fill('0'));await page.evaluate(()=>picker.close());
     await page.evaluate(()=>{window.closeChild=Subject.openLightbox(document.getElementById('content-input'),{title:'Child',render(child){child.createDiv('operon-task-media-lightbox-content').style.cssText='width:50vw;height:50vh';return null;}});});
-    await page.mouse.move(8,8);assert.equal(await shell.locator('.operon-task-media-lightbox-close').evaluate(el=>getComputedStyle(el).opacity),'1');
+    await page.mouse.move(8,8);
+    await page.waitForFunction(()=>!document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])').classList.contains('are-controls-pending'));
+    assert.equal(await shell.locator('.operon-task-media-lightbox-close').evaluate(el=>getComputedStyle(el).opacity),'1');
     await page.keyboard.press('Escape');await page.mouse.move(contentPoint.x,contentPoint.y);await settleHide();assert.deepEqual(await opacities(),Array(10).fill('0'));
     assert.equal(await page.locator('#content-input').inputValue(),'Unsaved draft');
    }

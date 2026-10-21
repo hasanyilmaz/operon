@@ -2,6 +2,16 @@ import { Notice, type App, type TextFileView, type WorkspaceLeaf } from 'obsidia
 import { getOwnerWindow } from '../core/dom-compat';
 import type { OperonTableCallbacks } from './table/operon-table-view';
 
+/** Capture the native method before replacing it, preserving its receiver and result. */
+export function bindNativeLightboxMethod<Owner extends Record<Key, (...args: never[]) => unknown>, Key extends keyof Owner>(
+ owner: Owner, key: Key,
+): OmitThisParameter<Owner[Key]>;
+export function bindNativeLightboxMethod(owner: object, key: PropertyKey): (...args: unknown[]) => unknown {
+ const method: unknown = Reflect.get(owner, key);
+ if (typeof method !== 'function') throw new TypeError('Native lightbox method is not callable');
+ return (...args): unknown => Reflect.apply(method, owner, args);
+}
+
 /** Only owned lightbox leaves participate; ordinary tabs keep their callbacks. */
 const owners = new WeakMap<WorkspaceLeaf, NativeLightboxLifecycle>();
 const appLeaves = new WeakMap<App, Set<WorkspaceLeaf>>();
@@ -72,9 +82,9 @@ export class NativeLightboxLifecycle {
   let saveTimer: number | null = null;
   const cancelSave = (): void => { if (saveTimer !== null) getOwnerWindow(view.containerEl).clearTimeout(saveTimer); saveTimer = null; };
   this.cleanup.push(cancelSave);
-  const originalSet = view.setViewData.bind(view) as TextFileView['setViewData'];
+  const originalSet = bindNativeLightboxMethod(view, 'setViewData');
   view.setViewData = (data, clear) => { cancelSave(); originalSet(data, clear); clean = view.getViewData(); if (this.basesView === view) this.basesClean = clean; };
-  const originalSave = view.save.bind(view) as (clear?: boolean) => Promise<void>;
+  const originalSave = bindNativeLightboxMethod(view, 'save');
   let saves: Promise<void> = Promise.resolve();
   view.save = (clear?: boolean) => {
    cancelSave();

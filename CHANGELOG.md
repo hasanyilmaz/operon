@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a shared **desktop Task Editor workspace** with native Markdown and task fields in one working level. Show or hide either panel without losing drafts, and open nested workspaces while keeping previous levels visible underneath.
+- Added **Layout and opening** settings for left/right Task Editor placement and separate File/Inline source-opening preferences. File tasks open with their source by default; Inline tasks start with the editor alone. Preferences apply to newly opened workspaces, and **Open Source** keeps its source-only opening.
+
+### Improved
+
+- **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
+- **Task Editor and source editing** stay synchronized without overwriting untouched source fields or newer drafts. Unsaved Task Editor edits win same-field conflicts; task identity, moves, Additional properties, and shared native buffers retain their save protections.
+- Improved **Task Editor opening responsiveness** by preparing native Markdown only when needed and reusing eligible recently closed Markdown views for faster reopening. Panels appear together when ready, with fresh selection, scroll, and undo state for each new session.
+- **Responsive workspaces** mirror with the selected editor side, preserve saved Markdown sizes, and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
+- Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a half-second initial hover delay keeps opening calm without delaying keyboard access.
+
+### Removed
+
+- Retired the legacy **Task Editor File Body** panel and its panel-specific controls and previews. Native Markdown provides the desktop source view; Description/Notes and checkbox popovers retain their shared Markdown editor.
+- Removed **Show line numbers in Task Editor** and **Highlight active line in Task Editor** from Settings and Settings Search. Existing saved values remain compatible.
+
 ### Validation
+
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace checks.
+- Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 
 ## [4.1.0] - 2026-10-20
 

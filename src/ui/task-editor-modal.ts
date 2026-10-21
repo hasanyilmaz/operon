@@ -27,6 +27,19 @@ import {
 	requestFloatingPanelCloseForRoot,
 } from './field-pickers/common';
 
+export interface TaskEditorSession {
+ content: TaskEditorContent;
+ modalEl: HTMLElement;
+ close(): void;
+}
+
+export function confirmTaskEditorDiscard(app: App): Promise<boolean> {
+ return new Promise(resolve => new ConfirmActionModal(app, {
+  title: t('modals', 'taskCreatorDiscardTitle'), message: t('modals', 'taskCreatorDiscardMessage'),
+  confirmText: t('buttons', 'discard'), cancelText: t('buttons', 'cancel'), danger: true,
+ }, resolve).open());
+}
+
 export class TaskEditorModal extends Modal {
 	content: TaskEditorContent;
 	onCloseSaveSettled: (() => void | Promise<void>) | null = null;
@@ -63,7 +76,7 @@ export class TaskEditorModal extends Modal {
 	private readonly handleEditorEscapeIntent = (event: Event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		void this.handleEscapeIntent({ fromEmbeddedFileBody: true });
+		void this.handleEscapeIntent({ fromCompactMarkdownEditor: true });
 	};
 	private readonly handleWindowKeydownCapture = (event: KeyboardEvent): void => {
 		if (event.key !== 'Escape' || event.isComposing || Reflect.get(event, 'keyCode') === 229) return;
@@ -71,7 +84,7 @@ export class TaskEditorModal extends Modal {
 		const target = event.target as Node | null;
 		const isModalTarget = target != null && this.containerEl.contains(target);
 		if (!isModalTarget && !isFloatingPanelTargetForRoot(this.containerEl, target)) return;
-		if (this.isEmbeddedFileBodyEditorTarget(target)) return;
+		if (this.isCompactMarkdownEditorTarget(target)) return;
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		void this.handleEscapeIntent();
@@ -85,9 +98,10 @@ export class TaskEditorModal extends Modal {
 		onSave: OnSaveCallback,
 		timeTracker: TimeTracker,
 		options: TaskEditorContentOptions = {},
+  preparedContent?: TaskEditorContent,
 	) {
 		super(app);
-		this.content = new TaskEditorContent(app, indexer, settings, existingTask, onSave, timeTracker, options);
+		this.content = preparedContent ?? new TaskEditorContent(app, indexer, settings, existingTask, onSave, timeTracker, options);
 	}
 
 	onOpen(): void {
@@ -151,13 +165,12 @@ export class TaskEditorModal extends Modal {
 		}
 	}
 
-	private isEmbeddedFileBodyEditorTarget(target: Node | null): boolean {
+	private isCompactMarkdownEditorTarget(target: Node | null): boolean {
 		let node: Node | null = target;
 		while (node && node !== this.containerEl) {
 			const classList = (node as { classList?: DOMTokenList }).classList;
 			if (
-				classList?.contains('operon-task-editor-file-source-editor')
-				|| classList?.contains('operon-compact-markdown-editor')
+				classList?.contains('operon-compact-markdown-editor')
 				|| classList?.contains('operon-compact-markdown-editor-fallback')
 			) {
 				return true;
@@ -167,13 +180,13 @@ export class TaskEditorModal extends Modal {
 		return false;
 	}
 
-	private shouldDeferToEmbeddedFileBodyEditor(): boolean {
+	private shouldDeferToCompactMarkdownEditor(): boolean {
 		const activeElement = this.containerEl.ownerDocument.activeElement;
-		return this.isEmbeddedFileBodyEditorTarget(activeElement);
+		return this.isCompactMarkdownEditorTarget(activeElement);
 	}
 
-	private handleEscapeIntent(options: { fromEmbeddedFileBody?: boolean } = {}): Promise<boolean> {
-		if (!options.fromEmbeddedFileBody && this.shouldDeferToEmbeddedFileBodyEditor()) {
+	private handleEscapeIntent(options: { fromCompactMarkdownEditor?: boolean } = {}): Promise<boolean> {
+		if (!options.fromCompactMarkdownEditor && this.shouldDeferToCompactMarkdownEditor()) {
 			return Promise.resolve(false);
 		}
 		if (requestFloatingPanelCloseForRoot(this.containerEl, 'escape')) return Promise.resolve(false);
@@ -250,13 +263,7 @@ export class TaskEditorModal extends Modal {
 	}
 
 	private openDiscardConfirmation(onResult: (confirmed: boolean) => void): void {
-		new ConfirmActionModal(this.app, {
-			title: t('modals', 'taskCreatorDiscardTitle'),
-			message: t('modals', 'taskCreatorDiscardMessage'),
-			confirmText: t('buttons', 'discard'),
-			cancelText: t('buttons', 'cancel'),
-			danger: true,
-		}, onResult).open();
+		void confirmTaskEditorDiscard(this.app).then(onResult);
 	}
 
 	private forceClose(): void {

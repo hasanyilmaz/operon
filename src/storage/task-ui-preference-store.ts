@@ -18,6 +18,9 @@ export type TaskUiPreferenceStoreSettings = Pick<
 	OperonSettings,
 	| 'taskCreatorToolbar'
 	| 'taskEditorSections'
+	| 'taskEditorPosition'
+	| 'taskEditorFileShowSource'
+	| 'taskEditorInlineShowSource'
 	| 'taskEditorShowLineNumbers'
 	| 'taskEditorHighlightActiveLine'
 	| 'taskEditorWorkflowPickers'
@@ -60,7 +63,7 @@ export type TaskUiPreferenceStoreSettings = Pick<
 	| 'filterTaskShowPlainCheckboxAction'
 >;
 
-type DefaultedTaskUiPreferenceKey = 'taskEditorUseMobileLayout'
+type DefaultedTaskUiPreferenceKey = 'taskEditorPosition' | 'taskEditorFileShowSource' | 'taskEditorInlineShowSource' | 'taskEditorUseMobileLayout'
  | 'inlineTaskShowSourceAction'
  | 'filterTaskShowSourceAction'
  | 'kanbanTaskShowSourceAction'
@@ -88,6 +91,9 @@ function cloneSettings(settings: TaskUiPreferenceStoreSettings): TaskUiPreferenc
 	return {
 		taskCreatorToolbar: settings.taskCreatorToolbar.map(item => ({ ...item })),
 		taskEditorSections: normalizeTaskEditorSections(settings.taskEditorSections),
+		taskEditorPosition: settings.taskEditorPosition,
+		taskEditorFileShowSource: settings.taskEditorFileShowSource,
+		taskEditorInlineShowSource: settings.taskEditorInlineShowSource,
 		taskEditorShowLineNumbers: settings.taskEditorShowLineNumbers,
 		taskEditorHighlightActiveLine: settings.taskEditorHighlightActiveLine,
 		taskEditorWorkflowPickers: settings.taskEditorWorkflowPickers.map(item => ({ ...item })),
@@ -173,6 +179,9 @@ function readStoreData(
 	return {
 		taskCreatorToolbar: readArray(raw.taskCreatorToolbar, fallback.taskCreatorToolbar),
 		taskEditorSections: normalizeTaskEditorSections(raw.taskEditorSections ?? fallback.taskEditorSections),
+		taskEditorPosition: raw.taskEditorPosition === 'left' ? 'left' : raw.taskEditorPosition === 'right' ? 'right' : fallback.taskEditorPosition,
+		taskEditorFileShowSource: readBoolean(raw.taskEditorFileShowSource, fallback.taskEditorFileShowSource),
+		taskEditorInlineShowSource: readBoolean(raw.taskEditorInlineShowSource, fallback.taskEditorInlineShowSource),
 		taskEditorShowLineNumbers: readBoolean(raw.taskEditorShowLineNumbers, fallback.taskEditorShowLineNumbers),
 		taskEditorHighlightActiveLine: readBoolean(raw.taskEditorHighlightActiveLine, fallback.taskEditorHighlightActiveLine),
 		taskEditorWorkflowPickers: normalizeTaskEditorWorkflowPickers(
@@ -273,7 +282,9 @@ export class TaskUiPreferenceStore {
 	}
 
 	loadFromPackage(settings: TaskUiPreferencePackageSettings): void {
-		this.settings = cloneSettings({ ...settings, taskEditorUseMobileLayout: settings.taskEditorUseMobileLayout === true,
+		this.settings = cloneSettings({ ...settings, taskEditorPosition: settings.taskEditorPosition === 'left' ? 'left' : 'right',
+   taskEditorFileShowSource: typeof settings.taskEditorFileShowSource === 'boolean' ? settings.taskEditorFileShowSource : true,
+   taskEditorInlineShowSource: settings.taskEditorInlineShowSource === true, taskEditorUseMobileLayout: settings.taskEditorUseMobileLayout === true,
    inlineTaskShowSourceAction: settings.inlineTaskShowSourceAction !== false,
    filterTaskShowSourceAction: settings.filterTaskShowSourceAction !== false,
    kanbanTaskShowSourceAction: settings.kanbanTaskShowSourceAction !== false,

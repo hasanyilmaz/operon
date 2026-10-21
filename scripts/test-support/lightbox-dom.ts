@@ -26,7 +26,7 @@ export function lightboxFixture() {
   remove() { this.connected = false; }
  }
  doc.getElementById = (id: string) => doc.body.querySelectorAll().find((el: Element) => el.id === id) ?? null;
- doc.defaultView = { HTMLElement: Element, innerWidth:1200, innerHeight:900, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} }; doc.win = { createSpan: () => new Element() }; doc.body = new Element();
+ doc.defaultView = { HTMLElement: Element, ResizeObserver: class { observe() {} disconnect() {} }, getComputedStyle: () => ({borderTopRightRadius: '12px'}), innerWidth:1200, innerHeight:900, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} }; doc.win = { createSpan: () => new Element() }; doc.body = new Element();
  const anchor = doc.body.createDiv(); anchor.focus();
  return { doc, anchor: anchor as unknown as HTMLElement, listeners, emit: (key: string, event: any) => [...(listeners.get(key) ?? [])].forEach(fn => fn(event)) };
 }

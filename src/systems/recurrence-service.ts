@@ -1471,7 +1471,8 @@ export class RecurrenceService {
 		const file = this.app.vault.getAbstractFileByPath(plan.sourceTask.primary.filePath);
 		if (!(file instanceof TFile)) return null;
 
-		const content = await this.app.vault.cachedRead(file);
+		const boundSource = this.writer.hasMarkdownSource(file);
+		const content = boundSource ? await this.writer.readTaskMarkdownSource(file) : await this.app.vault.cachedRead(file);
 		const lines = content.split('\n');
 		const lineIndex = this.findTaskLine(lines, plan.sourceTask.primary.filePath, plan.sourceTask.operonId, plan.sourceTask.primary.lineNumber);
 		if (lineIndex === -1) return null;
@@ -1483,7 +1484,10 @@ export class RecurrenceService {
 			replaceCompleted: shouldReplace,
 			newOccurrencePosition: this.getSettings().newOccurrencePosition,
 		});
-		await this.app.vault.modify(file, materialized.lines.join('\n'));
+		if (boundSource) {
+			const result = await this.writer.applyExactMarkdownSourceMutation(file.path, content, materialized.lines.join('\n'), undefined, undefined, 'plugin');
+			if (result.outcome !== 'committed') return null;
+		} else await this.app.vault.modify(file, materialized.lines.join('\n'));
 		this.onBeforeCreatedTaskReindex(plan.fieldValues['operonId']);
 		await this.indexer.reindexFilePath(plan.sourceTask.primary.filePath);
 		return {

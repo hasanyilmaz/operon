@@ -11,7 +11,7 @@ try {
  const source=fs.readFileSync(path.join(root,'main.ts'),'utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);
  const cls=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='OperonPlugin');
  const method=cls.members.find(n=>n.name?.getText(ast)==='requestInvalidTaskIdRepair').getText(ast);
- const editorMethod=cls.members.find(n=>n.name?.getText(ast)==='openTaskEditorFor').getText(ast);
+ const editorMethod=cls.members.find(n=>n.name?.getText(ast)==='createTaskEditorContentFor').getText(ast);
  const registration=cls.members.find(n=>n.name?.getText(ast)==='registerInlineTaskBar');
  let cycle;
  const visit=node=>{if(ts.isPropertyAssignment(node)&&node.name.getText(ast)==='cycleStatus'&&node.initializer.getText(ast).startsWith('(task: ParsedTask,'))cycle=node.initializer.getText(ast);ts.forEachChild(node,visit);};
@@ -33,14 +33,14 @@ try {
    h.requestInvalidTaskIdRepair=async value=>{requested=value;};
    h.indexer.getTask=()=>{throw new Error('must not open editor');};
    const task={operonId:id,filePath:'Note.md',lineNumber:3,rawLine:'- [ ] Task {{priority:: 2}}',fields:[{key:'priority',value:'2'}]};
-   await h.openTaskEditorFor(task,async()=>{saves++;});
+   await h.createTaskEditorContentFor(task,async()=>{saves++;});
    assert.deepEqual(requested,{...task,format:'inline'});assert.equal(saves,0);
   }
  });
  await test('valid inline IDs continue into the existing editor route',async()=>{
   const h=setup();let repairs=0;h.requestInvalidTaskIdRepair=async()=>{repairs++;};
   h.indexer.getTask=()=>{throw new Error('existing editor route');};
-  await assert.rejects(h.openTaskEditorFor({operonId:'abc1234',rawLine:'- [ ] Task',fields:[{}]},async()=>{}),/existing editor route/);
+  await assert.rejects(h.createTaskEditorContentFor({operonId:'abc1234',rawLine:'- [ ] Task',fields:[{}]},async()=>{}),/existing editor route/);
   assert.equal(repairs,0);
  });
  await test('Live Preview icon routes invalid and missing IDs to repair without cycling',async()=>{

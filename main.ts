@@ -1,3 +1,7 @@
+import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
+import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
+import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
+import type { TaskMarkdownSource } from './src/core/task-markdown-source';
 import { SettingsWritesSuspendedError } from './src/storage/operon-data-package-store';
 import { bindLightboxSizePreference } from './src/core/lightbox-size';
 import { updateDesktopBackdropDimming, disposeDesktopBackdrops, bindDesktopBackdropDimmingPreference, subscribeDesktopBackdropDimming } from './src/ui/modal-backdrop';
@@ -49,7 +53,8 @@ import { PropertyPoolValueSession } from './src/ui/property-value-pool-values';
 import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodicSnapshot, preparePropertyPoolTask, propertyPoolTaskSignature, type PropertyPoolTaskPlan, type PropertyPoolTaskResult } from './src/core/property-pool-task-operation';
 import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
-import { disposeWebLightboxes } from './src/ui/web-lightbox';
+import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
+import { disposeWebLightboxes, openTaskWorkspace } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -222,7 +227,9 @@ import {
 	buildRecurrenceIdentityRepairPlan,
 	type RecurrenceIdentityRepairCandidate,
 } from './src/systems/recurrence-identity-repair';
-import { TaskEditorModal } from './src/ui/task-editor-modal';
+import { TaskEditorModal, confirmTaskEditorDiscard, type TaskEditorSession } from './src/ui/task-editor-modal';
+import { getActiveLightboxShell } from './src/ui/lightbox';
+import { registerNativeTaskWorkspace } from './src/ui/native-task-workspace';
 import {
 	TaskCreatorDraft,
 	TaskCreatorModal,
@@ -243,6 +250,7 @@ import {
 } from './src/ui/task-creator-integrations';
 import {
 	OnSaveCallback,
+ TaskEditorContent,
 	TaskEditorContentOptions,
 	TaskEditorEstimateReallocationApplyResult,
 	TaskEditorEstimateReallocationRequest,
@@ -250,6 +258,8 @@ import {
 	TaskEditorRepeatSkipUpdateRequest,
 	TaskEditorRepeatSkipUpdateResult,
 	TaskEditorSaveRequest,
+	TaskEditorSaveCallbackResult,
+	buildTaskEditorOperonField,
 	TaskEditorSubtaskRequest,
 } from './src/ui/task-editor-content';
 import {
@@ -1339,6 +1349,7 @@ interface TaskFieldsUpdateOptions {
  inlinePropertyDraft?: readonly InlinePropertyChange[];
  tableCommittedSource?: boolean;
  ownedDrawingSources?: readonly InlineMarkdownSource[];
+ ownedMarkdownSources?: readonly TaskMarkdownSource[];
  directEdit?: DirectTaskEditContext;
  dependencyOptions?: DependencyChangeOptions;
  expectedFieldValues?: Record<string, string>;
@@ -22271,10 +22282,20 @@ export default class OperonPlugin extends Plugin {
 		}]).ok;
 	}
 
-	private async writeParentLinkInlineEditorTask(task: IndexedTask, taskLine: string, expected: Record<string, string>, inlineSourceFields?: readonly OperonField[], inlineProperties?: readonly InlinePropertyChange[], coordinated = false): Promise<boolean> {
-  if (inlineProperties?.length && !coordinated) return this.writer.runExclusiveTaskMutation(() => this.writeParentLinkInlineEditorTask(task, taskLine, expected, inlineSourceFields, inlineProperties, true));
+	private async writeParentLinkInlineEditorTask(task: IndexedTask, taskLine: string, expected: Record<string, string>, inlineSourceFields?: readonly OperonField[], inlineProperties?: readonly InlinePropertyChange[], coordinated = false, source?: TaskMarkdownSource, permit?: TaskWriterExclusiveMutationPermit): Promise<boolean> {
+  if (inlineProperties?.length && !coordinated) return this.writer.runExclusiveTaskMutation(ownedPermit => this.writeParentLinkInlineEditorTask(task, taskLine, expected, inlineSourceFields, inlineProperties, true, source, ownedPermit));
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 		if (!(file instanceof TFile)) return false;
+		if (source) {
+			const before = await source.read();
+			if (!this.parentLinkSourceMatches(task, expected, before)) return false;
+			const next = this.replaceInlineTaskLineInContent(before, file.path, task.operonId, taskLine, task.primary.lineNumber, inlineSourceFields, inlineProperties);
+			if (next === null) return false;
+			this.markInternalTaskWrite(file.path);
+			return (await this.writer.applyExactMarkdownSourceMutation(file.path, before, next,
+				() => !this.indexer.hasDuplicateOperonIdConflict(task.operonId) && this.indexer.getTask(task.operonId)?.primary.filePath === file.path,
+				permit, 'plugin')).outcome === 'committed';
+		}
 		let committed = false;
 		await this.app.vault.process(file, current => {
 			if (!this.parentLinkSourceMatches(task, expected, current)) return current;
@@ -22884,8 +22905,7 @@ export default class OperonPlugin extends Plugin {
 				void (async () => {
 					const task = this.indexer.getTask(operonId);
 					if (!task) return;
-					const parsed = await this.loadEditableParsedTask(task);
-					await this.openTaskEditorFor(parsed, async (request) => {
+					await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 						return await this.applyEditedTaskFromView(task, request);
 					});
 				})();
@@ -22937,8 +22957,7 @@ export default class OperonPlugin extends Plugin {
 					void (async () => {
 						const task = this.indexer.getTask(operonId);
 						if (!task) return;
-						const parsed = await this.loadEditableParsedTask(task);
-						await this.openTaskEditorFor(parsed, async (request) => {
+						await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 							return await this.applyEditedTaskFromView(task, request);
 						});
 					})();
@@ -23109,21 +23128,13 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private getMarkdownViewForPath(filePath: string): MarkdownView | null {
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (activeView?.file?.path === filePath) return activeView;
-
-		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
-			const view = leaf.view;
-			if (!(view instanceof MarkdownView)) continue;
-			if (view.file?.path === filePath) return view;
-		}
-		return null;
+		const views = this.getMarkdownViewsForPath(filePath);
+		const active = this.app.workspace.getActiveViewOfType(MarkdownView);
+		return views.find(view => view === active) ?? views[0] ?? null;
 	}
 
 	private getMarkdownViewsForPath(filePath: string): MarkdownView[] {
-		return this.app.workspace.getLeavesOfType('markdown')
-			.map(leaf => leaf.view)
-			.filter((view): view is MarkdownView => view instanceof MarkdownView && view.file?.path === filePath);
+		return this.getDynamicFileTaskFilterMarkdownViews().filter(view => view.file?.path === filePath);
 	}
 
 	private getFilePathForEditorView(editorView: EditorView): string {
@@ -23315,6 +23326,7 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 
+		this.registerEditorExtension(nativeLightboxBodyExtension(this.app));
 		this.registerEditorExtension(ext);
 			this.registerEditorExtension(operonLivePreviewClassicTaskConvertExtension({
 				getFilePath: (editorView: EditorView) => this.getFilePathForEditorView(editorView),
@@ -23533,8 +23545,7 @@ export default class OperonPlugin extends Plugin {
 						void (async () => {
 							const task = this.indexer.getTask(operonId);
 							if (!task) return;
-							const pt = await this.loadEditableParsedTask(task);
-							await this.openTaskEditorFor(pt, async (request) => {
+							await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 								const { taskLine, isNew } = request;
 								const editedId = this.parseInlineTaskLine(taskLine, 0, '')?.operonId ?? operonId;
 								if (isNew && editedId) {
@@ -24406,9 +24417,7 @@ export default class OperonPlugin extends Plugin {
 			const task = this.indexer.getTask(operonId);
 			if (!task) return;
 
-			const parsed = await this.loadEditableParsedTask(task);
-
-			await this.openTaskEditorFor(parsed, async (request) => {
+			await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 				return await this.applyEditedTaskFromView(task, request);
 			});
 		})();
@@ -24418,30 +24427,178 @@ export default class OperonPlugin extends Plugin {
 		const task = this.indexer.getTaskInstance(instanceKey);
 		if (!task) return;
 
-		const parsed = await this.loadEditableParsedTask(task);
-		await this.openTaskEditorFor(parsed, async (request) => {
+		await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 			const latestTask = this.indexer.getTaskInstance(instanceKey) ?? task;
 			return await this.applyEditedTaskInstanceFromView(latestTask, request);
 		}, {}, () => this.indexer.getTaskInstance(instanceKey) ?? null);
 	}
 
-	private async openTaskEditorFor(
+	private async readTaskEditorSource(operonId: string, source?: TaskMarkdownSource, openingTrace?: LightboxOpeningTrace): Promise<TaskEditorSourceSnapshot & { task: IndexedTask; parsed: ParsedTask; file: TFile; sourceText: string; sourceIndex: IndexedTask; sourceMappings: string }> {
+		const endValidation = openingTrace?.span('source-validation');
+		try {
+		const indexed = this.indexer.getTask(operonId);
+		if (!indexed || this.indexer.hasDuplicateOperonIdConflict(operonId)) throw new Error('Task identity is unavailable');
+		const file = this.app.vault.getAbstractFileByPath(indexed.primary.filePath);
+		if (!(file instanceof TFile) || source && source.file !== file) throw new Error('Task source moved');
+		const endRead = openingTrace?.span('source-read');
+		const content = source ? await source.read() : await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(file.path));
+		endRead?.();
+		const endScan = openingTrace?.span('source-scan');
+		openingTrace?.count('scans');
+		const sourceMappings = JSON.stringify(this.settings.keyMappings);
+		const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, content);
+		endScan?.();
+		const matches = scanned.inlineTasks.filter(task => task.operonId === operonId);
+		const yaml = scanned.yamlTask?.operonId === operonId ? scanned.yamlTask : null;
+		if (matches.length + Number(!!yaml) !== 1 || (indexed.primary.format === 'yaml') !== !!yaml) throw new Error('Task identity changed');
+		let parsed: ParsedTask;
+		if (yaml) {
+			const document = readFileTaskPropertyDocument(content);
+			if (!document || !fileTaskPropertyIdentityMatches(document.frontmatter, operonId, this.settings.keyMappings)) throw new Error('Task identity is ambiguous');
+			const checkbox = resolveWorkflowStatus(this.settings.pipelines, yaml.fieldValues.status)?.checkbox
+				?? (yaml.fieldValues.dateCancelled ? 'cancelled' : yaml.fieldValues.dateCompleted ? 'done' : 'open');
+			parsed = this.parsedTaskFromIndexed({ ...indexed, ...yaml, checkbox });
+		} else parsed = matches[0];
+		const state = {
+			description: parsed.description, checkbox: parsed.checkbox, tags: [...parsed.tags],
+			fieldValues: Object.fromEntries(parsed.fields.map(field => [field.key, field.value])),
+			sourceFields: parsed.fields,
+		};
+		const task: IndexedTask = { ...indexed, ...state, primary: { ...indexed.primary, filePath: file.path, lineNumber: parsed.lineNumber } };
+		return { state, task, parsed, file, filePath: file.path, lineNumber: parsed.lineNumber, format: indexed.primary.format, sourceText: content, sourceIndex: indexed, sourceMappings };
+		} finally { endValidation?.(); }
+	}
+
+	private async saveSynchronizedTaskEditor(
+		request: TaskEditorSaveRequest,
+		save: (request: TaskEditorSaveRequest, task: IndexedTask) => Promise<TaskEditorSaveCallbackResult>,
+	): Promise<TaskEditorSaveCallbackResult> {
+		const intent = request.sourceSync;
+		if (!intent || request.isNew) return false;
+		try {
+			const initial = await this.readTaskEditorSource(intent.operonId);
+			const source = await createTaskEditorMarkdownSource(this.app, initial.file, () => this.getMarkdownViewsForPath(initial.file.path));
+			return await this.writer.withMarkdownSource(source, async () => {
+				const current = await this.readTaskEditorSource(intent.operonId, source);
+				const submitted = this.parseInlineTaskLine(request.taskLine, current.lineNumber, current.filePath);
+				if (!submitted || submitted.operonId !== intent.operonId) throw new Error('Task identity changed');
+				const fields = Object.fromEntries(submitted.fields.map(field => [field.key, field.value]));
+				const merged = mergeTaskEditorSource(current.state, { description: submitted.description, checkbox: submitted.checkbox, tags: submitted.tags, fieldValues: fields }, intent.changedKeys);
+				// A series created in the source while this draft was open owns its
+				// identity; an editor-generated first ID must not detach that series.
+				if (!intent.baseline.fieldValues.repeatSeriesId && current.state.fieldValues.repeatSeriesId && merged.fieldValues.repeat) {
+					merged.fieldValues.repeatSeriesId = current.state.fieldValues.repeatSeriesId;
+				}
+				merged.fieldValues.datetimeModified = fields.datetimeModified ?? localNow();
+				const parsed: ParsedTask = { ...current.parsed, ...merged, fields: Object.entries(merged.fieldValues).map(([key, value]) => buildTaskEditorOperonField(key, value, this.settings.keyMappings, current.parsed.fields.find(field => field.key === key))) };
+				const rebased: TaskEditorSaveRequest = {
+					...request, taskLine: serializeTask(parsed, this.settings.keyMappings), markdownSource: source,
+					// Untouched custom fields use their fresh baseline; explicit Additional
+					// mutations retain their own typed expected values and conflict checks.
+					inlineSourceFields: [
+						...current.parsed.fields.filter(field => !intent.changedKeys.includes(field.key)),
+						...(request.inlineSourceFields ?? []).filter(field => intent.changedKeys.includes(field.key)),
+					],
+					fileBody: request.fileBody ? { ...request.fileBody, filePath: current.filePath, targetLine: current.lineNumber, dirty: false } : null,
+				};
+				const result = await save(rebased, current.task);
+				if (result === false || result === null) return result;
+				try {
+					const committed = await this.readTaskEditorSource(intent.operonId);
+					return { ...(typeof result === 'object' ? result : {}), canonicalState: committed.state };
+				} catch {
+					// Recurrence may intentionally replace the completed identity. A committed
+					// mutation remains committed; a later edit still has to resolve its identity.
+					return typeof result === 'object' ? result : { canonicalState: merged };
+				}
+			});
+		} catch (error) {
+			console.warn('Operon: Task Editor source synchronization failed', error);
+			this.showTaskEditorMutationOutcome(request, 'source-changed');
+			return false;
+		}
+	}
+
+ private readonly taskEditorOpeningRequests = new WeakMap<Document, object>();
+
+ private async openTaskEditorFor(
+  taskOrLoad: ParsedTask | null | Promise<ParsedTask | null>, onSave: OnSaveCallback, options: TaskEditorContentOptions = {},
+  resolveCanonicalTask?: () => IndexedTask | null, onOpen?: (session: TaskEditorSession) => void, standalone = false,
+ ): Promise<void> {
+  const preferences = { position: this.settings.taskEditorPosition, fileSource: this.settings.taskEditorFileShowSource, inlineSource: this.settings.taskEditorInlineShowSource };
+  const document = getActiveDocument();
+  const openingTrace = LIGHTBOX_PERF_ENABLED ? beginLightboxOpeningTrace(document, 'editor') : undefined;
+  try {
+  const opening = {}; this.taskEditorOpeningRequests.set(document, opening);
+  const focused = asHTMLElement(document.activeElement);
+  const anchor = focused && focused !== document.body ? focused : getActiveLightboxShell(document) ?? document.body;
+  const parentSurface = anchor.closest('.operon-task-media-lightbox');
+  const currentOpening = (): boolean => this.taskEditorOpeningRequests.get(document) === opening && (!parentSurface || parentSurface.isConnected);
+  const endLoad = openingTrace?.span('task-load');
+  const task = await taskOrLoad;
+  endLoad?.();
+  if (!currentOpening()) return;
+  let openingSource: Awaited<ReturnType<OperonPlugin['readTaskEditorSource']>> | null = null;
+  const readOpeningSource = async (id: string): Promise<TaskEditorSourceSnapshot> => {
+   const snapshot = openingSource;
+   openingSource = null;
+   if (snapshot && snapshot.task.operonId === id) {
+    const text = await readTaskEditorMarkdown(this.app, snapshot.file, this.getMarkdownViewsForPath(snapshot.file.path));
+    if (text === snapshot.sourceText && snapshot.file.path === snapshot.filePath
+     && this.indexer.getTask(id) === snapshot.sourceIndex && !this.indexer.hasDuplicateOperonIdConflict(id)
+     && JSON.stringify(this.settings.keyMappings) === snapshot.sourceMappings) return snapshot;
+   }
+   return this.readTaskEditorSource(id, undefined, openingTrace);
+  };
+  const endCreate = openingTrace?.span('editor-create');
+  const content = await this.createTaskEditorContentFor(task, onSave, options, resolveCanonicalTask, openingTrace, readOpeningSource);
+  endCreate?.();
+  if (!content) return;
+  if (!currentOpening()) { content.destroy({ skipCloseSave: true }); return; }
+  const indexed = task?.operonId ? this.indexer.getTask(task.operonId) : null;
+  const file = indexed ? this.app.vault.getAbstractFileByPath(indexed.primary.filePath) : null;
+  if (!standalone && Platform.isDesktopApp && task && indexed && file instanceof TFile && file.extension === 'md'
+   && !resolveCanonicalTask && !this.isExcalidrawTaskSource(file)) {
+   openingTrace?.resource(file);
+   const current = await this.readTaskEditorSource(indexed.operonId, undefined, openingTrace).catch(() => null);
+   if (!current) { content.destroy({ skipCloseSave: true }); this.showPluginUiMutationOutcome('source-missing'); return; }
+   if (!currentOpening()) { content.destroy({ skipCloseSave: true }); return; }
+   openingSource = current;
+   const markdown = current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource;
+   openingTrace?.kind(markdown ? 'paired' : 'editor');
+   const session = await openTaskWorkspace(this.app, anchor, {
+    file: current.file, subpath: '', operonId: indexed.operonId,
+    ...(current.format === 'inline' ? { line: current.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(current.parsed) } : {}),
+   }, { task: { file: current.file, operonId: indexed.operonId }, content, markdown, position: preferences.position, openingTrace });
+   if (session) onOpen?.(session);
+   return;
+  }
+  const modal = new TaskEditorModal(this.app, this.indexer, this.settings, task, onSave, this.timeTracker, options, content);
+  modal.onCloseSaveSettled = () => this.refreshAfterTaskEditorClose(task?.filePath);
+  modal.open(); onOpen?.(modal);
+  openingTrace?.finish('excluded');
+  } catch (error) { openingTrace?.finish('error'); throw error; }
+  finally { openingTrace?.finish('cancelled'); }
+ }
+
+	private async createTaskEditorContentFor(
 		task: ParsedTask | null,
 		onSave: OnSaveCallback,
 		options: TaskEditorContentOptions = {},
 		resolveCanonicalTask?: () => IndexedTask | null,
-		onOpen?: (modal: TaskEditorModal) => void,
-	): Promise<void> {
+		openingTrace?: LightboxOpeningTrace,
+		readOpeningSource?: TaskEditorContentOptions['readSource'],
+	): Promise<TaskEditorContent | null> {
 		// Only an existing inline source belongs to this repair path. New-task
 		// drafts and synthetic file-task models have no inline source line.
 		if (task?.rawLine && task.fields.length > 0 && !isValidOperonId(task.operonId ?? '')) {
 			await this.requestInvalidTaskIdRepair({ ...task, format: 'inline' });
-			return;
+			return null;
 		}
 		const indexedBeforeSave = task?.operonId ? this.indexer.getTask(task.operonId) : null;
 		const fallbackSourceFormat = indexedBeforeSave?.primary.format ?? 'inline';
 		let resolvedOptions: TaskEditorContentOptions;
-		const wrappedOnSave: OnSaveCallback = async (request) => {
+		const wrappedOnSave = async (request: TaskEditorSaveRequest, save: OnSaveCallback = onSave): Promise<TaskEditorSaveCallbackResult> => {
    if (request.inlineProperties?.length || request.fileProperties?.length) {
     try {
      const types = nativeEditorPropertyTypes(await loadTableFilePropertyTypesFromConfig(this.app), this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
@@ -24461,11 +24618,11 @@ export default class OperonPlugin extends Plugin {
     const file = this.app.vault.getAbstractFileByPath(current.primary.filePath);
     if (!(file instanceof TFile)) return false;
     try {
-     patchInlineProperties(await this.app.vault.read(file), file.path, current.operonId, request.inlineProperties, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
+     patchInlineProperties(request.markdownSource ? await request.markdownSource.read() : await this.app.vault.read(file), file.path, current.operonId, request.inlineProperties, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
      await this.storage.ensureInlinePropertyDefinitions(request.inlineProperties.map(change => resolveInlinePropertyDefinition(change.sourceName, change.type, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions())));
     } catch { return false; }
    }
-			const saved = await onSave(request);
+			const saved = await save(request);
 			if (saved === false || saved === null) return saved;
 			try {
 			const parsed = this.parseInlineTaskLine(request.taskLine, task?.lineNumber ?? 0, task?.filePath ?? '');
@@ -24541,9 +24698,6 @@ export default class OperonPlugin extends Plugin {
 			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
-			onSetShowLineNumbers: async (visible: boolean): Promise<void> => {
-				await this.storage.updateSettings({ taskEditorShowLineNumbers: visible });
-			},
 			onSetHideScrollbars: async (hidden: boolean): Promise<void> => {
 				await this.storage.updateSettings({ workspaceTweaksHideScrollbars: hidden });
 				this.applyWorkspaceTweaks();
@@ -24572,10 +24726,16 @@ export default class OperonPlugin extends Plugin {
 			...options,
 		};
 		resolvedOptions = await this.resolveTaskEditorFileBodyOption(task, baseOptions);
-		const modal = new TaskEditorModal(this.app, this.indexer, this.settings, task, wrappedOnSave, this.timeTracker, resolvedOptions);
-		modal.onCloseSaveSettled = () => this.refreshAfterTaskEditorClose(task?.filePath);
-		modal.open();
-		onOpen?.(modal);
+		const sourceFile = task ? this.app.vault.getAbstractFileByPath(indexedBeforeSave?.primary.filePath ?? task.filePath) : null;
+		if (!Platform.isPhone && task && !resolveCanonicalTask && sourceFile instanceof TFile && !this.isExcalidrawTaskSource(sourceFile)) {
+			resolvedOptions.readSource = readOpeningSource ?? (id => this.readTaskEditorSource(id, undefined, openingTrace));
+		}
+		resolvedOptions.openingTrace = openingTrace;
+		return new TaskEditorContent(this.app, this.indexer, this.settings, task,
+			request => request.sourceSync && resolvedOptions.readSource
+				? this.saveSynchronizedTaskEditor(request, (rebased, fresh) => wrappedOnSave(rebased, value => this.applyEditedTaskFromView(fresh, value)))
+				: wrappedOnSave(request), this.timeTracker, resolvedOptions);
+
 	}
 
 	private getTaskEditorDeleteDirectChildCount(task: ParsedTask): number {
@@ -28227,8 +28387,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async openIndexedTaskEditor(task: IndexedTask): Promise<void> {
-		const parsed = await this.loadEditableParsedTask(task);
-		await this.openTaskEditorFor(parsed, async (request) => {
+		await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 			return await this.applyEditedTaskFromView(task, request);
 		});
 	}
@@ -29256,7 +29415,8 @@ export default class OperonPlugin extends Plugin {
 		fieldValues: Record<string, string>,
 		tags: string[],
 		options: TaskEditorContentOptions = {},
-	): Promise<TaskEditorModal | null> {
+  standalone = false,
+	): Promise<TaskEditorSession | null> {
 		const operonId = fieldValues['operonId'];
 		if (!operonId) return null;
 
@@ -29276,7 +29436,7 @@ export default class OperonPlugin extends Plugin {
 				),
 			};
 
-		let openedModal: TaskEditorModal | null = null;
+		let openedModal: TaskEditorSession | null = null;
 		await this.openTaskEditorFor(parsed, async (request) => {
 			const indexed = this.indexer.getTask(operonId);
 			const freshTask = indexed?.primary.format === 'yaml'
@@ -29290,21 +29450,21 @@ export default class OperonPlugin extends Plugin {
 			return await this.applyEditedTaskFromView(freshTask, request);
 		}, resolvedOptions, undefined, modal => {
 			openedModal = modal;
-		});
+		}, standalone);
 		return openedModal;
 	}
 
 	private reinforceTaskEditorDescriptionFocus(
-		modal: TaskEditorModal,
+		modal: TaskEditorSession,
 		selectAll = false,
 	): void {
 		const focusDescription = () => {
-			if (!modal.modalEl.isConnected) return;
+			if (!modal.modalEl.isConnected || modal.modalEl.closest('[hidden], [inert]')) return;
 			modal.content.focusDescription(selectAll);
 		};
 
 		for (const delay of [0, 120, 260, 480, 760, 1100, 1500]) {
-			getActiveWindow().setTimeout(focusDescription, delay);
+			(modal.modalEl.ownerDocument.defaultView ?? getActiveWindow()).setTimeout(focusDescription, delay);
 		}
 	}
 
@@ -29841,6 +30001,7 @@ export default class OperonPlugin extends Plugin {
 					focusDescriptionOnMount: options.focusDescriptionOnMount ?? true,
 					selectDescriptionOnMount: options.selectDescriptionOnMount ?? true,
 				},
+    true, // Creation keeps its existing standalone editor handoff.
 			);
 			if (editorModal) {
 				this.reinforceTaskEditorDescriptionFocus(
@@ -32821,9 +32982,20 @@ export default class OperonPlugin extends Plugin {
             inlineSourceFields?: readonly OperonField[];
             inlineProperties?: readonly InlinePropertyChange[];
             coordinated?: boolean;
+            source?: TaskMarkdownSource;
+            permit?: TaskWriterExclusiveMutationPermit;
 		} = {},
 	): Promise<boolean> {
-  if (options.inlineProperties?.length && !options.coordinated) return this.writer.runExclusiveTaskMutation(() => this.replaceInlineTaskById(filePath, operonId, taskLine, lineHint, { ...options, coordinated: true }));
+  if (options.inlineProperties?.length && !options.coordinated) return this.writer.runExclusiveTaskMutation(permit => this.replaceInlineTaskById(filePath, operonId, taskLine, lineHint, { ...options, coordinated: true, permit }));
+		if (options.source) {
+			const before = await options.source.read();
+			const next = this.replaceInlineTaskLineInContent(before, filePath, operonId, taskLine, lineHint, options.inlineSourceFields, options.inlineProperties);
+			if (next === null) return false;
+			this.markInternalTaskWrite(filePath);
+			return (await this.writer.applyExactMarkdownSourceMutation(filePath, before, next,
+				() => !this.indexer.hasDuplicateOperonIdConflict(operonId) && this.indexer.getTask(operonId)?.primary.filePath === filePath,
+				options.permit, 'plugin')).outcome === 'committed';
+		}
 		const openView = this.getMarkdownViewForPath(filePath);
 		if (openView) {
 			return this.replaceInlineTaskByIdInEditor(
@@ -33126,9 +33298,9 @@ export default class OperonPlugin extends Plugin {
 		const parsed = this.parseInlineTaskLine(request.taskLine, 0, task.primary.filePath);
 		if (!parsed?.operonId || parsed.operonId !== task.operonId) return false;
 
-		// Always look up the fresh task from the index — the file may have been
-		// moved by a pipeline folder rule since the editor was opened.
-			const freshTask = this.indexer.getTask(task.operonId) ?? task;
+		// Synchronized saves already resolved identity and location from the current
+		// source; other callers keep their existing index refresh.
+			const freshTask = request.sourceSync ? task : this.indexer.getTask(task.operonId) ?? task;
 			this.maybeApplyScheduledAutomationToParsedTask(parsed, freshTask.fieldValues);
 			this.applyTaskEditorTimerPayloadToParsedTask(parsed, timerPayload);
 			const payload = this.buildFieldPayload(parsed);
@@ -33200,10 +33372,10 @@ export default class OperonPlugin extends Plugin {
 				};
 				const updated = await this.persistTaskMutationWithFollowingOverride(pendingRepeatSeriesId, pendingRepeatOverride, pendingRepeatOverrideNow, async () => {
 					recurrence.result = await this.commitInlineTerminalRecurrenceMutation(freshTask, payload, undefined,
-						{ directEdit, inlineCompletionMode: request.inlineCompletionMode }, render);
+						{ directEdit, inlineCompletionMode: request.inlineCompletionMode, ownedMarkdownSources: request.markdownSource ? [request.markdownSource] : undefined }, render);
 					if (recurrence.result.outcome === 'committed') return true;
 					if (recurrence.result.outcome !== 'not-applicable') return false;
-					const moved = await this.commitDirectInlineParentPlacement(freshTask, payload.parentTask ?? '', render, directEdit);
+					const moved = await this.commitDirectInlineParentPlacement(freshTask, payload.parentTask ?? '', render, directEdit, undefined, undefined, undefined, request.markdownSource ? [request.markdownSource] : undefined);
 					if (moved !== null) return moved;
 					// Already in the exact requested position: commit the pending edit once.
 					return this.writer.runExclusiveTaskMutation(async permit => {
@@ -33280,12 +33452,12 @@ export default class OperonPlugin extends Plugin {
 						pendingRepeatSeriesId,
 						pendingRepeatOverride,
 						pendingRepeatOverrideNow,
-						() => parentLinkExpected ? this.writeParentLinkInlineEditorTask(freshTask, normalizedTaskLine, parentLinkExpected, request.inlineSourceFields, request.inlineProperties) : this.replaceInlineTaskById(
+						() => parentLinkExpected ? this.writeParentLinkInlineEditorTask(freshTask, normalizedTaskLine, parentLinkExpected, request.inlineSourceFields, request.inlineProperties, false, request.markdownSource) : this.replaceInlineTaskById(
 							freshTask.primary.filePath,
 							freshTask.operonId,
 							normalizedTaskLine,
 							freshTask.primary.lineNumber,
-                            { inlineSourceFields: request.inlineSourceFields, inlineProperties: request.inlineProperties },
+                            { inlineSourceFields: request.inlineSourceFields, inlineProperties: request.inlineProperties, source: request.markdownSource },
 						),
 					);
 					if (!updated) return false;
@@ -34192,7 +34364,7 @@ export default class OperonPlugin extends Plugin {
 			const retained = plan.disposition === 'series-ended' || plan.preview.sourceTaskRetained;
 			if (retained && options.directEdit) {
 				const placement = await this.commitDirectInlineParentPlacement(task, completedFieldValues.parentTask ?? '',
-					content => content === expectedContent ? nextContent : null, options.directEdit, options.canCommit, permit, options.ownedDrawingSources);
+					content => content === expectedContent ? nextContent : null, options.directEdit, options.canCommit, permit, options.ownedDrawingSources, options.ownedMarkdownSources);
 				if (placement !== null) return placement ? { outcome: 'committed', completedTask, recurrenceResult } : { outcome: 'failed' };
 			}
 			const write = await this.writer.applyExactMarkdownSourceMutation(
@@ -34554,6 +34726,7 @@ export default class OperonPlugin extends Plugin {
 		canCommit: () => boolean = () => true,
 		permit?: TaskWriterExclusiveMutationPermit,
         ownedSources: readonly InlineMarkdownSource[] = [],
+        ownedMarkdownSources: readonly TaskMarkdownSource[] = [],
 	): Promise<boolean | null> {
 		if (context?.targetId !== task.operonId || !this.needsDirectInlineParentPlacement(task, parentId)) return null;
 		context.placementAttempted = true;
@@ -34627,7 +34800,7 @@ export default class OperonPlugin extends Plugin {
 					if (!current()) return false;
 					return operation(writePermit);
 				}, ownedSources);
-			if (!permit) await this.writer.waitForMarkdownSources([sourcePath, targetPath], ownedSources);
+			if (!permit) await this.writer.waitForMarkdownSources([sourcePath, targetPath], [...ownedSources, ...ownedMarkdownSources]);
 			const result = permit ? await coordinated(permit) : await this.writer.runExclusiveTaskMutation(coordinated);
 			if (result) {
 				// Existing link repair runs after the writer permit is released by the caller.
@@ -36885,6 +37058,30 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private registerCommands(): void {
+  if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
+  this.register(registerNativeTaskWorkspace(this.app, {
+   position: () => this.settings.taskEditorPosition,
+   resolve: async (file, explicitId, openingTrace) => {
+    if (file.extension !== 'md' || this.isExcalidrawTaskSource(file)) return null;
+    const task = explicitId ? this.indexer.getTask(explicitId) : this.indexer.getFileTaskByPath(file.path);
+    if (!task || task.primary.filePath !== file.path || this.indexer.hasDuplicateOperonIdConflict(task.operonId)) return null;
+    const source = await this.readTaskEditorSource(task.operonId, undefined, openingTrace).catch(() => null);
+    return source && source.filePath === file.path ? { operonId: task.operonId, file } : null;
+   },
+   locate: async operonId => {
+    const source = await this.readTaskEditorSource(operonId).catch(() => null);
+    return source ? { operonId, file: source.file, ...(source.format === 'inline' ? { line: source.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(source.parsed) } : {}) } : null;
+   },
+   create: async descriptor => {
+    const source = await this.readTaskEditorSource(descriptor.operonId).catch(() => null);
+    if (!source || source.filePath !== descriptor.file.path) return null;
+    const indexed = this.indexer.getTask(descriptor.operonId);
+    if (!indexed) return null;
+    return this.createTaskEditorContentFor(source.parsed, request => this.applyEditedTaskFromView(indexed, request));
+   },
+   confirmDiscard: () => confirmTaskEditorDiscard(this.app),
+   closed: filePath => this.refreshAfterTaskEditorClose(filePath),
+  }));
 		this.register(() => disposeWebLightboxes(this.app));
 		this.addCommand({
 			id: 'open-task-creator',

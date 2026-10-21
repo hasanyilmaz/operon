@@ -1,9 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import type { ClassDeclaration, MethodDeclaration } from 'typescript';
-const ts: typeof import('typescript') = createRequire(`${process.cwd()}/package.json`)('typescript');
-import { parseTaskLine, resolveInlineTaskDescriptionCursorCh } from '../src/core/parser';
 import { test } from 'node:test';
 import { Platform, TFile } from 'obsidian';
 import { lightboxFixture } from './test-support/lightbox-dom';
@@ -600,29 +596,6 @@ test('late native Source load never steals focus after its lightbox was closed',
   assert.equal(focused,0);assert.equal(f.stats().detached,1);assert.equal(f.stats().saves,0);
  }finally{f.cleanup();await tick();}
 });
-const editorContentAst=ts.createSourceFile('task-editor-content.ts',readFileSync('src/ui/task-editor-content.ts','utf8'),ts.ScriptTarget.Latest,true);
-const editorContentClass=editorContentAst.statements.find(node=>ts.isClassDeclaration(node)&&node.name?.text==='TaskEditorContent') as ClassDeclaration;
-function editorCursorMethod(name:string):Function {
- const method=editorContentClass.members.find(node=>ts.isMethodDeclaration(node)&&node.name.getText(editorContentAst)===name) as MethodDeclaration;
- const code=ts.transpileModule(`return function(${method.parameters.map(parameter=>parameter.getText(editorContentAst)).join(',')}) ${method.body!.getText(editorContentAst)}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- return new Function('parseTaskLine','resolveInlineTaskDescriptionCursorCh',code)(parseTaskLine,resolveInlineTaskDescriptionCursorCh);
-}
-const bodyLineOffset=editorCursorMethod('getBodyCursorOffset'),bodySourceCursor=editorCursorMethod('resolveFileBodyCursorOffset');
-for(const raw of ['- [ ] Child {{operonId:: abcdefg}}','  - [x] SpätDienst 🎉 {{operonId:: abcdefg}}'])test(`Inline File Body resolves description end after draft changes: ${raw}`,()=>{
- const task=parseTaskLine(raw,0,'Note.md',DEFAULT_SETTINGS.keyMappings)!;
- const context:any={fileBodyContext:{filePath:'Note.md',format:'inline',cursorOffset:0},settings:DEFAULT_SETTINGS,getCurrentOperonId:()=>task.operonId,existingTask:task,
-  getBodyCursorOffset:bodyLineOffset};
- const savedContext=JSON.stringify(context.fileBodyContext);
- for(const body of [raw,`Prefix\n${raw}`,`Prefix\r\n${raw}\r\nLast`]){
-  context.fileBodyDraft=body;
-  assert.equal(bodySourceCursor.call(context),body.indexOf(raw)+task.descriptionRange.to);
-  assert.equal(JSON.stringify(context.fileBodyContext),savedContext);
- }
- context.fileBodyDraft=`${raw}\n${raw}`;assert.equal(bodySourceCursor.call(context),0);
- context.fileBodyContext.format='yaml';context.fileBodyContext.cursorOffset=4;assert.equal(bodySourceCursor.call(context),4);
-});
-
-
 for (const extension of ['md', 'base', 'table', 'web']) test(`native host width: ${extension} keeps its approved frame without :has`, async () => {
  const f=fixture(extension);try {
   if(extension==='web') await openWebLightbox(f.app,f.anchor,'https://example.com');

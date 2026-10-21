@@ -45,7 +45,7 @@ export function resolveChipOpening(entry: Pick<InlineTaskCompactChipEntry, 'key'
  if (key === 'taskInfo.source' || key === 'parentTask') {
   const source = key === 'parentTask' ? context.getTaskById(task.fieldValues.parentTask?.trim() ?? '') : task;
   if (!source || !(context.app.vault.getAbstractFileByPath(source.primary.filePath) instanceof TFile)) return { kind: key === 'parentTask' ? 'picker' : 'missing' };
-  return { kind: 'target', sourceTask: source, target: { kind: 'local', linktext: source.primary.filePath, sourcePath: source.primary.filePath, line: source.primary.format === 'inline' ? source.primary.lineNumber : undefined } };
+  return { kind: 'target', sourceTask: source, target: { kind: 'local', operonId: source.operonId, linktext: source.primary.filePath, sourcePath: source.primary.filePath, line: source.primary.format === 'inline' ? source.primary.lineNumber : undefined } };
  }
  const mapping = getCustomFieldMapping(context.getSettings().keyMappings, key);
  const isList = ['links', 'assignees', 'contexts', 'taskGallery'].includes(key) || mapping?.type === 'list';

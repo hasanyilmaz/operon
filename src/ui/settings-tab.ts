@@ -2062,14 +2062,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private buildTaskEditorSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
-		const groups = this.buildTaskSettingsGroups([
-			['taskEditorFileBodySection', ['taskEditorShowLineNumbers', 'taskEditorHighlightActiveLine'], (containerEl, key) => {
-				if (key === 'taskEditorShowLineNumbers') this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorShowLineNumbers'),
-					t('settings', 'taskEditorShowLineNumbersDesc'), 'taskEditorShowLineNumbers');
-				if (key === 'taskEditorHighlightActiveLine') this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorHighlightActiveLine'),
-					t('settings', 'taskEditorHighlightActiveLineDesc'), 'taskEditorHighlightActiveLine');
-			}],
-		], entries, t('settings', 'subtabTaskEditor'), 'DOCS-021 Task Editor');
+		const position = this.buildSettingsSearchSettingDefinition(entries, 'taskEditorPosition');
+		if (position) {
+			delete position.control;
+			position.render = setting => {
+				setting.addDropdown(dropdown => dropdown.addOptions(this.getSettingsSearchDropdownOptions('taskEditorPosition'))
+					.setValue(this.settings.taskEditorPosition).onChange(value => this.setControlValue('taskEditorPosition', value)));
+				const title = t('settings', 'subtabTaskEditor');
+				return attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					[this.buildNativeSettingsDocsAction(title, 'DOCS-021 Task Editor').action]);
+			};
+		}
+		const groups: SettingDefinitionItem[] = [{ type: 'group', heading: t('settings', 'taskEditorLayoutSection'),
+			items: this.compactSettingsSearchDefinitions([
+				position,
+				this.buildSettingsSearchSettingDefinition(entries, 'taskEditorFileShowSource'),
+				this.buildSettingsSearchSettingDefinition(entries, 'taskEditorInlineShowSource'),
+			]),
+		}];
 		groups.push({ type: 'group', heading: t('settings', 'taskEditorSections'), cls: 'operon-task-editor-sections-settings',
 			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'taskEditorSections'), 'DOCS-021 Task Editor', 'operon-native-settings-declarative-docs-action--inline-heading')],
 			items: normalizeTaskEditorSections(this.settings.taskEditorSections).map(section => ({
@@ -3287,6 +3297,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+  if (key === 'taskEditorPosition') return value === 'left' ? 'left' : 'right';
 		if (key === 'calendarAutoScrollPastRatio' || key === 'calendarTimeGridScale') {
 			const options: readonly number[] = key === 'calendarAutoScrollPastRatio'
 				? CALENDAR_AUTO_SCROLL_POSITION_OPTIONS : CALENDAR_TIME_GRID_SCALE_OPTIONS;
@@ -3616,6 +3627,7 @@ export class OperonSettingsTab extends PluginSettingTab {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+  if (key === 'taskEditorPosition') return { right: t('settings', 'taskEditorPositionRight'), left: t('settings', 'taskEditorPositionLeft') };
   if (key === 'workspaceTweaksBackgroundDimming') return Object.fromEntries(BACKGROUND_DIMMING_OPTIONS.map(value => [String(value), value === 50 ? t('settings', 'workspaceTweaksBackgroundDimmingDefault') : `${value}%`]));
 		if (key === 'calendarTimeGridScale') {
 			return Object.fromEntries(CALENDAR_TIME_GRID_SCALE_OPTIONS.map(scale => [String(scale), `${this.formatCalendarTimeGridScaleLabel(scale)}x`]));
@@ -4630,8 +4642,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private renderInterfaceTaskEditorTab(containerEl: HTMLElement): void {
-		this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorShowLineNumbers'), t('settings', 'taskEditorShowLineNumbersDesc'), 'taskEditorShowLineNumbers');
-		this.renderBoundToggleSetting(containerEl, t('settings', 'taskEditorHighlightActiveLine'), t('settings', 'taskEditorHighlightActiveLineDesc'), 'taskEditorHighlightActiveLine');
+		const layout = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorLayoutSection'));
+		this.markSettingsSearchTarget(renderDropdownSetting({
+			containerEl: layout,
+			name: t('settings', 'taskEditorPosition'), desc: t('settings', 'taskEditorPositionDesc'),
+			value: this.settings.taskEditorPosition,
+			options: Object.entries(this.getSettingsSearchDropdownOptions('taskEditorPosition')).map(([value, label]) => ({ value, label })),
+			onChange: settingsAsyncHandler('task editor position change failed', value => this.setControlValue('taskEditorPosition', value)),
+		}), 'taskEditorPosition');
+		this.renderBoundToggleSetting(layout, t('settings', 'taskEditorFileShowSource'), t('settings', 'taskEditorFileShowSourceDesc'), 'taskEditorFileShowSource');
+		this.renderBoundToggleSetting(layout, t('settings', 'taskEditorInlineShowSource'), t('settings', 'taskEditorInlineShowSourceDesc'), 'taskEditorInlineShowSource');
 		const sections = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorSections'), undefined,
 			this.buildNativeSettingsDocsAction(t('settings', 'taskEditorSections'), 'DOCS-021 Task Editor'));
 		sections.addClass('operon-task-editor-sections-settings');

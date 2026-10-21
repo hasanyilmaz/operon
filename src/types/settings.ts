@@ -1720,7 +1720,11 @@ export interface OperonSettings extends TaskCardSettings {
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
 	/** Desktop Task Editor section order and optional custom titles. */
 	taskEditorSections: TaskEditorSection[];
-	/** If true, the Task Editor file body source panel shows source line numbers. */
+	/** Desktop workspace preferences, captured at the start of each opening. */
+	taskEditorPosition: 'left' | 'right';
+	taskEditorFileShowSource: boolean;
+	taskEditorInlineShowSource: boolean;
+	/** Retained for legacy File Body compatibility. */
 	taskEditorShowLineNumbers: boolean;
 	/** If true, highlight the current source line in the Task Editor file body. */
 	taskEditorHighlightActiveLine: boolean;
@@ -2307,6 +2311,9 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	estimateAutoReallocation: false,
 	taskCreatorToolbar: buildDefaultTaskCreatorToolbarItems(),
 	taskEditorSections: normalizeTaskEditorSections(undefined),
+	taskEditorPosition: 'right',
+	taskEditorFileShowSource: true,
+	taskEditorInlineShowSource: false,
 	taskEditorShowLineNumbers: false,
 	taskEditorHighlightActiveLine: true,
 	taskEditorWorkflowPickers: buildDefaultTaskEditorWorkflowPickerItems(),
@@ -4409,6 +4416,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	out.taskEditorPosition = src.taskEditorPosition === 'left' ? 'left' : 'right';
+	out.taskEditorFileShowSource = typeof src.taskEditorFileShowSource === 'boolean' ? src.taskEditorFileShowSource : true;
+	out.taskEditorInlineShowSource = src.taskEditorInlineShowSource === true;
 	out.taskEditorShowLineNumbers = typeof src.taskEditorShowLineNumbers === 'boolean'
 		? src.taskEditorShowLineNumbers
 		: Object.keys(src).length === 0

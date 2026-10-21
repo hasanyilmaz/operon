@@ -277,6 +277,9 @@ function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPref
 	return {
 		taskCreatorToolbar: settings.taskCreatorToolbar,
 		taskEditorSections: settings.taskEditorSections,
+		taskEditorPosition: settings.taskEditorPosition,
+		taskEditorFileShowSource: settings.taskEditorFileShowSource,
+		taskEditorInlineShowSource: settings.taskEditorInlineShowSource,
 		taskEditorShowLineNumbers: settings.taskEditorShowLineNumbers,
 		taskEditorHighlightActiveLine: settings.taskEditorHighlightActiveLine,
 		taskEditorWorkflowPickers: settings.taskEditorWorkflowPickers,

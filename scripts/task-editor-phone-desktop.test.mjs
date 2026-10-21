@@ -10,7 +10,9 @@ const ast = ts.createSourceFile('editor.ts', source, ts.ScriptTarget.Latest, tru
 const editor = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'TaskEditorContent');
 const method = editor.members.find(node => node.name?.getText(ast) === 'renderTrackingSessionsSection').getText(ast);
 const scope = '.operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-editor-mobile)';
-const phoneStyles = styles.slice(styles.indexOf('/* Phone desktop editor only.'));
+const phoneStart = styles.indexOf('/* Phone desktop editor only.');
+const workspaceStart = styles.indexOf('/* A native source and its task editor share one overlay');
+const phoneStyles = styles.slice(phoneStart, workspaceStart < 0 ? undefined : workspaceStart);
 const rules = [...phoneStyles.matchAll(/([^{}]+)\{([^{}]*)\}/gu)].map(match => ({ selector: match[1].trim(), body: match[2] }));
 const rule = text => {
  const result = rules.find(item => item.selector.includes(text));

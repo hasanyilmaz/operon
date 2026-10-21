@@ -36,14 +36,14 @@ try {
     draft.focus();draft.setSelectionRange(2,5);window.release=Subject.applyDesktopModalBackdrop(owner);
     const after=geometry(),effect=bg();let parity=true;const widths=[];
     for(const height of [0,1400,280]){
-     rows.style.height=height+'px';note.hidden=height===0;if(surface==='editor')modal.classList.toggle('operon-task-editor-modal-has-file-body',height>300);
+     rows.style.height=height+'px';note.hidden=height===0;
      widths.push(modal.getBoundingClientRect().width);const active=geometry();release();const without=geometry();parity&&=JSON.stringify(active)===JSON.stringify(without);window.release=Subject.applyDesktopModalBackdrop(owner);
     }
     const child=owner.createDiv('modal-container');const childBg=child.createDiv('modal-bg');const childStyle=getComputedStyle(childBg);const childUnchanged=childStyle.opacity==='0.6'&&childStyle.backdropFilter==='blur(2px)';child.remove();
     const frame=document.createElement('iframe');document.body.appendChild(frame);const foreign=frame.contentDocument.createElement('div');frame.contentDocument.body.append(foreign);foreign.addClass=(c)=>foreign.classList.add(c);foreign.removeClass=(c)=>foreign.classList.remove(c);const cleanForeign=Subject.applyDesktopModalBackdrop(foreign);cleanForeign();const isolated=owner.classList.contains('operon-focus-modal')===desktop;frame.remove();
     return{before,after,original,effect,parity,widths,childUnchanged,isolated,controlsUnchanged:controls===owner.querySelectorAll('button,.modal-close-button').length,noRail:owner.querySelectorAll('.operon-task-media-lightbox-control').length===0,selection:[document.activeElement.id,draft.selectionStart,draft.selectionEnd,draft.value]};
    },{desktop,surface});
-   if(surface==='editor'&&width===1440)assert.ok(result.widths[1]>result.widths[0],'File Body really expands the modal');
+   if(surface==='editor'&&width===1440)assert.ok(result.widths.every(value=>value===result.widths[0]),'Editor width stays fixed as content height changes');
    assert.deepEqual(result.before,result.after);assert.ok(result.parity);assert.ok(result.childUnchanged);assert.ok(result.isolated);assert.ok(result.controlsUnchanged);assert.ok(result.noRail);
    assert.deepEqual(result.effect,desktop?['rgba(0, 0, 0, 0.5)','1','none']:result.original);
    assert.deepEqual(result.selection,['draft',2,5,'Unsaved draft']);
@@ -89,7 +89,7 @@ try {
     await page.evaluate(()=>{app.keymap.popScope(confirmScope);confirmDialog.remove();document.querySelector('.operon-task-media-lightbox-content button').focus();});
     // Child native/web/media previews inherit the modal layer and release only their scope.
     for(const kind of ['is-native','is-web','is-image']){
-     await page.evaluate(kind=>{const link=document.querySelector('.operon-task-media-lightbox:not([hidden]) .operon-task-media-lightbox-content button');window.closeChild=Subject.openLightbox(link,{title:'Child',className:kind,render(shell){shell.createDiv('operon-task-media-lightbox-content').createEl('button',{text:'Child',attr:{id:'child-content'}});return null;}});},kind);
+     await page.evaluate(kind=>{const link=document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert]) .operon-task-media-lightbox-content button');window.closeChild=Subject.openLightbox(link,{title:'Child',className:kind,render(shell){shell.createDiv('operon-task-media-lightbox-content').createEl('button',{text:'Child',attr:{id:'child-content'}});return null;}});},kind);
      assert.deepEqual(await page.locator('#child-content').evaluate(el=>{const r=el.getBoundingClientRect(),shell=el.closest('.operon-task-media-lightbox');return[getComputedStyle(shell).zIndex,shell.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)),scopeStack.length];}),['50',true,3]);
      await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>scopeStack.length),2);
     }
@@ -110,7 +110,7 @@ try {
     // Content without an explicit profile remains local and never touches the dimming preference queue.
     await page.locator('.operon-task-media-lightbox-content').evaluate(el=>{el.style.width='67vw';el.style.height='67vh';});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    const dimensions=()=>page.locator('.operon-task-media-lightbox:not([hidden]) > .operon-task-media-lightbox-content').evaluate(el=>{const r=el.getBoundingClientRect();return{width:r.width/innerWidth*100,height:r.height/innerHeight*100};});
+    const dimensions=()=>page.locator('.operon-task-media-lightbox:not([hidden]):not([inert]) > .operon-task-media-lightbox-content').evaluate(el=>{const r=el.getBoundingClientRect();return{width:r.width/innerWidth*100,height:r.height/innerHeight*100};});
     const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<.1,`${actual} vs ${expected}`);
     let dims=await dimensions();near(dims.width,67);near(dims.height,67);
     await page.mouse.move(8,8);
@@ -131,7 +131,7 @@ try {
     await page.evaluate(()=>{window.sizeChild=Subject.openLightbox(document.getElementById('dim-child-anchor'),{title:'Independent child',render(shell){const child=shell.createDiv('operon-task-media-lightbox-content');child.style.cssText='width:67vw;height:67vh';return null;}});});
     near((await dimensions()).width,67);
     await page.mouse.move(8,8);
-    await page.locator('.operon-task-media-lightbox:not([hidden]) .operon-lightbox-width-increase').click();near((await dimensions()).width,70);
+    await page.locator('.operon-task-media-lightbox:not([hidden]):not([inert]) .operon-lightbox-width-increase').click();near((await dimensions()).width,70);
     await page.evaluate(()=>sizeChild());near((await dimensions()).width,65);
     // Unprofiled test shells keep their original content geometry on reopen.
     await page.evaluate(()=>{window.sizeChild=Subject.openLightbox(document.getElementById('dim-child-anchor'),{title:'Reopened child',render(shell){const child=shell.createDiv('operon-task-media-lightbox-content');child.style.cssText='width:67vw;height:67vh';return null;}});});
@@ -149,7 +149,7 @@ try {
     await page.locator('.operon-task-media-lightbox-content').evaluate(el=>{el.style.width='220px';});
     await page.locator('.operon-task-media-lightbox-content').evaluate(el=>{el.style.height='600px';});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    const groups=await page.locator('.operon-task-media-lightbox:not([hidden])').evaluate(shell=>{
+    const groups=await page.locator('.operon-task-media-lightbox:not([hidden]):not([inert])').evaluate(shell=>{
      const content=shell.querySelector('.operon-task-media-lightbox-content').getBoundingClientRect();
      const upper=shell.querySelector('.operon-task-media-lightbox-close').getBoundingClientRect();
      const lower=shell.querySelector('.operon-lightbox-dimming-decrease').getBoundingClientRect();
@@ -167,9 +167,9 @@ try {
     await page.evaluate(async()=>{await Subject.saveDesktopBackdropDimming(35);});assert.equal(await dimValue(),'35');
     await page.evaluate(()=>{window.dimChild=Subject.openLightbox(document.getElementById('dim-child-anchor'),{title:'Nested dimming',render(shell){shell.createDiv('operon-task-media-lightbox-content').setText('Child');return null;}});});
     assert.equal(await dimValue(),'35');
-    assert.equal(await page.locator('.operon-task-media-lightbox:not([hidden])').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0.45)');
+    assert.equal(await page.locator('.operon-task-media-lightbox:not([hidden]):not([inert])').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0.45)');
     await page.mouse.move(8,8);
-    await page.locator('.operon-task-media-lightbox:not([hidden]) .operon-lightbox-dimming-decrease').click();
+    await page.locator('.operon-task-media-lightbox:not([hidden]):not([inert]) .operon-lightbox-dimming-decrease').click();
     await page.waitForFunction(()=>savedDimming===30);await page.evaluate(()=>dimChild());assert.equal(await dimValue(),'30');
     await page.mouse.move(8,8);
     await page.evaluate(()=>{failDimming=true;document.querySelector('.operon-lightbox-dimming-increase').click();});
@@ -183,7 +183,7 @@ try {
     await page.setViewportSize({width,height:220});
     await page.waitForTimeout(20);
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    const compactRail=await page.locator('.operon-task-media-lightbox:not([hidden])').evaluate(shell=>[...shell.querySelectorAll('.operon-task-media-lightbox-control')].map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,width:r.width,height:innerHeight,cls:el.className};}));
+    const compactRail=await page.locator('.operon-task-media-lightbox:not([hidden]):not([inert])').evaluate(shell=>[...shell.querySelectorAll('.operon-task-media-lightbox-control')].map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,width:r.width,height:innerHeight,cls:el.className};}));
     assert.ok(compactRail.every(r=>r.top>=7&&r.bottom<=r.height-7&&r.width>=24),JSON.stringify(compactRail));
     await page.evaluate(()=>{dimClose();unbindDimming();});await page.setViewportSize({width,height:800});
     // Native Modal.open overwrites opacity after onOpen; the helper must correct it before paint.
@@ -221,7 +221,7 @@ try {
     });
     assert.equal(await page.evaluate(()=>getComputedStyle(extra.firstElementChild).backgroundColor),'rgba(0, 0, 0, 0.8)');
     await page.evaluate(()=>extra.remove());
-    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.operon-task-media-lightbox:not([hidden])')).backgroundColor),'rgba(0, 0, 0, 0.75)');
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])')).backgroundColor),'rgba(0, 0, 0, 0.75)');
     await page.evaluate(()=>{releaseExtra();outerClose();});
     // Explicit ancestry through a newly opened modal must preserve the outer native preview.
     await page.evaluate(()=>{
@@ -230,7 +230,7 @@ try {
      window.modalChild=Subject.openLightbox(extraAnchor,{title:'Modal child',render(el){el.createEl('button',{text:'Child'});return null;}});
     });
     assert.equal(await page.evaluate(()=>document.querySelectorAll('.operon-task-media-lightbox').length),2);
-    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.operon-task-media-lightbox:not([hidden])')).backgroundColor),'rgba(0, 0, 0, 0.85)');
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])')).backgroundColor),'rgba(0, 0, 0, 0.85)');
     await page.evaluate(()=>{modalChild();releaseExtra();extra.remove();outerClose();});
     // A second document starts at depth one, independent from this document's modal.
     const foreign=await page.evaluate(()=>{
@@ -276,7 +276,7 @@ try {
       }});
      };
     });
-    const content=()=>page.locator('.operon-task-media-lightbox:not([hidden]) > :is(.operon-task-media-lightbox-content,img)');
+    const content=()=>page.locator('.operon-task-media-lightbox:not([hidden]):not([inert]) > :is(.operon-task-media-lightbox-content,img)');
     const dims=()=>content().evaluate(el=>({width:el.offsetWidth,height:el.offsetHeight}));
     for(const profile of ['markdown','base','table','web','pdf','image','video','youtube']){
      await page.evaluate(profile=>{sizePreferences[profile]={width:75,height:85};openProfile(profile);},profile);

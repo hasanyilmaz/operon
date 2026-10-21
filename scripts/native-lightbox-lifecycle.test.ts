@@ -3,11 +3,44 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const ts: typeof import('typescript') = createRequire(`${process.cwd()}/package.json`)('typescript');
-import { NativeLightboxLifecycle, trackLightboxTableCallbacks, getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
+import { bindNativeLightboxMethod, NativeLightboxLifecycle, trackLightboxTableCallbacks, getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { TablePresetRegistry } from '../src/storage/table-preset-registry';
 import { createDefaultTablePreset, cloneTablePreset } from '../src/types/table';
 import { serializeOperonTableFile } from '../src/storage/table-file';
 import { lightboxFixture } from './test-support/lightbox-dom';
+
+test('native method binding retains the original method, receiver, arguments and result', () => {
+ const result = { saved: true };
+ const calls: { receiver: unknown; args: [string, boolean?] }[] = [];
+ const owner = {
+  invoke(this: unknown, ...args: [string, boolean?]) {
+   calls.push({ receiver: this, args });
+   return result;
+  },
+ };
+ const bound = bindNativeLightboxMethod(owner, 'invoke');
+ owner.invoke = () => { throw new Error('replacement must not be called'); };
+ assert.equal(bound('first'), result);
+ assert.equal(Reflect.apply(bound, { different: true }, ['second', false]), result);
+ assert.equal(calls[0].receiver, owner);
+ assert.equal(calls[1].receiver, owner);
+ assert.deepEqual(calls.map(call => call.args), [['first'], ['second', false]]);
+});
+
+test('native method binding preserves Promise identity without awaiting or wrapping it', async () => {
+ const result = Promise.resolve({ saved: true });
+ const owner = { save() { return result; } };
+ const bound = bindNativeLightboxMethod(owner, 'save');
+ assert.equal(bound(), result);
+ await result;
+});
+
+test('native method binding propagates the original synchronous error', () => {
+ const failure = new Error('native save failed');
+ const owner = { save(): never { throw failure; } };
+ const bound = bindNativeLightboxMethod(owner, 'save');
+ assert.throws(() => bound(), error => error === failure);
+});
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function deferred<T>() { let resolve!: (v:T)=>void; let reject!: (e:unknown)=>void; const promise=new Promise<T>((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject}; }

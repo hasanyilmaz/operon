@@ -1,6 +1,7 @@
-export function markdownBodyStartLine(lines: readonly string[]): number | null {
-	if (lines[0]?.trim() !== '---') return 0;
-	const closing = lines.findIndex((line, index) => index > 0 && line.trim() === '---');
+export function markdownBodyStartLine(lines: readonly string[], exactFences = false): number | null {
+	const isFence = (line: string | undefined): boolean => exactFences ? line === '---' : line?.trim() === '---';
+	if (!isFence(lines[0])) return 0;
+	const closing = lines.findIndex((line, index) => index > 0 && isFence(line));
 	return closing < 0 ? null : closing + 1;
 }
 

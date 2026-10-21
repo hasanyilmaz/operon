@@ -1,3 +1,6 @@
+import type { LightboxOpeningTrace } from './lightbox-opening-perf';
+import { mergeTaskEditorSource, taskEditorChangedKeys, type TaskEditorSourceIntent, type TaskEditorSourceSnapshot, type TaskEditorSourceState } from './task-editor-source-sync';
+import type { TaskMarkdownSource } from '../core/task-markdown-source';
 import { bindEditorInteractionState } from './editor-interaction-state';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
@@ -23,7 +26,7 @@ import { createVaultFilePropertySnapshot, createCachedTableFilePropertyTypeResol
 import { bindPropertyReadOnlyWarning, propertyReadOnlyWarningText } from './property-readonly-warning';
 import { openTableFilePropertyPicker } from './table/table-file-property-editor';
 import { showSearchableFieldPicker } from './field-pickers/searchable-field-picker';
-import { App, Component, MarkdownRenderer, Setting, Notice, getIcon, setIcon, stringifyYaml, TFile, Platform } from 'obsidian';
+import { App, Setting, Notice, getIcon, setIcon, stringifyYaml, TFile, Platform } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { PinnedCache } from '../storage/pinned-cache';
 
@@ -38,7 +41,6 @@ import {
 	shouldTriggerOneShotAutomation,
 } from '../types/pipeline';
 import { serializeTask } from '../core/serializer';
-import { parseTaskLine, resolveInlineTaskDescriptionCursorCh } from '../core/parser';
 import {
 	getManagedTaskFieldType,
 	isManagedTaskFieldCanonicalKey,
@@ -107,7 +109,6 @@ import {
 	type TrackerSessionTaskNoteOptions,
 } from './tracker-session-edit-modal';
 import { formatTrackerDayHeader } from './tracker-time-labels';
-import { EmbeddedMarkdownSourceEditor } from './embedded-markdown-source-editor';
 import {
 	createCompactMarkdownEditorSurface,
 	type CompactMarkdownEditorSurface,
@@ -165,6 +166,8 @@ import {
 
 /** Callback to persist editor state. Returning false/null aborts the save; a commit returns authoritative saved state. */
 export interface TaskEditorSaveRequest {
+ sourceSync?: TaskEditorSourceIntent;
+ markdownSource?: TaskMarkdownSource;
  inlineProperties?: InlinePropertyChange[];
  inlineSourceFields?: readonly OperonField[];
  fileProperties?: FileTaskPropertyChange[];
@@ -291,7 +294,8 @@ export interface TaskEditorSubtaskRequest {
 }
 
 export interface TaskEditorContentOptions {
-	onSetShowLineNumbers?: (visible: boolean) => Promise<void>;
+ openingTrace?: LightboxOpeningTrace;
+ readSource?: (operonId: string) => Promise<TaskEditorSourceSnapshot>;
 	onSetHideScrollbars?: (hidden: boolean) => Promise<void>;
 	focusDescriptionOnMount?: boolean;
 	selectDescriptionOnMount?: boolean;
@@ -392,7 +396,6 @@ interface TaskEditorSemanticSnapshot {
 	checkbox: 'open' | 'done' | 'cancelled';
 	tags: string[];
 	fieldValues: Record<string, string>;
-	fileBodyDraft: string | null;
 	inlineCompletionMode: InlineRepeatCompletionMode;
 }
 
@@ -471,6 +474,7 @@ type EditorFieldDisplay = Pick<KeyMapping, 'canonicalKey' | 'visiblePropertyName
 type EditorFileProperty = { field: TableFilePropertyField; baseline: RawYamlPropertyExpectation | null; value: unknown; inline?: InlinePropertySnapshot; readonly?: boolean; readOnlyReason?: NativePropertyReadOnlyReason; headerSelected?: boolean; pending?: boolean };
 
 export class TaskEditorContent {
+ private readonly openingTrace?: LightboxOpeningTrace;
 
 	private app: App;
 	private indexer: OperonIndexer;
@@ -522,16 +526,24 @@ export class TaskEditorContent {
 	private pinnedCache: PinnedCache | null = null;
 	private getProjectSerialDisplay: ((operonId: string) => ProjectSerialDisplay | null) | null = null;
 	private taskOperonId: string | null = null;
+	private readSource: TaskEditorContentOptions['readSource'];
+	private sourceRefreshGeneration = 0;
+	private sourceComposing = false;
+	private readonly sourceCompositionStart = (): void => { this.sourceComposing = true; };
+	private readonly sourceCompositionEnd = (): void => {
+		this.sourceComposing = false;
+		this.sourceInteractionEnd();
+	};
+	private readonly sourceInteractionEnd = (): void => {
+		queueMicrotask(() => { if (this.readSource) void this.refreshTaskSource(); });
+	};
 	private pinnedCacheUnsubscribe: (() => void) | null = null;
 	private trackerUnsubscribe: (() => void) | null = null;
 	private indexUpdatesUnsubscribe: (() => void) | null = null;
 	private refreshCorePinControl: (() => void) | null = null;
-	private onSetShowLineNumbers: TaskEditorContentOptions['onSetShowLineNumbers'];
 	private onSetHideScrollbars: TaskEditorContentOptions['onSetHideScrollbars'];
 	private scrollbarsSavePending = false;
 	private scrollbarsObserver: MutationObserver | null = null;
-	private lineNumbersSavePending = false;
-	private refreshLineNumbersControl: (() => void) | null = null;
 	private bodyDropdowns: HTMLElement[] = [];
 	private refreshCoreTrackerControl: (() => void) | null = null;
 	private refreshTrackingSessionsSection: (() => void) | null = null;
@@ -578,6 +590,8 @@ export class TaskEditorContent {
 	private noteCompactHostEl: HTMLElement | null = null;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
 	private rootEl: HTMLElement | null = null;
+	private initialSourceRefresh: Promise<void> = Promise.resolve();
+	private initialFileProperties: Promise<void> = Promise.resolve();
 	private cleanupInteractionState: (() => void) | null = null;
 	private shellEl: HTMLElement | null = null;
 	private mainPanelEl: HTMLElement | null = null;
@@ -593,28 +607,16 @@ export class TaskEditorContent {
 	private mobileCoreOverflowFrame: number | null = null;
 	private mobilePickerCloseFrame: number | null = null;
 	private mobileCoreButtonRefreshers = new Set<() => void>();
-	private fileBodyPanelEl: HTMLElement | null = null;
-	private fileBodyBackdropEl: HTMLButtonElement | null = null;
-	private fileBodyToggleButtonEl: HTMLButtonElement | null = null;
-	private fileBodySaveButtonEl: HTMLButtonElement | null = null;
 	private fileBodyContext: TaskEditorFileBodyContext | null = null;
+	// Source snapshots support checkbox refresh and save acknowledgements; no body editor writes them.
 	private fileBodyDraft = '';
 	private persistedFileBodyDraft = '';
 	private readonly checkboxSaveListenerController = new AbortController();
 	private checkboxBodyRevision = 0;
-	private pendingCheckboxSource: { filePath: string; content: string } | null = null;
-	private isFileBodyVisible = false;
-	private isFileBodyDirty = false;
-	private embeddedBodyEditor: EmbeddedMarkdownSourceEditor | null = null;
-	private embedPreviewComponent: Component | null = null;
-	private fileBodyWide: boolean | null = null;
-	private fileBodyResizeWindow: Window | null = null;
-	private fileBodyResizeObserver: ResizeObserver | null = null;
-	private fileBodyResizeHandler: (() => void) | null = null;
-	private fileBodyLayoutRefreshGeneration = 0;
-	private fileBodyLayoutRefreshEditor: EmbeddedMarkdownSourceEditor | null = null;
-	private fileBodyLayoutRefreshFrame: number | null = null;
-	private fileBodyLayoutRefreshTimer: WindowTimeoutHandle | null = null;
+	private sourceContextWide: boolean | null = null;
+	private sourceContextResizeWindow: Window | null = null;
+	private sourceContextResizeObserver: ResizeObserver | null = null;
+	private sourceContextResizeHandler: (() => void) | null = null;
 	private readonly mobileCoreScrollHandler = () => this.scheduleMobileCoreToolbarOverflowState();
 	private readonly mobileResizeHandler = () => {
 		if (this.mobilePickerOpenDepth > 0) return;
@@ -655,6 +657,8 @@ export class TaskEditorContent {
 		this.usesTouchDesktopLayout = !this.usesMobileLayout && (this.isPhone || this.isTablet);
 		this.existingTask = existingTask;
 		this.isNewTask = !existingTask;
+		this.openingTrace = options.openingTrace;
+		this.readSource = !this.isPhone && existingTask ? options.readSource : undefined;
 		this.onSave = onSave;
 		this.timeTracker = timeTracker;
 		this.focusDescriptionOnMount = options.focusDescriptionOnMount ?? true;
@@ -664,7 +668,6 @@ export class TaskEditorContent {
 		this.onRequestDelete = options.onRequestDelete ?? null;
 		this.getDeleteDirectChildCount = options.getDeleteDirectChildCount ?? null;
 		this.onOpenSubtasksStats = options.onOpenSubtasksStats;
-		this.onSetShowLineNumbers = options.onSetShowLineNumbers;
 		this.onSetHideScrollbars = options.onSetHideScrollbars;
 		this.onUpdateExistingSubtaskParent = options.onUpdateExistingSubtaskParent ?? null;
 		this.getRepeatSkipDates = options.getRepeatSkipDates ?? null;
@@ -675,7 +678,6 @@ export class TaskEditorContent {
 		this.fileBodyContext = options.fileBody ?? null;
 		this.fileBodyDraft = options.fileBody?.initialContent ?? '';
 		this.persistedFileBodyDraft = this.fileBodyDraft;
-		this.isFileBodyVisible = !this.isPhone && this.fileBodyContext?.format === 'yaml';
 		this.taskOperonId = existingTask?.operonId ?? null;
 
 		// Load existing values
@@ -708,7 +710,7 @@ export class TaskEditorContent {
 		return this.fileBodyContext != null;
 	}
 
-	private isWideFileBodyViewport(): boolean {
+	private isWideSourceContextViewport(): boolean {
 		const modal = this.rootEl?.closest<HTMLElement>('.operon-task-editor-modal');
 		const container = modal?.parentElement;
 		if (!modal || !container || !this.rootEl) return false;
@@ -725,188 +727,52 @@ export class TaskEditorContent {
 		const borders = px(modalStyle.borderLeftWidth) + px(modalStyle.borderRightWidth);
 		const available = container.clientWidth - px(containerStyle.paddingLeft) - px(containerStyle.paddingRight);
 		const maxValue = modalStyle.maxWidth;
-		// Unknown theme constraints must not enable an unreadably small split.
+		// Preserve the established compact editor width threshold under theme constraints.
 		if (maxValue !== 'none' && !maxValue.endsWith('px') && !maxValue.endsWith('%')) return false;
 		const maxWidth = maxValue.endsWith('px') ? px(maxValue)
 			: maxValue.endsWith('%') ? available * px(maxValue) / 100 : Infinity;
 		const preferredWidth = mainWidth + gap
 			+ px(modalStyle.getPropertyValue('--operon-task-editor-file-column-width'))
 			+ px(modalStyle.getPropertyValue('--operon-task-editor-horizontal-padding'));
-		// Measure the space available to an expanded modal, not its currently collapsed width.
+		// Use the original capacity threshold without depending on the rendered editor width.
 		const expandedWidth = Math.min(owner.innerWidth * 0.94, available, maxWidth, preferredWidth);
 		return mainWidth > 0 && bodyMin > 0 && expandedWidth - padding - borders - mainWidth - gap >= bodyMin;
 	}
 
-	private registerFileBodyViewportListener(): void {
+	private registerSourceContextViewportListener(): void {
 		if (this.isPhone) return;
 		if (!this.hasFileBodyContext()) return;
-		this.unregisterFileBodyViewportListener();
+		this.unregisterSourceContextViewportListener();
 		const modal = this.rootEl?.closest<HTMLElement>('.operon-task-editor-modal');
-		this.fileBodyResizeWindow = this.rootEl?.ownerDocument.defaultView ?? getActiveWindow();
-		this.fileBodyResizeHandler = () => {
-			const wide = this.isWideFileBodyViewport();
-			const previous = this.fileBodyWide;
-			this.fileBodyWide = wide;
-			if (previous === null) {
-				if (!wide) this.isFileBodyVisible = false;
-			} else if (previous !== wide) {
-				if (!wide) {
-					const restoreFocus = this.fileBodyPanelEl?.contains(this.fileBodyPanelEl.ownerDocument.activeElement);
-					this.setFileBodyVisible(false);
-					if (restoreFocus) this.fileBodyToggleButtonEl?.focus();
-				} else if (this.fileBodyContext?.format === 'yaml') {
-					this.setFileBodyVisible(true);
-				}
-			}
-			this.updateFileBodyLayout();
+		this.sourceContextResizeWindow = this.rootEl?.ownerDocument.defaultView ?? getActiveWindow();
+		this.sourceContextResizeHandler = () => {
+			const wide = this.isWideSourceContextViewport();
+			this.sourceContextWide = wide;
+			this.updateSourceContextLayout();
 		};
-		this.fileBodyResizeWindow.addEventListener('resize', this.fileBodyResizeHandler);
+		this.sourceContextResizeWindow.addEventListener('resize', this.sourceContextResizeHandler);
 		if (modal?.parentElement && typeof ResizeObserver !== 'undefined') {
-			this.fileBodyResizeObserver = new ResizeObserver(this.fileBodyResizeHandler);
-			this.fileBodyResizeObserver.observe(modal.parentElement);
+			this.sourceContextResizeObserver = new ResizeObserver(this.sourceContextResizeHandler);
+			this.sourceContextResizeObserver.observe(modal.parentElement);
 		}
-		this.fileBodyResizeHandler();
+		this.sourceContextResizeHandler();
 	}
 
-	private unregisterFileBodyViewportListener(): void {
-		if (this.fileBodyResizeHandler) this.fileBodyResizeWindow?.removeEventListener('resize', this.fileBodyResizeHandler);
-		this.fileBodyResizeObserver?.disconnect();
-		this.fileBodyResizeObserver = null;
-		this.fileBodyResizeWindow = null;
-		this.fileBodyResizeHandler = null;
+	private unregisterSourceContextViewportListener(): void {
+		if (this.sourceContextResizeHandler) this.sourceContextResizeWindow?.removeEventListener('resize', this.sourceContextResizeHandler);
+		this.sourceContextResizeObserver?.disconnect();
+		this.sourceContextResizeObserver = null;
+		this.sourceContextResizeWindow = null;
+		this.sourceContextResizeHandler = null;
 	}
 
-	private setFileBodyVisible(visible: boolean, focusEditor = false): void {
-		if (this.isPhone) return;
-		if (!this.hasFileBodyContext()) return;
-		const mainPanelScrollTop = this.mainPanelEl?.scrollTop ?? null;
-		if (this.isFileBodyVisible === visible) {
-			if (visible && focusEditor) {
-				getActiveWindow().setTimeout(() => this.embeddedBodyEditor?.focus(), 0);
-			}
-			return;
-		}
-		if (!visible) {
-			this.clearFileBodyPanelRender();
-		}
-		this.isFileBodyVisible = visible;
-		this.updateFileBodyLayout();
-		if (mainPanelScrollTop != null) {
-			this.restoreMainPanelScroll(mainPanelScrollTop);
-		}
-		if (visible && focusEditor) {
-			getActiveWindow().setTimeout(() => this.embeddedBodyEditor?.focus(), 0);
-		}
-	}
-
-	private syncFileBodyDraftFromEditor(): void {
-		const value = this.embeddedBodyEditor?.value;
-		if (value == null || value === this.fileBodyDraft) return;
-		this.handleFileBodyChanged(value);
-	}
-
-	private clearFileBodyPanelRender(): void {
-		this.cancelFileBodyEditorLayoutRefresh();
-		this.syncFileBodyDraftFromEditor();
-		if (this.fileBodyPanelEl) cleanupOperonHoverTooltips(this.fileBodyPanelEl);
-		this.embedPreviewComponent?.unload();
-		this.embedPreviewComponent = null;
-		this.embeddedBodyEditor?.destroy();
-		this.embeddedBodyEditor = null;
-		this.fileBodySaveButtonEl = null;
-		this.fileBodyPanelEl?.empty();
-	}
-
-	private ensureFileBodyPanelRendered(): void {
-		if (!this.fileBodyPanelEl || this.embeddedBodyEditor) return;
-		this.renderFileBodyPanel(this.fileBodyPanelEl);
-	}
-
-	private restoreMainPanelScroll(scrollTop: number): void {
-		const mainPanel = this.mainPanelEl;
-		if (!mainPanel) return;
-		getActiveWindow().requestAnimationFrame(() => {
-			mainPanel.scrollTop = scrollTop;
-		});
-	}
-
-	private scheduleFileBodyEditorLayoutRefresh(): void {
-		if (!this.hasFileBodyContext() || !this.isFileBodyVisible || !this.embeddedBodyEditor) return;
-		const editor = this.embeddedBodyEditor;
-		if (this.fileBodyLayoutRefreshEditor === editor
-			&& (this.fileBodyLayoutRefreshFrame != null || this.fileBodyLayoutRefreshTimer != null)) {
-			return;
-		}
-
-		this.cancelFileBodyEditorLayoutRefresh();
-		const ownerWindow = getActiveWindow();
-		const generation = this.fileBodyLayoutRefreshGeneration;
-		this.fileBodyLayoutRefreshEditor = editor;
-		const refresh = () => {
-			if (generation !== this.fileBodyLayoutRefreshGeneration) return;
-			if (!this.hasFileBodyContext() || !this.isFileBodyVisible || this.embeddedBodyEditor !== editor) return;
-			editor.refreshLayout();
-		};
-
-		refresh();
-		this.fileBodyLayoutRefreshFrame = ownerWindow.requestAnimationFrame(() => {
-			this.fileBodyLayoutRefreshFrame = null;
-			refresh();
-		});
-		this.fileBodyLayoutRefreshTimer = setWindowTimeout(() => {
-			this.fileBodyLayoutRefreshTimer = null;
-			refresh();
-		}, 150);
-	}
-
-	private cancelFileBodyEditorLayoutRefresh(): void {
-		this.fileBodyLayoutRefreshGeneration += 1;
-		if (this.fileBodyLayoutRefreshFrame != null) {
-			getActiveWindow().cancelAnimationFrame(this.fileBodyLayoutRefreshFrame);
-			this.fileBodyLayoutRefreshFrame = null;
-		}
-		if (this.fileBodyLayoutRefreshTimer != null) {
-			clearWindowTimeout(this.fileBodyLayoutRefreshTimer);
-			this.fileBodyLayoutRefreshTimer = null;
-		}
-		this.fileBodyLayoutRefreshEditor = null;
-	}
-
-	private updateFileBodyLayout(): void {
-		if (this.isPhone) return;
-		const shell = this.shellEl;
-		if (!shell) return;
-		const isVisible = this.hasFileBodyContext() && this.isFileBodyVisible;
-		const isWide = this.fileBodyWide ?? this.isWideFileBodyViewport();
-		const modalEl = this.rootEl?.closest('.operon-task-editor-modal');
-		shell.classList.toggle('has-file-body', this.hasFileBodyContext());
-		shell.classList.toggle('is-file-body-visible', isVisible);
-		shell.classList.toggle('is-file-body-overlay-visible', isVisible && !isWide);
-		shell.classList.toggle('is-file-body-wide', isWide);
-		modalEl?.classList.toggle('operon-task-editor-modal-file-body-wide', isWide);
-		modalEl?.classList.toggle('operon-task-editor-modal-has-file-body-context', this.hasFileBodyContext());
-		modalEl?.classList.toggle('operon-task-editor-modal-has-file-body', isVisible);
-		this.fileBodyBackdropEl?.classList.toggle('is-visible', isVisible && !isWide);
-		if (this.fileBodyToggleButtonEl) {
-			const tooltip = isVisible
-				? t('taskEditor', 'hideFileBodyPanel')
-				: t('taskEditor', 'showFileBodyPanel');
-			this.fileBodyToggleButtonEl.classList.toggle('is-active', isVisible);
-			this.fileBodyToggleButtonEl.setAttr('aria-pressed', String(isVisible));
-			setAccessibleLabelWithoutTooltip(this.fileBodyToggleButtonEl, tooltip);
-			this.bindTaskEditorTooltip(this.fileBodyToggleButtonEl, tooltip);
-		}
-		if (isVisible) {
-			this.ensureFileBodyPanelRendered();
-			this.scheduleFileBodyEditorLayoutRefresh();
-		}
-	}
-
-	private handleFileBodyChanged(nextBody: string): void {
-		if (nextBody === this.fileBodyDraft) return;
-		this.fileBodyDraft = nextBody;
-		this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
-		this.markEdited();
+	private updateSourceContextLayout(): void {
+		if (this.isPhone || !this.shellEl) return;
+		const isWide = this.sourceContextWide ?? this.isWideSourceContextViewport();
+		const modal = this.rootEl?.closest('.operon-task-editor-modal');
+		this.shellEl.classList.toggle('has-source-context', this.hasFileBodyContext());
+		modal?.classList.toggle('operon-task-editor-modal-source-wide', isWide);
+		modal?.classList.toggle('operon-task-editor-modal-has-source-context', this.hasFileBodyContext());
 	}
 
 	private getFrontmatterLineCountFromContent(content: string): number {
@@ -926,29 +792,8 @@ export class TaskEditorContent {
 		return cursorOffset;
 	}
 
-	private resolveFileBodyCursorOffset(): number {
-		const context = this.fileBodyContext;
-		const fallback = Math.min(Math.max(context?.cursorOffset ?? 0, 0), this.fileBodyDraft.length);
-		if (context?.format !== 'inline') return fallback;
-
-		// Resolve against the current body without changing the source identity used by saves.
-		const operonId = this.getCurrentOperonId();
-		const lines = this.fileBodyDraft.split('\n');
-		let targetLine: number | null = null;
-		let descriptionEnd = 0;
-		for (let index = 0; index < lines.length; index++) {
-			const task = parseTaskLine(lines[index], index, context.filePath, this.settings.keyMappings);
-			if (!task || !(operonId ? task.operonId === operonId : task.rawLine === this.existingTask?.rawLine)) continue;
-			// An absent or ambiguous task must not redirect focus to another task.
-			if (targetLine !== null) return fallback;
-			targetLine = index;
-			descriptionEnd = resolveInlineTaskDescriptionCursorCh(task);
-		}
-		return targetLine === null ? fallback : this.getBodyCursorOffset(this.fileBodyDraft, targetLine) + descriptionEnd;
-	}
-
 	private async refreshFileBodyDraftFromSource(): Promise<void> {
-		if (!this.fileBodyContext || this.isFileBodyDirty) return;
+		if (!this.fileBodyContext) return;
 		const file = this.app.vault.getAbstractFileByPath(this.fileBodyContext.filePath);
 		if (!(file instanceof TFile)) return;
 
@@ -958,7 +803,6 @@ export class TaskEditorContent {
 
 		this.fileBodyDraft = body;
 		this.persistedFileBodyDraft = body;
-		this.isFileBodyDirty = false;
 		this.fileBodyContext.lineNumberOffset = lineNumberOffset;
 
 		if (this.fileBodyContext.format === 'inline') {
@@ -1321,117 +1165,6 @@ export class TaskEditorContent {
 		}
 	}
 
-	private renderFileBodyPanel(container: HTMLElement): void {
-		container.empty();
-		container.addClass('operon-task-editor-file-panel');
-
-		const overlayHeader = container.createDiv('operon-task-editor-file-panel-overlay-header');
-		const filePath = this.fileBodyContext?.filePath ?? '';
-		const filePathLastSlash = filePath.lastIndexOf('/');
-		const filePathDirectory = filePathLastSlash >= 0 ? filePath.slice(0, filePathLastSlash + 1) : '';
-		const filePathName = filePathLastSlash >= 0 ? filePath.slice(filePathLastSlash + 1) : filePath;
-		const headerLink = overlayHeader.createEl('button', {
-			cls: 'operon-task-editor-file-panel-overlay-link',
-			attr: {
-				type: 'button',
-			},
-		});
-		headerLink.createSpan({
-			text: `${t('taskEditor', 'fileBodyPanelFileLabel')}:`,
-			cls: 'operon-task-editor-file-panel-overlay-link-label',
-		});
-		const headerLinkPath = headerLink.createSpan({
-			cls: 'operon-task-editor-file-panel-overlay-link-path',
-		});
-		if (filePathDirectory) {
-			headerLinkPath.createSpan({
-				text: filePathDirectory,
-				cls: 'operon-task-editor-file-panel-overlay-link-path-dir',
-			});
-		}
-		headerLinkPath.createSpan({
-			text: filePathName,
-			cls: 'operon-task-editor-file-panel-overlay-link-path-file',
-		});
-		headerLink.addEventListener('click', () => this.openFileBodySource());
-		const headerActions = overlayHeader.createDiv('operon-task-editor-file-panel-overlay-actions');
-		const backButton = headerActions.createEl('button', {
-			cls: 'operon-task-editor-file-panel-overlay-action operon-task-editor-file-panel-back',
-			attr: { type: 'button' },
-		});
-		setIcon(backButton, 'arrow-left');
-		setAccessibleLabelWithoutTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
-		this.bindTaskEditorTooltip(backButton, t('taskEditor', 'hideFileBodyPanel'));
-		backButton.addEventListener('click', () => {
-			this.setFileBodyVisible(false);
-			this.fileBodyToggleButtonEl?.focus();
-		});
-		const saveButton = headerActions.createEl('button', {
-			cls: 'operon-task-editor-file-panel-overlay-action',
-			attr: {
-				type: 'button',
-			},
-		});
-		this.fileBodySaveButtonEl = saveButton;
-		setIcon(saveButton, 'save');
-		setAccessibleLabelWithoutTooltip(saveButton, t('buttons', 'save'));
-		this.bindTaskEditorTooltip(saveButton, t('buttons', 'save'));
-		saveButton.addEventListener('click', () => {
-			void this.persistEditorState('explicit-save');
-		});
-		this.refreshFileBodySaveButtonState();
-
-		const editorHost = container.createDiv('operon-task-editor-file-panel-editor');
-		this.embeddedBodyEditor?.destroy();
-		const sourceFile = filePath
-			? this.app.vault.getAbstractFileByPath(filePath)
-			: null;
-		this.embeddedBodyEditor = new EmbeddedMarkdownSourceEditor(this.app, editorHost, {
-			value: this.fileBodyDraft,
-			placeholder: t('taskEditor', 'fileBodyPlaceholder'),
-			className: 'operon-task-editor-file-source-editor',
-			file: sourceFile instanceof TFile ? sourceFile : null,
-			cursorOffset: this.resolveFileBodyCursorOffset(),
-			lineNumberOffset: this.fileBodyContext?.lineNumberOffset ?? 0,
-			showLineNumbers: this.settings.taskEditorShowLineNumbers,
-			showActiveLine: this.settings.taskEditorHighlightActiveLine,
-			onChange: (value) => this.handleFileBodyChanged(value),
-			onEscape: () => {
-				if (!(this.fileBodyWide ?? this.isWideFileBodyViewport())) {
-					this.setFileBodyVisible(false);
-					return true;
-				}
-				this.syncFileBodyDraftFromEditor();
-				this.rootEl?.dispatchEvent(new CustomEvent(TASK_EDITOR_ESCAPE_INTENT_EVENT, { bubbles: true }));
-				return true;
-			},
-			onSubmit: () => {
-				void this.persistEditorState('explicit-save');
-			},
-		});
-
-		this.embedPreviewComponent?.unload();
-		this.embedPreviewComponent = null;
-
-		const baseLines = this.fileBodyDraft
-			.split('\n')
-			.filter(line => /^!\[\[.+\.base(#[^\]]+)?\]\]$/.test(line.trim()))
-			.join('\n');
-
-		if (baseLines) {
-			const previewEl = container.createDiv('operon-task-editor-file-bases-preview');
-			this.embedPreviewComponent = new Component();
-			this.embedPreviewComponent.load();
-			void MarkdownRenderer.render(
-				this.app,
-				baseLines,
-				previewEl,
-				this.fileBodyContext?.filePath ?? '',
-				this.embedPreviewComponent,
-			);
-		}
-	}
-
 	private desktopSectionLabel(id: TaskEditorSectionId): string {
 		return this.settings.taskEditorSections?.find(section => section.id === id)?.name.trim() || taskEditorSectionDefaultLabel(id);
 	}
@@ -1440,8 +1173,7 @@ export class TaskEditorContent {
 		const progressState = this.getProgressSectionState();
 		// Title
 		const titleRow = container.createDiv('operon-task-editor-title-row');
-		const titleLeft = titleRow.createDiv('operon-task-editor-title-side is-left');
-		this.renderFileBodyToggle(titleLeft, 'operon-task-editor-title-file-toggle');
+		titleRow.createDiv('operon-task-editor-title-side is-left');
 		titleRow.createEl('h3', {
 			text: this.isNewTask ? t('modals', 'newTask') : t('modals', 'editTask'),
 			cls: 'operon-task-editor-title',
@@ -2347,6 +2079,7 @@ export class TaskEditorContent {
 	 * Clears the container first, then renders all sections.
 	 */
 	mountInto(container: HTMLElement): void {
+  const endMount = this.openingTrace?.span('editor-mount');
 		this.cleanupInteractionState?.();
 		this.closeStatsSubtasks?.();
 		this.closeStatsSubtasks = null;
@@ -2355,6 +2088,7 @@ export class TaskEditorContent {
 		cleanupOperonHoverTooltips(container);
 		this.destroyCompactTextEditors();
 		container.empty();
+		this.initialFileProperties = Promise.resolve();
 		container.addClass('operon-task-editor');
 		container.toggleClass('operon-task-editor-mobile', this.usesMobileLayout);
 		container.toggleClass('operon-task-editor-phone-desktop', this.isPhone && !this.usesMobileLayout);
@@ -2365,7 +2099,17 @@ export class TaskEditorContent {
 		this.rootEl?.removeEventListener('keydown', this.touchKeyboardHandler, true);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
+		this.rootEl?.removeEventListener('compositionstart', this.sourceCompositionStart, true);
+		this.rootEl?.removeEventListener('compositionend', this.sourceCompositionEnd);
+		this.rootEl?.removeEventListener('focusout', this.sourceInteractionEnd);
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.sourceInteractionEnd);
 		this.rootEl = container;
+		if (this.readSource) {
+			container.addEventListener('compositionstart', this.sourceCompositionStart, true);
+			container.addEventListener('compositionend', this.sourceCompositionEnd);
+			container.addEventListener('focusout', this.sourceInteractionEnd);
+			container.addEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.sourceInteractionEnd);
+		}
 		this.cleanupInteractionState = bindEditorInteractionState(container);
 		if (this.usesTouchDesktopLayout) {
 			container.addEventListener('pointerdown', this.touchPointerHandler, true);
@@ -2377,7 +2121,6 @@ export class TaskEditorContent {
 		this.schedulingDraftRefreshers.clear();
 		this.mobileCoreButtonRefreshers.clear();
 		this.refreshCorePinControl = null;
-		this.refreshLineNumbersControl = null;
 		this.scrollbarsObserver?.disconnect();
 		this.scrollbarsObserver = null;
 		this.clearMobileCoreToolbarState();
@@ -2390,6 +2133,7 @@ export class TaskEditorContent {
 		this.trackerUnsubscribe = this.timeTracker.subscribe(event => this.handleTimeTrackerEvent(event));
 		this.indexUpdatesUnsubscribe?.();
 		this.indexUpdatesUnsubscribe = this.indexer.subscribeIndexUpdates(() => {
+			if (this.readSource) void this.refreshTaskSource();
 			this.refreshMobileCoreButtons();
 			this.refreshRenderedBlockedBySelectionStates();
 			this.refreshStatsCounters?.();
@@ -2402,16 +2146,7 @@ export class TaskEditorContent {
 
 		this.shellEl = container.createDiv('operon-task-editor-shell');
 		if (!this.isPhone && this.hasFileBodyContext()) {
-			this.registerFileBodyViewportListener();
-			this.fileBodyBackdropEl = this.shellEl.createEl('button', {
-				cls: 'operon-task-editor-file-panel-backdrop',
-				attr: {
-					type: 'button',
-				},
-			});
-			setAccessibleLabelWithoutTooltip(this.fileBodyBackdropEl, t('taskEditor', 'hideFileBodyPanel'));
-			this.fileBodyBackdropEl.addEventListener('click', () => this.setFileBodyVisible(false));
-			this.fileBodyPanelEl = this.shellEl.createDiv('operon-task-editor-file-panel');
+			this.registerSourceContextViewportListener();
 		}
 
 		this.mainPanelEl = this.shellEl.createDiv('operon-task-editor-main-panel');
@@ -2422,9 +2157,74 @@ export class TaskEditorContent {
 			this.renderTaskEditorBody(this.mainPanelEl);
 		}
 		this.applyThemeColor();
-		if (!this.isPhone) this.updateFileBodyLayout();
+		if (!this.isPhone) this.updateSourceContextLayout();
 		if (!this.usesMobileLayout) this.refreshCompactTextEditorLayouts();
 		this.scheduleMobileCoreToolbarOverflowState();
+		this.initialSourceRefresh = this.readSource ? this.refreshTaskSource() : Promise.resolve();
+  endMount?.();
+	}
+
+	/** Reuse the initial reads; a native host can reveal the complete editor together. */
+	async whenInitialRenderReady(): Promise<void> {
+		await this.initialSourceRefresh;
+		let properties: Promise<void>;
+		do {
+			properties = this.initialFileProperties;
+			await properties;
+		} while (!this.disposed && properties !== this.initialFileProperties);
+	}
+
+	private taskSourceState(persisted = false): TaskEditorSourceState {
+		return {
+			description: persisted ? this.persistedDescription : this.description,
+			checkbox: persisted ? this.persistedCheckbox : this.checkbox,
+			tags: [...(persisted ? this.persistedTags : this.tags)],
+			fieldValues: { ...(persisted ? this.persistedFieldValues : this.fieldValues) },
+		};
+	}
+
+	private async refreshTaskSource(): Promise<void> {
+		const id = this.taskOperonId;
+		if (!this.readSource || !id || this.disposed || this.persistInFlight || this.sourceComposing) return;
+		const generation = ++this.sourceRefreshGeneration;
+		try {
+			const snapshot = await this.readSource(id);
+			if (this.disposed || this.persistInFlight || this.sourceComposing || generation !== this.sourceRefreshGeneration || id !== this.taskOperonId) return;
+			// Picker callbacks still own their input. Re-evaluate on interaction end.
+			if (this.workflowActionPickerClose || this.closeFilePropertyPicker || this.closeFilePropertyAddPicker || this.mobilePickerOpenDepth) return;
+			const baseline = this.taskSourceState(true), draft = this.taskSourceState();
+			const changed = taskEditorChangedKeys(baseline, draft);
+			const next = mergeTaskEditorSource(snapshot.state, draft, changed);
+			const path = this.getCompactTextSourcePath();
+			// A compact surface may be composing even before its draft callback fires.
+			if (!changed.includes('_description') && this.descriptionCompactEditor?.setSourceValue(next.description, path) === 'conflict') return;
+			if (!changed.includes('note') && this.noteCompactEditor?.setSourceValue(next.fieldValues['note'] ?? '', path) === 'conflict') return;
+			this.description = next.description;
+			this.checkbox = next.checkbox;
+			this.tags = next.tags;
+			this.fieldValues = next.fieldValues;
+			this.persistedDescription = snapshot.state.description;
+			this.persistedCheckbox = snapshot.state.checkbox;
+			this.persistedTags = [...snapshot.state.tags];
+			this.persistedFieldValues = { ...snapshot.state.fieldValues };
+			const previousSourcePath = this.existingTask?.filePath ?? this.fileBodyContext?.filePath;
+			this.syncExistingTaskCanonicalState(snapshot.state);
+			if (this.existingTask) {
+				this.existingTask.filePath = snapshot.filePath;
+				this.existingTask.lineNumber = snapshot.lineNumber;
+			}
+			if (this.fileBodyContext) {
+				this.fileBodyContext.filePath = snapshot.filePath;
+				this.fileBodyContext.targetLine = Math.max(0, snapshot.lineNumber - this.fileBodyContext.lineNumberOffset);
+			}
+			this.refreshDesktopPropertyRows();
+			this.refreshSchedulingDraftControls();
+			this.refreshMobileCoreButtons();
+			this.refreshStatsCounters?.();
+   if (previousSourcePath !== snapshot.filePath) this.rootEl?.dispatchEvent(new CustomEvent('operon-editor-source-location', { bubbles: true, detail: { operonId: this.taskOperonId, filePath: snapshot.filePath } }));
+		} catch {
+			// Keep the draft. The existing save path reports missing/ambiguous sources.
+		}
 	}
 
 	async refreshAfterExternalSubtaskCreated(): Promise<void> {
@@ -2440,13 +2240,11 @@ export class TaskEditorContent {
 		}
 
 		this.destroyCompactTextEditors();
-		this.clearFileBodyPanelRender();
 		await this.refreshFileBodyDraftFromSource();
 		this.destroyCompactTextEditors();
 		this.syncTrackingFieldsFromIndex();
 		this.schedulingDraftRefreshers.clear();
 		this.refreshCorePinControl = null;
-		this.refreshLineNumbersControl = null;
 		this.scrollbarsObserver?.disconnect();
 		this.scrollbarsObserver = null;
 		this.refreshCoreTrackerControl = null;
@@ -2466,7 +2264,6 @@ export class TaskEditorContent {
 		this.mobileCoreButtonRefreshers.clear();
 		this.descriptionInputEl = null;
 		this.noteInputEl = null;
-		this.fileBodyToggleButtonEl = null;
 		for (const el of this.bodyDropdowns) el.remove();
 		this.bodyDropdowns = [];
 		this.clearMobileCoreToolbarState();
@@ -2483,13 +2280,12 @@ export class TaskEditorContent {
 			this.renderTaskEditorBody(this.mainPanelEl);
 		}
 		this.applyThemeColor();
-		if (!this.isPhone) this.updateFileBodyLayout();
+		if (!this.isPhone) this.updateSourceContextLayout();
 		if (!this.usesMobileLayout) this.refreshCompactTextEditorLayouts();
 		this.scheduleMobileCoreToolbarOverflowState();
 	}
 
 	beginCloseSave(): Promise<TaskEditorSaveOutcome> {
-		this.syncFileBodyDraftFromEditor();
 		if (this.saveTimer) {
 			clearWindowTimeout(this.saveTimer);
 			this.saveTimer = null;
@@ -2504,7 +2300,6 @@ export class TaskEditorContent {
 	}
 
 	async prepareCloseSave(): Promise<TaskEditorSaveOutcome> {
-		this.syncFileBodyDraftFromEditor();
 		if (this.isNewTask && !this.hasBeenEdited && !this.description.trim()) {
 			return { ok: true, status: 'no-change', clean: true };
 		}
@@ -2520,6 +2315,11 @@ export class TaskEditorContent {
 	 * Cleanup: clear timers. Call when the container is being torn down.
 	 */
 	destroy(options: { skipCloseSave?: boolean } = {}): void {
+		this.sourceRefreshGeneration++;
+		this.rootEl?.removeEventListener('compositionstart', this.sourceCompositionStart, true);
+		this.rootEl?.removeEventListener('compositionend', this.sourceCompositionEnd);
+		this.rootEl?.removeEventListener('focusout', this.sourceInteractionEnd);
+		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.sourceInteractionEnd);
 		this.cleanupInteractionState?.();
 		this.cleanupInteractionState = null;
 		let closeSave: Promise<TaskEditorSaveOutcome> | null = null;
@@ -2555,12 +2355,10 @@ export class TaskEditorContent {
 		this.trackerUnsubscribe = null;
 		this.indexUpdatesUnsubscribe?.();
 		this.indexUpdatesUnsubscribe = null;
-		this.unregisterFileBodyViewportListener();
-		this.cancelFileBodyEditorLayoutRefresh();
+		this.unregisterSourceContextViewportListener();
 		this.schedulingDraftRefreshers.clear();
 		this.mobileCoreButtonRefreshers.clear();
 		this.refreshCorePinControl = null;
-		this.refreshLineNumbersControl = null;
 		this.scrollbarsObserver?.disconnect();
 		this.scrollbarsObserver = null;
 		this.refreshCoreTrackerControl = null;
@@ -2579,15 +2377,7 @@ export class TaskEditorContent {
 		for (const el of this.bodyDropdowns) el.remove();
 		this.bodyDropdowns = [];
 		this.refreshTrackingSessionsSection = null;
-		this.embedPreviewComponent?.unload();
-		this.embedPreviewComponent = null;
-		this.embeddedBodyEditor?.destroy();
-		this.embeddedBodyEditor = null;
 		this.destroyCompactTextEditors();
-		this.fileBodyPanelEl = null;
-		this.fileBodyBackdropEl = null;
-		this.fileBodyToggleButtonEl = null;
-		this.fileBodySaveButtonEl = null;
 		this.mobileNoteWrapEl = null;
 		this.mobilePickerOpenDepth = 0;
 		this.clearMobilePickerCloseFrame();
@@ -2859,6 +2649,7 @@ export class TaskEditorContent {
 		this.descriptionCompactHostEl = host;
 		this.descriptionCompactEditor?.destroy();
 		this.descriptionCompactEditor = createCompactMarkdownEditorSurface(host, {
+			onCompositionSettled: this.sourceCompositionEnd,
 			app: this.app,
 			sourceValue: this.description,
 			sourcePath: this.getCompactTextSourcePath(),
@@ -3096,6 +2887,7 @@ export class TaskEditorContent {
 		this.noteCompactHostEl = host;
 		this.noteCompactEditor?.destroy();
 		this.noteCompactEditor = createCompactMarkdownEditorSurface(host, {
+			onCompositionSettled: this.sourceCompositionEnd,
 			app: this.app,
 			sourceValue: this.fieldValues['note'] ?? '',
 			sourcePath: this.getCompactTextSourcePath(),
@@ -3428,7 +3220,14 @@ export class TaskEditorContent {
   void this.refreshDesktopFileProperties();
  }
 
- private async refreshDesktopFileProperties(): Promise<void> {
+ private refreshDesktopFileProperties(): Promise<void> {
+  const endProperties = this.openingTrace?.span('properties');
+  this.initialFileProperties = this.loadDesktopFileProperties();
+  if (endProperties) void this.initialFileProperties.then(endProperties, endProperties);
+  return this.initialFileProperties;
+ }
+
+ private async loadDesktopFileProperties(): Promise<void> {
   const root = this.filePropertyRoot;
   if (!root || this.disposed) return;
   const generation = ++this.filePropertyGeneration;
@@ -3719,6 +3518,7 @@ export class TaskEditorContent {
   const close = () => {
    if (this.closeFilePropertyPicker !== closePicker) return;
    this.closeFilePropertyPicker = null; this.filePropertyPickerName = null; this.filePropertyPickerValue = null;
+   if (this.readSource) void this.refreshTaskSource();
    surface.action.removeClass('is-picker-open'); pickerAnchor.removeClass('is-picker-open'); this.refreshFilePropertyValue(name);
    if (this.fileProperties.get(name)?.pending) this.fileProperties.delete(name);
    if (!this.disposed) void this.refreshDesktopFileProperties();
@@ -3827,6 +3627,7 @@ export class TaskEditorContent {
 				onClose: () => {
 					if (this.workflowActionPickerClose !== closePicker) return;
 					this.workflowActionPickerClose = null; value.removeClass('is-picker-open');
+					if (this.readSource) void this.refreshTaskSource();
 					if (!this.disposed && this.propertyInteractionEpoch === epoch) {
 						const target = value.closest<HTMLElement>('.operon-editor-desktop-property-row')?.hidden ? this.getWorkflowActionFocusTarget(key) : value.isConnected ? value : label;
 						target?.focus({ preventScroll: true });
@@ -3879,6 +3680,7 @@ export class TaskEditorContent {
 	private refreshDesktopPropertyRows(): void {
 		const groups = new Set<HTMLElement>();
 		for (const [key, entry] of this.desktopPropertyRows) {
+			if (this.readSource && entry.value.contains(entry.value.ownerDocument.activeElement)) continue;
 			if (entry.row.parentElement) groups.add(entry.row.parentElement);
 			const hasValue = this.hasWorkflowPickerValue(key);
 			this.refreshDesktopPropertyIcon(key, entry.row, hasValue);
@@ -4053,7 +3855,6 @@ export class TaskEditorContent {
 				this.refreshWorkflowPickerSurfaceValues();
 				this.refreshSchedulingDraftControls();
 				this.refreshMobileCoreButtons();
-				this.refreshFileBodySaveButtonState();
 			}
 		} finally {
 			this.quickFinishInProgress = false;
@@ -4102,71 +3903,12 @@ export class TaskEditorContent {
 		this.bindTaskEditorTooltip(copyOperonIdButton, `${t('contextMenu', 'copyOperonId')}\n${currentOperonId}`);
 	}
 
-	private renderFileBodyToggle(container: HTMLElement, extraClass = ''): void {
-		if (this.isPhone) return;
-		if (!this.hasFileBodyContext()) return;
-
-		const button = container.createEl('button', {
-			cls: ['operon-editor-core-panel-toggle', extraClass].filter(Boolean).join(' '),
-			attr: {
-				type: 'button',
-				'aria-pressed': String(this.isFileBodyVisible),
-			},
-		});
-		setIcon(button, 'file-output');
-		setAccessibleLabelWithoutTooltip(button, this.isFileBodyVisible
-			? t('taskEditor', 'hideFileBodyPanel')
-			: t('taskEditor', 'showFileBodyPanel'));
-		this.bindTaskEditorTooltip(button, this.isFileBodyVisible
-			? t('taskEditor', 'hideFileBodyPanel')
-			: t('taskEditor', 'showFileBodyPanel'));
-		button.addEventListener('click', () => {
-			this.setFileBodyVisible(!this.isFileBodyVisible, !this.isFileBodyVisible && this.fileBodyContext?.format === 'inline');
-		});
-		this.fileBodyToggleButtonEl = button;
-	}
-
 	private renderCoreActionButtons(container: HTMLElement): void {
 		const getIsPinned = () => this.pinnedCache && this.taskOperonId
 			? this.pinnedCache.isPinned(this.taskOperonId)
 			: false;
 
 		this.renderCoreTrackerActionButton(container);
-		if (!this.isPhone && this.onSetShowLineNumbers) {
-			const button = container.createEl('button', {
-				cls: 'operon-editor-core-action-btn operon-editor-core-line-numbers-action',
-				attr: { type: 'button' },
-			});
-			setIcon(button, 'list-ordered');
-			const label = t('settings', 'taskEditorShowLineNumbers');
-			setAccessibleLabelWithoutTooltip(button, label);
-			this.bindTaskEditorTooltip(button, label);
-			this.refreshLineNumbersControl = () => {
-				const visible = this.settings.taskEditorShowLineNumbers;
-				button.classList.toggle('is-active', visible);
-				button.setAttr('aria-pressed', String(visible));
-				button.setAttr('aria-disabled', String(this.lineNumbersSavePending));
-				this.embeddedBodyEditor?.setFilePanelLineNumbers(visible);
-			};
-			button.addEventListener('focus', () => this.refreshLineNumbersControl?.());
-			button.addEventListener('click', () => {
-				runAsyncAction('task editor line numbers setting save failed', async () => {
-					if (this.disposed || this.lineNumbersSavePending || !this.onSetShowLineNumbers) return;
-					this.lineNumbersSavePending = true;
-					this.refreshLineNumbersControl?.();
-					try {
-						await this.onSetShowLineNumbers(!this.settings.taskEditorShowLineNumbers);
-					} catch (error) {
-						new Notice(t('settings', 'settingsWriteProtected'));
-						throw error;
-					} finally {
-						this.lineNumbersSavePending = false;
-						if (!this.disposed) this.refreshLineNumbersControl?.();
-					}
-				});
-			});
-			this.refreshLineNumbersControl();
-		}
 
 
 		if (!this.isPhone && this.onSetHideScrollbars) {
@@ -4289,23 +4031,14 @@ export class TaskEditorContent {
 
 	private readonly handleCheckboxSourceSaved = (filePath: string, content: string): void => {
 		if (this.disposed || this.fileBodyContext?.filePath !== filePath) return;
-		this.syncFileBodyDraftFromEditor();
 		const { body } = splitFrontmatterDocument(content);
 		if (body === this.persistedFileBodyDraft) {
-			this.pendingCheckboxSource = null;
 			return;
 		}
-		if (this.isFileBodyDirty) {
-			this.pendingCheckboxSource = { filePath, content };
-			return;
-		}
-		this.pendingCheckboxSource = null;
 		this.checkboxBodyRevision++;
 		this.fileBodyDraft = body;
 		this.persistedFileBodyDraft = body;
 		this.fileBodyContext.lineNumberOffset = this.getFrontmatterLineCountFromContent(content);
-		// Update the existing surface without rebuilding fields or stealing focus.
-		if (this.embeddedBodyEditor?.value !== body) this.embeddedBodyEditor?.setValue(body);
 	};
 
 	private async openTaskEditorCheckboxPopover(anchor: HTMLElement): Promise<void> {
@@ -4585,6 +4318,7 @@ export class TaskEditorContent {
 			button.removeClass('is-picker-open');
 			if (this.workflowActionPickerClose === closePicker) {
 				this.workflowActionPickerClose = null;
+				if (this.readSource) void this.refreshTaskSource();
 			}
 			if (!this.disposed && button.hidden) this.getWorkflowActionFocusTarget(key)?.focus({ preventScroll: true });
 			restoreReminderActionFocus();
@@ -7259,7 +6993,7 @@ export class TaskEditorContent {
 	private async flushPendingEditsOutcome(reason: PersistReason): Promise<TaskEditorSaveOutcome> {
 		for (let attempt = 0; attempt < 2; attempt += 1) {
 			const outcome = await this.persistEditorState(reason);
-			if (!outcome.ok) return outcome;
+			if (!outcome.ok || this.readSource && this.disposed) return outcome;
 			if (!this.hasBeenEdited) {
 				return { ...outcome, clean: true };
 			}
@@ -7320,7 +7054,6 @@ export class TaskEditorContent {
 		this.hasBeenEdited = true;
 		this.editVersion += 1;
 		if ((this.desktopPropertyRows?.size ?? 0) > 0) this.refreshDesktopPropertyRows();
-		this.refreshFileBodySaveButtonState();
 		this.scheduleSave();
 	}
 
@@ -7372,7 +7105,6 @@ export class TaskEditorContent {
 			checkbox: this.checkbox,
 			tags: normalizeListValues(this.tags.map(tag => tag.replace(/^#/, ''))),
 			fieldValues: this.normalizeSemanticFieldValues(this.fieldValues),
-			fileBodyDraft: this.fileBodyContext ? this.fileBodyDraft : null,
 			inlineCompletionMode: this.inlineCompletionMode,
 		};
 	}
@@ -7383,7 +7115,6 @@ export class TaskEditorContent {
 			checkbox: this.persistedCheckbox,
 			tags: normalizeListValues(this.persistedTags.map(tag => tag.replace(/^#/, ''))),
 			fieldValues: this.normalizeSemanticFieldValues(this.persistedFieldValues),
-			fileBodyDraft: this.fileBodyContext ? this.persistedFileBodyDraft : null,
 			inlineCompletionMode: this.persistedInlineCompletionMode,
 		};
 	}
@@ -7395,7 +7126,6 @@ export class TaskEditorContent {
 		if (draft.description !== persisted.description) return true;
 		if (draft.checkbox !== persisted.checkbox) return true;
 		if (!areStringArraysEqual(draft.tags, persisted.tags)) return true;
-		if (draft.fileBodyDraft !== persisted.fileBodyDraft) return true;
 		if (draft.inlineCompletionMode !== persisted.inlineCompletionMode) return true;
 
 		const draftEntries = Object.entries(draft.fieldValues).sort(([left], [right]) => left.localeCompare(right));
@@ -7424,13 +7154,7 @@ export class TaskEditorContent {
 		this.persistedFieldValues = { ...this.fieldValues };
 		this.persistedFileBodyDraft = this.fileBodyDraft;
 		this.persistedInlineCompletionMode = this.inlineCompletionMode;
-		this.isFileBodyDirty = false;
 		this.hasBeenEdited = false;
-		this.refreshFileBodySaveButtonState();
-	}
-
-	private refreshFileBodySaveButtonState(): void {
-		this.fileBodySaveButtonEl?.classList.toggle('is-dirty', this.hasBeenEdited);
 	}
 
 	private commitEstimateReallocationBaseline(seconds: number): void {
@@ -7521,17 +7245,9 @@ export class TaskEditorContent {
 			return { ok: false, reason: 'write-rejected' };
 		}
 		if (this.persistInFlight) return this.persistInFlight;
-		if (this.pendingCheckboxSource) {
-			this.syncFileBodyDraftFromEditor();
-			if (this.isFileBodyDirty) {
-				new Notice(t('notifications', 'plainCheckboxEditorStaleDraft'));
-				return { ok: false, reason: 'write-rejected' };
-			}
-			const pending = this.pendingCheckboxSource;
-			this.handleCheckboxSourceSaved(pending.filePath, pending.content);
-		}
 
 		const run: Promise<TaskEditorSaveOutcome> = (async (): Promise<TaskEditorSaveOutcome> => {
+			this.sourceRefreshGeneration++;
 			const versionAtStart = this.editVersion;
 			if (this.saveTimer) {
 				clearWindowTimeout(this.saveTimer);
@@ -7614,7 +7330,6 @@ export class TaskEditorContent {
 			const savedFieldValues = { ...this.fieldValues };
 			const savedCheckboxBodyRevision = this.checkboxBodyRevision;
 			const savedFileBodyDraft = this.fileBodyDraft;
-			const savedFileBodyDirty = this.isFileBodyDirty;
 			const savedInlineCompletionMode = this.inlineCompletionMode;
 			const descriptionSurface = this.descriptionCompactEditor;
 			const noteSurface = this.noteCompactEditor;
@@ -7629,6 +7344,11 @@ export class TaskEditorContent {
 			try {
 				saveResult = await this.onSave({
 					taskLine,
+					...(this.readSource && this.taskOperonId ? { sourceSync: {
+						operonId: this.taskOperonId,
+						baseline: this.taskSourceState(true),
+						changedKeys: taskEditorChangedKeys(this.taskSourceState(true), this.taskSourceState()),
+					} } : {}),
                     inlineSourceFields: this.existingTask?.fields.map(field => ({ ...field })),
 					isNew: this.isNewTask,
      ...(savedFileProperties.length ? { fileProperties: savedFileProperties } : {}),
@@ -7641,7 +7361,7 @@ export class TaskEditorContent {
 							filePath: this.fileBodyContext.filePath,
 							content: savedFileBodyDraft,
 							expectedContent: this.persistedFileBodyDraft,
-							dirty: savedFileBodyDirty,
+							dirty: false,
 							format: this.fileBodyContext.format,
 							targetLine: this.fileBodyContext.targetLine,
 						}
@@ -7652,6 +7372,9 @@ export class TaskEditorContent {
 				new Notice(t('notifications', 'taskSaveFailed'));
 				return { ok: false, reason: 'write-threw' };
 			} finally { this.submittedFileProperties.clear(); }
+			if (this.readSource && this.disposed) return saveResult === false || saveResult === null
+				? { ok: false, reason: 'write-rejected' }
+				: { ok: true, status: 'saved', clean: versionAtStart === this.editVersion };
 			if (saveResult === false || saveResult === null) {
 				return { ok: false, reason: 'write-rejected' };
 			}
@@ -7711,11 +7434,9 @@ export class TaskEditorContent {
 				this.persistedTags = savedTags;
 				this.persistedFieldValues = savedFieldValues;
 			}
-			this.syncFileBodyDraftFromEditor();
 			if (this.checkboxBodyRevision === savedCheckboxBodyRevision && this.fileBodyDraft === savedFileBodyDraft
 				&& isTaskEditorSaveCommit(saveResult) && saveResult.fileBody) {
-				// Tear down the old source surface before replacing its context and draft.
-				this.clearFileBodyPanelRender();
+				const previousSourcePath = this.existingTask?.filePath ?? this.fileBodyContext?.filePath;
 				this.fileBodyContext = saveResult.fileBody;
 				this.fileBodyDraft = saveResult.fileBody.initialContent;
 				this.persistedFileBodyDraft = this.fileBodyDraft;
@@ -7723,10 +7444,10 @@ export class TaskEditorContent {
 					this.existingTask.filePath = saveResult.fileBody.filePath;
 					this.existingTask.lineNumber = (saveResult.fileBody.targetLine ?? 0) + (saveResult.fileBody.lineNumberOffset ?? 0);
 				}
-				this.updateFileBodyLayout();
+				this.updateSourceContextLayout();
+    if (previousSourcePath !== saveResult.fileBody.filePath) this.rootEl?.dispatchEvent(new CustomEvent('operon-editor-source-location', { bubbles: true, detail: { operonId: this.taskOperonId, filePath: saveResult.fileBody.filePath } }));
 			} else if (this.checkboxBodyRevision === savedCheckboxBodyRevision) this.persistedFileBodyDraft = savedFileBodyDraft;
 			this.persistedInlineCompletionMode = savedInlineCompletionMode;
-			this.isFileBodyDirty = this.fileBodyDraft !== this.persistedFileBodyDraft;
 			const compactTextSourcePath = this.getCompactTextSourcePath();
 			if (
 				descriptionSurfaceShouldCommit
@@ -7770,7 +7491,6 @@ export class TaskEditorContent {
 				this.hasBeenEdited = true;
 				this.scheduleSave();
 			}
-			this.refreshFileBodySaveButtonState();
 			return { ok: true, status: 'saved', clean: !this.hasBeenEdited };
 		})();
 
@@ -7780,6 +7500,7 @@ export class TaskEditorContent {
 		} finally {
 			if (this.persistInFlight === run) {
 				this.persistInFlight = null;
+				if (this.readSource) void this.refreshTaskSource();
 			}
 		}
 	}

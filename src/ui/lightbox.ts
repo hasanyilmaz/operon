@@ -18,11 +18,12 @@ export interface LightboxOptions {
  onOpenToRight?: () => Promise<(() => void) | null>;
  onOpenBelow?: () => Promise<(() => void) | null>;
 	/** Return false to retain content; asynchronous saves complete before teardown. */
-	beforeClose?: () => boolean | Promise<boolean>;
+	beforeClose?: (reason?: 'close' | 'transfer') => boolean | Promise<boolean>;
 	/** Native views can open host menus outside the modal DOM. */
 	nativeView?: boolean;
 	/** Also called when a queued opening is cancelled before mounting. */
 	onDispose?: () => void;
+ onCloseRejected?: () => void;
 	/** Render into the existing shell and return content-specific cleanup. */
 	render: (lightbox: HTMLElement, close: () => void) => (() => void) | null;
 }
@@ -68,6 +69,10 @@ function recordFor(anchor: HTMLElement): LightboxRecord | undefined {
  const record = close && records.get(close);
  const source = sourceFor(anchor);
  return record && (record.shell.contains(anchor) || isDesktopBackdropDescendant(anchor, record.shell) || !!source?.owner && record.shell.contains(source.owner)) ? record : undefined;
+}
+export function getActiveLightboxShell(document: Document): HTMLElement | undefined {
+ const close = activeLightboxes.get(document);
+ return close ? records.get(close)?.shell : undefined;
 }
 export function getLightboxOrigin(anchor: HTMLElement): WorkspaceLeaf | undefined {
  return recordFor(anchor)?.originLeaf;
@@ -225,7 +230,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 			if (activeLightboxes.get(ownerDocument) === close) {
 				if (parent) {
      activeLightboxes.set(ownerDocument, parent.close);
-     parent.shell.hidden = false; parent.shell.inert = false;
+     parent.shell.inert = false;
     } else activeLightboxes.delete(ownerDocument);
 			}
 			const focusTarget = previouslyFocused?.isConnected
@@ -253,9 +258,9 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
   if (closing) return closing;
   if (activeLightboxes.get(ownerDocument) !== close) return false;
   const allowed = options.beforeClose?.() ?? true;
-  if (!(allowed instanceof Promise)) return allowed ? finishClose() : false;
+  if (!(allowed instanceof Promise)) { if (!allowed) options.onCloseRejected?.(); return allowed ? finishClose() : false; }
   lock(true);
-  closing = allowed.then(ok => ok ? finishClose() : false).finally(() => {closing = null; if (!isClosed) lock(false);});
+  closing = allowed.then(ok => ok ? finishClose() : false).finally(() => {closing = null; if (!isClosed) { lock(false); options.onCloseRejected?.(); }});
   return closing;
  };
  const close: LightboxClose = () => requestClose();
@@ -287,9 +292,10 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
    });
   return closing;
  };
- const record: LightboxRecord = {shell: lightbox, modalOwner, originLeaf: parent?.originLeaf ?? options.originLeaf, parent, source, close, finish: finishClose, prepare: () => options.beforeClose?.() ?? true, transfer};
+ const record: LightboxRecord = {shell: lightbox, modalOwner, originLeaf: parent?.originLeaf ?? options.originLeaf, parent, source, close, finish: finishClose, prepare: () => options.beforeClose?.('transfer') ?? true, transfer};
  records.set(close, record);
- if (parent) {parent.shell.hidden = true; parent.shell.inert = true;}
+ // Keep the previous working level visible beneath the child backdrop.
+ if (parent) parent.shell.inert = true;
  if (source) {source.holds++; source.panel.hidden = true; source.panel.inert = true;}
 
 	const onPageHide = (): void => {
@@ -336,7 +342,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 		throw error;
 	}
  if (!isClosed && Platform.isDesktopApp) {
-  disposeControlHover = bindLightboxControlHover(lightbox);
+  disposeControlHover = bindLightboxControlHover(lightbox, !!options.nativeView);
   disposePosition = positionLightboxControls(lightbox);
  }
  if (!isClosed && (!Platform.isDesktopApp || !lightbox.contains(ownerDocument.activeElement) && !hasNativeOverlay())) focusShell();
@@ -344,17 +350,44 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 }
 
 
-/** Boundaries also work for iframe content and SVG icons without tracking every mouse move. */
-function bindLightboxControlHover(lightbox: HTMLElement): () => void {
- const leave = (): void => lightbox.removeClass('are-controls-hovered');
+const controlReady = new WeakMap<HTMLElement, () => void>();
+/** Native surfaces call this only once their complete initial panel is ready. */
+export function markLightboxControlsReady(lightbox: HTMLElement): void { controlReady.get(lightbox)?.(); }
+
+/** Hover activation waits for the initial surface; keyboard focus remains immediate. */
+function bindLightboxControlHover(lightbox: HTMLElement, native: boolean): () => void {
+ const win = getOwnerWindow(lightbox);
+ let timer: number | null = null;
+ let started = false;
+ let pointer: { x: number; y: number } | null = null;
+ lightbox.addClass('are-controls-pending');
+ const leave = (): void => { pointer = null; lightbox.removeClass('are-controls-hovered'); };
  const over = (event: PointerEvent): void => {
+  pointer = { x: event.clientX, y: event.clientY };
   const onControl = event.composedPath().some(node => isHTMLElement(node, lightbox)
    && node.parentElement === lightbox && node.classList.contains('operon-task-media-lightbox-control'));
   lightbox.toggleClass('are-controls-hovered', event.target === lightbox || onControl);
  };
+ const start = (): void => {
+  if (started) return;
+  started = true;
+  timer = win.setTimeout(() => {
+   timer = null;
+   // Layout may have put the document beneath a stationary pointer since entry.
+   const target = pointer ? lightbox.ownerDocument.elementFromPoint(pointer.x, pointer.y) : null;
+   const control = target?.closest('.operon-task-media-lightbox-control');
+   lightbox.toggleClass('are-controls-hovered', target === lightbox || control?.parentElement === lightbox);
+   lightbox.removeClass('are-controls-pending');
+  }, 500);
+ };
+ controlReady.set(lightbox, start);
  lightbox.addEventListener('pointerover', over);
  lightbox.addEventListener('pointerleave', leave);
+ if (!native) start();
  return () => {
+  if (timer !== null) win.clearTimeout(timer);
+  controlReady.delete(lightbox);
+  lightbox.removeClass('are-controls-pending');
   lightbox.removeEventListener('pointerover', over);
   lightbox.removeEventListener('pointerleave', leave);
   leave();
@@ -389,6 +422,27 @@ export function disposeAppLightboxes(app: App): void {
  }
 }
 
+export interface LightboxContentTarget {
+ content: HTMLElement;
+ /** Optional inner rail rectangle for a companion layout, in viewport coordinates. */
+ controls?: () => { left: number; top: number; height: number } | undefined;
+ afterPosition?: () => void;
+ size?: { measure: () => DOMRect; step: (axis: 'width' | 'height', direction: -1 | 1) => number | null; apply: (axis: 'width' | 'height', value: number) => void; enabled: () => boolean };
+ refresh?: () => void;
+}
+const contentTargets = new WeakMap<HTMLElement, LightboxContentTarget>();
+
+export function bindLightboxContent(shell: HTMLElement, target: LightboxContentTarget): () => void {
+ contentTargets.set(shell, target);
+ return () => { if (contentTargets.get(shell) === target) contentTargets.delete(shell); };
+}
+
+export function refreshLightboxControls(shell: HTMLElement): void { contentTargets.get(shell)?.refresh?.(); }
+
+function lightboxContent(shell: HTMLElement): HTMLElement | null {
+ return contentTargets.get(shell)?.content ?? shell.querySelector<HTMLElement>(':scope > .operon-task-media-lightbox-content, :scope > img');
+}
+
 const sizeProfiles = new WeakMap<HTMLElement, LightboxSizeProfile>();
 const pendingImageBaseline = new WeakMap<HTMLElement, 'width' | 'height'>();
 
@@ -412,7 +466,7 @@ function finishImageBaseline(content: HTMLElement): void {
 /** Apply the resolved type before asynchronous native loading can produce a paint. */
 export function applyLightboxSizeProfile(lightbox: HTMLElement, profile: LightboxSizeProfile): void {
  if (!Platform.isDesktopApp || sizeProfiles.get(lightbox) === profile) return;
- const content = lightbox.querySelector<HTMLElement>(':scope > .operon-task-media-lightbox-content, :scope > img');
+ const content = lightboxContent(lightbox);
  if (!content) return;
  const previous = sizeProfiles.get(lightbox);
  sizeProfiles.set(lightbox, profile);
@@ -440,7 +494,7 @@ export function getLightboxSizeStep(current: number, direction: -1 | 1): number 
 
 /** Keep controls in the content's coordinate space, using a second column when short. */
 function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
- const content = lightbox.querySelector<HTMLElement>(':scope > .operon-task-media-lightbox-content, :scope > img');
+ const content = lightboxContent(lightbox);
  const win = lightbox.ownerDocument.defaultView;
  if (!content || !win) return null;
  const mainCount = lightbox.querySelectorAll('.operon-task-media-lightbox-control:not(.operon-lightbox-dimming-control)').length;
@@ -448,6 +502,8 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
  const controls: {button: HTMLButtonElement; axis: 'width' | 'height'; direction: -1 | 1; click: () => void}[] = [];
  const measure = (): {left: number; top: number; right: number; bottom: number; width: number; height: number} => {
   // Image zoom/pan transforms pixels, not the frame used by these controls.
+  const supplied = contentTargets.get(lightbox)?.size?.measure();
+  if (supplied) return supplied;
   if (content.tagName !== 'IMG') return content.getBoundingClientRect();
   const {offsetLeft: left, offsetTop: top, offsetWidth: width, offsetHeight: height} = content;
   return {left, top, width, height, right: left + width, bottom: top + height};
@@ -472,13 +528,15 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
   const click = (): void => {
    if (lightbox.inert || lightbox.hidden) return;
    const rect = measure(), viewport = axis === 'width' ? win.innerWidth : win.innerHeight;
-   const next = nextSize(rect[axis], viewport, direction);
+   const custom = contentTargets.get(lightbox)?.size;
+   const next = custom ? custom.step(axis, direction) : nextSize(rect[axis], viewport, direction);
    if (next === null) return;
    if (content.tagName === 'IMG' && !content.classList.contains('is-lightbox-resized')) {
     // Preserve the other axis while object-fit keeps the image itself undistorted.
     content.style.setProperty('width', `min(${rect.width / win.innerWidth * 100}vw, calc(100vw - 96px))`);
     content.style.setProperty('height', `min(${rect.height / win.innerHeight * 100}vh, calc(100vh - 96px))`);
    }
+   if (custom) { custom.apply(axis, next); position(); return; }
    content.addClass('is-lightbox-resized');
    const unit = axis === 'width' ? 'vw' : 'vh';
    content.style.setProperty(axis, `min(${next}${unit}, calc(100${unit} - 96px))`);
@@ -493,6 +551,7 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
   if (lightbox.hidden) return;
   finishImageBaseline(content);
   const rect = measure();
+  const rail = contentTargets.get(lightbox)?.controls?.();
   const width = win.innerWidth, height = win.innerHeight;
   const count = mainCount + dimmingCount;
   const size = Math.min(36, (height - 16 - 4 * (count - 1)) / count);
@@ -503,21 +562,21 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
   const pair = step + size;
   const bottomLeft = Math.max(8, Math.min(width - pair - 8, (rect.left + rect.right - pair) / 2));
   const bottomTop = rect.bottom + 4 + size <= height - 8 ? rect.bottom + 4 : Math.max(8, height - size - 8);
-  const left = rect.right + 8 + size <= width - 8 ? rect.right + 8 : rect.right - size - 8;
+  const left = rail?.left ?? (rect.right + 8 + size <= width - 8 ? rect.right + 8 : rect.right - size - 8);
   let railLeft = Math.max(8, Math.min(width - size - 8, left));
   // A small natural image can be narrower than the bottom pair.
-  if (railLeft < bottomLeft + pair + 4 && railLeft + size > bottomLeft - 4) {
+  if (!rail && railLeft < bottomLeft + pair + 4 && railLeft + size > bottomLeft - 4) {
    const outside = bottomLeft + pair + 4;
    railLeft = outside + size <= width - 8 ? outside : Math.max(8, bottomLeft - size - 4);
   }
   lightbox.style.setProperty('--operon-lightbox-control-left', `${railLeft}px`);
-  const top = Math.max(8, Math.min(height - railHeight - 8, rect.top + 8));
+  const top = Math.max(8, Math.min(height - railHeight - 8, (rail?.top ?? rect.top) + 8));
   lightbox.style.setProperty('--operon-lightbox-control-top', `${top}px`);
   const dimmingHeight = (dimmingCount - 1) * step + size;
   const dimmingTop = Math.max(top + mainCount * step,
-   Math.min(height - dimmingHeight - 8, rect.bottom - dimmingHeight - 8));
+   Math.min(height - dimmingHeight - 8, (rail ? rail.top + rail.height : rect.bottom) - dimmingHeight - 8));
   lightbox.style.setProperty('--operon-lightbox-dimming-top', `${dimmingTop}px`);
-  const middleTop = Math.max(8, Math.min(height - pair - 8, (rect.top + rect.bottom - pair) / 2));
+  const middleTop = Math.max(8, Math.min(height - pair - 8, (rail ? rail.top + rail.height / 2 - pair / 2 : (rect.top + rect.bottom - pair) / 2)));
   const mainBottom = top + (mainCount - 1) * step + size;
   const overlaps = middleTop < mainBottom + 4 || middleTop + pair > dimmingTop - 4;
   const alternateLeft = railLeft + step + size <= width - 8 ? railLeft + step : railLeft - step;
@@ -530,17 +589,23 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
    const horizontal = axis === 'width';
    button.style.setProperty('--operon-lightbox-size-left', `${horizontal ? bottomLeft + (direction > 0 ? step : 0) : middleLeft}px`);
    button.style.setProperty('--operon-lightbox-size-top', `${horizontal ? bottomTop : middleTop + (direction < 0 ? step : 0)}px`);
-   button.disabled = nextSize(rect[axis], horizontal ? width : height, direction) === null;
+   const custom = contentTargets.get(lightbox)?.size;
+   button.hidden = custom ? !custom.enabled() : false;
+   button.disabled = custom ? !custom.enabled() || custom.step(axis, direction) === null : nextSize(rect[axis], horizontal ? width : height, direction) === null;
   }
   const radius = win.getComputedStyle(content).borderTopRightRadius;
-  lightbox.style.setProperty('--operon-lightbox-control-radius', Number.parseFloat(radius) > 0 ? radius : '12px');
+  lightbox.style.setProperty('--operon-lightbox-control-radius', Number.parseFloat(radius) > 0 ? radius : '6px');
+  contentTargets.get(lightbox)?.afterPosition?.();
  };
+ const target = contentTargets.get(lightbox);
+ if (target) target.refresh = position;
  const observer = new win.ResizeObserver(position);
  observer.observe(content);
  win.addEventListener('resize', position);
  content.addEventListener('load', position, true);
  position();
  return () => {
+  if (target?.refresh === position) delete target.refresh;
   observer.disconnect(); win.removeEventListener('resize', position); content.removeEventListener('load', position, true);
   for (const {button, click} of controls) {button.removeEventListener('click', click); cleanupOperonHoverTooltips(button);}
  };

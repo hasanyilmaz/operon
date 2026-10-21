@@ -11,15 +11,15 @@ import { openTaskMediaLightbox, type TaskMediaPreviewSource } from './task-media
 /** Original references are retained separately from resource/embed URLs. */
 export type LightboxTarget =
  | { kind: 'web'; url: string; media?: TaskMediaPreviewSource }
- | { kind: 'local'; linktext: string; sourcePath: string; line?: number; caretCh?: number; label?: string };
+ | { kind: 'local'; linktext: string; sourcePath: string; line?: number; caretCh?: number; operonId?: string; label?: string };
 export type LightboxOpenResult = 'opened' | 'missing' | 'unsupported' | 'unavailable';
-export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number }
+export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number; operonId?: string }
 
 export function resolveLightboxFile(app: App, target: Extract<LightboxTarget, { kind: 'local' }>): ResolvedLightboxFile | null {
  const raw = target.linktext.trim().replace(/^!?\[\[([\s\S]*)\]\]$/u, '$1').split('|')[0];
  const parsed = parseLinktext(raw);
  const file = app.metadataCache.getFirstLinkpathDest(parsed.path, target.sourcePath);
- return file instanceof TFile ? { file, subpath: parsed.subpath, line: target.line, ...(target.caretCh !== undefined ? { caretCh: target.caretCh } : {}) } : null;
+ return file instanceof TFile ? { file, subpath: parsed.subpath, line: target.line, ...(target.operonId ? { operonId: target.operonId } : {}), ...(target.caretCh !== undefined ? { caretCh: target.caretCh } : {}) } : null;
 }
 
 /** Stage 1 callers opt in explicitly; no property or cell routing lives here. */

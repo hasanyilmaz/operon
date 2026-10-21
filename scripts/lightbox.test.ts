@@ -51,9 +51,9 @@ test('nested preview retains parent and restores focus without replacing or savi
   const closeParent=openLightbox(f.anchor,{title:'Parent',beforeClose:()=>{saves++;return true;},render:el=>{parent=el;return()=>disposed++;}});
   const link=parent.createDiv();link.focus();
   const closeChild=openLightbox(link,{title:'Child',render:el=>{child=el;return null;}});
-  assert.equal(parent.hidden,true);assert.equal(parent.inert,true);assert.equal(saves,0);assert.equal(closeParent(),false);
+  assert.equal(Boolean(parent.hidden),false);assert.equal(parent.inert,true);assert.equal(saves,0);assert.equal(closeParent(),false);
   f.emit('keydown',{key:'Escape',preventDefault(){},stopPropagation(){}});
-  assert.equal(child.isConnected,false);assert.equal(parent.isConnected,true);assert.equal(parent.hidden,false);assert.equal(f.doc.activeElement,link);
+  assert.equal(child.isConnected,false);assert.equal(parent.isConnected,true);assert.equal(Boolean(parent.hidden),false);assert.equal(f.doc.activeElement,link);
   await closeChild();await closeParent();assert.equal(disposed,1);assert.equal(saves,1);
  }finally{f.cleanup();}
 });
@@ -64,7 +64,7 @@ test('failed child mounting restores the existing view and draft owner',()=>{
   const panel=f.doc.body.createDiv(),link=panel.createDiv();let focused=0;
   const source=registerLightboxSource(panel,parent,{blocked:()=>true,focus:()=>focused++,closeClean:()=>assert.fail('no commit')});
   assert.throws(()=>openLightbox(link,{title:'Child',render:()=>{throw Error('mount');}}));
-  assert.equal(source.suspended(),false);assert.equal(panel.hidden,false);assert.equal(parent.hidden,false);assert.equal(focused,1);
+  assert.equal(source.suspended(),false);assert.equal(panel.hidden,false);assert.equal(Boolean(parent.hidden),false);assert.equal(focused,1);
   source.dispose();close();
  }finally{f.cleanup();}
 });
@@ -102,7 +102,7 @@ test('failed ancestor save or target preparation leaves chain and source draft i
   const b=openLightbox(parent.createDiv(),{title:'Child',render:el=>{child=el;return null;}});
   assert.equal(await transferLightboxOpening(child,async()=>{prepared++;return null;}),false);assert.equal(prepared,0);
   allowed=true;assert.equal(await transferLightboxOpening(child,async()=>{prepared++;throw Error('load');}),false);
-  assert.equal(child.isConnected,true);assert.equal(child.inert,false);assert.equal(parent.hidden,true);
+  assert.equal(child.isConnected,true);assert.equal(child.inert,false);assert.equal(Boolean(parent.hidden),false);
   await b();await a();
  }finally{f.cleanup();}
 });

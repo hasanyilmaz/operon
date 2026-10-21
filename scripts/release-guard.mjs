@@ -955,6 +955,16 @@ function checkRepositoryIgnorePolicy() {
 	);
 }
 
+async function checkLightboxTypeAssertionPolicy() {
+	try {
+		const { checkLightboxTypeAssertions, formatLightboxTypeAssertionFindings } = await import('./release/lightbox-type-assertion-policy.mjs');
+		const findings = await checkLightboxTypeAssertions(rootDir);
+		if (findings.length) fail(`Lightbox type assertion policy failed:\n${formatLightboxTypeAssertionFindings(findings)}`);
+	} catch (error) {
+		fail(`Lightbox type assertion analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+	}
+}
+
 function checkPluginReleasePolicy() {
 	const packageManifest = readJson('package.json');
 	const scripts = packageManifest.scripts ?? {};
@@ -970,6 +980,7 @@ function checkPluginReleasePolicy() {
 		'npm run lint:strict',
 		'npm run lint:scorecard:strict',
 		'npm run release:process-launch:test',
+		'npm run lightbox:type-assertions:test',
 		'npm run docs:package:test',
 		'npm run agent-runtime:contracts:plugin',
 	]) {
@@ -1019,6 +1030,8 @@ function checkPluginReleasePolicy() {
 		scripts['release:process-launch:test'],
 		'node --test scripts/release/process-launch-policy.test.mjs',
 	);
+	assertEqual('lightbox assertion check script', scripts['lightbox:type-assertions:check'], 'node scripts/check-lightbox-type-assertions.mjs');
+	assertEqual('lightbox assertion test script', scripts['lightbox:type-assertions:test'], 'node --test scripts/release/lightbox-type-assertion-policy.test.mjs');
 	const buildCommands = (scripts.build ?? '').split('&&').map(command => command.trim());
 	const productionBuildIndex = buildCommands.indexOf('node esbuild.config.mjs production');
 	const processLaunchIndex = buildCommands.indexOf('npm run release:process-launch:check');
@@ -2544,6 +2557,7 @@ if (guardScope === 'plugin') {
 	compareLocaleFiles();
 	checkVersionAndAssets();
 	checkPluginReleasePolicy();
+	await checkLightboxTypeAssertionPolicy();
 	checkRepositoryIgnorePolicy();
 	checkContinuousIntegrationWorkflow();
 	checkCodeqlWorkflow();

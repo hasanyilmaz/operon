@@ -135,7 +135,7 @@ async function fixture() {
   const e:any={app,indexer,settings,filePropertyRoot:{children:[{}],setAttribute(){},removeAttribute(){},querySelector(){return null;},closest(){return null;}},filePropertyGeneration:0,fileProperties:new Map(),submittedFileProperties:new Map(),filePropertyRows:new Map(),
    getCurrentIndexedTask:()=>indexer.getTask(id),filePropertyTypeResolver:createCachedTableFilePropertyTypeResolver(types),renderDesktopFileProperties(){},refreshFilePropertyValue(){},markEdited(){},isNativeCustomProperty:()=>false};
   const deps={...rawProperties,getNativePropertyIndex,nativePropertyReadOnlyReason,encodeVaultPropertyValue,t};
-  for(const [name,args] of [['refreshDesktopFileProperties',''],['refreshDesktopPropertyGroupState','container'],['canEditFileProperty','entry'],['setFilePropertyValue','name,value'],['getFilePropertyChanges',''],['getInlinePropertyChanges','']])e[name]=method(name,args,deps,'src/ui/task-editor-content.ts','TaskEditorContent');
+  for(const [name,args] of [['refreshDesktopFileProperties',''],['loadDesktopFileProperties',''],['refreshDesktopPropertyGroupState','container'],['canEditFileProperty','entry'],['setFilePropertyValue','name,value'],['getFilePropertyChanges',''],['getInlinePropertyChanges','']])e[name]=method(name,args,deps,'src/ui/task-editor-content.ts','TaskEditorContent');
   e.nativePropertyField=(name:string,type:string)=>({propertyName:name,type});
   await e.refreshDesktopFileProperties();assert.equal(e.filePropertyUnavailable,false);return e;
  }

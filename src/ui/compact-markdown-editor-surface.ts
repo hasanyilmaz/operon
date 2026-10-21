@@ -24,6 +24,7 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { compactMarkdownUnderlineExtension } from './compact-markdown-underline-extension';
 
 export interface CompactMarkdownEditorSurfaceOptions {
+	onCompositionSettled?: () => void;
 	app: App;
 	sourceValue: string;
  openLinksInLightbox?: boolean;
@@ -127,10 +128,12 @@ export function createCompactMarkdownEditorSurface(
 					controller.getDraft().displayValue,
 					normalizeCompactTextSelection(value, selection, false),
 				);
+				options.onCompositionSettled?.();
 				return;
 			}
 			syncBackendProjection(result.displayValue, result.selection);
 			options.onUserChange?.(result.draft);
+			options.onCompositionSettled?.();
 		},
 		onSelectionChange: () => {
 			if (!destroyed) options.onSelectionChange?.();
