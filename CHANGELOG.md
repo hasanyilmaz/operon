@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Task Creator** closes immediately after submitting an Inline or File task, while creation continues in the background and normal notifications remain available.
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
 - **Task Editor and source editing** stay synchronized without overwriting untouched source fields or newer drafts. Unsaved Task Editor edits win same-field conflicts; task identity, moves, Additional properties, and shared native buffers retain their save protections. Saving **Contexts and other task fields** works with the native Properties view without false conflict warnings, while genuine conflicts and YAML protection remain enforced.
 - Improved **Task Editor opening responsiveness** by preparing native Markdown only when needed and reusing eligible recently closed Markdown views for faster reopening. Panels appear together when ready, with fresh selection, scroll, and undo state for each new session.
@@ -30,11 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,180/5,180** local regression tests and manual workspace, Escape, and Contexts checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,181/5,181** local regression tests and manual workspace, Escape, Contexts, and Task Creator checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 - Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
 - Left/right lightbox placement passed **64/64** browser scenarios, **163/163** workspace checks, and **45/45** settings/backdrop tests, with manual placement checks confirmed.
+- Task Creator validation passed **62/62** preparation and submission tests, **16/16** Repeat tests, and **93/93** creation/index integration tests, covering immediate closing, draft recovery, and independent background submissions.
 
 ## [4.1.0] - 2026-10-20
 

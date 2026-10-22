@@ -11,7 +11,7 @@ try {
  const source = ts.createSourceFile('main.ts', await readFile('main.ts', 'utf8'), ts.ScriptTarget.Latest, true);
  const cls = source.statements.find(n => ts.isClassDeclaration(n) && n.name?.text === 'OperonPlugin');
  const method = name => cls.members.find(n => n.name?.getText(source) === name).getText(source);
- const methods = ['isExcalidrawTaskSource', 'recordInlineTaskCreationTarget', 'recordInlineTaskCreationFromEditor', 'insertTaskCreatorInlineTaskAtChosenTarget', 'insertTaskCreatorInlineTaskWithResolvedTarget', 'insertTaskCreatorInlineTaskUsingDefaultTarget', 'createInlineTaskFromCreatorDraftResult', 'openTaskCreator', 'prepareTaskCreator', 'writePreparedCreatorInline', 'createCalendarInlineTaskFromCreatorDraft', 'createKanbanInlineTaskFromCreatorDraft', 'createInlineSubtaskFromFlexibleCreatorDraft', 'insertTaskCreatorInlineTaskBelowInlineParent', 'insertTaskCreatorInlineTaskInsideFileParent'];
+ const methods = ['isExcalidrawTaskSource', 'recordInlineTaskCreationTarget', 'recordInlineTaskCreationFromEditor', 'insertTaskCreatorInlineTaskAtChosenTarget', 'insertTaskCreatorInlineTaskWithResolvedTarget', 'insertTaskCreatorInlineTaskUsingDefaultTarget', 'createInlineTaskFromCreatorDraftResult', 'openTaskCreator', 'prepareTaskCreator', 'restoreBackgroundTaskCreator', 'writePreparedCreatorInline', 'createCalendarInlineTaskFromCreatorDraft', 'createKanbanInlineTaskFromCreatorDraft', 'createInlineSubtaskFromFlexibleCreatorDraft', 'insertTaskCreatorInlineTaskBelowInlineParent', 'insertTaskCreatorInlineTaskInsideFileParent'];
  const stub = path.join(dir, 'obsidian.ts');
  await writeFile(stub, `
 export const notices:string[]=[];

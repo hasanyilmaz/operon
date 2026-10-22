@@ -1,3 +1,4 @@
+import './task-creator-submit-lifecycle.test';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorAdapter } from '../src/ui/task-creator-prepared-draft';

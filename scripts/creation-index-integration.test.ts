@@ -100,13 +100,15 @@ async function fixture() {
  let modal:any;
  class ModalBoundary {
   model:PreparedTaskCreatorDraft;
+  isCreatorSessionOpen=true; hasDetachedSubmission=false;
   constructor(_app:App,public options:any){this.model=new PreparedTaskCreatorDraft(options.preparedAdapter,settings);modal=this;}
-  open(){} onClose(){} completeAndClose(){this.onClose();}
+  open(){} onClose(){this.isCreatorSessionOpen=false;this.model.close();} completeAndClose(){this.onClose();}
   refreshPreparedSources(){this.model.refreshParent();}
   acceptPreparedTargetParent(id:string){this.model.backgroundParent(id,null,null);return this.model.submission('inline','Task','keep-completed');}
  }
  const prepare=method('prepareTaskCreator','initialDraft=null,options={}',{getNativePropertyIndex,TaskCreatorModal:ModalBoundary,TFile,CreationDraftProperties,decodeVaultPropertyValue,createCachedTableFilePropertyTypeResolver,createVaultFilePropertySnapshot,resolveDefaultFileTaskStatus,localNow:()=> '2026-10-10T12:34:56',t,Notice:class {constructor(message:string){notices.push(message);}}});
  host.prepareTaskCreator=prepare;
+ host.restoreBackgroundTaskCreator=method('restoreBackgroundTaskCreator','');
  host.parseInlineTaskLine=(line:string,lineNumber:number,path:string)=>parseTaskLine(line,lineNumber,path,settings.keyMappings);
  host.getParsedTaskFieldValues=(task:any)=>Object.fromEntries(task.fields.map((field:any)=>[field.key,field.value]));
  host.resolveCheckboxConversionInheritedFields=()=>({});
@@ -183,12 +185,12 @@ for(const mode of ['inline','file'] as const)for(const failure of mode==='inline
 });
 
 test('actual modal submit blocks uncertain replay and allows verified pre-write failure retry',async()=>{
- const submit=method('submitPrepared','mode',{Notice,isTaskCreatorCreateTypeAllowed:()=>true},'src/ui/task-creator-modal.ts','TaskCreatorModal');
+ const submit=method('submitPrepared','mode',{Notice,isTaskCreatorCreateTypeAllowed:()=>true,getOwnerWindow:()=>({setTimeout})},'src/ui/task-creator-modal.ts','TaskCreatorModal');
  for(const failure of ['before','lost']){
   const f=await fixture();try{
    const ui=await f.open();let attempts=0;const onSubmit=ui.model.adapter.onSubmit;
    ui.model.adapter.onSubmit=async(request:PreparedTaskCreatorSubmission)=>{attempts++;return onSubmit(request);};
-   const shell:any={prepared:ui.model,draft:{description:'Task',inlineCompletionMode:'keep-completed'},submitMode:'both',contentEl:{},ensureDescription:()=>true,closeActivePicker(){},closeSuggestions(){},renderSubmitControls(){},forceClose(){}};
+   const shell:any={prepared:ui.model,draft:{description:'Task',inlineCompletionMode:'keep-completed'},submitMode:'both',options:{},containerEl:{},contentEl:{},hideImmediately(){},restoreSubmittedDraft(){this.detachedForSubmit=false;},ensureDescription:()=>true,closeActivePicker(){},closeSuggestions(){},renderSubmitControls(){},forceClose(){}};
    f.failure(failure);await submit.call(shell,'inline');f.failure('');await submit.call(shell,'inline');
    assert.equal(attempts,failure==='lost'?1:2);assert.equal(f.writes.length,1);
   }finally{await f.close();}
@@ -223,11 +225,12 @@ for(const change of ['metadata','closed','deleted-parent','duplicate-parent'])te
   f.seed('Parent.md','---\noperonId: parent1\ncontexts: [parent]\n---\n');await f.scan();
   const initial=emptyDraft();if(change.includes('parent'))initial.fieldValues={parentTask:'parent1'};
   const ui=await f.open(initial);
+  const request=ui.model.submission('inline','Task','keep-completed');
   if(change==='metadata')f.native.setTypes({...types,Count:'text'});
   if(change==='closed')ui.onClose();
   if(change==='deleted-parent'){f.seed('Parent.md','Removed');await f.scan('Parent.md');}
   if(change==='duplicate-parent'){f.seed('Duplicate.md','---\noperonId: parent1\n---');await f.scan('Duplicate.md');}
-  const result=await ui.options.preparedAdapter.onSubmit(ui.model.submission('inline','Task','keep-completed'));
+  const result=await ui.options.preparedAdapter.onSubmit(request);
   assert.notEqual(result.outcome,'committed');assert.equal(f.writes.length,0);
  }finally{await f.close();}
 });

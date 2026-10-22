@@ -1782,6 +1782,8 @@ export default class OperonPlugin extends Plugin {
 	private pinnedDock: PinnedTasksDock | null = null;
 	private mobileGlobalTaskFab: MobileGlobalTaskFab | null = null;
 	private taskCreatorModal: TaskCreatorModal | null = null;
+ private backgroundTaskCreators = new Set<TaskCreatorModal>();
+ private preparingTaskCreators = new Set<number>();
 	private subtasksFilterModal: SubtasksFilterModal | null = null;
 	private pinnedCache: PinnedCache | null = null;
 	private convertTaskToPlainCommandInProgress = false;
@@ -17340,6 +17342,8 @@ export default class OperonPlugin extends Plugin {
 		this.duplicateOperonIdModal = null;
 		this.taskCreatorModal?.close();
 		this.taskCreatorModal = null;
+  for (const modal of this.backgroundTaskCreators) modal.completeAndClose();
+  this.backgroundTaskCreators.clear();
 		this.subtasksFilterModal?.close();
 		this.subtasksFilterModal = null;
 		this.fileTaskArchiver?.destroy();
@@ -30221,7 +30225,7 @@ export default class OperonPlugin extends Plugin {
  }
 
 	private toggleTaskCreatorFromCommand(): void {
-		if (this.taskCreatorModal) {
+		if (this.taskCreatorModal?.isCreatorSessionOpen && !this.taskCreatorModal.hasDetachedSubmission) {
 			this.taskCreatorModal.requestEscapeClose();
 			return;
 		}
@@ -30373,6 +30377,15 @@ export default class OperonPlugin extends Plugin {
    new Notice(t('taskEditor', 'creatorCommitFailed'));
   });
  }
+ /** Restore an existing failed draft only after the newer Creator has left. */
+ private restoreBackgroundTaskCreator(): void {
+  if (this.taskCreatorModal || this.preparingTaskCreators?.size || this.agentRuntimeLifecycle?.getPhase() === 'unloading') return;
+  const modal = [...(this.backgroundTaskCreators ?? [])].find(candidate => candidate.canRestoreSubmittedDraft);
+  if (!modal) return;
+  this.backgroundTaskCreators.delete(modal);
+  this.taskCreatorModal = modal;
+  modal.restoreSubmittedDraft();
+ }
  private async prepareTaskCreator(
 		initialDraft: TaskCreatorDraft | null = null,
 		options: OpenTaskCreatorOptions = {},
@@ -30381,12 +30394,14 @@ export default class OperonPlugin extends Plugin {
         const drawing = options.onSubmitInline ? null : this.excalidrawTaskIntegration?.captureCreation() ?? null;
         const submitInline = options.onSubmitInline ?? ((draft: TaskCreatorDraft) => this.createInlineTaskFromCreatorDraft(draft, drawing));
   const generation = ++this.creatorOpenGeneration;
+  this.preparingTaskCreators ??= new Set(); this.preparingTaskCreators.add(generation);
+  try {
   const native = getNativePropertyIndex(this.app);
   const parentId = initialDraft?.fieldValues.parentTask;
   const parent = parentId ? this.indexer.getTask(parentId) : null;
   await native.ensure(parent ? [parent] : []);
   if (generation !== this.creatorOpenGeneration) return;
-  this.taskCreatorModal?.completeAndClose();
+  if (this.taskCreatorModal?.isCreatorSessionOpen && !this.taskCreatorModal.hasDetachedSubmission) this.taskCreatorModal.completeAndClose();
 		const shouldApplyGenericDefaults = options.applyGenericDefaults === true || (!initialDraft
 			&& options.submitMode === undefined
 			&& options.initialCreateType === undefined
@@ -30432,10 +30447,15 @@ export default class OperonPlugin extends Plugin {
   const session: PreparedCreatorCommit['session'] = {};
   const parentVersions = new Map<string,string>();
   const pendingParents = new Set<string>();
-  let closed = false;
   const parentVersion = (task: IndexedTask) => JSON.stringify([task.primary, task.fieldValues, task.tags, native.getTask(task).revision]);
   const candidates = createVaultFilePropertySnapshot(this.app, createCachedTableFilePropertyTypeResolver({ ...native.getTypes() }), { keyMappings:this.settings.keyMappings,nativeListCandidates:true });
   const modal = new TaskCreatorModal(this.app, {
+   onSubmissionStateChange: () => {
+    this.backgroundTaskCreators ??= new Set();
+    if (modal.hasDetachedSubmission && modal.isCreatorSessionOpen) this.backgroundTaskCreators.add(modal);
+    else this.backgroundTaskCreators.delete(modal);
+    this.restoreBackgroundTaskCreator();
+   },
    preparedAdapter: {
     properties, seeds: { surface,user,defaults },
     clock: () => ({ now:localNow() }),
@@ -30447,7 +30467,7 @@ export default class OperonPlugin extends Plugin {
      if (!row.available) {
       if (!pendingParents.has(id)) {
        pendingParents.add(id);
-       void native.ensure([task]).then(() => { if (!closed && native.getTask(task).available) modal.refreshPreparedSources(); }).catch(error => console.error('Operon: Creator parent unavailable',error)).finally(() => pendingParents.delete(id));
+       void native.ensure([task]).then(() => { if (modal.isCreatorSessionOpen && native.getTask(task).available) modal.refreshPreparedSources(); }).catch(error => console.error('Operon: Creator parent unavailable',error)).finally(() => pendingParents.delete(id));
       }
       return null;
      }
@@ -30470,7 +30490,7 @@ export default class OperonPlugin extends Plugin {
      let parentSignature=parent ? parentVersion(parent) : '';
      if (parent && parentVersions.get(parentId)!==parentSignature) { modal.refreshPreparedSources(); return {outcome:'preview',message:t('taskEditor','creatorParentPreviewChanged')}; }
      const commit: PreparedCreatorCommit = { request,properties,session,outcome:'pending',
-      current:()=>!closed && metadataKey()===initialMetadataKey && (!parentId || !!this.indexer.getTask(parentId) && !this.indexer.hasDuplicateOperonIdConflict(parentId)
+      current:()=>modal.isCreatorSessionOpen && metadataKey()===initialMetadataKey && (!parentId || !!this.indexer.getTask(parentId) && !this.indexer.hasDuplicateOperonIdConflict(parentId)
        && parentVersion(this.indexer.getTask(parentId)!)===parentSignature),
       applyTargetParent:id=>{
        const targetParent=id ? this.indexer.getTask(id) : null;
@@ -30533,14 +30553,18 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 		modal.onClose = () => {
-   closed = true;
 			TaskCreatorModal.prototype.onClose.call(modal);
 			if (this.taskCreatorModal === modal) {
 				this.taskCreatorModal = null;
 			}
+   this.restoreBackgroundTaskCreator();
 		};
 		this.taskCreatorModal = modal;
 		modal.open();
+  } finally {
+   this.preparingTaskCreators.delete(generation);
+   this.restoreBackgroundTaskCreator();
+  }
 	}
 
 	private normalizeTaskCreatorText(value: string): string {
