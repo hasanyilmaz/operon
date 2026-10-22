@@ -61,6 +61,7 @@ export interface TaskBarCallbacks {
 	updateField: (operonId: string, key: string, value: string) => void;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
+	isTaskTracking?: (taskId: string) => boolean;
 }
 
 /**
@@ -224,6 +225,7 @@ function renderIconButtonFromIndex(container: HTMLElement, task: IndexedTask, cb
 			getSettings: cbs.getSettings,
 			onAction: cbs.onContextualAction,
 			isPinned: cbs.isTaskPinned ? () => cbs.isTaskPinned?.(task.operonId) === true : undefined,
+			isTracking: () => cbs.isTaskTracking?.(task.operonId) === true,
 			hasSubtasks: () => cbs.getChildIds(task.operonId).length > 0,
 		});
 	}

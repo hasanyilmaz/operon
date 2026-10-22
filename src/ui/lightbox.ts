@@ -394,7 +394,7 @@ function bindLightboxControlHover(lightbox: HTMLElement, native: boolean): () =>
    const control = target?.closest('.operon-task-media-lightbox-control');
    lightbox.toggleClass('are-controls-hovered', target === lightbox || control?.parentElement === lightbox);
    lightbox.removeClass('are-controls-pending');
-  }, 500);
+  }, 350);
  };
  controlReady.set(lightbox, start);
  lightbox.addEventListener('pointerover', over);

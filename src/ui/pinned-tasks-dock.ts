@@ -267,6 +267,7 @@ export class PinnedTasksDock extends Component {
 					getSettings: () => this.settings,
 					onAction: this.callbacks.onContextualAction,
 					isPinned: () => this.pinnedCache.isPinned(task.operonId),
+					isTracking: () => this.timeTracker.isTimerRunning(task.operonId),
 					hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(task.operonId) === true : undefined,
 				});
 			}

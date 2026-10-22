@@ -329,6 +329,7 @@ export function buildReadingTaskRowElement(
 			getSettings: callbacks.getSettings,
 			onAction: callbacks.onContextualAction,
 			isPinned: callbacks.isTaskPinned ? () => callbacks.isTaskPinned?.(task.operonId) === true : undefined,
+			isTracking: () => callbacks.isTaskTracking?.(task.operonId) === true,
 			hasSubtasks: callbacks.getDescendantTaskSummary
 				? () => callbacks.getDescendantTaskSummary?.(task.operonId).hasDescendants === true
 				: undefined,

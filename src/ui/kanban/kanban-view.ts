@@ -4062,6 +4062,7 @@ export class KanbanView extends ItemView {
 			task,
 			now: localNow(),
 			isPinned: this.getPinnedCache()?.isPinned(task.operonId) ?? false,
+			isTracking: this.callbacks.isTaskTracking?.(task.operonId) === true,
 			hasSubtasks: this.indexer.secondary.getChildIds(task.operonId).size > 0,
 		};
 	}

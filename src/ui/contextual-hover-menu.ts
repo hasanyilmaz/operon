@@ -48,6 +48,7 @@ export interface ContextualHoverMenuBindOptions {
 	getSettings: () => ContextualHoverMenuSettings;
 	onAction: ContextualMenuActionHandler;
 	isPinned?: () => boolean;
+	isTracking?: () => boolean;
 	hasSubtasks?: () => boolean;
 	resolveAnchorRect?: () => DOMRect;
 }
@@ -722,6 +723,7 @@ export function showTaskContextualHoverMenu(
 		task,
 		now: localNow(),
 		isPinned: options.isPinned?.(),
+		isTracking: options.isTracking?.() === true,
 		hasSubtasks: options.hasSubtasks?.() === true,
 	};
 	const actions = resolveContextualMenu(

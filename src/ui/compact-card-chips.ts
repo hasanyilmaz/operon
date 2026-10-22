@@ -391,6 +391,7 @@ function buildKanbanTaskActionContext(
 		task,
 		now: localNow(),
 		isPinned: callbacks.isTaskPinned?.(task.operonId) === true,
+		isTracking: callbacks.isTaskTracking?.(task.operonId) === true,
 	};
 }
 

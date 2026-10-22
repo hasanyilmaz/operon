@@ -201,6 +201,7 @@ export interface ContextualMenuContext {
 	task: ContextualTaskActionSource | null;
 	now: string;
 	isPinned?: boolean;
+	isTracking?: boolean;
 	hasSubtasks?: boolean;
 	calendarItem?: ContextualMenuCalendarItemSource | null;
 	projectedRef?: ContextualMenuProjectedRef | null;
@@ -232,6 +233,7 @@ export interface ContextualMenuExecutionDeps {
 		actionAnchorRect?: DOMRect | null,
 	) => void | Promise<void>;
 	startTimer: (taskId: string) => void | Promise<void>;
+	stopTimer?: (taskId: string) => void | Promise<void>;
 	markDone: (taskId: string) => void | Promise<void>;
 	cancelTask: (taskId: string) => void | Promise<void>;
 	unschedule: (taskId: string) => void | Promise<void>;
@@ -477,7 +479,7 @@ function resolveActionsForIds(
 		.filter((action): action is ContextualMenuActionDefinition => !!action)
 		.map(action => ({
 			...action,
-			icon: getContextualMenuActionIcon(action, keyMappings),
+			icon: action.id === 'startTimer' && context.isTracking ? 'square' : getContextualMenuActionIcon(action, keyMappings),
 			label: resolveContextualMenuActionLabel(action, context),
 			description: resolveContextualMenuActionDescription(action, context),
 		}));
@@ -544,7 +546,8 @@ export async function executeContextualMenuAction(
 			return;
 		case 'startTimer':
 			if (context.task?.checkbox !== 'open') return;
-			await deps.startTimer(context.taskId);
+			if (context.isTracking) await deps.stopTimer?.(context.taskId);
+			else await deps.startTimer(context.taskId);
 			return;
 		case 'markDone':
 			if (context.task?.checkbox !== 'open') return;
@@ -597,6 +600,7 @@ function resolveContextualMenuActionLabel(
 		const statusValue = (context.task?.fieldValues['status'] ?? '').trim();
 		if (statusValue) return statusValue;
 	}
+	if (action.id === 'startTimer' && context.isTracking) return t('tooltips', 'stopTimer');
 	if (action.id === 'pinToggle') {
 		return context.isPinned ? t('buttons', 'unpin') : t('buttons', 'pin');
 	}
@@ -610,6 +614,7 @@ function resolveContextualMenuActionDescription(
 	action: ContextualMenuActionDefinition,
 	context: ContextualMenuContext,
 ): string {
+	if (action.id === 'startTimer' && context.isTracking) return t('tooltips', 'stopTimer');
 	if (action.id === 'setAsTracked' && context.surface === 'calendarTimedItem') {
 		return t('settings', 'contextualMenuActionSetAsTrackedCalendarTimedDesc');
 	}

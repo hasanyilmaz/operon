@@ -14,12 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Task context menus** show **Stop timer** for the task currently being tracked and **Start timer** for other tasks, so tracking can be started or stopped from the same action across supported views.
 - **Task Creator** closes immediately after submitting an Inline or File task, while creation continues in the background and normal notifications remain available.
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
 - **Task Editor and source editing** stay synchronized without overwriting untouched source fields or newer drafts. Unsaved Task Editor edits win same-field conflicts; task identity, moves, Additional properties, and shared native buffers retain their save protections. Saving **Contexts and other task fields** works with the native Properties view without false conflict warnings, while genuine conflicts and YAML protection remain enforced.
 - Improved **Task Editor opening responsiveness** by preparing native Markdown only when needed and reusing eligible recently closed Markdown views for faster reopening. Panels appear together when ready, with fresh selection, scroll, and undo state for each new session.
 - **Responsive workspaces** mirror with the selected editor side, preserve saved Markdown sizes, and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
-- Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a half-second initial hover delay keeps opening calm without delaying keyboard access.
+- Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a 350 ms initial hover delay keeps opening calm without delaying keyboard access.
 
 - **Lightbox control rails** follow the Task Editor left/right preference across Markdown, Bases, Tables, web pages, and media previews, keeping controls on a familiar side. Button order and actions stay the same, and open previews retain their position.
 - Improved **lightbox Escape handling** so only the top level closes through its normal save checks. Menus, suggestions, and nested pickers keep priority, and hidden overlays no longer block closing.
@@ -31,12 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,181/5,181** local regression tests and manual workspace, Escape, Contexts, and Task Creator checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,182/5,182** local regression tests and manual workspace, Escape, Contexts, Task Creator, and timer checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 - Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
 - Left/right lightbox placement passed **64/64** browser scenarios, **163/163** workspace checks, and **45/45** settings/backdrop tests, with manual placement checks confirmed.
 - Task Creator validation passed **62/62** preparation and submission tests, **16/16** Repeat tests, and **93/93** creation/index integration tests, covering immediate closing, draft recovery, and independent background submissions.
+- Context-menu timer validation passed **80/80** tests covering task-specific labels, consistent menu-surface bindings, and protection against stale actions stopping another task or session.
 
 ## [4.1.0] - 2026-10-20
 

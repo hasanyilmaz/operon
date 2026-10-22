@@ -17,6 +17,7 @@ interface TableTaskIconButtonOptions {
 	readOnly?: boolean;
 	onContextualAction?: ContextualMenuActionHandler;
 	isPinned?: (taskId: string) => boolean;
+	isTracking?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 }
@@ -26,6 +27,7 @@ interface TableTaskContextualHoverMenuOptions {
 	settings: OperonSettings;
 	onContextualAction: ContextualMenuActionHandler;
 	isPinned?: (taskId: string) => boolean;
+	isTracking?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 }
 
@@ -40,6 +42,7 @@ export function bindTableTaskContextualHoverMenu(
 		getSettings: () => options.settings,
 		onAction: options.onContextualAction,
 		isPinned: options.isPinned ? () => options.isPinned?.(options.task.operonId) === true : undefined,
+		isTracking: () => options.isTracking?.(options.task.operonId) === true,
 		hasSubtasks: options.hasSubtasks ? () => options.hasSubtasks?.(options.task.operonId) === true : undefined,
 	});
 }
@@ -55,6 +58,7 @@ export function showTableTaskContextualMenu(
 		getSettings: () => options.settings,
 		onAction: options.onContextualAction,
 		isPinned: options.isPinned ? () => options.isPinned?.(options.task.operonId) === true : undefined,
+		isTracking: () => options.isTracking?.(options.task.operonId) === true,
 		hasSubtasks: options.hasSubtasks ? () => options.hasSubtasks?.(options.task.operonId) === true : undefined,
 	});
 }
@@ -109,6 +113,7 @@ export function renderTableTaskIconButton(container: HTMLElement, options: Table
 			settings: options.settings,
 			onContextualAction: options.onContextualAction,
 			isPinned: options.isPinned,
+			isTracking: options.isTracking,
 			hasSubtasks: options.hasSubtasks,
 		});
 	}

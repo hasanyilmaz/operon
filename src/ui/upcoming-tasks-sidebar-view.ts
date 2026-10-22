@@ -162,6 +162,7 @@ export class UpcomingTasksSidebarView extends ItemView {
 		if (this.callbacks.onContextualAction) bindTaskContextualHoverMenu(status, {
 			surface: 'upcomingTask', menuKey: `${this.menuIdentity}:${upcomingEntryKey(entry)}`, taskId: task.operonId, getTask: () => task, getSettings: () => this.settings,
 			onAction: this.callbacks.onContextualAction, isPinned: () => this.callbacks.isPinned?.(task.operonId) === true,
+			isTracking: () => this.tracker.isTimerRunning(task.operonId),
 			hasSubtasks: () => this.callbacks.hasSubtasks?.(task.operonId) === true,
 		});
 		const description = row.createSpan('operon-pinned-sidebar-desc');

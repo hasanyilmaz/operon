@@ -355,6 +355,7 @@ export interface EmbedTableDeps {
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getProjectSerialSignature?: () => string;
 	isTaskPinned?: (taskId: string) => boolean;
+	isTaskTracking?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 }
 
@@ -2868,6 +2869,7 @@ function activateEmbedTableGanttBar(
 			settings,
 			onContextualAction: deps.onContextualAction,
 			isPinned: deps.isTaskPinned,
+			isTracking: deps.isTaskTracking,
 			hasSubtasks: deps.hasSubtasks,
 		});
 	}
@@ -4351,6 +4353,7 @@ function renderEmbedTableIconOnlyCell(
 			settings: renderState.settings,
 			onContextualAction: deps.onContextualAction,
 			isPinned: deps.isTaskPinned,
+			isTracking: deps.isTaskTracking,
 			hasSubtasks: deps.hasSubtasks,
 		});
 	}
@@ -4438,6 +4441,7 @@ function renderEmbedTableAdminCell(
 			onStatusIconClick: canWrite ? deps.onStatusIconClick : undefined,
 			onContextualAction: canWrite ? deps.onContextualAction : undefined,
 			isPinned: deps.isTaskPinned,
+			isTracking: deps.isTaskTracking,
 			hasSubtasks: deps.hasSubtasks,
 		});
 		return;
@@ -4452,6 +4456,7 @@ function renderEmbedTableAdminCell(
 			settings: renderState.settings,
 			onContextualAction: canWrite ? deps.onContextualAction : undefined,
 			isPinned: deps.isTaskPinned,
+			isTracking: deps.isTaskTracking,
 			hasSubtasks: deps.hasSubtasks,
 		});
 	}

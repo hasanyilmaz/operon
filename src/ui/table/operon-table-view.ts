@@ -360,6 +360,7 @@ export interface OperonTableCallbacks {
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getProjectSerialSignature?: () => string;
 	isTaskPinned?: (taskId: string) => boolean;
+	isTaskTracking?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 }
 
@@ -2448,6 +2449,7 @@ export class OperonTableView extends FileView {
 				settings,
 				onContextualAction: this.callbacks.onContextualAction,
 				isPinned: this.callbacks.isTaskPinned,
+				isTracking: this.callbacks.isTaskTracking,
 				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}
@@ -3032,6 +3034,7 @@ export class OperonTableView extends FileView {
 					onStatusIconClick: this.callbacks.onStatusIconClick,
 					onContextualAction: this.callbacks.onContextualAction,
 				isPinned: this.callbacks.isTaskPinned,
+				isTracking: this.callbacks.isTaskTracking,
 				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 			return;
@@ -3045,6 +3048,7 @@ export class OperonTableView extends FileView {
 				settings: renderState.settings,
 				onContextualAction: this.callbacks.onContextualAction,
 				isPinned: this.callbacks.isTaskPinned,
+				isTracking: this.callbacks.isTaskTracking,
 				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}
@@ -3224,6 +3228,7 @@ export class OperonTableView extends FileView {
 				settings: renderState.settings,
 				onContextualAction: this.callbacks.onContextualAction,
 				isPinned: this.callbacks.isTaskPinned,
+				isTracking: this.callbacks.isTaskTracking,
 				hasSubtasks: this.callbacks.hasSubtasks,
 			});
 		}

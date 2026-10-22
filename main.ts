@@ -17821,6 +17821,7 @@ export default class OperonPlugin extends Plugin {
 						: this.getProjectSerialDisplayForTask(operonId),
 					getProjectSerialSignature: () => this.getProjectSerialSignature(),
 					isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
+					isTaskTracking: (taskId) => this.timeTracker.isTimerRunning(taskId),
 					hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 				},
 			)
@@ -17864,6 +17865,7 @@ export default class OperonPlugin extends Plugin {
 						: this.getProjectSerialDisplayForTask(operonId),
 					getProjectSerialSignature: () => this.getProjectSerialSignature(),
 					isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
+					isTaskTracking: (taskId) => this.timeTracker.isTimerRunning(taskId),
 					hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 				},
 				{ mode: 'file' },
@@ -18683,6 +18685,12 @@ export default class OperonPlugin extends Plugin {
 			},
 			startTimer: async (id) => {
 				await this.startTimerForTask(id, 'command', undefined, canCommit);
+			},
+			stopTimer: async (id) => {
+				const active = this.timeTracker.getActiveState();
+				if (active?.operonId !== id) return;
+				await this.timeTracker.stop('manual', undefined, () => canCommit?.() !== false
+					&& this.timeTracker.isTimerRunning(id) && this.timeTracker.getActiveState()?.start === active.start);
 			},
 			markDone: async (id) => {
 				await this.markTaskDoneById(id, calendarLeaf, canCommit);
@@ -23098,6 +23106,7 @@ export default class OperonPlugin extends Plugin {
 				: this.getProjectSerialDisplayForTask(operonId),
 			getProjectSerialSignature: () => this.getProjectSerialSignature(),
 			isTaskPinned: (taskId) => this.pinnedCache?.isPinned(taskId) === true,
+			isTaskTracking: (taskId) => this.timeTracker.isTimerRunning(taskId),
 			hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 		};
 	}

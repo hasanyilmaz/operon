@@ -193,6 +193,7 @@ export function enhanceReadingTaskFileWikilinks(
 				getSettings: callbacks.getSettings,
 				onAction: callbacks.onContextualAction,
 				isPinned: callbacks.isTaskPinned ? () => callbacks.isTaskPinned?.(resolved.task.operonId) === true : undefined,
+				isTracking: () => callbacks.isTaskTracking?.(resolved.task.operonId) === true,
 				hasSubtasks: callbacks.hasSubtasks ? () => callbacks.hasSubtasks?.(resolved.task.operonId) === true : undefined,
 			});
 		}

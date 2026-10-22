@@ -70,6 +70,7 @@ export class TaskCardControls extends Component {
     return this.canManageTask() ? settings : { ...settings, contextualMenuActionAllowlist: settings.contextualMenuActionAllowlist.filter(action => action === 'openEditor' || action === 'jumpToSource') };
    },
    isPinned: () => this.deps.chips.isTaskPinned?.(this.id) === true,
+   isTracking: () => this.deps.chips.isTaskTracking?.(this.id) === true,
    hasSubtasks: () => [...this.deps.getChildIds(this.id)].length > 0,
    onAction: (id, action, context, invocation) => {
     if (!this.canInteract()) return;

@@ -1190,6 +1190,7 @@ export class FlowTimeView extends ItemView {
 			getSettings: this.callbacks.getSettings,
 			onAction: this.callbacks.onContextualAction,
 			isPinned: this.callbacks.isTaskPinned ? () => this.callbacks.isTaskPinned?.(task.operonId) === true : undefined,
+			isTracking: () => this.timeTracker.isTimerRunning(task.operonId),
 			hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(task.operonId) === true : undefined,
 		});
 	}

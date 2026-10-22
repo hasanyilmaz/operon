@@ -320,6 +320,7 @@ export class TaskIconWidget extends WidgetType {
 					return this.callbacks.onContextualAction?.(...args);
 				},
 				isPinned: this.callbacks.isTaskPinned ? () => this.callbacks.isTaskPinned?.(this.task.operonId!) === true : undefined,
+				isTracking: () => this.callbacks.isTaskTracking?.(this.task.operonId!) === true,
 				hasSubtasks: this.callbacks.hasSubtasks ? () => this.callbacks.hasSubtasks?.(this.task.operonId!) === true : undefined,
 			});
 		}

@@ -6325,6 +6325,7 @@ export class CalendarView extends ItemView {
 			task: item.origin === 'projected' ? item.renderSnapshot : this.indexer.getTask(item.taskId) ?? item.sourceTask ?? item.renderSnapshot,
 			now: localNow(),
 			isPinned: this.getPinnedCache()?.isPinned(item.taskId) ?? false,
+			isTracking: this.callbacks.getActiveTrackerState?.()?.operonId === item.taskId,
 			hasSubtasks: item.sourceTask
 				? this.indexer.secondary.getChildIds(item.sourceTask.operonId).size > 0
 				: false,
@@ -8408,6 +8409,7 @@ export class CalendarView extends ItemView {
 					task: this.indexer.getTask(task.operonId) ?? task,
 					now: localNow(),
 					isPinned: this.getPinnedCache()?.isPinned(task.operonId) ?? false,
+					isTracking: this.callbacks.getActiveTrackerState?.()?.operonId === task.operonId,
 					hasSubtasks: this.indexer.secondary.getChildIds(task.operonId).size > 0,
 				};
 				const settings = this.getSettings();
@@ -11662,6 +11664,7 @@ export class CalendarView extends ItemView {
 			task: item.origin === 'projected' ? item.renderSnapshot : this.indexer.getTask(item.taskId) ?? item.sourceTask ?? item.renderSnapshot,
 			now: localNow(),
 			isPinned: this.getPinnedCache()?.isPinned(item.taskId) ?? false,
+			isTracking: this.callbacks.getActiveTrackerState?.()?.operonId === item.taskId,
 			hasSubtasks: item.sourceTask
 				? this.indexer.secondary.getChildIds(item.sourceTask.operonId).size > 0
 				: false,

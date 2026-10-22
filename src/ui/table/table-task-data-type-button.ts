@@ -15,6 +15,7 @@ export interface TableTaskDataTypeButtonOptions {
 	settings?: OperonSettings;
 	onContextualAction?: ContextualMenuActionHandler;
 	isPinned?: (taskId: string) => boolean;
+	isTracking?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
 }
 
@@ -25,6 +26,7 @@ function bindTableTaskDataTypeContextualHoverMenu(trigger: HTMLElement, options:
 		settings: options.settings,
 		onContextualAction: options.onContextualAction,
 		isPinned: options.isPinned,
+		isTracking: options.isTracking,
 		hasSubtasks: options.hasSubtasks,
 	});
 }
