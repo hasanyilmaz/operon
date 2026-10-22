@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Remove excluded folder",
 		"taskEditorLayoutSection": "Layout and opening",
 		"taskEditorPosition": "Task Editor position",
-		"taskEditorPositionDesc": "Choose the side for newly opened desktop workspaces. Open workspaces keep their position.",
+		"taskEditorPositionDesc": "Choose the side for newly opened desktop workspaces. Open workspaces keep their position. Other lightbox control rails follow the selected side too.",
 		"taskEditorPositionRight": "Right",
 		"taskEditorPositionLeft": "Left",
 		"taskEditorFileShowSource": "Open source with file task editor",

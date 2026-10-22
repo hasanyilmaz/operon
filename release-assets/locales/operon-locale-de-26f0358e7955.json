@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "Nach oben",
       "taskEditorMobileCoreToolsReorder": "Mobile Kern-Symbole neu anordnen",
       "taskEditorPosition": "Position des Aufgabeneditors",
-      "taskEditorPositionDesc": "Wähle die Seite für neu geöffnete Desktop-Arbeitsflächen. Offene Arbeitsflächen behalten ihre Position.",
+      "taskEditorPositionDesc": "Wähle die Seite für neu geöffnete Desktop-Arbeitsflächen. Offene Arbeitsflächen behalten ihre Position. Auch die Steuerleisten anderer Lightboxen folgen der gewählten Seite.",
       "taskEditorPositionLeft": "Links",
       "taskEditorPositionRight": "Rechts",
       "taskEditorSections": "Abschnitte und Reihenfolge",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "188f2976a7acef575bea6e0189ba399cf25a2f613a9fa8c4ebd0546629e4935e"
+  "sourceVersion": "05b4ee7eed45147286b18db086d56fbdbf83fd2a118c07dc100728b4706e4fd7"
 }

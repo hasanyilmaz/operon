@@ -8,9 +8,9 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.OPERON_TEST_PLAYWRIGHT||'playwright');
 const css=readFileSync(path.join(root,'styles.css'),'utf8');
-const bundle=await build({stdin:{contents:"export * from './src/ui/lightbox';export * from './src/ui/modal-backdrop';export * from './src/ui/field-pickers/common';export {Platform} from 'obsidian';",resolveDir:root},bundle:true,write:false,format:'iife',globalName:'Subject',platform:'browser',logLevel:'silent',alias:{obsidian:path.join(root,'scripts/test-support/obsidian.ts')}});
+const bundle=await build({stdin:{contents:"export * from './src/ui/lightbox';export * from './src/core/lightbox-size';export * from './src/ui/modal-backdrop';export * from './src/ui/field-pickers/common';export {Platform} from 'obsidian';",resolveDir:root},bundle:true,write:false,format:'iife',globalName:'Subject',platform:'browser',logLevel:'silent',alias:{obsidian:path.join(root,'scripts/test-support/obsidian.ts')}});
 const browser=await chromium.launch({headless:true,...(process.env.OPERON_TEST_BROWSER?{executablePath:process.env.OPERON_TEST_BROWSER}:{})});
-let scenarios=0;
+let scenarios=0, mirroredScenarios=0;
 try {
  for(const dark of [false,true])for(const width of [420,1440])for(const profile of ['markdown','base','table','web','pdf','image','video','youtube']){
   const page=await browser.newPage({viewport:{width,height:width===420?300:900}});
@@ -25,11 +25,12 @@ try {
    });
    await page.addScriptTag({content:bundle.outputFiles[0].text});
    await page.evaluate(profile=>{
-    Subject.Platform.isDesktopApp=true;window.previewCloses=0;window.writes=0;window.controlPresses=[];
+    Subject.Platform.isDesktopApp=true;window.previewCloses=0;window.writes=0;window.controlPresses=[];window.controlSide='right';window.transfers=[];
+    Subject.bindLightboxSizePreference({get:()=>({}),controlsSide:()=>window.controlSide,save:async()=>{writes++;}});
     document.addEventListener('pointerdown',event=>{const control=event.composedPath().find(el=>el instanceof HTMLElement&&el.classList.contains('operon-task-media-lightbox-control'));if(control)controlPresses.push(getComputedStyle(control).opacity);},true);
     Subject.bindDesktopBackdropDimmingPreference({get:()=>50,save:async()=>{writes++;}});
     document.getElementById('anchor').focus();
-    window.closePreview=Subject.openLightbox(document.getElementById('anchor'),{title:profile,nativeView:true,className:'is-'+profile,onOpenInTab:async()=>null,onOpenToRight:async()=>null,onOpenBelow:async()=>null,onDispose(){window.previewCloses++;},render(shell){
+    window.previewOptions={title:profile,nativeView:true,className:'is-'+profile,onOpenInTab:async()=>{transfers.push('tab');return null;},onOpenToRight:async()=>{transfers.push('right');return null;},onOpenBelow:async()=>{transfers.push('below');return null;},onDispose(){window.previewCloses++;},render(shell){
      const host=profile==='image'?shell.createEl('img',{attr:{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"/>')}}):shell.createDiv('operon-task-media-lightbox-content');
      if(['markdown','base','table'].includes(profile))host.addClass('operon-native-lightbox-host');
      host.id='content';host.style.width='min(65vw, calc(100vw - 96px))';host.style.height='min(65vh, calc(100vh - 96px))';
@@ -37,7 +38,8 @@ try {
      else if(profile==='video')host.createEl('video',{attr:{controls:''}});
      else if(profile!=='image')host.createEl('input',{attr:{id:'content-input',value:'Unsaved draft'}});
      return null;
-    }});
+    }};
+    window.closePreview=Subject.openLightbox(document.getElementById('anchor'),window.previewOptions);
     Subject.markLightboxControlsReady(document.querySelector('.operon-task-media-lightbox'));
     // Model the real setIcon SVG path, including a target that is not an HTMLElement.
     for(const control of document.querySelectorAll('.operon-task-media-lightbox-control')){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','16');svg.setAttribute('height','16');const rect=document.createElementNS(svg.namespaceURI,'rect');rect.setAttribute('width','16');rect.setAttribute('height','16');svg.appendChild(rect);control.appendChild(svg);}
@@ -99,11 +101,48 @@ try {
     assert.equal(await page.locator('#content-input').inputValue(),'Unsaved draft');
    }
    assert.equal(await page.evaluate(()=>writes),0,'hover and focus perform no setting saves');
+   const geometry=()=>shell.locator('.operon-task-media-lightbox-control').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return{cls:el.className,x:r.x,y:r.y,width:r.width,height:r.height};}));
+   const right=await geometry();
+   await page.evaluate(()=>{window.controlSide='left';Subject.refreshLightboxControls(document.querySelector('.operon-task-media-lightbox'));});
+   assert.deepEqual(await geometry(),right,'changing the preference does not move an open lightbox');
    await page.mouse.move(8,8);await shell.locator('.operon-task-media-lightbox-close').click();
    assert.deepEqual(await page.evaluate(()=>[window.previewCloses,document.activeElement.id]),[1,'anchor']);
    assert.deepEqual(await page.evaluate(()=>controlPresses),['1'],'the control is visible before pointer activation reaches capture listeners');
+   await page.evaluate(async()=>{
+    window.closePreview=Subject.openLightbox(document.getElementById('anchor'),window.previewOptions);
+    const image=document.querySelector('.operon-task-media-lightbox > img');if(image)await image.decode();
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    Subject.refreshLightboxControls(document.querySelector('.operon-task-media-lightbox'));
+   });
+   const left=await geometry();
+   assert.deepEqual(left.map(box=>box.cls),right.map(box=>box.cls),'mirroring retains control order and icons');
+   for(let i=0;i<left.length;i++){
+    const a=right[i],b=left[i];
+    assert.ok(Math.abs(a.y-b.y)<1,`${profile}: vertical groups keep their order ${JSON.stringify({a,b})}`);
+    assert.ok(Math.abs(a.width-b.width)<1&&Math.abs(a.height-b.height)<1,'control size is unchanged');
+    // Native image offsetLeft rounds a centered half-pixel to an integer.
+    if(!b.cls.includes('operon-lightbox-width-'))assert.ok(Math.abs(b.x-(width-a.x-a.width))<=1.01,`${profile}: ${b.cls} mirrors across the viewport ${JSON.stringify({a,b,width})}`);
+    assert.ok(b.x>=0&&b.x+b.width<=width+1&&b.y>=0&&b.y+b.height<=(width===420?300:900)+1,'mirrored control stays inside the viewport');
+   }
+   const widthButtons=left.filter(box=>box.cls.includes('operon-lightbox-width-'));
+   assert.ok(widthButtons[0].x<widthButtons[1].x,'width decrease/increase retain their horizontal order');
+   for(const action of ['tab','split','split-below'])await shell.locator(`.operon-task-media-lightbox-${action}`).evaluate(el=>el.click());
+   assert.deepEqual(await page.evaluate(()=>transfers),['tab','right','below'],'left placement keeps transfer meanings');
+   await page.setViewportSize({width,height:(width===420?300:900)+40});
+   await page.evaluate(()=>new Promise(requestAnimationFrame));
+   for(const box of await geometry())assert.ok(box.x>=0&&box.x+box.width<=width+1,'viewport changes keep mirrored controls in bounds');
+   if(profile==='image'){
+    await content().evaluate(el=>{el.style.width='44px';el.style.height='32px';});
+    await page.evaluate(()=>new Promise(requestAnimationFrame));
+    for(const box of await geometry())assert.ok(box.x>=0&&box.x+box.width<=width+1,'small image collision fallback remains inside the viewport');
+   }
+   assert.equal(await page.evaluate(()=>writes),0,'reading placement and resizing the viewport never save settings');
+   await page.keyboard.press('Escape');
+   assert.deepEqual(await page.evaluate(()=>[window.previewCloses,document.activeElement.id]),[2,'anchor']);
+   mirroredScenarios++;
    scenarios++;
   }finally{await page.close();}
  }
- console.log(JSON.stringify({ok:true,scenarios}));
+ console.log(JSON.stringify({ok:true,scenarios,mirroredScenarios}));
 }finally{await browser.close();}

@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "上移",
       "taskEditorMobileCoreToolsReorder": "重新排序移动端核心图标",
       "taskEditorPosition": "任务编辑器位置",
-      "taskEditorPositionDesc": "选择桌面端新打开的工作区所在侧。已打开的工作区保持原位置。",
+      "taskEditorPositionDesc": "选择桌面端新打开的工作区所在侧。已打开的工作区保持原位置。 其他灯箱的控制栏也会放在所选一侧。",
       "taskEditorPositionLeft": "左侧",
       "taskEditorPositionRight": "右侧",
       "taskEditorSections": "分区和顺序",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "746ef98883f626907314650d4bff511d1294b5d4c9068f78760295002e8d4a0e"
+  "sourceVersion": "8ea9bb7082ccf818a738503944f215219f3bc96b602519723c95d0091cfbab1e"
 }

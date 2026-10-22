@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "上移",
       "taskEditorMobileCoreToolsReorder": "重新排序移動端核心圖示",
       "taskEditorPosition": "任務編輯器位置",
-      "taskEditorPositionDesc": "選擇桌面版新開啟的工作區所在側。已開啟的工作區保持原位置。",
+      "taskEditorPositionDesc": "選擇桌面版新開啟的工作區所在側。已開啟的工作區保持原位置。 其他燈箱的控制列也會放在所選的一側。",
       "taskEditorPositionLeft": "左側",
       "taskEditorPositionRight": "右側",
       "taskEditorSections": "區段與順序",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d308b484ddc162783bf8b74eedd4f604daba45a3a43b1ff46cffa66e41c85379"
+  "sourceVersion": "ab16b2512434d2e4a7aa87743fb51e2f2df3e4d941af62fd8c46c1ac624773b1"
 }

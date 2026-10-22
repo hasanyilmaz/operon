@@ -16419,6 +16419,7 @@ export default class OperonPlugin extends Plugin {
 		});
 		this.settings = this.storage.getSettings();
   this.register(bindLightboxSizePreference({
+   controlsSide: () => this.settings.taskEditorPosition,
    get: () => this.settings.workspaceTweaksLightboxSizes,
    save: (profile, axis, value) => this.storage.saveLightboxSize(profile, axis, value),
   }));

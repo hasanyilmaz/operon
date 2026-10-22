@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "Переместить вверх",
       "taskEditorMobileCoreToolsReorder": "Изменить порядок основных мобильных значков",
       "taskEditorPosition": "Положение редактора задач",
-      "taskEditorPositionDesc": "Выберите сторону для новых рабочих областей на компьютере. Открытые области сохраняют положение.",
+      "taskEditorPositionDesc": "Выберите сторону для новых рабочих областей на компьютере. Открытые области сохраняют положение. Панели управления других лайтбоксов также располагаются с выбранной стороны.",
       "taskEditorPositionLeft": "Слева",
       "taskEditorPositionRight": "Справа",
       "taskEditorSections": "Разделы и порядок",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "bc597084227c7132d6aaa02cab9dfbedc4eb76f5cd9dce4b1cf4840858c01651"
+  "sourceVersion": "4097b15c02c16aba782c834d6557fb55d11acdbd40d3cb1ce4b1789aa81fef2b"
 }

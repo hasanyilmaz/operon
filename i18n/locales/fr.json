@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Retirer le dossier exclu",
 		"taskEditorLayoutSection": "Disposition et ouverture",
 		"taskEditorPosition": "Position de l’éditeur de tâches",
-		"taskEditorPositionDesc": "Choisissez le côté des nouveaux espaces sur ordinateur. Les espaces ouverts conservent leur position.",
+		"taskEditorPositionDesc": "Choisissez le côté des nouveaux espaces sur ordinateur. Les espaces ouverts conservent leur position. Les barres de commandes des autres lightboxes suivent aussi le côté choisi.",
 		"taskEditorPositionRight": "Droite",
 		"taskEditorPositionLeft": "Gauche",
 		"taskEditorFileShowSource": "Ouvrir la source avec l’éditeur de tâche fichier",

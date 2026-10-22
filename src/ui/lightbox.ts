@@ -1,4 +1,4 @@
-import { LIGHTBOX_SIZE_STEPS, getLightboxProfileSize, saveLightboxProfileSize, type LightboxSizeProfile } from '../core/lightbox-size';
+import { LIGHTBOX_SIZE_STEPS, getLightboxControlSide, getLightboxProfileSize, saveLightboxProfileSize, type LightboxSizeProfile } from '../core/lightbox-size';
 import { registerDesktopBackdrop, isDesktopBackdropDescendant, getDesktopBackdropDimming, canSaveDesktopBackdropDimming, stepDesktopBackdropDimming, subscribeDesktopBackdropDimming } from './modal-backdrop';
 import { Notice, Platform, Scope, setIcon, type App, type WorkspaceLeaf } from 'obsidian';
 import { asHTMLElement, getOwnerBody, getOwnerDocument, getOwnerWindow, isHTMLElement } from '../core/dom-compat';
@@ -102,6 +102,7 @@ function notifyDraftTransfer(): void {
 }
 
 export function openLightbox(anchor: HTMLElement, options: LightboxOptions): LightboxClose {
+ const controlSide = getLightboxControlSide();
 	const ownerDocument = getOwnerDocument(anchor);
 	const previouslyFocused = asHTMLElement(ownerDocument.activeElement, anchor);
 	const request = {};
@@ -358,7 +359,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 	}
  if (!isClosed && Platform.isDesktopApp) {
   disposeControlHover = bindLightboxControlHover(lightbox, !!options.nativeView);
-  disposePosition = positionLightboxControls(lightbox);
+  disposePosition = positionLightboxControls(lightbox, controlSide);
  }
  if (!isClosed && (!Platform.isDesktopApp || !lightbox.contains(ownerDocument.activeElement) && !hasNativeOverlay())) focusShell();
 	return close;
@@ -508,7 +509,7 @@ export function getLightboxSizeStep(current: number, direction: -1 | 1): number 
 }
 
 /** Keep controls in the content's coordinate space, using a second column when short. */
-function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
+function positionLightboxControls(lightbox: HTMLElement, side: 'left' | 'right'): (() => void) | null {
  const content = lightboxContent(lightbox);
  const win = lightbox.ownerDocument.defaultView;
  if (!content || !win) return null;
@@ -565,9 +566,13 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
  const position = (): void => {
   if (lightbox.hidden) return;
   finishImageBaseline(content);
-  const rect = measure();
+  const measured = measure();
   const rail = contentTargets.get(lightbox)?.controls?.();
   const width = win.innerWidth, height = win.innerHeight;
+  // Run the existing collision layout in right-side coordinates, then mirror
+  // its result. Companion layouts already supply their own mirrored rail.
+  const mirrored = side === 'left' && !rail;
+  const rect = mirrored ? { left: width - measured.right, right: width - measured.left, top: measured.top, bottom: measured.bottom, width: measured.width, height: measured.height } : measured;
   const count = mainCount + dimmingCount;
   const size = Math.min(36, (height - 16 - 4 * (count - 1)) / count);
   const step = Math.min(44, (height - 16 - size) / Math.max(1, count - 1));
@@ -575,6 +580,7 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
   lightbox.style.setProperty('--operon-lightbox-control-size', `${size}px`);
   lightbox.style.setProperty('--operon-lightbox-control-step', `${step}px`);
   const pair = step + size;
+  const displayLeft = (left: number, span = size): number => mirrored ? width - left - span : left;
   const bottomLeft = Math.max(8, Math.min(width - pair - 8, (rect.left + rect.right - pair) / 2));
   const bottomTop = rect.bottom + 4 + size <= height - 8 ? rect.bottom + 4 : Math.max(8, height - size - 8);
   const left = rail?.left ?? (rect.right + 8 + size <= width - 8 ? rect.right + 8 : rect.right - size - 8);
@@ -584,7 +590,7 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
    const outside = bottomLeft + pair + 4;
    railLeft = outside + size <= width - 8 ? outside : Math.max(8, bottomLeft - size - 4);
   }
-  lightbox.style.setProperty('--operon-lightbox-control-left', `${railLeft}px`);
+  lightbox.style.setProperty('--operon-lightbox-control-left', `${displayLeft(railLeft)}px`);
   const top = Math.max(8, Math.min(height - railHeight - 8, (rail?.top ?? rect.top) + 8));
   lightbox.style.setProperty('--operon-lightbox-control-top', `${top}px`);
   const dimmingHeight = (dimmingCount - 1) * step + size;
@@ -602,7 +608,7 @@ function positionLightboxControls(lightbox: HTMLElement): (() => void) | null {
   }
   for (const {button, axis, direction} of controls) {
    const horizontal = axis === 'width';
-   button.style.setProperty('--operon-lightbox-size-left', `${horizontal ? bottomLeft + (direction > 0 ? step : 0) : middleLeft}px`);
+   button.style.setProperty('--operon-lightbox-size-left', `${horizontal ? displayLeft(bottomLeft, pair) + (direction > 0 ? step : 0) : displayLeft(middleLeft)}px`);
    button.style.setProperty('--operon-lightbox-size-top', `${horizontal ? bottomTop : middleTop + (direction < 0 ? step : 0)}px`);
    const custom = contentTargets.get(lightbox)?.size;
    button.hidden = custom ? !custom.enabled() : false;

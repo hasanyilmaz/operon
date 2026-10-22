@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "Sposta in alto",
       "taskEditorMobileCoreToolsReorder": "Riordina icone principali mobili",
       "taskEditorPosition": "Posizione dell’editor delle attività",
-      "taskEditorPositionDesc": "Scegli il lato dei nuovi spazi desktop. Gli spazi aperti mantengono la propria posizione.",
+      "taskEditorPositionDesc": "Scegli il lato dei nuovi spazi desktop. Gli spazi aperti mantengono la propria posizione. Anche le barre dei controlli delle altre lightbox seguono il lato scelto.",
       "taskEditorPositionLeft": "Sinistra",
       "taskEditorPositionRight": "Destra",
       "taskEditorSections": "Sezioni e ordine",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "8d7ed2083950b3c59305fdc1c0205b62c9e25fea82760dd3d3d05379ae9355e0"
+  "sourceVersion": "ad64a5df4f3a736dba7079bbf14be99f0fd5fa743132fd2296119cf43e52e00f"
 }

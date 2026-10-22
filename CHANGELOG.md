@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Responsive workspaces** mirror with the selected editor side, preserve saved Markdown sizes, and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
 - Grouped **lightbox controls** with panel toggles below Close, height controls in the shared middle rail, and width controls below Markdown. File transfer and dimming controls appear with the source; panels and controls use consistent **6 px corners**, panel toggles use only Operon tooltips, and a half-second initial hover delay keeps opening calm without delaying keyboard access.
 
+- **Lightbox control rails** follow the Task Editor left/right preference across Markdown, Bases, Tables, web pages, and media previews, keeping controls on a familiar side. Button order and actions stay the same, and open previews retain their position.
 - Improved **lightbox Escape handling** so only the top level closes through its normal save checks. Menus, suggestions, and nested pickers keep priority, and hidden overlays no longer block closing.
 
 ### Removed
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 - Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
+- Left/right lightbox placement passed **64/64** browser scenarios, **163/163** workspace checks, and **45/45** settings/backdrop tests, with manual placement checks confirmed.
 
 ## [4.1.0] - 2026-10-20
 

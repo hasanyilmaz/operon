@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "移除排除的文件夹",
 		"taskEditorLayoutSection": "布局与打开方式",
 		"taskEditorPosition": "任务编辑器位置",
-		"taskEditorPositionDesc": "选择桌面端新打开的工作区所在侧。已打开的工作区保持原位置。",
+		"taskEditorPositionDesc": "选择桌面端新打开的工作区所在侧。已打开的工作区保持原位置。 其他灯箱的控制栏也会放在所选一侧。",
 		"taskEditorPositionRight": "右侧",
 		"taskEditorPositionLeft": "左侧",
 		"taskEditorFileShowSource": "编辑文件任务时打开源文件",

@@ -6405,7 +6405,7 @@
       "Move up",
       "Reorder mobile core icons",
       "Task Editor position",
-      "Choose the side for newly opened desktop workspaces. Open workspaces keep their position.",
+      "Choose the side for newly opened desktop workspaces. Open workspaces keep their position. Other lightbox control rails follow the selected side too.",
       "Left",
       "Right",
       "Sections and Order",

@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Quitar carpeta excluida",
 		"taskEditorLayoutSection": "Disposición y apertura",
 		"taskEditorPosition": "Posición del editor de tareas",
-		"taskEditorPositionDesc": "Elige el lado de los nuevos espacios de escritorio. Los espacios abiertos conservan su posición.",
+		"taskEditorPositionDesc": "Elige el lado de los nuevos espacios de escritorio. Los espacios abiertos conservan su posición. Las barras de controles de las demás lightboxes también siguen el lado elegido.",
 		"taskEditorPositionRight": "Derecha",
 		"taskEditorPositionLeft": "Izquierda",
 		"taskEditorFileShowSource": "Abrir la fuente con el editor de tareas de archivo",

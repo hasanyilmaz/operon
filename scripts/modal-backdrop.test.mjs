@@ -15,7 +15,7 @@ const bundled = await build({
   b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export const Platform={isDesktopApp:true};export function normalizePath(p){return p;}export class TFile{}' }));
  } }],
 });
-const { preflightOperonSettingsResetDefaultsV1, LIGHTBOX_SIZE_PROFILES, normalizeLightboxSizes, bindLightboxSizePreference, getLightboxProfileSize, saveLightboxProfileSize, bindDesktopBackdropDimmingPreference, subscribeDesktopBackdropDimming, stepDesktopBackdropDimming, saveDesktopBackdropDimming, canSaveDesktopBackdropDimming, getDesktopBackdropDimming, disposeDesktopBackdrops, normalizeBackgroundDimming, BACKGROUND_DIMMING_OPTIONS, applyDesktopModalBackdrop, Platform, migrateSettings, DEFAULT_SETTINGS, buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage, OPERON_SETTINGS_SEARCH_REGISTRY, getSettingsBackupCompatibilityForKey, exportOperonSettingsBackupJsonV1, validateOperonSettingsBackupGroupsV1, buildOperonSettingsBackupSelectedPatchV1 } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const { preflightOperonSettingsResetDefaultsV1, LIGHTBOX_SIZE_PROFILES, normalizeLightboxSizes, bindLightboxSizePreference, getLightboxControlSide, getLightboxProfileSize, saveLightboxProfileSize, bindDesktopBackdropDimmingPreference, subscribeDesktopBackdropDimming, stepDesktopBackdropDimming, saveDesktopBackdropDimming, canSaveDesktopBackdropDimming, getDesktopBackdropDimming, disposeDesktopBackdrops, normalizeBackgroundDimming, BACKGROUND_DIMMING_OPTIONS, applyDesktopModalBackdrop, Platform, migrateSettings, DEFAULT_SETTINGS, buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage, OPERON_SETTINGS_SEARCH_REGISTRY, getSettingsBackupCompatibilityForKey, exportOperonSettingsBackupJsonV1, validateOperonSettingsBackupGroupsV1, buildOperonSettingsBackupSelectedPatchV1 } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 function container() {
  const classes = new Set(['modal-container']);
  return { ownerDocument: {}, classes, addClass: c => classes.add(c), removeClass: c => classes.delete(c) };
@@ -278,4 +278,15 @@ test('explicit defaults reset clears all size overrides without mutating the cur
  assert.deepEqual(result.preflight.restorePlan.candidateSettings.workspaceTweaksLightboxSizes,{});
  assert.deepEqual(sizes,{table:{width:75,height:85},markdown:{height:80}});
  assert.equal(OPERON_SETTINGS_SEARCH_REGISTRY.some(entry=>entry.key==='workspaceTweaksLightboxSizes'),false);
+});
+
+
+test('lightbox control side reads the existing preference without saving and cleans up safely',()=>{
+ assert.equal(getLightboxControlSide(),'right');
+ let side='left',writes=0;
+ const old=bindLightboxSizePreference({get:()=>({}),controlsSide:()=>side,save:async()=>{writes++;}});
+ assert.equal(getLightboxControlSide(),'left');side='right';assert.equal(getLightboxControlSide(),'right');
+ const current=bindLightboxSizePreference({get:()=>({}),controlsSide:()=> 'left',save:async()=>{writes++;}});
+ old();assert.equal(getLightboxControlSide(),'left');current();assert.equal(getLightboxControlSide(),'right');
+ assert.equal(writes,0);
 });

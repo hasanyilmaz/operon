@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "上へ移動",
       "taskEditorMobileCoreToolsReorder": "モバイルのコアアイコンを並べ替え",
       "taskEditorPosition": "タスクエディターの位置",
-      "taskEditorPositionDesc": "デスクトップで新しく開く作業領域の位置を選択します。既存の作業領域の位置は変わりません。",
+      "taskEditorPositionDesc": "デスクトップで新しく開く作業領域の位置を選択します。既存の作業領域の位置は変わりません。 他のライトボックスの操作ボタンも選択した側に配置されます。",
       "taskEditorPositionLeft": "左",
       "taskEditorPositionRight": "右",
       "taskEditorSections": "セクションと順序",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "18ef44679925a7559ffce2b562592e7c8b1f136ded7363dbe18d94a584ec6ad7"
+  "sourceVersion": "d5ebcaea5c30181347cc60a6a8bbd1a13d1a376e09346598912802473fc4c5d9"
 }

@@ -2719,7 +2719,7 @@
       "taskEditorMobileCoreToolsMoveUp": "Yukarı taşı",
       "taskEditorMobileCoreToolsReorder": "Mobil temel simgeleri sırala",
       "taskEditorPosition": "Task Editor konumu",
-      "taskEditorPositionDesc": "Masaüstünde yeni açılan çalışma yüzeyinin tarafını seçin. Açık yüzeyler konumunu korur.",
+      "taskEditorPositionDesc": "Masaüstünde yeni açılan çalışma yüzeyinin tarafını seçin. Açık yüzeyler konumunu korur. Diğer lightbox’ların kontrol şeritleri de seçilen tarafa yerleşir.",
       "taskEditorPositionLeft": "Sol",
       "taskEditorPositionRight": "Sağ",
       "taskEditorSections": "Bölümler ve Sıralama",
@@ -3720,5 +3720,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "b5dcfd5d51e1eae0ebd3415560334d14c721d8537047c948d3ab5af1976e51ad"
+  "sourceVersion": "e923debe021eec258e80be4674d845979bd2ab54e9dac51fc6d0d79873ae1e08"
 }

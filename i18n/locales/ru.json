@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Удалить исключённую папку",
 		"taskEditorLayoutSection": "Расположение и открытие",
 		"taskEditorPosition": "Положение редактора задач",
-		"taskEditorPositionDesc": "Выберите сторону для новых рабочих областей на компьютере. Открытые области сохраняют положение.",
+		"taskEditorPositionDesc": "Выберите сторону для новых рабочих областей на компьютере. Открытые области сохраняют положение. Панели управления других лайтбоксов также располагаются с выбранной стороны.",
 		"taskEditorPositionRight": "Справа",
 		"taskEditorPositionLeft": "Слева",
 		"taskEditorFileShowSource": "Открывать исходник с редактором файловой задачи",

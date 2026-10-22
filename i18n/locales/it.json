@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Rimuovi cartella esclusa",
 		"taskEditorLayoutSection": "Disposizione e apertura",
 		"taskEditorPosition": "Posizione dell’editor delle attività",
-		"taskEditorPositionDesc": "Scegli il lato dei nuovi spazi desktop. Gli spazi aperti mantengono la propria posizione.",
+		"taskEditorPositionDesc": "Scegli il lato dei nuovi spazi desktop. Gli spazi aperti mantengono la propria posizione. Anche le barre dei controlli delle altre lightbox seguono il lato scelto.",
 		"taskEditorPositionRight": "Destra",
 		"taskEditorPositionLeft": "Sinistra",
 		"taskEditorFileShowSource": "Apri la sorgente con l’editor delle attività file",

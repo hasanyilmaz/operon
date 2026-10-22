@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Hariç klasörü kaldır",
 		"taskEditorLayoutSection": "Yerleşim ve açılış",
 		"taskEditorPosition": "Task Editor konumu",
-		"taskEditorPositionDesc": "Masaüstünde yeni açılan çalışma yüzeyinin tarafını seçin. Açık yüzeyler konumunu korur.",
+		"taskEditorPositionDesc": "Masaüstünde yeni açılan çalışma yüzeyinin tarafını seçin. Açık yüzeyler konumunu korur. Diğer lightbox’ların kontrol şeritleri de seçilen tarafa yerleşir.",
 		"taskEditorPositionRight": "Sağ",
 		"taskEditorPositionLeft": "Sol",
 		"taskEditorFileShowSource": "File task editörüyle kaynağı aç",

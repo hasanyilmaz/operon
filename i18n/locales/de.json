@@ -890,7 +890,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "Ausgeschlossenen Ordner entfernen",
 		"taskEditorLayoutSection": "Anordnung und Öffnen",
 		"taskEditorPosition": "Position des Aufgabeneditors",
-		"taskEditorPositionDesc": "Wähle die Seite für neu geöffnete Desktop-Arbeitsflächen. Offene Arbeitsflächen behalten ihre Position.",
+		"taskEditorPositionDesc": "Wähle die Seite für neu geöffnete Desktop-Arbeitsflächen. Offene Arbeitsflächen behalten ihre Position. Auch die Steuerleisten anderer Lightboxen folgen der gewählten Seite.",
 		"taskEditorPositionRight": "Rechts",
 		"taskEditorPositionLeft": "Links",
 		"taskEditorFileShowSource": "Quelle mit dem Dateiaufgaben-Editor öffnen",

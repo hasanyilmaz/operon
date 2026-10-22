@@ -892,7 +892,7 @@
 		"workspaceTweaksRemovePropertiesExcludedFolder": "除外フォルダーを削除",
 		"taskEditorLayoutSection": "配置と開き方",
 		"taskEditorPosition": "タスクエディターの位置",
-		"taskEditorPositionDesc": "デスクトップで新しく開く作業領域の位置を選択します。既存の作業領域の位置は変わりません。",
+		"taskEditorPositionDesc": "デスクトップで新しく開く作業領域の位置を選択します。既存の作業領域の位置は変わりません。 他のライトボックスの操作ボタンも選択した側に配置されます。",
 		"taskEditorPositionRight": "右",
 		"taskEditorPositionLeft": "左",
 		"taskEditorFileShowSource": "ファイルタスクの編集時にソースを開く",
