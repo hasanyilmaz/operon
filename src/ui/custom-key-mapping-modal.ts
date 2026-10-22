@@ -129,6 +129,8 @@ export class CustomKeyMappingModal extends Modal {
 	private propertyInputEl: HTMLInputElement | null = null;
 	private iconButtonEl: HTMLButtonElement | null = null;
 	private errorEl: HTMLElement | null = null;
+	private saving = false;
+	private saveButtonEl: HTMLButtonElement | null = null;
 
 	constructor(options: CustomKeyMappingModalOptions) {
 		super(options.app);
@@ -153,9 +155,6 @@ export class CustomKeyMappingModal extends Modal {
 			cls: 'operon-custom-key-mapping-modal-desc',
 			text: t('settings', 'keyMappingsAddCustomFieldDesc'),
 		});
-		this.errorEl = contentEl.createDiv('operon-custom-key-mapping-error');
-		this.errorEl.toggleAttribute('hidden', true);
-
 		const fieldCard = contentEl.createDiv('operon-custom-key-mapping-card');
 		this.renderIdentityFields(fieldCard);
 		this.renderIconField(fieldCard);
@@ -173,6 +172,9 @@ export class CustomKeyMappingModal extends Modal {
 		this.renderToggle(surfaceCard, 'showInKanbanSwimlane', t('settings', 'keyMappingsShowInKanbanSwimlaneLabel'), t('settings', 'keyMappingsShowInKanbanSwimlaneTooltip'));
 
 		this.renderFooter(contentEl);
+		this.errorEl = contentEl.createDiv('operon-custom-key-mapping-error');
+		this.errorEl.setAttribute('role', 'alert');
+		this.errorEl.toggleAttribute('hidden', true);
 		window.requestAnimationFrame(() => this.canonicalInputEl?.focus());
 	}
 
@@ -276,6 +278,7 @@ export class CustomKeyMappingModal extends Modal {
 			text: t('settings', 'keyMappingsAddCustomFieldSave'),
 			attr: { type: 'button' },
 		});
+		this.saveButtonEl = saveButton;
 		saveButton.addEventListener('click', () => {
 			void this.handleSaveClick();
 		});
@@ -322,22 +325,39 @@ export class CustomKeyMappingModal extends Modal {
 	}
 
 	private async handleSaveClick(): Promise<void> {
+		if (this.saving) return;
 		const result = buildCustomKeyMappingFromDraft(this.draft, this.options.keyMappings);
 		if (!result.ok) {
 			this.showValidationError(result.reason);
 			return;
 		}
-		await this.options.onSave(result.mapping);
-		this.close();
+		this.saving = true;
+  if (this.saveButtonEl) this.saveButtonEl.disabled = true;
+  try {
+   await this.options.onSave(result.mapping);
+   this.close();
+  } catch (error) {
+   console.error('Operon: custom key save failed', error);
+   const message = error instanceof Error ? error.message : String(error);
+   this.showError(message);
+  } finally {
+   this.saving = false;
+   if (this.saveButtonEl) this.saveButtonEl.disabled = false;
+  }
 	}
 
 	private showValidationError(reason: CustomKeyMappingValidationReason): void {
 		const message = getCustomKeyMappingValidationMessage(reason);
-		this.errorEl?.setText(message);
-		this.errorEl?.toggleAttribute('hidden', false);
+		this.showError(message);
 		this.canonicalInputEl?.toggleClass('is-error', reason.startsWith('canonical'));
 		this.propertyInputEl?.toggleClass('is-error', reason === 'property-duplicate');
 		new Notice(message);
+	}
+
+	private showError(message: string): void {
+		this.errorEl?.setText(message);
+		this.errorEl?.toggleAttribute('hidden', false);
+		this.errorEl?.scrollIntoView({ block: 'nearest' });
 	}
 
 	private clearValidationError(): void {

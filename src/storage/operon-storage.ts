@@ -1,3 +1,5 @@
+import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
+import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
@@ -732,6 +734,39 @@ export class OperonStorage {
 		await run;
 	}
 
+ /** Publish custom mapping and surface preferences only after one successful settings write. */
+ async saveCustomKeyMapping(mapping: KeyMapping, options: {
+  remove?: boolean;
+  surfaces?: (settings: OperonSettings, mapping: KeyMapping) => void;
+  prepare?: (settings: OperonSettings) => Promise<CustomKeyReusePreparation | undefined>;
+ } = {}): Promise<void> {
+  await this.enqueueSettingsTransaction(() => withCustomPropertyTypeWriteLock(this.app, async () => {
+   const current = this.getSettings({ committedMappings: true });
+   const expectedMappings = JSON.stringify(this.settings.keyMappings);
+   const expectedDefinitions = JSON.stringify(this.settings.inlinePropertyDefinitions);
+   const existing = current.keyMappings.find(item => item.canonicalKey.toLowerCase() === mapping.canonicalKey.toLowerCase());
+   if (options.remove ? !existing || existing.isSystem !== false || JSON.stringify(existing) !== JSON.stringify(mapping) : !!existing) throw new Error('Custom key settings changed. Please try again.');
+   const next = structuredClone(current);
+   const added = { ...mapping };
+   next.keyMappings = options.remove ? next.keyMappings.filter(item => item.canonicalKey !== mapping.canonicalKey) : [...next.keyMappings, added];
+   if (!options.remove) options.surfaces?.(next, added);
+   const patch: Partial<OperonSettings> = {};
+   for (const key of Object.keys(next) as (keyof OperonSettings)[]) if (JSON.stringify(next[key]) !== JSON.stringify(current[key])) Object.assign(patch, { [key]: next[key] });
+   const submitted = new Map(Object.keys(patch).map(key => [key, this.settings[key as keyof OperonSettings]]));
+   const settingsUnchanged = this.dataPackageStore.captureSettingsRollbackGuard();
+   let prepared: CustomKeyReusePreparation | undefined;
+   try {
+    prepared = options.remove ? undefined : await options.prepare?.(current);
+    const canCommit = () => JSON.stringify(this.settings.keyMappings) === expectedMappings && JSON.stringify(this.settings.inlinePropertyDefinitions) === expectedDefinitions
+     && [...submitted].every(([key,value]) => this.settings[key as keyof OperonSettings] === value) && (prepared?.isCurrent() ?? true);
+    await this.persistSettings({ forceRecoveredWrite: true }, [], next.keyMappings, true, patch, canCommit, prepared?.definitions);
+   } catch (error) {
+    if (prepared && await settingsUnchanged()) await prepared.rollback();
+    throw error;
+   } finally { prepared?.dispose(); }
+  }), true);
+ }
+
 	/** Persist source interpretation before the caller writes a typed inline value. */
 	async ensureInlinePropertyDefinitions(entries: readonly InlinePropertyDefinition[], canCommit: () => boolean = () => true): Promise<InlinePropertyDefinitions> {
 		return this.enqueueSettingsTransaction(async () => {
@@ -1069,7 +1104,7 @@ export class OperonStorage {
 		this.publishCommittedMappings = publish;
 	}
 
-	private async persistSettings(_options: RecoveredStoreWriteOptions, entries: readonly InlinePropertyDefinition[] = [], mappings?: KeyMapping[], coordinated = false, patch: Partial<OperonSettings> = {}, canCommit: () => boolean = () => true): Promise<void> {
+	private async persistSettings(_options: RecoveredStoreWriteOptions, entries: readonly InlinePropertyDefinition[] = [], mappings?: KeyMapping[], coordinated = false, patch: Partial<OperonSettings> = {}, canCommit: () => boolean = () => true, unusedDefinitions?: InlinePropertyDefinitions): Promise<void> {
 		if (!canCommit()) throw new Error('Settings operation cancelled');
 		mappings ??= patch.keyMappings;
 		const currentMappings = this.dataPackageStore.getDataPackage().taxonomy.keyMappings;
@@ -1086,8 +1121,8 @@ export class OperonStorage {
 		}
 		this.settings.filterSets = this.filterStore.getAll();
 		const committedPropertyPackage = this.dataPackageStore.getDataPackage();
-		let definitions = cloneInlinePropertyDefinitions(committedPropertyPackage.taxonomy.inlinePropertyDefinitions);
-		for (const entry of (patch.inlinePropertyDefinitions ?? this.settings.inlinePropertyDefinitions)?.entries ?? []) definitions = retainInlinePropertyDefinition(definitions, entry);
+		let definitions = cloneInlinePropertyDefinitions(unusedDefinitions ?? committedPropertyPackage.taxonomy.inlinePropertyDefinitions);
+		for (const entry of (unusedDefinitions ?? patch.inlinePropertyDefinitions ?? this.settings.inlinePropertyDefinitions)?.entries ?? []) definitions = retainInlinePropertyDefinition(definitions, entry);
 		definitions = reconcileInlinePropertyDefinitions(
 			[...committedPropertyPackage.taxonomy.keyMappings.system, ...committedPropertyPackage.taxonomy.keyMappings.custom],
 			mappings ?? this.settings.keyMappings, definitions);

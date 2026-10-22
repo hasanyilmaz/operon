@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Custom field validation** displays errors directly below **Add**, keeping feedback beside the action and preserving entered values for correction.
 - **Task context menus** show **Stop timer** for the task currently being tracked and **Start timer** for other tasks, so tracking can be started or stopped from the same action across supported views.
 - **Task Creator** closes immediately after submitting an Inline or File task, while creation continues in the background and normal notifications remain available.
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
@@ -26,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Lightbox control rails** follow the Task Editor left/right preference across Markdown, Bases, Tables, web pages, and media previews, keeping controls on a familiar side. Button order and actions stay the same, and open previews retain their position.
 - Improved **lightbox Escape handling** so only the top level closes through its normal save checks. Menus, suggestions, and nested pickers keep priority, and hidden overlays no longer block closing.
 
+### Fixed
+
+- Fixed **custom key icons** being replaced by generic property icons in Task Creator, Task Editor, and Table fields, while preserving checkbox states and read-only indicators.
+- Fixed **deleted custom key names** failing to be reused. Unused names can be recreated with another type, and displaying an empty Table column no longer blocks reuse; existing values and real dependencies remain protected.
+- Fixed **deleted, unused custom fields** lingering in Task Editor’s Additional picker, while keeping active custom fields, normal Obsidian properties in use, and task, template, or draft values available.
+- Fixed failed **custom key creation or deletion** leaving settings partly changed. Failed saves preserve the previous configuration and entered values, so retrying creation does not produce a false duplicate-name error.
+
 ### Removed
 
 - Retired the legacy **Task Editor File Body** panel and its panel-specific controls and previews. Native Markdown provides the desktop source view; Description/Notes and checkbox popovers retain their shared Markdown editor.
@@ -33,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,183/5,183** local regression tests and manual workspace, Escape, Contexts, Task Creator, timer, and Task Finder checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,240/5,240** local regression tests and manual workspace, Escape, Contexts, Task Creator, timer, Task Finder, and custom key checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 - Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
@@ -41,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task Creator validation passed **62/62** preparation and submission tests, **16/16** Repeat tests, and **93/93** creation/index integration tests, covering immediate closing, draft recovery, and independent background submissions.
 - Context-menu timer validation passed **80/80** tests covering task-specific labels, consistent menu-surface bindings, and protection against stale actions stopping another task or session.
 - Task Finder result behavior passed **36/36** focused tests covering opening choices, File/Inline defaults, saved preferences, Settings Search, and existing task-selection workflows.
+- Custom key validation passed **57/57** focused lifecycle tests and **4/4** deleted-field toolbar tests, covering configured icons, safe name reuse, failed saves, Table dependencies, and validation feedback.
 
 ## [4.1.0] - 2026-10-20
 

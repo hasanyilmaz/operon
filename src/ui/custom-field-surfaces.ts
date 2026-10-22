@@ -47,6 +47,13 @@ export function getCustomFieldIcon(mapping: Pick<KeyMapping, 'type' | 'icon'>): 
 	return mapping.icon?.trim() || getCustomFieldTypeFallbackIcon(mapping.type);
 }
 
+export function getNativePropertyIcon(mappings: readonly KeyMapping[], name: string, fallback: string): string {
+ const identity = name.trim().toLowerCase();
+ const matches = mappings.filter(mapping => isManagedCustomFieldMapping(mapping)
+  && [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.trim().toLowerCase() === identity));
+ return matches.length === 1 ? matches[0].icon?.trim() || fallback : fallback;
+}
+
 export function getCustomFieldTypeFallbackIcon(type: KeyMapping['type']): string {
 	return CUSTOM_FIELD_TYPE_FALLBACK_ICONS[type] || 'text';
 }

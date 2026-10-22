@@ -128,6 +128,7 @@ function retirementFixture(device, format, wide) {
  const noOp = () => {};
  const globals = {
   cleanupOperonHoverTooltips: noOp, bindEditorInteractionState: () => noOp,
+  getNativePropertyIndex: () => ({ observeDraftProperties: () => noOp }),
   TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT: 'picker-open', TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT: 'picker-close',
   window: { addEventListener: noOp, removeEventListener: noOp },
   t: (_ns, key) => key, setIcon: noOp, getIcon: () => null,

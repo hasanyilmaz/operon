@@ -116,6 +116,26 @@ export class NativePropertyIndex {
  getNativeTypes(): Readonly<Record<string, InlinePropertyType>> { return this.types; }
  getRevision(): number { return this.revision; }
  isActive(): boolean { return !this.disposed; }
+ private usageRevision = -1;
+ private usageNames: ReadonlySet<string> = new Set();
+ private draftReaders = new Set<() => readonly string[]>();
+ observeDraftProperties(read: () => readonly string[]): () => void {
+  this.draftReaders.add(read);
+  return () => { this.draftReaders.delete(read); };
+ }
+ draftPropertyNames(): readonly string[] {
+  return [...new Set([...this.draftReaders].flatMap(read => read()).map(name => name.trim().toLowerCase()))].sort();
+ }
+ usedPropertyNames(): ReadonlySet<string> {
+  if (this.usageRevision === this.revision) return this.usageNames;
+  const names = new Set<string>();
+  for (const source of this.sources.values()) {
+   for (const name of source.raw?.order ?? []) names.add(name.toLowerCase());
+   for (const task of source.raw?.inline ?? []) for (const field of task.fields) names.add(field.sourceKey.toLowerCase());
+  }
+  this.usageRevision = this.revision; this.usageNames = names;
+  return names;
+ }
  typesAvailable(): boolean { return this.registryState === 'ready'; }
  private reinterpret(): void {
   this.interpretationRevision++;
@@ -376,6 +396,7 @@ export class NativePropertyIndex {
   catch { return false; }
  }
  dispose(): void {
+  this.draftReaders.clear(); this.usageNames = new Set(); this.usageRevision = -1;
   this.disposed = true; this.listeners.clear(); this.sources.clear(); this.known = null; this.indexedStamps.clear(); this.tasksByPath.clear(); this.refreshSource = undefined;
   for (const job of this.jobs.values()) job.resolve();
   for (const pending of this.pending.values()) pending.resolve();

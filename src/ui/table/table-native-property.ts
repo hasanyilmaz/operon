@@ -1,7 +1,7 @@
 import { parseTableTaskListValue } from './table-value-adapter';
 import type { TableValueResolver } from './table-value-cache';
 import type { TableColumn } from '../../types/table';
-import { getCheckboxPropertyTypeIcon } from '../custom-field-surfaces';
+import { getNativePropertyIcon, getCheckboxPropertyTypeIcon } from '../custom-field-surfaces';
 import { TFile, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
@@ -39,7 +39,7 @@ function projectSnapshot(app: App, base: TableFilePropertySnapshot, tasks: reado
   const reason = index.reason(name);
   fields.set(name.toLowerCase(), { key: previous?.key ?? encodeTableFilePropertyColumnKey(name)!, label: previous?.label ?? name,
    propertyName: name, type, sourceType: knownType ? candidateTypeResolver.resolve(name, [sample]).sourceType : previous?.sourceType ?? candidateTypeResolver.resolve(name, [sample]).sourceType, group: 'fileProperty',
-   readonly: !!reason, readOnlyReason: reason, icon: reason === 'automatic' ? 'shield-alert' : type === 'checkbox' ? getCheckboxPropertyTypeIcon(settings.keyMappings, name) : getTableFilePropertyTypeIcon(type),
+   readonly: !!reason, readOnlyReason: reason, icon: reason === 'automatic' ? 'shield-alert' : type === 'checkbox' ? getCheckboxPropertyTypeIcon(settings.keyMappings, name) : getNativePropertyIcon(settings.keyMappings, name, getTableFilePropertyTypeIcon(type)),
    aliases: previous?.aliases ?? [name], sourceFileCount: previous?.sourceFileCount ?? 0 });
  };
  for (const field of base.fields) add(field.propertyName, field);

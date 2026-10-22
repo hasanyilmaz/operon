@@ -141,6 +141,7 @@ import { formatReminderDisplayItem } from './reminder-display';
 import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import {
+	getNativePropertyIcon,
 	getCheckboxPropertyIcon,
 	getCheckboxPropertyTypeIcon,
 	getCustomFieldIcon,
@@ -555,6 +556,7 @@ export class TaskEditorContent {
 	private desktopPropertyRows = new Map<string, { row: HTMLElement; value: HTMLElement; core: boolean; signature: string }>();
 	private desktopSubtasksExpanded = false;
 	private desktopSessionsExpanded = false;
+ private draftPropertiesCleanup?: () => void;
  private fileProperties = new Map<string, EditorFileProperty>();
  private nativePropertyTypes: Record<string, InlinePropertyType> = {};
  private filePropertyRows = new Map<string, { row: HTMLElement; value: HTMLElement; action: HTMLButtonElement }>();
@@ -2079,6 +2081,10 @@ export class TaskEditorContent {
 	 * Clears the container first, then renders all sections.
 	 */
 	mountInto(container: HTMLElement): void {
+  this.draftPropertiesCleanup?.();
+  this.draftPropertiesCleanup = getNativePropertyIndex(this.app).observeDraftProperties(() => [
+   ...Object.keys(this.fieldValues), ...this.fileProperties.keys(),
+  ]);
   const endMount = this.openingTrace?.span('editor-mount');
 		this.cleanupInteractionState?.();
 		this.closeStatsSubtasks?.();
@@ -2394,7 +2400,9 @@ export class TaskEditorContent {
 		this.noteInputEl = null;
 		this.clearInitialDescriptionFocusTimers();
 
-		if (closeSave) void closeSave;
+  const cleanupDraft = this.draftPropertiesCleanup; this.draftPropertiesCleanup = undefined;
+  if (closeSave) void closeSave.then(cleanupDraft, cleanupDraft);
+  else cleanupDraft?.();
 
 		if (this.saveTimer) {
 			clearWindowTimeout(this.saveTimer);
@@ -3309,7 +3317,7 @@ export class TaskEditorContent {
 
  private nativePropertyField(name: string, type: InlinePropertyType): TableFilePropertyField {
   return { key: encodeFilePropertyColumnKey(name)!, label: name, propertyName: name, type, sourceType: type === 'list' ? 'multitext' : type,
-   group: 'fileProperty', icon: type === 'checkbox' ? getCheckboxPropertyTypeIcon(this.settings.keyMappings, name) : getTableFilePropertyTypeIcon(type), readonly: false, aliases: [], sourceFileCount: 1 };
+   group: 'fileProperty', icon: type === 'checkbox' ? getCheckboxPropertyTypeIcon(this.settings.keyMappings, name) : getNativePropertyIcon(this.settings.keyMappings, name, getTableFilePropertyTypeIcon(type)), readonly: false, aliases: [], sourceFileCount: 1 };
  }
 
  private canEditFileProperty(entry: EditorFileProperty): boolean {
@@ -3426,9 +3434,11 @@ export class TaskEditorContent {
  private getVaultFilePropertySnapshot() {
   const snapshot = createVaultFilePropertySnapshot(this.app, this.filePropertyTypeResolver, { keyMappings: this.settings.keyMappings, nativeListCandidates: true });
   const fields = new Map<string, TableFilePropertyField>();
+  const used = new Set([...getNativePropertyIndex(this.app).usedPropertyNames(), ...snapshot.fields.map(field => field.propertyName.toLowerCase()), ...[...this.fileProperties.keys()].map(name => name.toLowerCase())]);
   for (const [name, type] of Object.entries(nativeEditorPropertyTypes(this.nativePropertyTypes, this.settings.keyMappings, this.settings.inlinePropertyDefinitions))) {
    const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
    const aliases = [name, ...(mapping ? [mapping.canonicalKey, mapping.visiblePropertyName] : [])].map(alias => alias.toLowerCase());
+   if (!mapping && !aliases.some(alias => used.has(alias))) continue;
    const sourceName = [...this.fileProperties.keys()].find(key => aliases.includes(key.toLowerCase())) ?? name;
    fields.set((mapping?.canonicalKey ?? sourceName).toLowerCase(), this.nativePropertyField(sourceName, type));
   }

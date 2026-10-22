@@ -1,3 +1,4 @@
+import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
 import { saveDesktopBackdropDimming } from './modal-backdrop';
 import { BACKGROUND_DIMMING_OPTIONS, normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
@@ -6781,66 +6782,66 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return mapping.showInChips === true;
 	}
 
-	private setCustomSurfaceMappingVisible(mapping: KeyMapping, surface: CustomSurfaceSettingsTarget, visible: boolean): void {
+	private setCustomSurfaceMappingVisible(mapping: KeyMapping, surface: CustomSurfaceSettingsTarget, visible: boolean, settings = this.settings): void {
 		if (surface === 'editor') {
 			mapping.showInEditor = visible;
-			this.settings.taskEditorWorkflowPickers = this.setSurfaceEntryVisibility(
-				this.settings.taskEditorWorkflowPickers,
+			settings.taskEditorWorkflowPickers = this.setSurfaceEntryVisibility(
+				settings.taskEditorWorkflowPickers,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible }),
 			);
-			this.settings.taskEditorMobileCoreTools = normalizeTaskEditorMobileCoreTools(
+			settings.taskEditorMobileCoreTools = normalizeTaskEditorMobileCoreTools(
 				this.setSurfaceEntryVisibility(
-					this.settings.taskEditorMobileCoreTools,
+					settings.taskEditorMobileCoreTools,
 					mapping.canonicalKey,
 					visible,
 					() => ({ key: mapping.canonicalKey, visible }),
 				),
 				DEFAULT_SETTINGS.taskEditorMobileCoreTools,
-				this.settings.keyMappings,
+				settings.keyMappings,
 			);
 		} else if (surface === 'creator') {
 			mapping.showInCreator = visible;
-			this.settings.taskCreatorToolbar = this.setSurfaceEntryVisibility(
-				this.settings.taskCreatorToolbar,
+			settings.taskCreatorToolbar = this.setSurfaceEntryVisibility(
+				settings.taskCreatorToolbar,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible }),
 			);
 		} else if (surface === 'chips') {
 			mapping.showInChips = visible;
-			this.settings.inlineTaskCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.inlineTaskCompactChips,
+			settings.inlineTaskCompactChips = this.setSurfaceEntryVisibility(
+				settings.inlineTaskCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
 			);
-			this.settings.taskFinderCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.taskFinderCompactChips,
+			settings.taskFinderCompactChips = this.setSurfaceEntryVisibility(
+				settings.taskFinderCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
 			).map(item => ({ ...item, iconOnly: false }));
-			this.settings.filterTaskCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.filterTaskCompactChips,
+			settings.filterTaskCompactChips = this.setSurfaceEntryVisibility(
+				settings.filterTaskCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
 			);
-			this.settings.kanbanTaskCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.kanbanTaskCompactChips,
+			settings.kanbanTaskCompactChips = this.setSurfaceEntryVisibility(
+				settings.kanbanTaskCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
-			);			this.settings.taskCardCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.taskCardCompactChips,
+			);			settings.taskCardCompactChips = this.setSurfaceEntryVisibility(
+				settings.taskCardCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
 			);
-			this.settings.taskWikilinkOverlayCompactChips = this.setSurfaceEntryVisibility(
-				this.settings.taskWikilinkOverlayCompactChips,
+			settings.taskWikilinkOverlayCompactChips = this.setSurfaceEntryVisibility(
+				settings.taskWikilinkOverlayCompactChips,
 				mapping.canonicalKey,
 				visible,
 				() => ({ key: mapping.canonicalKey, visible, iconOnly: false }),
@@ -11847,17 +11848,20 @@ export class OperonSettingsTab extends PluginSettingTab {
 			scopeSettingsModal(new CustomKeyMappingModal({
 				app: this.app,
 				keyMappings: this.settings.keyMappings,
-				onSave: settingsAsyncHandler('settings custom key mapping create failed', async mapping => {
-					this.settings.keyMappings = [...this.settings.keyMappings, mapping];
-					if (mapping.type !== 'checkbox') {
-						this.setCustomSurfaceMappingVisible(mapping, 'editor', mapping.showInEditor !== false);
-						this.setCustomSurfaceMappingVisible(mapping, 'creator', mapping.showInCreator !== false);
-						this.setCustomSurfaceMappingVisible(mapping, 'chips', mapping.showInChips === true);
-					}
-					await this.saveSettings();
-					await this.syncCustomKeyPropertyTypes([mapping], false);
-					this.updateNativeSettingsDefinitions();
-				}),
+				onSave: async mapping => {
+     await this.storage.saveCustomKeyMapping(mapping, {
+      prepare: current => prepareCustomKeyTypeReuse(this.app, current, mapping, () => this.settings),
+      surfaces: (settings, added) => {
+       if (added.type === 'checkbox') return;
+       this.setCustomSurfaceMappingVisible(added, 'editor', added.showInEditor !== false, settings);
+       this.setCustomSurfaceMappingVisible(added, 'creator', added.showInCreator !== false, settings);
+       this.setCustomSurfaceMappingVisible(added, 'chips', added.showInChips === true, settings);
+      },
+     });
+     this.notifySettingsChanged();
+     await this.syncCustomKeyPropertyTypes([mapping], false);
+     this.updateNativeSettingsDefinitions();
+    },
 			}), true).open();
 		});
 	}
@@ -12165,10 +12169,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 			deleteButton.addEventListener('click', settingsAsyncHandler('settings custom key mapping delete failed', async () => {
 				const confirmed = await this.confirmDeleteCustomKeyMapping(mapping, options.usage);
 				if (!confirmed) return;
-				this.settings.keyMappings = this.settings.keyMappings.filter(candidate =>
-					candidate.isSystem !== false || candidate.canonicalKey !== mapping.canonicalKey
-				);
-				await this.saveSettings();
+    await this.storage.saveCustomKeyMapping(mapping, { remove: true });
+    this.notifySettingsChanged();
 				options.refresh?.();
 			}));
 		}

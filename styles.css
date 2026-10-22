@@ -873,7 +873,7 @@ body.operon-tweak-compact-sidebar-tab-icons:not(.is-mobile) .mod-sidedock .works
 }
 
 .operon-custom-key-mapping-error {
-	margin: 0 0 12px;
+	margin: 12px 0 0;
 	padding: 8px 10px;
 	border: 1px solid color-mix(in srgb, var(--text-error) 48%, transparent);
 	border-radius: 8px;

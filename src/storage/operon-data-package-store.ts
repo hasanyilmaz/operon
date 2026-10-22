@@ -549,6 +549,16 @@ export class OperonDataPackageStore {
 		return true;
 	}
 
+ /** A failed dependent native write may be undone only while settings retain this preimage. */
+ captureSettingsRollbackGuard(): () => Promise<boolean> {
+  this.assertWritesAllowed();
+  const expected = this.canonicalSource;
+  return async () => {
+   try { return expected !== undefined && await this.readCanonicalSource() === expected; }
+   catch { return false; }
+  };
+ }
+
 	canPersist(): boolean {
 		return !this.writesSuspended && !this.versionBackupBlocked;
 	}

@@ -14,6 +14,58 @@ interface TypeManager {
 const queues = new WeakMap<App, Promise<unknown>>();
 const uncertain = new WeakSet<App>();
 
+/** Serializes native type writes, including their related settings commit and rollback. */
+export function withCustomPropertyTypeWriteLock<T>(app: App, operation: () => Promise<T>): Promise<T> {
+ const pending = (queues.get(app) ?? Promise.resolve()).then(operation, operation);
+ queues.set(app, pending);
+ const cleanup = () => { if (queues.get(app) === pending) queues.delete(app); };
+ void pending.then(cleanup, cleanup);
+ return pending;
+}
+
+/** Caller holds the shared lock until settings settle. Only verified writes can be reversed. */
+export async function replaceUnusedCustomPropertyTypes(app: App, expected: Record<string, ObsidianPropertyTypeId>, changes: readonly [string, ObsidianPropertyTypeId][], isCurrent: () => boolean): Promise<{ isCurrent(): boolean; rollback(): Promise<void> }> {
+ if (uncertain.has(app)) throw new Error('Property type save could not be verified. Restart Obsidian before trying again.');
+ const manager = (app as unknown as { metadataTypeManager?: TypeManager }).metadataTypeManager;
+ if (!manager || typeof manager.getAssignedWidget !== 'function' || typeof manager.setType !== 'function') throw new Error('Native property type writer is unavailable');
+ let owned = { ...expected };
+ const applied: Array<[string, ObsidianPropertyTypeId]> = [];
+ const coherent = () => Object.entries(owned).every(([name, type]) => manager.getAssignedWidget(name) === type);
+ const verify = async () => {
+  const raw: unknown = JSON.parse(await app.vault.adapter.read(`${app.vault.configDir}/types.json`));
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).length !== 1 || !('types' in raw)
+   || JSON.stringify(raw.types) !== JSON.stringify(owned) || Object.values(owned).includes('unknown') || !coherent()) throw new Error('Property type owner changed');
+ };
+ const write = async (name: string, type: ObsidianPropertyTypeId) => {
+  await verify();
+  try {
+   await manager.setType(name, type);
+   owned = { ...owned, [name]: type };
+   await verify();
+  } catch (error) { uncertain.add(app); throw error; }
+ };
+ const rollback = async () => {
+  if (uncertain.has(app)) return;
+  // Source edits cancel admission, but do not transfer ownership of our native write.
+  const latest = await loadPropertyTypeRegistry(app);
+  if (applied.some(([name]) => latest[name] !== owned[name]) || Object.entries(latest).some(([name, type]) => manager.getAssignedWidget(name) !== type)) return;
+  owned = latest;
+  for (const [name, type] of [...applied].reverse()) await write(name, type);
+  applied.length = 0;
+ };
+ try {
+  await verify();
+  for (const [name, type] of changes) {
+   if (!isCurrent()) throw new Error('Property sources changed during verification');
+   const previous = owned[name];
+   if (!previous) throw new Error('Property type owner changed');
+   await write(name, type);
+   applied.push([name, previous]);
+  }
+  return { isCurrent: () => !uncertain.has(app) && coherent(), rollback };
+ } catch (error) { await rollback(); throw error; }
+}
+
 /** Use Obsidian's writer so its in-memory registry stays coherent. */
 export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent: () => boolean, backupDirectory?: string): Promise<Result> {
  const snapshot = { ...mapping };
@@ -83,8 +135,5 @@ export function syncCustomPropertyType(app: App, mapping: KeyMapping, isCurrent:
    return { status: 'failed', restartRequired: writeStarted };
   }
  };
- const pending = (queues.get(app) ?? Promise.resolve()).then(operation, operation);
- queues.set(app, pending);
- void pending.finally(() => { if (queues.get(app) === pending) queues.delete(app); });
- return pending;
+ return withCustomPropertyTypeWriteLock(app, operation);
 }

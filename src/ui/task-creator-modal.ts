@@ -1,3 +1,4 @@
+import { getNativePropertyIndex } from '../indexer/native-property-index';
 import { applyDesktopModalBackdrop } from './modal-backdrop';
 import { bindCreatorToolbarInteractionState } from './surface-interaction-state';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorAdapter } from './task-creator-prepared-draft';
@@ -33,7 +34,7 @@ import {
 } from './compact-markdown-editor-surface';
 import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
-import { getCheckboxPropertyIcon, getCheckboxPropertyTypeIcon, getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
+import { getNativePropertyIcon, getCheckboxPropertyIcon, getCheckboxPropertyTypeIcon, getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import {
 	debugTaskFieldSuggestion,
 	resolveTaskFieldSuggestions,
@@ -514,6 +515,7 @@ export function purgeTaskCreatorModalArtifacts(root: ParentNode = getActiveDocum
 export class TaskCreatorModal extends Modal {
 	private readonly options: TaskCreatorModalOptions;
  private readonly prepared: PreparedTaskCreatorDraft | null;
+ private draftPropertiesCleanup?: () => void;
  private preparedClosed = false;
  private detachedForSubmit = false;
  private submissionClosePending = false;
@@ -602,6 +604,11 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	onOpen(): void {
+  this.draftPropertiesCleanup?.();
+  this.draftPropertiesCleanup = getNativePropertyIndex(this.app).observeDraftProperties(() => [
+   ...Object.keys(this.draft.fieldValues),
+   ...(this.prepared?.draft.snapshot().fields.filter(field => field.state !== 'missing' && field.state !== 'removed').map(field => field.property.sourceName) ?? []),
+  ]);
   const firstOpen = !this.hasOpened; this.hasOpened = true;
 		this.cleanupInteractionState?.();
 		this.cleanupInteractionState = null;
@@ -657,7 +664,7 @@ export class TaskCreatorModal extends Modal {
 		this.backdropCleanup = null;
 		this.cleanupInteractionState?.();
 		this.cleanupInteractionState = null;
-  if (!this.detachedForSubmit) { this.preparedClosed = true; this.prepared?.close(); }
+  if (!this.detachedForSubmit) { this.preparedClosed = true; this.prepared?.close(); this.draftPropertiesCleanup?.(); this.draftPropertiesCleanup = undefined; }
 		this.nativeCloseButtonCleanup?.();
 		this.nativeCloseButtonCleanup = null;
 		this.indexUpdatesUnsubscribe?.();
@@ -1917,6 +1924,7 @@ export class TaskCreatorModal extends Modal {
    }
   } catch (error) { console.error('Operon: prepared Creator submit failed', error); }
   finally {
+   if (this.preparedClosed) { this.draftPropertiesCleanup?.(); this.draftPropertiesCleanup = undefined; }
    this.isSubmitting = false; this.contentEl.inert = false;
    if (this.options.onSubmissionStateChange) this.options.onSubmissionStateChange();
    else this.restoreSubmittedDraft();
@@ -2062,7 +2070,7 @@ export class TaskCreatorModal extends Modal {
   const field = this.prepared?.field(key);
   if (field?.readOnlyReason === 'automatic') return 'shield-alert';
   if (field?.property.interpretation === 'native' && field.property.type === 'checkbox') return getCheckboxPropertyIcon(field.value, getCheckboxPropertyTypeIcon(this.options.settings.keyMappings, field.property.sourceName));
-  if (field?.property.interpretation === 'native') return ({ text: 'text', list: 'list', number: 'hash', checkbox: 'square-dashed', date: 'calendar', datetime: 'calendar-clock' } as const)[field.property.type ?? 'text'];
+  if (field?.property.interpretation === 'native') return getNativePropertyIcon(this.options.settings.keyMappings, field.property.sourceName, ({ text: 'text', list: 'list', number: 'hash', checkbox: 'square-dashed', date: 'calendar', datetime: 'calendar-clock' } as const)[field.property.type ?? 'text']);
 		const customMapping = getCustomFieldMapping(this.options.settings.keyMappings, key);
 		if (customMapping) return getCustomFieldIcon(customMapping);
 		return getConfiguredKeyMappingIcon(key, this.options.settings.keyMappings)
@@ -2297,6 +2305,7 @@ export class TaskCreatorModal extends Modal {
 	}
 
 	completeAndClose(): void {
+  this.draftPropertiesCleanup?.(); this.draftPropertiesCleanup = undefined;
 		this.resolved = true;
   this.preparedClosed = true; this.prepared?.close();
   if (this.detachedForSubmit) {
