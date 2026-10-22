@@ -4313,7 +4313,7 @@ export default class OperonPlugin extends Plugin {
 			this.app,
 			this.indexer,
 			() => this.settings,
-			(operonId) => this.openEditorForId(operonId),
+			(operonId) => { runAsyncAction('task finder result opening failed', () => this.openTaskFinderResult(operonId)); },
 			{
 				getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 				onPersistDefaultScope: async (scope, selectedProjectId) => {
@@ -4323,6 +4323,19 @@ export default class OperonPlugin extends Plugin {
 				},
 			},
 		);
+	}
+
+	private async openTaskFinderResult(operonId: string): Promise<void> {
+		const task = this.indexer.getTask(operonId);
+		if (!task) return;
+		if (!Platform.isDesktopApp) { this.openEditorForId(operonId); return; }
+		const behavior = task.primary.format === 'yaml'
+			? this.settings.taskFinderFileResultBehavior : this.settings.taskFinderInlineResultBehavior;
+		if (behavior === 'source') {
+			await this.openTaskSourcePreview(operonId);
+		} else {
+			this.openEditorForId(operonId, behavior === 'source-and-editor');
+		}
 	}
 
 	private openTaskWikilinkOverlayFinder(editor: Editor, view: MarkdownView): void {
@@ -17874,6 +17887,24 @@ export default class OperonPlugin extends Plugin {
 		this.registerExtensions(['table'], OPERON_TABLE_FILE_VIEW_TYPE);
 	}
 
+	private async openTaskSourcePreview(operonId: string, anchor?: HTMLElement): Promise<void> {
+		const task = this.indexer.getTask(operonId);
+		if (!task) return;
+		if (!Platform.isDesktopApp) { this.navigateToTask(task); return; }
+		const document = getActiveDocument();
+		const focused = asHTMLElement(document.activeElement);
+		const target = anchor ?? (focused && focused !== document.body ? focused : getActiveLightboxShell(document) ?? document.body);
+		const openingContext = {
+			app: this.app, getSettings: () => this.settings,
+			getTask: () => this.indexer.getTask(operonId),
+			getTaskById: (id: string) => this.indexer.getTask(id),
+			getAllTasks: () => this.indexer.getAllTasks(), picker: () => null,
+		};
+		await activateResolvedOpening(target, {
+			...openingContext, resolve: () => resolveChipOpening({ key: 'taskInfo.source' }, openingContext),
+		});
+	}
+
 	private navigateToTask(task: IndexedTask): void {
 		if (task.primary.format === 'yaml') {
 			runAsyncAction('task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
@@ -18702,22 +18733,7 @@ export default class OperonPlugin extends Plugin {
 				await this.unscheduleTaskById(id, canCommit);
 			},
 			jumpToSource: async (id) => {
-				const indexedTask = this.indexer.getTask(id);
-				if (!indexedTask) return;
-				if (!Platform.isDesktopApp) { this.navigateToTask(indexedTask); return; }
-				const anchor = invocation?.actionAnchor ?? calendarLeaf?.view.containerEl ?? getActiveDocument().body;
-				const openingContext = {
-					app: this.app,
-					getSettings: () => this.settings,
-					getTask: () => this.indexer.getTask(id),
-					getTaskById: (taskId: string) => this.indexer.getTask(taskId),
-					getAllTasks: () => this.indexer.getAllTasks(),
-					picker: () => null,
-				};
-				await activateResolvedOpening(anchor, {
-					...openingContext,
-					resolve: () => resolveChipOpening({ key: 'taskInfo.source' }, openingContext),
-				});
+				await this.openTaskSourcePreview(id, invocation?.actionAnchor ?? calendarLeaf?.view.containerEl ?? getActiveDocument().body);
 			},
 			setAsTracked: async (id, start, end) => {
 				const added = await this.timeTracker.addSession(id, start, end, canCommit);
@@ -24425,7 +24441,7 @@ export default class OperonPlugin extends Plugin {
 	 * Open the task editor for any task identified by operonId.
 	 * Convenience wrapper used by sidebar views and subtask edit buttons.
 	 */
-	private openEditorForId(operonId: string): void {
+	private openEditorForId(operonId: string, showSource?: boolean): void {
 		void (async () => {
 			if (this.redirectDuplicateOperonIdAction(operonId)) return;
 			const task = this.indexer.getTask(operonId);
@@ -24433,7 +24449,7 @@ export default class OperonPlugin extends Plugin {
 
 			await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
 				return await this.applyEditedTaskFromView(task, request);
-			});
+			}, {}, undefined, undefined, false, showSource);
 		})();
 	}
 
@@ -24537,7 +24553,7 @@ export default class OperonPlugin extends Plugin {
 
  private async openTaskEditorFor(
   taskOrLoad: ParsedTask | null | Promise<ParsedTask | null>, onSave: OnSaveCallback, options: TaskEditorContentOptions = {},
-  resolveCanonicalTask?: () => IndexedTask | null, onOpen?: (session: TaskEditorSession) => void, standalone = false,
+  resolveCanonicalTask?: () => IndexedTask | null, onOpen?: (session: TaskEditorSession) => void, standalone = false, showSource?: boolean,
  ): Promise<void> {
   const preferences = { position: this.settings.taskEditorPosition, fileSource: this.settings.taskEditorFileShowSource, inlineSource: this.settings.taskEditorInlineShowSource };
   const document = getActiveDocument();
@@ -24578,7 +24594,7 @@ export default class OperonPlugin extends Plugin {
    if (!current) { content.destroy({ skipCloseSave: true }); this.showPluginUiMutationOutcome('source-missing'); return; }
    if (!currentOpening()) { content.destroy({ skipCloseSave: true }); return; }
    openingSource = current;
-   const markdown = current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource;
+   const markdown = showSource ?? (current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource);
    openingTrace?.kind(markdown ? 'paired' : 'editor');
    const session = await openTaskWorkspace(this.app, anchor, {
     file: current.file, subpath: '', operonId: indexed.operonId,

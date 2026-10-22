@@ -113,22 +113,22 @@ test('Table Markdown renderer opt-in delegates once and never installs its legac
 function extractMainSourceAction(deps) {
  const source=readFileSync('main.ts','utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);
  const cls=ast.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='OperonPlugin');
- const method=cls.members.find(n=>n.name?.getText(ast)==='handleContextualMenuAction');
- const js=ts.transpileModule(`class Harness {${method.getText(ast)}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- return new Function(...Object.keys(deps),`${js};return Harness.prototype.handleContextualMenuAction;`)(...Object.values(deps));
+ const methods=['handleContextualMenuAction','openTaskSourcePreview'].map(name=>cls.members.find(n=>n.name?.getText(ast)===name).getText(ast)).join('\n');
+ const js=ts.transpileModule(`class Harness {${methods}}`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ return new Function(...Object.keys(deps),`${js};return Harness.prototype;`)(...Object.values(deps));
 }
 for(const desktop of [true,false])test(`context menu Source routes ${desktop?'desktop through shared preview':'mobile through existing navigation'} without mutations`,async()=>{
  const anchor={ownerDocument:{name:'secondary'}},body={},calls=[],platform={isDesktopApp:desktop};
  let task={operonId:'task',primary:{filePath:'A.md',format:'inline'},fieldValues:{}};
- const handler=extractMainSourceAction({Platform:platform,Notice:class{constructor(){throw Error('navigation must remain allowed');}},getActiveDocument:()=>({body}),
+ const handlers=extractMainSourceAction({Platform:platform,Notice:class{constructor(){throw Error('navigation must remain allowed');}},getActiveDocument:()=>({body}),asHTMLElement:()=>null,
   executeContextualMenuAction:async(context,action,deps)=>{assert.equal(action,'jumpToSource');await deps.jumpToSource(context.taskId);},
   resolveChipOpening:(entry,context)=>{assert.equal(entry.key,'taskInfo.source');return context.getTask();},
   activateResolvedOpening:async(actual,context,event)=>{assert.equal(actual,anchor);assert.equal(event,undefined);assert.equal(context.resolve(),task);const latest={...task,primary:{filePath:'Moved.md',format:'inline'}};task=latest;assert.equal(context.resolve(),latest);calls.push('lightbox');},
  });
- const host={app:{},settings:{},indexer:{getTask:()=>task,getAllTasks:()=>[task]},navigateToTask:current=>{assert.equal(current,task);calls.push('native');}};
- await handler.call(host,'task','jumpToSource',{taskId:'task'},{actionAnchor:anchor,canMutate:()=>false});
+ const host=Object.assign(Object.create(handlers),{app:{},settings:{},indexer:{getTask:()=>task,getAllTasks:()=>[task]},navigateToTask:current=>{assert.equal(current,task);calls.push('native');}});
+ await handlers.handleContextualMenuAction.call(host,'task','jumpToSource',{taskId:'task'},{actionAnchor:anchor,canMutate:()=>false});
  assert.deepEqual(calls,[desktop?'lightbox':'native']);
- task=null;await handler.call(host,'task','jumpToSource',{taskId:'task'},{actionAnchor:anchor});assert.equal(calls.length,1);
+ task=null;await handlers.handleContextualMenuAction.call(host,'task','jumpToSource',{taskId:'task'},{actionAnchor:anchor});assert.equal(calls.length,1);
 });
 for(const actionId of ['jumpToSource','openEditor'])for(const origin of ['trigger','host'])test(`context menu ${actionId} retains ${origin==='trigger'?'trigger':'custom host'} ownership after closing`,()=>{
  let click,invocation;const source={isConnected:true,ownerDocument:{name:'secondary'}};

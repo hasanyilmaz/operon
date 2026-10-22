@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Yukarı taşı",
       "taskEditorWorkflowPickersReorder": "İş akışı seçicilerini sırala",
       "taskFinderBehaviorSection": "Arama Davranışı",
+      "taskFinderFileResultBehavior": "Dosya görevi sonuçları",
+      "taskFinderFileResultBehaviorDesc": "Task Finder’da bir dosya görevi seçtiğinizde ne açılacağını seçin.",
       "taskFinderHotkeysSection": "Kapsam Kısayolları",
       "taskFinderIconsMoveDown": "Aşağı taşı",
       "taskFinderIconsMoveUp": "Yukarı taşı",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Görev Bul Simgeleri",
       "taskFinderIconsSectionDesc": "Görev Bul Simgeleri, Görev Bul sonuçlarında hangi kompakt simgelerin görüneceğini ve sıralarını belirler. Simgeler sadece görseldir ve yalnızca simge modunu kullanmaz.",
       "taskFinderIconsToggleTitle": "Görev Bul simgelerini aç/kapat",
+      "taskFinderInlineResultBehavior": "Satır içi görev sonuçları",
+      "taskFinderInlineResultBehaviorDesc": "Task Finder’da bir satır içi görev seçtiğinizde ne açılacağını seçin.",
       "taskFinderRecentModifiedDays": "Son güncellenenler penceresi",
       "taskFinderRecentModifiedDaysDesc": "'Son Güncellenenler' butonunun kaç günlük güncellenmiş görevleri listeleyeceğini belirler.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} gün",
       "taskFinderRecentModifiedDaysOptionOne": "1 gün",
       "taskFinderRememberLastScopes": "Son kapsamları hatırla",
       "taskFinderRememberLastScopesDesc": "Görev Bul'u son seçilen kapsam düğmeleri ve proje seçimiyle yeniden açar. Kapalıyken yalnızca Satır İçi Görevler ve Dosya Görevleri açık başlar.",
+      "taskFinderResultBehaviorDesc": "Task Finder sonuçlarının kaynak dosyayı, Task Editor’ı veya ikisini birlikte açmasını seçin.",
+      "taskFinderResultBehaviorSection": "Sonuç davranışı",
+      "taskFinderResultEditorOnly": "Yalnız Task Editor",
+      "taskFinderResultSourceAndEditor": "Kaynak dosya + Task Editor",
+      "taskFinderResultSourceOnly": "Yalnız kaynak dosya",
       "taskFinderSection": "Görev Bul",
       "taskFinderShortcutDuplicate": ".{{shortcut}} zaten {{label}} tarafından kullanılıyor.",
       "taskFinderShortcutInputDesc": "Nokta olmadan 1–3 harf veya rakam girin. Bu kapsam kısayolunu kapatmak için boş bırakın.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e923debe021eec258e80be4674d845979bd2ab54e9dac51fc6d0d79873ae1e08"
+  "sourceVersion": "97a9e54633f4091ba594837c46f40d821282e7cf9f31995c53f08630d43d35b2"
 }

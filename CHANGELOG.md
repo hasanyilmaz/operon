@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added a shared **desktop Task Editor workspace** with native Markdown and task fields in one working level. Show or hide either panel without losing drafts, and open nested workspaces while keeping previous levels visible underneath.
 - Added **Layout and opening** settings for left/right Task Editor placement and separate File/Inline source-opening preferences. File tasks open with their source by default; Inline tasks start with the editor alone. Preferences apply to newly opened workspaces, and **Open Source** keeps its source-only opening.
+- Added **Result Behavior** settings in Task Finder so File and Inline task results can independently open the source file, Task Editor, or both on desktop.
 
 ### Improved
 
@@ -32,13 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,182/5,182** local regression tests and manual workspace, Escape, Contexts, Task Creator, and timer checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,183/5,183** local regression tests and manual workspace, Escape, Contexts, Task Creator, timer, and Task Finder checks.
 - Resolved all seven reported lightbox type-assertion warnings and added a focused release guard across the two lightbox files to prevent their return.
 - Focused lightbox validation passed **29/29** shell tests, **280/280** opening tests, and **32/32** browser scenarios covering Escape, picker priority, nested levels, and save protections.
 - Task Editor source synchronization passed **56/56** focused tests, with **25/25** native Markdown body tests preserving YAML protection.
 - Left/right lightbox placement passed **64/64** browser scenarios, **163/163** workspace checks, and **45/45** settings/backdrop tests, with manual placement checks confirmed.
 - Task Creator validation passed **62/62** preparation and submission tests, **16/16** Repeat tests, and **93/93** creation/index integration tests, covering immediate closing, draft recovery, and independent background submissions.
 - Context-menu timer validation passed **80/80** tests covering task-specific labels, consistent menu-surface bindings, and protection against stale actions stopping another task or session.
+- Task Finder result behavior passed **36/36** focused tests covering opening choices, File/Inline defaults, saved preferences, Settings Search, and existing task-selection workflows.
 
 ## [4.1.0] - 2026-10-20
 

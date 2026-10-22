@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Mover hacia arriba",
       "taskEditorWorkflowPickersReorder": "Reordenar selectores de flujo de trabajo",
       "taskFinderBehaviorSection": "Comportamiento de búsqueda",
+      "taskFinderFileResultBehavior": "Resultados de tareas de archivo",
+      "taskFinderFileResultBehaviorDesc": "Elige qué se abre al seleccionar una tarea de archivo en Task Finder.",
       "taskFinderHotkeysSection": "Atajos de ámbito",
       "taskFinderIconsMoveDown": "Mover hacia abajo",
       "taskFinderIconsMoveUp": "Mover hacia arriba",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Chips del Buscador de tareas",
       "taskFinderIconsSectionDesc": "Los chips del Buscador de tareas controlan qué chips compactos aparecen en los resultados del Buscador de tareas y su orden. Los chips son solo visuales y no usan el conmutador de modo de visualización de chips.",
       "taskFinderIconsToggleTitle": "Alternar chips del Buscador de tareas",
+      "taskFinderInlineResultBehavior": "Resultados de tareas en línea",
+      "taskFinderInlineResultBehaviorDesc": "Elige qué se abre al seleccionar una tarea en línea en Task Finder.",
       "taskFinderRecentModifiedDays": "Ventana de modificadas recientemente",
       "taskFinderRecentModifiedDaysDesc": "Cuántos días considera el botón 'Modificadas recientemente' al listar las tareas actualizadas.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} días",
       "taskFinderRecentModifiedDaysOptionOne": "1 día",
       "taskFinderRememberLastScopes": "Recordar los últimos ámbitos",
       "taskFinderRememberLastScopesDesc": "Reabrir el Buscador de tareas con los últimos botones de ámbito seleccionados y la selección de proyecto. Desactivar para empezar solo con Tareas en línea y Tareas de archivo.",
+      "taskFinderResultBehaviorDesc": "Elige si los resultados de Task Finder abren el archivo de origen, Task Editor o ambos.",
+      "taskFinderResultBehaviorSection": "Comportamiento de los resultados",
+      "taskFinderResultEditorOnly": "Solo Task Editor",
+      "taskFinderResultSourceAndEditor": "Archivo de origen + Task Editor",
+      "taskFinderResultSourceOnly": "Solo archivo de origen",
       "taskFinderSection": "Buscador de tareas",
       "taskFinderShortcutDuplicate": ".{{shortcut}} ya lo usa {{label}}.",
       "taskFinderShortcutInputDesc": "Introduce 1–3 letras o números sin el punto. Déjalo vacío para desactivar este atajo.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "c87f29e034a44780d6082c081885d30d42f47a8093c60a3f4fb68f28be52567c"
+  "sourceVersion": "c0b1e37ba4540aed1cb265d27453f2b67c4084030cf02b178c5dc2758fbd1e4a"
 }

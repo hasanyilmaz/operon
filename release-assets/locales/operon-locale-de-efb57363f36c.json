@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Nach oben",
       "taskEditorWorkflowPickersReorder": "Arbeitsablauf-Auswahlfelder neu anordnen",
       "taskFinderBehaviorSection": "Suchverhalten",
+      "taskFinderFileResultBehavior": "Dateiaufgaben-Ergebnisse",
+      "taskFinderFileResultBehaviorDesc": "Wählen Sie, was bei der Auswahl einer Dateiaufgabe im Task Finder geöffnet wird.",
       "taskFinderHotkeysSection": "Bereichskürzel",
       "taskFinderIconsMoveDown": "Nach unten",
       "taskFinderIconsMoveUp": "Nach oben",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Aufgabensuche-Chips",
       "taskFinderIconsSectionDesc": "Aufgabensuche-Chips steuern, welche kompakten Chips in den Ergebnissen der Aufgabensuche erscheinen und in welcher Reihenfolge sie angeordnet sind. Chips sind rein visuell und nutzen den Chip-Anzeigemodus-Schalter nicht.",
       "taskFinderIconsToggleTitle": "Aufgabensuche-Chips umschalten",
+      "taskFinderInlineResultBehavior": "Inline-Aufgaben-Ergebnisse",
+      "taskFinderInlineResultBehaviorDesc": "Wählen Sie, was bei der Auswahl einer Inline-Aufgabe im Task Finder geöffnet wird.",
       "taskFinderRecentModifiedDays": "Zeitfenster für „Kürzlich geändert“",
       "taskFinderRecentModifiedDaysDesc": "Wie viele Tage die Schaltfläche „Kürzlich geändert“ beim Auflisten aktualisierter Aufgaben berücksichtigt.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} Tage",
       "taskFinderRecentModifiedDaysOptionOne": "1 Tag",
       "taskFinderRememberLastScopes": "Letzte Bereiche merken",
       "taskFinderRememberLastScopesDesc": "Die Aufgabensuche mit den zuletzt ausgewählten Suchbereich-Schaltflächen und der Projektauswahl wieder öffnen. Deaktivieren, um nur mit Inline-Aufgaben und Datei-Aufgaben zu starten.",
+      "taskFinderResultBehaviorDesc": "Wählen Sie, ob Task Finder-Ergebnisse die Quelldatei, den Task Editor oder beides öffnen.",
+      "taskFinderResultBehaviorSection": "Ergebnisverhalten",
+      "taskFinderResultEditorOnly": "Nur Task Editor",
+      "taskFinderResultSourceAndEditor": "Quelldatei + Task Editor",
+      "taskFinderResultSourceOnly": "Nur Quelldatei",
       "taskFinderSection": "Aufgabensuche",
       "taskFinderShortcutDuplicate": ".{{shortcut}} wird bereits von {{label}} verwendet.",
       "taskFinderShortcutInputDesc": "1–3 Buchstaben oder Ziffern ohne Punkt eingeben. Leer lassen, um dieses Bereichskürzel zu deaktivieren.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "05b4ee7eed45147286b18db086d56fbdbf83fd2a118c07dc100728b4706e4fd7"
+  "sourceVersion": "36ca943a89f6585b17b32b19666609ebb7fc7a6d78d4da29e4095388e417509b"
 }

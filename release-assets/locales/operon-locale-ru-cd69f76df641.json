@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Переместить вверх",
       "taskEditorWorkflowPickersReorder": "Изменить порядок средств выбора рабочего процесса",
       "taskFinderBehaviorSection": "Поведение поиска",
+      "taskFinderFileResultBehavior": "Результаты файловых задач",
+      "taskFinderFileResultBehaviorDesc": "Выберите, что открывается при выборе файловой задачи в Task Finder.",
       "taskFinderHotkeysSection": "Сокращения областей поиска",
       "taskFinderIconsMoveDown": "Переместить вниз",
       "taskFinderIconsMoveUp": "Переместить вверх",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Чипы поиска задач",
       "taskFinderIconsSectionDesc": "Чипы поиска задач управляют тем, какие компактные чипы появляются в результатах поиска задач, и их порядком. Чипы носят только визуальный характер и не используют переключатель режима отображения чипов.",
       "taskFinderIconsToggleTitle": "Переключить чипы поиска задач",
+      "taskFinderInlineResultBehavior": "Результаты строчных задач",
+      "taskFinderInlineResultBehaviorDesc": "Выберите, что открывается при выборе строчной задачи в Task Finder.",
       "taskFinderRecentModifiedDays": "Окно недавних изменений",
       "taskFinderRecentModifiedDaysDesc": "Сколько дней учитывает кнопка «Недавно изменённые» при выводе списка обновлённых задач.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} дней",
       "taskFinderRecentModifiedDaysOptionOne": "1 день",
       "taskFinderRememberLastScopes": "Запоминать последние области",
       "taskFinderRememberLastScopesDesc": "Открывать поиск задач заново с последними выбранными кнопками области и выбором проекта. Отключите, чтобы начинать только со встроенных и файловых задач.",
+      "taskFinderResultBehaviorDesc": "Выберите, что открывают результаты Task Finder: исходный файл, Task Editor или оба.",
+      "taskFinderResultBehaviorSection": "Поведение результатов",
+      "taskFinderResultEditorOnly": "Только Task Editor",
+      "taskFinderResultSourceAndEditor": "Исходный файл + Task Editor",
+      "taskFinderResultSourceOnly": "Только исходный файл",
       "taskFinderSection": "Поиск задач",
       "taskFinderShortcutDuplicate": ".{{shortcut}} уже используется для {{label}}.",
       "taskFinderShortcutInputDesc": "Введите 1–3 латинские буквы или цифры без точки. Оставьте пустым для отключения этого сокращения.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "4097b15c02c16aba782c834d6557fb55d11acdbd40d3cb1ce4b1789aa81fef2b"
+  "sourceVersion": "d5e6fe8916296221eb3c9bd8481652f8750e495f80ad1b463f080c7fa7ea5ee4"
 }

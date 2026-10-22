@@ -1065,6 +1065,12 @@ export const TASK_FINDER_DEFAULT_SCOPE_ORDER = [
 	'includeFinished',
 ] as const;
 
+export type TaskFinderResultBehavior = 'source' | 'source-and-editor' | 'editor';
+
+export function normalizeTaskFinderResultBehavior(value: unknown, fallback: TaskFinderResultBehavior): TaskFinderResultBehavior {
+	return value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : fallback;
+}
+
 export type TaskFinderDefaultScopeKey = typeof TASK_FINDER_DEFAULT_SCOPE_ORDER[number];
 
 export const TASK_FINDER_DEFAULT_SCOPE_ICONS: Record<TaskFinderDefaultScopeKey, string> = {
@@ -1760,6 +1766,9 @@ export interface OperonSettings extends TaskCardSettings {
 	kanbanTaskShowPlainCheckboxAction: boolean;
 	/** Ordered, user-customizable compact chips used by the Task Finder result rows. */
 	taskFinderCompactChips: InlineTaskCompactChipItem[];
+	/** Initial panes for normal desktop Task Finder result openings; selection workflows are unchanged. */
+	taskFinderFileResultBehavior: TaskFinderResultBehavior;
+	taskFinderInlineResultBehavior: TaskFinderResultBehavior;
 	/** Persisted last-used opening buttons for the normal Task Finder command. Hidden from the settings UI. */
 	taskFinderDefaultScope: TaskFinderDefaultScopeItem[];
 	/** Whether the normal Task Finder command reopens with the last-used scope buttons and project selection. */
@@ -2336,6 +2345,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	kanbanTaskShowSubtaskAction: false,
 	kanbanTaskShowPlainCheckboxAction: false,
 	taskFinderCompactChips: buildDefaultTaskFinderCompactChipItems(),
+	taskFinderFileResultBehavior: 'source-and-editor',
+	taskFinderInlineResultBehavior: 'editor',
 	taskFinderDefaultScope: buildDefaultTaskFinderDefaultScopeItems(),
 	taskFinderRememberLastScopes: true,
 	taskFinderSelectedProjectId: '',
@@ -4474,6 +4485,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.taskFinderSelectedProjectId = '';
 	}
 	out.taskFinderShortcuts = normalizeTaskFinderShortcuts(src.taskFinderShortcuts);
+	out.taskFinderFileResultBehavior = normalizeTaskFinderResultBehavior(src.taskFinderFileResultBehavior, DEFAULT_SETTINGS.taskFinderFileResultBehavior);
+	out.taskFinderInlineResultBehavior = normalizeTaskFinderResultBehavior(src.taskFinderInlineResultBehavior, DEFAULT_SETTINGS.taskFinderInlineResultBehavior);
 	const legacyTaskWikilinkOverlaySource = src;
 	const taskWikilinkOverlayCompactChipsSource = src.taskWikilinkOverlayCompactChips
 		?? legacyTaskWikilinkOverlaySource.overlayTaskCompactChips;

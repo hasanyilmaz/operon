@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Déplacer vers le haut",
       "taskEditorWorkflowPickersReorder": "Réorganiser les sélecteurs de workflow",
       "taskFinderBehaviorSection": "Comportement de recherche",
+      "taskFinderFileResultBehavior": "Résultats des tâches fichier",
+      "taskFinderFileResultBehaviorDesc": "Choisissez ce qui s’ouvre lorsque vous sélectionnez une tâche fichier dans Task Finder.",
       "taskFinderHotkeysSection": "Raccourcis de périmètre",
       "taskFinderIconsMoveDown": "Déplacer vers le bas",
       "taskFinderIconsMoveUp": "Déplacer vers le haut",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Puces de la recherche de tâches",
       "taskFinderIconsSectionDesc": "La section Puces de la recherche de tâches détermine quelles puces compactes apparaissent dans les résultats de la recherche de tâches et leur ordre. Les puces sont purement visuelles et n'utilisent pas le basculement du mode d'affichage des puces.",
       "taskFinderIconsToggleTitle": "Basculer les puces de la recherche de tâches",
+      "taskFinderInlineResultBehavior": "Résultats des tâches en ligne",
+      "taskFinderInlineResultBehaviorDesc": "Choisissez ce qui s’ouvre lorsque vous sélectionnez une tâche en ligne dans Task Finder.",
       "taskFinderRecentModifiedDays": "Fenêtre des modifications récentes",
       "taskFinderRecentModifiedDaysDesc": "Combien de jours le bouton « Récemment modifiées » prend en compte lors de la liste des tâches mises à jour.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} jours",
       "taskFinderRecentModifiedDaysOptionOne": "1 jour",
       "taskFinderRememberLastScopes": "Mémoriser les derniers périmètres",
       "taskFinderRememberLastScopesDesc": "Rouvrir la recherche de tâches avec les derniers boutons de portée sélectionnés et la sélection de projet. Désactivez pour démarrer uniquement avec Tâches en ligne et Tâches-fichiers.",
+      "taskFinderResultBehaviorDesc": "Choisissez si les résultats de Task Finder ouvrent le fichier source, Task Editor ou les deux.",
+      "taskFinderResultBehaviorSection": "Comportement des résultats",
+      "taskFinderResultEditorOnly": "Task Editor uniquement",
+      "taskFinderResultSourceAndEditor": "Fichier source + Task Editor",
+      "taskFinderResultSourceOnly": "Fichier source uniquement",
       "taskFinderSection": "Recherche de tâches",
       "taskFinderShortcutDuplicate": ".{{shortcut}} est déjà utilisé par {{label}}.",
       "taskFinderShortcutInputDesc": "Saisissez 1 à 3 lettres ou chiffres sans point. Laissez vide pour désactiver ce raccourci.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "4973ce06fafebdbc9593b4dd71f7c903465c43215018a84625121025ea7e7fd5"
+  "sourceVersion": "6aa9920875a6bf269495be51eba2adf1071e9554aa50713aaed0fd7a714b6192"
 }

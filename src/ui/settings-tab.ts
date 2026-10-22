@@ -29,7 +29,7 @@ import { CANVAS_POOL_WIDTHS, CANVAS_POOL_ROWS, isTaskCardSetting, normalizeTaskC
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, SettingPage, setIcon, setTooltip } from 'obsidian';
 import type { SettingGroup, ButtonComponent, DropdownComponent, ExtraButtonComponent, SettingControl, SettingDefinition, SettingDefinitionGroup, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, setNumericSetting, isSupportedLanguage, normalizeDateDisplayFormat, type CalendarDayTitleAction, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, KANBAN_EXPANDED_COLUMN_WIDTH_MIN, KANBAN_EXPANDED_COLUMN_WIDTH_MAX, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN, KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, normalizeTaskFinderResultBehavior, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, setNumericSetting, isSupportedLanguage, normalizeDateDisplayFormat, type CalendarDayTitleAction, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
 	isNonEnglishSupportedLanguage,
@@ -1977,6 +1977,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 			]),
 		}, {
 			type: 'group',
+			heading: t('settings', 'taskFinderResultBehaviorSection'),
+			items: [
+				{ name: '', desc: t('settings', 'taskFinderResultBehaviorDesc'), searchable: false },
+				...this.compactSettingsSearchDefinitions([
+					this.buildSettingsSearchSettingDefinition(entries, 'taskFinderFileResultBehavior'),
+					this.buildSettingsSearchSettingDefinition(entries, 'taskFinderInlineResultBehavior'),
+				]),
+			],
+		}, {
+			type: 'group',
 			heading: t('settings', 'taskFinderHotkeysSection'),
 			cls: 'operon-task-finder-shortcuts-group',
 			items: [{ name: t('settings', 'taskFinderHotkeysSection'), desc: t('settings', 'taskFinderShortcutsDesc'), render: setting => {
@@ -3297,6 +3307,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return normalizeTaskFinderResultBehavior(value, DEFAULT_SETTINGS[key]);
   if (key === 'taskEditorPosition') return value === 'left' ? 'left' : 'right';
 		if (key === 'calendarAutoScrollPastRatio' || key === 'calendarTimeGridScale') {
 			const options: readonly number[] = key === 'calendarAutoScrollPastRatio'
@@ -3790,6 +3801,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				right: t('settings', 'pinnedTasksSidebarSideRight'),
 			};
 		}
+		if (key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return {
+			source: t('settings', 'taskFinderResultSourceOnly'),
+			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
+			editor: t('settings', 'taskFinderResultEditorOnly'),
+		};
 		if (key === 'taskFinderRecentModifiedDays') {
 			return Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(days => [
 				String(days),
@@ -6254,6 +6270,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private renderInterfaceTaskFinderTab(containerEl: HTMLElement): void {
 		const behaviorSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskFinderBehaviorSection'));
 		this.renderTaskFinderBehaviorSettingsSection(behaviorSection);
+		const results = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskFinderResultBehaviorSection'));
+		results.createEl('p', { cls: 'operon-settings-section-desc', text: t('settings', 'taskFinderResultBehaviorDesc') });
+		for (const key of ['taskFinderFileResultBehavior', 'taskFinderInlineResultBehavior'] as const) {
+			this.renderBoundDropdownSetting(results, t('settings', key), t('settings', `${key}Desc`), key, {
+				value: this.settings[key],
+				dropdownOptions: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+				normalize: value => this.normalizeSettingsSearchDropdownValue(key, value) as OperonSettings[typeof key],
+				errorContext: 'settings task finder result behavior change failed',
+			});
+		}
 		this.renderTaskFinderShortcutSettings(containerEl);
 	}
 

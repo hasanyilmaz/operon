@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "Sposta in alto",
       "taskEditorWorkflowPickersReorder": "Riordina selettori flusso di lavoro",
       "taskFinderBehaviorSection": "Comportamento di ricerca",
+      "taskFinderFileResultBehavior": "Risultati delle attività file",
+      "taskFinderFileResultBehaviorDesc": "Scegli cosa aprire quando selezioni un’attività file in Task Finder.",
       "taskFinderHotkeysSection": "Scorciatoie degli ambiti",
       "taskFinderIconsMoveDown": "Sposta in basso",
       "taskFinderIconsMoveUp": "Sposta in alto",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "Chip Ricerca attività",
       "taskFinderIconsSectionDesc": "I chip Ricerca attività controllano quali chip compatti appaiono nei risultati della Ricerca attività e il loro ordine. I chip sono solo visivi e non usano l'interruttore modalità di visualizzazione chip.",
       "taskFinderIconsToggleTitle": "Alterna chip Ricerca attività",
+      "taskFinderInlineResultBehavior": "Risultati delle attività inline",
+      "taskFinderInlineResultBehaviorDesc": "Scegli cosa aprire quando selezioni un’attività inline in Task Finder.",
       "taskFinderRecentModifiedDays": "Finestra modificate di recente",
       "taskFinderRecentModifiedDaysDesc": "Quanti giorni considera il pulsante 'Modificate di recente' quando elenca le attività aggiornate.",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} giorni",
       "taskFinderRecentModifiedDaysOptionOne": "1 giorno",
       "taskFinderRememberLastScopes": "Ricorda gli ultimi ambiti",
       "taskFinderRememberLastScopesDesc": "Riapri la Ricerca attività con gli ultimi pulsanti di ambito selezionati e la selezione del progetto. Disattiva per iniziare solo con Attività in linea e Attività-file.",
+      "taskFinderResultBehaviorDesc": "Scegli se i risultati di Task Finder aprono il file sorgente, Task Editor o entrambi.",
+      "taskFinderResultBehaviorSection": "Comportamento dei risultati",
+      "taskFinderResultEditorOnly": "Solo Task Editor",
+      "taskFinderResultSourceAndEditor": "File sorgente + Task Editor",
+      "taskFinderResultSourceOnly": "Solo file sorgente",
       "taskFinderSection": "Ricerca attività",
       "taskFinderShortcutDuplicate": ".{{shortcut}} è già usato da {{label}}.",
       "taskFinderShortcutInputDesc": "Inserisci 1–3 lettere o numeri senza punto. Lascia vuoto per disattivare questa scorciatoia.",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ad64a5df4f3a736dba7079bbf14be99f0fd5fa743132fd2296119cf43e52e00f"
+  "sourceVersion": "6a326f2916ac25cdebaecb983b9c7b7316fddd5a74ffd47c607fa6b6de2d0207"
 }

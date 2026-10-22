@@ -294,6 +294,8 @@ function pickTaskUiPreferenceStoreSettings(settings: OperonSettings): TaskUiPref
 		kanbanTaskShowNoteAction: settings.kanbanTaskShowNoteAction,
 		kanbanTaskShowSubtaskAction: settings.kanbanTaskShowSubtaskAction,
 		kanbanTaskShowPlainCheckboxAction: settings.kanbanTaskShowPlainCheckboxAction,
+		taskFinderFileResultBehavior: settings.taskFinderFileResultBehavior,
+		taskFinderInlineResultBehavior: settings.taskFinderInlineResultBehavior,
 		taskFinderCompactChips: settings.taskFinderCompactChips,
 		taskFinderDefaultScope: settings.taskFinderDefaultScope,
 		taskFinderRememberLastScopes: settings.taskFinderRememberLastScopes,

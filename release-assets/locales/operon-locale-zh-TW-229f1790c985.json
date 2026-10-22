@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3675,
-  "keyFingerprint": "57d67a9984c729c4cd76cf300394c269c64fa0383122186c3ebacb0b08313361",
+  "keyCount": 3684,
+  "keyFingerprint": "d125ce7b4ceb3be4291dcd87d65db3e716abb95a22971067519e58452b406682",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2733,6 +2733,8 @@
       "taskEditorWorkflowPickersMoveUp": "上移",
       "taskEditorWorkflowPickersReorder": "重新排序工作流選擇器",
       "taskFinderBehaviorSection": "搜尋行為",
+      "taskFinderFileResultBehavior": "檔案任務結果",
+      "taskFinderFileResultBehaviorDesc": "選擇在 Task Finder 中選取檔案任務時開啟的內容。",
       "taskFinderHotkeysSection": "範圍快捷指令",
       "taskFinderIconsMoveDown": "下移",
       "taskFinderIconsMoveUp": "上移",
@@ -2740,12 +2742,19 @@
       "taskFinderIconsSection": "任務查詢器標籤",
       "taskFinderIconsSectionDesc": "「任務查詢器標籤」控制任務查詢器結果中出現哪些緊湊標籤及其順序。標籤僅為視覺效果，不使用標籤顯示模式切換。",
       "taskFinderIconsToggleTitle": "切換任務查詢器標籤",
+      "taskFinderInlineResultBehavior": "行內任務結果",
+      "taskFinderInlineResultBehaviorDesc": "選擇在 Task Finder 中選取行內任務時開啟的內容。",
       "taskFinderRecentModifiedDays": "最近修改視窗",
       "taskFinderRecentModifiedDaysDesc": "「最近修改」按鈕在列出已更新任務時考慮的天數。",
       "taskFinderRecentModifiedDaysOptionMany": "{{count}} 天",
       "taskFinderRecentModifiedDaysOptionOne": "1 天",
       "taskFinderRememberLastScopes": "記住上次範圍",
       "taskFinderRememberLastScopesDesc": "以上次選擇的範圍按鈕和專案選擇重新開啟任務查詢器。關閉則僅以行內任務和檔案任務開始。",
+      "taskFinderResultBehaviorDesc": "選擇 Task Finder 結果開啟原始檔案、Task Editor 或同時開啟兩者。",
+      "taskFinderResultBehaviorSection": "結果行為",
+      "taskFinderResultEditorOnly": "僅 Task Editor",
+      "taskFinderResultSourceAndEditor": "原始檔案 + Task Editor",
+      "taskFinderResultSourceOnly": "僅原始檔案",
       "taskFinderSection": "任務查詢器",
       "taskFinderShortcutDuplicate": ".{{shortcut}} 已被 {{label}} 使用。",
       "taskFinderShortcutInputDesc": "輸入1–3個字母或數字，不含點號。留空以停用此範圍快捷指令。",
@@ -3720,5 +3729,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "ab16b2512434d2e4a7aa87743fb51e2f2df3e4d941af62fd8c46c1ac624773b1"
+  "sourceVersion": "ae862668f56d9871eed0cb0f10815a6efce2c7c119d4adb20c2348bacc6db42e"
 }
