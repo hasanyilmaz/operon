@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-19T13:38:56+02:00
+Updated: 2026-10-22T21:53:13+02:00
 ---
 
 # Task Creator
@@ -50,6 +50,12 @@ Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Ty
 
 Description and Note support default and colored highlights. In the Live Preview-style editor, the active highlight keeps Obsidian's color control where supported; the saved Markdown retains its color marker. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the six colors and plain-text syntax.
 
+### Custom keys and normal properties
+
+Eligible active [[DOCS-040 Custom keys|Custom Keys]] can be offered before they have been used in a note. Supported normal Obsidian properties used in the vault remain available, and fields supplied by the selected template or already in your draft are retained. A deleted, unused custom key does not return solely because its old type declaration still exists. Surface visibility and supported-type rules still apply.
+
+Custom fields use their configured icon, including when a template exposes them through a native property control. Without a configured icon, the type icon is used. Checkbox value indicators and genuine read-only warnings keep their own meaning. See [[DOCS-115 File task property columns|Vault Properties]] for native property controls.
+
 ## Review a template before creating
 
 Both **Inline** and **File** mode can prepare a template's properties in Task Creator. Choose the template with the bottom selector, which displays its selected name. The template suggestion in the description's field menu says **Pick a Template**.
@@ -85,7 +91,7 @@ Set **Default inline task template** under **Tasks → Inline Tasks** independen
 
 ## Where the task lands
 
-When you save, an inline task follows your [[DOCS-136 Task Router|Task Router]] destination and parent-placement rules. **Ask Every Time** opens a compact searchable picker with the active file, parent location, recent targets, and frequently used files first. Cancelling the picker keeps your draft. A file task is created in your configured file-task location. See [[DOCS-008 Essential settings to configure first|Essential settings to configure first]] for the initial setup.
+When you submit, an inline task follows your [[DOCS-136 Task Router|Task Router]] destination and parent-placement rules. With **Ask Every Time**, Creator closes while a compact searchable picker asks for the target, with the active file, parent location, recent targets, and frequently used files first. Cancelling the picker returns you to the preserved draft. A file task is created in your configured file-task location. See [[DOCS-008 Essential settings to configure first|Essential settings to configure first]] for the initial setup.
 
 > **MEDIA-DOCS-020-2:** The Task Creator in inline-task mode (with Parent task selection), showing where the new note will be created.
 
@@ -99,6 +105,10 @@ On desktop, Creator uses the shared [[DOCS-098 Workspace Tweaks|Background dimmi
 
 ## After creating
 
+Once a valid **Inline** or **File** submission is accepted, Task Creator closes immediately. Creation continues in the background, and the normal completion notice still appears. Closing the window at this point means the request has started, not that the task has already been saved. Required fields and template checks still apply before submission.
+
+If creation fails, the entered draft remains available to correct or retry; an uncertain write is not automatically retried. If you have already opened a newer Creator, the earlier result does not close or overwrite it. A draft awaiting restoration is shown after the newer Creator has left.
+
 Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structured fields, or recover it later with [[DOCS-027 Task Finder|Task Finder]]. If you picked the wrong shape, you can convert between inline and file forms at any time. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 
 ## FAQ
@@ -108,6 +118,8 @@ Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structu
 **Can I create a task while reading another note?** Yes. The Task Creator works from anywhere, which is its main advantage over editing a line in place.
 
 **Can Task Creator open in File mode by default?** Yes. Enable **Default to File Task in Task Creator** under **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults**.
+
+**The window closed before the creation notice. Is that expected?** Yes. Creator closes as soon as a valid submission starts, while the task is created in the background. If a destination picker appears, finish that choice to continue.
 
 **Where are the reminder buttons?** Their permanent controls are hidden by default; templates may expose them in the draft. Turn them on in **Settings → Operon → Interface → Task Chips**, on the **Task Creator Chips** subpage.
 

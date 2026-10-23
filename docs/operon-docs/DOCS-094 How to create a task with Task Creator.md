@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-10-13T17:06:30+02:00
+Updated: 2026-10-22T21:53:13+02:00
 ---
 
 # How to create a task with Task Creator
@@ -94,12 +94,14 @@ A parent can also decide **where** an inline task is saved. Configure **Parent-A
 
 You finish by choosing the task's shape with the **Inline** and **File** buttons at the bottom, and the two save differently:
 
-- **Inline** creates the task directly as an [[DOCS-011 Inline tasks|inline task]] with the fields you set, following your inline-task settings for where it is placed. With **Ask Every Time**, choose a destination in the searchable target picker; cancelling keeps your draft.
+- **Inline** creates the task as an [[DOCS-011 Inline tasks|inline task]] with the fields you set, following your inline-task settings for where it is placed. With **Ask Every Time**, Creator closes while you choose a destination in the searchable target picker; cancelling returns you to the preserved draft.
 - **File** creates a [[DOCS-013 File tasks|file task]], a note of its own, from a **file-task template**. Review the selected template and its prepared fields before creation; choose a template if none is selected. The new note is created from that template and your edits. See [[DOCS-024 Task templates|Task templates]].
 
 If **Default to File Task in Task Creator** is enabled, the creator reaches this step with **File** already selected. If **Default file task template** is also set, that template is preselected; you can still change it for the current task before saving.
 
-Inline metadata or File frontmatter is written for you, and the task appears in your views right away.
+After a valid submission, Creator closes immediately while creation continues in the background. The normal completion notice still appears, and the task becomes available in your views after it is created and indexed. Operon writes the Inline metadata or File frontmatter for you; you do not need to keep the form open.
+
+If creation fails, your draft remains available. Opening another Creator meanwhile is safe: the earlier result does not close it or replace its fields. For the full submission and draft-restoration behavior, see [[DOCS-020 Task Creator|Task Creator]].
 
 ## Why the flow works this way
 

@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-22T22:06:42+02:00
 ---
 
 # Time tracking
@@ -16,6 +16,10 @@ Time tracking records the actual effort you spend on a task, so you can compare 
 ## Start and stop
 
 Run **Start/stop time tracker** on a task to begin timing, and run it again to stop. Run it on a different task to switch what you are tracking. You can also start or stop from a task's [[DOCS-042 Contextual menu actions|contextual menu]].
+
+In the contextual menu, the same action shows **Stop Timer** with a stop icon only for the task whose timer is running. Other eligible tasks still show **Start Timer**. Starting one of them uses the normal switch to that task; stopping the active task saves its session through the usual time-tracking flow. This behavior is shared by the supported menu surfaces, including task rows, cards, Tables, Calendar, and Kanban.
+
+The menu reflects the task you opened it for. Stop checks that the same task and session are still active before saving. If tracking changes while the stop request is pending, that request leaves the newer session running. Existing task-state and surface restrictions still determine whether the timer action is offered.
 
 ## The fields involved
 
@@ -77,9 +81,13 @@ Open the **Time Session History** panel to see and edit the sessions you have tr
 
 **TrackTime or FlowTime?** Use TrackTime to simply log effort, and FlowTime when you want a focused, timeboxed session.
 
+**Why does another task still show Start Timer while a timer is running?** Start/Stop is specific to the task whose menu you opened. Only the currently tracked task shows Stop Timer; Start Timer on another task switches tracking to it.
+
 ## Settings
 
 Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting and the status bar timer, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
+
+To choose where the contextual action appears, use **Interface → Context Menu**. The single **Start Timer** row controls both Start and Stop appearances, their order, and their allowed surfaces; there is no separate Stop Timer setting. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
 ## Related
 

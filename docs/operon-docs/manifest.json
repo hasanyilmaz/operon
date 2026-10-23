@@ -104,13 +104,13 @@
     },
     {
       "path": "DOCS-020 Task Creator.md",
-      "sha256": "1cf43f713545b1cf1e121ce5c661bdb2d2674d695614bd04d6fc5b4bd23f896c",
-      "bytes": 11310
+      "sha256": "13eeba357e88754d8e2879f6ffd9055e72c3e9a083bcefd48fd63047dde14220",
+      "bytes": 13052
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "6b591089dd0cd3e7abec2d40f38be7f90505996206b701b4fbccba1393fb27e8",
-      "bytes": 17153
+      "sha256": "5d9504cf5d3ef7b1ad1a53eebd1039837a03be51e3acdebee9de4483c8f2e448",
+      "bytes": 21553
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -134,13 +134,13 @@
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
-      "sha256": "b18df88a28bdeedfab8c426aa703bfaebab16ec5780d9b02b2f5e3a40931e893",
-      "bytes": 4168
+      "sha256": "3a01d4d6c85e8de58e6d09c116c9a03851a5669beac107a301281ac67736041a",
+      "bytes": 4432
     },
     {
       "path": "DOCS-027 Task Finder.md",
-      "sha256": "f661f881664d2bf3ce80320c3eb7e1c7b34c87a80492286ba08e5b0b13b2875e",
-      "bytes": 9846
+      "sha256": "27dd18205909b5035b403de2cb7f814cebf46959487ca1ca10ac9dfe9fdbc76e",
+      "bytes": 11982
     },
     {
       "path": "DOCS-028 Calendar overview.md",
@@ -174,8 +174,8 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "8b92129ba8cae734397f4882b7a95d02de776886a390cddd008291debb637a49",
-      "bytes": 5307
+      "sha256": "96b4763a0def02101faeff315e139df2163133517fde5c009d6eafa69be221e8",
+      "bytes": 6594
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
@@ -204,8 +204,8 @@
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "72850c41886e00683661d21185940b8dd217de17b7c00c30bff5c45bb73280e7",
-      "bytes": 8118
+      "sha256": "f7abb2e0604a217eb613d88b10cb1621cf134f8a892b2263c0c689de2ce6a241",
+      "bytes": 12566
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -214,13 +214,13 @@
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
-      "sha256": "21567a1be8133950bc9f9e822375da13a372c969ee8519c9e9cc3afb02c1f961",
-      "bytes": 7923
+      "sha256": "3656fce33f18f69f1c5334513c302740d120fd9346ecbefd544c23b7d38fe60a",
+      "bytes": 9244
     },
     {
       "path": "DOCS-043 Settings search.md",
-      "sha256": "08801286dcbbc0a9c52bcac80182ee1ace32240df6fee765bf1e2b4c929fda55",
-      "bytes": 3869
+      "sha256": "d343ef8b0830750b5d5b505cbba7e03ca85622ce5eb199710a8c3a16aff61a1b",
+      "bytes": 6442
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
@@ -474,8 +474,8 @@
     },
     {
       "path": "DOCS-094 How to create a task with Task Creator.md",
-      "sha256": "ba5a9a04ad45502fc7f8018301b797ddfffcc78325420486fdd45d3f0157cfb7",
-      "bytes": 10377
+      "sha256": "2fc1e240e00ffe5e66c750f3b4b373f3efa4694a5cc893b2388718dbf4695039",
+      "bytes": 10882
     },
     {
       "path": "DOCS-095 Calendar Task Pool.md",
@@ -494,8 +494,8 @@
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
-      "sha256": "191074069fdb8b5fe4c0ddcefafb8871d2b01446a01ffb51dc2f81213f995d40",
-      "bytes": 7361
+      "sha256": "178dfb735cba988d52e7c88c10418d973faf7bfcff3660a63815aa0e8d893c2d",
+      "bytes": 8223
     },
     {
       "path": "DOCS-099 State Icons.md",
@@ -509,8 +509,8 @@
     },
     {
       "path": "DOCS-101 Mobile General.md",
-      "sha256": "84433195e1e566ce0ae39fabef9d70442e7d8a7761bc409ec7db53e2bc1d6e40",
-      "bytes": 8014
+      "sha256": "24eb56c227bc5ba53df47abf4af989cd6d5052f8923f968b1a1c02641f392b05",
+      "bytes": 8391
     },
     {
       "path": "DOCS-102 Do you need to use all of Operon.md",
@@ -579,8 +579,8 @@
     },
     {
       "path": "DOCS-115 File task property columns.md",
-      "sha256": "fa0879d4643d93c580343f8e85bad8fc00cca6e37e8ef2d53581df4f030e8a2d",
-      "bytes": 9580
+      "sha256": "9cb6014adf8cdb745f2b84e8410eba73e76ca71ae83b1a59a5bba39478675f8b",
+      "bytes": 11103
     },
     {
       "path": "DOCS-116 Reminders.md",
@@ -674,8 +674,8 @@
     },
     {
       "path": "DOCS-134 Backup and restore settings.md",
-      "sha256": "6f1d5ab2f643a5c01b7d3636faeea565a52db401890bb048df0ef4d144d13450",
-      "bytes": 6880
+      "sha256": "7df210059112d463d7b340df5bb328762d13853e732934e9e20660b65df3a7e9",
+      "bytes": 8819
     },
     {
       "path": "DOCS-135 Convert task to plain.md",
@@ -759,9 +759,9 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "01f274f47072f06602db44907c8a9dbb2628b75fb422cf402a7bdc854ea220b3",
-      "bytes": 14166
+      "sha256": "4be0226c7397796d00ceed46d01c071cc660942e6ea6c488266b4d632f8b3db0",
+      "bytes": 19422
     }
   ],
-  "generatedAt": "2026-10-20T14:46:12.368Z"
+  "generatedAt": "2026-10-23T15:13:36.743Z"
 }

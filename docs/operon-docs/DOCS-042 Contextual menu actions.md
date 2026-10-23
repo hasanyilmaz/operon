@@ -2,7 +2,7 @@
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-22T22:06:42+02:00
 ---
 
 # Contextual menu actions
@@ -28,7 +28,15 @@ Grouped by what they do:
 - **Reminders**: **Fixed Reminder** opens the **ReminderDatetimes** picker, **Relative Reminder** opens the **ReminderRules** picker, each icon following its own canonical property. See [[DOCS-116 Reminders|Reminders]].
 - **Remove**: **Delete task**.
 
-On desktop, **Open Source** opens the [[DOCS-151 Lightbox|shared lightbox]]. For an Inline task, it resolves the current line and places the caret immediately after the description in the editable Markdown view, without selecting text. A File task opens its source file normally. This is navigation, not a task edit; mobile source navigation keeps its existing behavior.
+On desktop, **Open Source** opens the [[DOCS-151 Lightbox|shared lightbox]]. For a Markdown task, it starts with only the source, independently of the editor's source-opening preferences. For an Inline task, it resolves the current line and places the caret immediately after the description in the editable Markdown view, without selecting text. A File task opens its source file normally. This is navigation, not a task edit; mobile source navigation keeps its existing behavior.
+
+**Open editor** follows the normal [[DOCS-021 Task Editor|Task Editor]] opening preferences. Task Finder's separate Result Behavior settings do not change this explicit menu action.
+
+### Start and stop the current task's timer
+
+The timer action uses one menu position. When that task's timer is running, it shows **Stop Timer** with the stop icon. Other eligible tasks still show **Start Timer**, even while another task is being tracked. The label reflects the task whose menu you opened, not a global stop command.
+
+Stopping uses the existing time-tracking save path for that task's session. Starting another task uses the normal timer-switching behavior. Stop checks that the same task and session are still active before saving; a change while the request is pending leaves the newer session running. These rules apply across the supported contextual menu surfaces; see [[DOCS-034 Time tracking|Time tracking]] for session behavior.
 
 ## Interacting with an open menu
 
@@ -61,6 +69,8 @@ You control the menu in **Settings → Operon → Interface → Context Menu**:
 - **Menu Actions & Order** enables actions and sets their order. Enabled actions still appear only when the task and surface support them.
 - **Action Visibility by Surface**, also called the **Contextual Menu Matrix**, selects where each enabled action may appear.
 
+The **Start Timer** action row controls both its Start and Stop appearances. There is no separate Stop Timer row to enable, order, or configure in the matrix. The same enabled state and surface permissions apply in either case.
+
 ### Keep an action's position
 
 Turning an action off leaves its row in place and hides its matrix column. The up/down arrows can move both enabled and disabled actions. Re-enabling an action restores it at its saved position, with its previous surface selections. The live menu and matrix follow the enabled actions in that order; disabling an action does not move it into a separate group.
@@ -85,6 +95,7 @@ Tune this once to keep the menu short and relevant to how you work.
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-034 Time tracking|Time tracking]]
 - [[DOCS-004 Operon system map|Operon system map]]
 - [[DOCS-116 Reminders|Reminders]]
 - [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]

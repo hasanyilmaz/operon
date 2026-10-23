@@ -2,7 +2,7 @@
 Notes: A file task's subtask tree, embedded automatically in its own note
 Icon: file-search
 Color: "#0284c7"
-Updated: 2026-10-19T15:02:26+02:00
+Updated: 2026-10-22T21:43:14+02:00
 ---
 
 # Dynamic file task filter
@@ -24,7 +24,9 @@ The Dynamic File Task Filter gives a file task a live view of its own subtasks, 
 
 The filter renders inside the file task's note in both Reading View and Live Preview. It does not show up in plain notes or inline tasks, only in YAML file tasks, because it keys off the note's own `operonId`. You can place it at the **top** or the **bottom** of the file body, whichever suits how you read your tasks.
 
-The filter also appears in the [[DOCS-021 Task Editor|Task Editor]] File Body panel and in real Markdown files opened through the [[DOCS-151 Lightbox|lightbox]], using the same top or bottom placement. It stays out of Markdown table cells and short Description/Note editors. Inline task features inside those editors are separate from this file-level filter.
+The filter also appears in the native Markdown source panel alongside the desktop [[DOCS-021 Task Editor|Task Editor]] and in source-only [[DOCS-151 Lightbox|lightboxes]]. These use the same Reading and Live Preview behavior and the same top or bottom placement. Hiding Properties and YAML in the lightbox does not hide the filter. In Source mode, the filter is not rendered; returning to Reading or Live Preview brings it back.
+
+The filter stays out of Markdown table cells, short Description/Note editors, and checkbox popovers. Inline task features inside those compact editors are separate from this file-level filter.
 
 ## The locked condition
 

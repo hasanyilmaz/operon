@@ -1,13 +1,13 @@
 ---
-Notes: The dialog for editing every task field
+Notes: Task fields, native Markdown alongside the editor, and automatic saving
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-22T21:43:14+02:00
 ---
 
 # Task Editor
 
-The Task Editor is where you view and change a task's structured fields without editing Markdown by hand. Inline and File tasks share the structured editing workflow. The available source-body controls and layout depend on the device and selected editor layout.
+The Task Editor is where you view and change a task's structured fields without editing Markdown by hand. Inline and File tasks share the structured editing workflow. On desktop, an existing Markdown task can open its native source alongside those fields in one workspace.
 
 > **MEDIA-DOCS-021-1:** The Task Editor open on a task, showing its fields and, for a file task, the Markdown body.
 
@@ -42,9 +42,7 @@ The Task Editor exposes the canonical fields as proper controls:
 - Task Type as a user-managed Text classification.
 - Task Image as one media reference and Task Gallery as an ordered list. See [[DOCS-138 Task images and galleries|Task images and galleries]].
 
-On desktop and tablet, the editor can show a File Task’s Markdown body or an Inline Task’s source note. With enough room the body can sit beside the fields; a narrow layout uses a panel. On phones, the body button and embedded body panel are unavailable in both editor layouts; task properties remain editable. It can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]].
-
-When **File Body** opens for an Inline task, its initial caret is immediately after the description's last character, before trailing metadata, with no text selected. The position follows the task in the current body draft, including after lines have been added or removed. File tasks keep their normal body position. This does not change the file-path header's existing opening behavior. The same Inline position is used by [[DOCS-151 Lightbox|Source previews and Cmd/Ctrl source opening]].
+The editor can also **Show checkboxes** for the task's [[DOCS-017 Plain checkbox lists|plain checklist]]. Description, Notes, and the checkbox popover keep their own editing controls; they are separate from the native source panel described below.
 
 The editor's Date and Date & time controls follow **Settings → Operon → Core → General → Language & Formats → Date format** for their visible date part, while timed values also follow the separate **Time format** setting. This does not change the value passed to the picker or written back to Markdown; task dates remain canonical ISO values. See [[DOCS-063 Date and time picker|Date and time picker]].
 
@@ -52,7 +50,23 @@ The editor's Date and Date & time controls follow **Settings → Operon → Core
 
 ![MEDIA-DOCS-021-3 - Task Editor file task layout](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-021-3.png)
 
-On desktop, the modal uses the shared [[DOCS-098 Workspace Tweaks|Background dimming]] preference. An Operon chip in **File Body** can open a [[DOCS-151 Lightbox|lightbox]] above the Editor; closing that preview returns to the Editor without dismissing its draft. The Editor's own property and Description/Note controls keep their editing behavior. This does not add Lightbox side controls to the Editor or change non-modal Editor uses.
+## Native Markdown alongside the editor
+
+For existing Markdown tasks on desktop, the Task Editor and source share one [[DOCS-151 Lightbox|lightbox]] level. By default, a File task opens both panels and an Inline task opens only the Task Editor. **Show source** adds the source to an editor-only workspace. Inline source opening goes to the selected task's current position.
+
+For a Markdown task, **Open Source** starts with only Markdown, independently of the editor's opening preferences. A **Show task editor** button appears when that source has a suitable task context. The editor does not open automatically as you browse until you choose that button. Task Finder can choose a different starting combination for its own results; see [[DOCS-027 Task Finder|Task Finder]].
+
+When both panels are visible, **Hide source** and **Hide task editor** let you work with just one. Hiding a panel keeps its draft and scroll position in the same workspace; showing it again resumes that panel. You cannot hide the last visible panel. Source size and tab/split controls are available only while the source is visible.
+
+The source is Obsidian's native Markdown view, with Reading, Live Preview, and Source modes. The lightbox shows the body while hiding Properties and a closed opening YAML block. The YAML stays in the file, and File task field edits can still update it. Inline task field edits update the task's own line. To edit the frontmatter directly, open the file in a normal Obsidian tab. See [[DOCS-151 Lightbox|Lightbox]] for source positioning, controls, and save protection.
+
+The panels start at the same top edge. The editor fits its content up to its available height, then scrolls internally. When shown alone, it stays on the selected side and keeps the top position determined by the source height preference instead of centering itself vertically. In a window too narrow for both panels, the source hides temporarily and returns when space permits. This does not change the saved source size or your panel visibility choice.
+
+If you navigate the source to another File task, the enabled editor follows that task. A normal note hides the editor; returning to a File task shows it again unless you hid it yourself. Moving to a heading or switching Markdown mode within an Inline task's source keeps the selected task. Operon follows task identity rather than choosing a different task from its line number or position in a list.
+
+Opening another task editor or supported preview from this workspace creates a new level above it. The previous level remains visible but cannot receive input until you return. The two panels together count as one level for [[DOCS-098 Workspace Tweaks|Background dimming]]. Closing the upper level restores the previous workspace and focus.
+
+This shared source-and-editor workspace is desktop-only. Phones, tablets, new-task forms, special recurrence-instance editors, and Excalidraw task sources keep their existing editing routes. The retired File Body panel is no longer part of the Task Editor.
 
 ## Sections and property rows
 
@@ -62,9 +76,9 @@ Open an editable property's name or value to use its control. On a mouse, the ro
 
 ### Additional properties
 
-**Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout even though the embedded body is unavailable. Use the section's add control for supported properties and each value's control to edit it. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
+**Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout. Use the section's add control for supported properties and each value's control to edit it. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
 
-**Add existing property** also lists eligible custom keys enabled for the editor before they have been used in any note. Operon automatically fills their missing Obsidian type declarations; see [[DOCS-040 Custom keys|Custom keys]]. Explicit type conflicts and incompatible values remain protected.
+**Add existing property** lists eligible custom keys enabled for the editor even before they have been used in a note, alongside supported normal properties used in the vault. An unused property does not return to this list solely because an old type declaration remains after its custom key was deleted. Properties already present on the task or in the current draft remain available. Operon fills missing type declarations for eligible custom keys and uses their configured icons; explicit type conflicts and incompatible values remain protected. See [[DOCS-040 Custom keys|Custom keys]].
 
 Checkbox property icons reflect their value: **true** uses a checked box, **false** an empty box. An unset checkbox uses its configured property icon, whose default is a dashed square. Existing custom icon choices are retained for that unset state; true/false indicators are automatic.
 
@@ -84,7 +98,7 @@ The desktop-style Sessions header uses a **clock-plus** button for **Add session
 
 Phones use the desktop-style editor by default. To use the existing compact mobile editor instead, enable **Mobile → Task Editor → Use mobile Task Editor on phones**. The choice applies when the next editor opens; an already open editor keeps its layout. The compact layout retains its own mobile toolbar and workflow preferences.
 
-Tablets always use the desktop-style layout. Its touch controls stay the same size when a mouse or trackpad is attached. On phone and tablet, property names move above values when the main editing panel is 420 px wide or narrower; a wider panel uses two columns. This follows the panel width, including a tablet's split view or a body panel beside the fields. See [[DOCS-101 Mobile General|Mobile General]] for the device comparison.
+Tablets always use the desktop-style layout. Its touch controls stay the same size when a mouse or trackpad is attached. On phone and tablet, property names move above values when the main editing panel is 420 px wide or narrower; a wider panel uses two columns. This follows the available panel width, including a tablet's split view. Neither device uses the desktop native source-and-editor workspace or the retired File Body panel. Task-property editing, Description/Notes, and the checkbox popover remain available. See [[DOCS-101 Mobile General|Mobile General]] for the device comparison.
 
 ## Copy a task wikilink
 
@@ -141,6 +155,12 @@ Both rows are **hidden by default.** Turn them on in **Settings → Operon → I
 
 The Task Editor autosaves your changes two seconds after your last edit, so you do not press a save button while working through a task's fields. Closing the editor, with its close control, a keyboard shortcut, or the backdrop, saves any pending change immediately rather than waiting out that two seconds. This timing is fixed and not a setting.
 
+For the same task, source changes refresh fields you have not edited. If the same field changes in the source while you have an unsaved Task Editor edit, your local draft is kept and the next normal save applies it. Changes to other source fields are preserved. Refreshing from the source does not itself mark the editor as changed or start another save.
+
+The desktop workspace also saves pending Task Editor changes before navigating to a different note or transferring the source to a tab or split. Hidden panels participate in that save. A failed save or a new edit made during the save keeps the current context and draft available rather than silently discarding it. Native source edits continue through Obsidian's own save path, including content not yet written to disk.
+
+Task identity is checked when saving, including after a file moves or is renamed. If the task is missing or its identity is ambiguous, Operon keeps the draft instead of writing to an old location or recreating the task.
+
 ## Description and Notes
 
 The **Description** is the task's one-line title. **Notes** are a separate multiline field for the detail that belongs with the task but does not belong in its title. In the Notes control, use **Shift+Enter** to insert a line break; pasted multiline text and intentional blank lines are kept. Normal **Enter** keeps the existing action for the surface instead of becoming a second line-break command. On phones, normal Enter keeps its one-line behavior by inserting a space, while Shift+Enter inserts a note line break.
@@ -155,7 +175,7 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 ## FAQ
 
-**Is the editor different for inline and file tasks?** Both use structured fields. Desktop and tablet also support embedded source/body editing; phones do not show the body button or panel in either layout.
+**Is the editor different for inline and file tasks?** Both use structured fields. On desktop, File tasks open with their native source by default, while Inline tasks start with only the editor. You can change these starting choices independently. Phone and tablet editing does not include this shared source panel.
 
 **Will editing here change my Markdown?** Yes. The Task Editor writes back to the task's Markdown, inline line or file frontmatter, so your notes stay the source of truth.
 
@@ -171,12 +191,25 @@ You can always edit the raw `{{key:: value}}` text, and Operon will read it. But
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Task Editor**, under **File Body** for file-body behavior and **Property Visibility & Order** for property visibility and ordering. The latter was previously called Workflow Pickers. **Sections and Order** configures the desktop-style sections. The phone layout selector and the existing compact layout’s preferences are under **Mobile → Task Editor**; selecting one layout does not overwrite the other’s preferences.
+Open **Settings → Operon → Interface → Task Editor**. **Layout and opening** appears before **Sections and Order**:
+
+| Setting | Choices | Default |
+|---|---|---|
+| Task Editor position | Right / Left | Right |
+| Open source with file task editor | On / Off | On |
+| Open source with inline task editor | On / Off | Off |
+
+These preferences apply to newly opened desktop workspaces. Open levels keep their position and starting preferences; changing a setting does not rearrange them. Turning a source-opening option off starts with only the editor, and **Show source** remains available. The position preference also mirrors the controls on other desktop lightboxes. It does not reverse actions such as **Open to the right**.
+
+**Sections and Order** configures the desktop-style sections. **Property Visibility & Order**, previously called Workflow Pickers, controls property visibility and ordering. The old **File Body**, **Show line numbers in Task Editor**, and **Highlight active line in Task Editor** controls are no longer offered; the source uses Obsidian's native editor preferences and theme styling.
+
+The phone layout selector and compact layout preferences are under **Mobile → Task Editor**. Selecting one layout does not overwrite the other's preferences. The desktop **Layout and opening** options do not change phone or tablet editing.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-020 Task Creator|Task Creator]]
+- [[DOCS-151 Lightbox|Lightbox]]
 - [[DOCS-012 Inline task syntax|Inline task syntax]]
 - [[DOCS-116 Reminders|Reminders]]
 - [[DOCS-016 Parent and sub-tasks|Parent and sub-tasks]]
