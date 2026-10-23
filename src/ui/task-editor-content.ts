@@ -3125,7 +3125,6 @@ export class TaskEditorContent {
 		let timeSignature: string | null = null;
 		const render = (next: EditorProgressSectionState | null) => {
 			const focused = summary.ownerDocument.activeElement;
-			const closingPopoverHadFocus = !next?.hasSubtasks && focused?.closest('.operon-subtasks-filter-popover') != null && this.rootEl?.contains(focused);
 			summary.hidden = !next || !(next.hasSubtasks || next.hasPlainCheckboxes || next.totalDuration > 0 || next.totalEstimate > 0);
 			if (summary.parentElement?.hasClass('operon-task-editor-section-host')) summary.parentElement.hidden = summary.hidden;
 			const nextTimeSignature = JSON.stringify(next && [next.trackedSubtaskCount, next.estimatedSubtaskCount, next.ownDuration, next.subtaskDuration, next.totalDuration, next.ownEstimate, next.subtaskEstimate, next.totalEstimate]);
@@ -3153,7 +3152,7 @@ export class TaskEditorContent {
 				this.closeStatsSubtasks?.();
 				this.closeStatsSubtasks = null;
 			}
-			if (closingPopoverHadFocus || (summary.hidden && focused && summary.contains(focused)) || [subtasks.button, checkboxes.button].some(button => button === focused && button.hidden)) {
+			if ((summary.hidden && focused && summary.contains(focused)) || [subtasks.button, checkboxes.button].some(button => button === focused && button.hidden)) {
 				const target = [subtasks.button, checkboxes.button].find(button => !button.hidden && !button.disabled);
 				if (target) target.focus({ preventScroll: true });
 				else if (!summary.hidden) title.focus({ preventScroll: true });

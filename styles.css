@@ -36418,13 +36418,6 @@ body .operon-task-editor:not(.operon-task-editor-mobile) button.operon-editor-st
 	background: var(--operon-stats-subtasks-color);
 }
 
-.operon-task-editor:not(.operon-task-editor-mobile) .operon-subtasks-filter-popover {
-	width: min(640px, calc(100vw - 32px));
-	max-width: 100%;
-	max-height: min(560px, 70vh);
-	overflow: auto;
-	padding: 12px;
-}
 
 .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-time-summary[hidden] {
 	display: none;

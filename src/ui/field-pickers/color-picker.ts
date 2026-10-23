@@ -1,9 +1,9 @@
 import { Notice, setIcon } from 'obsidian';
 import { t } from '../../core/i18n';
-import { getOwnerWindow } from '../../core/dom-compat';
+import { asHTMLElement, getOwnerWindow } from '../../core/dom-compat';
 import { localizeColorPaletteNames, type ColorPaletteEntry } from '../../core/color-palette';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
-import { createButton, createFloatingPanel, focusFloatingInput, type FloatingHostOptions } from './common';
+import { createButton, createFloatingPanel, focusFloatingInput, getFloatingRectAnchorOwner, type FloatingHostOptions } from './common';
 
 interface ColorPickerOptions extends FloatingHostOptions {
 	value?: string;
@@ -194,16 +194,26 @@ function setToneCellSwatch(element: HTMLElement, hex: string | null): void {
 
 export function showColorPicker(anchor: HTMLElement | DOMRect, options: ColorPickerOptions): () => void {
 	let completed = false;
+	const anchorEl = asHTMLElement(anchor) ?? getFloatingRectAnchorOwner(anchor);
+	const editor = anchorEl?.closest<HTMLElement>('.operon-task-editor:not(.operon-task-editor-mobile):not(.operon-task-editor-phone-desktop):not(.operon-task-editor-touch-desktop)');
+	// Keep the full palette in its owning layer, outside the editor's clipped shell.
+	const editorHost = !options.floatingHost
+		? editor?.closest<HTMLElement>('.operon-task-workspace, .operon-task-editor-modal-container')
+		: null;
 	const colorPresets = localizeColorPaletteNames(options.palette);
 	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-color-picker-panel', () => {
 		if (!completed) options.onClose?.();
 	}, {
-		floatingHost: options.floatingHost,
-		floatingScrollHost: options.floatingScrollHost,
-		constrainToFloatingHost: options.constrainToFloatingHost,
+		floatingHost: options.floatingHost ?? editorHost ?? undefined,
+		floatingScrollHost: options.floatingScrollHost ?? (editorHost ? anchorEl?.closest<HTMLElement>('.operon-task-editor-main-panel') ?? getOwnerWindow(editorHost) : undefined),
+		constrainToFloatingHost: options.constrainToFloatingHost ?? (editorHost ? true : undefined),
 		retainInputFocus: options.retainInputFocus,
 	});
 	const ownerWindow = getOwnerWindow(panel);
+	if (editorHost && editor) {
+		const accent = ownerWindow.getComputedStyle(editor).getPropertyValue('--operon-task-editor-accent').trim();
+		if (accent) panel.style.setProperty('--operon-task-editor-accent', accent);
+	}
 
 	const input = panel.createEl('input');
 	input.type = 'text';

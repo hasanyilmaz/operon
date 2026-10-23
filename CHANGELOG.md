@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.
 - **Task Editor and source editing** stay synchronized, preserving untouched source fields and newer drafts while unsaved Task Editor edits win same-field conflicts. Native Properties saves avoid false conflict warnings while retaining protections for task identity and moves, Additional properties, shared buffers, and YAML.
 - Improved **Task Editor opening responsiveness** by preparing native Markdown only when needed and reusing eligible recently closed Markdown views for faster reopening. Panels appear together when ready, with fresh selection, scroll, and undo state for each new session.
-- **Responsive workspaces** preserve saved Markdown sizes and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling.
+- **Responsive workspaces** preserve saved Markdown sizes and keep Task Editor at the source's top alignment even when shown alone. Short editors fit their content, while long editors retain access to the last section through scrolling. The full-size color picker opens beyond narrow editor edges without changing its layout, and **Stats → Subtasks** opens the standard Subtasks window while preserving the editor draft.
 - Unified **lightbox controls** with the selected left/right placement across Markdown, Bases, Tables, web pages, and media previews. Panel toggles sit below Close, height controls in the shared middle rail, and width controls below Markdown; transfer and dimming controls appear with the source. Panels and buttons use **6 px corners**, panel toggles use only Operon tooltips, and a 350 ms initial hover delay preserves immediate keyboard access. Actions stay unchanged, and open previews retain their position.
 - Improved **lightbox Escape handling** so only the top level closes through its normal save checks. Menus, suggestions, and nested pickers keep priority, and hidden overlays no longer block closing.
 
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed, along with **5,240/5,240** local regression tests and manual UI checks.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed; the previous full regression run passed **5,240/5,240**, and focused color-picker/Subtasks checks and manual UI checks passed.
 
 ## [4.1.0] - 2026-10-20
 

@@ -648,7 +648,7 @@ import {
 	operonDynamicFileTaskFilterLivePreviewExtension,
 	renderDynamicFileTaskFilterSurface,
 } from './src/ui/dynamic-file-task-filter';
-import { SubtasksFilterModal, showSubtasksFilterPopover } from './src/ui/subtasks-filter-modal';
+import { SubtasksFilterModal, showSubtasksFilterModal } from './src/ui/subtasks-filter-modal';
 import { FilterSetModal, refreshFilterPreviewModals, refreshFilterSetModals, type FilterModalEvalDeps } from './src/ui/filter-set-modal';
 import { OperonReleaseNotesModal } from './src/ui/release-notes-modal';
 import {
@@ -23845,7 +23845,7 @@ export default class OperonPlugin extends Plugin {
 		const kind = resolveSubtaskActionKind(indexed);
 
 		return {
-			onOpenSubtasksStats: (parentTaskId, anchor) => showSubtasksFilterPopover(anchor, {
+			onOpenSubtasksStats: (parentTaskId, anchor) => showSubtasksFilterModal(this.app, anchor, {
 				parentTaskId, deps: this.buildFilterSurfaceDeps(),
 				onEditFilter: template => this.openDynamicSubtasksFilterSettings(template),
 			}),

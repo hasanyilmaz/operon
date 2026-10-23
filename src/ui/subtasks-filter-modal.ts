@@ -1,8 +1,6 @@
 import { App, Modal, Platform } from 'obsidian';
 import { applyDesktopModalBackdrop } from './modal-backdrop';
-import { createFloatingPanel, closeFloatingPanelsForRoot, requestFloatingInputFocus } from './field-pickers/common';
 import { t } from '../core/i18n';
-import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import type { FilterSet } from '../types/settings';
 import type { EmbedFilterDeps, FilterSurfaceInstance } from './embed-filter-processor';
 import {
@@ -97,39 +95,36 @@ export class SubtasksFilterModal extends Modal {
 	}
 }
 
-/** Show the existing dynamic filter in the Task Editor's owned floating host. */
-export function showSubtasksFilterPopover(anchor: HTMLElement, options: SubtasksFilterModalOptions): () => void {
-	let instance: FilterSurfaceInstance | null = null;
+/** Open the standard Subtasks modal while the editor retains its own draft and lifetime. */
+export function showSubtasksFilterModal(app: App, anchor: HTMLElement, options: SubtasksFilterModalOptions): () => void {
 	let unsubscribe: (() => void) | null = null;
 	let closed = false;
-	let restoreFocus = false;
-	const { panel, close } = createFloatingPanel(anchor, 'operon-floating-panel operon-subtasks-filter-popover', () => {
-		closed = true;
-		unsubscribe?.();
-		unsubscribe = null;
-		closeFloatingPanelsForRoot(panel);
-		if (instance) destroyFilterSurfaceInstance(instance);
-		instance = null;
-		if (restoreFocus && anchor.isConnected) requestFloatingInputFocus(anchor);
-		options.onClose?.();
-	}, {
-		closeOnWindowResize: false,
-		shouldClose: reason => { restoreFocus = reason === 'escape'; return true; },
-		outsideClickExclusions: () => Array.from(panel.parentElement?.querySelectorAll<HTMLElement>('.operon-floating-panel') ?? []).filter(candidate => candidate !== panel),
+	const modal = new SubtasksFilterModal(app, {
+		...options,
+		onClose: () => {
+			if (closed) return;
+			closed = true;
+			unsubscribe?.();
+			unsubscribe = null;
+			options.onClose?.();
+			const focused = anchor.ownerDocument.activeElement;
+			if (!anchor.isConnected || (focused && focused !== anchor.ownerDocument.body && !modal.containerEl.contains(focused))) return;
+			const summary = anchor.closest<HTMLElement>('.operon-editor-time-summary');
+			const target = !anchor.hidden && !anchor.matches(':disabled') && !anchor.closest('[hidden]')
+				? anchor
+				: summary && !summary.hidden
+					? summary.querySelector<HTMLElement>('button:not([hidden]):not([disabled])') ?? summary.querySelector<HTMLElement>('[tabindex="0"]')
+					: anchor.closest('.operon-task-editor')?.querySelector<HTMLElement>('[contenteditable="true"]');
+			target?.focus({ preventScroll: true });
+		},
 	});
-	panel.tabIndex = -1;
-	panel.setAttribute('role', 'dialog');
-	setAccessibleLabelWithoutTooltip(panel, t('filterSets', 'dynamicSubtasksFilterTitle'));
-	instance = createFilterSurfaceInstance(panel.createDiv('operon-subtasks-filter'));
-	const refresh = () => {
-		if (closed || !instance) return;
-		if (!renderSubtasksFilterSurface(instance, options.parentTaskId, options.deps, options.onEditFilter)) close();
-	};
+	const close = () => { if (!closed) modal.close(); };
 	try {
-		refresh();
+		modal.open();
 		if (!closed) {
-			unsubscribe = options.deps.indexer.subscribeIndexUpdates(refresh);
-			requestFloatingInputFocus(panel);
+			const stop = options.deps.indexer.subscribeIndexUpdates(() => { if (!closed) modal.refresh(); });
+			if (closed) stop();
+			else unsubscribe = stop;
 		}
 	} catch (error) {
 		close();
