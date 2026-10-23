@@ -100,7 +100,7 @@ function resolveOperonHoverTooltipColor(taskColor: OperonHoverTooltipColor): str
  * - Use wrapWithOperonHoverTooltip for picker and inline controls that need the standard shell tooltip.
  * - Pass taskColor or a resolved surface accent when the tooltip should show the Operon gradient border.
  * - The gradient is driven by --operon-live-hover-border.
- * - Use bindOperonHoverTooltip only when wrapping the target would break layout or ownership.
+ * - Use bindOperonHoverTooltip for chips and controls inside clipped or scrollable surfaces.
  * - Avoid ad-hoc picker tooltip elements; they bypass shell styling, placement, and theme behavior.
  */
 export function createOperonHoverIndicator(options: OperonHoverIndicatorOptions): HTMLElement {
@@ -113,30 +113,8 @@ export function createOperonHoverIndicator(options: OperonHoverIndicatorOptions)
 	setIcon(button, options.icon);
 	setAccessibleLabelWithoutTooltip(button, options.title ?? '');
 	wrapper.appendChild(button);
-	if (options.contentElFactory) {
-		button.setAttribute('tabindex', '0');
-		let tooltip: HTMLElement | null = null;
-		const prepare = () => {
-			if (!tooltip) {
-				tooltip = createTooltip(options.title, options.titleIcon, options.content, options.contentElFactory?.(), options.tooltipClassName, wrapper);
-				wrapper.appendChild(tooltip);
-			}
-			updateTooltipPlacement(wrapper);
-		};
-		wrapper.addEventListener('mouseenter', prepare);
-		wrapper.addEventListener('focusin', prepare);
-		const cleanupShell = (wrapper as BoundTooltipTarget)._operonHoverCleanup;
-		(wrapper as BoundTooltipTarget)._operonHoverCleanup = () => {
-			cleanupShell?.();
-			wrapper.removeEventListener('mouseenter', prepare);
-			wrapper.removeEventListener('focusin', prepare);
-			tooltip?.remove();
-			tooltip = null;
-			options.onCleanup?.();
-		};
-	} else {
-		wrapper.appendChild(createTooltip(options.title, options.titleIcon, options.content, options.contentEl, options.tooltipClassName, wrapper));
-	}
+	button.setAttribute('tabindex', '0');
+	bindOperonHoverTooltip(button, options);
 
 	return wrapper;
 }

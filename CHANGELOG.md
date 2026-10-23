@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed rich **task-chip and read-only Notes tooltips** being clipped by short Dynamic File Task Filters and other compact task surfaces, preserving their content and mouse/keyboard behavior.
 - Fixed **custom key icons** being replaced by generic property icons in Task Creator, Task Editor, and Table fields, while preserving checkbox states and read-only indicators.
 - Fixed **deleted custom key names** failing to be reused. Unused names can be recreated with another type, and displaying an empty Table column no longer blocks reuse; existing values and real dependencies remain protected.
 - Fixed **deleted, unused custom fields** lingering in Task Editor’s Additional picker, while keeping active custom fields, normal Obsidian properties in use, and task, template, or draft values available.
@@ -38,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed; the previous full regression run passed **5,240/5,240**, and focused color-picker/Subtasks checks and manual UI checks passed.
+- Full local Plugin checks, strict lint, production build, release guard, and code review passed; the previous full regression run passed **5,240/5,240**, and focused notification, tooltip, color-picker/Subtasks checks and manual UI checks passed.
 
 ## [4.1.0] - 2026-10-20
 

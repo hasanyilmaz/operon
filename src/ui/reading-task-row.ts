@@ -28,7 +28,7 @@ import {
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, createOperonHoverIndicator, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, createOperonHoverIndicator } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -415,16 +415,14 @@ export function buildReadingTaskRowElement(
 		if (renderEntry.interactive) {
 			attachReadingChipAction(chip, renderEntry, task, callbacks, undefined, taskColor, options?.retainDom ? () => ({ task, callbacks }) : undefined);
 		}
-		if (isTaskInfoChipKey(renderEntry.key)) {
-			bindOperonHoverTooltip(chip, { title: renderEntry.tooltipTitle, content: renderEntry.tooltipContent, taskColor });
-		}
-		const chipNode = renderEntry.tooltipContent && !isTaskInfoChipKey(renderEntry.key)
-			? wrapWithOperonHoverTooltip(chip, {
-				title: renderEntry.tooltipTitle ?? t('taskEditor', 'details'),
+		if (isTaskInfoChipKey(renderEntry.key) || renderEntry.tooltipContent) {
+			bindOperonHoverTooltip(chip, {
+				title: isTaskInfoChipKey(renderEntry.key) ? renderEntry.tooltipTitle : renderEntry.tooltipTitle ?? t('taskEditor', 'details'),
 				content: renderEntry.tooltipContent,
 				taskColor,
-			})
-			: chip;
+			});
+		}
+		const chipNode = chip;
 		if (renderEntry.externalUrl) {
 			bindExternalLinkContextMenu(chip, renderEntry.externalUrl, renderEntry.externalRawValue);
 		}
@@ -529,6 +527,7 @@ export function buildReadingTaskRowElement(
 	const noteValue = rawNoteValue.trim();
 	if (showNoteAction && readOnly && noteValue) {
 		const noteIndicator = createOperonHoverIndicator({
+			owner: actions,
 			title: t('taskEditor', 'notes'),
 			contentElFactory: () => createCompactTaskMarkdownTooltipContent(actions, noteValue),
 			icon: getConfiguredKeyMappingIcon('note', callbacks.getSettings().keyMappings) || 'notebook-pen',

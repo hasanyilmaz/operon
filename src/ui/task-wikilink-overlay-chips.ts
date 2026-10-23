@@ -21,7 +21,7 @@ import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { resolveTaskDateToneColor } from '../core/task-date-tone';
 import { findStatusDef, Pipeline } from '../types/pipeline';
 import { PriorityDefinition } from '../types/priority';
-import { bindOperonHoverTooltip, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindCompactChipLinkPreview, bindTaskMediaChipPreview } from './compact-chip-link-preview';
 import { bindExternalLinkContextMenu, openExternalUrl } from './external-link-actions';
 import { showLocationMapPreview } from './location-map-preview';
@@ -180,16 +180,14 @@ export function buildTaskWikilinkOverlayChipContainer(
 		if (entry.interactive) {
 			attachOverlayChipAction(chip, entry, callbacks, task);
 		}
-		if (isTaskInfoChipKey(entry.key)) {
-			bindOperonHoverTooltip(chip, { title: entry.tooltipTitle, content: entry.tooltipContent, taskColor });
-		}
-		const node = entry.tooltipContent && !isTaskInfoChipKey(entry.key)
-			? wrapWithOperonHoverTooltip(chip, {
-				title: entry.tooltipTitle ?? t('taskEditor', 'details'),
+		if (isTaskInfoChipKey(entry.key) || entry.tooltipContent) {
+			bindOperonHoverTooltip(chip, {
+				title: isTaskInfoChipKey(entry.key) ? entry.tooltipTitle : entry.tooltipTitle ?? t('taskEditor', 'details'),
 				content: entry.tooltipContent,
 				taskColor,
-			})
-			: chip;
+			});
+		}
+		const node = chip;
 		if (entry.externalUrl) {
 			bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 		}

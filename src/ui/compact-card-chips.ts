@@ -40,7 +40,7 @@ import {
 	shouldOpenIconOnlyChipPreview,
 } from './icon-only-chip-preview';
 import { showLocationMapPreview } from './location-map-preview';
-import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -194,16 +194,14 @@ export function buildCompactCardChipRow(
 		if ((!readOnly || allowNavigation) && entry.interactive) {
 			attachKanbanChipAction(chip, entry, task, callbacks, options.allTasks, options.isTargetReadOnly, undefined, !readOnly);
 		}
-		if (isTaskInfoChipKey(entry.key)) {
-			bindOperonHoverTooltip(chip, { title: entry.tooltipTitle, content: entry.tooltipContent, taskColor });
-		}
-		const node = entry.tooltipContent && !isTaskInfoChipKey(entry.key)
-			? wrapWithOperonHoverTooltip(chip, {
-				title: entry.tooltipTitle ?? t('taskEditor', 'details'),
+		if (isTaskInfoChipKey(entry.key) || entry.tooltipContent) {
+			bindOperonHoverTooltip(chip, {
+				title: isTaskInfoChipKey(entry.key) ? entry.tooltipTitle : entry.tooltipTitle ?? t('taskEditor', 'details'),
 				content: entry.tooltipContent,
 				taskColor,
-			})
-			: chip;
+			});
+		}
+		const node = chip;
 		if (!readOnly && entry.externalUrl) bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 		if (!readOnly || options.allowReadOnlyNavigation) bindKanbanChipLinkPreview(chip, entry, callbacks, task);
 		chipStrip.appendChild(node);

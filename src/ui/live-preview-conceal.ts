@@ -40,7 +40,7 @@ import {
 	resolveCompactBlockedByIconColor,
 	shouldResolveLocationCompactChips,
 } from './compact-task-layout';
-import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, wrapWithOperonHoverTooltip } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindTaskContextualHoverMenu } from './contextual-hover-menu';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
@@ -545,16 +545,14 @@ export class MetadataTailWidget extends WidgetType {
 				);
 			}
 
-			if (isTaskInfoChipKey(entry.key)) {
-				bindOperonHoverTooltip(chip, { title: entry.tooltipTitle, content: entry.tooltipContent, taskColor });
-			}
-			const chipNode = entry.tooltipContent && !isTaskInfoChipKey(entry.key)
-				? wrapWithOperonHoverTooltip(chip, {
-					title: entry.tooltipTitle ?? t('taskEditor', 'details'),
+			if (isTaskInfoChipKey(entry.key) || entry.tooltipContent) {
+				bindOperonHoverTooltip(chip, {
+					title: isTaskInfoChipKey(entry.key) ? entry.tooltipTitle : entry.tooltipTitle ?? t('taskEditor', 'details'),
 					content: entry.tooltipContent,
 					taskColor,
-				})
-				: chip;
+				});
+			}
+			const chipNode = chip;
 			if (entry.externalUrl) {
 				bindExternalLinkContextMenu(chip, entry.externalUrl, entry.externalRawValue);
 			}

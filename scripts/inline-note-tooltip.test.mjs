@@ -45,8 +45,8 @@ for(const event of ['mouseenter','focusin']){
 }
 contentBuilds=0;const indicator=createOperonHoverIndicator({owner:doc.body,icon:'notebook-pen',title:'Read only',taskColor:null,contentElFactory:()=>createCompactTaskMarkdownTooltipContent(doc.body,'Read-only **note**')});
 assert.equal(contentBuilds,0);assert.equal(indicator.children[0].getAttribute('tabindex'),'0');
-indicator.emit('focusin');assert.equal(contentBuilds,1);assert.ok(text(indicator).includes('Read-only note'));indicator.emit('mouseenter');assert.equal(contentBuilds,1);
-cleanupOperonHoverTooltips(indicator);assert.equal(indicator.querySelector('.operon-hover-tooltip'),null);indicator.emit('focusin');assert.equal(contentBuilds,1);
+const trigger=indicator.children[0];trigger.emit('focusin');assert.equal(contentBuilds,1);assert.ok(text(doc.body).includes('Read-only note'));assert.equal(indicator.querySelector('.operon-hover-tooltip'),null);trigger.emit('mouseenter');assert.equal(contentBuilds,1);
+cleanupOperonHoverTooltips(indicator);assert.equal(indicator.querySelector('.operon-hover-tooltip'),null);assert.equal(doc.body.children.length,0);trigger.emit('focusin');assert.equal(contentBuilds,1);
 const empty=createTaskNoteActionButton({...options,noteValue:''});empty.emit('focusin');assert.equal(contentBuilds,1);cleanupOperonHoverTooltips(empty);
 console.log('Inline note tooltip: lazy content, pointer/keyboard, reopen, replacement, readonly and cleanup passed');
 `},outfile,bundle:true,format:'esm',platform:'node',logLevel:'silent',alias:{obsidian:path.join(root,'scripts/test-support/obsidian.ts')}});
