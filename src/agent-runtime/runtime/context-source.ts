@@ -13,6 +13,7 @@ import {
 import { TASK_STATS_CANONICAL_KEYS } from '../../types/keys';
 import type { IndexedTask } from '../../types/fields';
 import type { KeyMapping } from '../../types/settings';
+import { resolveWorkflowStatus, type Pipeline } from '../../types/pipeline';
 
 export interface RuntimeSourceSnapshotV1 {
 	content: string;
@@ -177,6 +178,7 @@ export class RuntimeSourceHydratorV1 {
 	async hydrate(options: {
 		task: RuntimeSourceTaskV1;
 		keyMappings: readonly KeyMapping[];
+		pipelines: Pipeline[];
 		ramGeneration: number;
 		includeSourceMarkdown: boolean;
 		sourceSnapshot?: RuntimeSourceSnapshotV1 | null;
@@ -211,6 +213,7 @@ export class RuntimeSourceHydratorV1 {
 			options.task,
 			first.content,
 			options.keyMappings,
+			options.pipelines,
 			options.sourceLines,
 		)) {
 			await this.reader.onMismatch?.(options.task.primary.filePath);
@@ -279,6 +282,7 @@ function verifyTaskSource(
 	task: RuntimeSourceTaskV1,
 	content: string,
 	keyMappings: readonly KeyMapping[],
+	pipelines: Pipeline[],
 	sourceLines?: readonly string[],
 ): boolean {
 	if (task.primary.format === 'inline') {
@@ -290,13 +294,20 @@ function verifyTaskSource(
 			task.primary.filePath,
 			[...keyMappings],
 		);
+		if (!parsed) return false;
+		const sourceFields = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
+		// Match indexFile: workflow semantics, then terminal dates, override the raw marker.
+		const workflow = resolveWorkflowStatus(pipelines, sourceFields['status']);
+		let checkbox = parsed.checkbox;
+		if (workflow) checkbox = workflow.checkbox;
+		else if (sourceFields['dateCancelled']) checkbox = 'cancelled';
+		else if (sourceFields['dateCompleted']) checkbox = 'done';
 		if (
-			parsed?.operonId !== task.operonId
+			parsed.operonId !== task.operonId
 			|| parsed.description !== task.description
-			|| parsed.checkbox !== task.checkbox
+			|| checkbox !== task.checkbox
 			|| !sameStringArray(parsed.tags, task.tags)
 		) return false;
-		const sourceFields = Object.fromEntries(parsed.fields.map(field => [field.key, field.value]));
 		return sameSourceFieldValues(task.fieldValues, sourceFields);
 	}
 	const frontmatter = parseFrontmatter(content);
