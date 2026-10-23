@@ -2,14 +2,14 @@
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-Updated: 2026-10-13T16:56:39+02:00
+Updated: 2026-10-22T21:43:14+02:00
 ---
 
 # Mobile General
 
 Operon runs the same way on a phone as on the desktop, with a few **phone-first adjustments** layered on top for touch. This page is the home for the general ones: the floating quick-create button, the two phone Task Editor layouts, tablet editing, and how touch menus behave. The two surfaces with the most mobile-specific behavior, the [[DOCS-096 Mobile Calendar|Calendar]] and the [[DOCS-100 Mobile Kanban|Kanban]] board, have their own pages.
 
-Phone-specific settings do not change tablet or desktop layout selection. The desktop-style Task Editor on phones and tablets does use the shared **Interface → Task Editor** preferences, so changes to those shared preferences also affect desktop editing.
+Phone-specific settings do not change tablet or desktop layout selection. The desktop-style Task Editor on phones and tablets shares **Sections and Order** and **Property Visibility & Order** with desktop editing. The **Layout and opening** preferences for source panels, left/right placement, and lightbox controls apply only to desktop workspaces.
 
 > **MEDIA-DOCS-101-1:** A phone showing the floating quick-create button at the bottom-right corner.
 
@@ -29,13 +29,13 @@ At the top of **Settings → Operon → Mobile → Task Editor**, **Use mobile T
 
 | Device | Toggle off | Toggle on |
 | --- | --- | --- |
-| Phone | Desktop-style editor and its Interface settings | Existing compact mobile editor and its mobile settings |
+| Phone | Desktop-style editor with shared section and property preferences | Existing compact mobile editor and its mobile settings |
 | Tablet | Desktop-style editor | Unchanged |
 | Desktop | Desktop editor | Unchanged |
 
 Close and reopen Task Editor after changing the setting. Each open editor keeps the layout it started with. Switching does not reset, copy, or overwrite the other layout's toolbar or workflow preferences; the compact mobile settings stay available even while that layout is off. This is a vault preference, not a separate per-device profile.
 
-On phones, **neither layout offers the embedded file-body button or panel**. This does not disable task-property editing. Tablets retain body editing, including the narrow panel and wider split layout.
+Phones and tablets do not include the desktop workspace that places native Markdown beside the Task Editor. The old embedded **File Body** button and panel have been retired. Task-property editing, Description/Notes, and the checkbox popover remain available. For the desktop source-and-editor workflow, see [[DOCS-021 Task Editor|Task Editor]].
 
 ## Desktop-style editing with touch
 
@@ -85,7 +85,7 @@ These live under **Settings → Operon → Mobile**. **Mobile General → Quick 
 
 **My touch menu closes too fast.** Raise the mobile context menu auto-hide time. The reverse lowers it.
 
-**Does the phone layout toggle change my tablet or desktop?** No. It selects only the phone layout. The desktop-style layout uses shared Interface preferences on all three devices.
+**Does the phone layout toggle change my tablet or desktop?** No. It selects only the phone layout. Desktop-style section and property preferences are shared across the three devices; the desktop **Layout and opening** options do not add a source panel or change the editor's side on phones or tablets.
 
 ## Related
 

@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-10-19T13:38:56+02:00
+Updated: 2026-10-22T21:53:13+02:00
 ---
 
 # Task Finder
@@ -17,9 +17,32 @@ Open it with **Task Finder** from the command palette.
 
 ## Search and jump
 
-Type part of a task's text and the list narrows as you go. Pick a result to jump to it. That is the whole core loop: search, then go. It is the quickest path back to a task you can describe but cannot find by browsing.
+Type part of a task's text and the list narrows as you go. Click a task result or select it with the keyboard and press **Enter** to open it. Both use the same result-opening preference. It is the quickest path back to a task you can describe but cannot find by browsing.
 
-What makes the results trustworthy is knowing what they reflect, which is what the next section explains.
+The matching and ranking rules below explain which tasks appear and how they are ordered.
+
+## Result Behavior
+
+Choose what opens from a normal Task Finder result under **Settings → Operon → Interface → Task Finder → Result Behavior**. File and Inline tasks have independent dropdowns:
+
+| Setting | Default |
+|---|---|
+| File task results | Source File + Task Editor |
+| Inline task results | Task Editor Only |
+
+Both dropdowns offer the same three choices:
+
+| Choice | What opens on desktop |
+|---|---|
+| Source File Only | The native source lightbox, without opening Task Editor |
+| Source File + Task Editor | The source and Task Editor together in one workspace |
+| Task Editor Only | Task fields alone; use Show source later if needed |
+
+These choices reuse the existing [[DOCS-151 Lightbox|source lightbox]] and [[DOCS-021 Task Editor|Task Editor workspace]]. An Inline task's source opens at that task's current position. A source-only result can offer **Show task editor** for its task, and a paired workspace keeps the normal show/hide controls, saving, and navigation behavior.
+
+For that Finder opening, the chosen combination takes precedence over **Open source with file task editor** or **Open source with inline task editor**. It does not change those settings or editor openings from other places. Left/right placement still follows the shared **Task Editor position** preference. Changing a Finder preference affects subsequent result selections, not workspaces already open.
+
+The panel choices apply to the supported desktop Markdown workspace. Phone/tablet openings and special source/editor routes keep their existing behavior. When Finder is being used to choose a task for another action, such as adding a Canvas card or inserting a task link, it completes that action instead of applying Result Behavior.
 
 ## Result chips
 
@@ -33,7 +56,7 @@ On desktop, the modal uses the shared [[DOCS-098 Workspace Tweaks|Background dim
 
 Use [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] when gathering tasks for a visual plan. It stays beside the board while you search and add cards.
 
-Task Finder is an alternative for choosing one task. With an editable Canvas active, run **Add task to Canvas**. With an editable Excalidraw drawing active, run **Add existing task to Excalidraw**. In these picker contexts, selecting a result adds its card rather than jumping to its source. The task stays in its original Markdown location.
+Task Finder is an alternative for choosing one task. With an editable Canvas active, run **Add task to Canvas**. With an editable Excalidraw drawing active, run **Add existing task to Excalidraw**. In these picker contexts, selecting a result adds its card regardless of Result Behavior. The task stays in its original Markdown location.
 
 ## How matching and ranking work
 
@@ -136,11 +159,14 @@ To switch a scope without leaving the keyboard, type its **dot shortcut** in the
 
 **Do I have to click the scope buttons?** No. Dot shortcuts like `.1` toggle them from the search box.
 
+**Can File and Inline results open differently?** Yes. Set each dropdown independently under **Result Behavior**. The defaults open File tasks with source and editor together, and Inline tasks with only the editor.
+
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Task Finder**, under **Search Behavior** for visible result count, the recently modified window, and remembering the last scopes. **Scope Shortcuts** sets the dot shortcut for each scope. Search Settings for Scope Shortcuts or a scope name to reach the relevant controls.
+Operon settings for this live in **Settings → Operon → Interface → Task Finder**. **Result Behavior** chooses how File and Inline results open. **Search Behavior** controls visible result count, the recently modified window, and remembering the last scopes. **Scope Shortcuts** sets the dot shortcut for each scope. Search Settings for **File task results**, **Inline task results**, Scope Shortcuts, or a scope name to reach the relevant controls.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-151 Lightbox|Lightbox]]

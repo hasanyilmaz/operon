@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-10-20T14:52:04+02:00
+Updated: 2026-10-22T22:06:42+02:00
 ---
 
 # Back up and restore settings
@@ -28,6 +28,18 @@ The file contains portable Operon configuration. This includes general preferenc
 Canvas pool preferences include panel width and visible rows, along with Property Value Pool shortcuts and favorites. Calendar presets retain their **Date range** choice of `Rolling days` or `Calendar week`.
 
 Saved [[DOCS-151 Lightbox|Lightbox]] width and height preferences are also portable settings, separately for Markdown, Base, Table, Web, PDF, Image, Video, and YouTube. They are percentages for content profiles, distinct from the device-local interface positions excluded below. Restoring those settings can transfer the saved sizes to another vault.
+
+The backup also includes these independent opening preferences:
+
+- [[DOCS-021 Task Editor|Task Editor]] position, which also sets the control-rail side on other desktop lightboxes, and its separate File/Inline source-opening toggles.
+- [[DOCS-027 Task Finder|Task Finder]] Result Behavior for File and Inline results. Restoring these choices does not merge them with the general Task Editor toggles.
+- The phone's **Use mobile Task Editor on phones** choice, together with the editor's section, property, and compact mobile toolbar preferences.
+
+Restored opening preferences apply to newly opened workspaces or Finder selections. An already open workspace keeps its position and opening choices. The backup includes saved preferences, but not open panels, unsaved drafts, selections, scroll positions, or undo history.
+
+[[DOCS-040 Custom keys|Custom key]] definitions include their configured icons and visibility preferences. Retained property interpretation information may remain in the backup after a custom key is deleted, so existing inline values can still be understood. Keeping that information does not by itself put a deleted, unused field back into Creator or Additional. Restore still validates incompatible definitions and does not convert the values in your notes.
+
+The retired **Show line numbers in Task Editor** and **Highlight active line in Task Editor** values are preserved for compatibility. Restoring them does not bring back the File Body panel or its Settings/Search controls, and they do not override the native Markdown editor's appearance.
 
 Vault-specific paths and references can also appear in the backup. Operon does not assume that a folder, file, or other vault item from the source exists in the target. You review those references before restoring them.
 
@@ -68,6 +80,8 @@ If settings were committed but some Operon features could not refresh, the recov
 The **Reset Settings** section returns portable Operon settings to the current defaults. Operon shows a confirmation first. Confirming does not delete notes, tasks, or `.table` files, and it preserves the same target-owned state that restore excludes.
 
 Reset also clears saved Lightbox size overrides, so subsequent previews use their content type's original default dimensions. It does not turn a personal size choice into a new default.
+
+For new desktop openings, reset restores **Task Editor position → Right**, **Open source with file task editor → On**, and **Open source with inline task editor → Off**. Task Finder independently returns to **File task results → Source File + Task Editor** and **Inline task results → Task Editor Only**. Existing open workspaces keep their opening choices.
 
 Reset does not provide session Undo. Download a backup first if you may want the current configuration again.
 

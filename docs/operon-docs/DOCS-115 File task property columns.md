@@ -2,7 +2,7 @@
 Notes: Manage additional File and Inline Task properties, their declared types, supported surfaces, and safe editing
 Icon: scan-search
 Color: "#ca8a04"
-Updated: 2026-10-19T13:37:14+02:00
+Updated: 2026-10-22T21:53:13+02:00
 ---
 
 # Vault Properties
@@ -23,11 +23,13 @@ A Vault Property keeps its source name. Operon resolves built-in and configured 
 
 On an Inline Task, the values belong to that individual task line, not automatically to every task in the containing note. On a File Task, they come from the task note's frontmatter. Main and embedded Table property catalogs can include declared supported properties as well as properties found on tasks; an offered column does not mean every row has a value.
 
+Displaying an Operon Table column does not by itself add that property to the tasks. If a deleted custom key was only shown as a column, that display alone does not block recreating the name with a different type. Existing values, empty source properties, and dependent filters, sorts, groups, or summaries still matter. See [[DOCS-040 Custom keys|Custom keys]] for the full reuse rules.
+
 ## Types and read-only states
 
 Native editing supports **Text, List, Number, Checkbox, Date, and Date & time**. Assign the property type in Obsidian's Properties controls. Obsidian's `Multitext` declaration corresponds to List. Operon also preserves the interpretation needed to read existing inline values safely.
 
-Configured **Custom Keys** are an exception to manual type assignment: Operon fills missing Obsidian declarations when a new key is saved and for existing keys at startup. Explicitly different types are preserved. Ordinary Vault Properties still need a declared type, and all values must remain compatible with it. See [[DOCS-040 Custom keys|Custom keys]].
+Configured **Custom Keys** are an exception to manual type assignment: Operon fills missing Obsidian declarations when a new key is saved and for existing keys at startup. Separately assigned, incompatible Obsidian types are preserved. An explicit recreation of an unused deleted custom key may replace its retained type only after the checks in [[DOCS-040 Custom keys|Custom keys]]. Ordinary Vault Properties still need a declared type, and all values must remain compatible with it.
 
 | State | What it means |
 |---|---|
@@ -52,6 +54,16 @@ Nested objects and unsupported list members do not become editable merely becaus
 | Chips and Kanban swimlanes | A Vault Property does not automatically create a chip or swimlane option. Configured Custom Key surfaces retain their own limits. |
 
 The desktop Task Editor layout also runs on phones when selected. The separate existing mobile layout keeps its own controls; do not assume desktop Additional support changes that layout. See [[DOCS-101 Mobile General|Mobile General]].
+
+### Which properties are offered
+
+Additional and Creator's property selection include eligible active custom keys even if no note uses them yet, along with supported normal properties used in the vault. Properties on the current task, supplied by a template, or already in a draft remain available. A leftover type declaration alone does not make a deleted, unused field reappear. Type checks and surface visibility preferences still apply.
+
+This does not narrow Table's column catalogs to the same list. A declared property can still be offered as a Table column without being automatically offered as an unused field in Creator or Additional.
+
+### Field icons
+
+If a native property matches an active Custom Key by canonical or visible name, Creator, Task Editor, and native Table controls use its configured icon. Without a configured custom icon, normal property-type icons remain the fallback. A read-only warning remains visible when applicable, and Checkbox value indicators follow the rules below.
 
 ## Editing and removing values
 

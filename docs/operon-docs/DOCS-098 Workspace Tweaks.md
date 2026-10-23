@@ -2,7 +2,7 @@
 Notes: Background dimming and optional cosmetic helpers for scrollbars, side dock tabs, and Properties
 Icon: sliders-horizontal
 Color: "#ca8a04"
-Updated: 2026-10-20T14:52:04+02:00
+Updated: 2026-10-22T21:43:14+02:00
 ---
 
 # Workspace Tweaks
@@ -33,9 +33,11 @@ Choose the starting darkness behind desktop Operon lightboxes and Task Creator, 
 
 **10% · 20% · 30% · 35% · 40% · 45% · 50% — Default · 55% · 60% · 65% · 70% · 80% · 90%**
 
-New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. The lightbox's lower-right **Moon/Sun** controls step through these same dimming levels and save the preference here: Moon darkens, Sun lightens. There is no numeric indicator beside the preview; this dropdown shows the saved starting level.
+New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. The **Moon/Sun** controls at the bottom of a lightbox's side rail step through these same dimming levels and save the preference here: Moon darkens, Sun lightens. The rail follows **Task Editor position** for newly opened desktop lightboxes, including other content types. The dimming buttons appear while the source or preview is visible, not when only the Task Editor is shown. There is no numeric indicator beside the preview; this dropdown shows the saved starting level.
 
 Each additional included surface adds **5 percentage points**, capped at **90%**. Starting at 50%, three nested surfaces use 50%, 55%, then 60%. Starting at 80%, they use 80%, 85%, then 90%; further layers stay at 90%. Only the top included backdrop paints the calculated darkness, so overlapping backgrounds do not multiply it. Closing a layer restores the previous level, and each window keeps its own stack.
+
+Markdown and Task Editor side by side count as **one level**, not two. Opening another task editor or preview above them adds one level; hiding or showing a panel within the current workspace adds none. The lower level stays visible but does not receive input until the upper level closes.
 
 This includes web, Markdown, Base, Table, and media lightboxes. It does not count mobile surfaces, small media hover previews, Page Preview, pickers, the Editor's Subtasks popover, embedded filters, or other native modals. Blur is not added.
 
@@ -65,6 +67,8 @@ Pick **Only Operon file tasks** to keep the tidy-up focused on your task notes a
 ## Properties Excluded Folders
 
 A list of folders whose notes are **excluded from automatic Properties collapsing**, even when the collapse tweak is on. Operon leaves their current panel state alone; it does not force a closed panel open. This is the override for places where you actively edit frontmatter and want the panel in view, such as a templates folder or an area you are actively curating. Add a folder with the folder search, and remove it again from the list. An excluded folder wins regardless of the scope above. These exceptions only control Properties-panel collapsing; they do not exclude tasks from the index. Task-index exclusions are configured separately under **Tasks → File Tasks → Excluded folders**.
+
+These collapse preferences are separate from the body-only Markdown view in a [[DOCS-151 Lightbox|lightbox]]. That view hides Properties and the opening YAML block within the preview; open a normal Obsidian tab to edit them directly. The lightbox's presentation does not change these collapse preferences or the same file's normal tab.
 
 ## What these tweaks do not do
 
