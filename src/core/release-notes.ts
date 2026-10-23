@@ -13,6 +13,46 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '4.2.0',
+		date: '2026-10-23',
+		title: 'Operon 4.2.0 — Task Editor and Source Files',
+		showOnUpdate: true,
+		bannerUrl: 'operon-4-2-0-task-editor-and-source-files.png',
+		body: `
+Edit tasks and their source side by side, choose how results open, and move through your work with fewer interruptions.
+
+### Tasks and sources, together
+
+- **Work with Task Editor and native Markdown in one desktop workspace.** Show or hide either panel without losing drafts, and return from nested previews to where you left off.
+- **Choose left or right placement**, with matching lightbox controls. File tasks open with their source by default; Inline tasks start with Task Editor alone.
+- **Choose Task Finder result behavior separately for File and Inline tasks:** Source File Only, Source File + Task Editor, or Task Editor Only.
+- **Open Task Editor more responsively**, with native source preparation only when needed and eligible recently closed Markdown views reused for reopening.
+
+### Smoother everyday work
+
+- **Task Creator closes as soon as a valid submission starts**, while creation continues in the background.
+- **Start and stop a task's timer from the same contextual action.** Only the currently tracked task shows Stop Timer.
+- **Lightbox controls follow your selected side**, and Escape closes only the top level while menus and pickers keep priority.
+- **Color and Subtasks controls stay accessible in narrow editors.** The color palette keeps its full layout, and Stats opens the standard Subtasks window.
+
+### Reliability and polish
+
+- **Custom keys retain their configured icons**, deleted unused fields stay out of property pickers, and eligible deleted names can be reused while existing data remains protected.
+- **Task Editor and native source edits stay synchronized**, avoiding false conflict warnings while protecting YAML, shared buffers, and newer drafts.
+- **Rich task-chip and read-only Notes tooltips avoid clipping**, including in short Dynamic File Task Filters.
+- **Routine automatic notifications are quieter**, while manual results and existing save-error diagnostics remain available.
+
+### Updated Docs
+
+- [[DOCS-021 Task Editor|Task Editor]]
+- [[DOCS-027 Task Finder|Task Finder]]
+- [[DOCS-151 Lightbox|Lightbox]]
+- [[DOCS-040 Custom keys|Custom Keys]]
+- [[DOCS-020 Task Creator|Task Creator]]
+- And 9 more updated docs.
+`.trim(),
+	},
+	{
 		version: '4.1.0',
 		date: '2026-10-20',
 		title: 'Operon 4.1.0 — Task Sources, Lightboxed',

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.2.0] - 2026-10-23
+
 ### New
 
 - Added a shared **desktop Task Editor workspace** with native Markdown and task fields in one working level. Show or hide either panel without losing drafts, and open nested workspaces while keeping previous levels visible underneath.
@@ -39,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, strict lint, production build, release guard, and code review passed; the previous full regression run passed **5,240/5,240**, and focused notification, tooltip, color-picker/Subtasks checks and manual UI checks passed.
+- Local checks, build, release guard, focused regression tests, and manual UI checks passed.
 
 ## [4.1.0] - 2026-10-20
 
