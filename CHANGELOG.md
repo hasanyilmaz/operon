@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Reduced routine startup, background repair, Docs update, and task destination-history notifications while preserving manual results and existing save-error and recovery diagnostics.
 - **Task context menus** show **Stop timer** for the task currently being tracked and **Start timer** for other tasks, so tracking can be started or stopped from the same action across supported views.
 - **Task Creator** closes immediately after submitting an Inline or File task, while creation continues in the background and normal notifications remain available.
 - **Markdown lightboxes** show the note body in Reading, Live Preview, and Source modes, hiding Properties/YAML while preserving metadata in the file and in ordinary Obsidian tabs. Dynamic File Task Filter remains available at the top or bottom of the body.

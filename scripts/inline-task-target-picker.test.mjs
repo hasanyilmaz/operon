@@ -149,7 +149,7 @@ test('file parent selection applies its heading and creates missing heading at e
 });
 test('cancelled UI creation does not record; history failure preserves successful task; duplicate saves counted once',async()=>{
  const {h}=setup();assert.equal(await h.createInlineTaskFromCreatorDraftResult(draft()),null);assert.equal(h.records,0);
- chosen={kind:'file',filePath:'Other.md',headingKeyword:'Tasks'};h.inlineTargetHistory.recordSuccess=async()=>{h.records++;throw Error('disk');};const old=console.error;console.error=()=>{};try {assert.equal((await h.createInlineTaskFromCreatorDraftResult(draft())).operonId,'new');await Promise.all([h.recordInlineTaskCreationTarget('new','Other.md'),h.recordInlineTaskCreationTarget('new','Other.md')]);}finally{console.error=old;}assert.equal(h.records,1);assert.deepEqual(notices,['inlineTargetHistorySaveFailed']);assert.equal(h.writes.length,1);
+ chosen={kind:'file',filePath:'Other.md',headingKeyword:'Tasks'};h.inlineTargetHistory.recordSuccess=async()=>{h.records++;throw Error('disk');};const old=console.error;console.error=()=>{};try {assert.equal((await h.createInlineTaskFromCreatorDraftResult(draft())).operonId,'new');await Promise.all([h.recordInlineTaskCreationTarget('new','Other.md'),h.recordInlineTaskCreationTarget('new','Other.md')]);}finally{console.error=old;}assert.equal(h.records,1);assert.deepEqual(notices,[]);assert.equal(h.writes.length,1);
 });
 test('conversion can use target selection without recording history',async()=>{
  const {h}=setup();chosen={kind:'file',filePath:'Other.md',headingKeyword:'Tasks'};assert.equal((await h.createInlineTaskFromCreatorDraftResult(draft(),{recordTargetHistory:false})).operonId,'new');assert.equal(h.writes.length,1);assert.equal(h.records,0);

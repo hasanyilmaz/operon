@@ -3433,12 +3433,6 @@ export default class OperonPlugin extends Plugin {
 			}));
 			return;
 		}
-		if (diagnostics.backupPath) {
-			new Notice(t('notifications', 'pipelineTaxonomyRecovered', {
-				count: String(diagnostics.issues.length),
-				path: diagnostics.backupPath,
-			}));
-		}
 	}
 
 	private registerCanonicalSettingsReloadWatchers(): void {
@@ -3507,7 +3501,7 @@ export default class OperonPlugin extends Plugin {
 				}));
 				return;
 			}
-			if (taxonomyDiagnostics.backupPath) {
+			if (mode === 'manual' && taxonomyDiagnostics.backupPath) {
 				new Notice(t('notifications', 'pipelineTaxonomyRecovered', {
 					count: String(taxonomyDiagnostics.issues.length),
 					path: taxonomyDiagnostics.backupPath,
@@ -3859,8 +3853,8 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private showOperonDocsSyncResult(result: OperonDocsSyncResult, source: 'manual' | 'auto'): void {
+		if (source === 'auto' && result.staleManagedFiles.length === 0 && result.warnings.length === 0) return;
 		if (result.written.length === 0 && result.staleManagedFiles.length === 0 && result.warnings.length === 0) {
-			if (source === 'auto') return;
 			new Notice(t('notifications', 'operonDocsSyncUpToDate'));
 			return;
 		}
@@ -16459,12 +16453,8 @@ export default class OperonPlugin extends Plugin {
 		await this.refreshTableFilePropertyTypes(true, false);
 		await this.initializeTablePresetRegistry();
 		const finalTableRecovery = this.storage.getTablePresetRecoveryDiagnostics();
-		if (finalTableRecovery.health === 'repaired') {
-			new Notice(t('settings', finalTableRecovery.code === 'table-file-duplicate'
-				? 'tableFileConflictRecoveryNotice'
-				: 'tableFileRecoveryNotice'), 8_000);
-		} else if (finalTableRecovery.health === 'degraded') {
-			new Notice(t('settings', 'tableFileDegradedNotice'), 8_000);
+		if (finalTableRecovery.health === 'repaired' && finalTableRecovery.code === 'table-file-duplicate') {
+			new Notice(t('settings', 'tableFileConflictRecoveryNotice'), 8_000);
 		}
 		this.pinnedCache = this.storage.pinned;
 		this.unsubscribePinnedCache = this.pinnedCache.subscribe(() => {
@@ -31672,7 +31662,6 @@ export default class OperonPlugin extends Plugin {
 			await this.inlineTargetHistory?.recordSuccess(filePath, this.app.vault.getMarkdownFiles().map(file => file.path));
 		} catch (error) {
 			console.error('Operon: inline task target history could not be saved', error);
-			new Notice(t('notifications', 'inlineTargetHistorySaveFailed'));
 		}
 	}
 
