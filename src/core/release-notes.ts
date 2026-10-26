@@ -13,6 +13,50 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: '4.3.0',
+		date: '2026-10-26',
+		title: 'Operon 4.3.0 — Status Dock',
+		showOnUpdate: true,
+		bannerUrl: 'operon-4-3-0-status-dock.png',
+		body: `
+Keep tracking, ongoing tasks, and what comes next within reach, with a new desktop Status Dock and smoother everyday interactions.
+
+### Meet the Status Dock
+
+- **Track time and manage breaks from one compact dock.** See multiple ongoing calendar tasks, your next upcoming task, and duplicate-ID warnings together.
+- **Start tracking from a task’s icon**, or use Task Finder and Task Creator to choose your next task.
+- **Drag the dock wherever you need it.** Use **Toggle status dock** from the command palette to show or hide it. It returns to its visible, centered position when Obsidian restarts.
+- **Choose what task names open:** the source, Task Editor, or both.
+
+### Create tasks, then choose what opens
+
+- **Set separate opening preferences for File and Inline Tasks.** Choose Do Not Open, a source lightbox, source with Task Editor, Task Editor alone, or a focused/background source tab.
+- **FlowTime and the dock share the same break state**, even when the FlowTime panel is closed. Choose or create a different task during or after a break and start tracking it directly.
+
+### Smoother everyday work
+
+- **Faster startup** avoids redundant processing of unchanged files while preserving tasks created or edited during startup.
+- **Kanban moves stay visually stable**, with immediate sorted placement and fewer unnecessary refreshes.
+- **Separate-window controls and source lightboxes work more consistently**, including pickers, tooltips, and Table search.
+- **Lightbox controls appear on hover as soon as content is ready.**
+- **Excalidraw text conversion lives in the side toolbar**, appearing when eligible text is selected.
+- **Deleted, unused custom key names can be reused with another property type**, while existing values remain protected.
+
+### New Docs
+
+- [[DOCS-152 Status Dock|Status Dock]]
+
+### Updated Docs
+
+- [[DOCS-020 Task Creator|Task Creator]]
+- [[DOCS-034 Time tracking|Time Tracking]]
+- [[DOCS-035 FlowTime focus sessions|FlowTime]]
+- [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]
+- [[DOCS-151 Lightbox|Lightbox]]
+- And 9 more updated docs.
+`.trim(),
+	},
+	{
 		version: '4.2.0',
 		date: '2026-10-23',
 		title: 'Operon 4.2.0 — Task Editor and Source Files',

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.3.0] - 2026-10-26
+
 ### New
 
 - Added separate **after-creation opening preferences for File and Inline Tasks**, with six choices covering no opening, focused or background source tabs, source lightboxes, and Task Editor alone or alongside the source. The default is **Do Not Open**; Inline source views focus the new task’s line when opened.
