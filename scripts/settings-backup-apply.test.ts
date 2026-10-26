@@ -457,6 +457,20 @@ test('property pool backup roundtrip and Undo restore the absent-section preimag
 	unsubscribe();
 });
 
+test('dock click preference backup Undo restores the absent memory default and survives the next save', async () => {
+	const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
+	const source = clone((await storage.captureCommittedSettingsBackupSnapshot()).settings);
+	assert.equal(source.statusDockClickAction, undefined); source.statusDockClickAction = 'editor';
+	const { sourceJson, plan } = await createPlan(storage, source, ['general']);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success'); assert.equal(data.committed.ui.statusDock?.clickAction, 'editor');
+	assert.ok(result.receipt?.recovery.undoTokenId);
+	const undone = await storage.undoSettingsBackupRestoreV1(result.receipt.recovery.undoTokenId, result.receipt.receiptId);
+	assert.equal(undone.status, 'success'); assert.equal(data.committed.ui.statusDock?.clickAction, undefined);
+	assert.equal(storage.getSettings().statusDockClickAction, undefined);
+	await storage.saveSettings(); assert.equal(data.committed.ui.statusDock?.clickAction, undefined);
+});
+
 test('taxonomy-only restore publishes pool changes only after successful runtime recovery', async () => {
 	const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
 	const source = clone(storage.getSettings());

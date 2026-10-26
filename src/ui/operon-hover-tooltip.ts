@@ -168,33 +168,104 @@ export function bindOperonHoverTooltip(
 	suppressNativeTooltip(target);
 
 	if (!options.title && !options.content && !options.contentEl && !options.contentElFactory) return;
-	const ownerWindow = getOwnerWindow(target);
 	let dismissedByAction = false;
+	let dismissalDocument: Document | null = null;
+	let tooltip: HTMLElement | null = null;
+	let tooltipWindow: Window | null = null;
+	let visibilityFrame: { owner: Window; id: number | null } | null = null;
+	let stopMigration: (() => void) | null = null;
+	let disposed = false;
 
-	const close = (): void => {
-		ownerWindow.removeEventListener('scroll', close, true);
-		ownerWindow.removeEventListener('resize', close, true);
-		const tooltip = typedTarget._operonFloatingTooltip;
-		if (!tooltip) return;
-		tooltip.remove();
-		typedTarget._operonFloatingTooltip = null;
-		options.onClose?.();
+	const clearDismissalListener = (): void => {
+		dismissalDocument?.removeEventListener('keydown', resetKeyboardDismissal, true);
+		dismissalDocument = null;
+	};
+	const unbindTooltipWindow = (): void => {
+		tooltipWindow?.removeEventListener('scroll', close, true);
+		tooltipWindow?.removeEventListener('resize', close, true);
+		if (visibilityFrame?.id != null) visibilityFrame.owner.cancelAnimationFrame(visibilityFrame.id);
+		visibilityFrame = null;
+		tooltipWindow = null;
+	};
+	const revealTooltip = (): void => {
+		if (!tooltip || !tooltipWindow) return;
+		const current = tooltip;
+		const frame = { owner: tooltipWindow, id: null as number | null };
+		visibilityFrame = frame;
+		frame.id = frame.owner.requestAnimationFrame(() => {
+			if (disposed || visibilityFrame !== frame || tooltip !== current) return;
+			visibilityFrame = null;
+			current.classList.add('is-visible');
+		});
+	};
+	const bindTooltipWindow = (): void => {
+		tooltipWindow = getOwnerWindow(target);
+		tooltipWindow.addEventListener('scroll', close, true);
+		tooltipWindow.addEventListener('resize', close, true);
+	};
+	const migrateOwner = (): void => {
+		if (disposed) return;
+		const doc = getOwnerDocument(target);
+		if (dismissalDocument && dismissalDocument !== doc) {
+			clearDismissalListener();
+			dismissalDocument = doc;
+			doc.addEventListener('keydown', resetKeyboardDismissal, true);
+		}
+		if (tooltip && tooltipWindow !== getOwnerWindow(target)) {
+			const pendingReveal = visibilityFrame !== null;
+			unbindTooltipWindow();
+			getOwnerBody(target).appendChild(tooltip);
+			inheritExcalidrawSurfaceTheme(target, tooltip);
+			positionFloatingTooltip(target, tooltip, options, null);
+			bindTooltipWindow();
+			if (pendingReveal) revealTooltip();
+		}
+	};
+	const syncMigrationSubscription = (): void => {
+		if (disposed || (!tooltip && !dismissalDocument)) {
+			stopMigration?.();
+			stopMigration = null;
+		} else if (!stopMigration) {
+			stopMigration = target.onWindowMigrated?.(migrateOwner) ?? null;
+		}
+	};
+	const close = (event?: Event): void => {
+		// Old-window events may arrive before the migration notification; blur still closes immediately.
+		if (event && event.type !== 'blur' && event.type !== 'focusout'
+			&& tooltipWindow && getOwnerWindow(target) !== tooltipWindow) return;
+		unbindTooltipWindow();
+		const current = tooltip;
+		tooltip = null;
+		if (current) {
+			current.remove();
+			if (typedTarget._operonFloatingTooltip === current) typedTarget._operonFloatingTooltip = null;
+		}
+		syncMigrationSubscription();
+		if (current) options.onClose?.();
 	};
 
 	const dismiss = (): void => {
+		if (disposed) return;
 		dismissedByAction = true;
-		getOwnerDocument(target).addEventListener('keydown', resetKeyboardDismissal, true);
+		const doc = getOwnerDocument(target);
+		if (dismissalDocument !== doc) {
+			clearDismissalListener();
+			dismissalDocument = doc;
+			doc.addEventListener('keydown', resetKeyboardDismissal, true);
+		}
 		close();
 	};
 	const resetKeyboardDismissal = (event: KeyboardEvent): void => {
-		if (event.key !== 'Tab') return;
+		if (event.key !== 'Tab' || getOwnerDocument(target) !== dismissalDocument) return;
 		dismissedByAction = false;
-		getOwnerDocument(target).removeEventListener('keydown', resetKeyboardDismissal, true);
+		clearDismissalListener();
+		syncMigrationSubscription();
 	};
 	const open = (event?: Event): void => {
+		if (disposed) return;
 		if (event?.type === 'mouseenter') {
 			dismissedByAction = false;
-			getOwnerDocument(target).removeEventListener('keydown', resetKeyboardDismissal, true);
+			clearDismissalListener();
 		}
 		if (dismissedByAction) return;
 		if (event?.type === 'focusin' && !target.matches(':focus-visible') && !target.querySelector(':focus-visible')) return;
@@ -208,12 +279,13 @@ export function bindOperonHoverTooltip(
 			&& Number.isFinite(eventClientX)
 			? eventClientX
 			: null;
-		if (typedTarget._operonFloatingTooltip) {
-			positionFloatingTooltip(target, typedTarget._operonFloatingTooltip, options, pointerClientX);
+		if (tooltip) {
+			migrateOwner();
+			positionFloatingTooltip(target, tooltip, options, pointerClientX);
 			return;
 		}
 		const contentEl = options.contentElFactory?.() ?? options.contentEl;
-		const tooltip = createTooltip(options.title, options.titleIcon, options.content, contentEl, options.tooltipClassName, target);
+		tooltip = createTooltip(options.title, options.titleIcon, options.content, contentEl, options.tooltipClassName, target);
 		tooltip.classList.add('operon-hover-tooltip--floating');
 		const taskColor = resolveOperonHoverTooltipColor(options.taskColor);
 		if (taskColor) {
@@ -222,18 +294,20 @@ export function bindOperonHoverTooltip(
 		inheritExcalidrawSurfaceTheme(target, tooltip);
 		getOwnerBody(target).appendChild(tooltip);
 		positionFloatingTooltip(target, tooltip, options, pointerClientX);
-		ownerWindow.addEventListener('scroll', close, true);
-		ownerWindow.addEventListener('resize', close, true);
-		ownerWindow.requestAnimationFrame(() => tooltip.classList.add('is-visible'));
 		typedTarget._operonFloatingTooltip = tooltip;
+		bindTooltipWindow();
+		syncMigrationSubscription();
+		revealTooltip();
 	};
 
 	const cleanup = (): void => {
+		if (disposed) return;
+		disposed = true;
+		clearDismissalListener();
 		close();
 		target.removeEventListener('mouseenter', open);
 		target.removeEventListener('mouseleave', close);
 		target.removeEventListener('pointerdown', dismiss, true);
-		getOwnerDocument(target).removeEventListener('keydown', resetKeyboardDismissal, true);
 		target.removeEventListener('click', dismiss, true);
 		target.removeEventListener('focusin', open);
 		target.removeEventListener('focusout', close);

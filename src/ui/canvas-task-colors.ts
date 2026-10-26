@@ -86,7 +86,7 @@ export class CanvasTaskColors extends Component {
    this.view.contentEl.addEventListener(name, capture, true);
    this.register(() => this.view.contentEl.removeEventListener(name, capture, true));
   }
-  const doc = this.view.contentEl.ownerDocument;
+  let doc = this.view.contentEl.ownerDocument;
   const outside = (event: PointerEvent) => {
    const choice = this.choice, target = asHTMLElement(event.target, this.view.contentEl);
    if (choice && target && this.view.contentEl.contains(target) && !choice.panel.contains(target)) this.commitPreview(choice);
@@ -98,7 +98,13 @@ export class CanvasTaskColors extends Component {
    }
   };
   doc.addEventListener('pointerdown', outside, true); doc.addEventListener('keydown', escape, true);
-  this.register(() => { doc.removeEventListener('pointerdown', outside, true); doc.removeEventListener('keydown', escape, true); });
+  const stopMigration = this.view.contentEl.onWindowMigrated?.(() => {
+   const next = this.view.contentEl.ownerDocument;
+   if (!this.active || doc === next) return;
+   doc.removeEventListener('pointerdown', outside, true); doc.removeEventListener('keydown', escape, true);
+   doc = next; doc.addEventListener('pointerdown', outside, true); doc.addEventListener('keydown', escape, true);
+  });
+  this.register(() => { stopMigration?.(); doc.removeEventListener('pointerdown', outside, true); doc.removeEventListener('keydown', escape, true); });
   this.register(this.deps.subscribe(scope => this.sync(scope)));
   if (this.deps.subscribeGroups) this.register(this.deps.subscribeGroups(() => this.sync()));
   this.sync();

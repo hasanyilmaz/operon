@@ -1,4 +1,4 @@
-import { App, Modal, setIcon } from 'obsidian';
+import { App, Modal, Platform, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { DuplicateRegistrySnapshot, IndexedTaskInstance } from '../types/fields';
 
@@ -47,7 +47,7 @@ export class DuplicateOperonIdModal extends Modal {
 		this.titleEl.setText(t('duplicateOperonId', 'title'));
 
 		const intro = contentEl.createEl('p', {
-			text: t('duplicateOperonId', 'intro'),
+			text: t('duplicateOperonId', Platform.isDesktopApp ? 'introDock' : 'intro'),
 			cls: 'operon-duplicate-operonid-intro',
 		});
 		intro.toggleClass('is-empty', snapshot.totalConflictCount === 0);

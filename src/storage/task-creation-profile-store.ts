@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import {
 	normalizeChildTaskInheritanceStatusPipelineSource,
+ normalizeTaskAfterCreateAction,
 	normalizeInlineTaskParentFileHeadingKeyword,
 	type OperonSettings,
 } from '../types/settings';
@@ -39,6 +40,8 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'childTaskInheritanceFields'
 	| 'childTaskInheritanceStatusPipelineSource'
 	| 'taskCreatorDefaultToFileTask'
+ | 'fileTaskAfterCreate'
+ | 'inlineTaskAfterCreate'
 	| 'taskCreatorDefaultFileTemplateId'
 	| 'defaultInlineTaskTemplateId'
 	| 'inlineTaskUseLastTemplateAsDefault'
@@ -223,6 +226,8 @@ function readStoreData(
 			raw.taskCreatorDefaultToFileTask,
 			fallback.taskCreatorDefaultToFileTask,
 		),
+		fileTaskAfterCreate: normalizeTaskAfterCreateAction(raw.fileTaskAfterCreate),
+		inlineTaskAfterCreate: normalizeTaskAfterCreateAction(raw.inlineTaskAfterCreate),
 		inlineTaskUseLastTemplateAsDefault: readBoolean(raw.inlineTaskUseLastTemplateAsDefault, false),
 		fileTaskUseLastTemplateAsDefault: readBoolean(raw.fileTaskUseLastTemplateAsDefault, false),
 		defaultInlineTaskTemplateId: readNullableString(raw.defaultInlineTaskTemplateId, fallback.defaultInlineTaskTemplateId),
@@ -281,8 +286,8 @@ export class TaskCreationProfileStore {
 		this.packagePersist = persist;
 	}
 
-	loadFromPackage(settings: Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault'> & { defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean }): void {
-		this.settings = cloneSettings({ ...settings, inlineTaskUseLastTemplateAsDefault: settings.inlineTaskUseLastTemplateAsDefault === true, fileTaskUseLastTemplateAsDefault: settings.fileTaskUseLastTemplateAsDefault === true, defaultInlineTaskTemplateId: settings.defaultInlineTaskTemplateId ?? null });
+	loadFromPackage(settings: Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault' | 'fileTaskAfterCreate' | 'inlineTaskAfterCreate'> & { inlineTaskAfterCreate?: OperonSettings['inlineTaskAfterCreate']; fileTaskAfterCreate?: OperonSettings['fileTaskAfterCreate']; defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean }): void {
+		this.settings = cloneSettings({ ...settings, inlineTaskAfterCreate: normalizeTaskAfterCreateAction(settings.inlineTaskAfterCreate), fileTaskAfterCreate: normalizeTaskAfterCreateAction(settings.fileTaskAfterCreate), inlineTaskUseLastTemplateAsDefault: settings.inlineTaskUseLastTemplateAsDefault === true, fileTaskUseLastTemplateAsDefault: settings.fileTaskUseLastTemplateAsDefault === true, defaultInlineTaskTemplateId: settings.defaultInlineTaskTemplateId ?? null });
 		this.serializedSettings = JSON.stringify(this.settings);
 		this.recoveredFromMalformed = false;
 	}

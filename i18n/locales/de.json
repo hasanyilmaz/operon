@@ -27,6 +27,7 @@
 		"convertToInline": "YAML-Aufgabe in Inline umwandeln (Zwischenablage)",
 		"openTaskCreator": "Neue Operon-Aufgabe erstellen",
 		"openTaskFinder": "Aufgabensuche",
+		"trackDifferentTask": "Eine andere Aufgabe erfassen",
 		"createOrEditInlineTask": "Inline-Aufgabe erstellen oder bearbeiten",
 		"convertTasksEmojiLineToInlineTask": "Tasks-Emoji-Zeile in Inline-Aufgabe umwandeln",
 		"convertSelectionToOperonTasks": "Auswahl in Operon-Aufgaben umwandeln",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Task zu Canvas hinzufügen",
 		"addOperonTask": "Operon-Task hinzufügen",
 		"convertCanvasTask": "In Operon-Aufgabe umwandeln…",
-		"addOperonGroup": "Operon-Gruppe hinzufügen"
+		"addOperonGroup": "Operon-Gruppe hinzufügen",
+		"toggleStatusDock": "Status-Dock ein-/ausblenden"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} in den {{period}} geänderte Aufgaben"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "Die Aufgabe wurde erstellt, aber ihre Ansicht konnte nicht geöffnet werden.",
+		"createdFileTaskOpenFailed": "Die Aufgabe wurde erstellt, ihre Ansicht konnte jedoch nicht geöffnet werden.",
 		"excalidrawPoolUnavailable": "Die Steuerungs-API für den Excalidraw-Aufgabenpool ist nicht verfügbar.",
 		"excalidrawTaskCleanupDeferred": "Die automatische Bereinigung der Excalidraw-Karten konnte nicht abgeschlossen werden. Die Aufgabenänderung wurde beibehalten.",
 		"excalidrawTaskSaveFailed": "Das Speichern konnte nicht bestätigt werden. Prüfe die Zeichnung, bevor du die Karte erneut hinzufügst.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Doppelte Aufgabenkopie löschen?",
 		"deleteMessage": "„{{label}}“ aus dem Tresor löschen?",
 		"statusBarConflictLabel": "{{count}} doppelte Aufgabenkopien erkannt. Manager für doppelte operonIds öffnen.",
-		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst."
+		"statusBarResolvedLabel": "Doppelte Aufgabenkopien gelöst.",
+		"introDock": "Löse hier Konflikte durch doppelte operonIds. Du kannst dieses Fenster jederzeit schließen und über die Befehlspalette oder die Status-Dock-Warnung wieder öffnen."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Auf eine einzelne, unverdeckte Operon-Aufgabenkarte in dieser Zeichnung ziehen.",
@@ -807,6 +812,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Wählen Sie, was in der Quellnotiz verbleibt, nachdem eine Inline-Aufgabe in eine Datei-Aufgabe umgewandelt wurde.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Link zur Datei-Aufgabe beibehalten",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Ursprüngliche Inline-Aufgabe entfernen",
+		"taskAfterCreateEditor": "Aufgabeneditor (Lightbox)",
+		"inlineTaskAfterCreate": "Nach dem Erstellen einer Inline-Aufgabe",
+		"inlineTaskAfterCreateDesc": "Wähle, wie mit Task Creator erstellte Inline-Aufgaben geöffnet werden.",
+		"inlineTaskAfterCreateFocusedTab": "Quelle in neuem Tab (Fokussiert)",
+		"inlineTaskAfterCreateBackgroundTab": "Quelle in neuem Tab (Hintergrund)",
+		"fileTaskAfterCreate": "Nach dem Erstellen einer Datei-Aufgabe",
+		"fileTaskAfterCreateDesc": "Wähle, wie mit Task Creator erstellte Datei-Aufgaben geöffnet werden.",
+		"fileTaskAfterCreateNone": "Nicht öffnen",
+		"fileTaskAfterCreateFocusedTab": "Neuer Tab (im Vordergrund)",
+		"fileTaskAfterCreateBackgroundTab": "Neuer Tab (im Hintergrund)",
+		"fileTaskAfterCreateSource": "Quelldatei (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Quelldatei + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Standardeinstellungen für neue Inline-Aufgaben",
 		"newFileTaskCreationDefaults": "Neue Datei-Aufgaben-Erstellungsstandards",
 		"fileTaskTemplates": "Datei-Aufgaben-Vorlagen",
 		"checkboxConversion": "Kontrollkästchen-Umwandlung",
@@ -868,6 +886,10 @@
 		"backgroundDimmingDecrease": "Hintergrund weniger abdunkeln",
 		"backgroundDimmingSaveFailed": "Die Hintergrundabdunklung konnte nicht gespeichert werden.",
 		"lightboxSizeSaveFailed": "Die Lightbox-Größe konnte nicht gespeichert werden.",
+		"statusDockSection": "Operon-Statusdock",
+		"statusDockMove": "Dock verschieben",
+		"statusDockClickAction": "Klickverhalten",
+		"statusDockClickActionDesc": "Wähle, was beim Klicken auf eine erfasste oder nächste Aufgabe im Status-Dock geöffnet wird.",
 		"workspaceTweaksHideScrollbars": "Hide Scrollbars",
 		"workspaceTweaksShowScrollbars": "Bildlaufleisten anzeigen",
 		"workspaceTweaksHideScrollbarsDesc": "Blendet Scrollbars im gesamten Obsidian-Workspace aus, während normales Scrollen erhalten bleibt.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Unveränderte Dateien prüfen",
 		"tasksBulkSkippedSource": "Weicht vom Scan ab und wird übersprungen: {{path}}",
 		"useLastTemplateAsDefault": "Zuletzt verwendete Vorlage als Standard verwenden",
-		"useLastTemplateAsDefaultDesc": "Nach erfolgreicher Erstellung im Task Creator wird die verwendete Vorlage als Standard für diesen Aufgabentyp gespeichert. Befehle und Konvertierungen verwenden ebenfalls diesen Standard."
+		"useLastTemplateAsDefaultDesc": "Nach erfolgreicher Erstellung im Task Creator wird die verwendete Vorlage als Standard für diesen Aufgabentyp gespeichert. Befehle und Konvertierungen verwenden ebenfalls diesen Standard.",
+		"trackerShowStatusDockTimer": "Aktiven Timer im Status-Dock anzeigen",
+		"trackerShowStatusDockTimerDesc": "Im Operon-Status-Dock im Leerlauf die Starttaste und beim Erfassen den aktiven Timer anzeigen.",
+		"upcomingShowStatusDock": "Anstehende Aufgaben im Status-Dock anzeigen",
+		"upcomingShowStatusDockDesc": "Die aktuelle Aufgabe nach Ablauf des Countdowns beibehalten und daneben die nächste zeitgebundene Aufgabe anzeigen.",
+		"upcomingDockDaysDesc": "Anzahl der Kalendertage für Seitenleiste und Status-Dock einschließlich heute wählen.",
+		"settingsPageTrackerDescDock": "Verlauf der Erfassungssitzungen, Status-Dock-Timer, FlowTime-Verhalten und Aufteilung von Erfassungssitzungen.",
+		"duplicateAlertDelayDescDock": "Wie lange Operon wartet, bevor Hinweise zu doppelten operonIds, Status-Dock-Warnungen und das optionale Manager-Popup angezeigt werden."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Breite verringern",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Ungültige Erinnerung"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Aktueller Wert",
+		"textPickerCurrentValue": "Aktueller Wert",
 		"creatorInlineTemplateProperties": "Bei Inline-Aufgaben werden die Eigenschaften dieser Vorlage zur Aufgabe hinzugefügt. Der Haupttext der Vorlage wird nicht übernommen.",
 		"creatorMetadataChanged": "Die Eigenschaftsregeln wurden geändert. Öffnen Sie Task Creator erneut, um sie vor dem Erstellen zu prüfen.",
 		"creatorParentPreviewChanged": "Das Ziel hat geerbte Werte geändert. Prüfen Sie die aktualisierte Auswahl und erstellen Sie erneut.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Task-Karteneinbettung kopieren",
 		"canvasGroupTitle": "Gruppenregel",
 		"canvasGroupInvalid": "Eine unterstützte Eigenschaft und gültige Werte eingeben.",
-		"canvasGroupChanged": "Die Eigenschaftseinstellungen haben sich geändert. Den Gruppeneditor erneut öffnen."
+		"canvasGroupChanged": "Die Eigenschaftseinstellungen haben sich geändert. Den Gruppeneditor erneut öffnen.",
+		"dockSelectTask": "Aufgabe auswählen oder neu erstellen",
+		"dockNextTask": "Nächste Aufgabe",
+		"dockTaskCreatorTitle": "Aufgabenersteller",
+		"dockCreateAndTrack": "Neue Aufgabe erstellen und Zeiterfassung starten"
 	},
 	"indexStats": {
 		"title": "Operon-Index",

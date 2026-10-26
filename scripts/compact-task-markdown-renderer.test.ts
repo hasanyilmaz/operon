@@ -301,6 +301,19 @@ function run(): void {
 	deepEqual(escapedResult, { formatted: true, hasLinks: false });
 	equal(escaped.children.map(child => child.textContent).join(''), '*literal*');
 
+	const limited = createContainer();
+	renderCompactTaskMarkdown(limited as unknown as HTMLElement, { value: '**Important** [[Note|long task title]] with `code`', mode: 'visual-only', maxCharacters: 24 });
+	const visible = (element: FakeElement): string => element.textContent + element.children.map(visible).join('');
+	equal(visible(limited), 'Important long task tit…');
+	equal(Array.from(visible(limited)).length, 24);
+	equal(limited.children[0].tagName, 'STRONG');
+	const unicode = createContainer();
+	renderCompactTaskMarkdown(unicode as unknown as HTMLElement, { value: '😀😀😀😀😀', mode: 'visual-only', maxCharacters: 4 });
+	equal(visible(unicode), '😀😀😀…');
+	const uncapped = createContainer();
+	renderCompactTaskMarkdown(uncapped as unknown as HTMLElement, { value: 'A long name that remains complete without a cap', mode: 'visual-only' });
+	equal(visible(uncapped), 'A long name that remains complete without a cap');
+
 	console.log(`Compact task Markdown renderer tests passed: ${assertions} assertions`);
 }
 

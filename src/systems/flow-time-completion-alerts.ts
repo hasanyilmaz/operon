@@ -15,8 +15,8 @@ interface FlowTimeCompletionAlertState {
 
 /**
  * Tracks a live FlowTime boundary without replaying an alert for an already
- * elapsed target. The view owns its lifetime, so closing the view resets all
- * pending FlowTime and break alert state.
+ * elapsed target. Its owner controls its lifetime: focus alerts belong to the view,
+ * while shared break alerts belong to the plugin-lifetime break controller.
  */
 export class FlowTimeCompletionAlertTracker {
 	private readonly states = new Map<FlowTimeCompletionAlertKind, FlowTimeCompletionAlertState>();

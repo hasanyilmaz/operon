@@ -27,6 +27,7 @@
 		"convertToInline": "Convertir la tâche YAML en ligne (presse-papiers)",
 		"openTaskCreator": "Créer une nouvelle tâche Operon",
 		"openTaskFinder": "Recherche de tâches",
+		"trackDifferentTask": "Suivre une autre tâche",
 		"createOrEditInlineTask": "Créer ou modifier une tâche en ligne",
 		"convertTasksEmojiLineToInlineTask": "Convertir une ligne emoji Tasks en tâche en ligne",
 		"convertSelectionToOperonTasks": "Convertir la sélection en tâches Operon",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Ajouter une tâche au Canvas",
 		"addOperonTask": "Ajouter une tâche Operon",
 		"convertCanvasTask": "Convertir en tâche Operon…",
-		"addOperonGroup": "Ajouter un groupe Operon"
+		"addOperonGroup": "Ajouter un groupe Operon",
+		"toggleStatusDock": "Afficher/masquer le dock de statut"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Réparer les identités des tâches-fichiers récurrentes",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
+		"createdFileTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
 		"excalidrawPoolUnavailable": "L’API de contrôle du réservoir de tâches Excalidraw est indisponible.",
 		"excalidrawTaskCleanupDeferred": "Le nettoyage automatique des cartes Excalidraw n’a pas pu être terminé. La modification de la tâche a été conservée.",
 		"excalidrawTaskSaveFailed": "L’enregistrement n’a pas pu être vérifié. Vérifiez le dessin avant d’ajouter à nouveau la carte.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Supprimer ce doublon de tâche ?",
 		"deleteMessage": "Supprimer « {{label}} » du coffre ?",
 		"statusBarConflictLabel": "{{count}} doublons de tâches détectés. Ouvrir le gestionnaire des doublons.",
-		"statusBarResolvedLabel": "Doublons de tâches résolus."
+		"statusBarResolvedLabel": "Doublons de tâches résolus.",
+		"introDock": "Résolvez ici les conflits de doublons d'operonId. Vous pouvez fermer cette fenêtre à tout moment et la rouvrir depuis la palette de commandes ou l'alerte de la dock de statut."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Déposez sur une seule carte de tâche Operon non masquée dans ce dessin.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Choisissez ce qui reste dans la note source après la conversion d’une tâche en ligne en tâche-fichier.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Conserver un lien vers la tâche-fichier",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Supprimer la tâche en ligne d’origine",
+		"taskAfterCreateEditor": "Éditeur de tâches (Lightbox)",
+		"inlineTaskAfterCreate": "Après la création d’une tâche en ligne",
+		"inlineTaskAfterCreateDesc": "Choisissez comment ouvrir les tâches en ligne créées avec Task Creator.",
+		"inlineTaskAfterCreateFocusedTab": "Source dans un nouvel onglet (Actif)",
+		"inlineTaskAfterCreateBackgroundTab": "Source dans un nouvel onglet (Arrière-plan)",
+		"fileTaskAfterCreate": "Après la création d’une tâche fichier",
+		"fileTaskAfterCreateDesc": "Choisissez comment ouvrir les tâches fichiers créées avec Task Creator.",
+		"fileTaskAfterCreateNone": "Ne pas ouvrir",
+		"fileTaskAfterCreateFocusedTab": "Nouvel onglet (actif)",
+		"fileTaskAfterCreateBackgroundTab": "Nouvel onglet (en arrière-plan)",
+		"fileTaskAfterCreateSource": "Fichier source (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Fichier source + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Paramètres de création des nouvelles tâches en ligne",
 		"newFileTaskCreationDefaults": "Valeurs par défaut de création des tâches-fichiers",
 		"fileTaskTemplates": "Modèles de tâches-fichiers",
 		"checkboxConversion": "Conversion des cases à cocher",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Réduire l’assombrissement du fond",
 		"backgroundDimmingSaveFailed": "Impossible d’enregistrer l’assombrissement du fond.",
 		"lightboxSizeSaveFailed": "La taille de la lightbox n’a pas pu être enregistrée.",
+		"statusDockSection": "Dock de statut Operon",
+		"statusDockMove": "Déplacer le dock",
+		"statusDockClickAction": "Comportement au clic",
+		"statusDockClickActionDesc": "Choisissez ce qui s’ouvre lorsque vous cliquez sur une tâche suivie ou à venir dans le dock.",
 		"workspaceTweaksHideScrollbars": "Hide Scrollbars",
 		"workspaceTweaksShowScrollbars": "Afficher les barres de défilement",
 		"workspaceTweaksHideScrollbarsDesc": "Masque les barres de défilement dans tout le workspace Obsidian tout en conservant le défilement normal.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Examiner les fichiers inchangés",
 		"tasksBulkSkippedSource": "Ignoré car différent de l’analyse : {{path}}",
 		"useLastTemplateAsDefault": "Utiliser le dernier modèle utilisé par défaut",
-		"useLastTemplateAsDefaultDesc": "Après une création réussie dans Task Creator, enregistrer le modèle utilisé comme modèle par défaut pour ce type de tâche. Les commandes et conversions utilisent aussi ce modèle."
+		"useLastTemplateAsDefaultDesc": "Après une création réussie dans Task Creator, enregistrer le modèle utilisé comme modèle par défaut pour ce type de tâche. Les commandes et conversions utilisent aussi ce modèle.",
+		"trackerShowStatusDockTimer": "Afficher le minuteur actif dans le dock de statut",
+		"trackerShowStatusDockTimerDesc": "Afficher le bouton de démarrage au repos et le minuteur actif dans le dock de statut Operon.",
+		"upcomingShowStatusDock": "Afficher les tâches à venir dans le dock de statut",
+		"upcomingShowStatusDockDesc": "Conserver la tâche actuelle à la fin du compte à rebours et afficher la prochaine tâche planifiée à côté.",
+		"upcomingDockDaysDesc": "Choisir le nombre de jours à afficher dans le panneau latéral et le dock de statut, en incluant aujourd’hui.",
+		"settingsPageTrackerDescDock": "Historique du suivi du temps, minuteur de la dock de statut, comportement FlowTime et fractionnement des sessions.",
+		"duplicateAlertDelayDescDock": "Durée qu'Operon attend avant d'afficher les avis de doublons, les alertes de la dock de statut et la fenêtre facultative du gestionnaire."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Réduire la largeur",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Rappel non valide"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Valeur actuelle",
+		"textPickerCurrentValue": "Valeur actuelle",
 		"creatorInlineTemplateProperties": "Pour les tâches inline, les propriétés de ce modèle sont ajoutées à la tâche. Le texte du corps du modèle n’est pas inclus.",
 		"creatorMetadataChanged": "Les règles des propriétés ont changé. Rouvrez Task Creator pour les vérifier avant la création.",
 		"creatorParentPreviewChanged": "La destination a modifié les valeurs héritées. Vérifiez les sélections mises à jour et relancez la création.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Copier le code de la carte de tâche",
 		"canvasGroupTitle": "Règle du groupe",
 		"canvasGroupInvalid": "Saisissez une propriété prise en charge et des valeurs valides.",
-		"canvasGroupChanged": "Les paramètres de propriété ont changé. Rouvrez l’éditeur du groupe."
+		"canvasGroupChanged": "Les paramètres de propriété ont changé. Rouvrez l’éditeur du groupe.",
+		"dockSelectTask": "Sélectionner ou créer une tâche",
+		"dockNextTask": "Tâche suivante",
+		"dockTaskCreatorTitle": "Créateur de tâches",
+		"dockCreateAndTrack": "Créer une tâche et démarrer le suivi du temps"
 	},
 	"indexStats": {
 		"title": "Index Operon",

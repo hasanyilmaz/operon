@@ -38,8 +38,9 @@ try {
   window.files = Object.fromEntries(['A','B','Normal','Inline'].map(name=>[name,{path:name+'.md',name:name+'.md',extension:'md'}]));
   window.tasks = new Map([[files.A,'taskA'],[files.B,'taskB']]);
   window.stored = new Map(Object.values(files).map(file=>[file.path,'---\nid: '+file.path+'\n---\nBody']));
-  const group={children:[],currentTab:0,selectTabIndex(i){this.currentTab=i;}};
-  const origin={id:'origin',parent:group,getRoot:()=>group,getContainer:()=>document.body,view:{containerEl:document.body.createDiv(),getViewType:()=> 'markdown'}}; group.children.push(origin);
+  const group={children:[],currentTab:0,containerEl:document.body.createDiv(),selectTabIndex(i){this.currentTab=i;},recomputeChildrenDimensions(){for(const leaf of this.children)this.containerEl.appendChild(leaf.containerEl);}};
+  const originRoot=group.containerEl.createDiv('workspace-leaf');
+  const origin={id:'origin',parent:group,containerEl:originRoot,getRoot:()=>group,getContainer:()=>document.body,view:{containerEl:originRoot.createDiv(),getViewType:()=> 'markdown'}}; group.children.push(origin);
   window.makeEditor = (id,height=260) => {
    const editor={id,isEdited:false,fail:false,destroyed:0,saves:0,input:null,
     mountInto(host){
@@ -60,9 +61,10 @@ try {
    editors.push(editor); return editor;
   };
   window.app={vault:{read:async file=>stored.get(file.path)},workspace:{containerEl:document.body,activeLeaf:origin,getMostRecentLeaf(){return this.activeLeaf||origin;},getLeafById:id=>id==='origin'?origin:leaves.find(leaf=>leaf.id===id&&leaf.view.containerEl.isConnected),getLeavesOfType:()=>[origin],iterateAllLeaves(fn){fn(origin);},getLayout:()=>({active:'origin'}),setActiveLeaf(leaf){this.activeLeaf=leaf;},createLeafInParent(parent){
-   const host=parent.tabsContainerEl||document.body;
-   const view={containerEl:host.createDiv(),file:null,data:'',lastSavedData:'',type:'markdown',getViewType(){return this.type;},getViewData(){return this.data;},setViewData(text,clear){this.data=text;this.cleared=clear;},getMode(){return 'source';},editor:{setCursor(position){view.cursor=position;}},currentMode:{applyScroll(position){view.scroll=position;}},onResize(){},getEphemeralState:()=>({}),setEphemeralState(state){this.ephemeral=state;},async save(){stored.set(this.file.path,this.data);this.lastSavedData=this.data;}};
-   const leaf={id:'leaf-'+leaves.length,parent,view,getRoot:()=>group,getContainer:()=>document.body,getViewState:()=>({type:view.type,state:{file:view.file?.path}}),async setViewState(state){if(window.failNative)throw Error('native open failed');if(window.navigationWait)await window.navigationWait;view.type=state.type;view.file=Object.values(files).find(f=>f.path===state.state?.file)||null;view.data=view.file?stored.get(view.file.path):'';view.lastSavedData=view.data;},async openFile(file,options){await this.setViewState({type:'markdown',state:{file:file.path}});view.setEphemeralState(options.eState);},async loadIfDeferred(){},detach(){if(this.getViewState().type!=='empty')closedHistory.push(this.getViewState());view.containerEl.remove();}};
+   const host=parent.tabsContainerEl||parent.containerEl||document.body;
+   const root=host.createDiv('workspace-leaf');
+   const view={containerEl:root.createDiv('workspace-leaf-content'),file:null,data:'',lastSavedData:'',type:'markdown',getViewType(){return this.type;},getViewData(){return this.data;},setViewData(text,clear){this.data=text;this.cleared=clear;},getMode(){return 'source';},editor:{setCursor(position){view.cursor=position;}},currentMode:{applyScroll(position){view.scroll=position;}},onResize(){},getEphemeralState:()=>({}),setEphemeralState(state){this.ephemeral=state;},async save(){stored.set(this.file.path,this.data);this.lastSavedData=this.data;}};
+   const leaf={id:'leaf-'+leaves.length,parent,containerEl:root,view,getRoot:()=>group,getContainer:()=>document.body,getViewState:()=>({type:view.type,state:{file:view.file?.path}}),async setViewState(state){if(window.failNative)throw Error('native open failed');if(window.navigationWait)await window.navigationWait;view.type=state.type;view.file=Object.values(files).find(f=>f.path===state.state?.file)||null;view.data=view.file?stored.get(view.file.path):'';view.lastSavedData=view.data;},async openFile(file,options){await this.setViewState({type:'markdown',state:{file:file.path}});view.setEphemeralState(options.eState);},async loadIfDeferred(){},detach(){if(this.getViewState().type!=='empty')closedHistory.push(this.getViewState());root.remove();}};
    parent.children.push(leaf);leaves.push(leaf);return leaf;
   }}};
   window.position='right';window.provider={position:()=>window.position,async locate(id){const file=id==='inline1'?files.Inline:Array.from(tasks).find(([,key])=>key===id)?.[0];return file?{file,operonId:id}:null;},async resolve(file,id){if(window.resolveWait)await window.resolveWait;const key=id||(tasks.get(file));return key?{file,operonId:key}:null;},async create(task){if(window.createWait)await window.createWait;return makeEditor(task.operonId);},async confirmDiscard(){confirmations++;return window.discard===true;},closed(){closed++;}};
@@ -126,11 +128,11 @@ try {
  const ready=()=>page.waitForFunction(()=>window.visibleShell()&&!visibleShell().classList.contains('is-workspace-loading'));
  await page.evaluate(()=>open()); await ready();
  await check(()=>{const s=visibleShell(),m=s.querySelector('.is-markdown').getBoundingClientRect(),e=s.querySelector('.operon-native-task-panel').getBoundingClientRect();return [m.top===e.top,m.right<e.left,e.right<innerWidth,e.height<m.height,editors.length,document.activeElement===editors[0].input];},[true,true,true,true,1,true],'paired geometry, compact editor and initial focus');
- await check(()=>visibleShell().classList.contains('are-controls-pending'),true,'initial ready panel starts hover delay');
+ await check(()=>visibleShell().classList.contains('are-controls-pending'),false,'initial ready panel enables hover immediately');
  await page.mouse.move(8,8);
- await check(()=>Array.from(visibleShell().querySelectorAll('.operon-task-media-lightbox-control')).every(b=>getComputedStyle(b).opacity==='0'),true,'pointer hover cannot flash initial controls');
+ await check(()=>Array.from(visibleShell().querySelectorAll('.operon-task-media-lightbox-control')).every(b=>getComputedStyle(b).opacity==='1'),true,'backdrop hover reveals ready controls immediately');
  await page.evaluate(()=>visibleShell().focus());await page.keyboard.press('Tab');
- await check(()=>document.activeElement.matches('.operon-task-media-lightbox-control:focus-visible')&&getComputedStyle(document.activeElement).opacity==='1',true,'keyboard focus bypasses initial hover delay');
+ await check(()=>document.activeElement.matches('.operon-task-media-lightbox-control:focus-visible')&&getComputedStyle(document.activeElement).opacity==='1',true,'keyboard focus reveals controls without waiting');
  await page.evaluate(()=>editors[0].input.focus());
  await page.waitForFunction(()=>!visibleShell().classList.contains('are-controls-pending'));
  await check(()=>writes.length,0,'mount writes no size preference');
@@ -146,7 +148,7 @@ try {
  await check(()=>visibleControls().length,2);
  await check(()=>{const hidden=Array.from(visibleShell().querySelectorAll(':scope > button[hidden]'));currentEditor().input.focus();return hidden.every(b=>{b.focus();return document.activeElement!==b;});},true,'hidden buttons cannot receive focus');
  await page.evaluate(()=>clickLabel('Show source'));await page.waitForTimeout(30);
- await check(()=>visibleShell().classList.contains('are-controls-pending'),false,'panel toggle does not restart opening delay');
+ await check(()=>visibleShell().classList.contains('are-controls-pending'),false,'panel toggle leaves hover ready');
  await page.evaluate(()=>clickLabel('Hide task editor'));
  await check(()=>{const s=visibleShell(),m=s.querySelector('.is-markdown').getBoundingClientRect();return [s.querySelector('.operon-native-task-panel').hidden,Math.abs(m.left-(innerWidth-m.width)/2)<1,editors.length];},[true,true,1]);
  await layout('source-only controls do not render the hidden source toggle');
@@ -289,6 +291,7 @@ try {
   },mode);
   await page.waitForFunction(()=>currentEditor()?.input?.isConnected&&currentLeaf()?.view.file);
   await check(()=>[visibleShell().classList.contains('is-workspace-loading'),getComputedStyle(visibleShell().querySelector('.operon-native-task-panel')).visibility],[true,'hidden'],'initial editor never exposes incomplete sections');
+  await check(()=>visibleShell().classList.contains('are-controls-pending'),true,'loading content retains the hover readiness guard');
   await check(()=>Array.from(visibleShell().querySelectorAll('.operon-task-editor-primary-fields'),section=>section.checkVisibility({visibilityProperty:true,opacityProperty:true})),[false,false,false],'Description, Notes and Stats stay unpainted with the frame');
   if(mode==='nested-inline')await check(()=>[loadingParent.checkVisibility({visibilityProperty:true,opacityProperty:true}),loadingParent.inert,getComputedStyle(visibleShell()).backgroundColor],[true,true,'rgba(0, 0, 0, 0.55)'],'loading child preserves the painted parent and one dimming increment');
   await check(()=>currentEditor().mountWidth>0&&Math.abs(currentEditor().mountWidth-visibleShell().querySelector('.operon-native-task-panel').getBoundingClientRect().width)<1,true,'compact editors are mounted at the final panel width');

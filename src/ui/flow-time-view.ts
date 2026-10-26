@@ -1,9 +1,11 @@
+import { getOwnerWindow } from '../core/dom-compat';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
 import { TimeTracker } from '../systems/time-tracker';
 import { FlowTimeCompletionAlertTracker } from '../systems/flow-time-completion-alerts';
+import { FlowTimeBreakController, canSelectFlowTimeTask, type FlowTimeBreakState } from '../systems/flow-time-break';
 import {
 	FlowTimePendingDraft,
 	FlowTimeRenderedState,
@@ -31,6 +33,7 @@ import { WindowIntervalHandle, clearWindowInterval, getOwnerDocument, setWindowI
 import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import { localNow } from '../core/local-time';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 
@@ -46,6 +49,7 @@ interface FlowTimeViewCallbacks {
 	getSettings: () => OperonSettings;
 	saveSettings: () => Promise<void>;
 	playReminderSound: () => Promise<void>;
+	createTaskForTracker: (canUse: () => boolean) => Promise<string | null>;
 	createInlineTaskFromQuickInput: (draft: TaskCreatorDraft) => Promise<QuickInlineTaskCreationResult | null>;
 	shouldPromptForInlineTaskTarget: () => boolean;
 	startTimerForTask: (operonId: string, source: TrackerSource, startOverride?: string | null) => Promise<boolean>;
@@ -67,12 +71,6 @@ interface DialState {
 	accentColor: string | null;
 }
 
-interface FlowTimeBreakState {
-	taskId: string;
-	startMs: number;
-	targetSeconds: number;
-}
-
 interface FlowTimeOptimisticTaskPatch extends OptimisticTaskPatchInput {
 	expiresAt: number;
 }
@@ -82,6 +80,7 @@ export class FlowTimeView extends ItemView {
 	private readonly timeTracker: TimeTracker;
 	private readonly callbacks: FlowTimeViewCallbacks;
 	private unsubscribe: (() => void) | null = null;
+	private unsubscribeBreak: (() => void) | null = null;
 	private lastRenderSignature: string | null = null;
 	private pendingTaskId: string | null = null;
 	private notifiedTargetKey: string | null = null;
@@ -91,8 +90,9 @@ export class FlowTimeView extends ItemView {
 	private lastFlowTimeSoundMode: FlowTimeMode | null = null;
 	private isDialDragging = false;
 	private cleanupDialDrag: (() => void) | null = null;
-	private breakState: FlowTimeBreakState | null = null;
-	private breakTickerInterval: WindowIntervalHandle | null = null;
+	private get breakState(): FlowTimeBreakState | null {
+		return this.breakController.getSnapshot().breakState;
+	}
 	private pendingDraft: FlowTimePendingDraft | null = null;
 	private pendingDraftTickerInterval: WindowIntervalHandle | null = null;
 	private readonly optimisticTaskPatches = new Map<string, FlowTimeOptimisticTaskPatch>();
@@ -103,6 +103,7 @@ export class FlowTimeView extends ItemView {
 		indexer: OperonIndexer,
 		timeTracker: TimeTracker,
 		callbacks: FlowTimeViewCallbacks,
+		private readonly breakController: FlowTimeBreakController,
 	) {
 		super(leaf);
 		this.indexer = indexer;
@@ -123,6 +124,10 @@ export class FlowTimeView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		this.unsubscribeBreak = this.breakController.subscribe(event => {
+			if (event === 'tick') this.updateLiveElements();
+			else this.render();
+		});
 		this.unsubscribe = this.timeTracker.subscribe((event) => {
 			if (event === 'tick') {
 				this.updateLiveElements();
@@ -134,8 +139,10 @@ export class FlowTimeView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		cleanupOperonHoverTooltips(this.contentEl);
 		this.finishDialDrag();
-		this.clearBreakState(false);
+		this.unsubscribeBreak?.();
+		this.unsubscribeBreak = null;
 		this.stopPendingDraftTicker();
 		this.clearOptimisticTaskPatches();
 		hideTaskContextualHoverMenu(true);
@@ -146,11 +153,7 @@ export class FlowTimeView extends ItemView {
 	render(): void {
 		const container = this.contentEl;
 		const settings = this.callbacks.getSettings();
-		let renderedState = this.getRenderedState();
-		if (renderedState.active && this.breakState) {
-			this.clearBreakState(false);
-			renderedState = this.getRenderedState();
-		}
+		const renderedState = this.getRenderedState();
 		const { active, task } = renderedState;
 		const activeKey = active ? `${active.operonId ?? 'unassigned'}:${active.start}` : 'none';
 		const breakKey = this.breakState ? `${this.breakState.taskId}:${this.breakState.startMs}:${this.breakState.targetSeconds}` : 'none';
@@ -161,6 +164,7 @@ export class FlowTimeView extends ItemView {
 		const signature = buildFlowTimeRenderSignature({
 			indexGeneration: this.indexer.getGeneration(),
 			settingsValues: [
+				String(this.breakController.getSnapshot().actionPending),
 				settings.flowTimeMode,
 				String(settings.flowTimeSessionMinutes),
 				String(settings.flowTimePauseMinutes),
@@ -190,6 +194,7 @@ export class FlowTimeView extends ItemView {
 		}
 		this.lastRenderSignature = signature;
 
+		cleanupOperonHoverTooltips(container);
 		cleanupTaskContextualHoverMenus(container);
 		container.empty();
 		container.addClass('operon-flow-time-view');
@@ -247,8 +252,12 @@ export class FlowTimeView extends ItemView {
 		const slot = container.createDiv('operon-flow-time-break-slot');
 
 		const isBreakActive = !!this.breakState;
-		const disabled = !isBreakActive && !active?.operonId;
-		const label = isBreakActive ? t('taskEditor', 'flowTimeEndBreak') : t('taskEditor', 'flowTimeStartBreak');
+		const state = this.breakController.getSnapshot();
+		const choosing = canSelectFlowTimeTask(active, state);
+		const primaryFinder = choosing && !isBreakActive;
+		slot.classList.toggle('is-break-selection', isBreakActive);
+		const disabled = state.actionPending || (!choosing && !isBreakActive && !active?.operonId);
+		const label = primaryFinder ? t('commands', 'openTaskFinder') : isBreakActive ? t('taskEditor', 'flowTimeEndBreak') : t('taskEditor', 'flowTimeStartBreak');
 		const button = slot.createEl('button', {
 			cls: [
 				'operon-flow-time-break-button',
@@ -259,18 +268,40 @@ export class FlowTimeView extends ItemView {
 			},
 		});
 		button.disabled = disabled;
-		setIcon(button, 'coffee');
+		setIcon(button, primaryFinder ? 'scan-search' : 'coffee');
 		setAccessibleLabelWithoutTooltip(button, label);
+		if (primaryFinder) bindOperonHoverTooltip(button, { title: label, content: t('commands', 'trackDifferentTask'), taskColor: null });
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			if (disabled) return;
-			if (this.breakState) {
-				this.endBreakAndClearTask();
-				return;
-			}
-			runAsyncAction('flow time break start failed', () => this.startBreakFromActiveTask());
+			runAsyncAction('flow time break action failed', async () => {
+				if (primaryFinder) await this.selectWaitingTask();
+				else await this.breakController.toggleBreak();
+			});
 		});
+		if (choosing) {
+			const divider = slot.createSpan('operon-flow-time-selection-divider'); divider.setAttribute('aria-hidden', 'true');
+			if (isBreakActive) {
+				const finder = slot.createEl('button', { cls: 'operon-flow-time-break-button', attr: { type: 'button' } });
+				finder.disabled = state.actionPending; setIcon(finder, 'scan-search');
+				setAccessibleLabelWithoutTooltip(finder, t('commands', 'openTaskFinder'));
+				bindOperonHoverTooltip(finder, { title: t('commands', 'openTaskFinder'), content: t('commands', 'trackDifferentTask'), taskColor: null });
+				finder.addEventListener('click', event => {
+					event.preventDefault(); event.stopPropagation(); if (finder.disabled) return;
+					runAsyncAction('flow time task selection failed', () => this.selectWaitingTask());
+				});
+			}
+			const create = slot.createEl('button', { cls: 'operon-flow-time-break-button', attr: { type: 'button' } });
+			create.disabled = state.actionPending; setIcon(create, 'list-plus');
+			setAccessibleLabelWithoutTooltip(create, t('commands', 'openTaskCreator'));
+			bindOperonHoverTooltip(create, { title: t('commands', 'openTaskCreator'), taskColor: null });
+			create.addEventListener('click', event => {
+				event.preventDefault(); event.stopPropagation(); if (create.disabled) return;
+				runAsyncAction('flow time task creation failed', () => this.selectWaitingTask(true));
+			});
+		}
+
 	}
 
 	private renderTimeControls(container: HTMLElement, _settings: OperonSettings): void {
@@ -316,6 +347,7 @@ export class FlowTimeView extends ItemView {
 			});
 			setIcon(finderButton, 'scan-search');
 			setAccessibleLabelWithoutTooltip(finderButton, t('commands', 'openTaskFinder'));
+			bindOperonHoverTooltip(finderButton, { title: t('commands', 'openTaskFinder'), content: t('commands', 'trackDifferentTask'), taskColor: null });
 			finderButton.addEventListener('click', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -375,7 +407,7 @@ export class FlowTimeView extends ItemView {
 				type: 'button',
 			},
 		});
-		action.disabled = options.disabled === true;
+		action.disabled = options.disabled === true || this.breakController.getSnapshot().actionPending;
 		setIcon(action, isRunning ? 'square' : 'play');
 		setAccessibleLabelWithoutTooltip(
 			action,
@@ -684,6 +716,7 @@ export class FlowTimeView extends ItemView {
 	}
 
 	private async toggleTimerFromAction(): Promise<void> {
+		if (this.breakController.getSnapshot().actionPending) return;
 		const active = this.timeTracker.getActiveState();
 		if (active) {
 			const stopped = await this.callbacks.stopActiveTimer('manual');
@@ -696,21 +729,37 @@ export class FlowTimeView extends ItemView {
 			}
 			return;
 		}
-		const pendingTask = this.pendingTaskId ? this.indexer.getTask(this.pendingTaskId) : null;
-		const wasBreak = !!this.breakState;
-		this.clearBreakState(false);
-		if (wasBreak && this.applyDefaultFlowTimeDuration()) {
-			await this.callbacks.saveSettings();
+		if (this.breakController.getSnapshot().pendingTaskId) {
+			await this.breakController.resumePending('flowtime');
+			return;
 		}
+		const pendingTask = this.pendingTaskId ? this.indexer.getTask(this.pendingTaskId) : null;
 		const started = await (pendingTask
 			? this.callbacks.startTimerForTask(pendingTask.operonId, 'flowtime')
 			: this.callbacks.startUnassignedTimer('flowtime'));
-		if (started) {
-			this.pendingTaskId = null;
+		if (started) this.pendingTaskId = null;
+	}
+
+	private async selectWaitingTask(create = false): Promise<void> {
+		const session = this.unsubscribeBreak;
+		const canUse = () => !!session && this.unsubscribeBreak === session && this.contentEl.isConnected;
+		let created: string | null = null;
+		const started = await this.breakController.selectPendingTask(async () => {
+			if (create) { created = await this.callbacks.createTaskForTracker(canUse); return created; }
+			return (await promptTaskFinderSelection(this.app, this.indexer, this.callbacks.getSettings, TASK_FINDER_SCOPE_TIME_TRACKER))?.operonId ?? null;
+		}, 'flowtime', canUse);
+		if (created && !started && canUse()) new Notice(t('notifications', 'creatorPostCreateFinalizeFailed'));
+		if (started && canUse()) {
+			this.pendingTaskId = null; this.pendingDraft = null; this.stopPendingDraftTicker();
+			this.lastRenderSignature = null; this.render();
 		}
 	}
 
 	private async selectTask(): Promise<void> {
+		if (this.breakController.getSnapshot().actionPending) return;
+		if (canSelectFlowTimeTask(this.timeTracker.getActiveState(), this.breakController.getSnapshot())) {
+			await this.selectWaitingTask(); return;
+		}
 		const task = await promptTaskFinderSelection(
 			this.app,
 			this.indexer,
@@ -724,7 +773,6 @@ export class FlowTimeView extends ItemView {
 		this.pendingTaskId = task.operonId;
 		this.pendingDraft = null;
 		const wasBreak = !!this.breakState;
-		this.clearBreakState(false);
 		this.lastRenderSignature = null;
 		this.render();
 		if (wasBreak && this.applyDefaultFlowTimeDuration()) {
@@ -796,7 +844,6 @@ export class FlowTimeView extends ItemView {
 		}
 
 		const wasBreak = !!this.breakState;
-		this.clearBreakState(false);
 		if (wasBreak && this.applyDefaultFlowTimeDuration()) {
 			await this.callbacks.saveSettings();
 		}
@@ -865,94 +912,13 @@ export class FlowTimeView extends ItemView {
 		}
 	}
 
-	private async startBreakFromActiveTask(): Promise<void> {
-		const settings = this.callbacks.getSettings();
-		const active = this.timeTracker.getActiveState();
-		if (!active?.operonId || this.breakState) return;
-
-		const taskId = active.operonId;
-		const previousPendingTaskId = this.pendingTaskId;
-		this.pendingTaskId = taskId;
-		this.lastRenderSignature = null;
-
-		let stopped = false;
-		try {
-			stopped = await this.callbacks.stopActiveTimer('manual');
-		} catch (error) {
-			this.pendingTaskId = previousPendingTaskId;
-			this.lastRenderSignature = null;
-			this.render();
-			throw error;
-		}
-		if (!stopped) {
-			this.pendingTaskId = previousPendingTaskId;
-			this.lastRenderSignature = null;
-			this.render();
-			return;
-		}
-
-		this.pendingTaskId = taskId;
-		this.breakState = {
-			taskId,
-			startMs: Date.now(),
-			targetSeconds: Math.max(60, settings.flowTimePauseMinutes * 60),
-		};
-		this.notifiedTargetKey = null;
-		this.lastTargetReachedState = null;
-		this.completionAlertTracker.reset();
-		this.lastRenderSignature = null;
-		this.startBreakTicker();
-		this.render();
-	}
-
-	private startBreakTicker(): void {
-		if (this.breakTickerInterval) return;
-		this.breakTickerInterval = setWindowInterval(() => {
-			if (!this.breakState) {
-				this.stopBreakTicker();
-				return;
-			}
-			this.updateLiveElements();
-		}, 1000);
-	}
-
-	private stopBreakTicker(): void {
-		if (!this.breakTickerInterval) return;
-		clearWindowInterval(this.breakTickerInterval);
-		this.breakTickerInterval = null;
-	}
-
-	private clearBreakState(render = true): void {
-		if (!this.breakState) return;
-		this.breakState = null;
-		this.completionAlertTracker.reset('break');
-		this.stopBreakTicker();
-		if (render) {
-			this.lastRenderSignature = null;
-			this.render();
-		}
-	}
-
-	private endBreakAndClearTask(): void {
-		if (!this.breakState) return;
-		this.clearBreakState(false);
-		this.pendingTaskId = null;
-		this.notifiedTargetKey = null;
-		this.lastTargetReachedState = null;
-		this.lastRenderSignature = null;
-		this.render();
-	}
-
 	private getBreakElapsedSeconds(): number {
-		if (!this.breakState) return 0;
-		return Math.max(0, Math.floor((Date.now() - this.breakState.startMs) / 1000));
+		return this.breakController.getElapsedSeconds();
 	}
 
 	private applyDefaultFlowTimeDuration(): boolean {
 		const settings = this.callbacks.getSettings();
-		if (settings.flowTimeMode !== 'flowtime' || settings.flowTimeUseLastSelectedDuration) return false;
-		if (settings.flowTimeSessionMinutes === settings.flowTimeDefaultSessionMinutes) return false;
-		settings.flowTimeSessionMinutes = settings.flowTimeDefaultSessionMinutes;
+		if (!this.breakController.applyDefaultSessionDuration()) return false;
 		this.syncTargetReachedStateAfterDurationChange(settings);
 		this.lastRenderSignature = null;
 		return true;
@@ -961,6 +927,7 @@ export class FlowTimeView extends ItemView {
 	private handleDialPointer(event: PointerEvent, svg: SVGSVGElement): void {
 		if (this.callbacks.getSettings().flowTimeMode !== 'flowtime') return;
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		const ownerWindow = getOwnerWindow(svg);
 		event.preventDefault();
 		this.finishDialDrag(false);
 		this.isDialDragging = true;
@@ -975,6 +942,7 @@ export class FlowTimeView extends ItemView {
 		}
 		const update = (pointerEvent: PointerEvent) => {
 			if (pointerEvent.pointerId !== pointerId) return;
+   if (getOwnerWindow(svg) !== ownerWindow) { this.finishDialDrag(false); return; }
 			const angle = this.getPointerClockwiseAngle(pointerEvent, svg);
 			let delta = angle - previousAngle;
 			if (delta > 180) delta -= 360;
@@ -986,14 +954,17 @@ export class FlowTimeView extends ItemView {
 		const onMove = (pointerEvent: PointerEvent) => update(pointerEvent);
 		const onEnd = (pointerEvent: PointerEvent) => {
 			if (pointerEvent.pointerId !== pointerId) return;
+   if (getOwnerWindow(svg) !== ownerWindow) { this.finishDialDrag(false); return; }
 			this.finishDialDrag();
 		};
-		const onBlur = () => this.finishDialDrag();
+		const onBlur = () => this.finishDialDrag(getOwnerWindow(svg) === ownerWindow);
+  const stopMigration = this.contentEl.onWindowMigrated?.(() => { if (getOwnerWindow(svg) !== ownerWindow) this.finishDialDrag(false); });
 		this.cleanupDialDrag = () => {
-			window.removeEventListener('pointermove', onMove);
-			window.removeEventListener('pointerup', onEnd);
-			window.removeEventListener('pointercancel', onEnd);
-			window.removeEventListener('blur', onBlur);
+   stopMigration?.();
+			ownerWindow.removeEventListener('pointermove', onMove);
+			ownerWindow.removeEventListener('pointerup', onEnd);
+			ownerWindow.removeEventListener('pointercancel', onEnd);
+			ownerWindow.removeEventListener('blur', onBlur);
 			try {
 				if (svg.hasPointerCapture(pointerId)) {
 					svg.releasePointerCapture(pointerId);
@@ -1002,10 +973,10 @@ export class FlowTimeView extends ItemView {
 				// Ignore capture release failures from detached SVGs.
 			}
 		};
-		window.addEventListener('pointermove', onMove);
-		window.addEventListener('pointerup', onEnd);
-		window.addEventListener('pointercancel', onEnd);
-		window.addEventListener('blur', onBlur);
+		ownerWindow.addEventListener('pointermove', onMove);
+		ownerWindow.addEventListener('pointerup', onEnd);
+		ownerWindow.addEventListener('pointercancel', onEnd);
+		ownerWindow.addEventListener('blur', onBlur);
 	}
 
 	private finishDialDrag(persist = true): void {
@@ -1081,24 +1052,13 @@ export class FlowTimeView extends ItemView {
 			return;
 		}
 
-		if (!this.breakState) {
-			this.completionAlertTracker.reset();
-			this.lastFlowTimeSoundEnabled = enabled;
-			return;
-		}
-
-		this.completionAlertTracker.reset('focus');
-		this.observeReminderSoundCompletion({
-			kind: 'break',
-			occurrenceKey: `${this.breakState.taskId}:${this.breakState.startMs}`,
-			elapsedSeconds: this.getBreakElapsedSeconds(),
-			targetSeconds: this.breakState.targetSeconds,
-			enabled,
-		}, modeChanged);
+		// Break sound belongs to the shared controller, including when no view is open.
+		this.completionAlertTracker.reset();
+		this.lastFlowTimeSoundEnabled = enabled;
 	}
 
 	private observeReminderSoundCompletion(input: {
-		kind: 'focus' | 'break';
+		kind: 'focus';
 		occurrenceKey: string;
 		elapsedSeconds: number;
 		targetSeconds: number;
@@ -1151,15 +1111,16 @@ export class FlowTimeView extends ItemView {
 			active,
 			transition,
 			pendingTask,
-			pendingDraft: this.pendingDraft,
+			pendingDraft: this.breakController.getSnapshot().pendingTaskId ? null : this.pendingDraft,
 			optimisticPatch,
 			getTask: taskId => this.indexer.getTask(taskId),
 		});
 	}
 
 	private resolvePendingTask(): IndexedTask | null {
-		if (!this.pendingTaskId) return null;
-		const task = this.indexer.getTask(this.pendingTaskId);
+		const taskId = this.breakController.getSnapshot().pendingTaskId ?? this.pendingTaskId;
+		if (!taskId) return null;
+		const task = this.indexer.getTask(taskId);
 		if (!task) {
 			this.pendingTaskId = null;
 			return null;

@@ -806,7 +806,7 @@ function groupItems(settings: OperonSettings, group: SettingsBackupProfileGroupI
 	const definition = SETTINGS_BACKUP_GROUPS.find(item => item.id === group);
 	if (group === 'general' || group === 'table-global') {
 		for (const key of definition?.settingKeys ?? []) {
-			if ((key === 'propertyValuePool' || key === 'contextualMenuActionOrder') && settings[key] === undefined) continue;
+			if ((key === 'propertyValuePool' || key === 'contextualMenuActionOrder' || key === 'statusDockClickAction' || key === 'statusDockMode' || key === 'statusDockAlignment') && settings[key] === undefined) continue;
 			add(String(key), settings[key]);
 		}
 		return map;

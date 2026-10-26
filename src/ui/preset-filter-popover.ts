@@ -124,11 +124,11 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 		? cloneFilterSet(currentFilter)
 		: createEmptyFilterSet(options.newFilterName);
 	const sourceFilterSetId = currentFilter?.id ?? null;
-	const ownerDocument = getOwnerDocument(triggerHost);
-	const ownerWindow = getOwnerWindow(triggerHost);
-	const floatingOptions = resolveSurfaceFloatingHostOptions(anchor);
-	const popoverHost = floatingOptions.floatingHost ?? ownerDocument.body;
-	const floatingScrollHost = floatingOptions.floatingScrollHost ?? ownerWindow;
+	let ownerDocument = getOwnerDocument(triggerHost);
+	let ownerWindow = getOwnerWindow(triggerHost);
+	let floatingOptions = resolveSurfaceFloatingHostOptions(anchor);
+	let popoverHost = floatingOptions.floatingHost ?? ownerDocument.body;
+	let floatingScrollHost = floatingOptions.floatingScrollHost ?? ownerWindow;
 	const popover = popoverHost.createDiv('operon-preset-filter-popover');
 	for (const className of options.classNames ?? []) popover.addClass(className);
 	presetFilterPopoverSequence += 1;
@@ -143,6 +143,7 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 	let saveInFlight = false;
 	let repositionFrame: number | null = null;
 
+	let stopMigration: (() => void) | null = null;
 	const restoreAnchorFocus = (): void => {
 		ownerWindow.requestAnimationFrame(() => {
 			const focusTarget = anchor.isConnected
@@ -154,6 +155,7 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 	const close = (restoreFocus = false): void => {
 		if (isClosed) return;
 		isClosed = true;
+		stopMigration?.(); stopMigration = null;
 		ownerDocument.removeEventListener('pointerdown', handleDocumentPointerDown, true);
 		ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true);
 		ownerWindow.removeEventListener('resize', handleWindowResize);
@@ -168,12 +170,14 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 	};
 	const publicClose = (): void => close(false);
 	const handleDocumentPointerDown = (event: PointerEvent): void => {
+  if (getOwnerDocument(triggerHost) !== ownerDocument) return;
 		const target = event.target;
 		if (target && typeof (target as Node).nodeType === 'number' && triggerHost.contains(target as Node)) return;
 		if (editor?.isInlineEditorTarget(target)) return;
 		close(false);
 	};
 	const handleDocumentKeyDown = (event: KeyboardEvent): void => {
+  if (getOwnerDocument(triggerHost) !== ownerDocument) return;
 		if (event.key !== 'Escape') return;
 		if (editor?.requestInlineEditorChildEscapeClose()) {
 			event.preventDefault();
@@ -220,9 +224,28 @@ export function showPresetFilterPopover(options: PresetFilterPopoverOptions): ()
 	});
 	reposition();
 
+ const bindOwner = (): void => {
 	ownerDocument.addEventListener('pointerdown', handleDocumentPointerDown, true);
 	ownerDocument.addEventListener('keydown', handleDocumentKeyDown, true);
 	ownerWindow.addEventListener('resize', handleWindowResize);
 	floatingScrollHost.addEventListener('scroll', scheduleReposition, true);
+ };
+ stopMigration = triggerHost.onWindowMigrated?.(() => {
+  const nextDocument = getOwnerDocument(triggerHost);
+  if (isClosed || nextDocument === ownerDocument) return;
+  ownerDocument.removeEventListener('pointerdown', handleDocumentPointerDown, true);
+  ownerDocument.removeEventListener('keydown', handleDocumentKeyDown, true);
+  ownerWindow.removeEventListener('resize', handleWindowResize);
+  floatingScrollHost.removeEventListener('scroll', scheduleReposition, true);
+  if (repositionFrame !== null) ownerWindow.cancelAnimationFrame(repositionFrame);
+  repositionFrame = null;
+  ownerDocument = nextDocument; ownerWindow = getOwnerWindow(triggerHost);
+  floatingOptions = resolveSurfaceFloatingHostOptions(anchor);
+  popoverHost = floatingOptions.floatingHost ?? ownerDocument.body;
+  floatingScrollHost = floatingOptions.floatingScrollHost ?? ownerWindow;
+  if (popover.parentElement !== popoverHost) popoverHost.appendChild(popover);
+  bindOwner(); reposition();
+ }) ?? null;
+ bindOwner();
 	return publicClose;
 }

@@ -1,3 +1,5 @@
+import { toLocalDatetime } from '../core/local-time';
+import { buildKanbanWritebackPlan } from './kanban-writeback';
 import { IndexedTask } from '../types/fields';
 import { isBuiltInKanbanSwimlaneBy, KanbanDropContext, KanbanPreset, resolveKanbanEffectiveSorting } from '../types/kanban';
 import { Pipeline, composeStatusValue } from '../types/pipeline';
@@ -162,6 +164,7 @@ export function applyKanbanOptimisticMovesToBoard(
 	priorities: PriorityDefinition[],
 	moves: Iterable<KanbanOptimisticMove>,
 	keyMappings: readonly KeyMapping[] = [],
+	getProjectSerialDisplay?: Parameters<typeof buildKanbanTaskComparator>[0]['getProjectSerialDisplay'],
 ): void {
 	for (const move of moves) {
 		const task = board.relevantTasks.find(entry => entry.operonId === move.taskId) ?? null;
@@ -213,6 +216,7 @@ export function applyKanbanOptimisticMovesToBoard(
 					sorting: targetSorting,
 					priorities,
 					keyMappings,
+					getProjectSerialDisplay,
 				});
 				const existingIndex = targetTasks.findIndex(entry => entry.operonId === targetTask.operonId);
 				if (existingIndex >= 0) {
@@ -244,26 +248,33 @@ function insertManualOptimisticTask(
 	tasks.splice(0, tasks.length, ...nextTasks);
 }
 
-function buildOptimisticMovedTask(
+export function buildOptimisticMovedTask(
 	task: IndexedTask,
 	move: KanbanOptimisticMove,
 	board: KanbanBoardData,
 	keyMappings: readonly KeyMapping[],
 ): IndexedTask {
 	const targetColumn = board.columns.find(column => column.statusId === move.targetStatusId);
-	const movedTask = move.kind === 'drop'
-		? buildOptimisticDroppedTask(
-			task,
-			move,
-			move.targetLaneKey,
-			keyMappings,
-		)
-		: task;
+	const targetStatus = board.pipeline?.statuses.find(status => status.id === move.targetStatusId);
+	const writeback = move.kind === 'drop' && board.pipeline && targetStatus
+		? buildKanbanWritebackPlan({
+			task, pipeline: board.pipeline, targetStatus, sourceLaneKey: move.sourceLaneKey,
+			targetLaneKey: move.targetLaneKey, swimlaneBy: move.swimlaneBy, keyMappings,
+		})
+		: null;
+	const movedTask = writeback
+		? { ...task, ...writeback.nextDraft,
+			datetimeModified: writeback.changedKeys.length > 0
+				? toLocalDatetime(new Date(move.expiresAt - KANBAN_OPTIMISTIC_MOVE_TTL_MS))
+				: task.datetimeModified }
+		: move.kind === 'drop'
+			? buildOptimisticDroppedTask(task, move, move.targetLaneKey, keyMappings)
+			: task;
 	const fieldValues = { ...movedTask.fieldValues };
 	if (targetColumn) fieldValues['status'] = targetColumn.statusValue;
 	return {
 		...movedTask,
-		checkbox: move.kind === 'status' ? (move.checkbox ?? task.checkbox) : task.checkbox,
+		checkbox: move.kind === 'status' ? (move.checkbox ?? task.checkbox) : movedTask.checkbox,
 		fieldValues,
 	};
 }

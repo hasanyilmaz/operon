@@ -7,7 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added separate **after-creation opening preferences for File and Inline Tasks**, with six choices covering no opening, focused or background source tabs, source lightboxes, and Task Editor alone or alongside the source. The default is **Do Not Open**; Inline source views focus the new task’s line when opened.
+- Added a draggable **desktop Status Dock** that keeps tracking, break controls, multiple ongoing calendar tasks, the next upcoming task, and duplicate-ID warnings together, with icon-based timer starts, Task Finder/Creator access, source/editor opening preferences, and a **Toggle status dock** command. The dock returns to its default visible, centered position when Obsidian restarts.
+
+### Improved
+
+- Moved **Excalidraw text-to-task conversion** into the side toolbar, where it appears only when eligible text is selected, keeping the drawing area clear.
+- Made **lightbox controls** respond to hover as soon as content is ready, without an extra delay, while keeping keyboard access immediate.
+- Improved **startup performance** by avoiding redundant processing of unchanged files, reducing workspace loading delays while preserving tasks created or edited during startup.
+- **FlowTime breaks** stay in sync with the Status Dock even when the FlowTime panel is closed. Choose or create a different task during a break, after a break, or while a timer is unassigned, and start tracking it directly.
+
+### Changed
+
+- Replaced the desktop **Status bar click action** selector with the dock's shared **Click behavior** preference: open the source, Task Editor, or both from task names.
+
+### Fixed
+
+- Fixed **deleted custom key names** still failing to be recreated with a different property type because of unrelated open tabs or template frontmatter. Unused names can be reused as Text, List, or Number while existing values and dependencies remain protected.
+- Fixed **separate-window interactions and source lightboxes** across task views, Task Editor, Task Creator, filters, pickers, and tooltips. Controls retain the correct window context, and Markdown, Bases, Table, and web previews open, move, and close consistently across windows, tabs, and splits.
+- Fixed **Table search focus and text selection** during refreshes and window moves, without reclaiming focus after switching to another control.
+- Fixed **Kanban drag and drop** causing cards to flicker or unrelated cells to refresh. Cards now move into the destination cell's sorted position immediately while unchanged cards stay stable.
+
+### Removed
+
+- Removed the desktop **Show active timer in status bar** toggle. Timer controls are part of the Status Dock; use **Toggle status dock** to show or hide the dock.
+- Removed the desktop **When countdown ends** selector. Ongoing calendar tasks remain visible alongside the next upcoming task.
+- Removed the desktop **Countdown display** selector. The dock shows seconds below one minute and uses minutes for longer durations.
+
 ### Validation
+
+- Full local Plugin checks, production build, release guard, code review, and manual Obsidian restart checks passed, along with **5,262/5,262** local regression tests.
 
 ## [4.2.0] - 2026-10-23
 

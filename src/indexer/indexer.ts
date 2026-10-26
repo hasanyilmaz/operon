@@ -408,6 +408,7 @@ export class OperonIndexer {
 	private lastFullScanAt = '';
 	private coherenceBasis: IndexV8RuntimeCoherenceBasis = 'unverified';
 	private startupV8SourceStats: Map<string, IndexV8SourceStat> | null = null;
+ private startupScheduledReindex: Set<string> | null = null;
 	private startupV8CommittedAtMs = 0;
 	private shuttingDown = false;
 	private recoveryRequired = false;
@@ -465,7 +466,7 @@ export class OperonIndexer {
 	 */
 	async fullReindex(): Promise<void> {
 		if (this.shuttingDown) return;
-		await this.enqueueIndexOperation(() => this.doFullReindex());
+		await this.enqueueIndexOperation(() => this.consumeStartupScheduledReindex(() => this.doFullReindex()));
 	}
 
 	getIndexV8RuntimePhase(): IndexV8RuntimePhase {
@@ -809,63 +810,68 @@ export class OperonIndexer {
 		});
 	}
 
-	/** Reconcile a verified V8 startup snapshot against current vault metadata in one index operation. */
-	async reconcileV8StartupSources(): Promise<void> {
-		if (this.shuttingDown || !this.startupV8SourceStats) return;
-		const sourceStats = this.startupV8SourceStats;
-		const committedAtMs = this.startupV8CommittedAtMs;
-		this.startupV8SourceStats = null;
-		this.startupV8CommittedAtMs = 0;
-		await this.enqueueIndexOperation(async () => {
-			const startedAt = enginePerfNow();
-			const settings = this.storage.getSettings({ committedMappings: true });
-			const currentFiles = this.app.vault.getMarkdownFiles();
-			const currentByPath = new Map(currentFiles.map(file => [file.path, file]));
-			const candidates: string[] = [];
-			const removedSourceStats: IndexV8SourceStat[] = [];
+	/** The same conservative candidate policy drives startup events and index reconciliation. */
+ getStartupSourceCandidates(): Set<string> {
+  const settings = this.storage.getSettings({ committedMappings: true });
+  const files = this.app.vault.getMarkdownFiles();
+  const stats = this.startupV8SourceStats;
+  if (!stats) return new Set(files.filter(file => !isOperonExcludedPath(file.path, settings)).map(file => file.path));
+  const current = new Map(files.map(file => [file.path, file]));
+  const candidates = new Set<string>();
+  const removed: IndexV8SourceStat[] = [];
+  for (const [path, cached] of stats) {
+   const file = current.get(path);
+   if (!file || isOperonExcludedPath(path, settings)) { candidates.add(path); removed.push(cached); }
+   else if (file.stat.mtime !== cached.mtimeMs || file.stat.size !== cached.sizeBytes) candidates.add(path);
+  }
+  for (const file of files) {
+   if (stats.has(file.path) || isOperonExcludedPath(file.path, settings)) continue;
+   if (file.stat.mtime > this.startupV8CommittedAtMs || file.stat.ctime > this.startupV8CommittedAtMs
+    || removed.some(stat => stat.mtimeMs === file.stat.mtime && stat.sizeBytes === file.stat.size)
+    || this.mightContainTaskFromMetadata(file, settings)) candidates.add(file.path);
+  }
+  return candidates;
+ }
 
-			for (const [filePath, cachedStat] of sourceStats) {
-				const file = currentByPath.get(filePath);
-				if (!file || isOperonExcludedPath(filePath, settings)) {
-					candidates.push(filePath);
-					removedSourceStats.push(cachedStat);
-					continue;
-				}
-				if (file.stat.mtime !== cachedStat.mtimeMs || file.stat.size !== cachedStat.sizeBytes) {
-					candidates.push(filePath);
-				}
-			}
+ /** Hold per-file scheduling until the startup scan can absorb it in one operation. */
+ beginStartupFileEvents(): void { this.startupScheduledReindex ??= new Set(); }
+ endStartupFileEvents(): void {
+  const pending = this.startupScheduledReindex;
+  this.startupScheduledReindex = null;
+  for (const path of pending ?? []) this.scheduleReindex(path);
+ }
+ async flushStartupFileEvents(): Promise<void> {
+  await this.enqueueIndexOperation(() => this.consumeStartupScheduledReindex(async paths => {
+   if (paths.length) await this.doReindexFilesBatch([...paths], { notify: false }, true);
+  }));
+ }
+ private async consumeStartupScheduledReindex(operation: (paths: readonly string[]) => Promise<void>): Promise<void> {
+  const pending = this.startupScheduledReindex;
+  if (pending) this.startupScheduledReindex = new Set();
+  try { await operation([...(pending ?? [])]); }
+  catch (error) {
+   if (this.startupScheduledReindex) for (const path of pending ?? []) this.startupScheduledReindex.add(path);
+   throw error;
+  }
+ }
 
-			for (const file of currentFiles) {
-				if (sourceStats.has(file.path) || isOperonExcludedPath(file.path, settings)) continue;
-				const renameCandidate = removedSourceStats.some(stat => (
-					stat.mtimeMs === file.stat.mtime && stat.sizeBytes === file.stat.size
-				));
-				const metadataCandidate = this.mightContainTaskFromMetadata(file, settings);
-				if (file.stat.mtime > committedAtMs
-					|| file.stat.ctime > committedAtMs
-					|| renameCandidate
-					|| metadataCandidate) {
-					candidates.push(file.path);
-				}
-			}
-
-			const uniqueCandidates = [...new Set(candidates)];
-			if (uniqueCandidates.length > 0) {
-				await this.doReindexFilesBatch(uniqueCandidates, {
-					notify: false,
-					perfContext: { source: 'v8-startup-reconcile' },
-				});
-			}
-			enginePerfLog(
-				'index.v8.startup.reconcile',
-				`cachedSources=${sourceStats.size}`,
-				`candidates=${uniqueCandidates.length}`,
-				`removed=${removedSourceStats.length}`,
-				`totalMs=${Math.round(enginePerfNow() - startedAt)}`,
-			);
-		});
-	}
+ /** Reconcile the verified snapshot and real startup edits in one index operation. */
+ async reconcileV8StartupSources(): Promise<void> {
+  if (this.shuttingDown || !this.startupV8SourceStats) return;
+  await this.enqueueIndexOperation(() => this.consumeStartupScheduledReindex(async pending => {
+   const startedAt = enginePerfNow();
+   const cachedSources = this.startupV8SourceStats?.size ?? 0;
+   const candidates = this.getStartupSourceCandidates();
+   for (const path of pending) candidates.add(path);
+   if (candidates.size) await this.doReindexFilesBatch([...candidates], {
+    notify: false, perfContext: { source: 'v8-startup-reconcile' },
+   }, true);
+   this.startupV8SourceStats = null;
+   this.startupV8CommittedAtMs = 0;
+   enginePerfLog('index.v8.startup.reconcile', `cachedSources=${cachedSources}`,
+    `candidates=${candidates.size}`, `totalMs=${Math.round(enginePerfNow() - startedAt)}`);
+  }));
+ }
 
 	private mightContainTaskFromMetadata(file: TFile, settings: OperonSettings): boolean {
 		const cache = this.app.metadataCache?.getFileCache(file);
@@ -888,7 +894,8 @@ export class OperonIndexer {
 	 */
 	scheduleReindex(filePath: string): void {
 		if (this.shuttingDown) return;
-		this.noteMarkdownEvent();
+  this.noteMarkdownEvent();
+  if (this.startupScheduledReindex) { this.startupScheduledReindex.add(filePath); return; }
 		this.pendingFiles.add(filePath);
   getNativePropertyIndex(this.app).markPending(filePath);
 
@@ -1314,7 +1321,8 @@ export class OperonIndexer {
 		}
 	}
 
-	private async doReindexFilesBatch(filePaths: string[], options: ReindexOptions = {}): Promise<void> {
+	private async doReindexFilesBatch(filePaths: string[], options: ReindexOptions = {}, requireAllSources = false): Promise<void> {
+  const failedPaths: string[] = [];
 		const startedAt = enginePerfNow();
 		const scanAndHydrationStartedAt = enginePerfNow();
 		const pipelines = this.storage.getSettings({ committedMappings: true }).pipelines;
@@ -1355,6 +1363,7 @@ export class OperonIndexer {
 			} catch (error) {
 				getNativePropertyIndex(this.app).fail(fp);
     console.warn(`Operon: failed to reindex ${fp}; keeping previous index state`, error);
+    failedPaths.push(fp);
 				continue;
 			}
 			for (const [operonId, task] of this.snapshotCanonicalTasksByInstanceFile(fp)) {
@@ -1369,6 +1378,7 @@ export class OperonIndexer {
 			mutated = true;
 		}
 		if (!mutated) {
+   if (requireAllSources && failedPaths.length) throw new Error('Startup source reconciliation failed');
 			enginePerfLog('index.reindex.incremental', `files=${filePaths.length}`, 'mutated=false', `totalMs=${Math.round(enginePerfNow() - startedAt)}`);
 			return;
 		}
@@ -1402,6 +1412,7 @@ export class OperonIndexer {
 			`persistScheduleMs=${Math.round(persistScheduleMs)}`,
 			`totalMs=${Math.round(enginePerfNow() - startedAt)}`,
 		);
+  if (requireAllSources && failedPaths.length) throw new Error('Startup source reconciliation failed');
 	}
 
 	/**
@@ -2567,6 +2578,7 @@ export class OperonIndexer {
 	}
 
 	beginUnload(): void {
+  this.startupScheduledReindex = null;
 		this.shuttingDown = true;
 	}
 

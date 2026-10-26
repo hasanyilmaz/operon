@@ -124,10 +124,11 @@ async function fixture() {
   await host.openCheckboxConversionCreator(editor,view,lineNumber);
   return {ui:modal,view,edit:(value:string)=>buffer=value,buffer:()=>buffer};
  }
- async function open(initial=emptyDraft()) {
+ async function open(initial=emptyDraft(), overrides: Record<string, unknown> = {}) {
   await prepare.call(host,initial,{
    onSubmitInline:async(draft:any)=>{const content=host.buildTaskCreatorInlineTaskLine(draft,hostFile.path,0,{parentTask:targetParent},'2026-10-11T10:00:00');const before=contents.get(hostFile.path)!;return host.writePreparedCreatorInline(draft,hostFile,before,`${before}${content.taskLine}\n`);},
    onSubmitFile:async(draft:any)=>{const commit=host.preparedCreatorCommits.get(draft);return !!await host.createPreparedFileTask(commit.request.templateOption,{},commit);},
+   ...overrides,
   });
   await modal.model.select({id:'template',name:'Template',kind:'folder',path:'Template.md'},'Task');return modal;
  }
@@ -313,6 +314,7 @@ for(const scenario of ['cancel','failed','uncertain','empty','save-error','chang
 
 for (const sourceLine of ['  - [ ] Plain task #source','  - [x] Done task #source','  - [-] Cancelled task #source','  - [ ] 10:00-11:00 Emoji task #source 📅 2026-11-01 ➕ 2026-09-01 🔁 every day']) test(`checkbox Creator replaces one line and retains source: ${sourceLine}`,async()=>{
  const f=await fixture();try {
+  f.settings.inlineTaskAfterCreate='editor';let opened='';f.host.captureTaskAfterCreate=()=>async(created:any)=>{assert.ok(f.indexer.getTask(created.operonId));opened=created.operonId;};
   const before=`Header\n${sourceLine}\nFooter`;
   const {ui,buffer}=await f.conversion(before);
   assert.ok(ui);assert.equal(ui.options.submitMode,'inline-only');assert.equal(ui.options.initialCreateType,'inline');
@@ -325,6 +327,7 @@ for (const sourceLine of ['  - [ ] Plain task #source','  - [x] Done task #sourc
   const after=f.contents.get('Host.md')!;assert.equal(buffer(),after);assert.equal(after.split('\n').length,3);
   assert.equal(after.split('\n')[0],'Header');assert.equal(after.split('\n')[2],'Footer');assert.ok(after.split('\n')[1].startsWith('  - ['));
   const task=parseTaskLine(after.split('\n')[1],1,'Host.md',f.settings.keyMappings)!;
+  assert.equal(opened,task.operonId);
   assert.ok(task.operonId);assert.equal(task.checkbox,sourceLine.includes('[x]')?'done':sourceLine.includes('[-]')?'cancelled':'open');
   assert.ok(task.tags.includes('source'));const fields=Object.fromEntries(task.fields.map(field=>[field.key,field.value]));
   assert.equal(fields.dateDue,sourceDue?'2026-11-01':'2030-01-01');assert.equal(fields.taskColor,'00ff00');
@@ -333,6 +336,7 @@ for (const sourceLine of ['  - [ ] Plain task #source','  - [x] Done task #sourc
 });
 for (const scenario of ['cancel','source-edit','file-switch','disk-edit','failure','uncertain','success']) test(`checkbox Creator guards and template learning: ${scenario}`,async()=>{
  const f=await fixture();try{
+  f.settings.inlineTaskAfterCreate='source';let opens=0;f.host.captureTaskAfterCreate=()=>async()=>{opens++;};
   await f.storage.updateSettings({inlineTaskUseLastTemplateAsDefault:true,defaultInlineTaskTemplateId:'original'});
   const before='Header\n- [ ] Original\nFooter';const c=await f.conversion(before);const ui=c.ui;
   await ui.model.select({id:'template',name:'Template',kind:'folder',path:'Template.md'},'Original');
@@ -346,6 +350,7 @@ for (const scenario of ['cancel','source-edit','file-switch','disk-edit','failur
   assert.equal(result.outcome,scenario==='success'?'committed':scenario==='uncertain'?'uncertain':'failed');
   assert.equal(f.settings.defaultInlineTaskTemplateId,scenario==='success'?'template':'original');
   assert.equal(f.writes.length,scenario==='success'||scenario==='uncertain'?1:0);
+  assert.equal(opens,scenario==='success'?1:0);
   if(scenario==='success'){assert.match(f.contents.get('Host.md')!,/Edited description/);assert.match(f.contents.get('Host.md')!,/priority:: high/);}
  }finally{await f.close();}
 });
@@ -376,5 +381,74 @@ test('conversion Creator permits template status and later manual due-date overr
   ui.model.draft.setValue('dateDue','2027-02-01');
   assert.equal((await ui.options.preparedAdapter.onSubmit(ui.model.submission('inline','Source','keep-completed'))).outcome,'committed');
   assert.match(f.contents.get('Host.md')!,/dateDue:: 2027-02-01/);
+ }finally{await f.close();}
+});
+
+
+for (const route of ['generic','file-subtask']) test(`real ${route} coordinator opens after indexing and its callback`,async()=>{
+ const f=await fixture();try{
+  f.settings.fileTaskAfterCreate='source';const order:string[]=[];
+  f.host.captureTaskAfterCreate=()=>async()=>{order.push('open');};
+  Object.assign(f.host,{
+   createFileTaskFromTemplateSelection:(selected:unknown,options:any)=>f.host.createPreparedFileTask(selected,options,options.prepared),
+   resolveTaskCreatorFileTargetFolderOverride:()=>null,
+   finalizeCreatedFileTask:async(created:any)=>{await f.scan(created.file.path);order.push('indexed');},
+   getCreatedFileTaskForFilterDraft:(created:any)=>f.indexer.getFileTaskByPath(created.file.path),
+   prepareSubtaskCreation:async()=>true,
+   notifySubtaskCreated:async(callback:any,id:string)=>{await callback?.(id);},
+  });
+  const name=route==='generic'?'createFileTaskFromCreatorDraft':'createFileSubtaskFromCreatorDraft';
+  const create=method(name,route==='generic'?'draft,options':'draft,fallbackFile,onBeforeCreate,onCreated,canCommit,acceptFile',{
+   cloneTaskCreatorDraft:structuredClone,buildTaskCreatorSubmitFieldSeed:()=>({fieldValues:{},fieldPresence:new Set(),explicitEmptyFieldKeys:new Set()}),Notice,t:(_ns:string,key:string)=>key,
+  });
+  const callback=async()=>{order.push('callback');};
+  const ui=await f.open(undefined,{onSubmitFile:(draft:any)=>route==='generic'
+   ? create.call(f.host,draft,{reopenCreator:()=>{},onCreated:callback})
+   : create.call(f.host,draft,null,undefined,callback)});
+  assert.equal((await ui.options.preparedAdapter.onSubmit(ui.model.submission('file','Created','keep-completed'))).outcome,'committed');
+  assert.deepEqual(order,['indexed','callback','open']);assert.equal(f.writes.length,1);
+ }finally{await f.close();}
+});
+for(const outcome of ['failed','uncertain','unfinalized'])test(`Creator does not open ${outcome} File Task creation`,async()=>{
+ const f=await fixture();try{
+  f.settings.fileTaskAfterCreate='source';let opens=0;f.host.captureTaskAfterCreate=()=>async()=>{opens++;};
+  const ui=await f.open(undefined,{onSubmitFile:async(draft:any)=>{
+   const commit=f.host.preparedCreatorCommits.get(draft);commit.outcome=outcome==='unfinalized'?'committed':outcome==='uncertain'?'uncertain':'pending';return outcome==='unfinalized';
+  }});
+  await ui.options.preparedAdapter.onSubmit(ui.model.submission('file','Created','keep-completed'));assert.equal(opens,0);assert.equal(f.writes.length,0);
+ }finally{await f.close();}
+});
+
+for (const route of ['generic','subtask'] as const) test(`Inline after-create opens only after real writer, indexing and ${route} callbacks`,async()=>{
+ const f=await fixture();try{
+  f.settings.inlineTaskAfterCreate='editor';const order:string[]=[];let createdId='';
+  f.host.captureTaskAfterCreate=(_anchor:unknown,_generation:number,kind:string)=>async(created:any)=>{assert.equal(kind,'inline');assert.equal(created.operonId,createdId);assert.ok(f.indexer.getTask(created.operonId));order.push('open');};
+  f.host.recordInlineTaskCreationTarget=async()=>{};
+  f.host.finalizeTaskCreatorCreatedTask=async(id:string)=>{assert.ok(f.indexer.getTask(id));order.push('indexed');};
+  f.host.createInlineTaskFromCreatorDraftResult=method('createInlineTaskFromCreatorDraftResult','draft,options={}',{Notice,t:(_ns:string,key:string)=>key});
+  f.host.insertTaskCreatorInlineTaskWithResolvedTarget=async(draft:any)=>{
+   const file=f.app.vault.getAbstractFileByPath('Host.md') as TFile;const before=f.contents.get(file.path)!;
+   const lineNumber=before.split('\n').length-1;const content=f.host.buildTaskCreatorInlineTaskLine(draft,file.path,lineNumber,{},'2026-10-11T10:00:00');createdId=content.operonId;
+   if(!await f.host.writePreparedCreatorInline(draft,file,before,`${before}${content.taskLine}\n`))return {kind:'failed'};
+   return {kind:'created',result:{operonId:createdId,filePath:file.path,lineNumber}};
+  };
+  f.host.prepareSubtaskCreation=async()=>true;f.host.notifySubtaskCreated=async(callback:any,id:string)=>callback?.(id);
+  const subtask=method('createInlineSubtaskFromFlexibleCreatorDraft','draft,onBeforeCreate,onCreated,canCommit,acceptFile',{Notice,t:(_ns:string,key:string)=>key});
+  const callback=async()=>{order.push('callback');};
+  const ui=await f.open(undefined,{onSubmitInline:async(draft:any)=>{
+   if(route==='subtask')return subtask.call(f.host,draft,undefined,callback);
+   const created=await f.host.createInlineTaskFromCreatorDraftResult(draft);if(!created)return false;await callback();return true;
+  }});
+  assert.equal((await ui.options.preparedAdapter.onSubmit(ui.model.submission('inline','Created','keep-completed'))).outcome,'committed');
+  assert.deepEqual(order,['indexed','callback','open']);assert.equal(f.writes.length,1);
+ }finally{await f.close();}
+});
+for(const outcome of ['failed','uncertain','unfinalized'])test(`Creator does not open ${outcome} Inline Task creation`,async()=>{
+ const f=await fixture();try{
+  f.settings.inlineTaskAfterCreate='editor';let opens=0;f.host.captureTaskAfterCreate=()=>async()=>{opens++;};
+  const ui=await f.open(undefined,{onSubmitInline:async(draft:any)=>{
+   const commit=f.host.preparedCreatorCommits.get(draft);commit.outcome=outcome==='unfinalized'?'committed':outcome==='uncertain'?'uncertain':'pending';return outcome==='unfinalized';
+  }});
+  await ui.options.preparedAdapter.onSubmit(ui.model.submission('inline','Created','keep-completed'));assert.equal(opens,0);assert.equal(f.writes.length,0);
  }finally{await f.close();}
 });

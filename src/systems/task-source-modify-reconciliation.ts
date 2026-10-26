@@ -82,7 +82,7 @@ export class TaskSourceModifyReconciler<TTimer> {
 		this.suppressUntilByPath.clear();
 	}
 
-	private getSuppressionRemainingMs(filePath: string): number {
+	getSuppressionRemainingMs(filePath: string): number {
 		const until = this.suppressUntilByPath.get(filePath) ?? 0;
 		return Math.max(0, until - this.options.now());
 	}

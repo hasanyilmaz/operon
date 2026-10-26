@@ -556,15 +556,15 @@ export function createFloatingPanel(
 ): FloatingPanel {
 	let cardAnchor = asHTMLElement(anchor) ?? getFloatingRectAnchorOwner(anchor);
  let followsTaskCard = !!cardAnchor?.closest('.operon-task-card-embed');
- const groupHost = cardAnchor?.closest<HTMLElement>('.operon-canvas-group-layer');
+ let groupHost = cardAnchor?.closest<HTMLElement>('.operon-canvas-group-layer');
  if (groupHost) options = { ...options, floatingHost: groupHost, constrainToFloatingHost: true, closeOnWindowResize: false };
 
  if (followsTaskCard && asHTMLElement(anchor)) anchor = snapshotFloatingRectAnchor(anchor as HTMLElement);
 	let anchorEl = asHTMLElement(anchor);
 	let rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
-	const { host, constrainToHost, scrollHost } = resolveHostContext(anchor, options);
-	const mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
-	const panelHost = mobileSurfaceContext?.panelHost ?? host;
+	let { host, constrainToHost, scrollHost } = resolveHostContext(anchor, options);
+	let mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
+	let panelHost = mobileSurfaceContext?.panelHost ?? host;
 	const panel = createOwnerElement(anchorEl ?? rectAnchorOwnerEl ?? host, 'div');
 	panel.className = className;
 	setSettingsScope(panel, isSettingsScope(anchorEl ?? rectAnchorOwnerEl));
@@ -579,9 +579,9 @@ export function createFloatingPanel(
 		matchWidth: options.matchWidth,
 	};
 	const restoreKeyboardFocus = mobileSurfaceContext?.root.matches('.operon-task-editor-touch-desktop') && mobileSurfaceContext.root.dataset.editorInput === 'keyboard';
-	const hostDocument = getOwnerDocument(host);
-	const hostWindow = getOwnerWindow(host);
-	const visualViewport = mobileSurfaceContext || groupHost ? hostWindow.visualViewport : null;
+	let hostDocument = getOwnerDocument(host);
+	let hostWindow = getOwnerWindow(host);
+	let visualViewport = mobileSurfaceContext || groupHost ? hostWindow.visualViewport : null;
 	panel.style.position = mobileSurfaceContext || !constrainToHost ? 'fixed' : 'absolute';
 	if (mobileSurfaceContext) {
 		panel.addClass('is-opening');
@@ -613,10 +613,8 @@ export function createFloatingPanel(
 			positionFloatingElement(panel, anchor, positionOptions);
 		});
 	};
-	const ResizeObserverCtor = (hostWindow as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
-	const sizeObserver = ResizeObserverCtor
-		? new ResizeObserverCtor(() => schedulePosition())
-		: null;
+	let sizeObserver: ResizeObserver | null = null;
+	let stopMigration: (() => void) | null = null;
 	const getRetainedFocusInput = (): HTMLElement | null => {
 		if (retainedFocusInput?.isConnected && panel.contains(retainedFocusInput)) {
 			return retainedFocusInput;
@@ -654,6 +652,7 @@ export function createFloatingPanel(
 	const cleanup = () => {
 		if (closed) return;
 		closed = true;
+		stopMigration?.(); stopMigration = null;
 		if (rafId) {
 			hostWindow.cancelAnimationFrame(rafId);
 			rafId = 0;
@@ -688,6 +687,7 @@ export function createFloatingPanel(
   anchor = followsTaskCard && asHTMLElement(next) ? snapshotFloatingRectAnchor(next as HTMLElement) : next;
   anchorEl = asHTMLElement(anchor); rectAnchorOwnerEl = anchorEl ? null : getFloatingRectAnchorOwner(anchor);
   record.anchorEl = anchorEl;
+  bindMigration();
   setSettingsScope(panel, isSettingsScope(nextOwner));
   if (followsTaskCard && rectAnchorOwnerEl) stopCardAnchor = observeTaskCardAnchor(rectAnchorOwnerEl, schedulePosition);
   schedulePosition();
@@ -702,6 +702,7 @@ export function createFloatingPanel(
 	record.requestClose = requestClose;
 
 	const onOutside = (event: MouseEvent) => {
+  if (getOwnerDocument(anchorEl ?? rectAnchorOwnerEl ?? panelHost) !== hostDocument) return;
 		const target = event.target as Node;
 		const outsideClickExclusions = typeof options.outsideClickExclusions === 'function'
 			? options.outsideClickExclusions()
@@ -713,6 +714,7 @@ export function createFloatingPanel(
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
+  if (getOwnerDocument(anchorEl ?? rectAnchorOwnerEl ?? panelHost) !== hostDocument) return;
 		if (
 			event.key === 'Escape'
 			&& !event.isComposing
@@ -734,7 +736,7 @@ export function createFloatingPanel(
 		}
 		requestClose('window-resize');
 	};
-	onHostWindowBlur = () => requestClose('window-blur');
+	onHostWindowBlur = () => { if (getOwnerDocument(anchorEl ?? rectAnchorOwnerEl ?? panelHost) === hostDocument) requestClose('window-blur'); };
 
 	dispatchMobilePickerEvent(mobileSurfaceContext, mobileSurfaceContext?.openEvents ?? []);
 	panelHost.appendChild(panel);
@@ -746,8 +748,8 @@ export function createFloatingPanel(
 		scheduleRetainedInputFocus();
 	}
 
-	hostWindow.requestAnimationFrame(() => {
-		if (!panel.isConnected) return;
+	const bindHost = (): void => {
+		if (closed || !panel.isConnected) return;
 		if (!isAnchorConnected()) {
 			stopCardAnchor?.(); stopCardAnchor = null;
 			if (followsTaskCard) record.requestClose('anchor-detach'); else cleanup();
@@ -758,6 +760,8 @@ export function createFloatingPanel(
 			panel.removeClass('is-opening');
 		}
 		if (options.repositionOnPanelResize !== false) {
+			const Resize = (hostWindow as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+			sizeObserver = Resize ? new Resize(schedulePosition) : null;
 			sizeObserver?.observe(panel);
 		}
 		hostDocument.addEventListener('mousedown', onOutside, true);
@@ -773,7 +777,49 @@ export function createFloatingPanel(
 			visualViewport?.addEventListener('scroll', schedulePosition);
 		}
 		hostWindow.addEventListener('blur', onHostWindowBlur);
-	});
+	};
+
+ const bindMigration = (): void => {
+  stopMigration?.();
+  stopMigration = (anchorEl ?? rectAnchorOwnerEl ?? panelHost).onWindowMigrated?.(() => {
+   const nextDocument = getOwnerDocument(anchorEl ?? rectAnchorOwnerEl ?? panelHost);
+   if (closed || nextDocument === hostDocument) return;
+   const nextWindow = getOwnerWindow(anchorEl ?? rectAnchorOwnerEl ?? panelHost);
+   hostDocument.removeEventListener('mousedown', onOutside, true);
+   hostDocument.removeEventListener('keydown', onKeyDown, true);
+   scrollHost.removeEventListener('scroll', schedulePosition, true);
+   hostWindow.removeEventListener('resize', onHostWindowResize);
+   hostWindow.removeEventListener('blur', onHostWindowBlur);
+   visualViewport?.removeEventListener('resize', schedulePosition);
+   visualViewport?.removeEventListener('scroll', schedulePosition);
+   const focusPending = !!focusRetentionRafId;
+   if (rafId) hostWindow.cancelAnimationFrame(rafId);
+   if (focusRetentionRafId) hostWindow.cancelAnimationFrame(focusRetentionRafId);
+   rafId = 0; focusRetentionRafId = 0;
+   sizeObserver?.disconnect(); sizeObserver = null;
+   stopCardAnchor?.(); stopCardAnchor = null;
+   const floatingHost = options.floatingHost === hostDocument.body ? nextDocument.body
+    : options.floatingHost?.ownerDocument === nextDocument ? options.floatingHost : undefined;
+   const floatingScrollHost = options.floatingScrollHost === hostWindow ? nextWindow
+    : asHTMLElement(options.floatingScrollHost)?.ownerDocument === nextDocument ? options.floatingScrollHost : undefined;
+   options = { ...options, floatingHost, floatingScrollHost };
+   ({ host, constrainToHost, scrollHost } = resolveHostContext(anchor, options));
+   hostDocument = nextDocument; hostWindow = nextWindow;
+   groupHost = (anchorEl ?? rectAnchorOwnerEl)?.closest<HTMLElement>('.operon-canvas-group-layer');
+   mobileSurfaceContext = getMobilePickerSurfaceContext(anchorEl, options, host);
+   panelHost = mobileSurfaceContext?.panelHost ?? host;
+   visualViewport = mobileSurfaceContext || groupHost ? hostWindow.visualViewport : null;
+   Object.assign(positionOptions, { floatingHost: options.floatingHost, floatingScrollHost: options.floatingScrollHost, constrainToFloatingHost: options.constrainToFloatingHost });
+   panel.style.position = mobileSurfaceContext || !constrainToHost ? 'fixed' : 'absolute';
+   if (panel.parentElement !== panelHost) panelHost.appendChild(panel);
+   if (followsTaskCard && rectAnchorOwnerEl) stopCardAnchor = observeTaskCardAnchor(rectAnchorOwnerEl, schedulePosition);
+   bindHost();
+   if (focusPending) scheduleRetainedInputFocus();
+  }) ?? null;
+ };
+ bindMigration();
+ rafId = hostWindow.requestAnimationFrame(() => { rafId = 0; bindHost(); });
+
 	return { panel, close: cleanup };
 }
 

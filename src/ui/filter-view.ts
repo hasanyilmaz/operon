@@ -164,6 +164,9 @@ export class FilterView extends ItemView {
 	private visibleTaskLimit = FILTER_RENDER_BATCH_SIZE;
 	private lastPaginationSignature: string | null = null;
 	private lazyLoadObserver: IntersectionObserver | null = null;
+ private lazyLoadSentinel: HTMLElement | null = null;
+ private lazyLoadTotal = 0;
+ private filterOwnerCleanup: (() => void) | null = null;
 	private headerExpandedStateCleanup: (() => void) | null = null;
 	private readonly optimisticTaskPatches = new Map<string, FilterOptimisticTaskPatch>();
 	private optimisticPatchCleanupTimer: number | null = null;
@@ -687,6 +690,7 @@ export class FilterView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+  this.filterOwnerCleanup?.(); this.filterOwnerCleanup = null;
 		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		this.closeTransientSurfaceUi(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);
@@ -847,6 +851,7 @@ export class FilterView extends ItemView {
 
 	private ensureLayout(container: HTMLElement): void {
 		if (this.layoutRoot?.isConnected) return;
+  this.filterOwnerCleanup?.(); this.filterOwnerCleanup = null;
 
 		this.headerExpandedStateCleanup?.();
 		this.headerExpandedStateCleanup = null;
@@ -867,11 +872,21 @@ export class FilterView extends ItemView {
 			cls: 'operon-filter-picker-menu',
 			attr: { role: 'listbox' },
 		});
-		this.registerDomEvent(getOwnerDocument(this.filterPickerEl), 'click', (event) => {
-			if (!this.filterPickerEl?.contains(event.target as Node)) {
-				this.setFilterPickerOpen(false);
-			}
-		});
+  let ownerDocument = getOwnerDocument(this.filterPickerEl);
+  const outside = (event: MouseEvent): void => {
+   if (!this.filterPickerEl?.contains(event.target as Node)) this.setFilterPickerOpen(false);
+  };
+  ownerDocument.addEventListener('click', outside);
+  const stopMigration = this.layoutRoot.onWindowMigrated?.(() => {
+   const next = getOwnerDocument(this.layoutRoot);
+   if (next === ownerDocument) return;
+   ownerDocument.removeEventListener('click', outside);
+   ownerDocument = next; ownerDocument.addEventListener('click', outside);
+   if (this.lazyLoadObserver && this.lazyLoadSentinel?.isConnected) {
+    this.lazyLoadObserver.disconnect(); this.observeLazyLoadSentinel();
+   }
+  });
+  this.filterOwnerCleanup = () => { stopMigration?.(); ownerDocument.removeEventListener('click', outside); };
 		this.renderFilterRelatedViewsButton();
 		this.createSearchInput(this.headerEl);
 		this.addFilterBtnEl = this.headerEl.createEl('button', {
@@ -939,19 +954,25 @@ export class FilterView extends ItemView {
 		return t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) });
 	}
 
-	private attachLazyLoadSentinel(list: HTMLElement, totalCount: number): void {
-		if (this.visibleTaskLimit >= totalCount) return;
-		const sentinel = list.createDiv('operon-filter-lazy-sentinel');
-		this.lazyLoadObserver = new IntersectionObserver((entries) => {
-			if (!entries.some(entry => entry.isIntersecting)) return;
-			this.lazyLoadObserver?.disconnect();
-			this.lazyLoadObserver = null;
-			this.visibleTaskLimit = Math.min(this.visibleTaskLimit + FILTER_RENDER_BATCH_SIZE, totalCount);
-			this.lastRenderSignature = null;
-			this.render();
-		}, { root: null, rootMargin: '160px 0px' });
-		this.lazyLoadObserver.observe(sentinel);
-	}
+ private attachLazyLoadSentinel(list: HTMLElement, totalCount: number): void {
+  if (this.visibleTaskLimit >= totalCount) return;
+  this.lazyLoadSentinel = list.createDiv('operon-filter-lazy-sentinel');
+  this.lazyLoadTotal = totalCount;
+  this.observeLazyLoadSentinel();
+ }
+
+ private observeLazyLoadSentinel(): void {
+  const sentinel = this.lazyLoadSentinel;
+  if (!sentinel) return;
+  const Observer = sentinel.ownerDocument.defaultView!.IntersectionObserver;
+  const observer = new Observer(entries => {
+   if (this.lazyLoadObserver !== observer || !entries.some(entry => entry.isIntersecting)) return;
+   observer.disconnect(); this.lazyLoadObserver = null; this.lazyLoadSentinel = null;
+   this.visibleTaskLimit = Math.min(this.visibleTaskLimit + FILTER_RENDER_BATCH_SIZE, this.lazyLoadTotal);
+   this.lastRenderSignature = null; this.render();
+  }, { root: null, rootMargin: '160px 0px' });
+  this.lazyLoadObserver = observer; observer.observe(sentinel);
+ }
 
 	private getCachedTreeScope(rootTasks: IndexedTask[]): IndexedTask[] {
 		const includeSubtasks = this.settings.filterShowSubtasks === true;

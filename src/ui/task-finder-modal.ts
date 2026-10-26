@@ -1,3 +1,4 @@
+import { getOwnerWindow } from '../core/dom-compat';
 import { applyDesktopModalBackdrop } from './modal-backdrop';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { App, getIcon, Modal, Platform, setIcon } from 'obsidian';
@@ -84,6 +85,9 @@ interface TaskFinderSearchSessionCacheEntry {
 }
 
 export class TaskFinderModal extends Modal {
+ private viewportWindow: Window | null = null;
+ private stopViewportMigration: (() => void) | null = null;
+
 	private inputEl!: HTMLTextAreaElement;
 	private modeButtons = new Map<ProjectSearchMode, HTMLButtonElement>();
 	private overdueButton!: HTMLButtonElement;
@@ -165,8 +169,7 @@ export class TaskFinderModal extends Modal {
 		this.contentEl.empty();
 		this.contentEl.addClass('operon-task-finder');
 		this.containerEl.addEventListener('pointerdown', this.outsidePointerHandler);
-		window.addEventListener('resize', this.resizeHandler);
-		this.registerMobileViewportListeners();
+		this.bindViewportWindow();
 		this.updateMobileViewportHeight();
 		this.applyInitialScope();
 
@@ -315,18 +318,20 @@ export class TaskFinderModal extends Modal {
 		this.nativeCloseButtonCleanup?.();
 		this.nativeCloseButtonCleanup = null;
 		this.containerEl.removeEventListener('pointerdown', this.outsidePointerHandler);
-		window.removeEventListener('resize', this.resizeHandler);
+		this.stopViewportMigration?.(); this.stopViewportMigration = null;
+  this.viewportWindow?.removeEventListener('resize', this.resizeHandler);
 		this.unregisterMobileViewportListeners();
 		this.toolsEl?.removeEventListener('scroll', this.toolbarScrollHandler);
 		if (this.chipOverflowFrame !== null) {
-			window.cancelAnimationFrame(this.chipOverflowFrame);
+			(this.viewportWindow ?? getOwnerWindow(this.containerEl)).cancelAnimationFrame(this.chipOverflowFrame);
 			this.chipOverflowFrame = null;
 		}
 		if (this.toolbarOverflowFrame !== null) {
-			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+			(this.viewportWindow ?? getOwnerWindow(this.containerEl)).cancelAnimationFrame(this.toolbarOverflowFrame);
 			this.toolbarOverflowFrame = null;
 		}
 		this.containerEl.style.removeProperty('--operon-task-finder-mobile-viewport-height');
+  this.viewportWindow = null;
 		this.toolbarEl = null;
 		this.toolsEl = null;
 		this.contentEl.empty();
@@ -335,6 +340,28 @@ export class TaskFinderModal extends Modal {
 			this.options.onCancel?.();
 		}
 	}
+
+ private bindViewportWindow(): void {
+  const next = getOwnerWindow(this.containerEl), old = this.viewportWindow;
+  if (old === next) return;
+  old?.removeEventListener('resize', this.resizeHandler);
+  old?.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+  old?.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+  const chipPending = this.chipOverflowFrame !== null, toolbarPending = this.toolbarOverflowFrame !== null;
+  if (this.chipOverflowFrame !== null) old?.cancelAnimationFrame(this.chipOverflowFrame);
+  if (this.toolbarOverflowFrame !== null) old?.cancelAnimationFrame(this.toolbarOverflowFrame);
+  this.chipOverflowFrame = null; this.toolbarOverflowFrame = null;
+  this.viewportWindow = next;
+  next.addEventListener('resize', this.resizeHandler);
+  this.registerMobileViewportListeners();
+  if (!this.stopViewportMigration) this.stopViewportMigration = this.containerEl.onWindowMigrated?.(() => { if (this.viewportWindow) this.bindViewportWindow(); }) ?? null;
+  if (old) {
+   this.backdropCleanup?.(); this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
+   this.updateMobileViewportHeight();
+   if (chipPending) this.scheduleChipOverflowLayout();
+   if (toolbarPending) this.scheduleToolbarOverflowState();
+  }
+ }
 
 	private createModeButton(container: HTMLElement, mode: ProjectSearchMode, iconName: string, label: string): void {
 		const button = container.createEl('button', {
@@ -804,7 +831,7 @@ export class TaskFinderModal extends Modal {
 
 		const measuredRows = rows.slice(0, visibleResultCount);
 		const rowHeight = measuredRows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0);
-		const computedStyle = window.getComputedStyle(this.resultsEl);
+		const computedStyle = getOwnerWindow(this.containerEl).getComputedStyle(this.resultsEl);
 		const gap = Number.parseFloat(computedStyle.rowGap || computedStyle.gap || '0') || 0;
 		const measuredHeight = Math.ceil(rowHeight + gap * Math.max(0, measuredRows.length - 1));
 		const viewportLimit = Platform.isPhone
@@ -817,19 +844,20 @@ export class TaskFinderModal extends Modal {
 
 	private registerMobileViewportListeners(): void {
 		if (!Platform.isPhone) return;
-		window.visualViewport?.addEventListener('resize', this.visualViewportHandler);
-		window.visualViewport?.addEventListener('scroll', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.addEventListener('resize', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.addEventListener('scroll', this.visualViewportHandler);
 	}
 
 	private unregisterMobileViewportListeners(): void {
 		if (!Platform.isPhone) return;
-		window.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
-		window.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
 	}
 
 	private updateMobileViewportHeight(): void {
 		if (!Platform.isPhone) return;
-		const height = window.visualViewport?.height ?? window.innerHeight;
+		const owner = getOwnerWindow(this.containerEl);
+		const height = owner.visualViewport?.height ?? owner.innerHeight;
 		if (!Number.isFinite(height) || height <= 0) return;
 		this.containerEl.style.setProperty('--operon-task-finder-mobile-viewport-height', `${Math.round(height)}px`);
 	}
@@ -837,9 +865,9 @@ export class TaskFinderModal extends Modal {
 	private scheduleToolbarOverflowState(): void {
 		if (!Platform.isPhone || !this.toolbarEl || !this.toolsEl) return;
 		if (this.toolbarOverflowFrame !== null) {
-			window.cancelAnimationFrame(this.toolbarOverflowFrame);
+			(this.viewportWindow ?? getOwnerWindow(this.containerEl)).cancelAnimationFrame(this.toolbarOverflowFrame);
 		}
-		this.toolbarOverflowFrame = window.requestAnimationFrame(() => {
+		this.toolbarOverflowFrame = (this.viewportWindow ?? getOwnerWindow(this.containerEl)).requestAnimationFrame(() => {
 			this.toolbarOverflowFrame = null;
 			this.updateToolbarOverflowState();
 		});
@@ -930,9 +958,9 @@ export class TaskFinderModal extends Modal {
 
 	private scheduleChipOverflowLayout(): void {
 		if (this.chipOverflowFrame !== null) {
-			window.cancelAnimationFrame(this.chipOverflowFrame);
+			(this.viewportWindow ?? getOwnerWindow(this.containerEl)).cancelAnimationFrame(this.chipOverflowFrame);
 		}
-		this.chipOverflowFrame = window.requestAnimationFrame(() => {
+		this.chipOverflowFrame = (this.viewportWindow ?? getOwnerWindow(this.containerEl)).requestAnimationFrame(() => {
 			this.chipOverflowFrame = null;
 			this.layoutChipOverflow();
 		});
@@ -964,7 +992,7 @@ export class TaskFinderModal extends Modal {
 		const available = row.clientWidth;
 		if (available <= 0) return;
 
-		const gap = Number.parseFloat(window.getComputedStyle(row).columnGap || window.getComputedStyle(row).gap || '0') || 0;
+		const gap = Number.parseFloat(getOwnerWindow(this.containerEl).getComputedStyle(row).columnGap || getOwnerWindow(this.containerEl).getComputedStyle(row).gap || '0') || 0;
 		const chipWidths = chips.map(chip => chip.getBoundingClientRect().width);
 		const allWidth = chipWidths.reduce((sum, width) => sum + width, 0) + gap * Math.max(0, chips.length - 1);
 		if (allWidth <= available) return;

@@ -1,3 +1,4 @@
+import './kanban-card-retention.test.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
@@ -219,7 +220,8 @@ test('in-place settlement preserves board roots and limits writes to affected ce
 	assert.match(patchBody, /this\.pendingCellMaterializers\.set\(cell, materialize\)/u);
 	assert.match(patchBody, /this\.clearCellQuickAdd\(cell\)/u);
 	assert.match(viewSource, /private unobserveKanbanCellContent[\s\S]*?this\.clearCellLazySentinelObserver\(cell\)/u);
-	assert.match(patchBody, /cell\.empty\(\)/u);
+	assert.doesNotMatch(patchBody, /cell\.empty\(\)/u);
+	assert.match(patchBody, /child\.remove\(\)/u);
 	assert.match(patchBody, /row\.remove\(\)/u);
 	assert.doesNotMatch(patchBody, /boardEl\.empty\(\)|gridViewport\.empty\(\)|this\.contentEl\.empty\(\)/u);
 	const immediateStart = viewSource.indexOf('private applyImmediateCardDrop(');

@@ -4,7 +4,7 @@ import type { ExcalidrawPropertyPool } from './excalidraw-property-pool';
 import { Notice, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { SurfaceTaskPool, type TaskPoolPoint, type TaskPoolSurface, type TaskPoolTarget } from './surface-task-pool';
-import type { ExcalidrawTaskAPI, ExcalidrawTaskState, ExcalidrawTaskView } from './excalidraw-task-bridge';
+import { excalidrawConvertibleText, type ExcalidrawTaskElement, type ExcalidrawTaskAPI, type ExcalidrawTaskState, type ExcalidrawTaskView } from './excalidraw-task-bridge';
 
 export interface ExcalidrawFileAction { icon: string; label: string; disabled?: boolean; editor?: ExcalidrawFileAction; run(): void | Promise<void>; }
 
@@ -25,7 +25,7 @@ export function excalidrawPoolScenePoint(state: ExcalidrawTaskState, point: Task
 
 /** Keep native controls and React ownership intact, including wrappers added after ours. */
 export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () => boolean,
- mount: (button: HTMLButtonElement | null) => void, unsupported: () => void, mountProperty?: (button: HTMLButtonElement | null) => void, mountFile?: (button: HTMLButtonElement | null) => void, mountEditor?: (button: HTMLButtonElement | null) => void, mountCreator?: (button: HTMLButtonElement | null) => void): (() => void) | null {
+ mount: (button: HTMLButtonElement | null) => void, unsupported: () => void, mountProperty?: (button: HTMLButtonElement | null) => void, mountFile?: (button: HTMLButtonElement | null) => void, mountEditor?: (button: HTMLButtonElement | null) => void, mountCreator?: (button: HTMLButtonElement | null) => void, mountConvert?: (button: HTMLButtonElement | null) => void): (() => void) | null {
  const native = view as Partial<ToolbarView>, original = native.renderTopRightUI;
  if (typeof original !== 'function') return null;
  const descriptor = Object.getOwnPropertyDescriptor(view, 'renderTopRightUI');
@@ -35,6 +35,7 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
  const fileRef = (button: HTMLButtonElement | null) => { if (active) mountFile?.(button); };
  const editorRef = (button: HTMLButtonElement | null) => { if (active) mountEditor?.(button); };
  const creatorRef = (button: HTMLButtonElement | null) => { if (active) mountCreator?.(button); };
+ const convertRef = (button: HTMLButtonElement | null) => { if (active) mountConvert?.(button); };
  const wrapper: ToolbarRenderer = function(...args) {
   const output: unknown = original.apply(view, args);
   if (!active || !ready()) return output;
@@ -45,10 +46,11 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
    react.createElement('button', { key: 'operon-task-pool', ref, type: 'button', className: 'operon-excalidraw-task-pool-button' }),
    ...(mountProperty ? [react.createElement('button', { key: 'operon-property-pool', ref: propertyRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-property-pool-button' })] : []),
    ...(mountFile ? [react.createElement('button', { key: 'operon-file-task', ref: fileRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-file-task-button' })] : []),
+   ...(mountConvert ? [react.createElement('button', { key: 'operon-convert-text', ref: convertRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-convert-text-button' })] : []),
    ...(mountEditor ? [react.createElement('button', { key: 'operon-file-task-editor', ref: editorRef, type: 'button', className: 'operon-excalidraw-task-pool-button operon-excalidraw-file-task-editor-button' })] : []));
  };
  try { native.renderTopRightUI = wrapper; } catch { return null; }
- return () => { active = false; mount(null); mountProperty?.(null); mountFile?.(null); mountEditor?.(null); mountCreator?.(null);
+ return () => { active = false; mount(null); mountProperty?.(null); mountFile?.(null); mountEditor?.(null); mountCreator?.(null); mountConvert?.(null);
   if (native.renderTopRightUI === wrapper) {
    if (descriptor) Object.defineProperty(view, 'renderTopRightUI', descriptor); else Reflect.deleteProperty(view, 'renderTopRightUI');
   }
@@ -56,6 +58,7 @@ export function bindExcalidrawPoolToolbar(view: ExcalidrawTaskView, ready: () =>
 }
 
 export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPool<T> {
+ private convertButton: HTMLButtonElement | null = null;
  private creatorButton: HTMLButtonElement | null = null;
  private fileButton: HTMLButtonElement | null = null;
  private editorButton: HTMLButtonElement | null = null;
@@ -67,15 +70,46 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
  private live = false;
  private warned = false;
  private readonly warn = () => { if (!this.warned) { this.warned = true; new Notice(t('notifications', 'excalidrawPoolUnavailable')); } };
- constructor(private view: ExcalidrawTaskView, private adapter: TaskPoolSurface<T>, private propertyPool?: ExcalidrawPropertyPool, private fileAction?: () => ExcalidrawFileAction | null, private sceneReady?: () => void, private createTask?: () => void) { super(adapter); }
+ constructor(private view: ExcalidrawTaskView, private adapter: TaskPoolSurface<T>, private propertyPool?: ExcalidrawPropertyPool, private fileAction?: () => ExcalidrawFileAction | null, private sceneReady?: () => void, private createTask?: () => void, private convertText?: (element: ExcalidrawTaskElement) => void) { super(adapter); }
  onload(): void {
   this.live = true; if (this.propertyPool) this.addChild(this.propertyPool); super.onload();
   this.toolbar = bindExcalidrawPoolToolbar(this.view, () => this.adapter.isCurrent(), button => {
    this.setButton(button);
    if (button) { this.sync(); if (this.pendingShow) { const allowed = this.pendingShow; this.pendingShow = null; if (allowed()) super.show(); } }
-  }, this.warn, this.propertyPool ? button => this.propertyPool!.setButton(button) : undefined, this.fileAction ? button => this.setFileButton(button) : undefined, this.fileAction ? button => this.setFileButton(button, true) : undefined, this.createTask ? button => this.setCreatorButton(button) : undefined);
+  }, this.warn, this.propertyPool ? button => this.propertyPool!.setButton(button) : undefined, this.fileAction ? button => this.setFileButton(button) : undefined, this.fileAction ? button => this.setFileButton(button, true) : undefined, this.createTask ? button => this.setCreatorButton(button) : undefined, this.convertText ? button => this.setConvertButton(button) : undefined);
   if (!this.toolbar) this.warn();
   else this.view.excalidrawAPI?.refresh?.();
+ }
+ private selectedText(): ExcalidrawTaskElement | null {
+  if (!this.live || !this.adapter.isCurrent() || this.adapter.readOnly() || !this.convertText) return null;
+  const api = this.view.excalidrawAPI, state = api?.getAppState();
+  if (!state || state.viewModeEnabled !== false || state.editingTextElement) return null;
+  const ids = Object.entries(state.selectedElementIds as Record<string, boolean> ?? {}).filter(([, selected]) => selected).map(([id]) => id);
+  if (ids.length !== 1) return null;
+  const element = api.getSceneElements().find(item => item.id === ids[0]);
+  return element && excalidrawConvertibleText(element) !== null ? element : null;
+ }
+ private setConvertButton(button: HTMLButtonElement | null): void {
+  if (this.convertButton === button) return;
+  if (this.convertButton) { cleanupOperonHoverTooltips(this.convertButton); this.convertButton.onclick = null; this.convertButton.onpointerdown = null; }
+  this.convertButton = button;
+  if (!button) return;
+  const label = t('commands', 'convertCanvasTask');
+  button.replaceChildren(); setIcon(button, 'id-card'); setAccessibleLabelWithoutTooltip(button, label);
+  bindOperonHoverTooltip(button, { title: label, taskColor: null });
+  button.onpointerdown = event => { event.preventDefault(); event.stopPropagation(); };
+  button.onclick = event => {
+   event.preventDefault(); event.stopPropagation();
+   const selected = this.selectedText();
+   if (selected) this.convertText?.(selected);
+  };
+  this.refreshConvertButton();
+ }
+ private refreshConvertButton(): void {
+  if (!this.convertButton) return;
+  const visible = !!this.selectedText();
+  this.convertButton.style.display = visible ? '' : 'none';
+  this.convertButton.disabled = !visible;
  }
  private setCreatorButton(button: HTMLButtonElement | null): void {
   if (this.creatorButton === button) return;
@@ -113,6 +147,7 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
   return (editor ? action?.editor : action) ?? null;
  }
  refreshFileAction(): void {
+  this.refreshConvertButton();
   if (this.creatorButton) this.creatorButton.disabled = !this.live || !this.adapter.isCurrent() || this.adapter.readOnly();
   this.refreshFileButton(this.fileButton, false);
   this.refreshFileButton(this.editorButton, true);
@@ -148,6 +183,7 @@ export class ExcalidrawTaskPool<T extends TaskPoolTarget> extends SurfaceTaskPoo
    if (typeof api?.onChange === 'function') {
     let mode: unknown;
     this.stopScene = api.onChange((_elements, state) => {
+     this.refreshConvertButton();
      if (mode !== state.viewModeEnabled || !this.adapter.isCurrent()) { mode = state.viewModeEnabled; super.sync(); this.propertyPool?.sync(); this.refreshFileAction(); }
     });
    }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { Platform, TFile } from 'obsidian';
+import { Platform, TFile, WorkspaceTabs } from 'obsidian';
 import { lightboxFixture } from './test-support/lightbox-dom';
 import { activateResolvedOpening, resolveChipOpening } from '../src/ui/links-chip-action';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
@@ -25,7 +25,7 @@ function fixture(extension = 'md') {
   getEphemeralState:()=>({line:36,scroll:120}), setEphemeralState(){}, getViewData: () => text, setViewData(value:string){text=value;}, clear(){}, async save() { saves++; if (delay) await new Promise<void>(r => release = r); if (fail) throw Error('disk'); stored = text; view.data = text; } };
  const opens: any[] = [];
  const leaf: any = { getViewState:()=>({type:view.getViewType()}), view, containerEl:root, async openFile(file: TFile,state: any) { view.file = file; opens.push(state); }, async setViewState(state:any) { if(state.type==='webviewer')tabUrls.push(state.state.url);else view.file=new (TFile as any)(state.state.file); }, async loadIfDeferred() {}, detach() { detached++; } };
- const group:any={children:[],currentTab:0,selectTabIndex(index:number){this.currentTab=index;}};
+ const group = new (WorkspaceTabs as any)({containerEl:f.doc.body} as any) as any;
  const app: any = { vault: { read: async () => stored, getResourcePath: (file:TFile) => `app:///${file.path}` },
   metadataCache: { getFirstLinkpathDest: (path:string, from:string) => path === 'missing' ? null : path === '' ? new (TFile as any)(from) : path.endsWith('.png') || path.endsWith('.pdf') || path.endsWith('.base') || path.endsWith('.table') ? new (TFile as any)(path) : file },
   internalPlugins: { getEnabledPluginById:()=>({openUrl(url:string){tabUrls.push(url);}}), plugins: { bases: {enabled:true}, 'page-preview': { enabled:true }, webviewer: {enabled:true,instance:{ openUrl(url:string) { tabUrls.push(url); }}}}},
@@ -227,9 +227,9 @@ test('IME Escape is left to native composition',()=>{
 // Model the native workspace side effects, not only the lightbox DOM.
 function isolatedTabFixture(extension = 'md', stacked = false) {
  const f = fixture(extension), root = { id: 'root' }, container = { doc: f.doc };
- const owner: any = { id: 'user-a', parent: null, view: { containerEl: f.anchor, getViewType:()=> 'markdown' }, getRoot:()=>owner.parent?root:owner, getContainer:()=>owner.parent?container:{doc:'main-fallback'} };
- const other: any = { ...owner, id: 'user-b', pinned: true, getRoot:()=>other.parent?root:other, getContainer:()=>other.parent?container:{doc:'main-fallback'} };
- const userTabs: any = { id: 'user-tabs', children: [owner, other], currentTab: 0, scrollLeft: 141, stacked, selectTabIndex(index: number) { this.currentTab = index; } };
+ const owner: any = { id: 'user-a', parent: null, containerEl:f.anchor, view: { containerEl: f.anchor, getViewType:()=> 'markdown' }, getRoot:()=>owner.parent?root:owner, getContainer:()=>owner.parent?container:{doc:'main-fallback'} };
+ const other: any = { ...owner, id: 'user-b', containerEl:f.doc.body.createDiv(), pinned: true, getRoot:()=>other.parent?root:other, getContainer:()=>other.parent?container:{doc:'main-fallback'} };
+ const userTabs: any = Object.assign(new (WorkspaceTabs as any)({containerEl:f.doc.body} as any), { id: 'user-tabs', children: [owner, other], scrollLeft: 141, stacked });
  owner.parent = userTabs; other.parent = userTabs;
  let registered = [owner, other];
  const history = Array.from({ length: 10 }, (_, index) => ({ id: `closed-${index}` }));
@@ -374,8 +374,9 @@ test('native view initialization finishing after close is disposed once without 
 // A real destination models native selection/history effects independently of the isolated host.
 function installDestination(f: ReturnType<typeof isolatedTabFixture>, reject = false) {
  let calls = 0, received: any, ephemeral: any;
- const destination: any = {id:'new-tab', parent:null, getRoot:()=>f.owner.getRoot(),
-  view:{containerEl:f.doc.body.createDiv(), getViewType:()=>received?.type ?? 'markdown', setEphemeralState(value:any){ephemeral=value;}},
+ const destinationRoot = f.doc.body.createDiv();
+ const destination: any = {id:'new-tab', parent:null, containerEl:destinationRoot, getRoot:()=>f.owner.getRoot(),
+  view:{containerEl:destinationRoot.createDiv(), getViewType:()=>received?.type ?? 'markdown', setEphemeralState(value:any){ephemeral=value;}},
   getViewState:()=>received ?? {type:'markdown'},
   async setViewState(state:any){calls++;received=state;if(reject)throw Error('load failed');},
   async openFile(file:any,state:any){calls++;received={type:file.extension==='pdf'?'pdf':'image',file,state};if(reject)throw Error('load failed');},
@@ -437,7 +438,7 @@ for(const remote of [false,true]) for(const placement of ['tab','split','below']
 
 function installSplitDestination(f: ReturnType<typeof isolatedTabFixture>, reject = false) {
  const d=installDestination(f,reject);const target=d.destination;
- const split:any={children:[],selectTabIndex(){},currentTab:0};let received:any;
+ const split:any=new (WorkspaceTabs as any)({containerEl:f.doc.body} as any);let received:any;
  f.workspace.createLeafBySplit=(origin:any,direction:string,before:boolean)=>{
   received={origin,direction,before};target.parent=split;split.children=[target];return target;
  };
@@ -469,7 +470,9 @@ for(const placement of ['split','below'] as const)for(const interveningResize of
   group.dimension=60;group.setDimension=(value:number)=>group.dimension=value;
   const split:any={children:[group,sibling]};group.parent=split;
   const added:any={dimension:30,setDimension(value:number){this.dimension=value;}};
-  const destination:any={view:{containerEl:f.anchor},getViewState:()=>({type:'markdown'}),detach(){split.children=split.children.filter((child:any)=>child!==added);const total=split.children.reduce((sum:number,child:any)=>sum+child.dimension,0);for(const child of split.children)child.setDimension(100*child.dimension/total);}};
+  const targetTabs:any=new (WorkspaceTabs as any)({containerEl:f.doc.body} as any);
+  const destination:any={parent:targetTabs,containerEl:f.anchor,view:{containerEl:f.anchor},getViewState:()=>({type:'markdown'}),detach(){split.children=split.children.filter((child:any)=>child!==added);const total=split.children.reduce((sum:number,child:any)=>sum+child.dimension,0);for(const child of split.children)child.setDimension(100*child.dimension/total);}};
+  targetTabs.children=[destination];
   f.workspace.createLeafBySplit=()=>{group.setDimension(30);split.children.splice(1,0,added);return destination;};
   await assert.rejects(prepareLightboxTab(f.app,f.doc,async()=>{if(interveningResize){group.setDimension(20);sibling.setDimension(50);}throw Error('load');},placement,f.owner));
   assert.deepEqual(split.children,[group,sibling]);

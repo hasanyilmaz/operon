@@ -30,12 +30,12 @@ export function openWebLightbox(app: App, anchor: HTMLElement, url: string): boo
  return true;
 }
 
-export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile): void {
- if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file });
+export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean): void {
+ if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file }, undefined, canOpen);
 }
 
-export function openTaskWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, initial: NativeTaskWorkspaceInitial): Promise<TaskEditorSession | null> {
- return openNativeLightbox(app, anchor, { file }, initial);
+export function openTaskWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, initial: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {
+ return openNativeLightbox(app, anchor, { file }, initial, canOpen);
 }
 
 /** Obsidian ephemeral state uses zero-based lines. */
@@ -132,8 +132,10 @@ export async function prepareLightboxTab(app: App, doc: Document, load: (leaf: W
  const afterSplit = beforeSplit.length ? splitParent.children.map(child => ({child, dimension: child.dimension})) : [];
  restore(selected, active);
  try {
-  if (destination.view.containerEl.ownerDocument !== doc) throw new Error('Wrong window');
+  const destinationTabs = destination.parent as NativeTabs;
+  mountLightboxLeaf(destination, destinationTabs, doc);
   await load(destination);
+  assertLightboxLeafMounted(destination, destinationTabs, doc);
   return () => app.workspace.setActiveLeaf(destination, {focus: true});
  } catch (error) {
   const selection = parent.children[parent.currentTab];
@@ -166,7 +168,26 @@ type NativeWorkspace = Omit<App['workspace'], 'activeLeaf' | 'getLayout'> & {
  lastTabGroupStacked?: boolean;
  getLayout: (this: App['workspace']) => Record<string, unknown>;
 };
-type NativeTabs = WorkspaceTabs & { containerEl: HTMLElement; component: { unload: () => void } };
+type NativeTabs = WorkspaceTabs & {
+ containerEl: HTMLElement;
+ component: { unload: () => void };
+ recomputeChildrenDimensions: () => void;
+};
+
+function assertLightboxLeafMounted(leaf: WorkspaceLeaf, tabs: NativeTabs, doc: Document): void {
+ const root = (leaf as WorkspaceLeaf & { containerEl: HTMLElement }).containerEl;
+ if (leaf.parent !== tabs || tabs.containerEl.ownerDocument !== doc || root.ownerDocument !== doc
+  || leaf.view.containerEl.ownerDocument !== doc || !tabs.containerEl.contains(root)
+  || !root.contains(leaf.view.containerEl)) throw new Error('Wrong lightbox window or parent');
+}
+
+/** Native insertion schedules DOM placement; finish it before loading an owned view. */
+function mountLightboxLeaf(leaf: WorkspaceLeaf, tabs: NativeTabs, doc: Document): void {
+ if (!tabs || leaf.parent !== tabs || tabs.containerEl.ownerDocument !== doc
+  || typeof tabs.recomputeChildrenDimensions !== 'function') throw new Error('Unavailable native tab group');
+ tabs.recomputeChildrenDimensions();
+ assertLightboxLeafMounted(leaf, tabs, doc);
+}
 const isolatedLeaves = new WeakMap<WorkspaceLeaf, { tabs: NativeTabs; release: () => void }>();
 const layoutGuards = new WeakMap<App, { leaves: Map<WorkspaceLeaf, WorkspaceLeaf>; original: NativeWorkspace['getLayout']; guarded: NativeWorkspace['getLayout'] }>();
 
@@ -219,12 +240,18 @@ function createIsolatedLightboxLeaf(app: App, doc: Document, host: HTMLElement, 
   leaf.getContainer = () => container;
   tabs.getRoot = () => root;
   tabs.getContainer = () => container;
+  mountLightboxLeaf(leaf, tabs, doc);
   isolatedLeaves.set(leaf, { tabs, release: retainLayoutOwner(app, leaf, owner) });
   return leaf;
  } catch (error) {
-  leaf?.detach();
-  tabs.component.unload();
-  tabs.containerEl.remove();
+  const workspace = app.workspace as NativeWorkspace;
+  const stacked = workspace.lastTabGroupStacked;
+  try { leaf?.detach(); }
+  finally {
+   workspace.lastTabGroupStacked = stacked;
+   tabs.component.unload();
+   tabs.containerEl.remove();
+  }
   throw error;
  }
 }
@@ -250,7 +277,8 @@ function detachLightboxLeaf(app: App, detachedLeaf: WorkspaceLeaf, originalDetac
        finally { detachedLeaf.getViewState = getState; workspace.lastTabGroupStacked = stacked; }
 }
 
-function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial): Promise<TaskEditorSession | null> {
+function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {
+ if (canOpen?.() === false) { initial?.content.destroy({ skipCloseSave: true }); return Promise.resolve(null); }
  let resolveOpened!: (handle: TaskEditorSession | null) => void;
  const opened = new Promise<TaskEditorSession | null>(resolve => { resolveOpened = resolve; });
  let companion: NativeTaskWorkspace | null = null;
@@ -338,6 +366,11 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
     })();
    },
    render: (lightbox, close) => {
+    const cancelled = (): boolean => {
+     if (closed) return true;
+     if (canOpen?.() === false) { close(); return true; }
+     return false;
+    };
     const recentLeaf = app.workspace.getMostRecentLeaf();
     const previousLeaf = recentLeaf?.view.containerEl.ownerDocument === doc ? recentLeaf : null;
     // The resolved target supplies its frame before native loading can yield a paint.
@@ -381,7 +414,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
        const endEditor = openingTrace?.span('editor-ready-wait');
        await companion.prepareInitialRender();
        endEditor?.();
-       if (closed) return;
+       if (cancelled()) return;
        leaf.view.onResize();
        // Flush the native/compact editors' queued measurements before first paint.
        const endFrame = openingTrace?.span('frame-wait');
@@ -391,7 +424,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
        });
        endFrame?.();
       }
-      if (!closed) lightbox.removeClass('is-workspace-loading');
+      if (!cancelled()) lightbox.removeClass('is-workspace-loading');
      }
     };
     const observer = new ResizeObserver(() => { if (!closed) leaf?.view.onResize(); });
@@ -409,21 +442,10 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       const endLeaf = openingTrace?.span('native-leaf');
       const pendingReuse = source?.file.extension === 'md' ? takeNativeLightboxView(app, doc, source.file) : null;
       const reused = pendingReuse ? await pendingReuse : null;
-      if (closed) { if (reused) { detachLightboxLeaf(app, reused); releaseOwnedLightboxLeaf(reused); } return; }
+      if (cancelled()) { if (reused) { detachLightboxLeaf(app, reused); releaseOwnedLightboxLeaf(reused); } return; }
       owned = reused ?? createIsolatedLightboxLeaf(app, doc, host, origin);
-      if (!reused) openingTrace?.count('leaves');
-      else {
-       const isolated = isolatedLeaves.get(owned)!;
-       const root = origin.getRoot(), container = origin.getContainer();
-       owned.getRoot = () => root; owned.getContainer = () => container;
-       isolated.tabs.getRoot = () => root; isolated.tabs.getContainer = () => container;
-       isolated.release = retainLayoutOwner(app, owned, origin);
-       isolated.tabs.containerEl.hidden = false; isolated.tabs.containerEl.inert = false;
-       host.appendChild(isolated.tabs.containerEl);
-      }
-      endLeaf?.();
       leaf = owned;
-      surface?.attach(app, owned);
+      const ownedTabs = owned.parent as NativeTabs;
       const originalDetach = bindNativeLightboxMethod(owned, 'detach');
       const originalSetViewState = bindNativeLightboxMethod(owned, 'setViewState');
       const detachedLeaf = owned;
@@ -433,6 +455,21 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
        detached = true;
        detachLightboxLeaf(app, detachedLeaf, originalDetach);
       };
+      restoreMethods = () => { if (owned) { owned.detach = originalDetach; owned.setViewState = originalSetViewState; } };
+      if (!reused) openingTrace?.count('leaves');
+      else {
+       const isolated = isolatedLeaves.get(owned);
+       if (!isolated) throw new Error('Unavailable native tab group');
+       const root = origin.getRoot(), container = origin.getContainer();
+       owned.getRoot = () => root; owned.getContainer = () => container;
+       isolated.tabs.getRoot = () => root; isolated.tabs.getContainer = () => container;
+       isolated.release = retainLayoutOwner(app, owned, origin);
+       isolated.tabs.containerEl.hidden = false; isolated.tabs.containerEl.inert = false;
+       host.appendChild(isolated.tabs.containerEl);
+       mountLightboxLeaf(owned, ownedTabs, doc);
+      }
+      endLeaf?.();
+      surface?.attach(app, owned);
       // Only this owned leaf is guarded; user tabs keep their normal behavior.
       owned.detach = () => close();
       owned.setViewState = (...args) => {
@@ -453,27 +490,26 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
        transition = transition.then(run, run);
        return transition;
       };
-      restoreMethods = () => { if (owned) { owned.detach = originalDetach; owned.setViewState = originalSetViewState; } };
-      if (owned.view.containerEl.ownerDocument !== doc) throw new Error('Wrong window');
       const endOpen = openingTrace?.span('native-open');
       if (source && reused) owned.view.setEphemeralState(lightboxFileState(source));
       else if (source) await owned.openFile(source.file, { active: false, eState: lightboxFileState(source) });
       else if (!isFile) await owned.setViewState({ type: 'webviewer', active: false, state: { url: target.url, navigate: true } });
       endOpen?.();
-      if (closed) return;
+      if (cancelled()) return;
       const endLoad = openingTrace?.span('native-load');
       await owned.loadIfDeferred();
       endLoad?.();
-      if (closed) return;
-      if (owned.view.containerEl.ownerDocument !== doc || owned.view.getViewType() !== (isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer')) throw new Error('Unavailable native view');
+      if (cancelled()) return;
+      assertLightboxLeafMounted(owned, ownedTabs, doc);
+      if (owned.view.getViewType() !== (isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer')) throw new Error('Unavailable native view');
       // Keep the complete native view tree inside the isolated tab group.
       initialMode = owned.getViewState().state?.mode;
       nativeReady = true;
       ready = true;
       host.inert = false;
       await mount(!initial || initial.markdown);
-      if (closed) return;
-      if (initial) companion?.handle?.content.applyInitialDescriptionFocus();
+      if (cancelled()) return;
+      if (initial) companion?.handle?.content.applyInitialDescriptionFocus(canOpen);
       else if (isFile) focusLightboxSourceCaret(owned, target.file);
       markLightboxControlsReady(lightbox);
       openingTrace?.finish('ready');
@@ -500,10 +536,10 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
      void (async () => {
       try {
        await companion?.prepareInitialRender();
-       if (closed) return;
+       if (cancelled()) return;
        ready = true;
        lightbox.removeClass('is-workspace-loading');
-       initial.content.applyInitialDescriptionFocus();
+       initial.content.applyInitialDescriptionFocus(canOpen);
        markLightboxControlsReady(lightbox);
       openingTrace?.finish('ready'); resolveOpened(companion?.handle ?? null);
       } catch { unavailable(); close(); }

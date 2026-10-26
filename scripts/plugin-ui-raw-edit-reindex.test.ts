@@ -1,3 +1,4 @@
+import './startup-file-events.test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -273,8 +274,8 @@ test('main wiring defers suppressed events and forces exact reconciliation witho
 	const reconcileStart = mainSource.indexOf('private async reconcileTaskSourceModify(');
 	const reconcileEnd = mainSource.indexOf('\n\tprivate applyFieldRulesToTaskPayload(', reconcileStart);
 	const reconcile = mainSource.slice(reconcileStart, reconcileEnd);
-	const normalize = reconcile.indexOf('await this.normalizeWorkflowStateAfterRawEdit(filePath)');
-	const forceReindex = reconcile.indexOf('await this.indexer.forceReindexFilePathAfterMutation(filePath)');
+	const normalize = reconcile.indexOf('await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue)');
+	const forceReindex = reconcile.indexOf('await this.indexer.forceReindexFilePathAfterMutation(filePath)', normalize);
 	assert.ok(normalize >= 0 && forceReindex > normalize);
 	assert.match(reconcile, /await this\.indexer\.handleFileDelete\(filePath\)/u);
 	assert.match(mainSource, /onunload\(\): void \{[\s\S]*?taskSourceModifyReconciler\?\.destroy\(\)/u);

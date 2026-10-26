@@ -185,6 +185,7 @@ export class ContextualHoverMenuController {
 	private activeMenuAutoHideTimer: WindowTimeoutHandle | null = null;
 	private activeMenuShowTimer: WindowTimeoutHandle | null = null;
 	private activeMenuDocument: Document | null = null;
+ private stopMenuMigration: (() => void) | null = null;
 	private activeMenuWindow: Window | null = null;
 	private activeMenuKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
 	private activeMenuScrollHandler: ((event: Event) => void) | null = null;
@@ -219,7 +220,8 @@ export class ContextualHoverMenuController {
 		if (!menu || typeof target !== 'object' || target === null) return false;
 		const ownerWindow = getOwnerWindow(menu) as Window & { Node?: typeof Node };
 		const NodeCtor = ownerWindow.Node;
-		if (!NodeCtor || !Object.prototype.isPrototypeOf.call(NodeCtor.prototype, target)) return false;
+		if (!NodeCtor || (!Object.prototype.isPrototypeOf.call(NodeCtor.prototype, target)
+			&& !(target as Node).instanceOf?.(NodeCtor))) return false;
 		return menu.contains(target as Node);
 	}
 
@@ -273,6 +275,7 @@ export class ContextualHoverMenuController {
 		this.clearShowTimer();
 		this.clearHideTimer();
 		this.clearAutoHideTimer();
+		this.stopMenuMigration?.(); this.stopMenuMigration = null;
 		this.stopAnchorTracking?.(); this.stopAnchorTracking = null;
 		this.activeMenuEl?.remove();
 		this.activeMenuEl = null;
@@ -435,6 +438,26 @@ export class ContextualHoverMenuController {
 		hostDocument.addEventListener('keydown', this.activeMenuKeydownHandler, true);
 		hostDocument.addEventListener('scroll', this.activeMenuScrollHandler, true);
 		this.activeMenuWindow.addEventListener('resize', this.activeMenuResizeHandler, true);
+  this.stopMenuMigration = (options.followAnchor ?? host).onWindowMigrated?.(() => {
+   if (this.activeMenuEl !== menu) return;
+   const owner = options.followAnchor ?? host;
+   const doc = getOwnerDocument(owner), win = getOwnerWindow(owner);
+   if (doc === this.activeMenuDocument) return;
+   this.activeMenuDocument?.removeEventListener('keydown', this.activeMenuKeydownHandler!, true);
+   this.activeMenuDocument?.removeEventListener('scroll', this.activeMenuScrollHandler!, true);
+   this.activeMenuWindow?.removeEventListener('resize', this.activeMenuResizeHandler!, true);
+   if (this.activeMenuOutsidePointerHandler) this.activeMenuOutsideEventRoot?.removeEventListener('pointerdown', this.activeMenuOutsidePointerHandler, true);
+   if (this.activeMenuOutsideTouchHandler) this.activeMenuOutsideEventRoot?.removeEventListener('touchstart', this.activeMenuOutsideTouchHandler, true);
+   if (menu.parentElement === this.activeMenuDocument?.body) doc.body.appendChild(menu);
+   this.activeMenuDocument = doc; this.activeMenuWindow = win;
+   if (this.activeMenuOutsideEventRoot?.ownerDocument !== doc) this.activeMenuOutsideEventRoot = doc.body;
+   if (this.activeMenuOutsidePointerHandler) this.activeMenuOutsideEventRoot?.addEventListener('pointerdown', this.activeMenuOutsidePointerHandler, true);
+   if (this.activeMenuOutsideTouchHandler) this.activeMenuOutsideEventRoot?.addEventListener('touchstart', this.activeMenuOutsideTouchHandler, true);
+   doc.addEventListener('keydown', this.activeMenuKeydownHandler!, true);
+   doc.addEventListener('scroll', this.activeMenuScrollHandler!, true);
+   win.addEventListener('resize', this.activeMenuResizeHandler!, true);
+   this.options.positionMenu(options.followAnchor?.getBoundingClientRect() ?? options.anchorRect, menu);
+  }) ?? null;
 		if (!this.options.positionMenu(options.anchorRect, menu)) {
 			this.hide(true);
 			return false;
@@ -496,6 +519,7 @@ export function bindContextualHoverMenuTrigger(
 			onPointerUp: (event: PointerEvent) => void;
 			onPointerCancel: (event: PointerEvent) => void;
 			onWindowBlur: () => void;
+  ownerWindow: Window;
 		}
 		| null = null;
 	let suppressNextClickUntil = 0;
@@ -518,7 +542,7 @@ export function bindContextualHoverMenuTrigger(
 		pendingLongPress.interactionRoot.removeEventListener('pointermove', pendingLongPress.onPointerMove, true);
 		pendingLongPress.interactionRoot.removeEventListener('pointerup', pendingLongPress.onPointerUp, true);
 		pendingLongPress.interactionRoot.removeEventListener('pointercancel', pendingLongPress.onPointerCancel, true);
-		getOwnerWindow(options.triggerEl).removeEventListener('blur', pendingLongPress.onWindowBlur, true);
+		pendingLongPress.ownerWindow.removeEventListener('blur', pendingLongPress.onWindowBlur, true);
 		pendingLongPress = null;
 	};
 
@@ -601,6 +625,7 @@ export function bindContextualHoverMenuTrigger(
 			onPointerUp,
 			onPointerCancel,
 			onWindowBlur,
+   ownerWindow,
 		};
 		interactionRoot.addEventListener('pointermove', onPointerMove, true);
 		interactionRoot.addEventListener('pointerup', onPointerUp, true);

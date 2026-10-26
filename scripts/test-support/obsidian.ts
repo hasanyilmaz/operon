@@ -89,7 +89,7 @@ export class WorkspaceTabs {
  recomputeChildrenDimensions() { for (const leaf of this.children) this.tabsContainerEl.appendChild(leaf.containerEl); }
  insertChild(_index: number, leaf: any) {
   this.children.push(leaf); leaf.parent = this;
-  this.tabsContainerEl.appendChild(leaf.containerEl);
+  // Native tab insertion queues DOM placement until the group recomputes.
  }
 }
 

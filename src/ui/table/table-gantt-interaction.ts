@@ -10,6 +10,7 @@ import {
 	projectTaskToGantt,
 	shiftGanttDateKey,
 } from '../../systems/gantt-core';
+import { asHTMLElement } from '../../core/dom-compat';
 import type { IndexedTask } from '../../types/fields';
 import type { GanttDateMarkerKey, GanttTaskProjection } from '../../types/gantt';
 import type { GanttDateAxis } from '../../types/gantt';
@@ -382,11 +383,6 @@ const TABLE_GANTT_EDGE_SCROLL_ZONE_PX = 32;
 const TABLE_GANTT_TOUCH_LONG_PRESS_MS = 260;
 const TABLE_GANTT_TOUCH_CANCEL_DISTANCE_PX = 10;
 
-function asHTMLElement(value: EventTarget | null, ownerDocument: Document): HTMLElement | null {
-	const constructor = ownerDocument.defaultView?.HTMLElement;
-	return constructor && value instanceof constructor ? value : null;
-}
-
 function getRenderableTask(item: TableTaskTreeRenderItem | undefined): IndexedTask | null {
 	return item?.kind === 'task' || item?.kind === 'parentContext' ? item.task : null;
 }
@@ -401,6 +397,9 @@ export class TableGanttInteractionController {
 	private pendingTouchCleanup: (() => void) | null = null;
 	private autoScrollFrame: number | null = null;
 	private destroyed = false;
+ private ownerDocument: Document;
+ private ownerWindow: Window | null;
+ private stopWindowMigration: (() => void) | undefined;
 
 	private readonly onPointerDown = (event: PointerEvent): void => this.handlePointerDown(event);
 	private readonly onPointerMove = (event: PointerEvent): void => this.handlePointerMove(event);
@@ -414,6 +413,8 @@ export class TableGanttInteractionController {
 	};
 
 	constructor(private readonly options: TableGanttInteractionControllerOptions) {
+		this.ownerDocument = options.canvasEl.ownerDocument;
+		this.ownerWindow = this.ownerDocument.defaultView;
 		options.canvasEl.classList.add('is-gantt-interactive');
 		options.canvasEl.addEventListener('pointerdown', this.onPointerDown);
 		options.canvasEl.addEventListener('pointermove', this.onPointerMove);
@@ -421,8 +422,18 @@ export class TableGanttInteractionController {
 		options.canvasEl.addEventListener('pointercancel', this.onPointerCancel);
 		options.canvasEl.addEventListener('lostpointercapture', this.onLostPointerCapture);
 		options.canvasEl.addEventListener('keydown', this.onKeyDown);
-		options.canvasEl.ownerDocument.defaultView?.addEventListener?.('blur', this.onWindowBlur);
-		options.canvasEl.ownerDocument.addEventListener?.('visibilitychange', this.onVisibilityChange);
+		this.ownerWindow?.addEventListener?.('blur', this.onWindowBlur);
+		this.ownerDocument.addEventListener?.('visibilitychange', this.onVisibilityChange);
+  this.stopWindowMigration = options.canvasEl.onWindowMigrated?.(() => {
+   const doc = options.canvasEl.ownerDocument;
+   if (this.destroyed || doc === this.ownerDocument) return;
+   this.cancelPointerSessions();
+   this.ownerWindow?.removeEventListener('blur', this.onWindowBlur);
+   this.ownerDocument.removeEventListener('visibilitychange', this.onVisibilityChange);
+   this.ownerDocument = doc; this.ownerWindow = doc.defaultView;
+   this.ownerWindow?.addEventListener('blur', this.onWindowBlur);
+   doc.addEventListener('visibilitychange', this.onVisibilityChange);
+  });
 	}
 
 	suspend(): void {
@@ -536,6 +547,7 @@ export class TableGanttInteractionController {
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
+  this.stopWindowMigration?.();
 		this.cancelPointerSessions();
 		this.previews.clear();
 		this.optimisticDependencyEdges.clear();
@@ -550,8 +562,8 @@ export class TableGanttInteractionController {
 		this.options.canvasEl.removeEventListener('pointercancel', this.onPointerCancel);
 		this.options.canvasEl.removeEventListener('lostpointercapture', this.onLostPointerCapture);
 		this.options.canvasEl.removeEventListener('keydown', this.onKeyDown);
-		this.options.canvasEl.ownerDocument.defaultView?.removeEventListener?.('blur', this.onWindowBlur);
-		this.options.canvasEl.ownerDocument.removeEventListener?.('visibilitychange', this.onVisibilityChange);
+		this.ownerWindow?.removeEventListener?.('blur', this.onWindowBlur);
+		this.ownerDocument.removeEventListener?.('visibilitychange', this.onVisibilityChange);
 	}
 
 	private handlePointerDown(event: PointerEvent): void {
@@ -568,7 +580,7 @@ export class TableGanttInteractionController {
 		}
 		const context = this.context;
 		if (!context?.editable || event.button !== 0 || this.active || this.dependencyActive) return;
-		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const target = asHTMLElement(event.target, this.options.canvasEl);
 		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
 		if (dependencyPort && this.beginDependencySession(event, dependencyPort)) return;
 		const dateMarker = target?.closest<HTMLElement>('.operon-table-gantt-date-marker') ?? null;
@@ -809,7 +821,7 @@ export class TableGanttInteractionController {
 			active.latestClientX,
 			active.latestClientY,
 		);
-		const target = asHTMLElement(hit, this.options.canvasEl.ownerDocument)
+		const target = asHTMLElement(hit, this.options.canvasEl)
 			?.closest<HTMLElement>('.operon-table-gantt-dependency-port') ?? null;
 		const targetTaskId = (target?.dataset.ganttTaskId ?? '').trim();
 		const targetSide = target?.dataset.ganttDependencySide;
@@ -958,7 +970,7 @@ export class TableGanttInteractionController {
 			event.preventDefault();
 			return;
 		}
-		const target = asHTMLElement(event.target, this.options.canvasEl.ownerDocument);
+		const target = asHTMLElement(event.target, this.options.canvasEl);
 		const dependencyPort = target?.closest<HTMLElement>('.operon-table-gantt-dependency-port');
 		if (dependencyPort && (event.key === 'Enter' || event.key === ' ')) {
 			const task = this.findTask(dependencyPort.dataset.ganttTaskId ?? '');
@@ -1096,7 +1108,7 @@ export class TableGanttInteractionController {
 					: 0
 			: 0;
 		if (horizontalDirection === 0 && verticalDirection === 0) return;
-		const ownerWindow = this.options.canvasEl.ownerDocument.defaultView;
+		const ownerWindow = this.ownerWindow;
 		if (!ownerWindow) return;
 		this.autoScrollFrame = ownerWindow.requestAnimationFrame(() => {
 			this.autoScrollFrame = null;
@@ -1121,7 +1133,7 @@ export class TableGanttInteractionController {
 
 	private cancelAutoScroll(): void {
 		if (this.autoScrollFrame === null) return;
-		this.options.canvasEl.ownerDocument.defaultView?.cancelAnimationFrame(this.autoScrollFrame);
+		this.ownerWindow?.cancelAnimationFrame(this.autoScrollFrame);
 		this.autoScrollFrame = null;
 	}
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { Platform } from 'obsidian';
+import { Platform, WorkspaceTabs } from 'obsidian';
 import { lightboxFixture } from './test-support/lightbox-dom';
 import { openLightbox } from '../src/ui/lightbox';
 import { disposeWebLightboxes, openWebLightbox } from '../src/ui/web-lightbox';
@@ -17,13 +17,12 @@ function fixture(options: { enabled?: boolean; delay?: boolean; fail?: boolean; 
  globalThis.ResizeObserver = class { observe() {} disconnect() { disconnected++; } } as any;
  let release: () => void = () => {};
  let created = 0, detached = 0, restored = 0, tabOpens = 0, url = '';
- const group: any = {children: [], currentTab: 0, insertChild(_index: number, leaf: any) { this.children.push(leaf); }, selectTabIndex(index: number) { this.currentTab = index; }};
- const previous = { parent: group, getRoot:()=>({}), getContainer:()=>({}), view: { containerEl: dom.doc.body.createDiv(), getViewType: () => 'markdown' } };
+ const group:any = new (WorkspaceTabs as any)({containerEl:dom.doc.body} as any);
+ const previous = { parent: group, containerEl:dom.anchor, getRoot:()=>({}), getContainer:()=>({}), view: { containerEl: dom.doc.body.createDiv(), getViewType: () => 'markdown' } };
  group.children.push(previous);
  const root = dom.doc.body.createDiv();
  const view = { containerEl: root.createDiv(), getViewType: () => 'webviewer', onResize() {} };
- if (options.wrongDocument) view.containerEl.ownerDocument = {};
- const owned = { parent: null as any, containerEl: root, getViewState:()=>({type:'webviewer',state:{url}}), view, async setViewState(state: any) { url = state.state.url; if (owned.parent === group) tabOpens++; if (options.delay) await new Promise<void>(r => release = r); if (options.fail) throw Error('open failed'); }, async loadIfDeferred() {}, detach() { detached++; } };
+ const owned = { parent: null as any, containerEl: root, getViewState:()=>({type:'webviewer',state:{url}}), view, async setViewState(state: any) { url = state.state.url; if (owned.parent === group) tabOpens++; if (options.delay) await new Promise<void>(r => release = r); if (options.fail) throw Error('open failed'); if (options.wrongDocument) view.containerEl.ownerDocument = {}; }, async loadIfDeferred() {}, detach() { detached++; } };
  const plugin = { enabled: options.enabled !== false, instance: { openUrl() { tabOpens++; } } };
  const app: any = { internalPlugins: { plugins: { webviewer: plugin }, getEnabledPluginById: () => options.enabled === false ? null : plugin.instance }, workspace: {
   containerEl: dom.doc.body, getLayout:()=>({}), getLeafById:()=>previous, getMostRecentLeaf: () => previous, createLeafInParent: (parent:any) => { created++; owned.parent = parent; parent.insertChild?.(-1,owned); return owned; }, iterateAllLeaves() {}, getLeaf: () => { throw Error('must not reuse user tab'); }, getLeavesOfType: () => [previous], setActiveLeaf() { restored++; },

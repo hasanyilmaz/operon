@@ -64,7 +64,7 @@ export class ExcalidrawTaskIntegration extends Component {
     this.dropMenus.set(view, menu); this.addChild(menu);
    } else this.dropMenus.get(view)?.sync();
    if (!this.relations.has(view)) {
-    const relations = new ExcalidrawEdgeRelations(view, { ...this.deps, convertText: this.deps.openCreator ? element => this.convertText(view, element) : undefined }); this.relations.set(view, relations); this.addChild(relations);
+    const relations = new ExcalidrawEdgeRelations(view, this.deps); this.relations.set(view, relations); this.addChild(relations);
    } else this.relations.get(view)?.sync();
    if (!this.pools.has(view) && typeof Reflect.get(view, 'renderTopRightUI') === 'function') this.mountPool(view);
    else this.pools.get(view)?.sync();
@@ -96,7 +96,7 @@ export class ExcalidrawTaskIntegration extends Component {
      || hit.closest('button, input, textarea, select, a, .Island, .App-menu, .App-toolbar, .layer-ui__wrapper, .context-menu, .embeddable-menu, .operon-canvas-task-pool, .operon-canvas-property-pool, .operon-floating-panel')) return null;
     return excalidrawPoolScenePoint(view.excalidrawAPI.getAppState(), point);
    },
-  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined, this.deps.fileAction ? () => view.file && this.isAvailable(view) ? this.deps.fileAction!(view.file, !this.isCurrent(view)) : null : undefined, () => { this.cleanup?.sync(); this.relations.get(view)?.sync(); this.dropMenus.get(view)?.sync(); }, this.deps.openCreator ? () => { this.create(false, view); } : undefined);
+  }, this.deps.propertyValuePool ? new ExcalidrawPropertyPool(view, this.deps.app, this.deps.cards, this.deps.propertyValuePool, () => this.isAvailable(view)) : undefined, this.deps.fileAction ? () => view.file && this.isAvailable(view) ? this.deps.fileAction!(view.file, !this.isCurrent(view)) : null : undefined, () => { this.cleanup?.sync(); this.relations.get(view)?.sync(); this.dropMenus.get(view)?.sync(); }, this.deps.openCreator ? () => { this.create(false, view); } : undefined, this.deps.openCreator ? element => this.convertText(view, element) : undefined);
   this.pools.set(view, pool); this.addChild(pool);
  }
  openPool(checking: boolean, kind: 'task' | 'property' = 'task'): boolean {

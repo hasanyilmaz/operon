@@ -79,7 +79,7 @@ test('bulk Tasks action renders through its own searchable section without persi
  const harness = new Harness(), calls = [];
  harness.renderTasksBulkConversion = el => calls.push(el);
  const page = harness.buildSettingsSearchTabPage({ id: 'tasksInlineTasks' }, entriesFor('tasksInlineTasks'));
- assert.deepEqual(page.items.map(group => group.heading), ['defaultInlineTaskTemplate', 'dailyNoteInlineTaskDefaults', 'checkboxConversion', 'tasksBulkTitle']);
+ assert.deepEqual(page.items.map(group => group.heading), ['newInlineTaskCreationDefaults', 'dailyNoteInlineTaskDefaults', 'checkboxConversion', 'tasksBulkTitle']);
  const action = page.items.at(-1).items[0];
  const el = { empty(){}, removeClass(){}, addClass(){} };
  action.render({ settingEl: el }); assert.deepEqual(calls, [el]);

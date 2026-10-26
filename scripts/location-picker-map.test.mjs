@@ -49,6 +49,7 @@ import {Component,Menu,Notice,MarkdownRenderer,setIcon,menus,notices,renderCalls
 import {attachLocationPickerMapMenu,findLocationPickerMap} from './src/ui/field-pickers/location-picker-map';
 import {bindLocationPickerDefaults,getLocationPickerDefaults,saveLocationPickerDefault,normalizeLocationPickerDefault} from './src/core/location-picker-defaults';
 import {parseLocationCoordinate} from './src/core/location-coordinates';
+import {getOwnerDocument} from './src/core/dom-compat';
 import {buildLocationPickerBaseMarkdown} from './src/core/location-base-map';
 import {DEFAULT_SETTINGS} from './src/types/settings';
 import {t} from './src/core/i18n';
@@ -142,6 +143,7 @@ test('menu hide retains Escape ownership for the current event only',async()=>{
 test('actual panel handlers preserve menu clicks and first Escape, but close on outside or second Escape',async()=>{
  const f=fixture(),m=f.open(),closed:string[]=[];
  const panel=f.panel,options={outsideClickExclusions:()=>f.connection.elements(),shouldHandleEscape:()=>!f.connection.isOpen()};
+ const anchorEl=f.host,rectAnchorOwnerEl=null,panelHost=f.panel,hostDocument=f.doc;
  const record={},isTopMostFloatingPanel=()=>true,requestClose=(reason:string)=>closed.push(reason);
  const onOutside=${panelHandler('onOutside')};
  const onKeyDown=${panelHandler('onKeyDown')};
@@ -149,6 +151,23 @@ test('actual panel handlers preserve menu clicks and first Escape, but close on 
  m.hide();onOutside({target:item} as any);onKeyDown({key:'Escape'} as any);assert.deepEqual(closed,[]);
  await tick();onKeyDown({key:'Escape'} as any);assert.deepEqual(closed,['escape']);
  onOutside({target:f.doc.body.createDiv()} as any);assert.deepEqual(closed,['escape','outside']);f.connection.close();
+});
+test('stale owner-window handlers ignore outside clicks and Escape after panel adoption',()=>{
+ for(const kind of ['element','rect','host']){
+  const f=fixture(),closed:string[]=[];f.connection.close();
+  const panel=f.panel,options={},record={},isTopMostFloatingPanel=()=>true,requestClose=(reason:string)=>closed.push(reason);
+  const anchorEl=kind==='element'?f.host:null,rectAnchorOwnerEl=kind==='rect'?f.host:null,panelHost=f.panel;
+  let hostDocument=f.doc;
+  const onOutside=${panelHandler('onOutside')};
+  const onKeyDown=${panelHandler('onKeyDown')};
+  const nextDocument:any={defaultView:f.doc.defaultView};nextDocument.body=new El(nextDocument);
+  for(const element of [f.panel,f.host,f.mapEl])element.ownerDocument=nextDocument;
+  onOutside({target:f.doc.body.createDiv()} as any);onKeyDown({key:'Escape'} as any);
+  assert.deepEqual(closed,[],kind+' ignores stale-owner events');
+  hostDocument=nextDocument;
+  onOutside({target:nextDocument.body.createDiv()} as any);onKeyDown({key:'Escape'} as any);
+  assert.deepEqual(closed,['outside','escape'],kind+' handles current-owner events');
+ }
 });
 test('detached, unrelated, incomplete and cyclic renderer trees fail closed',()=>{
  const f=fixture();const original=f.view.showMapContextMenu;

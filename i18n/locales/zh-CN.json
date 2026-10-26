@@ -27,6 +27,7 @@
 		"convertToInline": "将 YAML 任务转换为行内任务（剪贴板）",
 		"openTaskCreator": "新建 Operon 任务",
 		"openTaskFinder": "任务查找器",
+		"trackDifferentTask": "跟踪另一项任务",
 		"createOrEditInlineTask": "创建或编辑行内任务",
 		"convertTasksEmojiLineToInlineTask": "将 Tasks 表情符号行转换为行内任务",
 		"convertSelectionToOperonTasks": "将所选内容转换为 Operon 任务",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "向 Canvas 添加任务",
 		"addOperonTask": "添加 Operon 任务",
 		"convertCanvasTask": "转换为 Operon 任务…",
-		"addOperonGroup": "添加 Operon 分组"
+		"addOperonGroup": "添加 Operon 分组",
+		"toggleStatusDock": "切换状态停靠栏显示"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "修复重复文件任务标识",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}内修改了 {{shown}} / {{total}} 个任务"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "任务已创建，但无法打开其视图。",
+		"createdFileTaskOpenFailed": "任务已创建，但无法打开其视图。",
 		"excalidrawPoolUnavailable": "Excalidraw 任务池控件 API 不可用。",
 		"excalidrawTaskCleanupDeferred": "无法完成 Excalidraw 卡片的自动清理。任务更改已保留。",
 		"excalidrawTaskSaveFailed": "无法确认绘图已保存。再次添加卡片前，请检查绘图。",
@@ -413,7 +417,8 @@
 		"deleteTitle": "删除重复的任务副本？",
 		"deleteMessage": "从库中删除“{{label}}”？",
 		"statusBarConflictLabel": "检测到 {{count}} 个重复任务副本。打开重复项管理器。",
-		"statusBarResolvedLabel": "重复任务副本已解决。"
+		"statusBarResolvedLabel": "重复任务副本已解决。",
+		"introDock": "在此解决重复的 operonId 冲突。你可以随时关闭此窗口，并通过命令面板或状态停靠栏提醒重新打开。"
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "请放到此绘图中一张未被遮挡的 Operon 任务卡片上。",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "选择将行内任务转换为文件任务后在源笔记中保留的内容。",
 		"inlineToFileTaskSourceDispositionKeepLink": "保留文件任务链接",
 		"inlineToFileTaskSourceDispositionRemoveTask": "移除原始行内任务",
+		"taskAfterCreateEditor": "任务编辑器（灯箱）",
+		"inlineTaskAfterCreate": "创建行内任务后",
+		"inlineTaskAfterCreateDesc": "选择如何打开通过 Task Creator 创建的行内任务。",
+		"inlineTaskAfterCreateFocusedTab": "在新标签页中打开源文件（前台）",
+		"inlineTaskAfterCreateBackgroundTab": "在新标签页中打开源文件（后台）",
+		"fileTaskAfterCreate": "创建文件任务后",
+		"fileTaskAfterCreateDesc": "选择如何打开通过 Task Creator 创建的文件任务。",
+		"fileTaskAfterCreateNone": "不打开",
+		"fileTaskAfterCreateFocusedTab": "新标签页（前台）",
+		"fileTaskAfterCreateBackgroundTab": "新标签页（后台）",
+		"fileTaskAfterCreateSource": "源文件（灯箱）",
+		"fileTaskAfterCreateSourceAndEditor": "源文件 + 任务编辑器（灯箱）",
+		"newInlineTaskCreationDefaults": "新建行内任务的默认设置",
 		"newFileTaskCreationDefaults": "新文件任务创建默认值",
 		"fileTaskTemplates": "文件任务模板",
 		"checkboxConversion": "复选框转换",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "减少背景暗化",
 		"backgroundDimmingSaveFailed": "无法保存背景暗化设置。",
 		"lightboxSizeSaveFailed": "无法保存灯箱尺寸。",
+		"statusDockSection": "Operon 状态栏",
+		"statusDockMove": "移动停靠栏",
+		"statusDockClickAction": "点击行为",
+		"statusDockClickActionDesc": "选择点击停靠栏中正在计时或即将开始的任务时打开的内容。",
 		"workspaceTweaksHideScrollbars": "隐藏滚动条",
 		"workspaceTweaksShowScrollbars": "显示滚动条",
 		"workspaceTweaksHideScrollbarsDesc": "在整个 Obsidian 工作区隐藏滚动条，同时保持正常的滚动行为。",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "检查未更改的文件",
 		"tasksBulkSkippedSource": "因与扫描时不同而跳过：{{path}}",
 		"useLastTemplateAsDefault": "将上次使用的模板设为默认模板",
-		"useLastTemplateAsDefaultDesc": "在 Task Creator 中成功创建任务后，将所用模板保存为此任务类型的默认模板。命令和转换也会使用此默认模板。"
+		"useLastTemplateAsDefaultDesc": "在 Task Creator 中成功创建任务后，将所用模板保存为此任务类型的默认模板。命令和转换也会使用此默认模板。",
+		"trackerShowStatusDockTimer": "在状态停靠栏中显示活动计时器",
+		"trackerShowStatusDockTimerDesc": "在 Operon 状态停靠栏中，空闲时显示开始按钮，计时时显示活动计时器。",
+		"upcomingShowStatusDock": "在状态停靠栏中显示即将到来的任务",
+		"upcomingShowStatusDockDesc": "倒计时结束后保留当前任务，并在旁边显示下一个带时间的任务。",
+		"upcomingDockDaysDesc": "选择侧边栏和状态停靠栏中显示的天数，包括今天。",
+		"settingsPageTrackerDescDock": "时间追踪历史、状态停靠栏计时器、FlowTime 行为和会话拆分。",
+		"duplicateAlertDelayDescDock": "Operon 在显示重复项通知、状态停靠栏提醒和可选的管理器弹窗前等待的时长。"
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "减小宽度",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "无效提醒"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "当前值",
+		"textPickerCurrentValue": "当前值",
 		"creatorInlineTemplateProperties": "对于行内任务，此模板的属性会添加到任务中，但不会包含模板正文。",
 		"creatorMetadataChanged": "属性规则已更改。请重新打开 Task Creator，在创建前检查。",
 		"creatorParentPreviewChanged": "目标位置更改了继承值。请检查更新后的选择，然后再次创建。",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "复制任务卡片嵌入代码",
 		"canvasGroupTitle": "分组规则",
 		"canvasGroupInvalid": "请输入一个受支持的属性及有效值。",
-		"canvasGroupChanged": "属性设置已更改。请重新打开分组编辑器。"
+		"canvasGroupChanged": "属性设置已更改。请重新打开分组编辑器。",
+		"dockSelectTask": "选择或创建新任务",
+		"dockNextTask": "下一个任务",
+		"dockTaskCreatorTitle": "任务创建器",
+		"dockCreateAndTrack": "创建新任务并开始计时"
 	},
 	"indexStats": {
 		"title": "Operon 索引",

@@ -1,4 +1,3 @@
-import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
 import { taskSelectionControls, taskSelectionControlSignature, bindTaskSelectionControl, type TaskSelectionControl } from './task-selection-controls';
 import { ExcalidrawRelationIndicators } from './excalidraw-edge-relation-indicators';
@@ -7,7 +6,7 @@ import { Component, Notice, type App, type TFile } from 'obsidian';
 import type { TaskCardEmbeds } from './task-card-embed';
 import type { IndexedTaskSnapshot } from '../indexer/indexer';
 import { bindExcalidrawPoolTheme } from './excalidraw-pool-theme';
-import { excalidrawConvertibleText, excalidrawSceneTaskId, readExcalidrawTaskView, type ExcalidrawElementAction, type ExcalidrawTaskAPI,
+import { excalidrawSceneTaskId, readExcalidrawTaskView, type ExcalidrawElementAction, type ExcalidrawTaskAPI,
  type ExcalidrawTaskEA, type ExcalidrawTaskElement, type ExcalidrawTaskState, type ExcalidrawTaskView } from './excalidraw-task-bridge';
 import { bindTaskEdgeRelationControl, taskEdgeRelationControls, taskEdgeRelationControlSignature, taskEdgeRelationUnavailable,
  type TaskEdgeRelationControl, type TaskEdgeRelationOperations } from './task-edge-relation-controls';
@@ -49,7 +48,7 @@ export class ExcalidrawEdgeRelations extends Component {
  private observedAPI: ExcalidrawTaskAPI | null = null;
  private unsupportedMenu: object | null = null;
  private stopScene: (() => void) | null = null;
- constructor(private view: ExcalidrawTaskView, private deps: TaskEdgeRelationOperations & { app: App; cards: TaskCardEmbeds; convertText?(element: ExcalidrawTaskElement): void }) { super(); }
+ constructor(private view: ExcalidrawTaskView, private deps: TaskEdgeRelationOperations & { app: App; cards: TaskCardEmbeds }) { super(); }
  onload(): void {
   this.active = true;
   this.indicators = this.addChild(new ExcalidrawRelationIndicators(this.view, this.deps, () => this.available()));
@@ -153,16 +152,6 @@ export class ExcalidrawEdgeRelations extends Component {
     setBusy: value => { session.busy = value; if (this.current(session)) { session.dirty = true; this.sync(); } },
    });
    controls = models; controlSignature = taskSelectionControlSignature(models);
-  }
-  if (selected && this.deps.convertText && state.viewModeEnabled === false && !state.editingTextElement && excalidrawConvertibleText(selected) !== null) {
-   const model: TaskSelectionControl = { id: 'operon-task-convert-text', icon: 'id-card', title: t('commands', 'convertCanvasTask'), unavailable: false,
-    run: () => {
-     if (!this.current(session) || session.api.getAppState().viewModeEnabled !== false || session.api.getAppState().editingTextElement) return;
-     const fresh = selectedElement(session.api.getSceneElements(), session.api.getAppState());
-     if (fresh?.id === selected.id && excalidrawConvertibleText(fresh) !== null) this.deps.convertText?.(fresh);
-    },
-   };
-   controls = [model]; controlSignature = taskSelectionControlSignature(controls);
   }
   const signature = JSON.stringify([selected?.id, pair?.start.id, pair?.end.id, controlSignature]);
   if (signature === session.signature) return;

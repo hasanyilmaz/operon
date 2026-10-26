@@ -18,7 +18,7 @@ export function lightboxFixture() {
   createSpan(options?: any) { return this.createEl('span',options); }
   removeEventListener(k: string) { this.events.delete(k); } setAttribute(k: string, v: string) { this.attrs[k] = v; } removeAttribute(k: string) { delete this.attrs[k]; } getAttribute(k: string) { return this.attrs[k] ?? null; }
   querySelector() { return null; }
-  appendChild(el: Element) { if (el.parent) el.parent.children = el.parent.children.filter(child => child !== el); el.parent = this; this.children.push(el); return el; }
+  appendChild(el: Element) { if (el.parent) el.parent.children = el.parent.children.filter(child => child !== el); el.parent = this; this.children.push(el); const adopt = (node: Element): void => { node.ownerDocument = this.ownerDocument; for (const child of node.children) adopt(child); }; adopt(el); return el; }
   createDiv(options?: any) { return this.createEl('div', options); }
   createEl(tag: string, options?: any) { const el = new Element(); el.tagName = tag.toUpperCase(); el.textContent = options?.text ?? ''; if (typeof options === 'string') el.addClass(options); else if (options?.cls) el.addClass(options.cls); return this.appendChild(el); }
   addEventListener(k: string, fn: (event: any) => void) { this.events.set(k, fn); }

@@ -92,11 +92,16 @@ export function createOwnerElement<K extends keyof HTMLElementTagNameMap>(
 
 export function isHTMLElement(value: unknown, owner?: Node | null): value is HTMLElement {
 	if (typeof value !== 'object' || value === null) return false;
-	const maybeNode = value as { ownerDocument?: Document | null };
+	const maybeNode = value as {
+		ownerDocument?: Document | null;
+		instanceOf?: (constructor: typeof HTMLElement) => boolean;
+	};
 	const doc = owner?.ownerDocument ?? maybeNode.ownerDocument ?? activeDocument;
 	const win = doc.defaultView ?? activeWindow;
 	const HTMLElementCtor = (win as Window & { HTMLElement?: typeof HTMLElement }).HTMLElement;
-	return Boolean(HTMLElementCtor && Object.prototype.isPrototypeOf.call(HTMLElementCtor.prototype, value));
+	if (!HTMLElementCtor) return false;
+	if (Object.prototype.isPrototypeOf.call(HTMLElementCtor.prototype, value)) return true;
+	return typeof maybeNode.instanceOf === 'function' && maybeNode.instanceOf(HTMLElementCtor);
 }
 
 export function asHTMLElement(value: unknown, owner?: Node | null): HTMLElement | null {

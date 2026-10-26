@@ -3,7 +3,7 @@ import { getNativePropertyIndex } from '../src/indexer/native-property-index';
 import { bindTableTaskOpening, bindTablePropertyOpening, bindTableMarkdownOpening, resolveTableWikiOpening, readTablePropertyLinkValue } from '../src/ui/table/table-link-opening';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Platform, TFile, Notice } from 'obsidian';
+import { Platform, WorkspaceTabs, TFile, Notice } from 'obsidian';
 import { readFileSync } from 'node:fs';
 import { lightboxFixture } from './test-support/lightbox-dom';
 import { pickerCalls } from './test-support/chip-opening-picker';
@@ -30,12 +30,12 @@ function fixture() {
  (Notice as any).onNotice=(message:string)=>notices.push(message);
  const root=f.doc.body.createDiv();
  let viewType='empty';
- const group:any={children:[],currentTab:0,selectTabIndex(index:number){this.currentTab=index;}};
+ const group:any=new (WorkspaceTabs as any)({containerEl:f.doc.body} as any);
  const leaf:any={getViewState:()=>({pinned:false}),containerEl:root,view:{containerEl:root.createDiv(),getViewType:()=> viewType},async openFile(file:any,state:any){calls.push({file:file.path,state});viewType=file.extension==='base'?'bases':file.extension==='table'?'operon-table-file-view':file.extension==='md'?'markdown':file.extension;},async setViewState(state:any){viewType=state.type;calls.push(state.state.url);},async loadIfDeferred(){},detach(){calls.push('detach');}};
  const app:any={viewRegistry:{getTypeByExtension:(ext:string)=>ext==='canvas'?'canvas':null,getViewCreatorByType:()=>function(){}},vault:{getAbstractFileByPath:(path:string)=>files.get(path),read:async()=>content,getResourcePath:(file:any)=>'app:///'+file.path},
  metadataCache:{getFirstLinkpathDest:(path:string,source:string)=>files.get(path||source)},
  internalPlugins:{plugins:{bases:{enabled:true},'page-preview':{enabled:true},webviewer:{enabled:true,instance:{openUrl(url:string){calls.push(url);}}}},getEnabledPluginById:()=>({openUrl(url:string){calls.push(url);}})},
- workspace:{getMostRecentLeaf:()=>({...leaf,parent:group,view:{containerEl:f.anchor}}),createLeafInParent:()=>leaf,setActiveLeaf(){},getLeaf:()=>leaf,async openLinkText(...args:any[]){calls.push(args);},trigger(name:string,payload:any){previews.push(payload);}}};
+ workspace:{getMostRecentLeaf:()=>({...leaf,parent:group,view:{containerEl:f.anchor}}),createLeafInParent:(parent:any=group)=>{parent.insertChild?.(-1,leaf);return leaf;},setActiveLeaf(){},getLeaf:()=>leaf,async openLinkText(...args:any[]){calls.push(args);},trigger(name:string,payload:any){previews.push(payload);}}};
  const context:any={app,getSettings:()=>settings,getTask:()=>task,getTaskById:(id:string)=>id===parent.operonId?parent:id===task?.operonId?task:null,getAllTasks:()=>[task,parent].filter(Boolean),canActivate:()=>allowed,
  picker:()=>editable?{onCommit:()=>writes++}:null};
  const fire=(kind:string,event:any=mouse())=>(f.anchor as any).events.get(kind)?.(event);
@@ -211,7 +211,10 @@ test('unregistered file extensions do not launch external apps or create empty t
 });
 test('wrong-window native fallback disposes only its owned leaf without opening',async()=>{
  const f=fixture();try{
-  const leaf=f.app.workspace.getLeaf();leaf.view.containerEl.ownerDocument={};
+  const leaf=f.app.workspace.getLeaf();
+  const parent=f.app.workspace.getMostRecentLeaf().parent;
+  const mount=parent.recomputeChildrenDimensions.bind(parent);
+  parent.recomputeChildrenDimensions=()=>{mount();leaf.view.containerEl.ownerDocument={};};
   f.task().fieldValues.customText='[[a.canvas]]';f.bind(entry('customText'));f.fire('click',mouse({metaKey:true}));await tick();assert.deepEqual(f.calls,['detach']);
  }finally{f.cleanup();}
 });

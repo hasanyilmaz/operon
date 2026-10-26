@@ -34,10 +34,19 @@ test('mobile is a no-op including close, with no DOM operations', () => {
  Platform.isDesktopApp = false;
  try { const close = applyDesktopModalBackdrop({}); close(); close(); } finally { Platform.isDesktopApp = true; }
 });
-for (const name of ['creator', 'finder', 'editor']) test(`${name} modal installs and releases the effect only at native open/close`, () => {
+function methodSource(source, name) {
+ const tree=ts.createSourceFile('modal.ts',source,ts.ScriptTarget.Latest,true),methods=[];
+ function visit(node){if(ts.isMethodDeclaration(node)&&node.name?.getText(tree)===name)methods.push(node.getText(tree));ts.forEachChild(node,visit);}
+ visit(tree);assert.equal(methods.length,1,`Expected one ${name} lifecycle method`);return methods[0];
+}
+
+for (const name of ['creator', 'finder', 'editor']) test(`${name} modal installs and releases the effect at native open/close and owner-window migration`, () => {
  const source = readFileSync(path.join(root, `src/ui/task-${name}-modal.ts`), 'utf8');
- assert.equal(source.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length, 1);
- const open = source.slice(source.indexOf('onOpen(): void'), source.indexOf('onClose(): void'));
+ assert.equal(source.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length, 2);
+ const open = methodSource(source,'onOpen'), migrated = methodSource(source,'bindViewportWindow');
+ assert.equal(open.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length,1);
+ assert.equal(migrated.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length,1);
+ assert.match(migrated,/if \(old\) \{\s*this.backdropCleanup\?\.\(\);\s*this.backdropCleanup = applyDesktopModalBackdrop\(this.containerEl\)/);
  assert.match(open, /this.backdropCleanup\?\.\(\);\s*this.backdropCleanup = applyDesktopModalBackdrop\(this.containerEl\)/);
  assert.match(source, /onClose\(\): void \{\s*this.backdropCleanup\?\.\(\);\s*this.backdropCleanup = null;/);
 });
@@ -114,8 +123,12 @@ test('actual Settings dropdown and setter save numeric choice then publish; fail
 
 test('only the standalone Subtasks modal joins dimming, not the file filter or Editor popover', () => {
  const source = readFileSync(path.join(root, 'src/ui/subtasks-filter-modal.ts'), 'utf8');
- assert.equal(source.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length, 1);
- assert.match(source, /this.options.fileTaskPath \? null : applyDesktopModalBackdrop\(this.containerEl\)/);
+ assert.equal(source.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length, 2);
+ for(const lifecycle of ['onOpen','bindViewportWindow']) {
+  const method=methodSource(source,lifecycle);
+  assert.equal(method.match(/applyDesktopModalBackdrop\(this.containerEl\)/g)?.length,1);
+  assert.match(method,/this.options.fileTaskPath \? null : applyDesktopModalBackdrop\(this.containerEl\)/);
+ }
  assert.match(source, /onClose\(\): void \{\s*this.backdropCleanup\?\.\(\);\s*this.backdropCleanup = null;/);
  assert.doesNotMatch(source.slice(source.indexOf('export function showSubtasksFilterPopover')), /applyDesktopModalBackdrop|registerDesktopBackdrop/);
  assert.doesNotMatch(readFileSync(path.join(root,'src/ui/dynamic-file-task-filter.ts'),'utf8'), /applyDesktopModalBackdrop|registerDesktopBackdrop/);

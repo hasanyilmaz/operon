@@ -22,6 +22,7 @@ interface HeightEntry {
  sizes: Map<Element, BoxSize>;
  expected: Map<Element, BoxSize>;
  cleanup(): void;
+ rebind(): void;
 }
 
 /** A surface-owned layout pass: only invalidated cards enter the measurement queue. */
@@ -30,6 +31,9 @@ export class CanvasTaskAutoHeight extends Component {
  private dirty = new Set<CanvasTaskNode>();
  private waiting = new Set<CanvasTaskNode>();
  private frame = 0;
+ private ownerWindow: Window | null = null;
+ private ownerCleanup: (() => void) | null = null;
+ private stopMigration: (() => void) | null = null;
  private retry = 0;
  private active = false;
  private interacting = false;
@@ -40,20 +44,40 @@ export class CanvasTaskAutoHeight extends Component {
  onload(): void {
   this.active = true;
   this.registerDomEvent(this.view.contentEl, 'pointerdown', () => { this.interacting = true; }, true);
+  this.bindOwnerWindow();
+  const canvas = this.view.canvas, original = Reflect.get(canvas, 'importData'), descriptor = Object.getOwnPropertyDescriptor(canvas, 'importData');
+  if (typeof original === 'function') {
+   const wrapper: NonNullable<typeof canvas.importData> = (...args) => { const result: unknown = Reflect.apply(original, canvas, args); this.invalidate(); return result; };
+   canvas.importData = wrapper;
+   this.register(() => { if (canvas.importData === wrapper) { if (descriptor) Object.defineProperty(canvas, 'importData', descriptor); else Reflect.deleteProperty(canvas, 'importData'); } });
+  }
+ }
+ private bindOwnerWindow(): void {
+  const win = getOwnerWindow(this.view.contentEl), old = this.ownerWindow;
+  if (win === old) return;
+  const pending = !!this.frame || !!this.retry;
+  if (this.frame) old?.cancelAnimationFrame(this.frame);
+  if (this.retry) old?.clearTimeout(this.retry);
+  this.frame = 0; this.retry = 0; this.ownerCleanup?.(); this.ownerWindow = win;
+  if (old) this.interacting = false;
+  const cleanups: (() => void)[] = [];
+  const listen = (target: EventTarget, type: string, callback: EventListener): void => {
+   target.addEventListener(type, callback); cleanups.push(() => target.removeEventListener(type, callback));
+  };
   const released = () => { this.interacting = false; this.resume(); };
-  const win = getOwnerWindow(this.view.contentEl), doc = this.view.contentEl.ownerDocument;
-  this.registerDomEvent(win, 'pointerup', released);
-  this.registerDomEvent(win, 'pointercancel', released);
-  this.registerDomEvent(win, 'blur', released);
-  this.registerDomEvent(win, 'focus', () => this.resume());
-  this.registerDomEvent(win, 'resize', () => this.resume());
-  if (typeof doc.addEventListener === 'function') this.registerDomEvent(doc, 'visibilitychange', () => this.resume());
+  const doc = this.view.contentEl.ownerDocument;
+  listen(win, 'pointerup', released);
+  listen(win, 'pointercancel', released);
+  listen(win, 'blur', released);
+  listen(win, 'focus', () => this.resume());
+  listen(win, 'resize', () => this.resume());
+  if (typeof doc.addEventListener === 'function') listen(doc, 'visibilitychange', () => this.resume());
   const fonts = doc.fonts;
   if (fonts) {
    const changed = () => this.invalidate();
    fonts.addEventListener('loadingdone', changed); fonts.addEventListener('loadingerror', changed);
-   this.register(() => { fonts.removeEventListener('loadingdone', changed); fonts.removeEventListener('loadingerror', changed); });
-   void fonts.ready.then(() => { if (this.active) this.invalidate(); });
+   cleanups.push(() => { fonts.removeEventListener('loadingdone', changed); fonts.removeEventListener('loadingerror', changed); });
+   if (!old || fonts.status === 'loading') void fonts.ready.then(() => { if (this.active && this.ownerWindow === win) this.invalidate(); });
   }
   const Resize = (win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
   if (typeof Resize === 'function') {
@@ -62,14 +86,12 @@ export class CanvasTaskAutoHeight extends Component {
     const rect = records[0]?.contentRect;
     if (rect && (rect.width !== previous?.width || rect.height !== previous?.height)) { previous = { width: rect.width, height: rect.height }; this.resume(); }
    });
-   resize.observe(this.view.contentEl); this.register(() => resize.disconnect());
+   resize.observe(this.view.contentEl); cleanups.push(() => resize.disconnect());
   }
-  const canvas = this.view.canvas, original = Reflect.get(canvas, 'importData'), descriptor = Object.getOwnPropertyDescriptor(canvas, 'importData');
-  if (typeof original === 'function') {
-   const wrapper: NonNullable<typeof canvas.importData> = (...args) => { const result: unknown = Reflect.apply(original, canvas, args); this.invalidate(); return result; };
-   canvas.importData = wrapper;
-   this.register(() => { if (canvas.importData === wrapper) { if (descriptor) Object.defineProperty(canvas, 'importData', descriptor); else Reflect.deleteProperty(canvas, 'importData'); } });
-  }
+  this.ownerCleanup = () => { for (const cleanup of cleanups) cleanup(); };
+  if (!this.stopMigration) this.stopMigration = this.view.contentEl.onWindowMigrated?.(() => { if (this.active) this.bindOwnerWindow(); }) ?? null;
+  if (old) for (const entry of this.entries.values()) entry.rebind();
+  if (pending) this.schedule();
  }
  /** Full layout invalidation is reserved for settings, CSS/fonts and imports. */
  invalidate(): void {
@@ -103,7 +125,7 @@ export class CanvasTaskAutoHeight extends Component {
     let card: Element | null = null;
     const alive = () => this.active && this.entries.get(node) === entry;
     const changed = () => { if (alive()) this.mark(node); };
-    const resize = new win.ResizeObserver((records = []) => {
+    const onResize: ResizeObserverCallback = (records = []) => {
      if (!alive()) return;
      let needsMeasure = records.length === 0;
      for (const record of records) {
@@ -115,14 +137,22 @@ export class CanvasTaskAutoHeight extends Component {
       needsMeasure = true;
      }
      if (needsMeasure) changed();
-    });
+    };
+    let resize = new win.ResizeObserver(onResize);
     const observeCard = () => {
      const next = root.querySelector('.operon-task-card'); if (next === card) return;
      if (card) { resize.unobserve?.(card); sizes.delete(card); expected.delete(card); }
      card = next; if (card) resize.observe(card);
     };
-    const observer = new win.MutationObserver(() => { if (alive()) { observeCard(); changed(); } });
-    entry = { id, root, width: data.width, height: data.height, connected: root.isConnected, editing: !!node.isEditing, sizes, expected, cleanup: () => {
+    const onMutation = () => { if (alive()) { observeCard(); changed(); } };
+    let observer = new win.MutationObserver(onMutation);
+    entry = { id, root, width: data.width, height: data.height, connected: root.isConnected, editing: !!node.isEditing, sizes, expected, rebind: () => {
+     observer.disconnect(); resize.disconnect();
+     const next = getOwnerWindow(root) as typeof win;
+     observer = new next.MutationObserver(onMutation); resize = new next.ResizeObserver(onResize);
+     observer.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-task-card-state'] });
+     resize.observe(node.nodeEl); resize.observe(root); card = null; observeCard();
+    }, cleanup: () => {
      observer.disconnect(); resize.disconnect(); root.removeEventListener('load', changed, true); root.removeEventListener('error', changed, true);
      node.nodeEl.classList.remove('operon-canvas-auto-height');
     } };
@@ -139,13 +169,13 @@ export class CanvasTaskAutoHeight extends Component {
  }
  private schedule(): void {
   if (!this.active || !this.dirty.size || this.frame || this.retry || this.failed) return;
-  this.frame = getOwnerWindow(this.view.contentEl).requestAnimationFrame(() => { this.frame = 0; this.fit(); });
+  this.frame = (this.ownerWindow ?? getOwnerWindow(this.view.contentEl)).requestAnimationFrame(() => { this.frame = 0; this.fit(); });
  }
  private fit(): void {
   const { view } = this, canvas = view.canvas;
   if (!this.active || this.failed || !this.current() || canvas.readonly || !view.file || view.lastSavedData === null) return;
   if (view.saving || this.busy() || this.interacting) {
-   this.retry = getOwnerWindow(view.contentEl).setTimeout(() => { this.retry = 0; this.schedule(); }, 100); return;
+   this.retry = (this.ownerWindow ?? getOwnerWindow(view.contentEl)).setTimeout(() => { this.retry = 0; this.schedule(); }, 100); return;
   }
   let changed = false;
   try {
@@ -181,7 +211,8 @@ export class CanvasTaskAutoHeight extends Component {
  }
  onunload(): void {
   this.active = false;
-  const win = getOwnerWindow(this.view.contentEl);
+  this.stopMigration?.(); this.stopMigration = null; this.ownerCleanup?.(); this.ownerCleanup = null;
+  const win = this.ownerWindow ?? getOwnerWindow(this.view.contentEl);
   if (this.frame) win.cancelAnimationFrame(this.frame);
   if (this.retry) win.clearTimeout(this.retry);
   for (const entry of this.entries.values()) entry.cleanup();

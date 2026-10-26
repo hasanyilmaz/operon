@@ -729,6 +729,34 @@ async function testCheckboxSemanticsRebuildAndSecondLoad(): Promise<void> {
 	deepEqual(warm.getTaskSnapshot('parent1')?.legacyPlainCheckboxProgress, { total: 2, completed: 1 });
 }
 
+async function testStartupEventIndexBatching(): Promise<void> {
+ const loaded = await createLoadedV8(createDuplicateData());
+ const files = filesFromLoaded(loaded); const app = createApp(files);
+ const indexer = new OperonIndexer(app, createStorage() as never, null, new FakeReadStore(loaded));
+ await indexer.loadCachedIndex(); indexer.beginStartupFileEvents();
+ const path = files[0].path; indexer.scheduleReindex(path); indexer.scheduleReindex(path);
+ const batches: string[][] = []; const internal = indexer as unknown as {doReindexFilesBatch(paths: string[], options: unknown, strict?: boolean): Promise<void>};
+ internal.doReindexFilesBatch = async (paths, _options, strict) => {
+  equal(strict, true); batches.push(paths); if (batches.length === 1) { indexer.scheduleReindex(files[1].path); throw Error('read'); }
+ };
+ await assert.rejects(indexer.reconcileV8StartupSources(), /read/u);
+ await indexer.reconcileV8StartupSources();
+ deepEqual(new Set(batches[1]), new Set([path, files[1].path]), 'failed and late sources remain retained');
+ await indexer.flushStartupFileEvents(); indexer.endStartupFileEvents(); equal(batches.length, 2);
+}
+
+async function testStartupBatchReadFailurePreservesRealEdit(): Promise<void> {
+ const loaded = await createLoadedV8(createIndexData(1)); const files = filesFromLoaded(loaded); const path = files[0].path;
+ const app = createApp(files); let fails = true, reads = 0;
+ app.vault.read = async () => { reads++; if (fails) throw Error('source unavailable'); return '- [ ] New task {{operonId:: newtask}}'; };
+ const indexer = new OperonIndexer(app, createStorage() as never, null, new FakeReadStore(loaded));
+ await indexer.loadCachedIndex(); const initialReads = reads; indexer.beginStartupFileEvents(); indexer.scheduleReindex(path);
+ await assert.rejects(indexer.reconcileV8StartupSources(), /Startup source reconciliation failed/u);
+ equal(indexer.getAllTasks().length, 1, 'old task remains after failed scan');
+ fails = false; await indexer.reconcileV8StartupSources(); indexer.endStartupFileEvents();
+ check(indexer.getTask('newtask')); equal(reads - initialReads, 2, 'same-stat modify retried after indexing read failure');
+}
+
 async function testMainStartupOrchestrationContract(): Promise<void> {
 	const mainSource = await readFile('main.ts', 'utf8');
 	check(mainSource.includes("const hasCached = cacheLoad.status === 'loaded';"));
@@ -742,7 +770,9 @@ async function testMainStartupOrchestrationContract(): Promise<void> {
 }
 
 async function run(): Promise<void> {
-	await testVerifiedV8AuthorityAndParity();
+	await testStartupEventIndexBatching();
+ await testStartupBatchReadFailurePreservesRealEdit();
+ await testVerifiedV8AuthorityAndParity();
 	await testEligibilityAndFallbackMatrix();
 	await testSemanticsMismatchRequiresFullReindex();
 	await testHydrationFailureIsAtomic();

@@ -372,8 +372,6 @@ export function markLightboxControlsReady(lightbox: HTMLElement): void { control
 
 /** Hover activation waits for the initial surface; keyboard focus remains immediate. */
 function bindLightboxControlHover(lightbox: HTMLElement, native: boolean): () => void {
- const win = getOwnerWindow(lightbox);
- let timer: number | null = null;
  let started = false;
  let pointer: { x: number; y: number } | null = null;
  lightbox.addClass('are-controls-pending');
@@ -387,21 +385,17 @@ function bindLightboxControlHover(lightbox: HTMLElement, native: boolean): () =>
  const start = (): void => {
   if (started) return;
   started = true;
-  timer = win.setTimeout(() => {
-   timer = null;
-   // Layout may have put the document beneath a stationary pointer since entry.
-   const target = pointer ? lightbox.ownerDocument.elementFromPoint(pointer.x, pointer.y) : null;
-   const control = target?.closest('.operon-task-media-lightbox-control');
-   lightbox.toggleClass('are-controls-hovered', target === lightbox || control?.parentElement === lightbox);
-   lightbox.removeClass('are-controls-pending');
-  }, 350);
+  // Read the completed layout again: content may now cover a stationary pointer.
+  const target = pointer ? lightbox.ownerDocument.elementFromPoint(pointer.x, pointer.y) : null;
+  const control = target?.closest('.operon-task-media-lightbox-control');
+  lightbox.toggleClass('are-controls-hovered', target === lightbox || control?.parentElement === lightbox);
+  lightbox.removeClass('are-controls-pending');
  };
  controlReady.set(lightbox, start);
  lightbox.addEventListener('pointerover', over);
  lightbox.addEventListener('pointerleave', leave);
  if (!native) start();
  return () => {
-  if (timer !== null) win.clearTimeout(timer);
   controlReady.delete(lightbox);
   lightbox.removeClass('are-controls-pending');
   lightbox.removeEventListener('pointerover', over);

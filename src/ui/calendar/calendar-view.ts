@@ -932,6 +932,8 @@ export class CalendarView extends ItemView {
 	private taskPoolSearchDebounceTimer: number | null = null;
 	private persistStateTimer: number | null = null;
 	private renderFrame: number | null = null;
+ private renderFrameWindow: Window | null = null;
+ private stopNavigationMigration: (() => void) | null = null;
 	private preserveScrollOnNextRender = false;
 	private allDayDropContext: CalendarAllDayDropContext | null = null;
 	private dueDropContext: CalendarAllDayDropContext | null = null;
@@ -1161,7 +1163,8 @@ export class CalendarView extends ItemView {
 			return;
 		}
 		if (this.renderFrame !== null) return;
-		this.renderFrame = window.requestAnimationFrame(() => {
+		this.renderFrameWindow = getOwnerWindow(this.containerEl);
+		this.renderFrame = this.renderFrameWindow.requestAnimationFrame(() => {
 			this.renderFrame = null;
 			const request = this.pendingCalendarRenderRequest ?? mergeCalendarRefreshRequest(null, {});
 			this.pendingCalendarRenderRequest = null;
@@ -11802,6 +11805,18 @@ export class CalendarView extends ItemView {
 		};
 		this.calendarNavigationDocument = getOwnerDocument(this.containerEl);
 		this.calendarNavigationDocument.addEventListener('keydown', this.calendarNavigationKeydownHandler, true);
+  this.stopNavigationMigration = this.containerEl.onWindowMigrated?.(() => {
+   if (this.calendarNavigationDocument === getOwnerDocument(this.containerEl)) return;
+   const pendingRender = this.renderFrame !== null || this.pendingRenderAfterCalendarDrag;
+   this.finishActiveCalendarDragSession('abort', null, false);
+   this.pendingRenderAfterCalendarDrag = false;
+   this.cancelWeeklyNavigation(false);
+   this.clearSidebarResizeDrag();
+   this.clearScheduledRender();
+   this.unbindCalendarNavigationKeys();
+   this.bindCalendarNavigationKeys();
+   if (pendingRender) this.markDirty();
+  }) ?? null;
 	}
 
 	private isMobileCalendarCurrentlyRendered(): boolean {
@@ -11809,6 +11824,7 @@ export class CalendarView extends ItemView {
 	}
 
 	private unbindCalendarNavigationKeys(): void {
+  this.stopNavigationMigration?.(); this.stopNavigationMigration = null;
 		if (!this.calendarNavigationKeydownHandler) return;
 		this.calendarNavigationDocument?.removeEventListener('keydown', this.calendarNavigationKeydownHandler, true);
 		this.calendarNavigationKeydownHandler = null;
@@ -13780,7 +13796,7 @@ export class CalendarView extends ItemView {
 
 	private clearScheduledRender(): void {
 		if (this.renderFrame !== null) {
-			window.cancelAnimationFrame(this.renderFrame);
+			this.renderFrameWindow?.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
 		}
 	}

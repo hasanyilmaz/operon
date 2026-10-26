@@ -40,7 +40,6 @@ try {
      return null;
     }};
     window.closePreview=Subject.openLightbox(document.getElementById('anchor'),window.previewOptions);
-    Subject.markLightboxControlsReady(document.querySelector('.operon-task-media-lightbox'));
     // Model the real setIcon SVG path, including a target that is not an HTMLElement.
     for(const control of document.querySelectorAll('.operon-task-media-lightbox-control')){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','16');svg.setAttribute('height','16');const rect=document.createElementNS(svg.namespaceURI,'rect');rect.setAttribute('width','16');rect.setAttribute('height','16');svg.appendChild(rect);control.appendChild(svg);}
    },profile);
@@ -49,6 +48,29 @@ try {
    const opacities=()=>shell.locator('.operon-task-media-lightbox-control').evaluateAll(els=>els.map(e=>getComputedStyle(e).opacity));
    const settleHide=()=>page.waitForFunction(()=>!document.querySelector('.operon-task-media-lightbox:not([hidden]):not([inert])').classList.contains('are-controls-hovered'),null,{timeout:3000});
    const contentPoint=await content().evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};});
+   await page.mouse.move(contentPoint.x,contentPoint.y);await settleHide();
+   assert.equal(await shell.evaluate(el=>el.classList.contains('are-controls-pending')),true,'native controls wait for content readiness');
+   await page.mouse.move(8,8);
+   assert.deepEqual(await opacities(),Array(10).fill('0'),'backdrop hover cannot reveal controls before readiness');
+   await shell.evaluate(el=>el.focus());await page.keyboard.press('Tab');
+   assert.equal(await shell.locator('.operon-task-media-lightbox-close').evaluate(el=>document.activeElement===el&&getComputedStyle(el).opacity==='1'),true,'keyboard access remains immediate while content is pending');
+   await shell.evaluate(el=>el.focus());
+   // Return from keyboard navigation to physical pointer interaction.
+   await page.mouse.move(9,9);await page.mouse.move(8,8);
+   await page.evaluate(profile=>{
+    const shell=document.querySelector('.operon-task-media-lightbox');const host=document.getElementById('content');
+    const before=host.style.cssText;
+    if(profile==='markdown')Object.assign(host.style,{position:'fixed',inset:'0',width:'100vw',height:'100vh'});
+    const focus=document.activeElement;const realTimeout=window.setTimeout;let timers=0;
+    window.setTimeout=function(...args){timers++;return realTimeout.apply(window,args);};
+    try{
+     Subject.markLightboxControlsReady(shell);
+     if(timers!==0||shell.classList.contains('are-controls-pending'))throw new Error('Ready controls must activate synchronously without a timer');
+     const visible=shell.classList.contains('are-controls-hovered');
+     if(visible!==(profile!=='markdown'))throw new Error('Readiness must recheck the current pointer target: '+JSON.stringify({profile,width:innerWidth,visible,hover:shell.matches(':hover'),child:shell.querySelector(':scope > :hover')?.className,hit:document.elementFromPoint(8,8)?.className,rect:host.getBoundingClientRect().toJSON()}));
+     if(document.activeElement!==focus)throw new Error('Readiness must not move focus');
+    }finally{window.setTimeout=realTimeout;host.style.cssText=before;}
+   },profile);
    await page.mouse.move(contentPoint.x,contentPoint.y);await settleHide();
    assert.deepEqual(await opacities(),Array(10).fill('0'),`${profile}: content hides all groups`);
    assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('operon-task-media-lightbox-control')),false,'content entry never focuses a side control');
@@ -140,6 +162,15 @@ try {
    assert.equal(await page.evaluate(()=>writes),0,'reading placement and resizing the viewport never save settings');
    await page.keyboard.press('Escape');
    assert.deepEqual(await page.evaluate(()=>[window.previewCloses,document.activeElement.id]),[2,'anchor']);
+   if(profile==='image'){
+    await page.evaluate(()=>{
+     window.closePreview=Subject.openLightbox(document.getElementById('anchor'),{...window.previewOptions,nativeView:false});
+     if(document.querySelector('.operon-task-media-lightbox').classList.contains('are-controls-pending'))throw new Error('Simple media controls must not wait for a readiness timer');
+    });
+    await page.mouse.move(9,9);await page.mouse.move(8,8);
+    assert.deepEqual(await opacities(),Array(10).fill('1'),'simple media retains immediate hover');
+    await page.keyboard.press('Escape');
+   }
    mirroredScenarios++;
    scenarios++;
   }finally{await page.close();}

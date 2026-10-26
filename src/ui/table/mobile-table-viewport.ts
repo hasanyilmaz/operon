@@ -1,5 +1,5 @@
 import { Platform } from 'obsidian';
-import { getOwnerWindow } from '../../core/dom-compat';
+import { asHTMLElement, getOwnerWindow } from '../../core/dom-compat';
 
 const TABLE_PHONE_VIEWPORT_CLASS = 'operon-table-phone-viewport';
 const TABLE_PHONE_VIEWPORT_HEIGHT_PROPERTY = '--operon-table-phone-viewport-height';
@@ -14,8 +14,8 @@ export function getMobileTableViewportHeight(
 
 export function isMobileTableTextInputFocused(root: HTMLElement): boolean {
 	if (!Platform.isPhone) return false;
-	const activeElement = root.ownerDocument.activeElement;
-	return activeElement instanceof HTMLInputElement
+	const activeElement = asHTMLElement(root.ownerDocument.activeElement, root);
+	return activeElement?.tagName === 'INPUT'
 		&& root.contains(activeElement)
 		&& activeElement.matches('.operon-table-search-input');
 }

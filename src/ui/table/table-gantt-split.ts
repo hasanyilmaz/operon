@@ -409,8 +409,8 @@ export function bindTableGanttLinkedRowHover(
 		activeIndex = index;
 	};
 	tableCanvas.addEventListener('pointermove', event => {
-		const target = event.target instanceof Element
-			? event.target.closest<HTMLElement>('.operon-table-row[data-operon-row-index]')
+		const target = event.target instanceof Element || (event.target as Node | null)?.instanceOf?.(Element)
+			? (event.target as Element).closest<HTMLElement>('.operon-table-row[data-operon-row-index]')
 			: null;
 		const index = target?.dataset.operonRowIndex;
 		applyLinkedHover(index && /^\d+$/u.test(index) ? Number(index) : null);
@@ -431,7 +431,8 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): ((
 	let activePointerId: number | null = null;
 	let activePointerType = '';
 	let pointerStartPercent = options.getPercent();
-	const ownerWindow = options.divider.ownerDocument.defaultView ?? options.divider.ownerDocument.win;
+	let ownerDocument = options.divider.ownerDocument;
+ let ownerWindow = ownerDocument.defaultView ?? ownerDocument.win;
 	const applyPercent = (value: number): void => {
 		const percent = applyTableGanttSplitPercent(options.track, value);
 		options.divider.setAttribute('aria-valuenow', String(Math.round(percent)));
@@ -488,8 +489,8 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): ((
 		options.onInteraction?.();
 		applyPercent(next);
 		const commitPercent = clampTableGanttSplitPercent(options.getPercent());
-		if (keyboardCommitTimer !== null) options.divider.ownerDocument.win.clearTimeout(keyboardCommitTimer);
-		keyboardCommitTimer = options.divider.ownerDocument.win.setTimeout(() => {
+		if (keyboardCommitTimer !== null) ownerWindow.clearTimeout(keyboardCommitTimer);
+		keyboardCommitTimer = ownerWindow.setTimeout(() => {
 			keyboardCommitTimer = null;
 			options.onCommit?.(commitPercent);
 		}, 180);
@@ -505,14 +506,25 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): ((
 	options.divider.addEventListener('lostpointercapture', onLostPointerCapture);
 	options.divider.addEventListener('keydown', onKeyDown);
 	ownerWindow.addEventListener('blur', cancelPointer);
-	options.divider.ownerDocument.addEventListener('visibilitychange', onVisibilityChange);
+	ownerDocument.addEventListener('visibilitychange', onVisibilityChange);
 	const suspend = (): void => {
 		cancelPointer();
 		if (keyboardCommitTimer !== null) ownerWindow.clearTimeout(keyboardCommitTimer);
 		keyboardCommitTimer = null;
 	};
+ const stopMigration = options.divider.onWindowMigrated?.(() => {
+  const doc = options.divider.ownerDocument;
+  if (doc === ownerDocument) return;
+  suspend();
+  ownerWindow.removeEventListener('blur', cancelPointer);
+  ownerDocument.removeEventListener('visibilitychange', onVisibilityChange);
+  ownerDocument = doc; ownerWindow = doc.defaultView ?? doc.win;
+  ownerWindow.addEventListener('blur', cancelPointer);
+  ownerDocument.addEventListener('visibilitychange', onVisibilityChange);
+ });
 	return Object.assign(() => {
 		suspend();
+  stopMigration?.();
 		options.divider.removeEventListener('pointerdown', onPointerDown);
 		options.divider.removeEventListener('pointermove', onPointerMove);
 		options.divider.removeEventListener('pointerup', onPointerUp);
@@ -520,7 +532,7 @@ export function bindTableGanttDivider(options: BindTableGanttDividerOptions): ((
 		options.divider.removeEventListener('lostpointercapture', onLostPointerCapture);
 		options.divider.removeEventListener('keydown', onKeyDown);
 		ownerWindow.removeEventListener('blur', cancelPointer);
-		options.divider.ownerDocument.removeEventListener('visibilitychange', onVisibilityChange);
+		ownerDocument.removeEventListener('visibilitychange', onVisibilityChange);
 	}, { suspend });
 }
 

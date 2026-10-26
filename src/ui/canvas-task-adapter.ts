@@ -128,6 +128,9 @@ class CanvasTaskSurface extends Component {
  private autoHeight: CanvasTaskAutoHeight | null = null;
 	private observer: MutationObserver | null = null;
 	private frame = 0;
+ private frameWindow: Window | null = null;
+ private surfaceWindow: Window | null = null;
+ private stopMigration: (() => void) | null = null;
 	private active = false;
  private mountStates = new WeakMap<HTMLElement, string>();
 	readonly canvas: TaskCanvas;
@@ -204,14 +207,26 @@ class CanvasTaskSurface extends Component {
 			if (descriptor) Object.defineProperty(canvas, 'showCreationMenu', descriptor);
 			else Reflect.deleteProperty(canvas, 'showCreationMenu');
 		});
-		const win = getOwnerWindow(this.view.contentEl) as Window & { MutationObserver: typeof MutationObserver };
-		this.observer = new win.MutationObserver((records = []) => { if (records.some(record => !isCanvasRelationDecoration(record))) this.schedule(); });
-		this.observer.observe(this.view.contentEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  this.bindSurfaceWindow();
 		this.sync();
 	}
+ private bindSurfaceWindow(): void {
+  const win = getOwnerWindow(this.view.contentEl);
+  if (win === this.surfaceWindow) return;
+  const pending = !!this.frame;
+  if (this.frame) this.frameWindow?.cancelAnimationFrame(this.frame);
+  this.frame = 0; this.observer?.disconnect(); this.surfaceWindow = win;
+  const Observer = (win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver;
+  this.observer = new Observer((records = []) => { if (records.some(record => !isCanvasRelationDecoration(record))) this.schedule(); });
+  this.observer.observe(this.view.contentEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  if (!this.stopMigration) this.stopMigration = this.view.contentEl.onWindowMigrated?.(() => { if (this.active) this.bindSurfaceWindow(); }) ?? null;
+  if (pending) this.schedule();
+ }
+
 	private schedule(): void {
 		if (!this.active || this.frame) return;
-		this.frame = getOwnerWindow(this.view.contentEl).requestAnimationFrame(() => { this.frame = 0; this.sync(); });
+		this.frameWindow = getOwnerWindow(this.view.contentEl);
+		this.frame = this.frameWindow.requestAnimationFrame(() => { this.frame = 0; this.sync(); });
 	}
 	sync(): void {
 		if (!this.active) return;
@@ -290,8 +305,8 @@ class CanvasTaskSurface extends Component {
 		this.mounted.delete(node);
 	}
 	onunload(): void {
-		this.active = false; this.observer?.disconnect();
-		if (this.frame) getOwnerWindow(this.view.contentEl).cancelAnimationFrame(this.frame);
+		this.active = false; this.stopMigration?.(); this.stopMigration = null; this.observer?.disconnect();
+		if (this.frame) this.frameWindow?.cancelAnimationFrame(this.frame);
 		for (const node of [...this.mounted.keys()]) this.unmount(node);
 	}
 }

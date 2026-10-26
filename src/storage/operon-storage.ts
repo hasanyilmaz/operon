@@ -1,3 +1,4 @@
+import { normalizeTaskAfterCreateAction } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -354,6 +355,8 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		childTaskInheritanceFields: settings.childTaskInheritanceFields,
 		childTaskInheritanceStatusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,
 		taskCreatorDefaultToFileTask: settings.taskCreatorDefaultToFileTask,
+  fileTaskAfterCreate: settings.fileTaskAfterCreate,
+  inlineTaskAfterCreate: settings.inlineTaskAfterCreate,
 		taskCreatorDefaultFileTemplateId: settings.taskCreatorDefaultFileTemplateId,
 		defaultInlineTaskTemplateId: settings.defaultInlineTaskTemplateId,
 		inlineTaskUseLastTemplateAsDefault: settings.inlineTaskUseLastTemplateAsDefault,
@@ -798,6 +801,24 @@ export class OperonStorage {
 		});
 	}
 
+	/** Explicit dock/settings actions only; serialized, narrow CAS with no optimistic mutation. */
+	async saveStatusDockPreference(key: 'statusDockMode' | 'statusDockAlignment' | 'statusDockClickAction', value: string): Promise<void> {
+		const field = key === 'statusDockClickAction' ? 'clickAction' : key === 'statusDockMode' ? 'mode' : 'alignment';
+		const allowed = key === 'statusDockClickAction' ? ['source', 'source-and-editor', 'editor'] : key === 'statusDockMode' ? ['compact', 'detailed'] : ['left', 'center', 'right'];
+		if (!allowed.includes(value)) throw new Error('Invalid status dock preference');
+		const expected = this.settings[key];
+		await this.enqueueSettingsTransaction(async () => {
+			const matches = () => this.settings[key] === expected;
+			if (!matches()) throw new Error('Status dock preference changed; refresh before saving');
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				const stored = current.ui.statusDock?.[field];
+				if ((allowed.includes(stored ?? '') ? stored : undefined) !== expected) throw new Error('Status dock preference changed on disk');
+				return { ...current, ui: { ...current.ui, statusDock: { ...current.ui.statusDock, [field]: value } } };
+			}, matches);
+			Object.assign(this.settings, { [key]: value });
+		});
+	}
+
 	async saveLightboxSize(profile: LightboxSizeProfile, axis: LightboxSizeAxis, value: number): Promise<void> {
   await this.enqueueSettingsTransaction(async () => {
    const sizes = normalizeLightboxSizes(this.settings.workspaceTweaksLightboxSizes);
@@ -1207,6 +1228,10 @@ export class OperonStorage {
 					taskCreationProfile: mergeTaskCreationProfilePreservingUnknownV1(
 						currentPackage.ui.taskCreationProfile,
 						dataPackage.ui.taskCreationProfile,
+      !Object.prototype.hasOwnProperty.call(patch, 'fileTaskAfterCreate')
+       && normalized.fileTaskAfterCreate === normalizeTaskAfterCreateAction(currentPackage.ui.taskCreationProfile.fileTaskAfterCreate),
+      !Object.prototype.hasOwnProperty.call(patch, 'inlineTaskAfterCreate')
+       && normalized.inlineTaskAfterCreate === normalizeTaskAfterCreateAction(currentPackage.ui.taskCreationProfile.inlineTaskAfterCreate),
 					),
 				},
 				integrations: {
@@ -1525,6 +1550,7 @@ export class OperonStorage {
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
 				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
@@ -1623,6 +1649,9 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockClickAction')) delete this.settings.statusDockClickAction;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockAlignment')) delete this.settings.statusDockAlignment;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'contextualMenuActionOrder')) delete this.settings.contextualMenuActionOrder;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;

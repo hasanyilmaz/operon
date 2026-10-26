@@ -27,6 +27,7 @@
 		"convertToInline": "YAML タスクをインラインに変換（クリップボード）",
 		"openTaskCreator": "新しい Operon タスクを作成",
 		"openTaskFinder": "タスクファインダー",
+		"trackDifferentTask": "別のタスクを計測",
 		"createOrEditInlineTask": "インラインタスクを作成または編集",
 		"convertTasksEmojiLineToInlineTask": "Tasks の絵文字行をインラインタスクに変換",
 		"convertSelectionToOperonTasks": "選択範囲を Operon タスクに変換",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Canvas にタスクを追加",
 		"addOperonTask": "Operon タスクを追加",
 		"convertCanvasTask": "Operon タスクに変換…",
-		"addOperonGroup": "Operon グループを追加"
+		"addOperonGroup": "Operon グループを追加",
+		"toggleStatusDock": "ステータスドックの表示を切り替え"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "繰り返しファイルタスクの識別情報を修復",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "タスクは作成されましたが、表示を開けませんでした。",
+		"createdFileTaskOpenFailed": "タスクは作成されましたが、そのビューを開けませんでした。",
 		"excalidrawPoolUnavailable": "ExcalidrawタスクプールのコントロールAPIを利用できません。",
 		"excalidrawTaskCleanupDeferred": "Excalidraw カードの自動クリーンアップを完了できませんでした。タスクの変更は保持されています。",
 		"excalidrawTaskSaveFailed": "保存を確認できませんでした。カードを再追加する前に図面を確認してください。",
@@ -413,7 +417,8 @@
 		"deleteTitle": "重複したタスクのコピーを削除しますか？",
 		"deleteMessage": "「{{label}}」を保管庫から削除しますか？",
 		"statusBarConflictLabel": "{{count}} 個の重複タスクコピーを検出しました。重複マネージャーを開きます。",
-		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。"
+		"statusBarResolvedLabel": "重複タスクのコピーを解決しました。",
+		"introDock": "重複した operonId の競合をここで解決します。このウィンドウはいつでも閉じることができ、コマンドパレットまたはステータスドックの通知から再度開けます。"
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "この図内の、他の要素に隠れていない1枚のOperonタスクカードにドロップしてください。",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "インラインタスクをファイルタスクに変換した後、元のノートに残す内容を選択します。",
 		"inlineToFileTaskSourceDispositionKeepLink": "ファイルタスクへのリンクを残す",
 		"inlineToFileTaskSourceDispositionRemoveTask": "元のインラインタスクを削除",
+		"taskAfterCreateEditor": "タスクエディター（ライトボックス）",
+		"inlineTaskAfterCreate": "インラインタスクの作成後",
+		"inlineTaskAfterCreateDesc": "Task Creatorで作成したインラインタスクの開き方を選択します。",
+		"inlineTaskAfterCreateFocusedTab": "ソースを新しいタブで開く（フォーカス）",
+		"inlineTaskAfterCreateBackgroundTab": "ソースを新しいタブで開く（バックグラウンド）",
+		"fileTaskAfterCreate": "ファイルタスク作成後",
+		"fileTaskAfterCreateDesc": "Task Creator で作成したファイルタスクの開き方を選択します。",
+		"fileTaskAfterCreateNone": "開かない",
+		"fileTaskAfterCreateFocusedTab": "新しいタブ（前面）",
+		"fileTaskAfterCreateBackgroundTab": "新しいタブ（背面）",
+		"fileTaskAfterCreateSource": "ソースファイル（ライトボックス）",
+		"fileTaskAfterCreateSourceAndEditor": "ソースファイル + Task Editor（ライトボックス）",
+		"newInlineTaskCreationDefaults": "新しいインラインタスク作成時の既定設定",
 		"newFileTaskCreationDefaults": "新しいファイルタスク作成のデフォルト",
 		"fileTaskTemplates": "ファイルタスクテンプレート",
 		"checkboxConversion": "チェックボックスの変換",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "背景を明るくする",
 		"backgroundDimmingSaveFailed": "背景の暗さを保存できませんでした。",
 		"lightboxSizeSaveFailed": "ライトボックスのサイズを保存できませんでした。",
+		"statusDockSection": "Operon ステータスドック",
+		"statusDockMove": "ドックを移動",
+		"statusDockClickAction": "クリック時の動作",
+		"statusDockClickActionDesc": "ドック内の計測中または次のタスクをクリックしたときに開く内容を選択します。",
 		"workspaceTweaksHideScrollbars": "スクロールバーを非表示",
 		"workspaceTweaksShowScrollbars": "スクロールバーを表示",
 		"workspaceTweaksHideScrollbarsDesc": "通常のスクロール動作を保ちつつ、Obsidian ワークスペース全体でスクロールバーを非表示にします。",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "変更のないファイルを確認",
 		"tasksBulkSkippedSource": "スキャン時と異なるためスキップ: {{path}}",
 		"useLastTemplateAsDefault": "最後に使用したテンプレートを既定にする",
-		"useLastTemplateAsDefaultDesc": "Task Creatorでタスクを正常に作成した後、使用したテンプレートをこのタスクの種類の既定として保存します。コマンドや変換でもこの既定が使用されます。"
+		"useLastTemplateAsDefaultDesc": "Task Creatorでタスクを正常に作成した後、使用したテンプレートをこのタスクの種類の既定として保存します。コマンドや変換でもこの既定が使用されます。",
+		"trackerShowStatusDockTimer": "アクティブなタイマーをステータスドックに表示",
+		"trackerShowStatusDockTimerDesc": "Operonステータスドックに、待機中は開始ボタン、計測中はタイマーを表示します。",
+		"upcomingShowStatusDock": "予定タスクをステータスドックに表示",
+		"upcomingShowStatusDockDesc": "カウントダウン終了後も現在のタスクを残し、その隣に次の時刻付きタスクを表示します。",
+		"upcomingDockDaysDesc": "今日を含め、サイドバーとステータスドックに表示する日数を選択します。",
+		"settingsPageTrackerDescDock": "時間記録の履歴、ステータスドックのタイマー、FlowTime の動作、セッションの分割。",
+		"duplicateAlertDelayDescDock": "Operon が重複の通知、ステータスドックのアラート、オプションのマネージャーポップアップを表示する前に待機する時間。"
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "幅を狭くする",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "無効なリマインダー"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "現在の値",
+		"textPickerCurrentValue": "現在の値",
 		"creatorInlineTemplateProperties": "インラインタスクには、このテンプレートのプロパティが追加されます。テンプレートの本文は含まれません。",
 		"creatorMetadataChanged": "プロパティのルールが変更されました。作成前に Task Creator を開き直して確認してください。",
 		"creatorParentPreviewChanged": "保存先により継承値が変更されました。更新された選択内容を確認し、もう一度作成してください。",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "タスクカードの埋め込みコードをコピー",
 		"canvasGroupTitle": "グループルール",
 		"canvasGroupInvalid": "対応するプロパティを1つと有効な値を入力してください。",
-		"canvasGroupChanged": "プロパティ設定が変更されました。グループエディターを開き直してください。"
+		"canvasGroupChanged": "プロパティ設定が変更されました。グループエディターを開き直してください。",
+		"dockSelectTask": "タスクを選択または新規作成",
+		"dockNextTask": "次のタスク",
+		"dockTaskCreatorTitle": "タスク作成",
+		"dockCreateAndTrack": "新しいタスクを作成して時間計測を開始"
 	},
 	"indexStats": {
 		"title": "Operon インデックス",

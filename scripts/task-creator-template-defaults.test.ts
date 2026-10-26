@@ -108,3 +108,63 @@ test('canonical package without conversion toggle reloads byte-for-byte without 
  const first=await fixture();let raw:string;try{const pkg=first.disk.package();delete (pkg.settings as Partial<typeof pkg.settings>).inlineTaskOpenCreatorBeforeConversion;raw=JSON.stringify(pkg);}finally{await first.disk.dispose();}
  const disk=new SettingsPreservationHarness({table:false,initialRaw:raw!});try{const storage=disk.createStorage();await storage.initialize();assert.equal(storage.getSettings().inlineTaskOpenCreatorBeforeConversion,false);assert.equal(disk.canonicalAttempts,0);assert.equal(disk.raw(),raw!);}finally{await disk.dispose();}
 });
+
+
+for (const key of ['fileTaskAfterCreate', 'inlineTaskAfterCreate'] as const) {
+for (const value of [undefined, 'none', null, true, 1, 'future-action', 'source', 'background-tab', 'editor']) test(`${key} opening preference initializes without writes: ${String(value)}`, async () => {
+ const first = await fixture(); let raw: string;
+ try {
+  const pkg = first.disk.package(); const profile = pkg.ui.taskCreationProfile as unknown as Record<string, unknown>;
+  if (value === undefined) delete profile[key]; else profile[key] = value;
+  profile.futureOpeningExtension = { preserved: true }; raw = JSON.stringify(pkg);
+ } finally { await first.disk.dispose(); }
+ const disk = new SettingsPreservationHarness({ table: false, initialRaw: raw! });
+ try {
+  const storage = disk.createStorage(); await storage.initialize();
+  assert.equal(storage.getSettings()[key], value === 'source' || value === 'background-tab' || value === 'editor' ? value : 'none');
+  assert.equal(disk.canonicalAttempts, 0); assert.equal(disk.raw(), raw!);
+ } finally { await disk.dispose(); }
+});
+
+for (const action of ['new-tab', 'background-tab', 'source', 'source-and-editor', 'editor'] as const) test(`${key} opening persists, resets and survives unrelated settings: ${action}`, async () => {
+ const { disk, storage, settings } = await fixture();
+ try {
+  const unrelated = settings.dailyNoteFolder;
+  await storage.updateSettings({ [key]: action });
+  assert.equal(disk.package().ui.taskCreationProfile[key], action);
+  const loaded = disk.createStorage(); await loaded.initialize(); assert.equal(loaded.getSettings()[key], action);
+  await storage.updateSettings({ [key]: 'none' });
+  assert.equal(disk.package().ui.taskCreationProfile[key], undefined);
+  assert.equal(settings.dailyNoteFolder, unrelated);
+  const count = disk.canonicalAttempts; const raw = disk.raw();
+  const reopened = disk.createStorage(); await reopened.initialize();
+  assert.equal(reopened.getSettings()[key], 'none'); assert.equal(disk.canonicalAttempts, count); assert.equal(disk.raw(), raw);
+ } finally { await disk.dispose(); }
+});
+
+test(`${key} opening failed persistence leaves committed memory and source intact`, async () => {
+ const { disk, storage, settings } = await fixture();
+ try {
+  await storage.updateSettings({ [key]: 'source' }); const before = disk.raw();
+  disk.writeFault = 'throw-before';
+  await assert.rejects(storage.updateSettings({ [key]: 'background-tab' }));
+  assert.equal(settings[key], 'source'); assert.equal(disk.raw(), before);
+ } finally { await disk.dispose(); }
+});
+
+
+test(`${key} unrelated saves preserve an unknown stored opening value until an explicit reset`, async () => {
+ const first=await fixture();let raw:string;
+ try {const pkg=first.disk.package();Object.assign(pkg.ui.taskCreationProfile,{[key]:'future-action',futureOpeningExtension:{keep:true}});raw=JSON.stringify(pkg);}finally{await first.disk.dispose();}
+ const disk=new SettingsPreservationHarness({table:false,initialRaw:raw!});
+ try {
+  const storage=disk.createStorage();await storage.initialize();
+  await storage.updateSettings({taskDescriptionRequired:!storage.getSettings().taskDescriptionRequired});
+  assert.equal((disk.package().ui.taskCreationProfile as any)[key],'future-action');
+  await storage.updateSettings({[key]:'none'});
+  assert.equal(disk.package().ui.taskCreationProfile[key],undefined);
+  assert.deepEqual((disk.package().ui.taskCreationProfile as any).futureOpeningExtension,{keep:true});
+ }finally{await disk.dispose();}
+});
+
+}

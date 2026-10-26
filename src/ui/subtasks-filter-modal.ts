@@ -1,3 +1,4 @@
+import { getOwnerWindow } from '../core/dom-compat';
 import { App, Modal, Platform } from 'obsidian';
 import { applyDesktopModalBackdrop } from './modal-backdrop';
 import { t } from '../core/i18n';
@@ -21,6 +22,9 @@ export interface SubtasksFilterModalOptions {
 }
 
 export class SubtasksFilterModal extends Modal {
+ private viewportWindow: Window | null = null;
+ private stopViewportMigration: (() => void) | null = null;
+
 	private readonly options: SubtasksFilterModalOptions;
 	private instance: FilterSurfaceInstance | null = null;
 	private backdropCleanup: (() => void) | null = null;
@@ -40,12 +44,11 @@ export class SubtasksFilterModal extends Modal {
 		this.containerEl.addClass('operon-subtasks-filter-modal-container');
 		this.modalEl.addClass('operon-subtasks-filter-modal');
 		this.containerEl.ownerDocument.body.classList.add(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
+  this.bindViewportWindow();
 		if (Platform.isPhone) {
 			this.containerEl.addClass('operon-subtasks-filter-modal-container-mobile');
 			this.modalEl.addClass('operon-subtasks-filter-modal-mobile');
-			window.addEventListener('resize', this.resizeHandler);
-			window.visualViewport?.addEventListener('resize', this.resizeHandler);
-			window.visualViewport?.addEventListener('scroll', this.resizeHandler);
+
 			this.updateMobileViewportHeight();
 		}
 		this.titleEl.addClass('operon-subtasks-filter-title');
@@ -60,9 +63,12 @@ export class SubtasksFilterModal extends Modal {
 	onClose(): void {
 		this.backdropCleanup?.();
 		this.backdropCleanup = null;
-		window.removeEventListener('resize', this.resizeHandler);
-		window.visualViewport?.removeEventListener('resize', this.resizeHandler);
-		window.visualViewport?.removeEventListener('scroll', this.resizeHandler);
+		this.stopViewportMigration?.(); this.stopViewportMigration = null;
+  this.viewportWindow?.removeEventListener('resize', this.resizeHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('resize', this.resizeHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('scroll', this.resizeHandler);
+  this.viewportWindow?.document.body.classList.remove(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
+  this.viewportWindow = null;
 		this.containerEl.ownerDocument.body.classList.remove(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
 		this.containerEl.style.removeProperty('--operon-subtasks-filter-mobile-viewport-height');
 		if (this.instance) {
@@ -86,9 +92,30 @@ export class SubtasksFilterModal extends Modal {
 		}
 	}
 
+ private bindViewportWindow(): void {
+  const next = getOwnerWindow(this.containerEl), old = this.viewportWindow;
+  if (old === next) return;
+  old?.removeEventListener('resize', this.resizeHandler);
+  old?.visualViewport?.removeEventListener('resize', this.resizeHandler);
+  old?.visualViewport?.removeEventListener('scroll', this.resizeHandler);
+  this.viewportWindow = next;
+  if (Platform.isPhone) {
+   next.addEventListener('resize', this.resizeHandler);
+   next.visualViewport?.addEventListener('resize', this.resizeHandler);
+   next.visualViewport?.addEventListener('scroll', this.resizeHandler);
+  }
+  if (!this.stopViewportMigration) this.stopViewportMigration = this.containerEl.onWindowMigrated?.(() => this.bindViewportWindow()) ?? null;
+  if (old) {
+   this.backdropCleanup?.(); this.backdropCleanup = this.options.fileTaskPath ? null : applyDesktopModalBackdrop(this.containerEl);
+   this.updateMobileViewportHeight();
+   old.document.body.classList.remove(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
+   next.document.body.classList.add(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
+  }
+ }
+
 	private updateMobileViewportHeight(): void {
 		if (!Platform.isPhone) return;
-		const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+		const viewportHeight = (this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.height ?? (this.viewportWindow ?? getOwnerWindow(this.containerEl)).innerHeight;
 		if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
 			this.containerEl.style.setProperty('--operon-subtasks-filter-mobile-viewport-height', `${Math.round(viewportHeight)}px`);
 		}

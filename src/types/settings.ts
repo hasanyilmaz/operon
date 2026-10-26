@@ -1065,6 +1065,12 @@ export const TASK_FINDER_DEFAULT_SCOPE_ORDER = [
 	'includeFinished',
 ] as const;
 
+export type TaskAfterCreateAction = 'none' | 'new-tab' | 'background-tab' | 'source' | 'source-and-editor' | 'editor';
+
+export function normalizeTaskAfterCreateAction(value: unknown): TaskAfterCreateAction {
+ return value === 'new-tab' || value === 'background-tab' || value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : 'none';
+}
+
 export type TaskFinderResultBehavior = 'source' | 'source-and-editor' | 'editor';
 
 export function normalizeTaskFinderResultBehavior(value: unknown, fallback: TaskFinderResultBehavior): TaskFinderResultBehavior {
@@ -1603,7 +1609,19 @@ function buildDefaultKeyMappings(): KeyMapping[] {
 }
 
 /** Complete Operon settings interface (v1) */
+export type StatusDockMode = 'compact' | 'detailed';
+export type StatusDockAlignment = 'left' | 'center' | 'right';
+export function resolveStatusDockMode(value: unknown): StatusDockMode { return value === 'detailed' ? 'detailed' : 'compact'; }
+export function resolveStatusDockAlignment(value: unknown): StatusDockAlignment { return value === 'left' || value === 'right' ? value : 'center'; }
+
+export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBehavior { return normalizeTaskFinderResultBehavior(value, 'source-and-editor'); }
+
 export interface OperonSettings extends TaskCardSettings {
+	/** Optional user choices: absence uses in-memory defaults without startup writes. */
+	statusDockClickAction?: TaskFinderResultBehavior;
+	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
+	statusDockMode?: StatusDockMode;
+	statusDockAlignment?: StatusDockAlignment;
 	/** Internal source interpretation metadata; not a user-facing preference. */
 	inlinePropertyDefinitions?: import('../core/inline-property-definitions').InlinePropertyDefinitions;
 	/** Raw optional UI preferences; preserve unknown/future content without repair. */
@@ -2014,6 +2032,10 @@ export interface OperonSettings extends TaskCardSettings {
 	// File task creation defaults and templates
 	/** If true, generic Task Creator opens with File Task selected. */
 	taskCreatorDefaultToFileTask: boolean;
+	/** UI-only opening preference for successfully created File Tasks. */
+	fileTaskAfterCreate: TaskAfterCreateAction;
+	/** UI-only opening preference for successfully created Inline Tasks. */
+	inlineTaskAfterCreate: TaskAfterCreateAction;
 	/** Optional default template applied when Task Creator enters File Task mode. */
 	taskCreatorDefaultFileTemplateId: string | null;
 	defaultInlineTaskTemplateId: string | null;
@@ -2548,6 +2570,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskStatsBackfillVersion: 0,
 
 	taskCreatorDefaultToFileTask: false,
+	fileTaskAfterCreate: 'none',
+	inlineTaskAfterCreate: 'none',
 	taskCreatorDefaultFileTemplateId: null,
 	defaultInlineTaskTemplateId: null,
 	inlineTaskUseLastTemplateAsDefault: false,
@@ -4427,6 +4451,12 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;
+	else delete out.statusDockClickAction;
+	if (src.statusDockMode === 'compact' || src.statusDockMode === 'detailed') out.statusDockMode = src.statusDockMode;
+	else delete out.statusDockMode;
+	if (src.statusDockAlignment === 'left' || src.statusDockAlignment === 'center' || src.statusDockAlignment === 'right') out.statusDockAlignment = src.statusDockAlignment;
+	else delete out.statusDockAlignment;
 	out.taskEditorPosition = src.taskEditorPosition === 'left' ? 'left' : 'right';
 	out.taskEditorFileShowSource = typeof src.taskEditorFileShowSource === 'boolean' ? src.taskEditorFileShowSource : true;
 	out.taskEditorInlineShowSource = src.taskEditorInlineShowSource === true;
@@ -5010,6 +5040,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.fileTaskArchiveOnlyFromFileTasksFolder = false;
 	out.inlineTaskUseLastTemplateAsDefault = src.inlineTaskUseLastTemplateAsDefault === true;
 	out.fileTaskUseLastTemplateAsDefault = src.fileTaskUseLastTemplateAsDefault === true;
+	out.fileTaskAfterCreate = normalizeTaskAfterCreateAction(src.fileTaskAfterCreate);
+	out.inlineTaskAfterCreate = normalizeTaskAfterCreateAction(src.inlineTaskAfterCreate);
 	out.defaultInlineTaskTemplateId = normalizeOptionalString(src.defaultInlineTaskTemplateId) ?? null;
 	out.taskCreatorDefaultFileTemplateId = normalizeStoredFileTaskTemplateId(
 		src.taskCreatorDefaultFileTemplateId,

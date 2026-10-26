@@ -19,7 +19,7 @@ function methods(file: string, names: string[], deps: Record<string, unknown> = 
  const source = readFileSync(file, 'utf8'), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
  const klass = ast.statements.find(n => ts.isClassDeclaration(n) && names.every(name => n.members.some(m => m.name?.getText(ast) === name))) as ts.ClassDeclaration;
  assert.ok(klass, file);
- const selected = names.map(name => klass.members.find(m => m.name?.getText(ast) === name)!.getText(ast)).join('\n');
+ const selected = names.map(name => klass.members.find(m => ts.isMethodDeclaration(m) && m.body && m.name?.getText(ast) === name)!.getText(ast)).join('\n');
  const code = ts.transpileModule(`class Fixture { ${selected} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  return new Function(...Object.keys(deps), `${code}; return Fixture;`)(...Object.values(deps));
 }
@@ -155,4 +155,86 @@ test('selection integrations retain caller-supplied callbacks rather than the no
  const integrations = readFileSync('src/ui/task-finder-integrations.ts', 'utf8');
  assert.equal(integrations.includes('taskFinderFileResultBehavior'), false); assert.equal(integrations.includes('taskFinderInlineResultBehavior'), false);
  assert.equal(source.match(/this\.openTaskFinderResult\(operonId\)/g)?.length, 1);
+});
+
+
+test('anchored dock editor opening is awaitable, forwards source choice and propagates failures', async () => {
+ const Host = methods('main.ts', ['openEditorForId']);
+ const calls: unknown[][] = []; let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+ const anchor = { ownerDocument: {} }, host = Object.assign(new Host(), {
+  redirectDuplicateOperonIdAction: () => false, indexer: { getTask: () => task('yaml') }, loadEditableParsedTask: (value: unknown) => value,
+  openTaskEditorFor: async (...args: unknown[]) => { calls.push(args); await gate; },
+ });
+ let done = false; const opening = host.openEditorForId('task001', false, anchor).then(() => { done = true; });
+ await Promise.resolve(); assert.equal(done, false); assert.equal(calls[0][6], false); assert.equal(calls[0][7], anchor);
+ release(); await opening; assert.equal(done, true);
+ host.openTaskEditorFor = async () => { throw new Error('opening failed'); };
+ await assert.rejects(host.openEditorForId('task001', true, anchor), /opening failed/);
+ host.openTaskEditorFor = async (...args: unknown[]) => { calls.push(args); };
+ assert.equal(host.openEditorForId('task001', true), undefined, 'existing non-dock callers retain their void entrypoint');
+ const source = readFileSync('main.ts', 'utf8');
+ assert.match(source, /else await this\.openEditorForId\(taskId, behavior === 'source-and-editor', anchor\)/u);
+ assert.match(source, /const document = openingAnchor\?\.ownerDocument \?\? getActiveDocument\(\)/u);
+});
+
+for (const kind of ['inline', 'file', 'cancel', 'stale', 'failure'] as const) test(`tracker Creator ${kind} uses existing creation and settles without timer side effects`, async () => {
+ const Host = methods('main.ts', ['promptTrackerTaskCreation']); const host = new Host(); host.preparedCreatorCommits = new WeakMap(); let options: any, writes = 0;
+ host.prepareTaskCreator = async (_draft: unknown, value: unknown) => { options = value; };
+ host.createInlineTaskFromCreatorDraftResult = async (_draft: unknown, context: any) => { assert.equal(context.canCommit(), true); writes++; return kind === 'failure' ? null : { operonId: 'new-task' }; };
+ host.createFileTaskFromCreatorDraft = async (_draft: unknown, context: any) => { assert.equal(context.canCommit(), true); writes++; await context.onCreated({ fieldValues: { operonId: 'new-file' } }); return true; };
+ const promise = host.promptTrackerTaskCreation(() => kind !== 'stale');
+ if (kind === 'stale') { assert.equal(await promise, null); assert.equal(options, undefined); return; }
+ if (kind === 'cancel') options.onClose();
+ else if (kind === 'file') assert.equal(await options.onSubmitFile({}), true);
+ else { assert.equal(await options.onSubmitInline({}), kind !== 'failure'); if (kind === 'failure') options.onClose(); }
+ assert.equal(await promise, kind === 'inline' ? 'new-task' : kind === 'file' ? 'new-file' : null);
+ assert.equal(writes, ['cancel', 'stale'].includes(kind) ? 0 : 1);
+});
+
+for (const kind of ['inline', 'file'] as const) for (const committed of [false, true]) test(`tracker Creator ${kind} post-save error settles only committed work: ${committed}`, async () => {
+ const notices: string[] = []; const Host = methods('main.ts', ['promptTrackerTaskCreation'], { Notice: class { constructor(value: string) { notices.push(value); } }, t: (_group: string, key: string) => key });
+ const host = new Host(); host.preparedCreatorCommits = new WeakMap(); let options: any;
+ host.prepareTaskCreator = async (_draft: unknown, value: unknown) => { options = value; };
+ const draft = {}; host.preparedCreatorCommits.set(draft, { outcome: committed ? 'committed' : 'pending' });
+ host.createInlineTaskFromCreatorDraftResult = host.createFileTaskFromCreatorDraft = async () => { throw new Error('index failed'); };
+ const promise = host.promptTrackerTaskCreation(() => true), submit = kind === 'inline' ? options.onSubmitInline : options.onSubmitFile;
+ if (committed) { assert.equal(await submit(draft), true); assert.equal(await promise, null); assert.deepEqual(notices, ['creatorPostCreateFinalizeFailed']); }
+ else { await assert.rejects(submit(draft), /index failed/); options.onClose(); assert.equal(await promise, null); assert.deepEqual(notices, []); }
+});
+
+test('tracker Creator waits for creation finalization, ignores duplicate submit and retains precommit retries', async () => {
+ const Host = methods('main.ts', ['promptTrackerTaskCreation']); const host = new Host(); host.preparedCreatorCommits = new WeakMap();
+ let options: any, finish!: (result: { operonId: string } | null) => void, settled = false, writes = 0;
+ host.prepareTaskCreator = async (_draft: unknown, value: unknown) => { options = value; };
+ host.createInlineTaskFromCreatorDraftResult = async () => { writes++; return new Promise(resolve => { finish = resolve; }); };
+ const result = host.promptTrackerTaskCreation(() => true).then((id: string | null) => { settled = true; return id; });
+ const first = options.onSubmitInline({}); options.onClose(); assert.equal(await options.onSubmitInline({}), false);
+ await Promise.resolve(); assert.equal(settled, false); assert.equal(writes, 1);
+ finish(null); assert.equal(await first, false); assert.equal(settled, false);
+ const retry = options.onSubmitInline({}); finish({ operonId: 'finalized' }); assert.equal(await retry, true); assert.equal(await result, 'finalized');
+});
+
+for (const desktop of [false,true]) test(`dock settings labels and expiry visibility respect desktop=${desktop}`, () => {
+ const Host=methods('src/ui/settings-tab.ts',['getSettingsSearchText','buildUpcomingSettingsItems'],{Platform:{isDesktopApp:desktop},t:(_ns:string,key:string)=>key});
+ const host=Object.assign(new Host(),{settings:{...DEFAULT_SETTINGS,upcomingShowStatusBar:true},buildSettingsSearchSettingDefinition:(_entries:unknown,key:string)=>({key}),compactSettingsSearchDefinitions:(items:any[])=>items.filter(Boolean),buildDeclarativeSettingsDocsButton:()=>({})});
+ assert.equal(host.getSettingsSearchText({namespace:'settings',key:'upcomingShowStatusBar'}),desktop?'upcomingShowStatusDock':'upcomingShowStatusBar');
+ assert.equal(host.getSettingsSearchText({namespace:'settings',key:'trackerShowStatusBarTimer'}),desktop?'trackerShowStatusDockTimer':'trackerShowStatusBarTimer');
+ const group=host.buildUpcomingSettingsItems([]).at(-1); assert.equal(group.heading,desktop?'statusDockSection':'upcomingStatusBarSection');
+ for(const key of ['upcomingStatusBarExpiryAction','upcomingStatusBarClickAction'])assert.equal(group.items.find((item:any)=>item.key===key).visible(),!desktop);
+});
+
+for(const desktop of [false,true])test(`tracker visibility toggle is mobile-only: desktop=${desktop}`,()=>{
+ const Host=methods('src/ui/settings-tab.ts',['buildTrackerSettingsItems'],{Platform:{isDesktopApp:desktop},t:(_ns:string,key:string)=>key});
+ const host=Object.assign(new Host(),{settings:{...DEFAULT_SETTINGS,trackerShowStatusBarTimer:false},buildSettingsSearchSettingDefinition:(_entries:unknown,key:string)=>({key}),compactSettingsSearchDefinitions:(items:any[])=>items.filter(Boolean),buildDeclarativeSettingsDocsButton:()=>({})});
+ const before=JSON.stringify(host.settings),items=host.buildTrackerSettingsItems([]).flatMap((group:any)=>group.items);
+ assert.equal(items.some((item:any)=>item.key==='trackerShowStatusBarTimer'),!desktop);assert.equal(items.some((item:any)=>item.key==='trackerSplitSessionsAtMidnight'),true);assert.equal(JSON.stringify(host.settings),before);
+});
+
+for(const desktop of [false,true])for(const available of [false,true])test(`single dock command only toggles on execution: desktop=${desktop}, ready=${available}`,()=>{
+ const source=readFileSync('main.ts','utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);let registration:ts.CallExpression|undefined;
+ const visit=(node:ts.Node)=>{if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='addCommand'&&node.arguments[0]&&ts.isObjectLiteralExpression(node.arguments[0])&&node.arguments[0].properties.some(p=>ts.isPropertyAssignment(p)&&p.name.getText(ast)==='id'&&ts.isStringLiteral(p.initializer)&&p.initializer.text==='toggle-status-dock')){assert.equal(registration,undefined);registration=node;}ts.forEachChild(node,visit);};visit(ast);assert.ok(registration);
+ const code=ts.transpileModule(registration.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ let command:any,toggles=0;const host={statusDock:available?{toggleVisibility(){toggles++;}}:null,addCommand(value:unknown){command=value;}};
+ new Function('Platform','t',code).call(host,{isDesktopApp:desktop},(_ns:string,key:string)=>key);
+ assert.equal(command.id,'toggle-status-dock');assert.equal(command.name,'toggleStatusDock');assert.equal(command.checkCallback(true),desktop&&available);assert.equal(toggles,0);assert.equal(command.checkCallback(false),desktop&&available);assert.equal(toggles,desktop&&available?1:0);
 });

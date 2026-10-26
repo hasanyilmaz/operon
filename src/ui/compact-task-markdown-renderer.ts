@@ -21,6 +21,8 @@ export interface CompactTaskMarkdownRenderOptions {
 	value: string;
 	sourcePath?: string;
 	mode: CompactTaskMarkdownInteractionMode;
+	/** Optional visible-character cap; truncates parsed text without breaking markup. */
+	maxCharacters?: number;
 	containerClassName?: string;
 	linkClassName?: string;
 	bindLink?: (anchor: HTMLElement, link: CompactTaskMarkdownLink) => void;
@@ -60,7 +62,24 @@ export function renderCompactTaskMarkdown(
 	container: HTMLElement,
 	options: CompactTaskMarkdownRenderOptions,
 ): CompactTaskMarkdownRenderResult {
-	const nodes = parseCompactTaskMarkdown(options.value);
+	let nodes = parseCompactTaskMarkdown(options.value);
+	if (options.maxCharacters !== undefined && Number.isFinite(options.maxCharacters)) {
+		const limit = Math.max(1, Math.floor(options.maxCharacters));
+		if (Array.from(flattenVisibleText(nodes)).length > limit) {
+			let remaining = limit - 1;
+			const shorten = (value: string): string => {
+				const characters = Array.from(value), result = characters.slice(0, remaining).join('');
+				remaining = Math.max(0, remaining - characters.length); return result;
+			};
+			const visit = (items: readonly CompactTaskMarkdownNode[]): CompactTaskMarkdownNode[] => items.flatMap<CompactTaskMarkdownNode>(node => {
+				if (remaining === 0) return [];
+				if ('children' in node) return [{ ...node, children: visit(node.children) }];
+				if ('value' in node) return [{ ...node, value: shorten(node.value) }];
+				return [{ ...node, label: shorten(node.label) }];
+			});
+			nodes = [...visit(nodes), { type: 'text', value: '…' }];
+		}
+	}
 	const inspected = inspectNodes(nodes);
 	const result = {
 		formatted: inspected.formatted || flattenVisibleText(nodes) !== options.value,

@@ -1,5 +1,6 @@
 import { App, Modal, getIcon } from 'obsidian';
 import { t } from '../core/i18n';
+import { asHTMLElement } from '../core/dom-compat';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import type { PlainFileTaskPropertyOption } from '../core/task-writer';
@@ -180,7 +181,7 @@ export class ConvertToPlainFileModal extends Modal {
 
 	private setInteractiveControlsDisabled(disabled: boolean): void {
 		for (const control of Array.from(this.contentEl.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button'))) {
-			if (!disabled && control instanceof HTMLInputElement && control.dataset.operonLocked === 'true') {
+			if (!disabled && asHTMLElement(control, this.contentEl)?.tagName === 'INPUT' && control.dataset.operonLocked === 'true') {
 				control.disabled = true;
 				continue;
 			}

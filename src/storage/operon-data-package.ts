@@ -71,6 +71,9 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
 	| keyof WorkspaceTweaksPackageSettings
+	| 'statusDockClickAction'
+	| 'statusDockMode'
+	| 'statusDockAlignment'
 	| 'propertyValuePool'
 	| 'presetFavorites'
 	| keyof TaskAutomationPolicyStoreSettings;
@@ -99,6 +102,9 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskDataTypeIcon',
+	'statusDockClickAction',
+	'statusDockMode',
+	'statusDockAlignment',
 	'propertyValuePool',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
@@ -188,6 +194,8 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'childTaskInheritanceFields',
 	'childTaskInheritanceStatusPipelineSource',
 	'taskCreatorDefaultToFileTask',
+	'fileTaskAfterCreate',
+	'inlineTaskAfterCreate',
 	'taskCreatorDefaultFileTemplateId',
 	'defaultInlineTaskTemplateId',
 	'inlineTaskUseLastTemplateAsDefault',
@@ -346,10 +354,11 @@ export interface OperonViewsPackageV1 {
 }
 
 export interface OperonUiPackageV1 {
+	statusDock?: { clickAction?: OperonSettings['statusDockClickAction']; mode?: OperonSettings['statusDockMode']; alignment?: OperonSettings['statusDockAlignment'] };
 	propertyValuePool?: unknown;
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferencePackageSettings>;
-	taskCreationProfile: VersionedStoreSlice<Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault'>> & { defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean };
+	taskCreationProfile: VersionedStoreSlice<Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault' | 'fileTaskAfterCreate' | 'inlineTaskAfterCreate'>> & { inlineTaskAfterCreate?: OperonSettings['inlineTaskAfterCreate']; fileTaskAfterCreate?: OperonSettings['fileTaskAfterCreate']; defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean };
 	workspaceTweaks: VersionedStoreSlice<WorkspaceTweaksPackageSettings>;
 	presetFavorites?: VersionedStoreSlice<PresetFavorites>;
 }
@@ -358,6 +367,8 @@ export interface OperonUiPackageV1 {
 export function mergeTaskCreationProfilePreservingUnknownV1(
 	existing: unknown,
 	known: OperonUiPackageV1['taskCreationProfile'],
+ preserveFileTaskAfterCreate = false,
+ preserveInlineTaskAfterCreate = false,
 ): OperonUiPackageV1['taskCreationProfile'] {
 	if (!isRecord(existing)) return cloneUnknown(known);
 	const merged = {
@@ -368,6 +379,8 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 	if (!Object.prototype.hasOwnProperty.call(known, 'defaultInlineTaskTemplateId')) delete merged.defaultInlineTaskTemplateId;
 	if (!Object.prototype.hasOwnProperty.call(known, 'inlineTaskUseLastTemplateAsDefault')) delete merged.inlineTaskUseLastTemplateAsDefault;
 	if (!Object.prototype.hasOwnProperty.call(known, 'fileTaskUseLastTemplateAsDefault')) delete merged.fileTaskUseLastTemplateAsDefault;
+ if (!preserveFileTaskAfterCreate && !Object.prototype.hasOwnProperty.call(known, 'fileTaskAfterCreate')) delete merged.fileTaskAfterCreate;
+ if (!preserveInlineTaskAfterCreate && !Object.prototype.hasOwnProperty.call(known, 'inlineTaskAfterCreate')) delete merged.inlineTaskAfterCreate;
 	return merged;
 }
 
@@ -545,6 +558,9 @@ export function composeOperonSettingsFromDataPackage(
 		taskCardShowSourceAction: dataPackage.ui.taskUiPreferences.taskCardShowSourceAction !== false,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
+		statusDockClickAction: dataPackage.ui.statusDock?.clickAction,
+		statusDockMode: dataPackage.ui.statusDock?.mode,
+		statusDockAlignment: dataPackage.ui.statusDock?.alignment,
 		propertyValuePool: dataPackage.ui.propertyValuePool === undefined ? undefined : cloneUnknown(dataPackage.ui.propertyValuePool),
 		presetFavorites: isRecord(dataPackage.ui.presetFavorites)
 			? cloneUnknown(dataPackage.ui.presetFavorites)
@@ -609,6 +625,11 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		ui: {
+			...(normalized.statusDockClickAction === undefined && normalized.statusDockMode === undefined && normalized.statusDockAlignment === undefined ? {} : { statusDock: {
+				...(normalized.statusDockClickAction === undefined ? {} : { clickAction: normalized.statusDockClickAction }),
+				...(normalized.statusDockMode === undefined ? {} : { mode: normalized.statusDockMode }),
+				...(normalized.statusDockAlignment === undefined ? {} : { alignment: normalized.statusDockAlignment }),
+			} }),
 			...(normalized.propertyValuePool === undefined ? {} : { propertyValuePool: cloneUnknown(normalized.propertyValuePool) }),
 			contextualMenu: {
 				version: 1,
@@ -698,6 +719,8 @@ export function buildOperonDataPackageFromSettings(
 				childTaskInheritanceFields: [...normalized.childTaskInheritanceFields],
 				childTaskInheritanceStatusPipelineSource: normalized.childTaskInheritanceStatusPipelineSource,
 				taskCreatorDefaultToFileTask: normalized.taskCreatorDefaultToFileTask,
+    ...(normalized.fileTaskAfterCreate !== 'none' ? { fileTaskAfterCreate: normalized.fileTaskAfterCreate } : {}),
+    ...(normalized.inlineTaskAfterCreate !== 'none' ? { inlineTaskAfterCreate: normalized.inlineTaskAfterCreate } : {}),
 				taskCreatorDefaultFileTemplateId: normalized.taskCreatorDefaultFileTemplateId,
 				...(normalized.inlineTaskUseLastTemplateAsDefault ? { inlineTaskUseLastTemplateAsDefault: true } : {}),
 				...(normalized.fileTaskUseLastTemplateAsDefault ? { fileTaskUseLastTemplateAsDefault: true } : {}),
@@ -1177,6 +1200,7 @@ function mergeUiPackage(
 	}
 	const hasTaskUiPreferences = isRecord(existing.taskUiPreferences);
 	return {
+		...(isRecord(existing.statusDock) ? { statusDock: cloneUnknown(existing.statusDock) } : {}),
 		contextualMenu: isRecord(existing.contextualMenu)
 			? cloneUnknown(existing.contextualMenu)
 			: fallbackPackage.contextualMenu,

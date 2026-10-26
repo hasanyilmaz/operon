@@ -299,6 +299,7 @@ export interface TaskEditorContentOptions {
  readSource?: (operonId: string) => Promise<TaskEditorSourceSnapshot>;
 	onSetHideScrollbars?: (hidden: boolean) => Promise<void>;
 	focusDescriptionOnMount?: boolean;
+ canFocusInitialDescription?: () => boolean;
 	selectDescriptionOnMount?: boolean;
 	subtaskActionKind?: 'inline' | 'file';
 	onRequestSubtask?: (context: TaskEditorSubtaskRequest) => void | Promise<void>;
@@ -511,6 +512,7 @@ export class TaskEditorContent {
 	private deleteInProgress = false;
 	private hasBeenEdited = false;
 	private focusDescriptionOnMount = true;
+ private canFocusInitialDescription?: () => boolean;
 	private subtaskActionKind: 'inline' | 'file' = 'inline';
 	private onRequestSubtask: ((context: TaskEditorSubtaskRequest) => void | Promise<void>) | null = null;
 	private onRequestDelete: ((task: ParsedTask, expectedDirectChildCount: number) => void | Promise<boolean | void>) | null = null;
@@ -607,6 +609,10 @@ export class TaskEditorContent {
 	private mobileCoreToolbarEl: HTMLElement | null = null;
 	private mobileCoreToolsEl: HTMLElement | null = null;
 	private mobileCoreOverflowFrame: number | null = null;
+ private mobileCoreFrameWindow: Window | null = null;
+ private mobilePickerFrameWindow: Window | null = null;
+ private layoutWindow: Window | null = null;
+ private stopLayoutMigration: (() => void) | null = null;
 	private mobilePickerCloseFrame: number | null = null;
 	private mobileCoreButtonRefreshers = new Set<() => void>();
 	private fileBodyContext: TaskEditorFileBodyContext | null = null;
@@ -634,7 +640,8 @@ export class TaskEditorContent {
 		this.mobilePickerOpenDepth = Math.max(0, this.mobilePickerOpenDepth - 1);
 		if (this.mobilePickerOpenDepth > 0) return;
 		this.clearMobilePickerCloseFrame();
-		this.mobilePickerCloseFrame = getActiveWindow().requestAnimationFrame(() => {
+		this.mobilePickerFrameWindow = getOwnerWindow(this.rootEl);
+		this.mobilePickerCloseFrame = this.mobilePickerFrameWindow.requestAnimationFrame(() => {
 			this.mobilePickerCloseFrame = null;
 			if (this.mobilePickerOpenDepth > 0) return;
 			this.autoSizeMobileTextareas();
@@ -664,6 +671,7 @@ export class TaskEditorContent {
 		this.onSave = onSave;
 		this.timeTracker = timeTracker;
 		this.focusDescriptionOnMount = options.focusDescriptionOnMount ?? true;
+  this.canFocusInitialDescription = options.canFocusInitialDescription;
 		this.selectDescriptionOnMount = options.selectDescriptionOnMount ?? this.isNewTask;
 		this.subtaskActionKind = options.subtaskActionKind ?? 'inline';
 		this.onRequestSubtask = options.onRequestSubtask ?? null;
@@ -753,8 +761,9 @@ export class TaskEditorContent {
 			this.updateSourceContextLayout();
 		};
 		this.sourceContextResizeWindow.addEventListener('resize', this.sourceContextResizeHandler);
-		if (modal?.parentElement && typeof ResizeObserver !== 'undefined') {
-			this.sourceContextResizeObserver = new ResizeObserver(this.sourceContextResizeHandler);
+		const Resize = (this.sourceContextResizeWindow as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+		if (modal?.parentElement && typeof Resize !== 'undefined') {
+			this.sourceContextResizeObserver = new Resize(this.sourceContextResizeHandler);
 			this.sourceContextResizeObserver.observe(modal.parentElement);
 		}
 		this.sourceContextResizeHandler();
@@ -956,13 +965,15 @@ export class TaskEditorContent {
 		});
 	}
 
-	public applyInitialDescriptionFocus(): void {
+	public applyInitialDescriptionFocus(canFocus = this.canFocusInitialDescription): void {
 		if (!(this.isNewTask || this.focusDescriptionOnMount)) return;
 		this.clearInitialDescriptionFocusTimers();
+  if (canFocus?.() === false) return;
 		for (const delay of [0, 80, 180, 320, 520, 820]) {
 			const timer = setWindowTimeout(() => {
 				const timerIndex = this.initialDescriptionFocusTimers.indexOf(timer);
 				if (timerIndex !== -1) this.initialDescriptionFocusTimers.splice(timerIndex, 1);
+				if (canFocus?.() === false) { this.clearInitialDescriptionFocusTimers(); return; }
 				if (this.focusDescriptionField()) this.clearInitialDescriptionFocusTimers();
 			}, delay);
 			this.initialDescriptionFocusTimers.push(timer);
@@ -1966,7 +1977,7 @@ export class TaskEditorContent {
 	}
 
 	private autoSizeMobileTextarea(textarea: HTMLTextAreaElement, minHeightPx: number): void {
-		const style = window.getComputedStyle(textarea);
+		const style = getOwnerWindow(textarea).getComputedStyle(textarea);
 		const fontSize = Number.parseFloat(style.fontSize) || 15;
 		const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.35;
 		const verticalChrome = [
@@ -2030,7 +2041,8 @@ export class TaskEditorContent {
 	private scheduleMobileCoreToolbarOverflowState(): void {
 		if (!this.isPhone || !this.mobileCoreToolbarEl || !this.mobileCoreToolsEl) return;
 		if (this.mobileCoreOverflowFrame != null) return;
-		this.mobileCoreOverflowFrame = getActiveWindow().requestAnimationFrame(() => {
+		this.mobileCoreFrameWindow = getOwnerWindow(this.rootEl);
+		this.mobileCoreOverflowFrame = this.mobileCoreFrameWindow.requestAnimationFrame(() => {
 			this.mobileCoreOverflowFrame = null;
 			this.updateMobileCoreToolbarOverflowState();
 		});
@@ -2050,7 +2062,7 @@ export class TaskEditorContent {
 	private clearMobileCoreToolbarState(): void {
 		this.mobileCoreToolsEl?.removeEventListener('scroll', this.mobileCoreScrollHandler);
 		if (this.mobileCoreOverflowFrame != null) {
-			getActiveWindow().cancelAnimationFrame(this.mobileCoreOverflowFrame);
+			this.mobileCoreFrameWindow?.cancelAnimationFrame(this.mobileCoreOverflowFrame);
 			this.mobileCoreOverflowFrame = null;
 		}
 		this.mobileCoreToolbarEl = null;
@@ -2059,7 +2071,7 @@ export class TaskEditorContent {
 
 	private clearMobilePickerCloseFrame(): void {
 		if (this.mobilePickerCloseFrame == null) return;
-		getActiveWindow().cancelAnimationFrame(this.mobilePickerCloseFrame);
+		this.mobilePickerFrameWindow?.cancelAnimationFrame(this.mobilePickerCloseFrame);
 		this.mobilePickerCloseFrame = null;
 	}
 
@@ -2131,10 +2143,25 @@ export class TaskEditorContent {
 		this.scrollbarsObserver = null;
 		this.clearMobileCoreToolbarState();
 		this.clearInitialDescriptionFocusTimers();
-		window.removeEventListener('resize', this.mobileResizeHandler);
-		if (this.isPhone) {
-			window.addEventListener('resize', this.mobileResizeHandler);
-		}
+  this.stopLayoutMigration?.();
+  this.layoutWindow?.removeEventListener('resize', this.mobileResizeHandler);
+  this.layoutWindow = getOwnerWindow(container);
+  if (this.isPhone) this.layoutWindow.addEventListener('resize', this.mobileResizeHandler);
+  this.stopLayoutMigration = container.onWindowMigrated?.(() => {
+   const next = getOwnerWindow(container);
+   if (next === this.layoutWindow) return;
+   const toolbarPending = this.mobileCoreOverflowFrame !== null;
+   const pickerPending = this.mobilePickerCloseFrame !== null;
+   this.layoutWindow?.removeEventListener('resize', this.mobileResizeHandler);
+   if (this.mobileCoreOverflowFrame !== null) this.mobileCoreFrameWindow?.cancelAnimationFrame(this.mobileCoreOverflowFrame);
+   this.mobileCoreOverflowFrame = null; this.clearMobilePickerCloseFrame();
+   this.unregisterSourceContextViewportListener();
+   this.layoutWindow = next;
+   if (this.isPhone) next.addEventListener('resize', this.mobileResizeHandler);
+   this.registerSourceContextViewportListener();
+   if (toolbarPending) this.scheduleMobileCoreToolbarOverflowState();
+   if (pickerPending) { this.autoSizeMobileTextareas(); this.scheduleMobileCoreToolbarOverflowState(); }
+  }) ?? null;
 		this.trackerUnsubscribe?.();
 		this.trackerUnsubscribe = this.timeTracker.subscribe(event => this.handleTimeTrackerEvent(event));
 		this.indexUpdatesUnsubscribe?.();
@@ -2354,7 +2381,8 @@ export class TaskEditorContent {
   this.disposed = true;
   this.refreshQuickFinishControl = null;
 		this.checkboxSaveListenerController.abort();
-		window.removeEventListener('resize', this.mobileResizeHandler);
+		this.stopLayoutMigration?.(); this.stopLayoutMigration = null;
+  this.layoutWindow?.removeEventListener('resize', this.mobileResizeHandler);
 		this.pinnedCacheUnsubscribe?.();
 		this.pinnedCacheUnsubscribe = null;
 		this.trackerUnsubscribe?.();

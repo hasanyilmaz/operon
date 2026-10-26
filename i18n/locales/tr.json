@@ -27,6 +27,7 @@
 		"convertToInline": "YAML görevini satır içine dönüştür (panoya kopyala)",
 		"openTaskCreator": "Yeni Operon görevi oluştur",
 		"openTaskFinder": "Görev Bul",
+		"trackDifferentTask": "Farklı bir görevi takip et",
 		"createOrEditInlineTask": "Satır içi görev oluştur veya düzenle",
 		"convertTasksEmojiLineToInlineTask": "Tasks emoji satırını satır içi göreve dönüştür",
 		"convertSelectionToOperonTasks": "Seçimi Operon görevlerine dönüştür",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Canvas’a task ekle",
 		"addOperonTask": "Operon task ekle",
 		"convertCanvasTask": "Operon task’ına dönüştür…",
-		"addOperonGroup": "Operon Grubu ekle"
+		"addOperonGroup": "Operon Grubu ekle",
+		"toggleStatusDock": "Durum dock’unu aç/kapat"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Tekrarlanan File Task kimliklerini onar",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
+		"createdFileTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
 		"excalidrawPoolUnavailable": "Excalidraw Görev Havuzu kontrol API’si kullanılamıyor.",
 		"excalidrawTaskCleanupDeferred": "Excalidraw kartlarının otomatik temizliği tamamlanamadı. Görev değişikliği korundu.",
 		"excalidrawTaskSaveFailed": "Çizimin kaydedildiği doğrulanamadı. Kartı tekrar eklemeden önce çizimi kontrol edin.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Çakışan görev kopyası silinsin mi?",
 		"deleteMessage": "\"{{label}}\" kasa içinden silinsin mi?",
 		"statusBarConflictLabel": "{{count}} yinelenen görev kopyası algılandı. Çakışma yöneticisini aç.",
-		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü."
+		"statusBarResolvedLabel": "Yinelenen görev kopyaları çözüldü.",
+		"introDock": "Çakışan operonId kopyalarını burada çöz. Bu pencereyi istediğin zaman kapatıp komut paletinden veya durum dock’u uyarısından tekrar açabilirsin."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Bu çizimde üzeri örtülmemiş tek bir Operon görev kartına bırakın.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Bir satır içi görev Dosya Görevine dönüştürüldükten sonra kaynak notta ne kalacağını seçin.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Dosya Görevinin bağlantısını bırak",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Orijinal satır içi görevi kaldır",
+		"taskAfterCreateEditor": "Görev Düzenleyici (Lightbox)",
+		"inlineTaskAfterCreate": "Satır İçi Görev Oluşturduktan Sonra",
+		"inlineTaskAfterCreateDesc": "Task Creator ile oluşturulan Satır İçi Görevlerin nasıl açılacağını seçin.",
+		"inlineTaskAfterCreateFocusedTab": "Kaynağı Yeni Sekmede Aç (Odaklanmış)",
+		"inlineTaskAfterCreateBackgroundTab": "Kaynağı Yeni Sekmede Aç (Arka Plan)",
+		"fileTaskAfterCreate": "File Task oluşturulduktan sonra",
+		"fileTaskAfterCreateDesc": "Task Creator ile oluşturulan File Task görevlerinin nasıl açılacağını seçin.",
+		"fileTaskAfterCreateNone": "Açma",
+		"fileTaskAfterCreateFocusedTab": "Yeni sekme (odaklanmış)",
+		"fileTaskAfterCreateBackgroundTab": "Yeni sekme (arka plan)",
+		"fileTaskAfterCreateSource": "Kaynak dosya (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Kaynak dosya + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Yeni Satır İçi Görev Oluşturma Varsayılanları",
 		"newFileTaskCreationDefaults": "Yeni Dosya Görevi Oluşturma Varsayılanları",
 		"fileTaskTemplates": "Dosya Görevi Şablonları",
 		"checkboxConversion": "Onay Kutusu Dönüşümü",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Arka plan karartmasını azalt",
 		"backgroundDimmingSaveFailed": "Arka plan karartması kaydedilemedi.",
 		"lightboxSizeSaveFailed": "Lightbox boyutu kaydedilemedi.",
+		"statusDockSection": "Operon durum dock’u",
+		"statusDockMove": "Dock’u taşı",
+		"statusDockClickAction": "Tıklama davranışı",
+		"statusDockClickActionDesc": "Status dock’ta takip edilen veya sıradaki göreve tıkladığınızda neyin açılacağını seçin.",
 		"workspaceTweaksHideScrollbars": "Hide Scrollbars",
 		"workspaceTweaksShowScrollbars": "Kaydırma Çubuklarını Göster",
 		"workspaceTweaksHideScrollbarsDesc": "Normal kaydırma davranışını koruyarak Obsidian workspace genelindeki scrollbarları gizler.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Değişmeyen dosyalarla devam et",
 		"tasksBulkSkippedSource": "Taramadan farklı olduğu için atlandı: {{path}}",
 		"useLastTemplateAsDefault": "Son kullanılan şablonu varsayılan yap",
-		"useLastTemplateAsDefaultDesc": "Task Creator ile görev başarıyla oluşturulduğunda kullanılan şablonu bu görev türünün varsayılanı olarak kaydeder. Komutlar ve dönüştürme de bu varsayılanı kullanır."
+		"useLastTemplateAsDefaultDesc": "Task Creator ile görev başarıyla oluşturulduğunda kullanılan şablonu bu görev türünün varsayılanı olarak kaydeder. Komutlar ve dönüştürme de bu varsayılanı kullanır.",
+		"trackerShowStatusDockTimer": "Aktif sayacı durum dock’unda göster",
+		"trackerShowStatusDockTimerDesc": "Operon durum dock’unda boşta Play düğmesini, çalışırken aktif sayacı göster.",
+		"upcomingShowStatusDock": "Yaklaşan görevleri durum dock’unda göster",
+		"upcomingShowStatusDockDesc": "Geri sayımı biten görevi görünür tut ve yanına sıradaki zamanlı görevi ekle.",
+		"upcomingDockDaysDesc": "Bugün dahil, kenar çubuğu ve durum dock’unda kaç takvim günü gösterileceğini seç.",
+		"settingsPageTrackerDescDock": "Zaman takibi geçmişi, durum dock’u sayacı, FlowTime davranışı ve oturum bölme.",
+		"duplicateAlertDelayDescDock": "Operon'un yinelenen görev notice'larını, durum dock’u uyarılarını ve isteğe bağlı yönetici popup'ını göstermeden önce bekleyeceği süre."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Genişliği azalt",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Geçersiz hatırlatıcı"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Mevcut değer",
+		"textPickerCurrentValue": "Mevcut değer",
 		"creatorInlineTemplateProperties": "Inline görevlerde bu şablonun özellikleri göreve eklenir. Şablonun gövde metni dahil edilmez.",
 		"creatorMetadataChanged": "Özellik kuralları değişti. Oluşturmadan önce incelemek için Task Creator’ı yeniden açın.",
 		"creatorParentPreviewChanged": "Hedef, miras alınan değerleri değiştirdi. Güncel seçimleri inceleyip yeniden oluşturun.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Task kartı embed kodunu kopyala",
 		"canvasGroupTitle": "Grup kuralı",
 		"canvasGroupInvalid": "Desteklenen tek bir property ve geçerli değerler girin.",
-		"canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın."
+		"canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın.",
+		"dockSelectTask": "Bir görev seç veya yeni görev oluştur",
+		"dockNextTask": "Sıradaki görev",
+		"dockTaskCreatorTitle": "Görev Oluşturucu",
+		"dockCreateAndTrack": "Yeni görev oluştur ve zaman takibini başlat"
 	},
 	"indexStats": {
 		"title": "Operon İndeks",

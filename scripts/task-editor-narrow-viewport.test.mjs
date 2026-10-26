@@ -22,6 +22,7 @@ function fixture(wide, visible = false) {
  const code = ts.transpileModule('class TaskEditorContent { ' + methods + ' }', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  let disconnected = false; let observeCallback;
  const Observer = class { constructor(callback) { observeCallback = callback; } observe() {} disconnect() { disconnected = true; } };
+ owner.ResizeObserver = Observer;
  const Klass = new Function('getActiveWindow', 'ResizeObserver', 'cleanupOperonHoverTooltips', code + '; return TaskEditorContent;')(() => owner, Observer, () => {});
  const host = new Klass();
  let focus = 0, layouts = 0, destroys = 0;
@@ -131,6 +132,7 @@ function retirementFixture(device, format, wide) {
   getNativePropertyIndex: () => ({ observeDraftProperties: () => noOp }),
   TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT: 'picker-open', TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT: 'picker-close',
   window: { addEventListener: noOp, removeEventListener: noOp },
+  getOwnerWindow: () => globals.window,
   t: (_ns, key) => key, setIcon: noOp, getIcon: () => null,
   setAccessibleLabelWithoutTooltip: (el, label) => el.setAttr('aria-label', label),
   resolveSubtaskActionLabelKeyForKind: () => 'addSubtask', resolveSubtaskActionIconForKind: () => 'plus',

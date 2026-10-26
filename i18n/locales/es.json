@@ -27,6 +27,7 @@
 		"convertToInline": "Convertir tarea YAML a en línea (portapapeles)",
 		"openTaskCreator": "Crear nueva tarea de Operon",
 		"openTaskFinder": "Buscador de tareas",
+		"trackDifferentTask": "Registrar el tiempo de otra tarea",
 		"createOrEditInlineTask": "Crear o editar tarea en línea",
 		"convertTasksEmojiLineToInlineTask": "Convertir línea emoji de Tasks a tarea en línea",
 		"convertSelectionToOperonTasks": "Convertir selección a tareas de Operon",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Añadir tarea a Canvas",
 		"addOperonTask": "Añadir tarea de Operon",
 		"convertCanvasTask": "Convertir en tarea de Operon…",
-		"addOperonGroup": "Añadir grupo Operon"
+		"addOperonGroup": "Añadir grupo Operon",
+		"toggleStatusDock": "Mostrar/ocultar el dock de estado"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Reparar identidades de tareas de archivo recurrentes",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tareas modificadas en {{period}}"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "La tarea se creó, pero no se pudo abrir su vista.",
+		"createdFileTaskOpenFailed": "La tarea se creó, pero no se pudo abrir su vista.",
 		"excalidrawPoolUnavailable": "La API de control del grupo de tareas de Excalidraw no está disponible.",
 		"excalidrawTaskCleanupDeferred": "No se pudo completar la limpieza automática de tarjetas de Excalidraw. Se conservó el cambio de la tarea.",
 		"excalidrawTaskSaveFailed": "No se pudo verificar el guardado. Revisa el dibujo antes de añadir la tarjeta de nuevo.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "¿Eliminar la copia de tarea duplicada?",
 		"deleteMessage": "¿Eliminar \"{{label}}\" de la bóveda?",
 		"statusBarConflictLabel": "Se detectaron {{count}} copias de tareas duplicadas. Abrir el gestor de duplicados.",
-		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas."
+		"statusBarResolvedLabel": "Copias de tareas duplicadas resueltas.",
+		"introDock": "Aquí se resuelven los conflictos de operonId duplicados. Esta ventana se puede cerrar en cualquier momento y volver a abrir desde la paleta de comandos o la alerta de la dock de estado."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Suelta sobre una única tarjeta de tarea Operon sin obstrucciones en este dibujo.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Elige qué permanece en la nota de origen después de convertir una tarea en línea en una tarea de archivo.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Conservar un enlace a la tarea de archivo",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Eliminar la tarea en línea original",
+		"taskAfterCreateEditor": "Editor de tareas (Lightbox)",
+		"inlineTaskAfterCreate": "Después de crear una tarea en línea",
+		"inlineTaskAfterCreateDesc": "Elige cómo abrir las tareas en línea creadas con Task Creator.",
+		"inlineTaskAfterCreateFocusedTab": "Fuente en pestaña nueva (Enfocada)",
+		"inlineTaskAfterCreateBackgroundTab": "Fuente en pestaña nueva (En segundo plano)",
+		"fileTaskAfterCreate": "Después de crear una tarea de archivo",
+		"fileTaskAfterCreateDesc": "Elige cómo abrir las tareas de archivo creadas con Task Creator.",
+		"fileTaskAfterCreateNone": "No abrir",
+		"fileTaskAfterCreateFocusedTab": "Nueva pestaña (activa)",
+		"fileTaskAfterCreateBackgroundTab": "Nueva pestaña (en segundo plano)",
+		"fileTaskAfterCreateSource": "Archivo de origen (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Archivo de origen + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Valores predeterminados para crear nuevas tareas en línea",
 		"newFileTaskCreationDefaults": "Valores predeterminados para crear tareas de archivo",
 		"fileTaskTemplates": "Plantillas de tareas de archivo",
 		"checkboxConversion": "Conversión de casillas",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Reducir el oscurecimiento del fondo",
 		"backgroundDimmingSaveFailed": "No se pudo guardar el oscurecimiento del fondo.",
 		"lightboxSizeSaveFailed": "No se pudo guardar el tamaño de la lightbox.",
+		"statusDockSection": "Dock de estado de Operon",
+		"statusDockMove": "Mover dock",
+		"statusDockClickAction": "Comportamiento al hacer clic",
+		"statusDockClickActionDesc": "Elige qué se abre al hacer clic en una tarea en seguimiento o próxima en el dock.",
 		"workspaceTweaksHideScrollbars": "Ocultar barras de desplazamiento",
 		"workspaceTweaksShowScrollbars": "Mostrar barras de desplazamiento",
 		"workspaceTweaksHideScrollbarsDesc": "Ocultar las barras de desplazamiento en todo el espacio de trabajo de Obsidian manteniendo el comportamiento normal de desplazamiento.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Revisar archivos sin cambios",
 		"tasksBulkSkippedSource": "Omitido porque difiere del escaneo: {{path}}",
 		"useLastTemplateAsDefault": "Usar la última plantilla utilizada como predeterminada",
-		"useLastTemplateAsDefaultDesc": "Tras crear una tarea correctamente en Task Creator, guardar la plantilla utilizada como predeterminada para este tipo de tarea. Los comandos y las conversiones también usan esta plantilla."
+		"useLastTemplateAsDefaultDesc": "Tras crear una tarea correctamente en Task Creator, guardar la plantilla utilizada como predeterminada para este tipo de tarea. Los comandos y las conversiones también usan esta plantilla.",
+		"trackerShowStatusDockTimer": "Mostrar el temporizador activo en el dock de estado",
+		"trackerShowStatusDockTimerDesc": "Mostrar el botón de inicio en reposo y el temporizador activo en el dock de estado de Operon.",
+		"upcomingShowStatusDock": "Mostrar las próximas tareas en el dock de estado",
+		"upcomingShowStatusDockDesc": "Mantener la tarea actual al terminar la cuenta atrás y mostrar la siguiente tarea con hora a su lado.",
+		"upcomingDockDaysDesc": "Elegir cuántos días mostrar en la barra lateral y el dock de estado, incluido hoy.",
+		"settingsPageTrackerDescDock": "Historial de registro de tiempo, temporizador de la dock de estado, comportamiento de FlowTime y división de sesiones.",
+		"duplicateAlertDelayDescDock": "Cuánto tiempo espera Operon antes de mostrar los avisos de duplicados, las alertas de la dock de estado y la ventana emergente opcional del gestor."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Reducir ancho",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Recordatorio no válido"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Valor actual",
+		"textPickerCurrentValue": "Valor actual",
 		"creatorInlineTemplateProperties": "En las tareas inline, las propiedades de esta plantilla se añaden a la tarea. El texto del cuerpo de la plantilla no se incluye.",
 		"creatorMetadataChanged": "Las reglas de propiedades cambiaron. Vuelve a abrir Task Creator para revisarlas antes de crear.",
 		"creatorParentPreviewChanged": "El destino cambió los valores heredados. Revisa las selecciones actualizadas y vuelve a crear.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Copiar código de tarjeta de tarea",
 		"canvasGroupTitle": "Regla del grupo",
 		"canvasGroupInvalid": "Introduce una propiedad compatible y valores válidos.",
-		"canvasGroupChanged": "Los ajustes de propiedades cambiaron. Vuelve a abrir el editor del grupo."
+		"canvasGroupChanged": "Los ajustes de propiedades cambiaron. Vuelve a abrir el editor del grupo.",
+		"dockSelectTask": "Seleccionar o crear una tarea",
+		"dockNextTask": "Siguiente tarea",
+		"dockTaskCreatorTitle": "Creador de tareas",
+		"dockCreateAndTrack": "Crear una tarea e iniciar el seguimiento del tiempo"
 	},
 	"indexStats": {
 		"title": "Índice de Operon",

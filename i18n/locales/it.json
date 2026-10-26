@@ -27,6 +27,7 @@
 		"convertToInline": "Converti attività YAML in attività in linea (appunti)",
 		"openTaskCreator": "Crea nuova attività Operon",
 		"openTaskFinder": "Ricerca attività",
+		"trackDifferentTask": "Monitora un’altra attività",
 		"createOrEditInlineTask": "Crea o modifica attività in linea",
 		"convertTasksEmojiLineToInlineTask": "Converti riga emoji Tasks in attività in linea",
 		"convertSelectionToOperonTasks": "Converti selezione in attività Operon",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Aggiungi task a Canvas",
 		"addOperonTask": "Aggiungi task Operon",
 		"convertCanvasTask": "Converti in attività Operon…",
-		"addOperonGroup": "Aggiungi gruppo Operon"
+		"addOperonGroup": "Aggiungi gruppo Operon",
+		"toggleStatusDock": "Mostra/nascondi il dock di stato"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Ripara identità delle attività-file ricorrenti",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} attività modificate {{period}}"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la sua vista.",
+		"createdFileTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la relativa vista.",
 		"excalidrawPoolUnavailable": "L’API di controllo del pool attività Excalidraw non è disponibile.",
 		"excalidrawTaskCleanupDeferred": "La pulizia automatica delle schede Excalidraw non è stata completata. La modifica dell’attività è stata mantenuta.",
 		"excalidrawTaskSaveFailed": "Impossibile verificare il salvataggio. Controlla il disegno prima di aggiungere nuovamente la scheda.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Eliminare la copia duplicata dell'attività?",
 		"deleteMessage": "Eliminare \"{{label}}\" dalla cassaforte?",
 		"statusBarConflictLabel": "{{count}} copie di attività duplicate rilevate. Apri il gestore duplicati.",
-		"statusBarResolvedLabel": "Copie di attività duplicate risolte."
+		"statusBarResolvedLabel": "Copie di attività duplicate risolte.",
+		"introDock": "Risolvi qui i conflitti di operonId duplicati. Puoi chiudere questa finestra in qualsiasi momento e riaprirla dalla tavolozza dei comandi o dall'avviso nella dock di stato."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Rilascia su una singola scheda attività Operon non coperta in questo disegno.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Scegli cosa rimane nella nota di origine dopo che un’attività in linea viene convertita in un’attività-file.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Mantieni un collegamento all’attività-file",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Rimuovi l’attività in linea originale",
+		"taskAfterCreateEditor": "Editor attività (Lightbox)",
+		"inlineTaskAfterCreate": "Dopo la creazione di un’attività inline",
+		"inlineTaskAfterCreateDesc": "Scegli come aprire le attività inline create con Task Creator.",
+		"inlineTaskAfterCreateFocusedTab": "Sorgente in nuova scheda (In primo piano)",
+		"inlineTaskAfterCreateBackgroundTab": "Sorgente in nuova scheda (In secondo piano)",
+		"fileTaskAfterCreate": "Dopo la creazione di un’attività file",
+		"fileTaskAfterCreateDesc": "Scegli come aprire le attività file create con Task Creator.",
+		"fileTaskAfterCreateNone": "Non aprire",
+		"fileTaskAfterCreateFocusedTab": "Nuova scheda (attiva)",
+		"fileTaskAfterCreateBackgroundTab": "Nuova scheda (in secondo piano)",
+		"fileTaskAfterCreateSource": "File sorgente (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "File sorgente + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Impostazioni predefinite per nuove attività inline",
 		"newFileTaskCreationDefaults": "Valori predefiniti creazione nuova attività-file",
 		"fileTaskTemplates": "Modelli attività-file",
 		"checkboxConversion": "Conversione caselle di controllo",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Riduci l’oscuramento dello sfondo",
 		"backgroundDimmingSaveFailed": "Impossibile salvare l’oscuramento dello sfondo.",
 		"lightboxSizeSaveFailed": "Impossibile salvare le dimensioni della lightbox.",
+		"statusDockSection": "Dock di stato Operon",
+		"statusDockMove": "Sposta dock",
+		"statusDockClickAction": "Comportamento al clic",
+		"statusDockClickActionDesc": "Scegli cosa aprire facendo clic su un’attività monitorata o successiva nel dock.",
 		"workspaceTweaksHideScrollbars": "Nascondi barre di scorrimento",
 		"workspaceTweaksShowScrollbars": "Mostra barre di scorrimento",
 		"workspaceTweaksHideScrollbarsDesc": "Nascondi le barre di scorrimento in tutta l'area di lavoro di Obsidian mantenendo il comportamento di scorrimento normale.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Rivedi i file invariati",
 		"tasksBulkSkippedSource": "Ignorato perché diverso dalla scansione: {{path}}",
 		"useLastTemplateAsDefault": "Usa l’ultimo modello utilizzato come predefinito",
-		"useLastTemplateAsDefaultDesc": "Dopo la creazione riuscita in Task Creator, salva il modello utilizzato come predefinito per questo tipo di attività. Anche i comandi e le conversioni usano questo modello."
+		"useLastTemplateAsDefaultDesc": "Dopo la creazione riuscita in Task Creator, salva il modello utilizzato come predefinito per questo tipo di attività. Anche i comandi e le conversioni usano questo modello.",
+		"trackerShowStatusDockTimer": "Mostra il timer attivo nel dock di stato",
+		"trackerShowStatusDockTimerDesc": "Mostra il pulsante di avvio a riposo e il timer attivo nel dock di stato Operon.",
+		"upcomingShowStatusDock": "Mostra le attività imminenti nel dock di stato",
+		"upcomingShowStatusDockDesc": "Mantieni visibile l’attività corrente al termine del conto alla rovescia e mostra accanto la prossima attività con orario.",
+		"upcomingDockDaysDesc": "Scegli quanti giorni mostrare nella barra laterale e nel dock di stato, incluso oggi.",
+		"settingsPageTrackerDescDock": "Cronologia del monitoraggio del tempo, timer nella dock di stato, comportamento FlowTime e suddivisione delle sessioni.",
+		"duplicateAlertDelayDescDock": "Per quanto tempo Operon attende prima di mostrare gli avvisi di duplicati, gli avvisi nella dock di stato e il popup opzionale del gestore."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Riduci larghezza",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Promemoria non valido"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Valore attuale",
+		"textPickerCurrentValue": "Valore attuale",
 		"creatorInlineTemplateProperties": "Per le attività inline, le proprietà di questo modello vengono aggiunte all’attività. Il testo del corpo del modello non viene incluso.",
 		"creatorMetadataChanged": "Le regole delle proprietà sono cambiate. Riapri Task Creator per verificarle prima della creazione.",
 		"creatorParentPreviewChanged": "La destinazione ha modificato i valori ereditati. Controlla le selezioni aggiornate e crea di nuovo.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Copia codice della scheda attività",
 		"canvasGroupTitle": "Regola del gruppo",
 		"canvasGroupInvalid": "Inserisci una proprietà supportata e valori validi.",
-		"canvasGroupChanged": "Le impostazioni delle proprietà sono cambiate. Riapri l’editor del gruppo."
+		"canvasGroupChanged": "Le impostazioni delle proprietà sono cambiate. Riapri l’editor del gruppo.",
+		"dockSelectTask": "Seleziona o crea una nuova attività",
+		"dockNextTask": "Attività successiva",
+		"dockTaskCreatorTitle": "Creatore di attività",
+		"dockCreateAndTrack": "Crea una nuova attività e avvia il monitoraggio del tempo"
 	},
 	"indexStats": {
 		"title": "Indice Operon",

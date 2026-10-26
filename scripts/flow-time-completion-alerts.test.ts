@@ -1,3 +1,4 @@
+import { runFlowTimeBreakTests } from './flow-time-break.test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -27,6 +28,7 @@ function observe(
 }
 
 async function run(): Promise<void> {
+	await runFlowTimeBreakTests();
 	const missing = migrateSettings({});
 	equal(missing.flowTimePlayReminderSoundOnTargetReached, false, 'missing setting defaults to silent FlowTime completion');
 	equal(
@@ -125,16 +127,17 @@ async function run(): Promise<void> {
 	equal(soundWarnings.length, 2, 'missing and unsupported Reminder sounds warn once without failing FlowTime completion');
 
 	const pluginRoot = process.cwd();
-	const [flowTimeSource, settingsSource, settingsRegistrySource, mainSource, reminderSource, englishLocale] = await Promise.all([
+	const [flowTimeSource, settingsSource, settingsRegistrySource, mainSource, reminderSource, englishLocale, breakSource] = await Promise.all([
 		readFile(path.join(pluginRoot, 'src/ui/flow-time-view.ts'), 'utf8'),
 		readFile(path.join(pluginRoot, 'src/ui/settings-tab.ts'), 'utf8'),
 		readFile(path.join(pluginRoot, 'src/ui/settings/settings-search-registry.ts'), 'utf8'),
 		readFile(path.join(pluginRoot, 'main.ts'), 'utf8'),
 		readFile(path.join(pluginRoot, 'src/systems/reminder-delivery.ts'), 'utf8'),
 		readFile(path.join(pluginRoot, 'i18n/locales/en.json'), 'utf8'),
+		readFile(path.join(pluginRoot, 'src/systems/flow-time-break.ts'), 'utf8'),
 	]);
 	assert.match(flowTimeSource, /this\.notifyIfTargetReached\(settings, active\);\s*this\.playReminderSoundIfTargetReached\(settings, active\);/u, 'notice and sound paths remain independent');
-	assert.match(flowTimeSource, /kind: 'break'/u, 'FlowTime break uses the sound-boundary tracker');
+	assert.match(breakSource, /kind: 'break'/u, 'shared FlowTime break uses the sound-boundary tracker');
 	assert.doesNotMatch(flowTimeSource.match(/private playReminderSoundIfTargetReached[\s\S]*?(?=\n\tprivate )/u)?.[0] ?? '', /new Notice\(/u, 'break sound path never creates a notice');
 	assert.match(settingsSource, /flowTimePlayReminderSoundOnTargetReached/u, 'FlowTime settings render the sound toggle');
 	assert.match(settingsRegistrySource, /flowTimePlayReminderSoundOnTargetReached/u, 'settings search indexes the sound toggle');

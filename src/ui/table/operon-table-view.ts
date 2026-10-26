@@ -44,7 +44,7 @@ import {
 	resolveTablePresetFilterSet,
 	resolveTableDurationDisplayMode,
 } from '../../types/table';
-import { parseOperonTableFile } from '../../storage/table-file';
+import { parseOperonTableFile, serializeOperonTableFile } from '../../storage/table-file';
 import type { OperonTableFileDiagnostic } from '../../types/table-file';
 import type { TablePresetRegistryPatchControl } from '../../types/table-preset-registry';
 import { evaluateTableQuerySummaries, queryTableRows, sortTableTaskTreeSiblings, type TableQueryGroup, type TableQueryResult, type TableQuerySubgroup } from '../../systems/table-query';
@@ -263,7 +263,7 @@ import {
 	type TrackerSessionTaskNoteOptions,
 } from '../tracker-session-edit-modal';
 import { formatDurationHuman } from '../../systems/tracker-utils';
-import { getOwnerWindow } from '../../core/dom-compat';
+import { asHTMLElement, getOwnerWindow } from '../../core/dom-compat';
 import { getAppLocale } from '../../core/obsidian-app';
 import type { ContextualMenuActionHandler } from '../../core/contextual-menu-engine';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
@@ -447,6 +447,9 @@ export class OperonTableView extends FileView {
 		scrollLeft: 0,
 	};
 	private renderFrame: number | null = null;
+ private renderFrameWindow: Window | null = null;
+ private visibleRowsFrameWindow: Window | null = null;
+ private tableWindowCleanup: (() => void) | null = null;
 	private visibleRowsFrame: number | null = null;
 	private horizontalScrollerEl: HTMLElement | null = null;
 	private bodyScrollerEl: HTMLElement | null = null;
@@ -486,7 +489,19 @@ export class OperonTableView extends FileView {
 	private readonly headerInteractionState: TableHeaderInteractionState = createTableHeaderInteractionState();
 	private pendingCellKey: string | null = null;
 	private pendingFocusKey: string | null = null;
-	private pendingSearchFocus: { start: number; end: number } | null = null;
+	private pendingSearchFocus: {
+		input: HTMLInputElement | null;
+		ownerDocument: Document;
+		start: number;
+		end: number;
+		explicit: boolean;
+		origin: Element | null;
+		migrated: boolean;
+	} | null = null;
+	private searchBlurJob: { owner: Window; id: number | null } | null = null;
+	private searchFocusFrame: { owner: Window; id: number | null } | null = null;
+	private searchFocusIntentCleanup: (() => void) | null = null;
+	private searchFocusClosed = false;
 	private pendingMobileTextInputRender = false;
 	private mobileViewportCleanup: (() => void) | null = null;
 	private mobileScrollGestureUntil = 0;
@@ -540,6 +555,17 @@ export class OperonTableView extends FileView {
 
 	getViewType(): string {
 		return this.fileMode ? OPERON_TABLE_FILE_VIEW_TYPE : OPERON_TABLE_VIEW_TYPE;
+	}
+
+	/** Read the stored definition plus queued patches, never the sanitized render projection. */
+	getPropertySourceSnapshot(): string | null {
+		if (this.fileMode && (!this.file || this.fileLoadState !== 'loaded')) return null;
+		const preset = this.getCurrentPreset();
+		if (!preset) return null;
+		const source = serializeOperonTableFile(preset);
+		if (!this.fileMode || !this.callbacks.resolveTableFile) return source;
+		const resolved = this.callbacks.resolveTableFile(this.file!.path, source);
+		return resolved.preset ? serializeOperonTableFile(resolved.preset) : null;
 	}
 
 	getDisplayText(): string {
@@ -630,19 +656,44 @@ export class OperonTableView extends FileView {
 	}
 
 	async onOpen(): Promise<void> {
+		this.searchFocusClosed = false;
 		registerFilterDayRefresh(this, () => { this.markDirty(); this.render(); });
 		this.state = this.ensureState();
 		this.syncTableSearchStateFromPreset(this.getCurrentPreset(), { force: true });
 		this.syncLeafTitle();
 		this.registerEvent(this.app.workspace.on('css-change', () => { this.markDirty(); }));
-		this.registerDomEvent(window, 'resize', () => {
-			this.closeActivePicker();
-			this.scheduleVisibleRowsRender();
-		});
+  this.tableWindowCleanup?.();
+  let owner = getOwnerWindow(this.contentEl);
+  const resize = (): void => { this.closeActivePicker(); this.scheduleVisibleRowsRender(); };
+  owner.addEventListener('resize', resize);
+  const stopMigration = this.contentEl.onWindowMigrated?.(() => {
+   const next = getOwnerWindow(this.contentEl);
+   if (owner === next) return;
+   const renderPending = this.renderFrame !== null, rowsPending = this.visibleRowsFrame !== null;
+   owner.removeEventListener('resize', resize);
+   if (this.renderFrame !== null) this.renderFrameWindow?.cancelAnimationFrame(this.renderFrame);
+   if (this.visibleRowsFrame !== null) this.visibleRowsFrameWindow?.cancelAnimationFrame(this.visibleRowsFrame);
+   this.renderFrame = null; this.visibleRowsFrame = null;
+   owner = next; owner.addEventListener('resize', resize);
+   this.cancelSearchFocusWork();
+   const focus = this.pendingSearchFocus;
+   if (focus) {
+    focus.migrated = true;
+    focus.ownerDocument = this.contentEl.ownerDocument;
+    this.watchSearchFocusIntent();
+   }
+   if (renderPending) this.scheduleRender();
+   if (rowsPending) this.scheduleVisibleRowsRender();
+   if (!renderPending) this.restoreSearchFocus();
+  });
+  this.tableWindowCleanup = () => { stopMigration?.(); owner.removeEventListener('resize', resize); };
 		this.render();
 	}
 
 	async onClose(): Promise<void> {
+		this.searchFocusClosed = true;
+		this.clearSearchFocus();
+  this.tableWindowCleanup?.(); this.tableWindowCleanup = null;
 		clearTableNativePending(this.contentEl);
 		clearTableNativePropertySnapshot(this);
 		this.presetSelectionGeneration += 1;
@@ -654,11 +705,11 @@ export class OperonTableView extends FileView {
 		this.pendingMobileTextInputRender = false;
 		this.mobileScrollGestureUntil = 0;
 		if (this.renderFrame !== null) {
-			window.cancelAnimationFrame(this.renderFrame);
+			this.renderFrameWindow?.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
 		}
 		if (this.visibleRowsFrame !== null) {
-			window.cancelAnimationFrame(this.visibleRowsFrame);
+			this.visibleRowsFrameWindow?.cancelAnimationFrame(this.visibleRowsFrame);
 			this.visibleRowsFrame = null;
 		}
 		this.persistStateScheduler.cancel();
@@ -870,7 +921,7 @@ export class OperonTableView extends FileView {
 		}
 		const renderStartedAt = enginePerfNow();
 		if (this.renderFrame !== null) {
-			window.cancelAnimationFrame(this.renderFrame);
+			this.renderFrameWindow?.cancelAnimationFrame(this.renderFrame);
 			this.renderFrame = null;
 		}
 		this.state = this.ensureState();
@@ -887,14 +938,16 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		const previousRenderState = this.currentRenderState ?? getPendingTableRenderState<TableRenderState>(this.contentEl);
-		const activeElement = this.contentEl.ownerDocument.activeElement;
-		const activeSearchInput = activeElement instanceof HTMLInputElement
+		const activeElement = asHTMLElement(this.contentEl.ownerDocument.activeElement, this.contentEl);
+		const activeSearchInput = activeElement?.tagName === 'INPUT'
 			&& activeElement.matches('.operon-table-search-input')
 			&& this.contentEl.contains(activeElement)
-			? activeElement
+			? activeElement as HTMLInputElement
 			: null;
-		if (activeSearchInput) {
-			this.pendingSearchFocus = captureTableSearchFocusRange(activeSearchInput);
+		if (activeSearchInput && !this.pendingSearchFocus?.explicit) {
+			this.rememberSearchFocus(activeSearchInput);
+		} else if (!this.canRestoreSearchFocus()) {
+			this.clearSearchFocus();
 		}
 
 		const settings = this.getSettings();
@@ -1225,7 +1278,10 @@ export class OperonTableView extends FileView {
 
 	private scheduleRender(): void {
 		if (this.renderFrame !== null) return;
-		this.renderFrame = window.requestAnimationFrame(() => {
+		if (this.searchFocusFrame?.id != null) this.searchFocusFrame.owner.cancelAnimationFrame(this.searchFocusFrame.id);
+		this.searchFocusFrame = null;
+		this.renderFrameWindow = getOwnerWindow(this.contentEl);
+		this.renderFrame = this.renderFrameWindow.requestAnimationFrame(() => {
 			this.renderFrame = null;
 			this.render();
 		});
@@ -1435,23 +1491,37 @@ export class OperonTableView extends FileView {
 		});
 		setAccessibleLabelWithoutTooltip(searchInput, searchPlaceholder);
 		searchInput.value = searchQuery;
+		searchInput.addEventListener('focus', () => this.rememberSearchFocus(searchInput));
 		searchInput.addEventListener('compositionstart', () => {
 			this.isSearchComposing = true;
 		});
 		searchInput.addEventListener('compositionend', () => {
 			this.isSearchComposing = false;
-			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
+			this.rememberSearchFocus(searchInput);
 			this.handleTableSearchInput(searchInput, true);
 		});
 		searchInput.addEventListener('input', () => {
-			this.pendingSearchFocus = captureTableSearchFocusRange(searchInput);
+			this.rememberSearchFocus(searchInput);
 			if (!this.isSearchComposing) {
 				this.handleTableSearchInput(searchInput, false);
 			}
 		});
-		searchInput.addEventListener('blur', () => {
-			getOwnerWindow(searchInput).setTimeout(() => {
-				if (shouldReleaseTableSearchFocusLease(searchInput)) this.pendingSearchFocus = null;
+		searchInput.addEventListener('blur', event => {
+			const focus = this.pendingSearchFocus;
+			if (!focus || focus.input !== searchInput) return;
+			if (event.relatedTarget && event.relatedTarget !== searchInput) {
+				this.clearSearchFocus();
+				return;
+			}
+			Object.assign(focus, captureTableSearchFocusRange(searchInput));
+			if (this.searchBlurJob?.id != null) this.searchBlurJob.owner.clearTimeout(this.searchBlurJob.id);
+			const job = { owner: getOwnerWindow(searchInput), id: null as number | null };
+			this.searchBlurJob = job;
+			job.id = job.owner.setTimeout(() => {
+				if (this.searchBlurJob !== job) return;
+				this.searchBlurJob = null;
+				if (this.pendingSearchFocus !== focus || focus.ownerDocument !== searchInput.ownerDocument) return;
+				if (shouldReleaseTableSearchFocusLease(searchInput)) this.clearSearchFocus();
 			}, 0);
 		});
 		searchInput.addEventListener('keydown', event => {
@@ -1490,7 +1560,7 @@ export class OperonTableView extends FileView {
 			setIcon(clearButton, 'x');
 			clearButton.addEventListener('click', event => {
 				event.preventDefault();
-				this.pendingSearchFocus = { start: 0, end: 0 };
+				this.rememberSearchFocus(searchInput, true, { start: 0, end: 0 });
 				this.clearTableSearchState();
 			});
 		}
@@ -4113,6 +4183,7 @@ export class OperonTableView extends FileView {
 	}
 
 	private closeSearchTransientUi(): void {
+		this.clearSearchFocus();
 		const activeElement = this.contentEl.ownerDocument.activeElement;
 		if (activeElement?.matches('.operon-table-search-input') && this.contentEl.contains(activeElement)) {
 			(activeElement as HTMLInputElement).blur();
@@ -4154,7 +4225,8 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		this.scrollPerformance.recordScheduleRequest(true);
-		this.visibleRowsFrame = window.requestAnimationFrame(() => {
+		this.visibleRowsFrameWindow = getOwnerWindow(this.contentEl);
+		this.visibleRowsFrame = this.visibleRowsFrameWindow.requestAnimationFrame(() => {
 			this.visibleRowsFrame = null;
 			const perfStartedAt = this.scrollPerformance.beginRafRun();
 			try {
@@ -4744,13 +4816,69 @@ export class OperonTableView extends FileView {
 		});
 	}
 
+	private cancelSearchFocusWork(): void {
+		if (this.searchBlurJob?.id != null) this.searchBlurJob.owner.clearTimeout(this.searchBlurJob.id);
+		if (this.searchFocusFrame?.id != null) this.searchFocusFrame.owner.cancelAnimationFrame(this.searchFocusFrame.id);
+		this.searchBlurJob = null;
+		this.searchFocusFrame = null;
+		this.searchFocusIntentCleanup?.();
+		this.searchFocusIntentCleanup = null;
+	}
+
+	private clearSearchFocus(): void {
+		this.cancelSearchFocusWork();
+		this.pendingSearchFocus = null;
+	}
+
+	private watchSearchFocusIntent(): void {
+		const focus = this.pendingSearchFocus;
+		if (!focus?.explicit) return;
+		const doc = focus.ownerDocument;
+		const onFocus = (event: FocusEvent): void => {
+			if (this.pendingSearchFocus === focus && event.target !== focus.input) this.clearSearchFocus();
+		};
+		doc.addEventListener('focusin', onFocus, true);
+		this.searchFocusIntentCleanup = () => doc.removeEventListener('focusin', onFocus, true);
+	}
+
+	private rememberSearchFocus(
+		input: HTMLInputElement | null,
+		explicit = false,
+		range?: { start: number; end: number },
+	): void {
+		if (this.searchFocusClosed) return;
+		const doc = this.contentEl.ownerDocument;
+		if (!explicit && (!input || doc.activeElement !== input || !this.contentEl.contains(input))) return;
+		this.clearSearchFocus();
+		const end = this.state.searchQuery.length;
+		this.pendingSearchFocus = {
+			input, ownerDocument: doc, explicit, origin: doc.activeElement, migrated: false,
+			...(range ?? (input ? captureTableSearchFocusRange(input) : { start: end, end })),
+		};
+		this.watchSearchFocusIntent();
+	}
+
+	private canRestoreSearchFocus(): boolean {
+		const focus = this.pendingSearchFocus;
+		if (!focus || this.searchFocusClosed || !this.contentEl.isConnected) return false;
+		const doc = this.contentEl.ownerDocument;
+		const active = doc.activeElement;
+		if (active === focus.input && this.contentEl.contains(focus.input)) return true;
+		const emptyFocus = !active || active === doc.body || active === doc.documentElement;
+		if (focus.explicit) return emptyFocus || active === focus.origin;
+		if (!emptyFocus) return false;
+		return focus.migrated || focus.ownerDocument !== doc || !focus.input?.isConnected;
+	}
+
 	private focusTableSearchInput(): void {
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
-		const fallbackPosition = input?.value.length ?? this.ensureState().searchQuery.length;
-		this.pendingSearchFocus = input
-			? captureTableSearchFocusRange(input)
-			: { start: fallbackPosition, end: fallbackPosition };
-		window.requestAnimationFrame(() => {
+		this.rememberSearchFocus(input, true);
+		if (this.searchFocusClosed || this.renderFrame !== null) return;
+		const frame = { owner: getOwnerWindow(this.contentEl), id: null as number | null };
+		this.searchFocusFrame = frame;
+		frame.id = frame.owner.requestAnimationFrame(() => {
+			if (this.searchFocusFrame !== frame) return;
+			this.searchFocusFrame = null;
 			this.restoreSearchFocus();
 		});
 	}
@@ -5017,15 +5145,20 @@ export class OperonTableView extends FileView {
 	private restoreSearchFocus(): void {
 		const pending = this.pendingSearchFocus;
 		if (!pending) return;
+		if (!this.canRestoreSearchFocus()) {
+			this.clearSearchFocus();
+			return;
+		}
 		const input = this.contentEl.querySelector<HTMLInputElement>('.operon-table-search-input');
 		if (!input) return;
-		this.pendingSearchFocus = null;
+		this.clearSearchFocus();
 		input.focus({ preventScroll: true });
 		try {
 			input.setSelectionRange(pending.start, pending.end);
 		} catch {
 			// Some input types/themes may reject programmatic selection; focus restoration is enough.
 		}
+		this.rememberSearchFocus(input);
 	}
 
 	private isSearchEmpty(scopedTaskCount: number): boolean {

@@ -27,6 +27,7 @@
 		"convertToInline": "Convert YAML task to inline (clipboard)",
 		"openTaskCreator": "Create New Operon Task",
 		"openTaskFinder": "Task Finder",
+		"trackDifferentTask": "Track a different task",
 		"createOrEditInlineTask": "Create or edit inline task",
 		"convertTasksEmojiLineToInlineTask": "Convert Tasks emoji line to inline task",
 		"convertSelectionToOperonTasks": "Convert Selection to Operon Tasks",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Add task to Canvas",
 		"addOperonTask": "Add Operon task",
 		"convertCanvasTask": "Convert to Operon task…",
-		"addOperonGroup": "Add Operon Group"
+		"addOperonGroup": "Add Operon Group",
+		"toggleStatusDock": "Toggle status dock"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Repair recurring File Task identities",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tasks modified in the {{period}}"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "The task was created, but its view could not be opened.",
+		"createdFileTaskOpenFailed": "The task was created, but its view could not be opened.",
 		"excalidrawPoolUnavailable": "Excalidraw’s Task Pool control API is unavailable.",
 		"excalidrawTaskCleanupDeferred": "Automatic Excalidraw card cleanup could not be completed. The task change was kept.",
 		"excalidrawTaskSaveFailed": "The drawing save could not be verified. Check the drawing before adding the card again.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Delete duplicate task copy?",
 		"deleteMessage": "Delete \"{{label}}\" from the vault?",
 		"statusBarConflictLabel": "{{count}} duplicate task copies detected. Open duplicate manager.",
-		"statusBarResolvedLabel": "Duplicate task copies resolved."
+		"statusBarResolvedLabel": "Duplicate task copies resolved.",
+		"introDock": "Resolve duplicate operonId conflicts here. You can close this window anytime and reopen it from the command palette or status dock alert."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Drop onto one unobscured Operon task card in this drawing.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Choose what remains in the source note after an inline task is converted to a File Task.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Keep a link to the File Task",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Remove the original inline task",
+		"taskAfterCreateEditor": "Task Editor (Lightbox)",
+		"inlineTaskAfterCreate": "After Creating an Inline Task",
+		"inlineTaskAfterCreateDesc": "Choose how to open Inline Tasks created through Task Creator.",
+		"inlineTaskAfterCreateFocusedTab": "Source in New Tab (Focused)",
+		"inlineTaskAfterCreateBackgroundTab": "Source in New Tab (Background)",
+		"fileTaskAfterCreate": "After Creating a File Task",
+		"fileTaskAfterCreateDesc": "Choose how to open File Tasks created through Task Creator.",
+		"fileTaskAfterCreateNone": "Do Not Open",
+		"fileTaskAfterCreateFocusedTab": "New Tab (Focused)",
+		"fileTaskAfterCreateBackgroundTab": "New Tab (Background)",
+		"fileTaskAfterCreateSource": "Source File (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Source File + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "New Inline Task Creation Defaults",
 		"newFileTaskCreationDefaults": "New File Task Creation Defaults",
 		"fileTaskTemplates": "File Task Templates",
 		"checkboxConversion": "Checkbox Conversion",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Decrease background dimming",
 		"backgroundDimmingSaveFailed": "Background dimming could not be saved.",
 		"lightboxSizeSaveFailed": "Lightbox size could not be saved.",
+		"statusDockSection": "Operon status dock",
+		"statusDockMove": "Move dock",
+		"statusDockClickAction": "Click behavior",
+		"statusDockClickActionDesc": "Choose what opens when you click a tracked or upcoming task in the status dock.",
 		"workspaceTweaksHideScrollbars": "Hide Scrollbars",
 		"workspaceTweaksShowScrollbars": "Show Scrollbars",
 		"workspaceTweaksHideScrollbarsDesc": "Hide scrollbars across the Obsidian workspace while keeping normal scrolling behavior.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Review unchanged files",
 		"tasksBulkSkippedSource": "Skipped because it differs from the scan: {{path}}",
 		"useLastTemplateAsDefault": "Use last used template as default",
-		"useLastTemplateAsDefaultDesc": "After successful creation in Task Creator, save the used template as the default for this task type. Commands and conversion also use this default."
+		"useLastTemplateAsDefaultDesc": "After successful creation in Task Creator, save the used template as the default for this task type. Commands and conversion also use this default.",
+		"trackerShowStatusDockTimer": "Show active timer in status dock",
+		"trackerShowStatusDockTimerDesc": "Show Play when idle and the active timer in the Operon status dock.",
+		"upcomingShowStatusDock": "Show upcoming tasks in status dock",
+		"upcomingShowStatusDockDesc": "Keep the current task visible when its countdown ends and show the next timed task beside it.",
+		"upcomingDockDaysDesc": "Choose how many calendar days to include in both the sidebar and status dock, counting today.",
+		"settingsPageTrackerDescDock": "Time tracking history, status dock timer, FlowTime behavior, and session splitting.",
+		"duplicateAlertDelayDescDock": "How long Operon waits before showing duplicate notices, status dock alerts, and the optional manager popup."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Decrease width",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Copy task card embed",
 		"canvasGroupTitle": "Group rule",
 		"canvasGroupInvalid": "Enter one supported property and valid values.",
-		"canvasGroupChanged": "The property settings changed. Reopen the group editor."
+		"canvasGroupChanged": "The property settings changed. Reopen the group editor.",
+		"dockSelectTask": "Select or create a new task",
+		"dockNextTask": "Next task",
+		"dockTaskCreatorTitle": "Task Creator",
+		"dockCreateAndTrack": "Create a new task and start tracking"
 	},
 	"indexStats": {
 		"title": "Operon Index",

@@ -513,6 +513,10 @@ export function purgeTaskCreatorModalArtifacts(root: ParentNode = getActiveDocum
 }
 
 export class TaskCreatorModal extends Modal {
+ private viewportWindow: Window | null = null;
+ private viewportCloseTimers = new Set<number>();
+ private stopViewportMigration: (() => void) | null = null;
+
 	private readonly options: TaskCreatorModalOptions;
  private readonly prepared: PreparedTaskCreatorDraft | null;
  private draftPropertiesCleanup?: () => void;
@@ -554,6 +558,7 @@ export class TaskCreatorModal extends Modal {
 		this.contentEl.toggleClass('has-open-creator-picker', close !== null && !this.templateButtonEl?.hasClass('is-picker-open'));
 	}
 	private escapeScopeHandler: KeymapEventHandler | null = null;
+	private keyboardWindow: Window | null = null;
 	private seededParentFieldValuesById = new Map<string, Record<string, string> | null>();
 	private seededParentTagsById = new Map<string, string[] | null>();
 	private allowDirectClose = false;
@@ -578,7 +583,9 @@ export class TaskCreatorModal extends Modal {
 	};
 	private readonly mobilePickerCloseHandler = () => {
 		this.mobilePickerOpenDepth = Math.max(0, this.mobilePickerOpenDepth - 1);
-		window.setTimeout(() => this.updateMobileViewportHeight(), 80);
+		const owner = this.viewportWindow ?? getOwnerWindow(this.containerEl);
+  const timer = owner.setTimeout(() => { this.viewportCloseTimers.delete(timer); if (!this.preparedClosed) this.updateMobileViewportHeight(); }, 80);
+  this.viewportCloseTimers.add(timer);
 	};
 
 	constructor(app: App, options: TaskCreatorModalOptions) {
@@ -626,8 +633,7 @@ export class TaskCreatorModal extends Modal {
 		this.titleEl.setText(t('modals', 'taskCreatorTitle'));
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
-		window.addEventListener('resize', this.resizeHandler);
-		this.registerMobileViewportListeners();
+		this.bindViewportWindow();
 		this.updateMobileViewportHeight();
 		this.registerMobilePickerListeners();
 		this.render();
@@ -651,8 +657,9 @@ export class TaskCreatorModal extends Modal {
 			this.handleEscapeIntent();
 			return false;
 		});
-		window.addEventListener('keydown', this.handleWindowKeydownCapture, true);
-		window.addEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
+		this.keyboardWindow = getOwnerWindow(this.containerEl);
+		this.keyboardWindow.addEventListener('keydown', this.handleWindowKeydownCapture, true);
+		this.keyboardWindow.addEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
 		this.containerEl.addEventListener('mousedown', this.handleContainerPointerDown, true);
 		this.containerEl.addEventListener('click', this.handleContainerPointerDown, true);
 		this.containerEl.addEventListener('mousedown', this.handleInitialDescriptionFocusPointerDown, true);
@@ -673,12 +680,17 @@ export class TaskCreatorModal extends Modal {
 			this.scope.unregister(this.escapeScopeHandler);
 			this.escapeScopeHandler = null;
 		}
-		window.removeEventListener('resize', this.resizeHandler);
+		this.stopViewportMigration?.(); this.stopViewportMigration = null;
+  for (const timer of this.viewportCloseTimers) this.viewportWindow?.clearTimeout(timer);
+  this.viewportCloseTimers.clear();
+  this.viewportWindow?.removeEventListener('resize', this.resizeHandler);
 		this.unregisterMobileViewportListeners();
+  this.viewportWindow = null;
 		this.unregisterMobilePickerListeners();
 		this.mobilePickerOpenDepth = 0;
-		window.removeEventListener('keydown', this.handleWindowKeydownCapture, true);
-		window.removeEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
+		this.keyboardWindow?.removeEventListener('keydown', this.handleWindowKeydownCapture, true);
+		this.keyboardWindow?.removeEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
+		this.keyboardWindow = null;
 		this.containerEl.removeEventListener('mousedown', this.handleContainerPointerDown, true);
 		this.containerEl.removeEventListener('click', this.handleContainerPointerDown, true);
 		this.containerEl.removeEventListener('mousedown', this.handleInitialDescriptionFocusPointerDown, true);
@@ -701,6 +713,32 @@ export class TaskCreatorModal extends Modal {
    else this.restoreSubmittedDraft();
   }
 	}
+
+ private bindViewportWindow(): void {
+  const next = getOwnerWindow(this.containerEl), old = this.viewportWindow;
+  if (old === next) return;
+  for (const timer of this.viewportCloseTimers) old?.clearTimeout(timer);
+  this.viewportCloseTimers.clear();
+  old?.removeEventListener('resize', this.resizeHandler);
+  old?.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+  old?.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+  if (this.keyboardWindow) {
+   this.keyboardWindow.removeEventListener('keydown', this.handleWindowKeydownCapture, true);
+   next.addEventListener('keydown', this.handleWindowKeydownCapture, true);
+   this.keyboardWindow.removeEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
+   next.addEventListener('keydown', this.handleInitialDescriptionFocusKeydown, true);
+   this.keyboardWindow = next;
+  }
+  this.viewportWindow = next;
+  next.addEventListener('resize', this.resizeHandler);
+  this.registerMobileViewportListeners();
+  if (!this.stopViewportMigration) this.stopViewportMigration = this.containerEl.onWindowMigrated?.(() => { if (this.viewportWindow) this.bindViewportWindow(); }) ?? null;
+  if (old) {
+   this.backdropCleanup?.(); this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
+   this.updateMobileViewportHeight();
+   this.clearInitialDescriptionFocusGuard();
+  }
+ }
 
 	private render(): void {
 		const shell = this.contentEl.createDiv('operon-task-creator');
@@ -1124,7 +1162,7 @@ export class TaskCreatorModal extends Modal {
 			return;
 		}
 
-		const style = window.getComputedStyle(textarea);
+		const style = getOwnerWindow(this.containerEl).getComputedStyle(textarea);
 		const lineHeight = Number.parseFloat(style.lineHeight || '') || 24.8;
 		const paddingTop = Number.parseFloat(style.paddingTop || '') || 0;
 		const paddingBottom = Number.parseFloat(style.paddingBottom || '') || 0;
@@ -1171,14 +1209,14 @@ export class TaskCreatorModal extends Modal {
 
 	private registerMobileViewportListeners(): void {
 		if (!Platform.isPhone) return;
-		window.visualViewport?.addEventListener('resize', this.visualViewportHandler);
-		window.visualViewport?.addEventListener('scroll', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.addEventListener('resize', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.addEventListener('scroll', this.visualViewportHandler);
 	}
 
 	private unregisterMobileViewportListeners(): void {
 		if (!Platform.isPhone) return;
-		window.visualViewport?.removeEventListener('resize', this.visualViewportHandler);
-		window.visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('resize', this.visualViewportHandler);
+		(this.viewportWindow ?? getOwnerWindow(this.containerEl)).visualViewport?.removeEventListener('scroll', this.visualViewportHandler);
 	}
 
 	private registerMobilePickerListeners(): void {
@@ -1196,7 +1234,8 @@ export class TaskCreatorModal extends Modal {
 	private updateMobileViewportHeight(): void {
 		if (!Platform.isPhone) return;
 		if (this.mobilePickerOpenDepth > 0) return;
-		const height = window.visualViewport?.height ?? window.innerHeight;
+		const owner = getOwnerWindow(this.containerEl);
+		const height = owner.visualViewport?.height ?? owner.innerHeight;
 		if (!Number.isFinite(height) || height <= 0) return;
 		this.containerEl.style.setProperty('--operon-task-creator-mobile-viewport-height', `${Math.round(height)}px`);
 	}

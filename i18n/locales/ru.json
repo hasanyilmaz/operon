@@ -27,6 +27,7 @@
 		"convertToInline": "Преобразовать YAML-задачу во встроенную (буфер обмена)",
 		"openTaskCreator": "Создать новую задачу Operon",
 		"openTaskFinder": "Поиск задач",
+		"trackDifferentTask": "Отслеживать другую задачу",
 		"createOrEditInlineTask": "Создать или редактировать встроенную задачу",
 		"convertTasksEmojiLineToInlineTask": "Преобразовать строку Tasks с эмодзи во встроенную задачу",
 		"convertSelectionToOperonTasks": "Преобразовать выделение в задачи Operon",
@@ -50,7 +51,8 @@
 		"addTaskToCanvas": "Добавить задачу на Canvas",
 		"addOperonTask": "Добавить задачу Operon",
 		"convertCanvasTask": "Преобразовать в задачу Operon…",
-		"addOperonGroup": "Добавить группу Operon"
+		"addOperonGroup": "Добавить группу Operon",
+		"toggleStatusDock": "Показать/скрыть док состояния"
 	},
 	"recurrenceIdentityRepair": {
 		"title": "Исправить идентификаторы повторяющихся файловых задач",
@@ -147,6 +149,8 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
+		"createdInlineTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
+		"createdFileTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
 		"excalidrawPoolUnavailable": "API управления пулом задач Excalidraw недоступен.",
 		"excalidrawTaskCleanupDeferred": "Не удалось завершить автоматическую очистку карточек Excalidraw. Изменение задачи сохранено.",
 		"excalidrawTaskSaveFailed": "Не удалось подтвердить сохранение. Проверьте рисунок, прежде чем добавлять карточку повторно.",
@@ -413,7 +417,8 @@
 		"deleteTitle": "Удалить дублирующуюся копию задачи?",
 		"deleteMessage": "Удалить «{{label}}» из хранилища?",
 		"statusBarConflictLabel": "Обнаружено {{count}} дублирующихся копий задач. Открыть менеджер дубликатов.",
-		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены."
+		"statusBarResolvedLabel": "Дублирующиеся копии задач разрешены.",
+		"introDock": "Здесь можно разрешить конфликты дублирующихся operonId. Это окно можно закрыть в любой момент и снова открыть из палитры команд или уведомления в доке состояния."
 	},
 	"settings": {
 		"excalidrawPropertyTargetRequired": "Перетащите на одну неперекрытую карточку задачи Operon на этом рисунке.",
@@ -809,6 +814,19 @@
 		"inlineToFileTaskSourceDispositionDesc": "Выберите, что останется в исходной заметке после преобразования встроенной задачи в файловую.",
 		"inlineToFileTaskSourceDispositionKeepLink": "Оставить ссылку на файловую задачу",
 		"inlineToFileTaskSourceDispositionRemoveTask": "Удалить исходную встроенную задачу",
+		"taskAfterCreateEditor": "Редактор задач (Lightbox)",
+		"inlineTaskAfterCreate": "После создания встроенной задачи",
+		"inlineTaskAfterCreateDesc": "Выберите, как открывать встроенные задачи, созданные через Task Creator.",
+		"inlineTaskAfterCreateFocusedTab": "Источник в новой вкладке (Активной)",
+		"inlineTaskAfterCreateBackgroundTab": "Источник в новой вкладке (Фоновой)",
+		"fileTaskAfterCreate": "После создания файловой задачи",
+		"fileTaskAfterCreateDesc": "Выберите способ открытия файловых задач, созданных через Task Creator.",
+		"fileTaskAfterCreateNone": "Не открывать",
+		"fileTaskAfterCreateFocusedTab": "Новая вкладка (активная)",
+		"fileTaskAfterCreateBackgroundTab": "Новая вкладка (фоновая)",
+		"fileTaskAfterCreateSource": "Исходный файл (Lightbox)",
+		"fileTaskAfterCreateSourceAndEditor": "Исходный файл + Task Editor (Lightbox)",
+		"newInlineTaskCreationDefaults": "Настройки создания новых встроенных задач",
 		"newFileTaskCreationDefaults": "Значения по умолчанию для создания новой файловой задачи",
 		"fileTaskTemplates": "Шаблоны файловых задач",
 		"checkboxConversion": "Преобразование чекбоксов",
@@ -870,6 +888,10 @@
 		"backgroundDimmingDecrease": "Уменьшить затемнение фона",
 		"backgroundDimmingSaveFailed": "Не удалось сохранить затемнение фона.",
 		"lightboxSizeSaveFailed": "Не удалось сохранить размер lightbox.",
+		"statusDockSection": "Панель состояния Operon",
+		"statusDockMove": "Переместить док",
+		"statusDockClickAction": "Действие при нажатии",
+		"statusDockClickActionDesc": "Выберите, что открывать при нажатии на отслеживаемую или следующую задачу в доке.",
 		"workspaceTweaksHideScrollbars": "Скрыть полосы прокрутки",
 		"workspaceTweaksShowScrollbars": "Показать полосы прокрутки",
 		"workspaceTweaksHideScrollbarsDesc": "Скрыть полосы прокрутки во всём рабочем пространстве Obsidian, сохраняя обычное поведение прокрутки.",
@@ -2260,7 +2282,14 @@
 		"tasksBulkReviewUnchanged": "Проверить неизменённые файлы",
 		"tasksBulkSkippedSource": "Пропущен из-за отличия от результата сканирования: {{path}}",
 		"useLastTemplateAsDefault": "Использовать последний шаблон по умолчанию",
-		"useLastTemplateAsDefaultDesc": "После успешного создания задачи в Task Creator сохранить использованный шаблон по умолчанию для этого типа задач. Команды и преобразования также используют этот шаблон."
+		"useLastTemplateAsDefaultDesc": "После успешного создания задачи в Task Creator сохранить использованный шаблон по умолчанию для этого типа задач. Команды и преобразования также используют этот шаблон.",
+		"trackerShowStatusDockTimer": "Показывать активный таймер в доке состояния",
+		"trackerShowStatusDockTimerDesc": "Показывать кнопку запуска в режиме ожидания и активный таймер в доке состояния Operon.",
+		"upcomingShowStatusDock": "Показывать предстоящие задачи в доке состояния",
+		"upcomingShowStatusDockDesc": "Оставлять текущую задачу после завершения отсчёта и показывать рядом следующую задачу со временем.",
+		"upcomingDockDaysDesc": "Выбрать число дней для боковой панели и дока состояния, включая сегодня.",
+		"settingsPageTrackerDescDock": "История учёта времени, таймер в доке состояния, поведение FlowTime и разделение сессий.",
+		"duplicateAlertDelayDescDock": "Как долго Operon ожидает перед показом уведомлений о дубликатах, оповещений в доке состояния и всплывающего окна менеджера."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Уменьшить ширину",
@@ -2689,7 +2718,7 @@
 		"invalidReminder": "Недопустимое напоминание"
 	},
 	"taskEditor": {
-    "textPickerCurrentValue": "Текущее значение",
+		"textPickerCurrentValue": "Текущее значение",
 		"creatorInlineTemplateProperties": "Для встроенных задач свойства этого шаблона добавляются в задачу. Основной текст шаблона не включается.",
 		"creatorMetadataChanged": "Правила свойств изменились. Откройте Task Creator заново и проверьте их перед созданием.",
 		"creatorParentPreviewChanged": "Место назначения изменило унаследованные значения. Проверьте обновлённый выбор и повторите создание.",
@@ -3165,7 +3194,11 @@
 		"copyTaskCardEmbed": "Копировать код карточки задачи",
 		"canvasGroupTitle": "Правило группы",
 		"canvasGroupInvalid": "Укажите одно поддерживаемое свойство и допустимые значения.",
-		"canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново."
+		"canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново.",
+		"dockSelectTask": "Выбрать или создать задачу",
+		"dockNextTask": "Следующая задача",
+		"dockTaskCreatorTitle": "Создание задач",
+		"dockCreateAndTrack": "Создать задачу и начать отслеживание времени"
 	},
 	"indexStats": {
 		"title": "Индекс Operon",

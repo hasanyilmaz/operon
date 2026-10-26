@@ -1,5 +1,6 @@
 import { taskDescriptionOpening } from '../task-text-link-opening';
 import { localToday } from '../../core/local-time';
+import { splitTaskListValue } from '../../core/task-field-patch';
 import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
 import { showFilterSetPicker } from '../filter-set-picker';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
@@ -84,6 +85,7 @@ import {
 import {
 	applyKanbanOptimisticMovesToBoard,
 	buildKanbanOptimisticStatusMovePlan,
+	buildOptimisticMovedTask,
 	createKanbanDropOptimisticMove,
 	isKanbanOptimisticMoveSatisfied,
 	KANBAN_OPTIMISTIC_MOVE_TTL_MS,
@@ -764,6 +766,10 @@ export class KanbanView extends ItemView {
 			delete after[key];
 		}
 		if (JSON.stringify(before) !== JSON.stringify(after)) return false;
+		// Fold task-only notifications into the pending drop's final fresh query.
+		// Control/settings changes above still take their normal render path.
+		if (Array.from(this.optimisticMoves.values()).some(move => move.kind === 'drop'
+			&& move.operationId && this.cardOperations.isTaskPending(move.taskId))) return true;
 		const boardEl = this.contentEl.querySelector<HTMLElement>('.operon-kanban-board');
 		if (!boardEl) return false;
 		const { board, searchActive } = this.queryKanbanBoardData(
@@ -778,11 +784,11 @@ export class KanbanView extends ItemView {
 			Array.from(this.resolveCollapsedLaneKeys(previous, state, searchActive)).sort(),
 			Array.from(this.resolveCollapsedLaneKeys(board, state, searchActive)).sort(),
 		)) return false;
-		// Generic saves can change another card's dependency labels or child preview.
-		// Refresh card contents conservatively, retaining their scrollable cells.
+		// Signatures include the related tasks displayed by chips and child previews.
+		// Late save notifications can therefore patch only genuinely changed cells.
 		const signatures = this.buildKanbanBoardTaskSignatures(board);
 		if (!signatures || !this.applyKanbanBoardPatchInPlace(
-			boardEl, previous, board, new Map<string, string>(), signatures, null, state, settings, searchActive,
+			boardEl, previous, board, this.lastRenderedBoardTaskSignatures ?? new Map<string, string>(), signatures, null, state, settings, searchActive,
 		)) return false;
 		this.lastRenderedBoard = board;
 		this.lastRenderedBoardTaskSignatures = signatures;
@@ -1970,6 +1976,7 @@ export class KanbanView extends ItemView {
 		taskLookup: CompactTaskLookupContext,
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
+		retainedCards?: ReadonlyMap<string, HTMLElement>,
 	): () => KanbanCellRenderFinalizer {
 		return () => {
 			cell.style.removeProperty('min-height');
@@ -1986,6 +1993,7 @@ export class KanbanView extends ItemView {
 				taskLookup,
 				workflowStatusIdentityIndex,
 				readOnlyChips,
+				retainedCards,
 			);
 		};
 	}
@@ -2002,9 +2010,10 @@ export class KanbanView extends ItemView {
 		taskLookup: CompactTaskLookupContext,
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
+		retainedCards?: ReadonlyMap<string, HTMLElement>,
 	): KanbanCellRenderFinalizer {
 		const maxVisibleTasks = this.getSettings().kanbanMaxVisibleTasksPerCell;
-		const initialLimit = resolveKanbanCellInitialRenderLimit({
+		const requestedLimit = resolveKanbanCellInitialRenderLimit({
 			taskCount: tasks.length,
 			renderBatchSize: KANBAN_CARD_RENDER_BATCH_SIZE,
 			maxVisibleTasks,
@@ -2012,7 +2021,17 @@ export class KanbanView extends ItemView {
 			cardHeightPx: KANBAN_ESTIMATED_CARD_HEIGHT_PX,
 			cardGapPx: KANBAN_ESTIMATED_CARD_GAP_PX,
 		});
-		this.renderTaskCardBatch(cell, tasks, 0, initialLimit, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, null);
+		// Keep already materialized cards during settlement, including scrolled batches.
+		let retainedLimit = 0;
+		if (retainedCards) {
+			for (let index = 0; index < tasks.length; index++) {
+				if (retainedCards.has(tasks[index].operonId)) retainedLimit = index + 1;
+			}
+		}
+		const initialLimit = retainedCards
+			? Math.min(tasks.length, Math.max(requestedLimit, retainedLimit, Number(cell.dataset.kanbanVisibleCount) || 0))
+			: requestedLimit;
+		this.renderTaskCardBatch(cell, tasks, 0, initialLimit, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, null, retainedCards);
 		cell.dataset.kanbanVisibleCount = String(initialLimit);
 		// Height limiting is split into measure/commit so batch materialization
 		// can run all reads in one pass (single forced layout) before writing.
@@ -2045,12 +2064,18 @@ export class KanbanView extends ItemView {
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
 		beforeEl: HTMLElement | null,
+		retainedCards?: ReadonlyMap<string, HTMLElement>,
 	): void {
+		let nextCard = retainedCards ? cell.querySelector<HTMLElement>(':scope > .operon-kanban-card') : null;
 		for (let index = startIndex; index < endIndex; index++) {
 			const task = tasks[index];
 			if (!task) continue;
-			const card = this.renderTaskCard(cell, task, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, false, 0);
-			if (beforeEl) {
+			const card = retainedCards?.get(task.operonId)
+				?? this.renderTaskCard(cell, task, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, false, 0);
+			if (retainedCards) {
+				if (card !== nextCard) cell.insertBefore(card, nextCard);
+				nextCard = card.nextElementSibling as HTMLElement | null;
+			} else if (beforeEl) {
 				cell.insertBefore(card, beforeEl);
 			}
 		}
@@ -3043,7 +3068,7 @@ export class KanbanView extends ItemView {
 		const moves = Array.from(this.optimisticMoves.values())
 			.filter(move => !move.presetId || move.presetId === board.preset.id)
 			.filter(move => !move.boardSignature || move.boardSignature === boardSignature);
-		applyKanbanOptimisticMovesToBoard(board, settings.priorities, moves, settings.keyMappings);
+		applyKanbanOptimisticMovesToBoard(board, settings.priorities, moves, settings.keyMappings, this.callbacks.getProjectSerialDisplay);
 	}
 
 	private bindCellDropTarget(
@@ -3228,7 +3253,7 @@ export class KanbanView extends ItemView {
 		dragged.cardEl.draggable = false;
 		this.registerOptimisticMove(operationContext);
 		if (applyImmediateDrop) {
-			this.applyImmediateCardDrop(targetCell, dragged.cardEl, targetBeforeTaskId);
+			this.applyImmediateCardDrop(targetCell, dragged.cardEl, this.resolveImmediateKanbanDropBeforeTaskId(targetCell, operationContext, preset));
 		} else {
 			dragged.cardEl.removeClass('is-dragging');
 		}
@@ -3360,6 +3385,15 @@ export class KanbanView extends ItemView {
 			settings,
 			parentSearchUi,
 		);
+		// Task-only notifications may have been folded into this settlement.
+		// A changed grid collapse state still requires the normal full render.
+		if (!this.areStringArraysEqual(
+			Array.from(this.resolveCollapsedStatusIds(baseBoard, state, searchActive)).sort(),
+			Array.from(this.resolveCollapsedStatusIds(board, state, searchActive)).sort(),
+		) || !this.areStringArraysEqual(
+			Array.from(this.resolveCollapsedLaneKeys(baseBoard, state, searchActive)).sort(),
+			Array.from(this.resolveCollapsedLaneKeys(board, state, searchActive)).sort(),
+		)) return false;
 		const nextTaskSignatures = this.buildKanbanBoardTaskSignatures(board);
 		if (!nextTaskSignatures) return false;
 		if (!this.applyKanbanBoardPatchInPlace(
@@ -3412,6 +3446,7 @@ export class KanbanView extends ItemView {
 		this.captureCellScrollStates(gridViewport);
 		const forcedCellKeys = context ? [buildKanbanCellKey(context.targetStatusId, context.targetLaneKey)] : [];
 		if (context && context.sourceStatusId !== null) forcedCellKeys.push(buildKanbanCellKey(context.sourceStatusId, context.sourceLaneKey));
+
 		const changedCellKeys = collectKanbanInPlaceChangedCellKeys({
 			previousCellMap: previous.cellMap,
 			nextCellMap: next.cellMap,
@@ -3460,6 +3495,18 @@ export class KanbanView extends ItemView {
 				delete cell.dataset.kanbanVisibleCount;
 				continue;
 			}
+			// Reuse unchanged card DOM during both settlement and late task refreshes.
+			const retainedCards = new Map<string, HTMLElement>();
+			const reusableTaskIds = new Set(tasks.map(task => task.operonId));
+			for (const card of Array.from(cell.querySelectorAll<HTMLElement>(':scope > .operon-kanban-card'))) {
+				const taskId = card.dataset.operonTaskId;
+				if (!taskId || taskId === context?.taskId || retainedCards.has(taskId)
+					|| card.dataset.kanbanPreview === 'true'
+					|| card.dataset.kanbanStatusId !== statusId || card.dataset.kanbanLaneKey !== laneKey) continue;
+				const previousSignature = previousTaskSignatures.get(taskId);
+				if (previousSignature !== undefined && previousSignature === nextTaskSignatures.get(taskId)
+					&& reusableTaskIds.has(taskId)) retainedCards.set(taskId, card);
+			}
 			const materialize = this.createKanbanCellMaterializer(
 				cell,
 				tasks,
@@ -3471,6 +3518,7 @@ export class KanbanView extends ItemView {
 				taskLookup,
 				workflowStatusIdentityIndex,
 				readOnlyChips,
+				retainedCards,
 			);
 			if (this.pendingCellMaterializers.has(cell)) {
 				this.pendingCellMaterializers.set(cell, materialize);
@@ -3490,9 +3538,15 @@ export class KanbanView extends ItemView {
 			}
 			this.unobserveKanbanCellContent(cell);
 			this.clearCellQuickAdd(cell);
-			cleanupOperonHoverTooltips(cell);
-			cell.empty();
-			delete cell.dataset.kanbanVisibleCount;
+			cell.dataset.kanbanVisibleCount = String(Math.max(
+				Number(cell.dataset.kanbanVisibleCount) || 0,
+				cell.querySelectorAll(':scope > .operon-kanban-card').length,
+			));
+			for (const child of Array.from(cell.children)) {
+				if (child === retainedCards.get((child as HTMLElement).dataset.operonTaskId ?? '')) continue;
+				cleanupOperonHoverTooltips(child as HTMLElement);
+				child.remove();
+			}
 			finalizers.push(materialize());
 		}
 
@@ -3510,7 +3564,7 @@ export class KanbanView extends ItemView {
 			cleanupOperonHoverTooltips(row);
 			row.remove();
 		}
-		this.updateKanbanBoardCounts(boardEl, next, changedCellKeys);
+		if (changedCellKeys.size > 0) this.updateKanbanBoardCounts(boardEl, next, changedCellKeys);
 		const connectedRows = Array.from(changedRows).filter(row => row.isConnected);
 		if (connectedRows.length > 0) {
 			this.syncRowCellHeights(connectedRows);
@@ -3524,12 +3578,38 @@ export class KanbanView extends ItemView {
 
 	private buildKanbanBoardTaskSignatures(board: KanbanBoardData): Map<string, string> | null {
 		const signatures = new Map<string, string>();
+		const taskById = new Map(this.indexer.getAllTasks().map(task => [task.operonId, task]));
+		for (const task of board.relevantTasks) taskById.set(task.operonId, task);
+		const ownSignatures = new Map<string, string>();
+		const ownSignature = (taskId: string): string | null => {
+			const task = taskById.get(taskId);
+			if (!task) return null;
+			let signature = ownSignatures.get(taskId);
+			if (signature === undefined) {
+				signature = `${buildKanbanTaskStableSignature(task)}\u0001${buildKanbanTaskVolatileSignature(task, true)}\u0001${JSON.stringify(task.plainCheckboxProgress ?? null)}`;
+				ownSignatures.set(taskId, signature);
+			}
+			return signature;
+		};
+		const linkSignature = (taskId: string, includeStatus = false): unknown[] => {
+			const related = taskById.get(taskId);
+			return [taskId, related?.description, related?.primary,
+				...(includeStatus ? [related?.checkbox, related?.fieldValues['status']] : [])];
+		};
+		const expandedIds = new Set(this.ensureState().expandedPreviewParentIds);
 		for (const task of board.relevantTasks) {
 			if (signatures.has(task.operonId)) return null;
-			signatures.set(
-				task.operonId,
-				`${buildKanbanTaskStableSignature(task)}\u0001${buildKanbanTaskVolatileSignature(task, true)}`,
-			);
+			const parentId = task.fieldValues['parentTask']?.trim();
+			signatures.set(task.operonId, JSON.stringify([
+				ownSignature(task.operonId),
+				splitTaskListValue(task.fieldValues['blocking']).map(taskId => linkSignature(taskId)),
+				splitTaskListValue(task.fieldValues['blockedBy']).map(taskId => linkSignature(taskId, true)),
+				parentId ? linkSignature(parentId) : null,
+				this.indexer.secondary.getChildIds(task.operonId).size > 0 ? this.buildDescendantSummary(task.operonId) : null,
+				expandedIds.has(task.operonId)
+					? Array.from(this.indexer.secondary.getAllDescendantIds(task.operonId)).sort().map(taskId => [taskId, ownSignature(taskId)])
+					: null,
+			]));
 		}
 		return signatures;
 	}
@@ -3632,6 +3712,38 @@ export class KanbanView extends ItemView {
 	private clearManualDropIndicator(cell: HTMLElement): void {
 		cell.querySelector<HTMLElement>(':scope > .operon-kanban-drop-indicator')?.remove();
 		delete cell.dataset.kanbanDropBeforeTaskId;
+	}
+
+	private resolveImmediateKanbanDropBeforeTaskId(
+		targetCell: HTMLElement,
+		context: KanbanDropContext,
+		preset: KanbanPreset,
+	): string | null {
+		const sorting = resolveKanbanEffectiveSorting(preset, context.targetStatusId);
+		if (sorting.sortMode === 'manual') return context.targetBeforeTaskId ?? null;
+		const settings = this.getSettings();
+		const board = this.lastRenderedBoard;
+		const task = this.indexer.getTask(context.taskId);
+		if (!task || !board?.pipeline) return null;
+		const move = this.optimisticMoves.get(task.operonId)
+			?? createKanbanDropOptimisticMove(context, { task, keyMappings: settings.keyMappings, priorities: settings.priorities });
+		const projectedTask = buildOptimisticMovedTask(task, move, board, settings.keyMappings);
+		const compare = buildKanbanTaskComparator({
+			preset, sorting, priorities: settings.priorities, keyMappings: settings.keyMappings,
+			getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay,
+		});
+		for (const card of Array.from(targetCell.querySelectorAll<HTMLElement>(':scope > .operon-kanban-card'))) {
+			const taskId = card.dataset.operonTaskId;
+			if (!taskId || taskId === task.operonId) continue;
+			const candidate = this.indexer.getTask(taskId);
+			if (!candidate) continue;
+			const pendingMove = this.optimisticMoves.get(taskId);
+			const projectedCandidate = pendingMove
+				? buildOptimisticMovedTask(candidate, pendingMove, board, settings.keyMappings)
+				: candidate;
+			if (compare(projectedTask, projectedCandidate) < 0) return taskId;
+		}
+		return null;
 	}
 
 	private applyImmediateCardDrop(targetCell: HTMLElement, cardEl: HTMLElement, beforeTaskId: string | null): void {
@@ -4130,6 +4242,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private renderCornerSummary(container: HTMLElement, totalTasks: number): void {
+		if (container.querySelector('.operon-kanban-corner-total')?.textContent === String(totalTasks)) return;
 		container.empty();
 		container.createDiv({
 			text: String(totalTasks),

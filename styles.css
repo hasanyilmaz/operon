@@ -16648,7 +16648,7 @@ body :is(
 
 .operon-flow-time-mode-row {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) minmax(40px, max-content) minmax(0, 1fr);
 	align-items: center;
 	gap: 6px;
 	padding-top: 6px;
@@ -16660,7 +16660,9 @@ body :is(
 	justify-content: center;
 	justify-self: start;
 	width: auto;
-	min-width: 112px;
+	min-width: min(112px, 100%);
+	max-width: 100%;
+	overflow: hidden;
 	min-height: 32px;
 	padding: 6px;
 	border-radius: var(--operon-flow-time-control-radius);
@@ -16705,10 +16707,16 @@ body :is(
 
 .operon-flow-time-break-slot {
 	display: flex;
+	gap: 6px;
 	align-items: center;
 	justify-content: center;
 	min-width: 0;
 }
+
+.operon-flow-time-selection-divider {
+	width: 1px; height: 20px; flex: 0 0 1px; order: -1; background: var(--background-modifier-border);
+}
+.operon-flow-time-break-slot.is-break-selection .operon-flow-time-selection-divider { order: 0; }
 
 .operon-flow-time-break-button {
 	display: inline-flex;
@@ -37019,3 +37027,94 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
  flex: 0 1 auto;
  max-height: 100%;
 }
+
+/* Desktop Operon status dock: one fixed surface per window viewport. */
+.operon-status-dock-slot {
+	position: fixed; inset: auto auto 12px 0; z-index: calc(var(--layer-status-bar, 15) + 1);
+	display: flex; align-items: flex-end; justify-content: center;
+	padding: 0 12px; pointer-events: none; box-sizing: border-box; max-width: 100%;
+}
+.operon-status-dock-slot[hidden], .operon-status-dock [hidden] { display: none; }
+.operon-status-dock {
+	display: flex; align-items: center; gap: 5px; max-width: 100%; width: max-content;
+	min-height: 44px; height: 44px; padding: 7px 9px;
+	border: 1px solid var(--background-modifier-border); border-radius: 8px;
+	background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s);
+	font-size: var(--font-ui-small); font-weight: 500; line-height: 1.35;
+	pointer-events: auto; box-sizing: border-box;
+}
+.operon-status-dock button {
+	border: 0; border-radius: 6px; box-shadow: none; background: transparent; color: inherit;
+	font: inherit; height: 28px; min-height: 28px; padding: 2px;
+	display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0;
+}
+.operon-status-dock button:hover:not(:disabled) { background: transparent; box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover, var(--background-modifier-border)); }
+.operon-status-dock button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.operon-status-dock button:disabled { opacity: .45; }
+.operon-status-dock-task-area { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 0 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 2px; margin-block: -2px; }
+.operon-status-dock-task-area:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; border-radius: 6px; }
+.operon-status-dock-current-items, .operon-status-dock-current-item { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.operon-status-dock .operon-status-dock-task-area .operon-status-dock-reading { flex: 0 0 auto; }
+.operon-status-dock.has-calendar-tasks .operon-status-dock-tracker { max-width: calc(100% - 115px); flex-shrink: 0; }
+.operon-status-dock-tracker { display: flex; align-items: center; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.operon-status-dock .operon-status-dock-reading { display: inline-flex; height: 28px; padding: 2px; gap: 5px; border-radius: 6px; align-items: center; justify-content: flex-start; text-align: left; min-width: 0; flex: 1 1 auto; }
+.operon-status-dock .operon-status-dock-reading[hidden] { display: none; }
+.operon-status-dock-name[role="button"] { cursor: pointer; }
+.operon-status-dock-name[role="button"]:hover { background: transparent; box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover, var(--background-modifier-border)); }
+.operon-status-dock-name[role="button"]:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+.operon-status-dock-name, .operon-status-dock-name strong, .operon-status-dock-name b { font-weight: var(--font-normal, 400); }
+.operon-status-dock-leading-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.operon-status-dock .operon-status-dock-leading-icon svg,
+.operon-status-dock .operon-status-dock-action svg { width: 16px; height: 16px; }
+.operon-status-dock-upcoming > .operon-status-dock-leading-icon,
+.operon-status-dock-next > .operon-status-dock-leading-icon { color: var(--interactive-accent); }
+.operon-status-dock-copy { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.operon-status-dock-time { display: block; flex: 0 0 auto; text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.operon-status-dock-name {
+	display: block; max-width: calc(24ch + 12px); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+	height: 28px; line-height: 28px; padding-inline: 6px; border-radius: 6px; box-sizing: border-box;
+	color: var(--text-muted);
+}
+.operon-status-dock-name .operon-compact-task-markdown { white-space: nowrap; }
+.operon-status-dock-timer-controls { display: flex; align-items: center; flex: 0 0 auto; }
+.operon-status-dock-selection-divider { order: -1; margin-inline: 6px; }
+.operon-status-dock.is-break .operon-status-dock-selection-divider { order: 0; }
+.operon-status-dock .operon-status-dock-action { flex: 0 0 28px; min-width: 28px; }
+.operon-status-dock .operon-status-dock-timer-action.is-running { color: var(--text-error); }
+.operon-status-dock .operon-status-dock-grip { cursor: grab; touch-action: none; user-select: none; color: var(--text-faint); }
+.operon-status-dock.is-dragging .operon-status-dock-grip { cursor: grabbing; }
+.operon-status-dock.is-break .operon-status-dock-timer-controls button[aria-pressed="true"] { color: var(--interactive-accent); background: transparent; }
+.operon-status-dock-divider { width: 1px; height: 20px; flex: 0 0 1px; background: var(--background-modifier-border); }
+.operon-status-dock .operon-status-dock-alert { color: var(--text-warning); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.operon-status-dock .operon-status-dock-alert.is-resolved { color: var(--text-success); }
+.operon-status-dock-upcoming.is-current .operon-status-dock-time { color: var(--text-muted); }
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+	.operon-status-dock { min-height: 46px; height: 46px; padding: 8px 10px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+	.operon-status-dock-slot { padding-inline: 5px; }
+	.operon-status-dock { gap: 2px; padding-inline: 3px; }
+	.operon-status-dock-copy { gap: 3px; }
+	.operon-status-dock-tracker { gap: 0; }
+	.operon-status-dock button { padding-inline: 0; gap: 2px; }
+	.operon-status-dock .operon-status-dock-action { flex-basis: 22px; min-width: 22px; }
+}
+
+/* Calendar Play replaces the leading glyph without covering the task name. */
+.operon-status-dock-calendar-task { position: relative; display: inline-flex; flex: 0 0 auto; }
+.operon-status-dock .operon-status-dock-task-play {
+	position: absolute; left: 0; top: 0; width: 28px; min-width: 28px; padding: 0;
+	opacity: 0; pointer-events: none; background: transparent; color: var(--interactive-accent);
+}
+.operon-status-dock-calendar-task.has-task-play:is(:hover, .has-descendant-focus-visible) > .operon-status-dock-task-play {
+	opacity: 1; pointer-events: auto;
+}
+.operon-status-dock-calendar-task.has-task-play:is(:hover, .has-descendant-focus-visible) > .operon-status-dock-reading > .operon-status-dock-leading-icon {
+	/* Child SVG visibility resets must not reveal the replaced task glyph. */
+	opacity: 0;
+}
+.operon-status-dock .operon-status-dock-task-play:hover:not(:disabled) { background: transparent; }
+.operon-status-dock .operon-status-dock-calendar-task > .operon-status-dock-reading { padding: 0; gap: 3px; }
+.operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-leading-icon { width: 28px; height: 28px; }
+.operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-copy { height: 28px; }
+.operon-status-dock .operon-status-dock-calendar-task > .operon-status-dock-reading:hover { box-shadow: none; }
