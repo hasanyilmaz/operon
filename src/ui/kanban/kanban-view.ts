@@ -4252,6 +4252,7 @@ export class KanbanView extends ItemView {
 
 	private renderCollapsedCellSummary(container: HTMLElement, count: number): void {
 		container.empty();
+		if (count === 0) return;
 		const summary = container.createDiv('operon-kanban-collapsed-cell-summary');
 		summary.setText(String(count));
 	}
