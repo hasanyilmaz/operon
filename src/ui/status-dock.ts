@@ -9,6 +9,7 @@ import { resolveFlowTimeRenderedState } from '../systems/flow-time-optimistic';
 import type { ActiveTrackerState } from '../types/tracker';
 import { getNativeLightboxLeaves } from './native-lightbox-lifecycle';
 import { t } from '../core/i18n';
+import { StatusDockSessionCard, type StatusDockSessionActions } from './status-dock-session-card';
 import { StatusDockWidget, type StatusDockAlert, type StatusDockSnapshot } from './status-dock-widget';
 
 interface StatusDockDependencies {
@@ -16,6 +17,7 @@ interface StatusDockDependencies {
 	timeTracker: TimeTracker;
 	breakController: FlowTimeBreakController;
 	getSettings: () => OperonSettings;
+	sessionActions?: Omit<StatusDockSessionActions, 'openTask'>;
 	openTask: (taskId: string, anchor: HTMLElement, behavior: TaskFinderResultBehavior) => Promise<void>;
 	pickTrackerTask: () => Promise<string | null>;
 	openConflicts: () => void;
@@ -24,6 +26,7 @@ interface StatusDockDependencies {
 }
 interface DockWindow {
 	widget: StatusDockWidget;
+	sessionCard?: StatusDockSessionCard;
 	host: HTMLElement | null;
 	leaf: WorkspaceLeaf | null;
 	dispose: () => void;
@@ -60,6 +63,11 @@ export class OperonStatusDock extends Component {
 		const { workspace } = this.app;
 		this.register(this.upcoming.subscribe(() => this.renderWidgets()));
 		this.register(this.dependencies.timeTracker.subscribe(() => this.renderWidgets()));
+		const unsubscribeSessions = this.dependencies.timeTracker.subscribeSessionCreated?.(session => {
+			if (this.disposed || !this.visible) return;
+			for (const context of this.windows.values()) if (!context.widget.slot.hidden) context.sessionCard?.show(session);
+		});
+		if (unsubscribeSessions) this.register(unsubscribeSessions);
 		this.register(this.dependencies.breakController.subscribe(() => this.renderWidgets()));
 		this.registerEvent(workspace.on('active-leaf-change', leaf => {
 			if (leaf && isStatusDockLeaf(this.app, leaf)) this.recent.set(leaf.getContainer(), leaf);
@@ -83,7 +91,10 @@ export class OperonStatusDock extends Component {
 	toggleVisibility(): void {
 		if (this.disposed) return;
 		this.visible = !this.visible;
-		for (const { widget } of this.windows.values()) widget.setVisible(this.visible);
+		for (const { widget, sessionCard } of this.windows.values()) {
+			widget.setVisible(this.visible);
+			if (!this.visible) sessionCard?.clear();
+		}
 	}
 
 	setDuplicateAlert(state: StatusDockAlert['state'], count = 0): void {
@@ -163,6 +174,14 @@ export class OperonStatusDock extends Component {
 		}, error => { console.warn('Operon: status dock action failed', error); new Notice(t('notifications', 'taskSaveFailed')); });
 		widget.setVisible(this.visible);
 		const context: DockWindow = { widget, host: null, leaf: null, dispose: () => {} };
+		if (this.dependencies.sessionActions) context.sessionCard = new StatusDockSessionCard(widget.root, {
+			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
+			getSessions: id => this.dependencies.timeTracker.getTaskSessions(id),
+			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), actions: {
+				...this.dependencies.sessionActions,
+				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
+			},
+		});
 		const resize = () => this.updateViewport(container, widget);
 		const refresh = () => { if (!this.disposed) { this.upcoming.refresh(); this.scheduleReconcile(); } };
 		container.win.addEventListener('resize', resize);
@@ -174,7 +193,7 @@ export class OperonStatusDock extends Component {
 			container.win.removeEventListener('resize', resize); container.win.removeEventListener('focus', refresh);
 			container.doc.removeEventListener('visibilitychange', refresh);
 			container.win.visualViewport?.removeEventListener('resize', resize);
-			container.win.visualViewport?.removeEventListener('scroll', resize); widget.destroy();
+			container.win.visualViewport?.removeEventListener('scroll', resize); context.sessionCard?.destroy(); widget.destroy();
 		};
 		return context;
 	}
@@ -231,7 +250,7 @@ export class OperonStatusDock extends Component {
 	private renderWidgets(): void {
 		if (this.disposed) return;
 		const snapshot = this.snapshot();
-		for (const { widget } of this.windows.values()) widget.update(snapshot);
+		for (const { widget, sessionCard } of this.windows.values()) { widget.update(snapshot); sessionCard?.refresh(); }
 	}
 
 	private async createTaskForTimer(anchor: HTMLElement): Promise<void> {

@@ -14461,6 +14461,15 @@ export default class OperonPlugin extends Plugin {
 		request: MutationApplyRequestV1,
 		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
+  const observeSessionCreation = request.plan.mutationKind === 'timer.control'
+   || (request.plan.mutationKind === 'timer.session' && request.plan.spec.operation === 'add-session');
+  const sessionPreimages = new Map<string, string>();
+  if (observeSessionCreation) {
+   const ids = request.plan.targets.map(target => target.operonId);
+   const activeId = this.timeTracker.getActiveState()?.operonId;
+   if (activeId) ids.push(activeId);
+   for (const id of ids) if (id) sessionPreimages.set(id, this.indexer.getTask(id)?.fieldValues['trackers'] ?? '');
+  }
   const target = this.excalidrawTaskIntegration && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
   const deletedTasks = target ? target.primary.format === 'yaml'
    ? this.indexer.getAllTasks().filter(task => task.primary.filePath === target.primary.filePath) : [target] : [];
@@ -14483,6 +14492,9 @@ export default class OperonPlugin extends Plugin {
 		const result = request.plan.mutationKind === 'timer.session'
 			? await this.timeTracker.runSerializedSessionMutation(apply)
 			: await apply();
+  if (result.status === 'applied') {
+   for (const [id, previousTrackers] of sessionPreimages) this.timeTracker.notifyCreatedSessions(id, previousTrackers);
+  }
   releaseDeletion?.(result.status === 'applied');
   if (result.status === 'applied' && deletedTasks.length) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
   return result;
@@ -17041,6 +17053,13 @@ export default class OperonPlugin extends Plugin {
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
 				getSettings: () => this.settings,
+				sessionActions: {
+					openSession: session => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve)),
+					clickIcon: id => this.handleTaskIconClick(id),
+					contextualAction: (id, action, context, invocation) => this.handleContextualMenuAction(id, action, context, invocation),
+					isPinned: id => this.storage.pinned.isPinned(id),
+					hasSubtasks: id => this.indexer.secondary.getChildIds(id).size > 0,
+				},
 				openTask: async (taskId, anchor, behavior) => {
 					if (behavior === 'source') await this.openTaskSourcePreview(taskId, anchor);
 					else await this.openEditorForId(taskId, behavior === 'source-and-editor', anchor);
@@ -19255,18 +19274,20 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef): void {
-		if (!session.operonId) return;
+	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void): void {
+		if (!session.operonId) { onClosed?.(); return; }
 		const currentSession = this.resolveTrackedSessionByRange(session);
 		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
 		if (!currentSession || !task) {
 			this.handleCalendarTrackedSessionStale();
+			onClosed?.();
 			return;
 		}
 		const taskLabel = task.description || task.operonId;
 
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'editSession'),
+			onClosed,
 			taskNote: {
 				operonId: session.operonId,
 				sourcePath: task.primary.filePath,

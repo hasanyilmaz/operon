@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor.
+
 ### Improved
 
 - Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
@@ -18,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Validation
 
 - Strict lint, **46/46** Kanban tests, **6/6** cell-summary checks, and manual Kanban verification passed.
-- Full local checks, **109/109** Status Dock tests, Plugin release guard, and manual Status Dock verification passed.
+- Full local checks, **118/118** Status Dock tests, **185/185** Runtime mutation tests, schema checks, Plugin release guard, and manual Status Dock verification passed.
 
 ## [4.3.0] - 2026-10-26
 

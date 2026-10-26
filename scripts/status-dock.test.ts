@@ -1,3 +1,7 @@
+import { showTaskContextualHoverMenu, hideTaskContextualHoverMenu, isTaskContextualHoverMenuActive } from '../src/ui/contextual-hover-menu';
+import { TimeTracker } from '../src/systems/time-tracker';
+import { StatusDockSessionCard, StatusDockSessionLifetime } from '../src/ui/status-dock-session-card';
+import type { TrackerSession } from '../src/types/tracker';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -1048,4 +1052,143 @@ test('calendar keyboard-focus scopes distinguish mouse focus and clean up when r
 	f.state.upcoming = { task: null, ongoing: [], due: false, countdown: null }; f.dock.update(f.state);
 	assert.equal(scope.classList.contains('operon-focus-visible-scope'), false);
 	f.dock.destroy(); assert.equal(f.listeners.get('keydown')?.size ?? 0, 0); assert.equal(f.timers.size, 0);
+});
+
+
+test('recent session lifetime consumes ten seconds, pauses, and resumes the remaining budget', () => {
+ const lifetime = new StatusDockSessionLifetime(0);
+ assert.equal(lifetime.advance(4000, true), true);
+ assert.equal(lifetime.advance(64000, true), true);
+ assert.equal(lifetime.advance(65000, false), true);
+ assert.equal(lifetime.advance(70999, false), true);
+ assert.equal(lifetime.advance(71000, false), false);
+});
+
+function sessionTrackerHarness() {
+ const settings = { ...DEFAULT_SETTINGS, trackerSplitSessionsAtMidnight: false };
+ let currentTask = task('recorded', '2026-10-26T10:00:00');
+ let fails = false;
+ let active: any = null;
+ const indexer = { getTask: (id: string) => id === currentTask.operonId ? currentTask : null,
+  getAllTasks: () => [currentTask], reindexFilePath: async () => {}, getGeneration: () => 1 };
+ const writer = { writeTaskFields: async (_id: string, fields: Record<string, string>) => {
+  if (fails) return false;
+  // Intentionally mutate the same indexed object: notifications must use a sealed preimage.
+  Object.assign(currentTask.fieldValues, fields); return true;
+ } };
+ const store = { getActiveForUser: () => active, clearActiveForUser: async () => { active = null; } };
+ const tracker = new TimeTracker({} as App, indexer as never, writer as never, store as never, () => settings,
+  undefined, async () => {});
+ const created: TrackerSession[] = []; tracker.subscribeSessionCreated(session => created.push(session));
+ return { tracker, created, settings, setFail: () => { fails = true; },
+  activate: (taskId: string | null = 'recorded') => { active = { id: 'active', taskId, start: '2026-10-26T10:00:00', source: 'status-bar' }; },
+  task: () => currentTask };
+}
+
+test('manual additions notify only committed new records; edit and delete do not announce creations', async () => {
+ const h = sessionTrackerHarness(); try {
+  assert.equal(await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T10:34:22'), true);
+  assert.equal(h.created.length, 1); assert.equal(h.created[0].durationSeconds, 2062);
+  await h.tracker.updateSession('recorded', 0, '2026-10-26T10:00:00', '2026-10-26T10:35:00');
+  await h.tracker.deleteSession('recorded', 0); assert.equal(h.created.length, 1);
+  await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T10:34:22');
+  assert.equal(h.created.length, 2);
+ } finally { h.tracker.destroy(); }
+});
+
+test('failed or cancelled creation never announces a record', async () => {
+ const h = sessionTrackerHarness(); try {
+  assert.equal(await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T11:00:00', () => false), false);
+  h.setFail(); assert.equal(await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T11:00:00'), false);
+  assert.equal(h.created.length, 0);
+ } finally { h.tracker.destroy(); }
+});
+
+test('stops from any source notify and repeated verified acknowledgement does not duplicate a card', async () => {
+ const h = sessionTrackerHarness(); try {
+  h.activate(); assert.equal(await h.tracker.stop('manual', '2026-10-26T10:34:22'), true);
+  assert.equal(h.created.length, 1); assert.equal(h.created[0].durationSeconds, 2062);
+  h.tracker.notifyCreatedSessions('recorded', ''); assert.equal(h.created.length, 1);
+  assert.equal(await h.tracker.stop(), false); assert.equal(h.created.length, 1);
+ } finally { h.tracker.destroy(); }
+});
+
+test('midnight records are announced in stored order', async () => {
+ const h = sessionTrackerHarness(); try {
+  h.settings.trackerSplitSessionsAtMidnight = true;
+  await h.tracker.addSession('recorded', '2026-10-25T23:50:00', '2026-10-26T00:10:00');
+  assert.equal(h.created.length, 2); assert.equal(h.created.at(-1)?.start, '2026-10-26T00:00:00');
+  assert.equal(h.created.at(-1)?.durationSeconds, 600);
+ } finally { h.tracker.destroy(); }
+});
+
+test('recent session card aligns left and routes duration, description, and icon separately', async () => {
+ const f = statusDockDocument(); let now = 0;
+ f.doc.defaultView.performance = { now: () => now };
+ f.doc.defaultView.queueMicrotask = queueMicrotask;
+ const host = f.doc.body.createDiv();
+ host.clientLeft = 1; host.getBoundingClientRect = () => ({ left: 100, top: 500, right: 700, bottom: 544, width: 600, height: 44 });
+ const h = sessionTrackerHarness();
+ await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T10:34:22');
+ let opens = 0, tasksOpened = 0, icons = 0;
+ const card = new StatusDockSessionCard(host, { getSettings: () => h.settings, getTask: () => h.task(),
+  getSessions: id => h.tracker.getTaskSessions(id), isTracking: () => false,
+  actions: { openTask: async (id, anchor) => { tasksOpened++; assert.equal(id, 'recorded'); assert.ok(anchor.classList.contains('operon-status-dock-name')); }, openSession: async session => { opens++; assert.equal(session.durationSeconds, 2062); },
+   clickIcon: async id => { icons++; assert.equal(id, 'recorded'); }, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false } });
+ try {
+  card.show(h.created[0]); const el = host.querySelector('.operon-status-dock-session-card');
+  assert.equal(el.style.left, '-1px');
+  assert.equal(el.hidden, false); assert.equal(el.querySelector('.operon-status-dock-time').textContent, '34m 22s');
+  el.querySelector('.operon-status-dock-name').click(); await new Promise(resolve => setImmediate(resolve)); assert.equal(tasksOpened, 1); assert.equal(opens, 0);
+  el.querySelector('.operon-status-dock-time').click(); await new Promise(resolve => setImmediate(resolve)); assert.equal(opens, 1); assert.equal(tasksOpened, 1);
+  el.querySelector('.operon-status-dock-session-icon').click(); await new Promise(resolve => setImmediate(resolve)); assert.equal(icons, 1);
+  now = 4000; f.flush();
+  for (const fn of el.handlers.get('pointerenter')) fn({});
+  now = 60000; f.flush(); assert.equal(el.hidden, false);
+  for (const fn of el.handlers.get('pointerleave')) fn({});
+  now = 65999; f.flush(); assert.equal(el.hidden, false);
+  now = 66000; f.flush(); assert.equal(el.hidden, true);
+  card.show(h.created[0]); await h.tracker.deleteSession('recorded', 0); card.refresh(); assert.equal(el.hidden, true);
+ } finally { card.destroy(); h.tracker.destroy(); assert.equal(f.timers.size, 0); }
+});
+
+
+test('unassigned Stop saves no task session and emits no session card', async () => {
+ const h = sessionTrackerHarness(); try {
+  h.activate(null); assert.equal(await h.tracker.stop('manual', '2026-10-26T10:34:22'), true);
+  assert.equal(h.created.length, 0);
+ } finally { h.tracker.destroy(); }
+});
+
+test('Coffee uses the same committed notification while keeping the break state independent of FlowTime UI', async () => {
+ const h = sessionTrackerHarness(); h.activate();
+ const controller = new FlowTimeBreakController({ timeTracker: h.tracker, getTask: () => h.task(), getSettings: () => h.settings,
+  saveSettings: async () => {}, stopActiveTimer: guard => h.tracker.stop('manual', '2026-10-26T10:34:22', guard),
+  startTimerForTask: async () => false, playReminderSound: async () => {}, scheduleTick: () => () => {} });
+ try {
+  assert.equal(await controller.startBreak(), true); assert.equal(h.created.length, 1);
+  assert.equal(h.created[0].durationSeconds, 2062); assert.ok(controller.getSnapshot().breakState);
+  controller.endBreak(); assert.equal(h.created.length, 1);
+ } finally { controller.destroy(); h.tracker.destroy(); }
+});
+
+
+test('session card stays while its task menu is open, then resumes the remaining lifetime', async () => {
+ const f = statusDockDocument(); let now = 0; f.doc.defaultView.performance = { now: () => now };
+ f.doc.defaultView.queueMicrotask = queueMicrotask;
+ const host = f.doc.body.createDiv(), h = sessionTrackerHarness();
+ await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T10:34:22');
+ const card = new StatusDockSessionCard(host, { getSettings: () => h.settings, getTask: () => h.task(), getSessions: id => h.tracker.getTaskSessions(id), isTracking: () => false,
+ actions: { openTask: async () => {}, openSession: async () => {}, clickIcon: async () => {}, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false } });
+ try {
+  card.show(h.created[0]); const el = host.querySelector('.operon-status-dock-session-card');
+  const icon = el.querySelector('.operon-status-dock-session-icon');
+  now = 3000; f.flush();
+  assert.equal(showTaskContextualHoverMenu(icon, { surface: 'flowTimeTask', taskId: 'recorded', getTask: () => h.task(), getSettings: () => h.settings, onAction: () => {} }), true);
+  assert.equal(isTaskContextualHoverMenuActive(el), true); f.flush();
+  now = 60000; f.flush(); assert.equal(el.hidden, false);
+  hideTaskContextualHoverMenu(true, el); f.flush(); assert.equal(isTaskContextualHoverMenuActive(el), false);
+  now = 66999; f.flush(); assert.equal(el.hidden, false);
+  now = 67000; f.flush(); assert.equal(el.hidden, true);
+ } finally { card.destroy(); h.tracker.destroy(); }
 });

@@ -37036,6 +37036,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-status-dock-slot[hidden], .operon-status-dock [hidden] { display: none; }
 .operon-status-dock {
+	position: relative;
 	display: flex; align-items: center; gap: 5px; max-width: 100%; width: max-content;
 	min-height: 44px; height: 44px; padding: 7px 9px;
 	border: 1px solid var(--background-modifier-border); border-radius: 8px;
@@ -37118,3 +37119,26 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-leading-icon { width: 28px; height: 28px; }
 .operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-copy { height: 28px; }
 .operon-status-dock .operon-status-dock-calendar-task > .operon-status-dock-reading:hover { box-shadow: none; }
+
+/* The last committed session follows the window-owned Status Dock. */
+.operon-status-dock-session-card {
+ position: absolute; bottom: auto; left: -1px;
+ display: inline-flex; align-items: center; gap: 7px; width: max-content;
+ max-width: calc(100vw - 24px); min-height: 44px; padding: 7px 9px;
+ border: 1px solid var(--background-modifier-border); border-radius: 8px;
+ background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s);
+ box-sizing: border-box; pointer-events: auto;
+}
+.operon-status-dock-session-card[hidden] { display: none; }
+.operon-status-dock-session-card .operon-status-dock-session-icon { flex: 0 0 28px; }
+.operon-status-dock-session-card .operon-status-dock-session-icon svg { width: 16px; height: 16px; }
+.operon-status-dock-session-card button.operon-status-dock-name {
+ flex: 0 1 auto; max-width: calc(40ch + 12px);
+ overflow: hidden; text-overflow: ellipsis; text-align: left; color: var(--text-muted);
+}
+
+.operon-status-dock-session-card button.operon-status-dock-time,
+.operon-status-dock-session-card button.operon-status-dock-name {
+ display: block; height: 28px; min-height: 28px; padding: 2px 6px;
+ box-sizing: border-box; line-height: 24px;
+}
