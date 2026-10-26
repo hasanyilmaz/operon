@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-10-06T10:36:57+02:00
+Updated: 2026-10-26T12:20:43+01:00
 ---
 
 # Operon system map
@@ -32,7 +32,8 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Operon Groups in Canvas**: organize cards with a property rule, apply that rule by dropping a task into the group, and route cards that no longer match a single-value group. Editing the rule does not bulk-update the tasks inside. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Embedded Task Cards**: keep one live task beside the text of a note, with its fields, progress, and controls. Use **Copy task card embed** in Task Editor. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Pinned Task Dock**: keeps chosen tasks always in view. It can float over your notes (run **Toggle Pinned Tasks dock**) or live in a side panel (run **Open Pinned Tasks**, or set it to open in the sidebar). See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
-- **Upcoming Tasks**: automatically groups dated tasks by day in a sidebar and shows a countdown to the next timed task in the status bar. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
+- **Upcoming Tasks**: automatically groups dated tasks by day in a sidebar. Current and next timed tasks also appear in the desktop Status Dock. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
+- **Status Dock**: a compact desktop surface for tracking, breaks, ongoing calendar tasks, the next-task countdown, and duplicate-ID warnings. Drag it to reposition it, or run **Toggle status dock** to hide or show it. It is separate from the list of tasks you pin. See [[DOCS-152 Status Dock|Status Dock]].
 
 Planning a day or week by date? Use the Calendar. Planning by stage of work? Use the Kanban. Comparing fields, task hierarchy, and a longer schedule? Use the Table and its Gantt timeline.
 

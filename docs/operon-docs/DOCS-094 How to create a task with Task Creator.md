@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-10-22T21:53:13+02:00
+Updated: 2026-10-26T12:23:25+01:00
 ---
 
 # How to create a task with Task Creator
@@ -102,6 +102,17 @@ If **Default to File Task in Task Creator** is enabled, the creator reaches this
 After a valid submission, Creator closes immediately while creation continues in the background. The normal completion notice still appears, and the task becomes available in your views after it is created and indexed. Operon writes the Inline metadata or File frontmatter for you; you do not need to keep the form open.
 
 If creation fails, your draft remains available. Opening another Creator meanwhile is safe: the earlier result does not close it or replace its fields. For the full submission and draft-restoration behavior, see [[DOCS-020 Task Creator|Task Creator]].
+
+## Step 6: Choose whether to open the result
+
+By default, **Do Not Open** leaves you in your current workspace after creation. You can change File and Inline behavior separately:
+
+- In **Tasks → File Tasks → New File Task Creation Defaults**, set **After Creating a File Task**.
+- In **Tasks → Inline Tasks → New Inline Task Creation Defaults**, set **After Creating an Inline Task**.
+
+Each dropdown offers six choices: do not open, source lightbox, source plus Task Editor, Task Editor alone, a focused new source tab, or a background source tab. For example, choose **Source File + Task Editor (Lightbox)** to review the new task immediately, or the background-tab option to keep capturing without switching tabs.
+
+For Inline Tasks, opening the source takes you to the task’s line in its containing note. These are Task Creator preferences; automatic creation and API/CLI behavior remain unchanged. See [[DOCS-020 Task Creator|Task Creator]] for the exact labels and opening behavior.
 
 ## Why the flow works this way
 

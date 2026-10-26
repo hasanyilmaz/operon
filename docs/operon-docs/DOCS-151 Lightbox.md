@@ -2,7 +2,7 @@
 Notes: Desktop previews, editable file views, navigation controls, and background dimming
 Icon: panels-top-left
 Color: "#0891b2"
-Updated: 2026-10-22T21:43:14+02:00
+Updated: 2026-10-26T12:23:25+01:00
 ---
 
 # Lightbox
@@ -157,7 +157,7 @@ The bottom of the same side rail contains **Moon** to darken the background and 
 
 The full choice of levels, defaults, and nesting calculation is documented in [[DOCS-098 Workspace Tweaks|Workspace Tweaks]]. Task Creator, Finder, standalone Task Editor dialogs, and the standalone Dynamic Subtasks Filter also share that backdrop setting. The shared desktop Task Editor workspace uses the controls above; the other dialogs do not gain a lightbox rail.
 
-The controls use neutral, theme-based backgrounds and borders, with 6 px corners matching the preview frame. With a pointer, they hide while you are over the content and appear when you move over the dimmed backdrop or a control's own area. Initial hover visibility waits **350 ms** after the surface is ready; it still depends on where the pointer is. Later show/hide interactions do not restart this delay. A control reached with **Tab** appears immediately with its focus ring, even over the content. The panel buttons use only the Operon hover tooltip.
+The controls use neutral, theme-based backgrounds and borders, with 6 px corners matching the preview frame. With a pointer, they hide while you are over the content and appear when you move over the dimmed backdrop or a control's own area. As soon as the content is ready, Operon checks the pointer’s current position and applies this visibility rule immediately, without an additional hover delay. You do not need to move the pointer again after loading. Later pointer movement updates visibility directly. A control reached with **Tab** appears immediately with its focus ring, even over the content. The panel buttons use only the Operon hover tooltip.
 
 Opening a preview does not automatically focus Close or another management button. Focus starts in the preview shell or its content; Inline Source opening retains the caret position described above. All available controls remain reachable by keyboard.
 

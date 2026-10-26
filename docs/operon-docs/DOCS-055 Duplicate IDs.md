@@ -2,7 +2,7 @@
 Notes: Detect and resolve two tasks that share one operonId
 Icon: copy
 Color: "#dc2626"
-Updated: 2026-09-11T23:08:45+02:00
+Updated: 2026-10-26T12:20:43+01:00
 ---
 
 # Duplicate IDs
@@ -36,7 +36,7 @@ None of these are forbidden. They simply produce a state Operon will flag and he
 
 When Operon indexes your vault and finds an id on more than one task instance, it raises a duplicate alert:
 
-- A **status bar** alert appears: `2 duplicate task copies detected. Open duplicate manager.`
+- On desktop, a warning icon and count appear in the [[DOCS-152 Status Dock|Status Dock]]. The alert reports extra copies: three tasks sharing one ID count as two duplicate copies. The native status-bar path remains where available on mobile.
 - If you try to edit a conflicted task, Operon blocks the edit with `Resolve duplicate operonId copies before editing this task.`, because it will not guess which copy you meant.
 - Optionally, the manager can open on its own after a short delay. This is off by default; you turn it on in settings (see below).
 
@@ -61,7 +61,7 @@ What still works, so you can fix it: you can **open the file** and **reveal the 
 
 ## The Operon ID Conflict manager
 
-Open it from the command palette with **Open duplicate operonId manager**, or by clicking the status bar alert. The manager lists each conflicted `operonId` and, under it, every copy that claims it, with its title and when it was last updated. For each copy you have these actions:
+Open it from the command palette with **Open duplicate operonId manager**, or by clicking the desktop Status Dock warning (or the native status-bar alert where available). The manager lists each conflicted `operonId` and, under it, every copy that claims it, with its title and when it was last updated. For each copy you have these actions:
 
 - **Open file**: jump to the note that holds this copy.
 - **Reveal line**: go straight to the exact line, for an inline task.
@@ -69,7 +69,7 @@ Open it from the command palette with **Open duplicate operonId manager**, or by
 - **Regenerate new ID**: give this copy a fresh, unique `operonId`, making it its own independent task. This is the usual fix when both copies should survive as separate tasks.
 - **Delete this copy**: remove this copy from the vault, when it was an accidental duplicate you do not want to keep.
 
-Work through each conflict until the list is empty. When the last one is cleared, Operon confirms with `Duplicate task copies resolved.` and the status bar alert disappears.
+Work through each conflict until the list is empty. When the last one is cleared, Operon confirms with `Duplicate task copies resolved.` and briefly shows a resolved indicator before hiding the warning.
 
 ## Which action to choose
 
@@ -80,7 +80,7 @@ Either way you keep control. Operon never silently merges or discards a task on 
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Core → General**, under the duplicate alerts: `Auto-open duplicate manager` opens the manager automatically after the alert delay if conflicts remain, and `Duplicate alert delay` sets how long Operon waits before showing the notice, status bar alert, and optional popup.
+Operon settings for this live in **Settings → Operon → Core → General**, under the duplicate alerts: `Auto-open duplicate manager` opens the manager automatically after the alert delay if conflicts remain, and `Duplicate alert delay` sets how long Operon waits before showing the notice, Dock warning (or native status-bar alert), and optional popup.
 
 ## Related
 

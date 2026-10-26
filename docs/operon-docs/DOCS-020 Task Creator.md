@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-22T21:53:13+02:00
+Updated: 2026-10-26T12:23:25+01:00
 ---
 
 # Task Creator
@@ -109,7 +109,31 @@ Once a valid **Inline** or **File** submission is accepted, Task Creator closes 
 
 If creation fails, the entered draft remains available to correct or retry; an uncertain write is not automatically retried. If you have already opened a newer Creator, the earlier result does not close or overwrite it. A draft awaiting restoration is shown after the newer Creator has left.
 
-Open the new task in the [[DOCS-021 Task Editor|Task Editor]] to see its structured fields, or recover it later with [[DOCS-027 Task Finder|Task Finder]]. If you picked the wrong shape, you can convert between inline and file forms at any time. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
+### Choose what opens after creation
+
+File and Inline Tasks have independent opening preferences, both initially **Do Not Open**:
+
+- **Settings → Operon → Tasks → File Tasks → New File Task Creation Defaults → After Creating a File Task**
+- **Settings → Operon → Tasks → Inline Tasks → New Inline Task Creation Defaults → After Creating an Inline Task**
+
+The dropdowns offer these six choices in order:
+
+| File Task option | Inline Task option | Result after successful creation |
+| --- | --- | --- |
+| Do Not Open | Do Not Open | Create the task without opening its source or editor |
+| Source File (Lightbox) | Source File (Lightbox) | Preview the task’s source in a lightbox |
+| Source File + Task Editor (Lightbox) | Source File + Task Editor (Lightbox) | Open the source alongside the task’s structured fields |
+| Task Editor (Lightbox) | Task Editor (Lightbox) | Open the task’s structured fields without the source panel |
+| New Tab (Focused) | Source in New Tab (Focused) | Open a new source tab and switch to it |
+| New Tab (Background) | Source in New Tab (Background) | Open a new source tab without switching focus to it |
+
+For an Inline Task, the source is the note containing the task, not a separate task file. Supported source openings locate the newly created task’s line. Lightbox options use the desktop [[DOCS-151 Lightbox|Lightbox]] and [[DOCS-021 Task Editor|Task Editor]] surfaces; mobile retains its supported source-navigation and editor behavior.
+
+These preferences apply to tasks submitted through Task Creator, wherever you opened it. They do not change automatic creation, API/CLI creation, or commands that create tasks without going through Creator. They also do not change where the task is saved or the opening preferences used when clicking an existing task elsewhere.
+
+Opening is attempted only after successful creation. If opening fails, the created task remains saved and Operon reports the opening problem; do not create it again just to open it. With **Do Not Open**, find it later using [[DOCS-027 Task Finder|Task Finder]] or open its [[DOCS-021 Task Editor|Task Editor]].
+
+If you picked the wrong shape, you can convert between inline and file forms at any time. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 
 ## FAQ
 

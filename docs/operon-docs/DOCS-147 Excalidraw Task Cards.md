@@ -2,7 +2,7 @@
 Notes: Plan work in Excalidraw with live task cards, task creation, and editable relationships
 Icon: excalidraw-icon
 Color: "#0284c7"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-26T12:26:55+01:00
 ---
 
 # Excalidraw Task Cards
@@ -42,17 +42,17 @@ The drawing toolbar also provides a File Task action. It can convert the drawing
 ## Convert drawing text into a task
 
 1. Select one standalone text element.
-2. Click **Convert to Operon task…**, centered below the text.
+2. Click **Convert to Operon task…** in the right-side toolbar, immediately after the drawing’s File Task conversion action.
 3. Review the description, Note, destination, and parent in Task Creator.
 4. Create the task to replace the text with its card.
 
 The first source line supplies the description; subsequent lines supply the Note. Visual wrapping in Excalidraw does not introduce new lines into the task. Explicit line breaks, blank lines within the Note, and lists are preserved.
 
-The button applies to nonempty, unlocked standalone text, not text inside a shape, an arrow label, or a multiple selection. Cancelling Task Creator leaves the text unchanged.
+The button appears only when one eligible, nonempty, unlocked standalone text element is selected in an editable drawing. It hides when the selection is cleared or changes to another kind of element, during text editing, or in read-only mode. Text inside a shape, arrow labels, and multiple selections are not eligible. Cancelling Task Creator leaves the text unchanged.
 
 The replacement keeps the text's top-left position, rotation, and connections. Its width comes from `Default Excalidraw card width`, and its height fits the task content. Review the parent and inheritance indicators before creation, especially when the drawing itself is a File Task.
 
-> **MEDIA-DOCS-147-2:** Screenshot of one selected standalone text element with the Convert to Operon Task button centered beneath it. The example has a task description on its first line and notes on the following lines.
+> **MEDIA-DOCS-147-2:** One selected standalone text element with a task description on its first line and notes on the following lines. This image shows the older button placement; the current conversion action is in the right-side toolbar as described above.
 
 ![MEDIA-DOCS-147-2 - Convert Excalidraw text into an Operon task](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-147-2.png)
 

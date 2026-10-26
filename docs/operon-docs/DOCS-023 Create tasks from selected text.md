@@ -2,7 +2,7 @@
 Notes: Turn lines you already wrote into Operon tasks
 Icon: text-cursor-input
 Color: "#ea580c"
-Updated: 2026-10-13T16:53:09+02:00
+Updated: 2026-10-26T12:26:55+01:00
 ---
 
 # Create tasks from selected text
@@ -61,7 +61,7 @@ When a single selected line is really a document waiting to happen, make it a [[
 
 ## Convert text on a visual surface
 
-For a normal Canvas text card or standalone Excalidraw text, select it and use the conversion button below it. Task Creator prepares **one task** with the first source line as its description and subsequent lines as its Note. This differs from the Markdown list commands above, which can create several tasks. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
+Select a normal Canvas text card and use the conversion button below it. In Excalidraw, select one eligible standalone text element and use **Convert to Operon task…** in the right-side toolbar, after the drawing’s File Task conversion action; this button is shown only for an eligible selection. Task Creator prepares **one task** with the first source line as its description and subsequent lines as its Note. This differs from the Markdown list commands above, which can create several tasks. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]] and [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
 ## When to use which
 

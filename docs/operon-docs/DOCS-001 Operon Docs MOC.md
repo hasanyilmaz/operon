@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-10-19T13:34:04+02:00
+Updated: 2026-10-26T12:14:54+01:00
 ---
 
 # Operon Docs
@@ -111,6 +111,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-113 Text field editor popover|Text field editor popover]]: single-field editing and default/six-color highlights
 
 ### Views and planning
+- [[DOCS-152 Status Dock|Status Dock]]: desktop timer, breaks, current and upcoming tasks, and conflict alerts
 - [[DOCS-151 Lightbox|Lightbox]]: shared desktop previews, editable files, and window controls
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
 - [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]

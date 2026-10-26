@@ -2,7 +2,7 @@
 Notes: Run a countdown focus session on a task, with breaks and overtime
 Icon: hourglass
 Color: "#9333ea"
-Updated: 2026-08-18T18:18:29
+Updated: 2026-10-26T12:20:43+01:00
 ---
 
 # FlowTime focus sessions
@@ -19,7 +19,17 @@ Open the panel with **Open FlowTime panel** from the command palette. The panel 
 
 ## Breaks
 
-A session is not all-or-nothing. You can **Start break** to pause the focus clock, take a breather, and **End break** to resume. While a break is running the panel shows it as active, so a pause is deliberate and visible rather than a silent gap. The break length has a configurable default.
+Use **Start break** (Coffee) while tracking an assigned task. Operon records the work session and starts a break, leaving that task ready to resume. A failed session save does not start the break. The break length has a configurable default.
+
+**End break** stops the break and keeps the task waiting; it does not restart work. Use **Play** to start a new work session for the waiting task, either during or after the break.
+
+FlowTime and the desktop [[DOCS-152 Status Dock|Status Dock]] share one break state. Closing the FlowTime panel does not end the break. Reloading Operon or restarting Obsidian clears the temporary break and waiting task; recorded work sessions remain saved.
+
+### Choose a different task
+
+Task Finder and Task Creator are available when idle, while a timer is unassigned, during a break, and after a break with a waiting task. During a break they appear alongside Coffee; when no break is active and a task can be selected, Finder replaces the inactive Coffee action.
+
+Successfully choosing or creating a task starts tracking it and ends any active break. Cancelling leaves the existing timer or break state unchanged. These controls use the same tracking flow in FlowTime and the Status Dock; see [[DOCS-152 Status Dock|Status Dock]] for the compact control layout.
 
 ## Reaching zero, and overtime
 
@@ -51,6 +61,8 @@ Both record to the same task, so the choice is about how you want to work, not w
 
 **Play reminder sound when FlowTime reaches zero** is off by default. When you turn it on, FlowTime plays the vault audio file selected under **Settings → Operon → Tasks → Reminders → Reminder sound** once when either a focus session or an active break reaches zero. It does not replay in overtime, when you open an already-elapsed timer, or when you enable the setting after the boundary has passed.
 
+The shared break produces one completion alert rather than one per open panel or dock.
+
 This sound setting is separate from **Notify when FlowTime reaches zero**: you can use the notice, the sound, both, or neither. It applies only to FlowTime focus and break completions; it does not change TrackTime's count-up behavior.
 
 ## FAQ
@@ -59,7 +71,7 @@ This sound setting is separate from **Notify when FlowTime reaches zero**: you c
 
 **Do FlowTime sessions count toward the task's time?** Yes. Like TrackTime, FlowTime records real effort onto the task's duration.
 
-**Can I take breaks?** Yes. Start and end breaks from the panel; the focus clock pauses while a break is active.
+**Can I take breaks?** Yes. Coffee records the work session and starts a break. End break leaves the task waiting; Play starts a new work session.
 
 **Can FlowTime play a sound when time is up?** Yes. Turn on **Play reminder sound when FlowTime reaches zero**. It uses the audio file selected under **Reminders → Reminder sound** and plays once for a FlowTime focus or break completion.
 

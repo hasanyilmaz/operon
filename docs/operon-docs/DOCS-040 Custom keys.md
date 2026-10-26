@@ -2,7 +2,7 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-10-22T21:53:13+02:00
+Updated: 2026-10-26T12:26:55+01:00
 ---
 
 # Custom keys
@@ -103,6 +103,8 @@ Using a **different type** requires proving that the old canonical key and visib
 Merely displaying the field as a column in an **Operon Table** does not block reuse, including a saved Table preset or `.table` file. That exemption is only for column display: a filter, sort, group, or summary using the field still counts as a dependency. A blank-looking Table cell may represent an existing empty property, so it is not proof that the name is unused. This exemption does not extend to native Base definitions.
 
 If the name is unused and the old declarations still match the deleted Operon definition, the explicit Add operation can replace that retained type information. Existing note values are never converted automatically. A separately assigned Obsidian type, an unreadable or ambiguous source, or a source change during verification prevents the type change.
+
+An unrelated open tab does not by itself block reuse. Deferred tabs without a live editor buffer are checked through their saved sources, while actual unsaved property content remains part of verification. Unexpanded template values do not automatically block reuse when their property names can be safely identified; a matching property still counts as usage, even with an empty value. Incomplete or ambiguous frontmatter can still prevent verification.
 
 This deeper check runs when reusing a name with a different type, not each time you open an editor. If it reports a remaining reference, review that reference or recreate the field with its original compatible type.
 

@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "387d1fe6968e2e1208065ff5285e6751aa2d5a79ed46515c2bf5d6af3307cbe9",
-      "bytes": 12146
+      "sha256": "015f8565b4dee8695dbe3af2484cf0beeea7440ab561ba436749ad43e32b1919",
+      "bytes": 12257
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "e5ea75fc0f939d898a60fed7f44fb21f5124b8f5fa0de51acfb222ea5aba83f3",
-      "bytes": 6176
+      "sha256": "eddfabc2c8873fd954034e9105aaff8ed210c9558eaade65ad42c5eb3830151d",
+      "bytes": 6490
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -34,8 +34,8 @@
     },
     {
       "path": "DOCS-006 Glossary of Operon terms.md",
-      "sha256": "fee384b0095528641482fa3336ae1b8841704aaa6b41acdd9808bbe680724d0d",
-      "bytes": 8641
+      "sha256": "c4e41874cf815f7049f6398869732c0b3f44381e65727b9c9bf1d7de603edd11",
+      "bytes": 8939
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
@@ -104,8 +104,8 @@
     },
     {
       "path": "DOCS-020 Task Creator.md",
-      "sha256": "13eeba357e88754d8e2879f6ffd9055e72c3e9a083bcefd48fd63047dde14220",
-      "bytes": 13052
+      "sha256": "a3ea41ce1a62d303261bb6651a505b6987e5ab2549423c4344110d3a6dc9b380",
+      "bytes": 15041
     },
     {
       "path": "DOCS-021 Task Editor.md",
@@ -114,13 +114,13 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "94239e28c365911ad487934223535cc44f265fd52015d24887143e013769666e",
-      "bytes": 8199
+      "sha256": "cae1adad1105c8b969b276a787b38c147ff60d576a31aed05a36df0569c98228",
+      "bytes": 8402
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
-      "sha256": "9ea596126786149c65103697751b4c02cb9ad9594821f026f5e2bf978dd61555",
-      "bytes": 6424
+      "sha256": "5d3c3df60a8f5c05847682624941b5250f5dd6b28e2eb1a4e57eb9bb7499ea1a",
+      "bytes": 6614
     },
     {
       "path": "DOCS-024 Task templates.md",
@@ -174,13 +174,13 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "96b4763a0def02101faeff315e139df2163133517fde5c009d6eafa69be221e8",
-      "bytes": 6594
+      "sha256": "61de72477087ad287543341783703cd5f56c0f272a9564c7689de09fbc6c093e",
+      "bytes": 7544
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
-      "sha256": "3f14f86d6b870ce5b6abdd939ac3b45a0a50241d70e2dcfdfcb312e34cb1403b",
-      "bytes": 5818
+      "sha256": "4547bce7096e4099dff9d73d74d8691d391e34b92d26665b0476fb9296070ae6",
+      "bytes": 6945
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
@@ -204,8 +204,8 @@
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "f7abb2e0604a217eb613d88b10cb1621cf134f8a892b2263c0c689de2ce6a241",
-      "bytes": 12566
+      "sha256": "915b151344042f24c2c1072386cea405e5570f1690bd93346ed5e28406d25237",
+      "bytes": 13022
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -279,8 +279,8 @@
     },
     {
       "path": "DOCS-055 Duplicate IDs.md",
-      "sha256": "9c97d50ae8c385918f01f98a8b95608884a947aeffe7d501adefdf64218e67e4",
-      "bytes": 6462
+      "sha256": "c4244b941015adb47e0c811cd9a166a5014ff2c91d2759a1cdd3ff0e8183c135",
+      "bytes": 6725
     },
     {
       "path": "DOCS-056 Calendar or Kanban rendering issues.md",
@@ -474,8 +474,8 @@
     },
     {
       "path": "DOCS-094 How to create a task with Task Creator.md",
-      "sha256": "2fc1e240e00ffe5e66c750f3b4b373f3efa4694a5cc893b2388718dbf4695039",
-      "bytes": 10882
+      "sha256": "7ed95175c6894054b1c630e6f13f6d8f2708563552eb2a654d737dc397a890cf",
+      "bytes": 11880
     },
     {
       "path": "DOCS-095 Calendar Task Pool.md",
@@ -704,8 +704,8 @@
     },
     {
       "path": "DOCS-140 Upcoming Tasks.md",
-      "sha256": "74aa6844c430b4474a045582aa73c03d525ffe73919f6ded4a307dcc6dac8017",
-      "bytes": 7687
+      "sha256": "efb7c4df13da75b85719baddf8b590a61dabe7f1125a7a6c4c21ca85ec61e5be",
+      "bytes": 9501
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
@@ -739,8 +739,8 @@
     },
     {
       "path": "DOCS-147 Excalidraw Task Cards.md",
-      "sha256": "de72fd6adbaffc51a90ed14c02447e06b020544d5f9be93f4d458d458a51a661",
-      "bytes": 13766
+      "sha256": "0215ceb1aa3e6c2e2dc357996445c703797247258a8e7b110f95b67e3756d252",
+      "bytes": 14065
     },
     {
       "path": "DOCS-148 Canvas and Excalidraw Task Pool.md",
@@ -759,9 +759,14 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "4be0226c7397796d00ceed46d01c071cc660942e6ea6c488266b4d632f8b3db0",
-      "bytes": 19422
+      "sha256": "46b826bc6f8d4816d26683e4af88328a4e77350353305f07a1440267e394642a",
+      "bytes": 19524
+    },
+    {
+      "path": "DOCS-152 Status Dock.md",
+      "sha256": "a7bbe9c63407f48e2f1303799511e161294404480955a4c9286e8d91c2752021",
+      "bytes": 7479
     }
   ],
-  "generatedAt": "2026-10-23T15:13:36.743Z"
+  "generatedAt": "2026-10-26T11:44:56.163Z"
 }

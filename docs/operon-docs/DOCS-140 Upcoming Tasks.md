@@ -1,13 +1,13 @@
 ---
-Notes: Date-based planning with sidebar and status bar countdowns
+Notes: Date-based planning with sidebar countdowns and desktop Status Dock tasks
 Icon: calendar-clock
 Color: "#0284c7"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-26T12:20:43+01:00
 ---
 
 # Upcoming Tasks
 
-Upcoming Tasks brings dated inline and file tasks into a daily sidebar list, with a status bar countdown for the next timed task. The list updates from your task dates automatically. Use it to see what is approaching; use [[DOCS-032 Pinned Task Dock|Pinned Tasks]] for a list you choose by hand.
+Upcoming Tasks brings dated inline and file tasks into a daily sidebar list, with current and upcoming timed tasks also available in the desktop [[DOCS-152 Status Dock|Status Dock]]. The list updates from your task dates automatically. Use it to see what is approaching; use [[DOCS-032 Pinned Task Dock|Pinned Tasks]] for a list you choose by hand.
 
 ## Open the sidebar
 
@@ -35,30 +35,29 @@ Use **Play** to start time tracking and **Stop** to stop it. These controls use 
 
 ## Read the countdowns
 
-Choose **HH:MM** or **HH:MM:SS**; the default includes seconds. Positive remaining time is rounded up to the displayed unit, so zero is not shown before the scheduled start.
+The sidebar uses **HH:MM** or **HH:MM:SS** according to the saved countdown preference; the default includes seconds. The **Countdown display** selector remains available on mobile, but is no longer offered in desktop Settings. This sidebar format is separate from the dock’s compact duration format. Positive remaining time is rounded up to the displayed unit, so zero is not shown before the scheduled start.
 
 On desktop, zero countdowns and the nearest future task's countdown stay visible. Other countdowns and inactive Play controls appear on hover or keyboard focus. On mobile, available countdowns and tracking controls remain visible. Active tracking controls remain visible on both.
 
 When a task reaches zero, its sidebar countdown stays at zero and the next future task gains a continuously visible countdown. All-day tasks have no countdown. Values above **99:59** in HH:MM or **99:59:59** in HH:MM:SS are hidden; the task itself stays visible.
 
-## Use the status bar
+## Use the desktop Status Dock
 
-The status bar follows the nearest future timed Scheduled task within the same day range, even when the sidebar is closed. Its countdown stays visible independently of sidebar hover behavior, subject to the format limit above. Beyond that limit, the task name and icon remain visible. All-day tasks are not candidates. If there is no candidate or retained task, the indicator is hidden.
+The [[DOCS-152 Status Dock|Status Dock]] shows ongoing timed tasks first, ordered by their start time, followed by the next future timed Scheduled task within the configured day range. It works even when the sidebar is closed. Several ongoing tasks can appear together; their area scrolls horizontally when space is limited.
 
-Clicking the indicator uses your **Status bar click action**:
+An ongoing task has started and has not reached its end time. The end can be explicit or derived from its estimate. Eligible blocks spanning midnight are included even though the sidebar starts with today. Finished and cancelled tasks remain excluded. All-day entries do not become dock countdowns.
 
-- **Start timer** starts tracking the displayed task. This is the default.
-- **Open task editor** opens its Task Editor.
-- **Open task** opens its file and goes to the inline task when applicable.
+Ongoing names have no zero countdown or visible **Now:** label; **Now:** appears in the task-name tooltip. When a countdown ends, the selected task can remain alongside the next future task. If no ongoing block is available, this retained task remains until its selection becomes invalid, for example through completion, deletion, or a changed scheduled start. Selection is recalculated when Operon reloads.
 
-**When countdown ends** determines what happens at zero:
+Hover over a task to reveal Play in place of its icon, then click the icon to start tracking. Clicking its name follows the dock’s shared **Click behavior** setting, whose default is **Source File + Task Editor**. Countdown text is not a click target. The task’s own icon takes priority; fallback icons use Scheduled for current tasks and Due for the next task. The Due icon does not change selection to use Due dates.
 
-- **Keep current task** keeps the task and its zero countdown visible, including across midnight or a change to the day range.
-- **Continue with next task** switches to the nearest future candidate. If none exists, zero remains until a candidate becomes available.
+The dock shows seconds below one minute and minutes for longer durations. The existing countdown range limit still applies; a hidden countdown does not remove the task name. Starting or stopping tracking does not change which task is scheduled next. Full controls, positioning, and visibility are covered in [[DOCS-152 Status Dock|Status Dock]].
 
-Completing, cancelling, deleting, or changing the scheduled start of the selected task causes a new selection. Renaming it or changing its Due date does not release a retained zero countdown. Selection lasts only for the current session; after reloading Operon, it is recalculated from future tasks. Hiding and showing the indicator preserves and rechecks the session selection.
+## Mobile status bar behavior
 
-Tracking and countdown selection are independent: starting or stopping a timer does not choose another upcoming task. The indicator uses Obsidian's status bar where available; it does not add a separate mobile bar.
+Mobile retains the native status-bar path where Obsidian makes it available; Operon does not add a separate mobile Status Dock. This indicator selects the nearest future timed Scheduled task in the day range, or retains a previously selected task at zero.
+
+**Status bar click action** offers **Start timer** (the default), **Open task editor**, or **Open task**. **When countdown ends** offers **Keep current task** (the default) or **Continue with next task**; if no future task exists, the zero countdown remains until one becomes available. Retention can span midnight. Completion, cancellation, deletion, or a changed scheduled start releases the retained selection; reloading recalculates it from future tasks.
 
 ## Settings
 
@@ -68,8 +67,8 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 
 | Setting | Options or purpose | Default |
 | --- | --- | --- |
-| Upcoming days | 1–7 calendar days, including today; also controls the status bar's candidate range | 3 |
-| Countdown display | HH:MM or HH:MM:SS; changes the format in both the sidebar and status bar | HH:MM:SS |
+| Upcoming days | 1–7 calendar days, including today; also controls the next future timed-task candidate range | 3 |
+| Countdown display (mobile Settings only) | HH:MM or HH:MM:SS for the sidebar and native status-bar path; does not change desktop dock formatting | HH:MM:SS |
 
 ### Sidebar
 
@@ -80,21 +79,19 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 | Sidebar side | Left or Right; used when opening a closed panel | Left |
 | Upcoming task color source | Choose card colors independently of Pinned Tasks | No color |
 
-### Status bar
+### Status Dock and mobile status bar
 
-| Setting | Options or purpose | Default |
-| --- | --- | --- |
-| Show next upcoming task in status bar | Show or hide the indicator | On |
-| When countdown ends | Keep current task or Continue with next task | Keep current task |
-| Status bar click action | Start timer, Open task editor, or Open task | Start timer |
+On desktop, the **Operon status dock** section contains the upcoming-task visibility toggle, enabled by default. It controls the calendar-task area, not the timer or the whole dock. Use **Toggle status dock** to hide or show the whole dock.
 
-**Daily group order** is shown when **Show all-day tasks** is enabled. The status bar click and countdown-end controls are shown when the status bar indicator is enabled; hiding these controls preserves their saved values.
+The desktop **When countdown ends** and **Status bar click action** selectors have been removed. Task-name opening is configured under **Interface → Workspace Tweaks → Operon status dock → Click behavior** instead.
+
+On mobile, **Show next upcoming task in status bar**, **When countdown ends**, and **Status bar click action** retain the behavior described above. The latter two controls appear when the indicator is enabled. **Daily group order** appears when **Show all-day tasks** is enabled. Hidden controls retain their saved values.
 
 ## FAQ
 
-**Why is a task missing?** Check that it has a valid Scheduled or Due date within the chosen day range and is not finished or cancelled. For a date without a time, enable **Show all-day tasks**. The status bar only selects future timed Scheduled entries when starting a new selection.
+**Why is a task missing?** Check that it has a valid Scheduled or Due date within the chosen day range and is not finished or cancelled. For a date without a time, enable **Show all-day tasks**. The dock’s next-task countdown requires a timed Scheduled entry. Its current-task group also requires an ongoing time block; a task being tracked is not automatically a current calendar task.
 
-**Where are tasks from previous days?** The sidebar starts with today. It is not an overdue-task list. A status bar task retained at zero can remain from an earlier day.
+**Where are tasks from previous days?** The sidebar starts with today. It is not an overdue-task list. The dock can still show an ongoing block spanning midnight or a retained current task from an earlier day.
 
 **Why does a task without a time have no countdown?** It belongs to the All-day group. Add a scheduled start time if you want a countdown to a specific moment.
 
@@ -102,6 +99,7 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 
 ## Related
 
+- [[DOCS-152 Status Dock|Status Dock]]
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
 - [[DOCS-032 Pinned Task Dock|Pinned Task Dock]]
 - [[DOCS-021 Task Editor|Task Editor]]
