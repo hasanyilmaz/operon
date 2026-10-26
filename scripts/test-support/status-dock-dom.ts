@@ -20,6 +20,9 @@ export function statusDockDocument() {
 		if (before) { this.children.pop(); const index = this.children.indexOf(before); if (index < 0) throw new Error('Missing reference child'); this.children.splice(index, 0, node); }
 		return node;
 	};
+	proto.setCssProps = function (properties: Record<string, string>) {
+		for (const [key, value] of Object.entries(properties)) this.style.setProperty(key, value);
+	};
 	proto.clientWidth = 900;
 	proto.empty = function () { this.children = []; this.textContent = ''; };
 	proto.remove = function () { if (this.parent) this.parent.children = this.parent.children.filter((child: unknown) => child !== this); this.parent = null; this.connected = false; };

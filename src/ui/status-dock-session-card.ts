@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { TrackerSession } from '../types/tracker';
 import { resolveStatusDockClickAction, resolveTaskDisplayIcon, type OperonSettings } from '../types/settings';
-import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { normalizeTaskFieldColor, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { formatDurationHuman } from '../systems/tracker-utils';
@@ -94,18 +94,21 @@ export class StatusDockSessionCard {
   setIcon(icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox));
   icon.style.color = resolveTaskStatusIconColorForTask(task, settings) ?? '';
   setAccessibleLabelWithoutTooltip(icon, getTaskIconActionLabel(settings, task.checkbox));
+  const taskColor = normalizeTaskFieldColor(task.fieldValues['taskColor']);
+  const tooltipVerticalPreference = (): 'above' | 'auto' =>
+   this.el.getBoundingClientRect().top >= this.host.getBoundingClientRect().bottom ? 'auto' : 'above';
   const duration = this.el.querySelector<HTMLElement>('.operon-status-dock-time')!;
   duration.setText(formatDurationHuman(current.durationSeconds, 'seconds'));
   setAccessibleLabelWithoutTooltip(duration, `${t('taskEditor', 'editSession')}: ${formatDurationHuman(current.durationSeconds, 'seconds')}`);
   cleanupOperonHoverTooltips(duration);
-  bindOperonHoverTooltip(duration, { title: t('taskEditor', 'editSession'), content: task.description, taskColor: task.fieldValues['taskColor'] ?? null });
+  bindOperonHoverTooltip(duration, { get preferredVertical() { return tooltipVerticalPreference(); }, title: t('taskEditor', 'editSession'), content: task.description, taskColor });
   const name = this.el.querySelector<HTMLElement>('.operon-status-dock-name')!;
   name.empty(); renderCompactTaskMarkdown(name, { value: task.description || task.operonId, mode: 'visual-only', maxCharacters: 40 });
   const behavior = resolveStatusDockClickAction(settings.statusDockClickAction);
   const openLabel = t('settings', behavior === 'source' ? 'taskFinderResultSourceOnly' : behavior === 'editor' ? 'taskFinderResultEditorOnly' : 'taskFinderResultSourceAndEditor');
   setAccessibleLabelWithoutTooltip(name, `${openLabel}: ${task.description}`);
   cleanupOperonHoverTooltips(name);
-  bindOperonHoverTooltip(name, { title: openLabel, content: task.description, taskColor: task.fieldValues['taskColor'] ?? null });
+  bindOperonHoverTooltip(name, { get preferredVertical() { return tooltipVerticalPreference(); }, title: openLabel, content: task.description, taskColor });
   bindTaskContextualHoverMenu(icon, {
    followAnchor: true, surface: 'flowTimeTask', menuKey: `status-dock-session:${task.operonId}:${current.start}:${current.end}`,
    captureWriteGuard: () => { const revision = this.revision; return () => !this.disposed && revision === this.revision && !!this.session; },

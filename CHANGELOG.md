@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor.
+- Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor. Its tooltips use standard Operon colors and open away from the Dock whenever space allows.
 
 ### Improved
 

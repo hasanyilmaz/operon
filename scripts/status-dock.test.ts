@@ -1130,6 +1130,7 @@ test('recent session card aligns left and routes duration, description, and icon
  host.clientLeft = 1; host.getBoundingClientRect = () => ({ left: 100, top: 500, right: 700, bottom: 544, width: 600, height: 44 });
  const h = sessionTrackerHarness();
  await h.tracker.addSession('recorded', '2026-10-26T10:00:00', '2026-10-26T10:34:22');
+ h.task().fieldValues['taskColor'] = 'ffc800';
  let opens = 0, tasksOpened = 0, icons = 0;
  const card = new StatusDockSessionCard(host, { getSettings: () => h.settings, getTask: () => h.task(),
   getSessions: id => h.tracker.getTaskSessions(id), isTracking: () => false,
@@ -1138,6 +1139,26 @@ test('recent session card aligns left and routes duration, description, and icon
  try {
   card.show(h.created[0]); const el = host.querySelector('.operon-status-dock-session-card');
   assert.equal(el.style.left, '-1px');
+  const rect = (top: number, height = 44) => ({ left: 100, right: 500, top, bottom: top + height, width: 400, height });
+  for (const selector of ['.operon-status-dock-time', '.operon-status-dock-name']) {
+   const target = el.querySelector(selector);
+   for (const [dockTop, cardTop, targetTop, above] of [
+    [500, 440, 448, true], // Card above Dock: use free space above.
+    [100, 160, 168, false], // Card below Dock: use free space below.
+    [500, 640, 650, true], // Below is full: crossing toward Dock is allowed.
+    [100, 20, 30, false], // Above is full: use the remaining space below.
+   ] as const) {
+    host.getBoundingClientRect = () => rect(dockTop);
+    el.getBoundingClientRect = () => rect(cardTop);
+    target.getBoundingClientRect = () => rect(targetTop, 28);
+    for (const callback of target.handlers.get('mouseenter')) callback({ type: 'mouseenter' });
+    assert.equal(target._operonFloatingTooltip.classList.contains('is-tooltip-above'), above);
+    assert.equal(target._operonFloatingTooltip.style.getPropertyValue('--operon-live-hover-border'), '#ffc800');
+    const tooltipTop = Number.parseFloat(target._operonFloatingTooltip.style.top);
+    assert.ok(above ? tooltipTop < targetTop : tooltipTop >= targetTop + 28);
+    for (const callback of target.handlers.get('mouseleave')) callback({ type: 'mouseleave' });
+   }
+  }
   assert.equal(el.hidden, false); assert.equal(el.querySelector('.operon-status-dock-time').textContent, '34m 22s');
   el.querySelector('.operon-status-dock-name').click(); await new Promise(resolve => setImmediate(resolve)); assert.equal(tasksOpened, 1); assert.equal(opens, 0);
   el.querySelector('.operon-status-dock-time').click(); await new Promise(resolve => setImmediate(resolve)); assert.equal(opens, 1); assert.equal(tasksOpened, 1);
