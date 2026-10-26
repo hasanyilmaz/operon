@@ -17040,7 +17040,7 @@ export default class OperonPlugin extends Plugin {
 			this.statusDock = this.addChild(new OperonStatusDock(this.app, {
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
-				getSettings: () => this.settings, openFlowTime: () => this.openFlowTimeView(),
+				getSettings: () => this.settings,
 				openTask: async (taskId, anchor, behavior) => {
 					if (behavior === 'source') await this.openTaskSourcePreview(taskId, anchor);
 					else await this.openEditorForId(taskId, behavior === 'source-and-editor', anchor);

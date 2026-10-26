@@ -16,7 +16,6 @@ interface StatusDockDependencies {
 	timeTracker: TimeTracker;
 	breakController: FlowTimeBreakController;
 	getSettings: () => OperonSettings;
-	openFlowTime: () => Promise<void>;
 	openTask: (taskId: string, anchor: HTMLElement, behavior: TaskFinderResultBehavior) => Promise<void>;
 	pickTrackerTask: () => Promise<string | null>;
 	openConflicts: () => void;
@@ -262,17 +261,16 @@ export class OperonStatusDock extends Component {
 	}
 
 	private async toggleTimer(): Promise<void> {
-		const { timeTracker, breakController, openFlowTime } = this.dependencies;
+		const { timeTracker, breakController } = this.dependencies;
 		const expected = timeTracker.getActiveState();
 		await this.runAction(async () => {
 			if (expected) {
-				const stopped = await timeTracker.stop('manual', undefined, () => {
+				await timeTracker.stop('manual', undefined, () => {
 					const active = timeTracker.getActiveState();
 					return !this.disposed && !breakController.getSnapshot().actionPending && active?.operonId === expected.operonId && active?.start === expected.start;
 				});
-				if (stopped && !this.disposed) await openFlowTime();
 			} else if (breakController.getSnapshot().pendingTaskId) await breakController.resumePending('status-bar');
-			else if (await timeTracker.startUnassigned('status-bar') && !this.disposed) await openFlowTime();
+			else await timeTracker.startUnassigned('status-bar');
 		}, this.previewTimerAction(expected ? 'stop' : 'start'));
 	}
 

@@ -261,7 +261,7 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 	const dock = new OperonStatusDock(app, { indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
 		timeTracker: { getActiveState: () => null, getTransitionState: () => null, subscribe: () => () => {}, startUnassigned: async () => { starts++; return true; } } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: null, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, subscribe: () => () => {} } as never,
-		getSettings: () => settings, openFlowTime: async () => {}, startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
+		getSettings: () => settings, startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
 	(dock as unknown as { registerEvent(ref: { dispose: () => void }): void }).registerEvent = ref => dock.register(ref.dispose);
 	dock.onload();
 	assert.equal(main.doc.body.querySelectorAll('.operon-status-dock').length, 1);
@@ -343,7 +343,7 @@ test('dock source clicks retain the clicked owner anchor and idle selection star
 		breakController: { getSnapshot: () => ({ pendingTaskId: pending, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, selectPendingTask: async (pick: () => Promise<string | null>) => { const before = active, id = await pick(); if (!id || active !== before) return false; starts++; return true; } } as never,
 		startTimerForTask: async () => false, openTask: async (id, anchor, behavior) => { opened.push([id, anchor, behavior]); },
 		createTrackerTask: async () => null, pickTrackerTask: async () => { picks++; return selected; },
-		openFlowTime: async () => {}, openConflicts: () => {},
+		openConflicts: () => {},
 	});
 	const anchor = f.doc.body.createEl('button');
 	await (dock as any).openTracker(anchor); assert.deepEqual(opened, [['active', anchor, 'source-and-editor']]); assert.equal(picks, 0);
@@ -465,7 +465,7 @@ test('tracking and upcoming route all three click choices with their owner ancho
 		timeTracker: { getActiveState: () => snapshot().active, getTransitionState: () => null } as never,
 		breakController: { getSnapshot: () => snapshot().breakSnapshot, getElapsedSeconds: () => 0 } as never,
 		startTimerForTask: async () => false, openTask: async (...args) => { opened.push(args); await gate; }, createTrackerTask: async () => null, pickTrackerTask: async () => null,
-		openFlowTime: async () => {}, openConflicts: () => {},
+		openConflicts: () => {},
 	});
 	(dock as any).upcoming.getSnapshot = () => snapshot().upcoming;
 	const context = (dock as any).createWindow({ doc: f.doc, win: f.doc.defaultView }); context.widget.update(snapshot());
@@ -522,9 +522,11 @@ function feedbackHarness() {
 	});
 	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, {
 		indexer: { getTask: id => tasks.get(id), getAllTasks: () => [], getGeneration: () => 1 }, timeTracker: tracker as never,
-		breakController: controller, getSettings: () => settings, openFlowTime: async () => { state.opened++; },
+		breakController: controller, getSettings: () => settings,
 		startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {},
 	});
+	// Trap any accidental legacy panel-opening call while exercising real timer actions.
+	(dock as any).dependencies.openFlowTime = async () => { state.opened++; };
 	const views: any[] = [], updates: StatusDockSnapshot[] = [];
 	for (const owner of [document, statusDockDocument()]) {
 		const container = { doc: owner.doc, win: owner.doc.defaultView };
@@ -541,13 +543,13 @@ function feedbackHarness() {
 		close: () => { dock.onunload(); controller.destroy(); unsubscribeTracker(); unsubscribeBreak(); } };
 }
 
-test('Stop updates every dock before saving and commits through the existing stop/FlowTime path', async () => {
+test('Stop updates every dock before saving and commits without opening FlowTime', async () => {
 	const h = feedbackHarness(); try {
 		const active = h.state.active; const opening = (h.dock as any).toggleTimer();
 		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.disabled]), [['play', '0s', true], ['play', '0s', true]]);
 		assert.equal(h.state.active, active); assert.equal(h.state.saved, 0); assert.equal(h.state.opened, 0);
 		await Promise.resolve(); await (h.dock as any).toggleTimer(); assert.equal(h.state.stopCalls, 1);
-		h.resolve(true); await opening; assert.equal(h.state.saved, 1); assert.equal(h.state.opened, 1);
+		h.resolve(true); await opening; assert.equal(h.state.saved, 1); assert.equal(h.state.opened, 0);
 		assert.equal(h.read()[0].disabled, false);
 	} finally { h.close(); }
 });
@@ -593,11 +595,11 @@ test('Play previews resume through provisional allocation and restores the origi
 	} finally { h.close(); }
 });
 
-for (const success of [false, true]) test(`Idle Play changes immediately and ${success ? 'opens FlowTime after commit' : 'returns to idle on rejection'}`, async () => {
+for (const success of [false, true]) test(`Idle Play changes immediately and ${success ? 'keeps tracking without opening FlowTime' : 'returns to idle on rejection'}`, async () => {
 	const h = feedbackHarness(); try {
 		h.state.active = null; h.emit(); const opening = (h.dock as any).toggleTimer();
 		assert.equal(h.read()[0].glyph, 'square'); assert.equal(h.state.active, null);
-		h.resolve(success); await opening; assert.equal(h.read()[0].glyph, success ? 'square' : 'play'); assert.equal(h.state.opened, success ? 1 : 0);
+		h.resolve(success); await opening; assert.equal(h.read()[0].glyph, success ? 'square' : 'play'); assert.equal(h.state.opened, 0); assert.equal(h.tracker.getActiveState()?.isUnassigned ?? false, success);
 	} finally { h.close(); }
 });
 
