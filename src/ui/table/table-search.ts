@@ -13,7 +13,7 @@ import {
 	type TableFilePropertyCellValue,
 } from './table-file-property';
 
-type TableSearchSettings = Pick<OperonSettings, 'keyMappings'>;
+type TableSearchSettings = Pick<OperonSettings, 'keyMappings' | 'fileTaskDisplayTitleEnabled'>;
 type TableTaskSearchMatcher = (task: IndexedTask, normalizedQuery: string) => boolean;
 
 export interface TableFilePropertySearchContext {
@@ -168,6 +168,10 @@ function buildTableTaskSearchMatcherBundle(
 			}
 			const rawValue = valueResolver.getRawValue(task, key);
 			addValue(rawValue);
+			if (key === 'description') {
+				addValue(valueResolver.getDisplayValue(task, key));
+				continue;
+			}
 			if (key === 'source') {
 				addValue(formatCompactTableTaskSource(task));
 				addValue(formatTableTaskSource(task));
@@ -239,6 +243,7 @@ export function buildTableTaskSearchMatcherSignature(
 		String(tasks.length),
 		buildTableSearchVisibleColumnSignature(columns),
 		buildTableSearchKeyMappingSignature(settings),
+		String(settings.fileTaskDisplayTitleEnabled === true),
 	].join('|');
 }
 

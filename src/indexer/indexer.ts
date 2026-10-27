@@ -122,7 +122,7 @@ export interface IndexedTaskDelta {
 
 export type IndexReconciliationEvent =
 	| { kind: 'full'; generation: number }
-	| { kind: 'incremental'; generation: number; affectedOperonIds: string[] };
+	| { kind: 'incremental'; generation: number; affectedOperonIds: string[]; changes?: readonly IndexedTaskDelta[] };
 
 export type IndexDurableRevisionState =
 	| 'available'
@@ -959,7 +959,7 @@ export class OperonIndexer {
 				affectedOperonIds: beforeById.keys(),
 				perfContext: this.resolveIndexPerfContext(options.perfContext, 'reindex-file-excluded'),
 			});
-			this.emitIncrementalReconciliation(beforeById.keys());
+			this.emitIncrementalReconciliation(beforeById.keys(), deltas);
 			this.notifyTaskChanges(deltas, options);
 			if (options.notify !== false && removedTasks.length > 0) {
 				this.onTasksRemoved?.(removedTasks);
@@ -1026,7 +1026,7 @@ export class OperonIndexer {
 		});
 		const persistScheduleMs = enginePerfNow() - persistStartedAt;
 		const removedTasks = this.collectActuallyRemovedTasks(removedCandidates);
-		this.emitIncrementalReconciliation(affectedOperonIds);
+		this.emitIncrementalReconciliation(affectedOperonIds, deltas);
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && removedTasks.length > 0) {
 			this.onTasksRemoved?.(removedTasks, { kind: 'source-scan' });
@@ -1396,7 +1396,7 @@ export class OperonIndexer {
 		});
 		const persistScheduleMs = enginePerfNow() - persistStartedAt;
 		const actuallyRemovedTasks = this.collectActuallyRemovedTasks(removedTasks);
-		this.emitIncrementalReconciliation(affectedOperonIds);
+		this.emitIncrementalReconciliation(affectedOperonIds, deltas);
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && actuallyRemovedTasks.length > 0) {
 			this.onTasksRemoved?.(actuallyRemovedTasks, { kind: 'source-scan', filePaths: [...scannedPaths] });
@@ -1436,7 +1436,7 @@ export class OperonIndexer {
 			affectedOperonIds: beforeById.keys(),
 			perfContext: this.resolveIndexPerfContext(options.perfContext, 'file-delete'),
 		});
-		this.emitIncrementalReconciliation(beforeById.keys());
+		this.emitIncrementalReconciliation(beforeById.keys(), deltas);
 		this.notifyTaskChanges(deltas, options);
 		if (options.notify !== false && removedTasks.length > 0) {
 			this.onTasksRemoved?.(removedTasks, { kind: 'file-delete' });
@@ -1470,7 +1470,7 @@ export class OperonIndexer {
 				affectedOperonIds: beforeById.keys(),
 				perfContext: { source: 'file-rename-excluded' },
 			});
-			this.emitIncrementalReconciliation(beforeById.keys());
+			this.emitIncrementalReconciliation(beforeById.keys(), deltas);
 			this.notifyTaskChanges(deltas);
 			if (removedTasks.length > 0) this.onTasksRemoved?.(removedTasks);
 			this.notifyIndexUpdated();
@@ -1532,7 +1532,7 @@ export class OperonIndexer {
 			affectedOperonIds,
 			perfContext: { source: 'file-rename' },
 		});
-		this.emitIncrementalReconciliation(affectedOperonIds);
+		this.emitIncrementalReconciliation(affectedOperonIds, deltas);
 		this.notifyTaskChanges(deltas);
 
 		// Notify views immediately so filter/editor show updated path
@@ -3000,11 +3000,12 @@ export class OperonIndexer {
 		this.onTasksChanged(changes);
 	}
 
-	private emitIncrementalReconciliation(affectedOperonIds: Iterable<string>): void {
+	private emitIncrementalReconciliation(affectedOperonIds: Iterable<string>, changes: readonly IndexedTaskDelta[] = []): void {
 		this.emitIndexReconciliation({
 			kind: 'incremental',
 			generation: this.generation,
 			affectedOperonIds: [...new Set(affectedOperonIds)],
+			changes,
 		});
 	}
 

@@ -1,4 +1,5 @@
 import { getTimeScopeSignature } from '../../core/time-scope-values';
+import { getTaskDisplayTitle } from '../../core/task-display-title';
 import { resolveTableCountdownDate } from '../../core/table-countdown';
 import type { TableCountdownTarget } from '../../types/table';
 import { parseLocalTimestamp } from '../../core/local-time';
@@ -30,7 +31,7 @@ import {
 export const TABLE_NO_GROUP_VALUE_KEY = '__table_no_value__';
 export const TABLE_UNSUPPORTED_GROUP_VALUE_KEY = '__table_unsupported_value__';
 
-type TableValueCacheSettings = Pick<OperonSettings, 'keyMappings'> & Partial<Pick<OperonSettings, 'pipelines'>>;
+type TableValueCacheSettings = Pick<OperonSettings, 'keyMappings'> & Partial<Pick<OperonSettings, 'pipelines' | 'fileTaskDisplayTitleEnabled'>>;
 export type TableSortValueKind = 'priority' | 'numeric' | 'date' | 'text';
 export type TableCachedSortValue = string | number | null;
 
@@ -183,7 +184,9 @@ export function createTableValueResolver(
 			}
 			stats.displayMisses++;
 			const rawValue = resolver.getRawValue(task, key);
-			const value = key === 'source'
+			const value = key === 'description'
+				? getTaskDisplayTitle(task, settings?.fileTaskDisplayTitleEnabled === true)
+				: key === 'source'
 				? formatCompactTableTaskSource(task)
 				: settings
 					? formatTableTaskValueForDisplay(key, rawValue, { settings, taskLookup })

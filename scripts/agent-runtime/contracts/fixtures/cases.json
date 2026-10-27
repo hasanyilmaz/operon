@@ -303,6 +303,138 @@
       }
     },
     {
+      "id": "valid-live-property-catalog-with-filename-rule",
+      "category": "valid",
+      "schemaId": "operon-catalog",
+      "expected": true,
+      "value": {
+        "contractVersion": 1,
+        "requestId": "catalog-result-filename-rule",
+        "kind": "catalog-result",
+        "ok": true,
+        "freshness": {
+          "source": "live-runtime",
+          "coherence": "verified",
+          "observedAt": "2026-07-23T12:00:00.000Z",
+          "settled": true
+        },
+        "warnings": [],
+        "contextRevision": {
+          "index": {
+            "sessionId": "fixture-session",
+            "ramGeneration": 4,
+            "durable": {
+              "status": "available",
+              "snapshotId": "fixture-v8",
+              "committedAt": "2026-07-23T08:00:00.000Z"
+            }
+          },
+          "settingsFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "pinnedGeneration": 1,
+          "activeTrackerGeneration": 2,
+          "repeatSeriesRevision": 3,
+          "projectSerialGeneration": 4,
+          "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "settingsFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "catalogRevision": "27c19db90f847b5a8e8e0f3a24e2c05d870ff487b807c9245cc32ea6cb3452a3",
+        "taxonomy": {
+          "defaultPipeline": { "configuredValue": "", "status": "none" },
+          "defaultPriority": { "configuredValue": "", "status": "none" },
+          "pipelines": [],
+          "priorities": []
+        },
+        "fields": [],
+        "policies": {
+          "creation": {
+            "descriptionRequired": false,
+            "assigneesRequired": false,
+            "defaultEstimateMinutes": 0,
+            "defaultToFileTask": false,
+            "fileTaskTargetFolder": "",
+            "fileTaskTemplateFolder": "",
+            "inlineTaskSaveMode": "ask-every-time",
+            "inlineTaskTargetFile": "",
+            "inlineTaskHeading": "",
+            "dailyNoteAddsStartDate": false,
+            "dailyNoteAddsScheduledDate": false,
+            "createDailyNotesAsFileTasks": false,
+            "calendarInlineTaskHeading": "",
+            "builtInTemplateCandidates": []
+          },
+          "fileTaskFilenameRule": {
+            "preset": "custom",
+            "lowercase": true,
+            "rules": [{ "pattern": "^old$", "replacement": "new" }]
+          },
+          "inheritance": {
+            "fields": [],
+            "statusPipelineSource": "default",
+            "autoParentFileTask": false,
+            "autoParentLinkedFileSubtasks": false,
+            "fileTaskParentInlineTargetMode": "default",
+            "fileTaskParentFileTargetMode": "default",
+            "inlineTaskParentInlineTargetMode": "default",
+            "inlineTaskParentFileTargetMode": "default",
+            "inlineTaskParentFileHeadingKeyword": ""
+          },
+          "exclusions": { "folders": [] },
+          "filters": [],
+          "automation": {
+            "autoCompleteParentWhenAllChildrenTerminal": false,
+            "cascadeCancelToDescendants": false,
+            "newOccurrencePosition": "below",
+            "fileTaskAutoArchiveEnabled": false,
+            "fileTaskArchiveFolder": "",
+            "fileTaskArchiveDelaySeconds": 0,
+            "fileTaskArchiveOnlyFromFileTasksFolder": false,
+            "fileRepeatDestination": "same-folder",
+            "fileRepeatCustomFolder": "",
+            "estimateAutoReallocation": false,
+            "trackerSplitSessionsAtMidnight": false,
+            "reminderCatchUpWindowMinutes": 0,
+            "reminderAutoPinDueTasks": false,
+            "pinnedDockAutoPin": false,
+            "pinnedDockAutoUnpinFinished": false
+          },
+          "reminders": {
+            "fields": [
+              { "canonicalKey": "reminderDatetimes", "availability": "available" },
+              { "canonicalKey": "reminderRules", "availability": "available" }
+            ],
+            "ruleAnchors": ["datetimeStart", "datetimeEnd", "dateStarted", "dateScheduled", "dateDue"],
+            "itemActions": ["add", "replace", "remove"]
+          },
+          "conversion": {
+            "directions": ["inline-to-file", "file-to-inline"],
+            "templateSelection": "explicit-or-needs-template",
+            "targetModes": ["exact-line", "configured-target"],
+            "inlineToFileMovesPlainCheckboxes": false,
+            "fileToInlineRequiresExplicitConfirmation": true
+          },
+          "taskUpdate": {
+            "writableKeys": [],
+            "customKeyPolicy": "active-valid-nonreserved-text-number-date-datetime-list-checkbox"
+          },
+          "relationships": {
+            "writableFields": ["parentTask", "blocking", "blockedBy"],
+            "actions": ["replace", "clear"],
+            "parentMaxTargets": 1,
+            "dependencyInverseWrites": true
+          },
+          "transitions": { "actions": ["set-status", "complete", "cancel", "reopen"] },
+          "timer": { "actions": ["start", "stop"] },
+          "inlineRelocation": { "target": "exact-blank-line" },
+          "deletion": {
+            "requiresExplicitConfirmation": true,
+            "deleteAdditionalTasks": false,
+            "referenceCleanup": "explicit-or-block"
+          },
+          "projectSerialScopes": []
+        }
+      }
+    },
+    {
       "id": "invalid-live-property-catalog-partial-failure-result",
       "category": "invalid",
       "schemaId": "operon-catalog",
@@ -428,6 +560,7 @@
           "projectSerialGeneration": 4,
           "projectSerialSignature": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
+        "displayTitle": "Legacy task display title",
         "writableFields": [
           {
             "canonicalKey": "description",

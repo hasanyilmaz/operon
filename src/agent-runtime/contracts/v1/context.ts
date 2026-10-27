@@ -186,6 +186,7 @@ export interface TaskContextV1 {
 	pinned: boolean;
 	sourceRevision: SourceRevisionV1;
 	contextRevision: ContextRevisionV1;
+	displayTitle?: string;
 	note?: string;
 	links?: string[];
 	customFields?: Record<string, JsonValue>;

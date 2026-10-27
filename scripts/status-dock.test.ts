@@ -37,6 +37,52 @@ function widget() {
 	return { ...f, dock, state, calls, find: (cls: string): any => dock.root.querySelector(`.${cls}`) };
 }
 
+test('status dock displays titles when enabled and filename labels when disabled', () => {
+	const task: IndexedTask = {
+		operonId: 'n000123', description: 'old-file', checkbox: 'open', tags: [],
+		fieldValues: { fileTaskDisplayTitle: 'Readable task title' },
+		primary: { filePath: 'old-file.md', lineNumber: 0, format: 'yaml' }, datetimeModified: '', tier: 'hot',
+	};
+	const { doc } = statusDockDocument();
+	const dock = new StatusDockWidget(doc, {
+		findTask() {}, openTracker() {}, toggleTimer() {}, toggleBreak() {}, startTask() {},
+		openCurrentTask() {}, openNextUpcoming() {}, openUpcoming() {}, openConflicts() {}, createTask() {},
+	}, error => { throw error; });
+	doc.body.appendChild(dock.slot);
+	const current = { ...task, operonId: 'current', fieldValues: { fileTaskDisplayTitle: 'Current title' } };
+	const next = { ...task, operonId: 'next', fieldValues: { fileTaskDisplayTitle: 'Next title' } };
+	const state: StatusDockSnapshot = {
+		settings: { ...DEFAULT_SETTINGS, trackerShowStatusBarTimer: true, upcomingShowStatusBar: true },
+		active: { operonId: task.operonId, start: '2026-10-26T10:00:00', elapsedSeconds: 60, task, isUnassigned: false },
+		breakSnapshot: { breakState: null, pendingTaskId: null, actionPending: false }, breakSeconds: 0, pendingDescription: null,
+		upcoming: { task: current, current: true, due: true, countdown: '00:00:00', ongoing: [current],
+			next: { task: next, countdown: '01:00:00' } },
+		alert: { state: 'hidden', count: 0 }, actionPending: false,
+	};
+	try {
+		dock.setWidth(900);
+		for (const enabled of [true, false, true]) {
+			state.settings.fileTaskDisplayTitleEnabled = enabled;
+			dock.update(state);
+			const labels = dock.root.querySelectorAll('.operon-status-dock-name');
+			const text = Array.from(labels, label => label.textContent).join('|');
+			for (const title of ['Readable task title', 'Current title', 'Next title']) assert.equal(text.includes(title), enabled);
+			assert.equal(text.includes('old-file'), !enabled);
+			for (const selector of ['.operon-status-dock-current', '.operon-status-dock-next']) {
+				const label = dock.root.querySelector(selector)?.querySelector<HTMLElement>('.operon-status-dock-name');
+				assert.ok(label);
+				const accessible = doc.getElementById(label.getAttribute('aria-labelledby') ?? '');
+				assert.ok(accessible);
+				assert.equal(accessible.textContent?.includes('old-file'), !enabled);
+				const hints = Reflect.get(dock, 'tooltipKeys') as Map<HTMLElement, string>;
+				assert.equal(hints.get(label)?.includes('old-file'), !enabled);
+			}
+		}
+	} finally {
+		dock.destroy();
+	}
+});
+
 test('missing and invalid preferences use memory defaults without changing the package', () => {
 	const settings = migrateSettings({});
 	assertSettingsBackupCompatibilityRegistryExhaustive(DEFAULT_SETTINGS);

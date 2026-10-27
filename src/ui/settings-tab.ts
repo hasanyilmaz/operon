@@ -1,4 +1,5 @@
 import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
+import { deriveTaskFilename, validateFilenameRule, type FilenameRule } from '../core/filename-rule';
 import { saveDesktopBackdropDimming } from './modal-backdrop';
 import { BACKGROUND_DIMMING_OPTIONS, normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
@@ -36,6 +37,7 @@ import {
 	isNonEnglishSupportedLanguage,
 	type NonEnglishOperonLanguage,
 } from '../types/settings';
+import { getMissingDefaultKeyMappingCollisions } from '../types/settings';
 import {
 	createProjectSerialScopeId,
 	formatProjectSerialLabel,
@@ -1576,11 +1578,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return this.buildTaskSettingsGroups([
 			['newFileTaskCreationDefaults', ['taskCreatorDefaultToFileTask', 'fileTaskAfterCreate', 'taskCreatorDefaultFileTemplateId', 'fileTaskUseLastTemplateAsDefault'], (el, key) => this.renderFileCreationDefaultsSection(el, key), ['DOCS-024 Task templates', 'DOCS-020 Task Creator']],
 			['fileTaskTemplates', ['fileTaskTemplateFolder'], el => this.renderFileTemplatesSection(el), 'DOCS-024 Task templates'],
+			['display', ['fileTaskDisplayTitleEnabled', 'fileTaskDisplayTitleChangeMode', 'fileTaskFilenameRule'], (el, key) => this.renderFileTaskDisplaySettings(el, key), ['DOCS-013 File tasks', 'DOCS-039 Key mappings']],
 			['periodicNotesAsFileTasks', ['createDailyNotesAsOperonTask', 'createWeeklyNotesAsOperonTask'], (el, key) => this.renderPeriodicFileTaskSettings(el, key), 'DOCS-137 Daily and Weekly Notes'],
 			['fileTaskConversion', ['inlineToFileTaskMovePlainCheckboxes', 'inlineToFileTaskSourceDisposition'], (el, key) => this.renderFileConversionSection(el, key), 'DOCS-019 Converting inline and file tasks'],
 			['excludedFolders', ['excludedFolders'], el => this.renderExcludedFolderSettings(el), 'DOCS-054 Missing tasks'],
 			['fileTaskMigrationTitle', ['fileTaskMigration'], el => this.renderFileTaskMigrationSettings(el), ['DOCS-082 Bulk convert a folder into file tasks', 'DOCS-093 How to migrate from TaskNotes']],
-		], entries, t('settings', 'subtabFileTasks'), 'DOCS-013 File tasks');
+		], entries, t('settings', 'subtabFileTasks'), 'DOCS-013 File tasks', undefined,
+			key => !['fileTaskDisplayTitleChangeMode', 'fileTaskFilenameRule'].includes(key) || this.settings.fileTaskDisplayTitleEnabled);
 	}
 
 	private buildTaskCaptureSearchSection(
@@ -3377,6 +3381,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'inlineToFileTaskSourceDisposition') {
 			return text === 'remove-inline-task' ? 'remove-inline-task' : 'keep-link';
 		}
+		if (key === 'fileTaskDisplayTitleChangeMode') {
+			return text === 'ask' || text === 'auto' ? text : 'keep';
+		}
 		if (key === 'inlineTaskParentInlineTargetMode') {
 			return text === 'default' ? 'default' : 'below-parent';
 		}
@@ -3672,6 +3679,11 @@ export class OperonSettingsTab extends PluginSettingTab {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'fileTaskDisplayTitleChangeMode') return {
+			keep: t('settings', 'fileTaskDisplayTitleChangeModeKeep'),
+			ask: t('settings', 'fileTaskDisplayTitleChangeModeAsk'),
+			auto: t('settings', 'fileTaskDisplayTitleChangeModeAuto'),
+		};
   if (key === 'taskEditorPosition') return { right: t('settings', 'taskEditorPositionRight'), left: t('settings', 'taskEditorPositionLeft') };
   if (key === 'workspaceTweaksBackgroundDimming') return Object.fromEntries(BACKGROUND_DIMMING_OPTIONS.map(value => [String(value), value === 50 ? t('settings', 'workspaceTweaksBackgroundDimmingDefault') : `${value}%`]));
 		if (key === 'calendarTimeGridScale') {
@@ -4064,6 +4076,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
+		if (key === 'fileTaskDisplayTitleEnabled') this.updateNativeSettingsDefinitions();
 		if (key === 'taskIconClickAction') {
 			this.refreshNativeSettingsDom();
 			this.applyPendingSettingsChange();
@@ -5856,6 +5869,153 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderFileTemplatesSection(containerEl: HTMLElement): void {
 		this.renderFileTaskTemplateSettings(containerEl);
+	}
+
+	private renderFileTaskDisplaySettings(containerEl: HTMLElement, selectedKey?: string): void {
+		containerEl.addClass?.('operon-file-task-display-settings');
+		if (!selectedKey || selectedKey === 'fileTaskDisplayTitleEnabled') {
+			this.renderBoundToggleSetting(
+				containerEl,
+				t('settings', 'fileTaskDisplayTitleEnabled'),
+				t('settings', 'fileTaskDisplayTitleEnabledDesc'),
+				'fileTaskDisplayTitleEnabled',
+				{ onAfterChange: () => this.redisplayPreservingScroll() },
+			);
+		}
+		if (!this.settings.fileTaskDisplayTitleEnabled) return;
+		if (!selectedKey || selectedKey === 'fileTaskDisplayTitleChangeMode') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'fileTaskDisplayTitleChangeMode'),
+				t('settings', 'fileTaskDisplayTitleChangeModeDesc'), 'fileTaskDisplayTitleChangeMode', {
+					value: this.settings.fileTaskDisplayTitleChangeMode,
+					dropdownOptions: [
+						{ value: 'keep', label: t('settings', 'fileTaskDisplayTitleChangeModeKeep') },
+						{ value: 'ask', label: t('settings', 'fileTaskDisplayTitleChangeModeAsk') },
+						{ value: 'auto', label: t('settings', 'fileTaskDisplayTitleChangeModeAuto') },
+					],
+					onAfterChange: () => this.redisplayPreservingScroll(),
+				});
+		}
+		if (this.settings.fileTaskDisplayTitleChangeMode === 'keep') return;
+		if (selectedKey && selectedKey !== 'fileTaskFilenameRule') return;
+		const rule = this.settings.fileTaskFilenameRule;
+		new Setting(containerEl).setName(t('settings', 'fileTaskFilenameRule'))
+			.setDesc(t('settings', 'fileTaskFilenameRuleDesc')).addDropdown(dropdown => {
+				dropdown.addOptions({
+					same: t('settings', 'fileTaskFilenameRuleSame'),
+					kebab: t('settings', 'fileTaskFilenameRuleKebab'),
+					snake: t('settings', 'fileTaskFilenameRuleSnake'),
+					custom: t('settings', 'fileTaskFilenameRuleCustom'),
+				}).setValue(rule.preset).onChange(settingsAsyncHandler('Filename rule change failed', async value => {
+					if (value !== 'same' && value !== 'kebab' && value !== 'snake' && value !== 'custom') return;
+					const next: FilenameRule = { ...this.settings.fileTaskFilenameRule, preset: value };
+					try {
+						validateFilenameRule(next);
+					} catch (error) {
+						new Notice(error instanceof Error ? error.message : String(error));
+						dropdown.setValue(this.settings.fileTaskFilenameRule.preset);
+						return;
+					}
+					this.settings.fileTaskFilenameRule = next;
+					await this.saveSettings();
+					this.redisplayPreservingScroll();
+				}));
+			});
+		if (rule.preset !== 'custom') return;
+		let draftRule: FilenameRule = { ...rule, rules: rule.rules.map(item => ({ ...item })) };
+		let previewTitle = 'Review Q3 plan: draft';
+		const previewSetting = new Setting(containerEl)
+			.setName(t('settings', 'fileTaskFilenameRulePreview'))
+			.setDesc('');
+		previewSetting.settingEl.addClass('operon-filename-rule-preview-setting');
+		const updatePreview = (): void => {
+			try {
+				const filename = deriveTaskFilename(previewTitle, draftRule);
+				previewSetting.setDesc(filename
+					? `${filename}.md`
+					: t('taskEditor', 'fileTaskFilenameFallback', { filename: `${previewTitle}.md` }));
+				previewSetting.settingEl.removeClass('mod-warning');
+			} catch (error) {
+				previewSetting.setDesc(error instanceof Error ? error.message : String(error));
+				previewSetting.settingEl.addClass('mod-warning');
+			}
+		};
+		const saveRule = async (next: FilenameRule): Promise<boolean> => {
+			draftRule = next;
+			try {
+				validateFilenameRule(next);
+			} catch (error) {
+				previewSetting.setDesc(error instanceof Error ? error.message : String(error));
+				previewSetting.settingEl.addClass('mod-warning');
+				return false;
+			}
+			this.settings.fileTaskFilenameRule = next;
+			updatePreview();
+			await this.saveSettings();
+			return true;
+		};
+		previewSetting
+			.addText(text => text.setValue(previewTitle).onChange(value => { previewTitle = value; updatePreview(); }));
+		new Setting(containerEl).setName(t('settings', 'fileTaskFilenameRuleLowercase'))
+			.addToggle(toggle => toggle.setValue(rule.lowercase).onChange(settingsAsyncHandler('Filename lowercase change failed',
+				async value => { await saveRule({ ...draftRule, lowercase: value }); })));
+		const ruleControlsEl = containerEl.createDiv('operon-filename-rule-controls');
+		const ruleListEl = ruleControlsEl.createDiv('operon-filename-rule-list');
+		for (const [index, item] of rule.rules.entries()) {
+			const row = ruleListEl.createDiv('operon-filename-rule-row');
+			row.createSpan({ text: String(index + 1), cls: 'operon-filename-rule-index' });
+			const inputsEl = row.createDiv('operon-filename-rule-inputs');
+			const actionsEl = row.createDiv('operon-filename-rule-actions');
+			const updateItem = async (key: 'pattern' | 'replacement', value: string): Promise<void> => {
+				const rules = draftRule.rules.map((entry, i) => i === index ? { ...entry, [key]: value } : entry);
+				await saveRule({ ...draftRule, rules });
+			};
+			const addRuleInput = (
+				value: string,
+				placeholder: string,
+				errorContext: string,
+				onChange: (value: string) => Promise<void>,
+			): void => {
+				const input = inputsEl.createEl('input', {
+					attr: { type: 'text', placeholder, 'aria-label': placeholder },
+				});
+				input.value = value;
+				input.addEventListener('input', settingsAsyncHandler(errorContext, async () => { await onChange(input.value); }));
+			};
+			addRuleInput(item.pattern, t('settings', 'fileTaskFilenameRulePattern'), 'Filename pattern change failed',
+				value => updateItem('pattern', value));
+			addRuleInput(item.replacement, t('settings', 'fileTaskFilenameRuleReplacement'), 'Filename replacement change failed',
+				value => updateItem('replacement', value));
+			for (const direction of [-1, 1]) {
+				const tooltip = t('settings', direction < 0 ? 'fileTaskFilenameRuleMoveUp' : 'fileTaskFilenameRuleMoveDown');
+				const button = actionsEl.createEl('button', {
+					cls: 'clickable-icon operon-filename-rule-action',
+					attr: { type: 'button', 'aria-label': tooltip },
+				});
+				setIcon(button, direction < 0 ? 'arrow-up' : 'arrow-down');
+				setTooltip(button, tooltip);
+				button.disabled = index + direction < 0 || index + direction >= rule.rules.length;
+				button.addEventListener('click', settingsAsyncHandler('Filename rule reorder failed', async () => {
+						const rules = [...draftRule.rules];
+						[rules[index], rules[index + direction]] = [rules[index + direction], rules[index]];
+						if (await saveRule({ ...draftRule, rules })) this.redisplayPreservingScroll();
+					}));
+			}
+			const tooltip = t('settings', 'fileTaskFilenameRuleRemoveRule');
+			const button = actionsEl.createEl('button', {
+				cls: 'clickable-icon operon-filename-rule-action',
+				attr: { type: 'button', 'aria-label': tooltip },
+			});
+			setIcon(button, 'trash');
+			setTooltip(button, tooltip);
+			button.addEventListener('click', settingsAsyncHandler('Filename rule removal failed', async () => {
+					if (await saveRule({ ...draftRule, rules: draftRule.rules.filter((_, i) => i !== index) })) this.redisplayPreservingScroll();
+				}));
+		}
+		new Setting(ruleControlsEl).addButton(button => button.setButtonText(t('settings', 'fileTaskFilenameRuleAddRule'))
+			.onClick(settingsAsyncHandler('Filename rule addition failed', async () => {
+				if (await saveRule({ ...draftRule, rules: [...draftRule.rules, { pattern: '', replacement: '' }] })) this.redisplayPreservingScroll();
+			})));
+		updatePreview();
 	}
 
 	private renderFileConversionSection(containerEl: HTMLElement, selectedKey?: string): void {
@@ -11754,6 +11914,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	 */
 	private buildKeyMappingsSettingsItems(): SettingDefinitionItem[] {
 		const canonicalSortIndex = new Map(CANONICAL_KEY_ORDER.map((entry, index) => [entry.name, index]));
+		const missingDefaultKeyMappingCollisions = getMissingDefaultKeyMappingCollisions(
+			this.settings.keyMappings,
+		);
 		const systemMappings = this.settings.keyMappings
 			.filter(mapping => mapping.isSystem && mapping.isInternal !== true)
 			.sort((left, right) => (canonicalSortIndex.get(left.canonicalKey) ?? Number.MAX_SAFE_INTEGER)
@@ -11772,6 +11935,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 				const explanation = host.createDiv('setting-item-description operon-key-mappings-help');
 				explanation.createEl('p', { text: t('settings', 'keyMappingsIntro') });
 				explanation.createEl('p', { text: t('settings', 'keyMappingsLegendHideDesc') });
+				if (missingDefaultKeyMappingCollisions.length > 0) {
+					explanation.createEl('p', {
+						text: t('settings', 'keyMappingsMappingCollision'),
+						cls: 'mod-warning',
+					});
+				}
 				const title = t('settings', 'tabKeyMappings');
 				return attachDeclarativeSettingsPageTitleAction(host, title,
 					['DOCS-039 Key mappings', 'DOCS-018 Task properties'].map(target => this.buildNativeSettingsDocsAction(title, target).action));

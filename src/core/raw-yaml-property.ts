@@ -149,8 +149,21 @@ function isValueCompatibleWithFilePropertyField(
 export function isWritableRawYamlPropertyName(
 	propertyName: string,
 	keyMappings: readonly KeyMapping[],
+	canonicalKey?: 'fileTaskDisplayTitle',
 ): boolean {
 	if (!propertyName || !propertyName.trim() || propertyName.startsWith('_')) return false;
+	if (canonicalKey === 'fileTaskDisplayTitle') {
+		const mapping = keyMappings.find(item => item.canonicalKey === canonicalKey && item.isSystem !== false);
+		const comparable = propertyName.toLowerCase();
+		return mapping?.visiblePropertyName === propertyName
+			&& !CANONICAL_KEYS.some(key => key.name !== canonicalKey && (
+				key.name.toLowerCase() === comparable
+				|| LEGACY_CANONICAL_KEY_ALIASES[key.name]?.some(alias => alias.toLowerCase() === comparable)
+			))
+			&& !keyMappings.some(item => item.canonicalKey !== canonicalKey
+				&& (item.visiblePropertyName.toLowerCase() === comparable || item.canonicalKey.toLowerCase() === comparable))
+			&& (comparable === 'title' || !RESERVED_RAW_PROPERTY_NAMES.has(comparable));
+	}
 	if (RESERVED_RAW_PROPERTY_NAMES.has(propertyName)) return false;
 	const managedNames = new Set<string>();
 	for (const canonical of CANONICAL_KEYS) {

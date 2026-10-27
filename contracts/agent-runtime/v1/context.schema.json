@@ -439,6 +439,11 @@
         "contextRevision": {
           "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/contextRevision"
         },
+        "displayTitle": {
+          "type": "string",
+          "maxLength": 8192,
+          "x-operon-maxUtf8Bytes": 8192
+        },
         "note": {
           "type": "string",
           "maxLength": 8192,

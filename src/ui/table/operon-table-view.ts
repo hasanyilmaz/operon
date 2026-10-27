@@ -90,6 +90,8 @@ import {
 } from './table-cell-chip';
 import { resolveTableColumnCellAccent, resolveTableIconOnlyCellAccent } from './table-column-color';
 import { renderTableDescriptionCellContent, renderTableTextValueDisplay } from './table-description-cell';
+import type { FileTaskRenameSuggestion } from '../../core/filename-rule';
+import { createFileTaskTitleAfterCommit } from '../file-task-rename-callout';
 import { isCompactTaskMarkdownLinkEventTarget } from '../compact-task-markdown-renderer';
 import { getTaskSourceOpenModifierLabel, isTaskSourceOpenModifierClick } from '../task-source-open-modifier';
 import { bindTableParentTaskCellActivation } from './table-parent-task-cell';
@@ -255,7 +257,7 @@ import {
 } from './table-editing';
 import { openTaskFieldPicker } from '../task-field-picker-dispatch';
 import { showTextFieldPopover } from '../text-field-popover';
-import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute } from './table-text-edit-route';
+import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute, resolveTableTaskTextEditTarget } from './table-text-edit-route';
 import { showTaskNotePopover } from '../task-note-action';
 import {
 	buildTrackerSessionEditContext,
@@ -335,6 +337,8 @@ export interface OperonTableCallbacks {
 	onFlushPresetWrites?: (presetId: string) => Promise<void>;
 	onSaveFilterSet?: (filterSet: FilterSet) => Promise<void>;
 	onUpdateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onFileTaskTitleChanged?: (operonId: string, title: string) => Promise<FileTaskRenameSuggestion | null>;
+	onRenameFileTask?: (operonId: string, filename: string) => Promise<void>;
 	onUpdateGanttTaskFields?: (
 		operonId: string,
 		payload: Record<string, string>,
@@ -3134,7 +3138,7 @@ export class OperonTableView extends FileView {
 		const key = column.key;
 		const editable = this.isEditableTaskCell(key, renderState);
 		const cellKey = buildTableEditableCellKey(task, key);
-		const payloadKey = key === 'description' ? '_description' : key;
+		const { payloadKey, editValue } = resolveTableTaskTextEditTarget(task, key, value, renderState.settings.fileTaskDisplayTitleEnabled);
 		const showIconOnly = this.shouldUseIconOnlyColumn(column, renderState.settings);
 		const canOpenTextPopover = editable && !!this.callbacks.onUpdateTaskFields;
 		if (canOpenTextPopover) {
@@ -3156,7 +3160,7 @@ export class OperonTableView extends FileView {
 			})
 			: null;
 		const iconContent = formatTableIconOnlyTooltipContent(value);
-  if (canOpenTextPopover) this.tableCellOpeners.set(cell, () => this.openInlineTextPopover(cell, task, column.key, value, fieldLabel, cellKey, payloadKey));
+  if (canOpenTextPopover) this.tableCellOpeners.set(cell, () => this.openInlineTextPopover(cell, task, column.key, editValue, fieldLabel, cellKey, payloadKey));
 		renderTableDescriptionCellContent(cell, {
    ...(Platform.isDesktopApp ? { bindLink: (anchor, link) => bindTableMarkdownOpening(anchor, link, key === 'note' ? 'note' : 'description', this.tableOpeningContext(cell, task)) } : {}),
 			value,
@@ -3179,7 +3183,7 @@ export class OperonTableView extends FileView {
 				sourcePath: task.primary.filePath,
 			},
 			onOpen: canOpenTextPopover
-				? () => this.openInlineTextPopover(cell, task, column.key, value, fieldLabel, cellKey, payloadKey)
+				? () => this.openInlineTextPopover(cell, task, column.key, editValue, fieldLabel, cellKey, payloadKey)
 				: undefined,
 		});
 	}
@@ -3323,6 +3327,8 @@ export class OperonTableView extends FileView {
 		preserveLineBreaks = false,
 	): void {
 		if (this.pendingCellKey !== null) return;
+		const editsTitle = payloadKey === 'fileTaskDisplayTitle';
+		if (editsTitle) allowEmptyCommit = true;
 		this.closeActivePicker();
 		let closeTextPopover: (() => void) | null = null;
 		const releaseTextPopoverOwnership = (): boolean => {
@@ -3376,6 +3382,7 @@ export class OperonTableView extends FileView {
 					sourcePath: task.primary.filePath,
 				},
 				onCommit: commitValue,
+				...(editsTitle ? { onAfterCommit: createFileTaskTitleAfterCommit(task, this.callbacks) } : {}),
 				onClose: releaseTextPopoverOwnership,
 				onFocusReturn: () => {
 					if (cell.isConnected) cell.focus();

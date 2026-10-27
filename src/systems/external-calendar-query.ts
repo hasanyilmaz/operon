@@ -4,6 +4,7 @@ import { ExternalCalendarCachedEvent } from '../storage/external-calendar-cache'
 
 const EMPTY_SNAPSHOT: CalendarRenderSnapshot = {
 	description: '',
+	sourceFormat: 'inline',
 	checkbox: 'open',
 	fieldValues: {},
 	tags: [],

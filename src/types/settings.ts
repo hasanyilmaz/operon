@@ -1,4 +1,5 @@
 import { normalizeLightboxSizes, type LightboxSizes } from '../core/lightbox-size';
+import { DEFAULT_FILENAME_RULE, normalizeFilenameRule, type FilenameRule, type FileTaskTitleChangeMode } from '../core/filename-rule';
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
 import { cloneInlinePropertyDefinitions, validateInlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -121,7 +122,7 @@ import {
 import type { PinnedTaskSortMode } from '../core/pinned-task-query';
 import { isSafeVaultRelativePath } from '../core/vault-path-safety';
 
-export const CURRENT_SETTINGS_VERSION = 115;
+export const CURRENT_SETTINGS_VERSION = 116;
 export const FILE_TASK_ARCHIVE_ROUTING_SETTINGS_VERSION = 114;
 const TASK_DATA_TYPE_SETTINGS_VERSION = 115;
 /** Effective fixed delay reported by the retained Runtime V1 compatibility field. */
@@ -302,6 +303,7 @@ const CHILD_TASK_INHERITANCE_BLOCKED_FIELD_KEYS = new Set<string>([
 	'trackers',
 	'activeTracker',
 	'related',
+	'fileTaskDisplayTitle',
 ]);
 const DEFAULT_CONTEXTUAL_MENU_ACTION_ALLOWLIST: ContextualMenuActionId[] = [
 	'markDone',
@@ -1522,6 +1524,7 @@ const DEFAULT_KEY_MAPPING_VISIBLE_NAMES: Record<string, string> = {
 	links: 'Links',
 	reminderDatetimes: 'ReminderDatetimes',
 	reminderRules: 'ReminderRules',
+	fileTaskDisplayTitle: 'title',
 };
 
 const SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS: Record<string, string> = {
@@ -1539,10 +1542,11 @@ function getDefaultKeyMappingVisibleName(canonicalKey: string): string {
 function getAvailableDefaultKeyMappingVisibleName(
 	canonicalKey: string,
 	mappings: readonly KeyMapping[],
-): string {
+): string | null {
 	const preferred = getDefaultKeyMappingVisibleName(canonicalKey);
 	if (!hasDuplicateKeyMappingVisiblePropertyName(preferred, mappings)) return preferred;
 	const configuredFallbackBase = SYSTEM_MAPPING_VISIBLE_NAME_FALLBACKS[canonicalKey];
+	if (canonicalKey === 'fileTaskDisplayTitle') return null;
 	if (!isReminderStorageKey(canonicalKey) && !configuredFallbackBase) return preferred;
 
 	const fallbackBase = configuredFallbackBase ?? `Operon${preferred}`;
@@ -1556,6 +1560,30 @@ function getAvailableDefaultKeyMappingVisibleName(
 		candidate = `${fallbackBase}${suffix}`;
 	}
 	return candidate;
+}
+
+export function getMissingDefaultKeyMappingCollisions(
+	mappings: readonly KeyMapping[],
+): string[] {
+	return CANONICAL_KEYS
+		.filter(key => !isRetiredKeyMapping(key.name))
+		.filter(key => !mappings.some(mapping =>
+			mapping.isSystem !== false
+			&& normalizeKeyMappingComparableName(mapping.canonicalKey)
+				=== normalizeKeyMappingComparableName(key.name),
+		))
+		.filter(key => (
+			mappings.some(mapping =>
+				mapping.isSystem === false
+				&& normalizeKeyMappingComparableName(mapping.canonicalKey)
+					=== normalizeKeyMappingComparableName(key.name),
+			)
+			|| hasDuplicateKeyMappingVisiblePropertyName(
+				getDefaultKeyMappingVisibleName(key.name),
+				mappings,
+			)
+		))
+		.map(key => key.name);
 }
 
 function takeOverSystemCanonicalKeyCollisions(mappings: KeyMapping[]): KeyMapping[] {
@@ -1686,6 +1714,10 @@ export interface OperonSettings extends TaskCardSettings {
 
 	/** Default folder for new file tasks. Empty = vault root. */
 	fileTasksFolder: string;
+	/** If true, File Task labels use the configured frontmatter property when present. */
+	fileTaskDisplayTitleEnabled: boolean;
+	fileTaskDisplayTitleChangeMode: FileTaskTitleChangeMode;
+	fileTaskFilenameRule: FilenameRule;
 	/** Optional pipeline-specific destination folders for File Tasks. */
 	fileTaskPipelineLocations: FileTaskPipelineLocationRule[];
 	/** Move existing notes after they are converted into a File Task. */
@@ -2313,6 +2345,9 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	taskDescriptionRequired: true,
 	assigneesRequired: false,
 	fileTasksFolder: 'Operon/Tasks',
+	fileTaskDisplayTitleEnabled: false,
+	fileTaskDisplayTitleChangeMode: 'keep',
+	fileTaskFilenameRule: DEFAULT_FILENAME_RULE,
 	fileTaskPipelineLocations: [],
 	moveConvertedNotesToPipelineLocation: false,
 	fileTaskAutoArchiveEnabled: false,
@@ -4908,11 +4943,28 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.defaultPipelineName = normalizeOptionalString(src.defaultPipelineName) ?? DEFAULT_SETTINGS.defaultPipelineName;
 	}
 
+	out.fileTaskDisplayTitleEnabled = src.fileTaskDisplayTitleEnabled === true;
+	out.fileTaskDisplayTitleChangeMode = src.fileTaskDisplayTitleChangeMode === 'ask'
+		|| src.fileTaskDisplayTitleChangeMode === 'auto' ? src.fileTaskDisplayTitleChangeMode : 'keep';
+	out.fileTaskFilenameRule = normalizeFilenameRule(src.fileTaskFilenameRule);
+
 	// Ensure key mappings include all canonical keys.
 	if (out.keyMappings.length === 0) {
 		out.keyMappings = buildDefaultKeyMappings();
 	} else {
 		out.keyMappings = takeOverSystemCanonicalKeyCollisions(out.keyMappings);
+		const customFileTaskDisplayTitleCollision = out.keyMappings.some(mapping =>
+			mapping.isSystem === false
+			&& normalizeKeyMappingComparableName(mapping.canonicalKey)
+				=== normalizeKeyMappingComparableName('fileTaskDisplayTitle'),
+		);
+		if (customFileTaskDisplayTitleCollision) {
+			out.keyMappings = out.keyMappings.filter(mapping => !(
+				mapping.isSystem !== false
+				&& normalizeKeyMappingComparableName(mapping.canonicalKey)
+					=== normalizeKeyMappingComparableName('fileTaskDisplayTitle')
+			));
+		}
 		// A custom field may already own one of the newly reserved reminder names.
 		// Keep that mapping authoritative until the user renames or removes it;
 		// silently converting arbitrary custom values into reminder data is unsafe.
@@ -4987,13 +5039,16 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		for (const k of CANONICAL_KEYS) {
 			if (isRetiredKeyMapping(k.name)) continue;
 			if (customReminderCanonicalCollisions.has(normalizeKeyMappingComparableName(k.name))) continue;
+			if (k.name === 'fileTaskDisplayTitle' && customFileTaskDisplayTitleCollision) continue;
 			if (!out.keyMappings.some(m =>
 				m.isSystem !== false
 				&& normalizeKeyMappingComparableName(m.canonicalKey) === normalizeKeyMappingComparableName(k.name)
 			)) {
+				const visiblePropertyName = getAvailableDefaultKeyMappingVisibleName(k.name, out.keyMappings);
+				if (!visiblePropertyName) continue;
 				out.keyMappings.push({
 					canonicalKey: k.name,
-					visiblePropertyName: getAvailableDefaultKeyMappingVisibleName(k.name, out.keyMappings),
+					visiblePropertyName,
 					type: k.type,
 					sync: k.sync,
 					enabled: true,

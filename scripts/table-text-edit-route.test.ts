@@ -6,10 +6,12 @@ import {
 	isTablePlainTextField,
 	resolveTableParentTaskActivation,
 	resolveTableTaskTextEditRoute,
+	resolveTableTaskTextEditTarget,
 	resolveTableTextEditRoute,
 } from '../src/ui/table/table-text-edit-route';
 import { bindTableParentTaskCellActivation } from '../src/ui/table/table-parent-task-cell';
 import { formatTableParentTaskTooltipContent } from '../src/ui/table/table-parent-task-tooltip-content';
+import type { IndexedTask } from '../src/types/fields';
 
 let assertions = 0;
 
@@ -82,6 +84,23 @@ async function run(): Promise<void> {
 	equal(resolveTableTextEditRoute('   ', true), 'picker');
 	equal(resolveTableTextEditRoute('Alpha', true), 'popover');
 	equal(resolveTableTextEditRoute('Alpha', false), 'picker');
+	const fileTask: Pick<IndexedTask, 'description' | 'fieldValues' | 'primary'> = {
+		description: 'filename',
+		fieldValues: { fileTaskDisplayTitle: 'Visible title' },
+		primary: { filePath: 'filename.md', lineNumber: 0, format: 'yaml' },
+	};
+	deepEqual(resolveTableTaskTextEditTarget(fileTask, 'description', 'Visible title', true),
+		{ payloadKey: 'fileTaskDisplayTitle', editValue: 'Visible title' });
+	deepEqual(resolveTableTaskTextEditTarget(fileTask, 'description', 'Visible title', false),
+		{ payloadKey: '_description', editValue: 'filename' });
+	deepEqual(resolveTableTaskTextEditTarget({ ...fileTask, fieldValues: {} }, 'description', 'filename', true),
+		{ payloadKey: 'fileTaskDisplayTitle', editValue: 'filename' });
+	deepEqual(resolveTableTaskTextEditTarget({ ...fileTask, fieldValues: { fileTaskDisplayTitle: '' } }, 'description', 'filename', true),
+		{ payloadKey: 'fileTaskDisplayTitle', editValue: '' });
+	deepEqual(resolveTableTaskTextEditTarget({ ...fileTask, primary: { ...fileTask.primary, format: 'inline' } }, 'description', 'Visible title', true),
+		{ payloadKey: '_description', editValue: 'filename' });
+	deepEqual(resolveTableTaskTextEditTarget(fileTask, 'note', 'Notes', true),
+		{ payloadKey: 'note', editValue: 'Notes' });
 
 	const customText = { key: 'client', type: 'text', group: 'custom' };
 	equal(resolveTableTaskTextEditRoute(customText, ''), 'picker');

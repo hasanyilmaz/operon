@@ -136,6 +136,7 @@ test('exactly the 11 routing settings belong to Task Router search', () => {
 		'createWeeklyNotesAsOperonTask',
 		'excludedFolders',
 		'fileTaskMigration',
+		'fileTaskDisplayTitleEnabled',
 	]) {
 		assert.match(registrySource, new RegExp(`'tasksFileTasks', '${id}'`));
 	}
@@ -182,6 +183,7 @@ test('File Tasks keeps section copy and documentation attached while rendering t
 	const templateMethod = extractMethod(settingsTabSource, 'renderFileTaskTemplateSettings');
 	assert.deepEqual(renderRoute('tasksFileTasks').calls, [
 		'renderFileCreationDefaultsSection', 'renderFileTemplatesSection',
+		'renderFileTaskDisplaySettings',
 		'renderPeriodicFileTaskSettings',
 		'renderFileConversionSection', 'renderExcludedFolderSettings', 'renderFileTaskMigrationSettings',
 	]);

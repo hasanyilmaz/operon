@@ -1,4 +1,6 @@
 import type { LightboxOpeningTrace } from './lightbox-opening-perf';
+import type { FileTaskRenameSuggestion } from '../core/filename-rule';
+import { renderFileTaskRenameControls } from './file-task-rename-callout';
 import { mergeTaskEditorSource, taskEditorChangedKeys, type TaskEditorSourceIntent, type TaskEditorSourceSnapshot, type TaskEditorSourceState } from './task-editor-source-sync';
 import type { TaskMarkdownSource } from '../core/task-markdown-source';
 import { bindEditorInteractionState } from './editor-interaction-state';
@@ -167,6 +169,7 @@ import {
 
 /** Callback to persist editor state. Returning false/null aborts the save; a commit returns authoritative saved state. */
 export interface TaskEditorSaveRequest {
+	fileTaskDisplayTitleChange?: string;
  sourceSync?: TaskEditorSourceIntent;
  markdownSource?: TaskMarkdownSource;
  inlineProperties?: InlinePropertyChange[];
@@ -316,6 +319,8 @@ export interface TaskEditorContentOptions {
 	pinnedCache?: PinnedCache;
 	fileBody?: TaskEditorFileBodyContext | null;
 	getProjectSerialDisplay?: (operonId: string) => ProjectSerialDisplay | null;
+	onFileTaskTitleChanged?: (title: string) => Promise<FileTaskRenameSuggestion | null>;
+	onRenameFileTask?: (filename: string) => Promise<void>;
 }
 
 export interface TaskEditorFileBodyContext {
@@ -492,6 +497,13 @@ export class TaskEditorContent {
 	/** Draft field values */
 	private description = '';
 	private persistedDescription = '';
+	private readonly onFileTaskTitleChanged?: TaskEditorContentOptions['onFileTaskTitleChanged'];
+	private readonly onRenameFileTask?: TaskEditorContentOptions['onRenameFileTask'];
+	private fileTaskNameRow: Setting | null = null;
+	private fileRowLabel: HTMLElement | null = null;
+	private fileRowFile: TFile | null = null;
+	private fileTaskRenameVisible = false;
+	private fileTaskTitleRevision = 0;
 	private checkbox: 'open' | 'done' | 'cancelled' = 'open';
 	private persistedCheckbox: 'open' | 'done' | 'cancelled' = 'open';
 	fieldValues: Record<string, string> = {};
@@ -689,6 +701,8 @@ export class TaskEditorContent {
 		this.fileBodyDraft = options.fileBody?.initialContent ?? '';
 		this.persistedFileBodyDraft = this.fileBodyDraft;
 		this.taskOperonId = existingTask?.operonId ?? null;
+		this.onFileTaskTitleChanged = options.onFileTaskTitleChanged;
+		this.onRenameFileTask = options.onRenameFileTask;
 
 		// Load existing values
 		if (existingTask) {
@@ -1250,18 +1264,19 @@ export class TaskEditorContent {
 			},
 		});
 		setAccessibleLabelWithoutTooltip(textarea, t('taskEditor', 'description'));
-		textarea.value = this.description;
+		textarea.value = this.editableName;
 		this.descriptionInputEl = textarea;
 		const resize = () => this.autoSizeMobileTextarea(textarea, 44);
 		resize();
 		textarea.addEventListener('input', () => {
-			this.description = textarea.value;
+			this.setEditableName(textarea.value);
 			resize();
 			this.markEdited();
 			this.refreshCoreTrackerControl?.();
 			this.refreshTrackingSessionsSection?.();
 			this.refreshMobileCoreButtons();
 		});
+		this.renderFileTaskNameControls(container);
 	}
 
 	private renderMobileNote(container: HTMLElement): void {
@@ -2167,6 +2182,7 @@ export class TaskEditorContent {
 		this.indexUpdatesUnsubscribe?.();
 		this.indexUpdatesUnsubscribe = this.indexer.subscribeIndexUpdates(() => {
 			if (this.readSource) void this.refreshTaskSource();
+			this.refreshFileTaskName();
 			this.refreshMobileCoreButtons();
 			this.refreshRenderedBlockedBySelectionStates();
 			this.refreshStatsCounters?.();
@@ -2230,12 +2246,16 @@ export class TaskEditorContent {
 			const next = mergeTaskEditorSource(snapshot.state, draft, changed);
 			const path = this.getCompactTextSourcePath();
 			// A compact surface may be composing even before its draft callback fires.
-			if (!changed.includes('_description') && this.descriptionCompactEditor?.setSourceValue(next.description, path) === 'conflict') return;
+			const nameKey = this.editsFileTaskTitle ? 'fileTaskDisplayTitle' : '_description';
+			const nextName = this.editsFileTaskTitle ? next.fieldValues['fileTaskDisplayTitle'] ?? next.description : next.description;
+			if (!changed.includes(nameKey) && this.descriptionCompactEditor?.setSourceValue(nextName, path) === 'conflict') return;
 			if (!changed.includes('note') && this.noteCompactEditor?.setSourceValue(next.fieldValues['note'] ?? '', path) === 'conflict') return;
 			this.description = next.description;
 			this.checkbox = next.checkbox;
 			this.tags = next.tags;
 			this.fieldValues = next.fieldValues;
+			if (this.descriptionInputEl && !changed.includes(nameKey)) this.descriptionInputEl.value = this.editableName;
+			this.refreshFileTaskName();
 			this.persistedDescription = snapshot.state.description;
 			this.persistedCheckbox = snapshot.state.checkbox;
 			this.persistedTags = [...snapshot.state.tags];
@@ -2687,15 +2707,15 @@ export class TaskEditorContent {
 		this.descriptionCompactEditor = createCompactMarkdownEditorSurface(host, {
 			onCompositionSettled: this.sourceCompositionEnd,
 			app: this.app,
-			sourceValue: this.description,
+			sourceValue: this.editableName,
 			sourcePath: this.getCompactTextSourcePath(),
 			placeholder: t('taskEditor', 'descriptionPlaceholder'),
 			ariaLabel: t('taskEditor', 'description'),
 			onTextareaLayout: textarea => this.autoSizeCompactTextarea(textarea),
 			onUserChange: draft => {
 				const value = draft.persistableValue;
-				if (value === this.description) return;
-				this.description = value;
+				if (value === this.editableName) return;
+				this.setEditableName(value);
 				this.markEdited();
 				this.refreshCoreTrackerControl?.();
 				this.refreshTrackingSessionsSection?.();
@@ -2704,6 +2724,95 @@ export class TaskEditorContent {
 		});
 		setting.settingEl.addClass('operon-description-setting');
 		if (!showLabel) setting.settingEl.addClass('operon-editor-text-field-setting');
+		this.renderFileTaskNameControls(container);
+	}
+
+	private get editsFileTaskTitle(): boolean {
+		return this.settings.fileTaskDisplayTitleEnabled && !!this.onRenameFileTask;
+	}
+
+	private get editableName(): string {
+		return this.editsFileTaskTitle ? this.fieldValues['fileTaskDisplayTitle'] ?? this.description : this.description;
+	}
+
+	private setEditableName(value: string): void {
+		if (this.editsFileTaskTitle) {
+			if (value !== this.fieldValues['fileTaskDisplayTitle']) {
+				this.fileTaskTitleRevision++;
+				this.renderFileTaskNameRow();
+			}
+			this.fieldValues['fileTaskDisplayTitle'] = value;
+		}
+		else this.description = value;
+	}
+
+	private renderFileTaskNameControls(container: HTMLElement): void {
+		if (!this.editsFileTaskTitle) return;
+		this.fileTaskNameRow = new Setting(container);
+		this.fileTaskNameRow.settingEl.addClass('operon-file-task-name-row');
+		this.fileRowLabel = this.fileTaskNameRow.descEl;
+		this.refreshFileTaskName();
+		this.renderFileTaskNameRow();
+	}
+
+	private renderFileTaskNameRow(): void {
+		const row = this.fileTaskNameRow;
+		if (!row) return;
+		this.fileTaskRenameVisible = false;
+		row.settingEl.removeClass('is-renaming');
+		row.settingEl.style.removeProperty('--operon-file-task-name-value-height');
+		row.setName(t('taskEditor', 'fileTaskFile'));
+		row.setDesc(this.fileRowFile?.name ?? '');
+		row.controlEl.empty();
+	}
+
+	private renderFileTaskRenameRow(
+		suggestion: FileTaskRenameSuggestion,
+		canCommit: () => boolean,
+	): void {
+		const row = this.fileTaskNameRow;
+		if (!row || !canCommit()) return;
+		const valueHeight = row.descEl.getBoundingClientRect().height;
+		if (valueHeight > 0) {
+			row.settingEl.style.setProperty('--operon-file-task-name-value-height', `${valueHeight}px`);
+		}
+		this.fileTaskRenameVisible = true;
+		row.settingEl.addClass('is-renaming');
+		row.setName(t('taskEditor', 'fileTaskFile'));
+		row.descEl.empty();
+		row.controlEl.empty();
+		renderFileTaskRenameControls(row.descEl, suggestion, {
+			variant: 'editor-row',
+			currentFilename: this.fileRowFile?.name ?? '',
+			rename: filename => this.renameFileTask(filename, canCommit),
+			dismiss: () => {
+				if (canCommit()) this.renderFileTaskNameRow();
+			},
+		});
+	}
+
+	private refreshFileTaskName(): void {
+		const path = this.getCurrentIndexedTask()?.primary.filePath ?? this.existingTask?.filePath;
+		const file = path ? this.app.vault.getAbstractFileByPath(path) : null;
+		if (file instanceof TFile) this.fileRowFile = file;
+		if (!this.fileTaskRenameVisible) this.fileRowLabel?.setText(this.fileRowFile?.name ?? '');
+	}
+
+	private async renameFileTask(filename: string, canCommit?: () => boolean): Promise<void> {
+		if (canCommit && !canCommit()) throw new Error(t('taskEditor', 'fileTaskRenameFailed'));
+		await this.onRenameFileTask?.(filename);
+		const current = this.getCurrentIndexedTask();
+		if (!current) return;
+		this.description = current.description;
+		this.persistedDescription = current.description;
+		if (this.existingTask) {
+			this.existingTask.description = current.description;
+			this.existingTask.filePath = current.primary.filePath;
+		}
+		if (this.fileBodyContext) this.fileBodyContext.filePath = current.primary.filePath;
+		this.refreshFileTaskName();
+		this.descriptionCompactEditor?.setSourceValue(this.editableName, current.primary.filePath);
+		if (this.descriptionInputEl) this.descriptionInputEl.value = this.editableName;
 	}
 
 	private setDelimitedFieldValue(fieldKey: string, values: string[]): void {
@@ -7362,6 +7471,18 @@ export class TaskEditorContent {
    if (savedInlineProperties.some(change => !this.canEditFileProperty(this.fileProperties.get(change.sourceName)!))) return { ok: false, reason: 'write-rejected' };
    if (savedFileProperties.length && (this.filePropertyUnavailable || savedFileProperties.some(change => !this.canEditFileProperty(this.fileProperties.get(change.propertyName)!)))) return { ok: false, reason: 'write-rejected' };
 			const savedDescription = this.description;
+			const savedTitleChange = this.editsFileTaskTitle
+				&& (this.fieldValues['fileTaskDisplayTitle'] ?? '') !== (this.persistedFieldValues['fileTaskDisplayTitle'] ?? '')
+				? this.fieldValues['fileTaskDisplayTitle'] ?? '' : undefined;
+			if (savedTitleChange !== undefined) {
+				this.fileTaskTitleRevision++;
+				this.renderFileTaskNameRow();
+			}
+			const savedTitleRevision = this.fileTaskTitleRevision;
+			const isCurrentTitle = (): boolean =>
+				(!this.disposed || allowedDestroyCloseSave)
+				&& savedTitleRevision === this.fileTaskTitleRevision
+				&& savedTitleChange?.trim() === (this.fieldValues['fileTaskDisplayTitle'] ?? '').trim();
 			const savedCheckbox = this.checkbox;
 			const savedTags = [...this.tags];
 			const savedFieldValues = { ...this.fieldValues };
@@ -7380,6 +7501,7 @@ export class TaskEditorContent {
    this.submittedFileProperties = new Set([...savedFileProperties.map(change => change.propertyName), ...savedInlineProperties.map(change => change.sourceName)]);
 			try {
 				saveResult = await this.onSave({
+					...(savedTitleChange !== undefined ? { fileTaskDisplayTitleChange: savedTitleChange } : {}),
 					taskLine,
 					...(this.readSource && this.taskOperonId ? { sourceSync: {
 						operonId: this.taskOperonId,
@@ -7471,6 +7593,7 @@ export class TaskEditorContent {
 				this.persistedTags = savedTags;
 				this.persistedFieldValues = savedFieldValues;
 			}
+			this.refreshFileTaskName();
 			if (this.checkboxBodyRevision === savedCheckboxBodyRevision && this.fileBodyDraft === savedFileBodyDraft
 				&& isTaskEditorSaveCommit(saveResult) && saveResult.fileBody) {
 				const previousSourcePath = this.existingTask?.filePath ?? this.fileBodyContext?.filePath;
@@ -7492,12 +7615,12 @@ export class TaskEditorContent {
 				&& descriptionSurfaceUnchangedSinceSubmit
 			) {
 				this.descriptionCompactEditor?.acceptCommittedValue(
-					this.persistedDescription,
+					this.editsFileTaskTitle ? this.persistedFieldValues['fileTaskDisplayTitle'] ?? this.persistedDescription : this.persistedDescription,
 					compactTextSourcePath,
 				);
 			} else if (!descriptionSurfaceShouldCommit && descriptionSurfaceUnchangedSinceSubmit) {
 				this.descriptionCompactEditor?.setSourceValue(
-					this.description,
+					this.editableName,
 					compactTextSourcePath,
 				);
 			}
@@ -7520,6 +7643,13 @@ export class TaskEditorContent {
 				this.commitEstimateReallocationBaseline(this.getDraftEstimateSeconds());
 			}
 			this.refreshEstimateReallocationControl?.();
+			if (savedTitleChange !== undefined && this.onFileTaskTitleChanged && isCurrentTitle()) {
+				const suggestion = await this.onFileTaskTitleChanged(savedTitleChange.trim());
+				if (this.fileTaskNameRow && isCurrentTitle()) {
+					if (suggestion) this.renderFileTaskRenameRow(suggestion, isCurrentTitle);
+					else this.renderFileTaskNameRow();
+				}
+			}
 
 			this.isNewTask = false;
 			if (versionAtStart === this.editVersion) {

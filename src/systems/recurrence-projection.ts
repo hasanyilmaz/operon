@@ -155,6 +155,7 @@ function buildProjectedItemForOccurrence(
 			sourceTask: null,
 			renderSnapshot: {
 				description: resolveProjectedDescription(entry, input.snapshot.description, scheduledDate, input.occurrenceDate),
+				sourceFormat: input.snapshot.sourceFormat,
 				checkbox: input.snapshot.checkbox,
 				fieldValues: {
 					...input.snapshot.fieldValues,
@@ -194,6 +195,7 @@ function buildProjectedItemForOccurrence(
 		sourceTask: null,
 		renderSnapshot: {
 			description: resolveProjectedDescription(entry, input.snapshot.description, scheduledDate, input.occurrenceDate),
+			sourceFormat: input.snapshot.sourceFormat,
 			checkbox: input.snapshot.checkbox,
 			fieldValues: {
 				...input.snapshot.fieldValues,

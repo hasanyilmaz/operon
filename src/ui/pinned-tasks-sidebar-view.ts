@@ -1,4 +1,5 @@
 import { getTaskIconActionLabel } from '../core/task-icon-action';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
 import { getPinnedTasksForDisplay } from '../core/pinned-task-query';
 import { asyncHandler } from '../core/async-action';
@@ -95,7 +96,7 @@ export class PinnedTasksSidebarView extends ItemView {
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
-				`${task.operonId}:${task.description}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
+				`${task.operonId}:${getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled)}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
 			).join('|'),
 		].join('§');
 
@@ -187,7 +188,7 @@ export class PinnedTasksSidebarView extends ItemView {
 
 		const description = row.createSpan('operon-pinned-sidebar-desc');
 		renderCompactTaskMarkdown(description, {
-			value: task.description || t('pinnedTasks', 'untitledTask'),
+			value: getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled) || t('pinnedTasks', 'untitledTask'),
 			mode: 'visual-only',
 		});
 		description.setAttribute('role', 'button');

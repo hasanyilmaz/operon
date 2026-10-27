@@ -5,6 +5,7 @@ import { getScopedTrackerSessions, getTimeScopedFieldValues } from '../../core/t
 import { usesTrackedOn } from '../../core/tracked-on-filter';
 import { areCalendarTasksEquivalent, isCalendarContentRefresh, requiresCalendarStructureRefresh, mergeCalendarRefreshRequest, type CalendarRefreshRequest } from './calendar-refresh-decision';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
+import { getFileTaskDisplayTitle, getTaskDisplayTitle } from '../../core/task-display-title';
 import { ItemView, Notice, Platform, prepareFuzzySearch, setIcon, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { formatUiMinuteOfDay, formatUiTime } from '../../core/ui-time-format';
@@ -5062,9 +5063,16 @@ export class CalendarView extends ItemView {
 	}
 
 	private calendarItemRenderSignature(item: CalendarItem, preset: CalendarRenderPreset, settings: OperonSettings): unknown {
-		const { description, checkbox, fieldValues } = item.renderSnapshot;
+		const { description, sourceFormat, checkbox, fieldValues } = item.renderSnapshot;
+		const title = getFileTaskDisplayTitle(
+			description,
+			fieldValues,
+			sourceFormat,
+			settings.fileTaskDisplayTitleEnabled,
+		);
 		return [this.getCalendarItemRenderKey(item), item.startDate, item.endDate, item.startDateTime, item.endDateTime,
 			item.isDashed, item.isReadOnly, item.isStatusReadOnly, item.repeatRef, item.externalRef, description, checkbox,
+			title,
 			this.resolveStatusButtonIcon(fieldValues, checkbox, settings), this.resolveCalendarStatusColor(item, settings),
 			resolveCalendarColorAccents(fieldValues, preset.colorSource, settings, item.origin === 'external' ? item.externalRef?.sourceColor : null),
 			item.kind === 'allDayScheduled' ? [canEditAllDayCalendarItemPlacement(item), canResizeAllDayCalendarItemPlacement(item)] : null,
@@ -8176,7 +8184,10 @@ export class CalendarView extends ItemView {
 		const descriptionFuzzyMatch = fuzzySearch(task.description || '');
 		const globalFuzzyMatch = descriptionFuzzyMatch
 			? null
-			: fuzzySearch(buildCalendarSidebarTaskPoolSearchText(task));
+			: fuzzySearch(buildCalendarSidebarTaskPoolSearchText(
+				task,
+				this.getSettings().fileTaskDisplayTitleEnabled,
+			));
 		if (containsRank === null && !descriptionFuzzyMatch && !globalFuzzyMatch) return null;
 		return {
 			containsRank,
@@ -8193,9 +8204,11 @@ export class CalendarView extends ItemView {
 
 	private getSidebarTaskPoolContainsRank(task: IndexedTask, query: string): number | null {
 		if (!query) return 0;
-		const description = (task.description || '').toLowerCase();
-		if (description.startsWith(query)) return 0;
-		if (description.includes(query)) return 1;
+		const labels = [getTaskDisplayTitle(task, this.getSettings().fileTaskDisplayTitleEnabled), task.description]
+			.map(value => value.toLowerCase())
+			.filter((value, index, values) => values.indexOf(value) === index);
+		if (labels.some(label => label.startsWith(query))) return 0;
+		if (labels.some(label => label.includes(query))) return 1;
 		const containsFields = [
 			task.tags.join(' ').toLowerCase(),
 			(task.fieldValues['contexts'] ?? '').toLowerCase(),
@@ -8211,7 +8224,7 @@ export class CalendarView extends ItemView {
 			? ['duration', 'totalDuration', 'note'] as const
 			: ['dateScheduled', 'dateDue', 'note'] as const;
 		return JSON.stringify([
-			task.operonId, task.description, task.checkbox, task.primary.filePath, task.primary.format, mode,
+			task.operonId, task.description, getTaskDisplayTitle(task, settings.fileTaskDisplayTitleEnabled), task.checkbox, task.primary.filePath, task.primary.format, mode,
 			this.resolveStatusButtonIcon(task.fieldValues, task.checkbox, settings),
 			this.resolveCalendarStatusColorFromFieldValues(task.fieldValues, settings),
 			getTaskIconActionLabel(settings, task.checkbox),
@@ -8249,14 +8262,14 @@ export class CalendarView extends ItemView {
 			const hoverTrigger = head.createSpan('operon-calendar-hover-menu-trigger');
 			this.renderSidebarTaskPoolStatusButton(hoverTrigger, task);
 
-			const titleText = task.description || task.operonId;
+			const titleText = getTaskDisplayTitle(task, this.getSettings().fileTaskDisplayTitleEnabled) || task.operonId;
 			const title = head.createSpan({
 				cls: 'operon-calendar-sidebar-task-pool-row-title',
 			});
 			renderCompactTaskMarkdown(title, {
 				app: this.app,
 				value: titleText,
-    bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(task.operonId)),
+    bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(task.operonId), undefined, this.getSettings().fileTaskDisplayTitleEnabled),
 				sourcePath: task.primary.filePath,
 				mode: 'interactive',
 				containerClassName: 'operon-task-description-markdown',
@@ -11851,6 +11864,17 @@ export class CalendarView extends ItemView {
 		return this.containerEl.contains(targetEl);
 	}
 
+	private getCalendarItemTitle(item: CalendarItem, settings: OperonSettings): string {
+		const { description, fieldValues, sourceFormat } = item.renderSnapshot;
+		if (item.origin === 'external') return description || item.taskId;
+		return getFileTaskDisplayTitle(
+			description,
+			fieldValues,
+			sourceFormat,
+			settings.fileTaskDisplayTitleEnabled,
+		) || item.taskId;
+	}
+
 	private renderCalendarItemLabel(
 		container: HTMLElement,
 		item: CalendarItem,
@@ -11861,14 +11885,14 @@ export class CalendarView extends ItemView {
 		if (item.origin === 'external') {
 			wrapper.addClass('is-external');
 			wrapper.createSpan({
-				text: item.renderSnapshot.description || item.taskId,
+				text: this.getCalendarItemTitle(item, settings),
 				cls: compact ? 'operon-calendar-all-day-text' : 'operon-calendar-timed-title',
 			});
 			return null;
 		}
 		const hoverTrigger = wrapper.createSpan('operon-calendar-hover-menu-trigger');
 		this.renderCalendarStatusButton(hoverTrigger, item, settings, compact);
-		const titleText = item.renderSnapshot.description || item.taskId;
+		const titleText = this.getCalendarItemTitle(item, settings);
 		const titleEl = wrapper.createSpan({
 			cls: compact ? 'operon-calendar-all-day-text' : 'operon-calendar-timed-title',
 		});
@@ -11876,7 +11900,7 @@ export class CalendarView extends ItemView {
 			renderCompactTaskMarkdown(titleEl, {
 				app: this.app,
 				value: titleText,
-    bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(item.taskId)),
+    bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(item.taskId), undefined, settings.fileTaskDisplayTitleEnabled),
 				sourcePath: item.sourceTask.primary.filePath,
 				mode: 'interactive',
 				containerClassName: 'operon-task-description-markdown',
@@ -11899,7 +11923,7 @@ export class CalendarView extends ItemView {
 	private bindAvailabilityLayerExternalTooltip(block: HTMLElement, item: CalendarItem, settings: OperonSettings): void {
 		if (item.origin !== 'external' || !item.externalRef) return;
 		const sourceName = item.externalRef.sourceName || t('calendar', 'externalCalendarsSection');
-		const title = item.renderSnapshot.description || item.taskId;
+		const title = this.getCalendarItemTitle(item, settings);
 		const range = this.formatTimedRange(item, settings);
 		const content = range ? `${title} · ${range}` : title;
 		const accessibleLabel = [sourceName, title, range].filter(Boolean).join(', ');
@@ -12868,7 +12892,7 @@ export class CalendarView extends ItemView {
 
 	private buildExternalItemCreateSeed(item: CalendarItem): ExternalCalendarTaskSeed | null {
 		if (item.origin !== 'external' || !item.externalRef) return null;
-		const title = item.renderSnapshot.description || item.taskId;
+		const title = this.getCalendarItemTitle(item, this.getSettings());
 		if (item.kind === 'timed' && item.startDateTime && item.endDateTime) {
 			return {
 				itemId: item.taskId,

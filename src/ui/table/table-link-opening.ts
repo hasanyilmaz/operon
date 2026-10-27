@@ -4,6 +4,7 @@ import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { getNativePropertyIndex } from '../../indexer/native-property-index';
 import type { IndexedTask } from '../../types/fields';
+import { getTaskDisplayTitle } from '../../core/task-display-title';
 import type { TableFilePropertyField } from './table-file-property';
 import { Platform, type App } from 'obsidian';
 import { bindResolvedChipOpening, isDesktopOpeningChip, resolveChipOpening, type ChipOpeningContext, type ChipOpeningDecision } from '../links-chip-action';
@@ -58,7 +59,7 @@ export function bindTableMarkdownOpening(chip: HTMLElement, link: CompactTaskMar
  bind(chip, context, () => {
   const task = context.getTask();
   if (!task) return { kind: 'missing' };
-  const value = key === 'description' ? task.description : task.fieldValues.note ?? '';
+  const value = key === 'description' ? getTaskDisplayTitle(task, context.getSettings().fileTaskDisplayTitleEnabled) : task.fieldValues.note ?? '';
   const decision = resolveTaskTextLink(context.app, link, {value, sourcePath:task.primary.filePath});
   return decision.kind === 'missing' ? {kind:'picker'} : decision;
  });

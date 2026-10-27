@@ -68,6 +68,7 @@ export function queryKanbanBoard(options: {
 	pinnedCache?: PinnedCache | null;
 	manualOrder?: Record<string, string[]>;
 	keyMappings?: readonly KeyMapping[];
+	displayTitleEnabled?: boolean;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	filterEvaluationOptions?: FilterEvaluationOptions;
@@ -76,7 +77,9 @@ export function queryKanbanBoard(options: {
 	const keyMappings = options.keyMappings ?? [];
 	const normalizedSearchQuery = (options.searchQuery ?? '').trim().toLocaleLowerCase();
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
-	const searchMatcher = normalizedSearchQuery ? buildTaskSearchMatcher(options.tasks, keyMappings) : null;
+	const searchMatcher = normalizedSearchQuery
+		? buildTaskSearchMatcher(options.tasks, keyMappings, options.displayTitleEnabled === true)
+		: null;
 	const scopedTasks = filterTasksForCalendar(filterSet, options.tasks, priorities, pinnedCache ?? null, {
 		...options.filterEvaluationOptions,
 		projectSerialScopes: options.projectSerialScopes,

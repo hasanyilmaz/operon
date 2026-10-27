@@ -5,6 +5,7 @@ import { normalizeTaskIconValue } from './task-icon-value';
 import { formatTaskColorYamlValue } from './task-color-value';
 import { getManagedTaskFieldType } from './managed-task-fields';
 import { parseTaskMediaReferenceList } from './task-media-reference';
+import { isWritableRawYamlPropertyName } from './raw-yaml-property';
 
 export interface YamlFrontmatterFormattingPlan {
 	blankYamlKeys: Set<string>;
@@ -17,7 +18,7 @@ export interface AggregateYamlFrontmatterPatchResult {
 	fallbackReason: string;
 }
 
-const YAML_EMPTY_REMOVAL_KEYS = new Set(['activeTracker']);
+const YAML_EMPTY_REMOVAL_KEYS = new Set(['activeTracker', 'fileTaskDisplayTitle']);
 const AGGREGATE_NUMERIC_YAML_KEYS = new Set([
 	'progress',
 	...TASK_STATS_CANONICAL_KEYS,
@@ -204,13 +205,16 @@ function resolveManagedCanonicalKey(
 	reverseMap: Map<string, string>,
 	keyMappings: KeyMapping[],
 ): string | null {
-	if (yamlKey === 'position' || yamlKey === 'tags' || yamlKey === 'title' || yamlKey.startsWith('_')) {
+	if (yamlKey === 'position' || yamlKey === 'tags' || yamlKey.startsWith('_')) {
 		return null;
 	}
 	if (yamlKey === 'pinned') {
 		return 'pinned';
 	}
 	const mappedKey = reverseMap.get(yamlKey);
+	if (yamlKey === 'title' && mappedKey !== 'fileTaskDisplayTitle') {
+		return null;
+	}
 	if (mappedKey) {
 		return isRetiredKeyMapping(mappedKey) || !isManagedYamlCanonicalKey(mappedKey, keyMappings)
 			? null
@@ -417,6 +421,10 @@ export function applyYamlTaskFieldValues(
 		const existingValue = pickExistingManagedValue(frontmatter, canonicalKey, aliasKeys, preferredYamlKey);
 		const hasIncomingValue = Object.prototype.hasOwnProperty.call(managedPayload, canonicalKey) === true;
 		const incomingValue = managedPayload[canonicalKey];
+		if (canonicalKey === 'fileTaskDisplayTitle' && hasIncomingValue
+			&& !isWritableRawYamlPropertyName(preferredYamlKey, keyMappings, 'fileTaskDisplayTitle')) {
+			throw new Error('The File Task display title mapping is not writable');
+		}
         const custom = keyMappings.some(mapping => mapping.isSystem === false && mapping.canonicalKey === canonicalKey);
         if (custom && existingManagedKeys.has(canonicalKey)) {
             if (!hasIncomingValue && mode === 'merge') continue;
@@ -451,6 +459,8 @@ export function applyYamlTaskFieldValues(
 		}
 
 		if (existingValue === undefined) continue;
+
+		if (canonicalKey === 'fileTaskDisplayTitle') continue;
 
 		if (mode === 'replace') {
 			clearManagedField(canonicalKey, preferredYamlKey, aliasKeys);

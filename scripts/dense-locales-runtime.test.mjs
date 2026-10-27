@@ -19,6 +19,10 @@ function readLocales() {
 	]));
 }
 
+function countLocaleKeys(locale) {
+	return Object.values(locale).reduce((count, category) => count + Object.keys(category).length, 0);
+}
+
 async function loadDenseRuntime(t) {
 	const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'operon-dense-runtime-'));
 	t.after(() => fs.rmSync(tempDirectory, { recursive: true, force: true }));
@@ -75,7 +79,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_717);
+	assert.equal(densePack.keyCount, countLocaleKeys(locales.en));
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);

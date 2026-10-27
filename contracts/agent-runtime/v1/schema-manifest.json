@@ -16,7 +16,7 @@
     {
       "file": "catalog.schema.json",
       "id": "urn:operon:schema:runtime:v1:catalog.schema.json",
-      "sha256": "42da56915287a4f2aaf527dbed79143346e1364c6aa93cc2f34c92da956ba5fb"
+      "sha256": "243d8a5738f000eba386bba97b8f552ddf92cd97e3e76536ea57f27d435a1e37"
     },
     {
       "file": "cli.schema.json",
@@ -36,7 +36,7 @@
     {
       "file": "context.schema.json",
       "id": "urn:operon:schema:runtime:v1:context.schema.json",
-      "sha256": "528a1b6412acdbc6df004cdcb5a22e9bc83d0778ae1408f804664a98912418fc"
+      "sha256": "79ff85ff7f078b063e3facaed812af0f4d7589d87f34a82ec9757b1e39931ef3"
     },
     {
       "file": "developer-api.schema.json",
@@ -88,7 +88,7 @@
       "schemaId": "catalog-request",
       "ref": "urn:operon:schema:runtime:v1:catalog.schema.json#/$defs/request",
       "file": "catalog.schema.json",
-      "sha256": "42da56915287a4f2aaf527dbed79143346e1364c6aa93cc2f34c92da956ba5fb",
+      "sha256": "243d8a5738f000eba386bba97b8f552ddf92cd97e3e76536ea57f27d435a1e37",
       "stability": "stable"
     },
     {
@@ -263,7 +263,7 @@
       "schemaId": "operon-catalog",
       "ref": "urn:operon:schema:runtime:v1:catalog.schema.json#/$defs/result",
       "file": "catalog.schema.json",
-      "sha256": "42da56915287a4f2aaf527dbed79143346e1364c6aa93cc2f34c92da956ba5fb",
+      "sha256": "243d8a5738f000eba386bba97b8f552ddf92cd97e3e76536ea57f27d435a1e37",
       "stability": "stable"
     },
     {
@@ -312,7 +312,7 @@
       "schemaId": "task-context",
       "ref": "urn:operon:schema:runtime:v1:context.schema.json#/$defs/taskContext",
       "file": "context.schema.json",
-      "sha256": "528a1b6412acdbc6df004cdcb5a22e9bc83d0778ae1408f804664a98912418fc",
+      "sha256": "79ff85ff7f078b063e3facaed812af0f4d7589d87f34a82ec9757b1e39931ef3",
       "stability": "stable"
     },
     {
@@ -379,5 +379,5 @@
       "stability": "stable"
     }
   ],
-  "aggregateSha256": "7f0123fc1da01ca5d10d02c8a95def5aae2bac9086ad19787dae547d94b59d8f"
+  "aggregateSha256": "a235816c6ae146e87b93999d9268f1c82bba01f5bf315823713b910bbc835307"
 }

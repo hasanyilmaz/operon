@@ -95,6 +95,7 @@ export type CalendarProjectionKind = 'scheduled' | 'doneRolling';
 
 export interface CalendarRenderSnapshot {
 	description: string;
+	sourceFormat: IndexedTask['primary']['format'];
 	checkbox: IndexedTask['checkbox'];
 	fieldValues: Record<string, string>;
 	tags: string[];
@@ -203,6 +204,7 @@ export interface CalendarFilterMaterializationPlan {
 export function buildCalendarRenderSnapshot(task: IndexedTask): CalendarRenderSnapshot {
 	return {
 		description: task.description,
+		sourceFormat: task.primary.format,
 		checkbox: task.checkbox,
 		fieldValues: { ...task.fieldValues },
 		tags: [...task.tags],

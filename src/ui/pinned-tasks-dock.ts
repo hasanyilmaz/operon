@@ -1,4 +1,5 @@
 import { getTaskIconActionLabel } from '../core/task-icon-action';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 /**
  * Floating Pinned Tasks dock.
  * A draggable, position-fixed panel that displays pinned tasks
@@ -183,7 +184,7 @@ export class PinnedTasksDock extends Component {
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
 			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
-				`${task.operonId}:${task.description}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
+				`${task.operonId}:${getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled)}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
 			).join('|'),
 		].join('§');
 
@@ -275,7 +276,7 @@ export class PinnedTasksDock extends Component {
 			// Description — card click opens Task Editor unless a source-open modifier is held
 			const description = card.createSpan('operon-pinned-desc');
 			renderCompactTaskMarkdown(description, {
-				value: task.description || t('pinnedTasks', 'untitledTask'),
+				value: getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled) || t('pinnedTasks', 'untitledTask'),
 				mode: 'visual-only',
 			});
 

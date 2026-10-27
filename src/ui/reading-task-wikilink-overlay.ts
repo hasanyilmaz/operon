@@ -1,5 +1,6 @@
 import { createTaskSourceActionButton } from './task-info-chip-action';
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
@@ -977,7 +978,7 @@ function createTaskFileLinkLabel(
 		return anchor;
 	}
 
-	const description = resolved.task.description.trim();
+	const description = getTaskDisplayTitle(resolved.task, callbacks.getSettings().fileTaskDisplayTitleEnabled).trim();
 	if (!description) {
 		prepareTaskFileLinkAnchor(anchor, resolved, visuals, callbacks);
 		return anchor;
@@ -987,7 +988,7 @@ function createTaskFileLinkLabel(
 	renderCompactTaskMarkdown(label, {
 		app: callbacks.app,
 		value: description,
-  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(task => task.operonId === resolved.task.operonId)),
+  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(task => task.operonId === resolved.task.operonId), undefined, callbacks.getSettings().fileTaskDisplayTitleEnabled),
 		sourcePath: resolved.task.primary.filePath,
 		mode: 'interactive',
 		containerClassName: 'operon-task-wikilink-label-markdown',

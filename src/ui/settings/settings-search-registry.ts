@@ -114,6 +114,9 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('automation', 'tasksInlineTasks', 'tasksEmojiBulkConversion', 'settings', 'tasksBulkTitle', 'tasksBulkHelp', ['tasks emoji', 'bulk conversion', 'migration', 'recovery', 'toplu dönüşüm']),
 
 	e('automation', 'tasksTaskRouter', 'fileTasksFolder', 'settings', 'fileTasksFolder', 'fileTasksFolderDesc', 'folder', ['new task', 'task creator', 'file task', 'file task folder']),
+	e('automation', 'tasksFileTasks', 'fileTaskDisplayTitleEnabled', 'settings', 'fileTaskDisplayTitleEnabled', 'fileTaskDisplayTitleEnabledDesc', 'toggle', ['file task', 'display title', 'display label', 'frontmatter title', 'key mapping']),
+	e('automation', 'tasksFileTasks', 'fileTaskDisplayTitleChangeMode', 'settings', 'fileTaskDisplayTitleChangeMode', 'fileTaskDisplayTitleChangeModeDesc', 'dropdown', ['file task', 'display title', 'rename', 'filename']),
+	section('automation', 'tasksFileTasks', 'fileTaskFilenameRule', 'settings', 'fileTaskFilenameRule', 'fileTaskFilenameRuleDesc', ['filename', 'kebab', 'snake', 'regex', 'rename']),
 	section('automation', 'tasksTaskRouter', 'fileTaskPipelineLocations', 'settings', 'fileTaskPipelineLocations', 'fileTaskPipelineLocationsDesc', ['file task', 'pipeline', 'pipeline folder', 'pipeline location', 'task router']),
 	e('automation', 'tasksTaskRouter', 'moveConvertedNotesToPipelineLocation', 'settings', 'moveConvertedNotesToPipelineLocation', 'moveConvertedNotesToPipelineLocationDesc', 'toggle', ['file task', 'pipeline', 'convert notes', 'move converted notes', '5 seconds']),
 	e('automation', 'tasksTaskRouter', 'fileTaskParentInlineTargetMode', 'settings', 'fileTaskInlineParentTargetMode', 'fileTaskInlineParentTargetModeDesc', 'dropdown', ['new task', 'task creator', 'file task', 'inline task', 'parent', 'parent placement']),

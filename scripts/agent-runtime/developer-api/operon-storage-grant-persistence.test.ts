@@ -215,11 +215,33 @@ function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void 
  delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.taskCard;
 }
 
+function stripFileTaskDisplayTitleDefaults(data: OperonDataPackageV1, verify = false): void {
+	const settings = data.settings as Partial<typeof data.settings>;
+	if (verify) assert.equal(settings.fileTaskDisplayTitleEnabled, false);
+	delete settings.fileTaskDisplayTitleEnabled;
+	if (verify) {
+		assert.equal(settings.fileTaskDisplayTitleChangeMode, 'keep');
+		assert.deepEqual(settings.fileTaskFilenameRule, { preset: 'kebab', lowercase: true, rules: [] });
+	}
+	delete settings.fileTaskDisplayTitleChangeMode;
+	delete settings.fileTaskFilenameRule;
+	if (verify) assert.equal(settings.settingsVersion, 116);
+	settings.settingsVersion = 115;
+	const mappings = data.taxonomy.keyMappings.system;
+	const displayTitleMappings = mappings.filter(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle');
+	if (verify) {
+		assert.equal(displayTitleMappings.length, 1);
+		assert.equal(displayTitleMappings[0]?.visiblePropertyName, 'title');
+	}
+	data.taxonomy.keyMappings.system = mappings.filter(mapping => mapping.canonicalKey !== 'fileTaskDisplayTitle');
+}
+
 function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataPackageV1 {
 	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: grantPackage,
 	});
 	stripTaskCardDefaults(dataPackage);
+	stripFileTaskDisplayTitleDefaults(dataPackage);
 	// Preserve the sealed pre-Upcoming fixture bytes and their existing integrity assertions.
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
@@ -233,6 +255,7 @@ function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataP
 function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: string, currentHash: string): void {
 	const currentShape = durable.snapshot();
 	stripTaskCardDefaults(currentShape, true);
+	stripFileTaskDisplayTitleDefaults(currentShape, true);
 	assert.equal(currentShape.settings.taskIconClickAction, 'pipeline');
 	delete (currentShape.settings as Partial<typeof currentShape.settings>).taskIconClickAction;
 	assert.deepEqual(currentShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.upcomingTask);
@@ -246,6 +269,7 @@ function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: st
 	assert.equal(createHash('sha256').update(`${JSON.stringify(currentShape, null, '\t')}\n`).digest('hex'), currentHash);
 	const previousShape = durable.snapshot();
 	stripTaskCardDefaults(previousShape, true);
+	stripFileTaskDisplayTitleDefaults(previousShape, true);
 	delete previousShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {

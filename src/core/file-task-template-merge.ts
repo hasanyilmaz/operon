@@ -127,9 +127,9 @@ function unquote(value: string): string {
 	if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\'')))) {
 		const inner = value.slice(1, -1);
 		if (value.startsWith('"')) {
-			return inner.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+			return inner.replace(/\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/g, escape => JSON.parse(`"${escape}"`) as string);
 		}
-		return inner.replace(/\\'/g, '\'').replace(/\\\\/g, '\\');
+		return inner.replace(/''/g, '\'');
 	}
 	return value;
 }
@@ -198,10 +198,20 @@ function parseListSection(section: RawSection): string[] {
 	return items;
 }
 
-function renderScalar(value: string, forceQuoted = false): string {
+function renderManagedStringScalar(value: string, forceQuoted = false): string {
+	if (!value) return '""';
+	const safePlain = /^[A-Za-z_][A-Za-z0-9_./@:+()-]*(?: [A-Za-z0-9_./@:+()-]+)*$/;
+	if (!forceQuoted && safePlain.test(value) && !/:\s/.test(value)
+		&& !/^(?:null|true|false|yes|no|on|off)$/i.test(value)) {
+		return value;
+	}
+	return JSON.stringify(value);
+}
+
+function renderTypedScalar(value: string): string {
 	if (!value) return '""';
 	const safePlain = /^[A-Za-z0-9_./@:+()-]+(?: [A-Za-z0-9_./@:+()-]+)*$/;
-	if (!forceQuoted && safePlain.test(value)) {
+	if (safePlain.test(value)) {
 		return value;
 	}
 	if (!value.includes('\'') && (value.includes('"') || value.includes('<%') || value.includes('%>'))) {
@@ -214,7 +224,7 @@ function renderListSection(yamlKey: string, values: string[]): string {
 	if (values.length === 0) return `${yamlKey}:`;
 	return [
 		`${yamlKey}:`,
-		...values.map(value => `  - ${renderScalar(value)}`),
+		...values.map(value => `  - ${renderTypedScalar(value)}`),
 	].join('\n');
 }
 
@@ -234,14 +244,14 @@ function renderManagedSection(
 	}
 
 	if (!value) return `${yamlKey}:`;
-	if (fieldType === 'number' && /^-?\d+(\.\d+)?$/.test(value.trim())) {
-		return `${yamlKey}: ${value.trim()}`;
+	if (fieldType && fieldType !== 'text') {
+		return `${yamlKey}: ${renderTypedScalar(value)}`;
 	}
 	if (canonicalKey === 'taskColor') {
-		return `${yamlKey}: ${renderScalar(formatTaskColorYamlValue(value))}`;
+		return `${yamlKey}: ${renderManagedStringScalar(formatTaskColorYamlValue(value))}`;
 	}
 
-	return `${yamlKey}: ${renderScalar(
+	return `${yamlKey}: ${renderManagedStringScalar(
 		value,
 		canonicalKey === 'operonId' && /^\d+$/u.test(value),
 	)}`;
@@ -264,7 +274,7 @@ function parseSection(
 	parsed: ParsedFrontmatterSection;
 	value?: string | string[];
 } {
-	if (section.yamlKey === 'title') {
+	if (section.yamlKey === 'title' && reverseMap.get(section.yamlKey) !== 'fileTaskDisplayTitle') {
 		const headerLine = section.lines[0] ?? '';
 		const valuePart = headerLine.slice(headerLine.indexOf(':') + 1);
 		return {

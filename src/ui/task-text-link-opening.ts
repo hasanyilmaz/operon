@@ -1,5 +1,6 @@
 import { Platform, type App } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { parseCompactTaskMarkdown, type CompactTaskMarkdownLink, type CompactTaskMarkdownNode } from './compact-task-markdown-renderer';
 import { bindResolvedChipOpening, type ChipOpeningDecision } from './links-chip-action';
 import { resolveLightboxFile, type LightboxTarget } from './lightbox-opening';
@@ -30,6 +31,6 @@ export function bindTaskTextOpening(app: App, read: () => TaskTextLinkSource | n
   bindResolvedChipOpening(anchor,{app,resolve:()=>resolveTaskTextLink(app,link,read()),canActivate,stopPointerDown:true});
  };
 }
-export function taskDescriptionOpening(app: App, read: () => Pick<IndexedTask, 'description' | 'primary'> | null | undefined, canActivate?: () => boolean): ReturnType<typeof bindTaskTextOpening> {
- return bindTaskTextOpening(app,()=>{const task=read();return task?{value:task.description,sourcePath:task.primary.filePath}:null;},canActivate);
+export function taskDescriptionOpening(app: App, read: () => Pick<IndexedTask, 'description' | 'fieldValues' | 'primary'> | null | undefined, canActivate?: () => boolean, displayTitleEnabled = false): ReturnType<typeof bindTaskTextOpening> {
+ return bindTaskTextOpening(app,()=>{const task=read();return task?{value:getTaskDisplayTitle(task, displayTitleEnabled),sourcePath:task.primary.filePath}:null;},canActivate);
 }

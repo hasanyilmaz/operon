@@ -349,6 +349,28 @@
       ],
       "properties": {
         "creation": { "$ref": "#/$defs/creation" },
+        "fileTaskFilenameRule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["preset", "lowercase", "rules"],
+          "properties": {
+            "preset": { "enum": ["same", "kebab", "snake", "custom"] },
+            "lowercase": { "type": "boolean" },
+            "rules": {
+              "type": "array",
+              "maxItems": 512,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["pattern", "replacement"],
+                "properties": {
+                  "pattern": { "type": "string", "maxLength": 4096 },
+                  "replacement": { "type": "string", "maxLength": 4096 }
+                }
+              }
+            }
+          }
+        },
         "inheritance": { "$ref": "#/$defs/inheritance" },
         "exclusions": {
           "type": "object",

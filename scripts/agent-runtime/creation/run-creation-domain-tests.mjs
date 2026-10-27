@@ -19,6 +19,7 @@ try {
 			obsidian: path.join(pluginRoot, 'scripts/test-support/obsidian.ts'),
 		},
 		format: 'esm',
+		banner: { js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);' },
 		platform: 'node',
 		target: ['node18'],
 		sourcemap: 'inline',

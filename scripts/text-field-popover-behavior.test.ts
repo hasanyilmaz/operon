@@ -146,6 +146,35 @@ async function runTextFieldPopoverBehaviorTests(): Promise<void> {
 		assertions += 1;
 	};
 
+	{
+		let saves = 0, closes = 0, afterSaves = 0;
+		const dependencies: TextFieldPopoverDependencies = {
+			createCompactEditorSurface: () => ({
+				getCommit: () => ({ shouldCommit: true, value: 'New title' }),
+				focusEnd() {}, refreshLayout() {}, destroy() {},
+			}) as unknown as CompactMarkdownEditorSurface,
+			createPanel: (_anchor, _className, onClose) => {
+				const panel = new FakeElement();
+				return { panel: panel as unknown as HTMLElement, close: () => { closes++; onClose?.(); } };
+			},
+		};
+		const handle = showTextFieldPopover({
+			app: new App(), anchor: {} as DOMRect, title: 'Title', initialValue: 'Old title',
+			editor: { kind: 'compact-markdown', sourcePath: 'Task.md' },
+			onCommit: () => { saves++; return true; },
+			onAfterCommit: async () => {
+				equal(saves, 1, 'post-save callback must follow persistence');
+				afterSaves++;
+				return false;
+			},
+		}, dependencies);
+		equal(afterSaves, 0, 'opening a field never shows a post-save controls');
+		equal(await handle.requestCloseAndWait(), false, 'a saved title can retain its post-save controls');
+		equal(afterSaves, 1); equal(saves, 1); equal(closes, 0);
+		equal(await handle.requestCloseAndWait(), true, 'dismissing a saved title does not save again');
+		equal(saves, 1); equal(closes, 1);
+	}
+
 	for (const closeReason of ['handle', 'outside'] as const) {
 		const commitAttempts = [deferred<boolean>(), deferred<boolean>()];
 		const panels: Array<{ panel: FakeElement; options: FloatingPanelOptions; close: () => void }> = [];

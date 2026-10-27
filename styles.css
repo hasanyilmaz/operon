@@ -9577,6 +9577,172 @@ body .operon-task-editor button.operon-task-editor-title-copy-id:is(:hover, :foc
 	white-space: nowrap;
 }
 
+.operon-file-task-name-row {
+	min-width: 0;
+}
+
+.operon-file-task-name-row .setting-item-info,
+.operon-file-task-name-row .setting-item-description {
+	align-self: stretch;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.operon-file-task-name-row .setting-item-description {
+	overflow: visible;
+}
+
+.operon-file-task-rename-controls {
+	min-width: 0;
+}
+
+.operon-file-task-rename-controls.is-editor-row {
+	width: 100%;
+	container-type: inline-size;
+}
+
+.operon-file-task-rename-change-line {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+	flex-wrap: wrap;
+}
+
+.operon-file-task-rename-diff {
+	display: flex;
+	flex: 0 1 auto;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	min-width: 0;
+}
+
+.operon-file-task-rename-current {
+	color: var(--text-muted);
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-file-task-rename-suggestion-pair {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: var(--size-2-1);
+	white-space: nowrap;
+}
+
+.operon-file-task-rename-arrow {
+	color: var(--text-muted);
+	flex: 0 0 auto;
+}
+
+.operon-file-task-rename-suggestion-host {
+	flex: 0 0 auto;
+}
+
+button.operon-file-task-rename-suggestion,
+button.operon-file-task-rename-action {
+	appearance: none;
+	min-height: 0;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+}
+
+button.operon-file-task-rename-suggestion {
+	width: auto;
+	text-align: left;
+	white-space: nowrap;
+}
+
+button.operon-file-task-rename-action {
+	color: var(--text-accent);
+}
+
+button.operon-file-task-rename-suggestion:is(:hover, :focus-visible),
+button.operon-file-task-rename-action:is(:hover, :focus-visible) {
+	background: transparent;
+	box-shadow: none;
+	text-decoration: underline;
+}
+
+.operon-file-task-rename-input {
+	box-sizing: border-box;
+	width: auto;
+	min-height: 0;
+	height: var(--operon-file-task-name-value-height, 1.4em);
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-bottom: 1px solid var(--interactive-accent);
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+}
+
+.operon-file-task-rename-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin-left: auto;
+}
+
+.operon-file-task-rename-action-divider {
+	color: var(--text-muted);
+}
+
+.operon-file-task-rename-controls.is-popover {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: 0;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-change-line {
+	width: 100%;
+	flex-wrap: wrap;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-diff {
+	flex-basis: 100%;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-actions {
+	flex-basis: 100%;
+	justify-content: flex-end;
+}
+
+@container (max-width: 420px) {
+	.operon-file-task-rename-change-line {
+		flex-wrap: wrap;
+	}
+
+	.operon-file-task-rename-diff {
+		flex-basis: 100%;
+	}
+
+	.operon-file-task-rename-actions {
+		flex-basis: 100%;
+		justify-content: flex-end;
+	}
+}
+
 .operon-editor-core-actions {
 	display: inline-flex;
 	align-items: center;
@@ -28550,6 +28716,88 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 .operon-file-task-daily-notes-setting,
 .operon-file-task-migration-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 18px;
+}
+
+.operon-filename-rule-preview-setting:where(.operon-settings-scope, .operon-settings-scope *).mod-warning .setting-item-description {
+	color: var(--text-error);
+}
+
+.operon-file-task-display-settings:where(.operon-settings-scope, .operon-settings-scope *) > :is(.setting-item, .operon-filename-rule-controls):not(:first-child) {
+	border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
+}
+
+.operon-filename-rule-controls:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item,
+.operon-filename-rule-controls:where(.operon-settings-scope, .operon-settings-scope *) > .operon-filename-rule-list,
+.operon-filename-rule-controls:where(.operon-settings-scope, .operon-settings-scope *) .operon-filename-rule-row {
+	border-top: 0;
+}
+
+.operon-filename-rule-list:where(.operon-settings-scope, .operon-settings-scope *) {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 8px 0;
+}
+
+.operon-filename-rule-row:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+	padding: 8px 0;
+}
+
+.operon-filename-rule-index:where(.operon-settings-scope, .operon-settings-scope *) {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.operon-filename-rule-inputs:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+	min-width: 0;
+}
+
+.operon-filename-rule-inputs:where(.operon-settings-scope, .operon-settings-scope *) input[type='text'] {
+	width: 100%;
+	min-width: 0;
+}
+
+.operon-filename-rule-actions:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 2px;
+}
+
+.operon-filename-rule-action:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	min-width: 30px;
+	height: 30px;
+	padding: 0;
+}
+
+@container (max-width: 480px) {
+	.operon-filename-rule-row:where(.operon-settings-scope, .operon-settings-scope *) {
+		grid-template-columns: 24px minmax(0, 1fr);
+	}
+
+	.operon-filename-rule-inputs:where(.operon-settings-scope, .operon-settings-scope *) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.operon-filename-rule-actions:where(.operon-settings-scope, .operon-settings-scope *) {
+		grid-column: 2;
+	}
 }
 
 .operon-file-task-migration-desc:where(.operon-settings-scope, .operon-settings-scope *) {
