@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 
 - Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
+- **Task Creator** keeps icons for fields with values visible on desktop, making selected properties easier to review while empty fields retain their hover behavior.
 
 ### Changed
 
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Validation
 
 - Strict lint, **46/46** Kanban tests, **6/6** cell-summary checks, and manual Kanban verification passed.
+- Strict lint, Plugin release guard, and manual Task Creator field-icon verification passed.
 - Full local checks, **118/118** Status Dock tests, **185/185** Runtime mutation tests, schema checks, Plugin release guard, and manual Status Dock verification passed.
 
 ## [4.3.0] - 2026-10-26

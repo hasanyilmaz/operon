@@ -36643,15 +36643,15 @@ body:not(.is-mobile) .operon-task-creator-tool.is-active::after {
 body:not(.is-mobile) .operon-task-creator-tool.is-property-warning::after {
 	background: var(--text-error);
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active) {
 	border-color: transparent;
 	background: transparent;
 	box-shadow: none;
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool .operon-task-creator-tool-icon {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active) .operon-task-creator-tool-icon {
 	opacity: 0;
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool::after {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active)::after {
 	opacity: 1;
 }
 
