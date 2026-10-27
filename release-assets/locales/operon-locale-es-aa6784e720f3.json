@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "es",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Galería de tareas — Primera imagen",
       "kanbanCardImageSource_taskGalleryLast": "Galería de tareas — Última imagen",
       "kanbanCardImageSource_taskImage": "Imagen de tarea",
+      "kanbanCellHeight": "Altura de celda",
+      "kanbanCellHeightDesc": "Altura de cada celda de carril expandida, incluidos el relleno y los bordes. Los tableros clásicos sin carriles ocupan la altura disponible del panel.",
       "kanbanCollapseEmptyColumns": "Contraer columnas vacías",
       "kanbanCollapseEmptyColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo que actualmente no tienen tareas coincidentes.",
       "kanbanCollapseEmptySwimlanes": "Contraer carriles vacíos",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Controlar cómo se ordenan las tareas dentro de las celdas de kanban.",
       "kanbanSwimlaneField": "Campo de carril",
       "kanbanSwimlaneFieldDesc": "Las filas se generan a partir de los valores de este campo.",
-      "kanbanSwimlaneMaxHeight": "Límite de tareas por carril de Kanban",
-      "kanbanSwimlaneMaxHeightDesc": "Máximo de tareas visibles por celda de carril de kanban antes de que se pueda desplazar.",
       "kanbanSwimlane_assignees": "Responsables",
       "kanbanSwimlane_contexts": "Contextos",
       "kanbanSwimlane_dateDue": "Fecha de vencimiento",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "85a48411c8ea97f28a191edf372c4fffdddb47154a751416d195d33c0966c413"
+  "sourceVersion": "ec0a463d0e7f81ad3deda7a4d4b7f76a5509d0c6f18027247393b6309ace3cb9"
 }

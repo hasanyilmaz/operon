@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "fr",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Galerie de tâches — Première image",
       "kanbanCardImageSource_taskGalleryLast": "Galerie de tâches — Dernière image",
       "kanbanCardImageSource_taskImage": "Image de tâche",
+      "kanbanCellHeight": "Hauteur des cellules",
+      "kanbanCellHeightDesc": "Hauteur de chaque cellule de couloir dépliée, marges intérieures et bordures comprises. Les tableaux classiques sans couloirs occupent la hauteur disponible du panneau.",
       "kanbanCollapseEmptyColumns": "Réduire les colonnes vides",
       "kanbanCollapseEmptyColumnsDesc": "Réduire automatiquement les colonnes de pipeline qui n'ont actuellement aucune tâche correspondante.",
       "kanbanCollapseEmptySwimlanes": "Réduire les couloirs vides",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Contrôlez comment les tâches sont ordonnées à l'intérieur des cellules Kanban.",
       "kanbanSwimlaneField": "Champ de couloir",
       "kanbanSwimlaneFieldDesc": "Les lignes sont générées à partir des valeurs de ce champ.",
-      "kanbanSwimlaneMaxHeight": "Limite de tâches par couloir Kanban",
-      "kanbanSwimlaneMaxHeightDesc": "Nombre maximal de tâches visibles par cellule de couloir Kanban avant qu'elle ne devienne défilable.",
       "kanbanSwimlane_assignees": "Personnes assignées",
       "kanbanSwimlane_contexts": "Contextes",
       "kanbanSwimlane_dateDue": "Date d'échéance",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "63f836d9ec04653e27bec0f0b0c4eb8d1a03ca82a6fb83d86aa17fcf4c8ccb09"
+  "sourceVersion": "a7f5a0b64dee25e5072a2bc7146a5cc825636cbc99166f60e1764da1d97d7aeb"
 }

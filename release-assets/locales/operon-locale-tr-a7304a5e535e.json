@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "tr",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Görev galerisi — İlk görsel",
       "kanbanCardImageSource_taskGalleryLast": "Görev galerisi — Son görsel",
       "kanbanCardImageSource_taskImage": "Görev görseli",
+      "kanbanCellHeight": "Hücre yüksekliği",
+      "kanbanCellHeightDesc": "Açık swimlane hücrelerinin iç boşluk ve kenarlık dahil yüksekliği. Swimlane olmayan klasik panolar kullanılabilir panel yüksekliğini doldurur.",
       "kanbanCollapseEmptyColumns": "Boş sütunları daralt",
       "kanbanCollapseEmptyColumnsDesc": "Şu anda eşleşen görevi olmayan akış sütunlarını otomatik daralt.",
       "kanbanCollapseEmptySwimlanes": "Boş kulvarları daralt",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Kanban hücreleri içinde görevlerin nasıl sıralanacağını kontrol et.",
       "kanbanSwimlaneField": "Kulvar alanı",
       "kanbanSwimlaneFieldDesc": "Satırlar bu alanın değerlerinden oluşturulur.",
-      "kanbanSwimlaneMaxHeight": "Kanban kulvar görev limiti",
-      "kanbanSwimlaneMaxHeightDesc": "Kanban kulvar hücresi kaydırılabilir olmadan önce görünen maksimum görev sayısı.",
       "kanbanSwimlane_assignees": "Atananlar",
       "kanbanSwimlane_contexts": "Bağlam",
       "kanbanSwimlane_dateDue": "Bitiş tarihi",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "24bfa4d42216ac33f020414a0e91cf5379f78d9d0f38c8fcd9bbcbe671b48fae"
+  "sourceVersion": "16241a06abe569034fd1be7d7e52642dba7c8cc067d2dc8be32c05e52da03b15"
 }

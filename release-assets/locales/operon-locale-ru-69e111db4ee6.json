@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ru",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Галерея задачи — Первое изображение",
       "kanbanCardImageSource_taskGalleryLast": "Галерея задачи — Последнее изображение",
       "kanbanCardImageSource_taskImage": "Изображение задачи",
+      "kanbanCellHeight": "Высота ячейки",
+      "kanbanCellHeightDesc": "Высота каждой ячейки развёрнутой дорожки, включая внутренние отступы и границы. Классические доски без дорожек занимают всю доступную высоту панели.",
       "kanbanCollapseEmptyColumns": "Сворачивать пустые столбцы",
       "kanbanCollapseEmptyColumnsDesc": "Автоматически сворачивать столбцы конвейера, в которых сейчас нет подходящих задач.",
       "kanbanCollapseEmptySwimlanes": "Сворачивать пустые дорожки",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Управляйте порядком задач внутри ячеек канбана.",
       "kanbanSwimlaneField": "Поле дорожки",
       "kanbanSwimlaneFieldDesc": "Строки создаются на основе значений этого поля.",
-      "kanbanSwimlaneMaxHeight": "Лимит задач в дорожке канбана",
-      "kanbanSwimlaneMaxHeightDesc": "Максимальное количество видимых задач на ячейку дорожки канбана, прежде чем она станет прокручиваемой.",
       "kanbanSwimlane_assignees": "Исполнители",
       "kanbanSwimlane_contexts": "Контексты",
       "kanbanSwimlane_dateDue": "Срок выполнения",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "674aa498947b20c5bf265c13457a9938b94034f5de26ed8ad0d05a3684c27a10"
+  "sourceVersion": "73b6aa4318a723298c13cf8190e3314d92e74133c160944e4ca98da001c229de"
 }

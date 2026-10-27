@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "de",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Aufgabengalerie — Erstes Bild",
       "kanbanCardImageSource_taskGalleryLast": "Aufgabengalerie — Letztes Bild",
       "kanbanCardImageSource_taskImage": "Aufgabenbild",
+      "kanbanCellHeight": "Zellenhöhe",
+      "kanbanCellHeightDesc": "Höhe jeder aufgeklappten Swimlane-Zelle einschließlich Innenabstand und Rahmen. Klassische Boards ohne Swimlanes nutzen die verfügbare Höhe.",
       "kanbanCollapseEmptyColumns": "Leere Spalten einklappen",
       "kanbanCollapseEmptyColumnsDesc": "Arbeitsablaufspalten, die derzeit keine passenden Aufgaben haben, automatisch einklappen.",
       "kanbanCollapseEmptySwimlanes": "Leere Swimlanes einklappen",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Steuere, wie Aufgaben innerhalb von Kanban-Zellen angeordnet werden.",
       "kanbanSwimlaneField": "Swimlane-Feld",
       "kanbanSwimlaneFieldDesc": "Die Zeilen werden aus den Werten dieses Feldes erzeugt.",
-      "kanbanSwimlaneMaxHeight": "Aufgabenlimit pro Kanban-Swimlane",
-      "kanbanSwimlaneMaxHeightDesc": "Maximale Anzahl sichtbarer Aufgaben pro Kanban-Swimlane-Zelle, bevor sie scrollbar wird.",
       "kanbanSwimlane_assignees": "Zuständige",
       "kanbanSwimlane_contexts": "Kontexte",
       "kanbanSwimlane_dateDue": "Fälligkeitsdatum",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "52cd73aec84b201ec29c2d441c30b1a9722a0ddfad4c9bc35fc9af4c6fa4c01a"
+  "sourceVersion": "86d520185bf92c0f26617750a708140dee83e4d7c8069c3104500d3a96a9c9c0"
 }

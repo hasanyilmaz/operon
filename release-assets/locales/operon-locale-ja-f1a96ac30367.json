@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "ja",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "タスクギャラリー — 最初の画像",
       "kanbanCardImageSource_taskGalleryLast": "タスクギャラリー — 最後の画像",
       "kanbanCardImageSource_taskImage": "タスク画像",
+      "kanbanCellHeight": "セルの高さ",
+      "kanbanCellHeightDesc": "展開されたスイムレーンの各セルの高さです。内側の余白と枠線を含みます。スイムレーンのない従来のボードは、ペインの利用可能な高さ全体を使用します。",
       "kanbanCollapseEmptyColumns": "空の列を折りたたむ",
       "kanbanCollapseEmptyColumnsDesc": "現在一致するタスクがないワークフローの列を自動的に折りたたみます。",
       "kanbanCollapseEmptySwimlanes": "空のスイムレーンを折りたたむ",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "カンバンのセル内でタスクをどのように並べるかを制御します。",
       "kanbanSwimlaneField": "スイムレーンのフィールド",
       "kanbanSwimlaneFieldDesc": "行はこのフィールドの値から生成されます。",
-      "kanbanSwimlaneMaxHeight": "カンバンスイムレーンのタスク上限",
-      "kanbanSwimlaneMaxHeightDesc": "スクロール可能になる前に、カンバンスイムレーンのセルごとに表示される最大タスク数。",
       "kanbanSwimlane_assignees": "担当者",
       "kanbanSwimlane_contexts": "コンテキスト",
       "kanbanSwimlane_dateDue": "期限日",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "6d3ebbb63fc8df3156a6865c7d2bf82654e20f126780193e2b118cbe5a5dc8f2"
+  "sourceVersion": "5388c3da9adfa5bef16d00c82aacacb83fd3539871f1d7dbc86c4aa4078e9231"
 }

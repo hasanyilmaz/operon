@@ -36,6 +36,7 @@ import { findStatusDef, Pipeline } from '../../types/pipeline';
 import {
 	FilterSet,
 	OperonSettings,
+	normalizeKanbanCellHeightPx,
 	resolveTaskDisplayIcon,
 	TaskFinderDefaultScopeKey,
 } from '../../types/settings';
@@ -168,7 +169,6 @@ import {
 	KANBAN_TRACKER_FIELD_KEYS,
 } from '../../systems/kanban-render-signature';
 import {
-	estimateKanbanCellPlaceholderHeightPx,
 	KanbanCellScrollAnchor,
 	KanbanViewportContentAnchor,
 	matchesKanbanProgrammaticScrollState,
@@ -364,6 +364,7 @@ interface KanbanScrollState {
 }
 
 interface KanbanViewportAnchor {
+	clampToNaturalBounds?: boolean;
 	state: KanbanScrollState;
 	scope: string;
 	laneAnchors: KanbanViewportContentAnchor[];
@@ -453,13 +454,12 @@ function syncWorkspaceLeafTitle(leaf: WorkspaceLeaf, title: string, options: Wor
 }
 
 interface KanbanCellRenderFinalizer {
-	measure: () => void;
 	commit: () => void;
 }
 
 interface KanbanDeferredCellEntry {
 	cell: HTMLElement;
-	materialize: () => KanbanCellRenderFinalizer;
+	materialize: (viewportHeightPx: number) => KanbanCellRenderFinalizer;
 }
 
 export class KanbanView extends ItemView {
@@ -472,6 +472,7 @@ export class KanbanView extends ItemView {
 	private renderFrame: number | null = null;
 	private laneColumnWidthFrame: number | null = null;
 	private boardLayoutRefreshFrame: number | null = null;
+	private boardLayoutRefreshWindow: Window | null = null;
 	private boardLayoutRefreshCleanup: (() => void) | null = null;
 	private toolbarLayoutCleanup: (() => void) | null = null;
 	private activePresetPickerClose: (() => void) | null = null;
@@ -518,7 +519,7 @@ export class KanbanView extends ItemView {
 	private lastRenderedBoardScope: string | null = null;
 	private lastRenderedBoardTaskSignatures: Map<string, string> | null = null;
 	private readonly taskSignatureIndex = new KanbanTaskSignatureIndex();
-	private pendingCellMaterializers = new Map<HTMLElement, () => KanbanCellRenderFinalizer>();
+	private pendingCellMaterializers = new Map<HTMLElement, (viewportHeightPx: number) => KanbanCellRenderFinalizer>();
 	private cellLazySentinelObservers = new WeakMap<HTMLElement, IntersectionObserver>();
 	private readonly cellQuickAddCleanups = new WeakMap<HTMLElement, () => void>();
 	private activeTaskNotePopoverClose: (() => void) | null = null;
@@ -689,10 +690,12 @@ export class KanbanView extends ItemView {
 
 	private render(): void {
 		if (this.dragInteractionGate.deferRenderIfActive()) return;
-		const preserveViewport = this.preserveViewportOnNextRender;
 		const container = this.contentEl;
 		const state = this.ensureState();
 		const settings = this.getSettings();
+		const previousHeight = this.lastRenderSignature ? (JSON.parse(this.lastRenderSignature) as { cellHeightPx?: number }).cellHeightPx : settings.kanbanCellHeightPx;
+		const heightChanged = previousHeight !== settings.kanbanCellHeightPx && this.lastRenderedBoardScope === this.buildDropScrollAnchorScope();
+		const preserveViewport = this.preserveViewportOnNextRender || heightChanged;
 		const preset = settings.kanbanPresets.find(entry => entry.id === state.presetId) ?? settings.kanbanPresets[0] ?? null;
 		const pipeline = preset?.pipelineId
 			? settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
@@ -719,6 +722,7 @@ export class KanbanView extends ItemView {
 		this.hoverMenu.refreshAfterRender();
 		this.captureSearchFocusState(container);
 		this.captureBoardScrollState(container, preserveViewport);
+		if (heightChanged && this.pendingViewportAnchor) this.pendingViewportAnchor.clampToNaturalBounds = true;
 		this.clearKanbanSearchRefreshTimer();
 		this.clearBoardLayoutRefresh();
 		this.clearToolbarLayout();
@@ -869,7 +873,7 @@ export class KanbanView extends ItemView {
 			kanbanTaskChipLocationSignature: getKanbanTaskChipLocationSignature(this.app, settings),
 			projectSerialSignature: this.callbacks.getProjectSerialSignature?.() ?? '',
 			repeatSkipSignature: this.callbacks.getRepeatSkipSignature?.() ?? '',
-			maxVisibleTasksPerCell: settings.kanbanMaxVisibleTasksPerCell,
+			cellHeightPx: settings.kanbanCellHeightPx,
 			kanbanMobileLayoutChromeEnabled: settings.kanbanMobileLayoutChromeEnabled,
 			kanbanMobileLayoutMaxWidthPx: settings.kanbanMobileLayoutMaxWidthPx,
 			kanbanMobileCompactSwimlaneWidthPx: settings.kanbanMobileCompactSwimlaneWidthPx,
@@ -1719,6 +1723,7 @@ export class KanbanView extends ItemView {
 		this.bindBoardDelegatedCardEvents(boardEl);
 		const hasSwimlanes = board.preset.swimlaneBy !== null;
 		boardEl.toggleClass('is-no-swimlanes', !hasSwimlanes);
+		boardEl.style.setProperty('--operon-kanban-cell-height', `${normalizeKanbanCellHeightPx(this.getSettings().kanbanCellHeightPx)}px`);
 		boardEl.toggleClass('is-manual-order', hasManualKanbanSorting(board.preset));
 		boardEl.style.setProperty('--operon-kanban-column-width', `${this.getSettings().kanbanExpandedColumnWidthPx}px`);
 		boardEl.style.setProperty('--operon-kanban-collapsed-width', `${KANBAN_COLLAPSED_COLUMN_WIDTH_PX}px`);
@@ -1819,11 +1824,8 @@ export class KanbanView extends ItemView {
 			});
 		}
 
-		const laneLabelEls: HTMLElement[] = [];
 		const laneTitleEls: HTMLElement[] = [];
-		const gridRowEls: HTMLElement[] = [];
 		const laneLabelByKey = new Map<string, HTMLElement>();
-		const maxVisibleTasksPerCell = this.getSettings().kanbanMaxVisibleTasksPerCell;
 		const deferredCells: KanbanDeferredCellEntry[] = [];
 
 		for (const lane of board.lanes) {
@@ -1909,6 +1911,7 @@ export class KanbanView extends ItemView {
 				const isSearchCollapsed = searchActive && taskCount === 0;
 				const isCollapsed = isColumnCollapsed || isLaneCollapsed || isSearchCollapsed;
 				cell.classList.toggle('is-collapsed', isCollapsed);
+				cell.classList.toggle('is-scroll-limited', !isCollapsed);
 				if (column.color) {
 					cell.style.setProperty('--operon-kanban-status-color', column.color);
 				}
@@ -1920,25 +1923,12 @@ export class KanbanView extends ItemView {
 					this.renderCollapsedCellSummary(cell, taskCount);
 					continue;
 				}
-				// The placeholder height must exist before restoreBoardScrollState
-				// runs below, otherwise the restored scrollTop clamps against a
-				// near-empty grid and the board jumps to the top after a drop.
-				const estimatedHeightPx = estimateKanbanCellPlaceholderHeightPx({
-					taskCount: tasks.length,
-					maxVisibleTasks: maxVisibleTasksPerCell,
-					renderBatchSize: KANBAN_CARD_RENDER_BATCH_SIZE,
-					cardHeightPx: KANBAN_ESTIMATED_CARD_HEIGHT_PX,
-					cardGapPx: KANBAN_ESTIMATED_CARD_GAP_PX,
-				});
-				if (estimatedHeightPx > 0) {
-					cell.style.minHeight = `var(--operon-kanban-cell-min-height, ${estimatedHeightPx}px)`;
-				}
+				// Row geometry is already fixed before cards materialize or scroll is restored.
 				deferredCells.push({
 					cell,
 					materialize: this.createKanbanCellMaterializer(
 						cell,
 						tasks,
-						taskCount,
 						board,
 						column,
 						lane,
@@ -1950,28 +1940,23 @@ export class KanbanView extends ItemView {
 				});
 			}
 
-			if (laneLabel) laneLabelEls.push(laneLabel);
-			gridRowEls.push(row);
 		}
 
 		this.bindBoardAxisHighlighting(boardEl, columnHeaderByStatusId, laneLabelByKey);
 		this.bindBoardScrollStateTracking(gridViewport);
 		this.restoreBoardScrollState(gridViewport);
 		this.activateDeferredCellMaterialization(gridViewport, deferredCells);
-		this.syncRowCellHeights(gridRowEls);
 		if (hasSwimlanes) {
-			this.syncLaneHeights(laneLabelEls, gridRowEls);
 			this.refreshLaneColumnWidth(boardEl, laneTitleEls);
 		}
 		this.restoreBoardViewportAnchor(gridViewport);
 		this.bindKanbanMobileLayout(boardEl, gridViewport, hasSwimlanes);
-		this.bindBoardLayoutRefresh(boardEl, laneLabelEls, gridRowEls, laneTitleEls, hasSwimlanes);
+		this.bindBoardLayoutRefresh(boardEl, laneTitleEls, hasSwimlanes);
 	}
 
 	private createKanbanCellMaterializer(
 		cell: HTMLElement,
 		tasks: IndexedTask[],
-		taskCount: number,
 		board: KanbanBoardData,
 		column: KanbanColumn,
 		lane: KanbanLane,
@@ -1980,14 +1965,13 @@ export class KanbanView extends ItemView {
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
 		retainedCards?: ReadonlyMap<string, HTMLElement>,
-	): () => KanbanCellRenderFinalizer {
-		return () => {
+	): (viewportHeightPx: number) => KanbanCellRenderFinalizer {
+		return (viewportHeightPx) => {
 			cell.style.removeProperty('min-height');
 			this.bindCellQuickAdd(cell, column, lane, board.preset);
 			return this.renderInitialCellTasks(
 				cell,
 				tasks,
-				taskCount,
 				board.pipeline,
 				board.preset,
 				column.statusId,
@@ -1996,6 +1980,7 @@ export class KanbanView extends ItemView {
 				taskLookup,
 				workflowStatusIdentityIndex,
 				readOnlyChips,
+				viewportHeightPx,
 				retainedCards,
 			);
 		};
@@ -2004,7 +1989,6 @@ export class KanbanView extends ItemView {
 	private renderInitialCellTasks(
 		cell: HTMLElement,
 		tasks: IndexedTask[],
-		totalTaskCount: number,
 		pipeline: Pipeline | null,
 		preset: KanbanPreset,
 		statusId: string,
@@ -2013,13 +1997,13 @@ export class KanbanView extends ItemView {
 		taskLookup: CompactTaskLookupContext,
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
 		readOnlyChips: boolean,
+		viewportHeightPx: number,
 		retainedCards?: ReadonlyMap<string, HTMLElement>,
 	): KanbanCellRenderFinalizer {
-		const maxVisibleTasks = this.getSettings().kanbanMaxVisibleTasksPerCell;
 		const requestedLimit = resolveKanbanCellInitialRenderLimit({
 			taskCount: tasks.length,
 			renderBatchSize: KANBAN_CARD_RENDER_BATCH_SIZE,
-			maxVisibleTasks,
+			viewportHeightPx,
 			savedScrollTopPx: this.getPendingCellScrollTop(statusId, laneKey),
 			cardHeightPx: KANBAN_ESTIMATED_CARD_HEIGHT_PX,
 			cardGapPx: KANBAN_ESTIMATED_CARD_GAP_PX,
@@ -2036,17 +2020,10 @@ export class KanbanView extends ItemView {
 			: requestedLimit;
 		this.renderTaskCardBatch(cell, tasks, 0, initialLimit, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, null, retainedCards);
 		cell.dataset.kanbanVisibleCount = String(initialLimit);
-		// Height limiting is split into measure/commit so batch materialization
-		// can run all reads in one pass (single forced layout) before writing.
-		let measuredHeightLimitPx: number | null = null;
 		return {
-			measure: () => {
-				measuredHeightLimitPx = this.measureCellHeightLimitPx(cell, maxVisibleTasks, totalTaskCount);
-			},
 			commit: () => {
-				this.commitCellHeightLimit(cell, measuredHeightLimitPx);
 				if (tasks.length > initialLimit) {
-					this.attachCellLazySentinel(cell, tasks, pipeline, preset, statusId, laneKey, maxVisibleTasks, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips);
+					this.attachCellLazySentinel(cell, tasks, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips);
 				}
 				this.restoreCellScrollIfPending(cell);
 			},
@@ -2091,7 +2068,6 @@ export class KanbanView extends ItemView {
 		preset: KanbanPreset,
 		statusId: string,
 		laneKey: string,
-		maxVisibleTasks: number,
 		allTasks: IndexedTask[],
 		taskLookup: CompactTaskLookupContext,
 		workflowStatusIdentityIndex: WorkflowStatusIdentityIndex,
@@ -2126,7 +2102,6 @@ export class KanbanView extends ItemView {
 			this.renderTaskCardBatch(cell, tasks, currentVisible, nextVisible, pipeline, preset, statusId, laneKey, allTasks, taskLookup, workflowStatusIdentityIndex, readOnlyChips, sentinel);
 			cell.dataset.kanbanVisibleCount = String(nextVisible);
 			setSentinelNextTaskId(nextVisible);
-			this.applyCellHeightLimit(cell, maxVisibleTasks, tasks.length);
 			this.scheduleBoardLayoutRefreshFromCell(cell);
 			if (nextVisible >= tasks.length) {
 				observer.disconnect();
@@ -2150,17 +2125,17 @@ export class KanbanView extends ItemView {
 		const viewportRect = gridViewport.getBoundingClientRect();
 		const pendingCells: KanbanDeferredCellEntry[] = [];
 		const finalizers: KanbanCellRenderFinalizer[] = [];
-		// Phase 1: render cards for every near-viewport cell (DOM writes only).
+		// Read geometry before card writes, including later viewport batches.
+		const readyCells: { entry: KanbanDeferredCellEntry; height: number }[] = [];
 		for (const entry of deferredCells) {
 			if (shouldMaterializeKanbanCell(viewportRect, entry.cell.getBoundingClientRect(), KANBAN_CELL_MATERIALIZE_MARGIN_PX)) {
-				finalizers.push(entry.materialize());
+				readyCells.push({ entry, height: entry.cell.clientHeight });
 				continue;
 			}
 			pendingCells.push(entry);
 		}
-		// Phase 2: measure all height limits in one pass (single forced layout).
-		for (const finalizer of finalizers) finalizer.measure();
-		// Phase 3: commit limits and attach lazy sentinels (writes only).
+		for (const { entry, height } of readyCells) finalizers.push(entry.materialize(height));
+		// Attach lazy sentinels without measuring cards or changing row geometry.
 		for (const finalizer of finalizers) finalizer.commit();
 		if (pendingCells.length === 0) return;
 		const observer = new IntersectionObserver(entries => {
@@ -2188,14 +2163,14 @@ export class KanbanView extends ItemView {
 	}
 
 	private materializeKanbanCellsIfPending(cells: readonly HTMLElement[]): boolean {
+		const heights = new Map(cells.filter(cell => this.pendingCellMaterializers.has(cell)).map(cell => [cell, cell.clientHeight]));
 		const finalizers: KanbanCellRenderFinalizer[] = [];
 		for (const cell of cells) {
 			const materialize = this.pendingCellMaterializers.get(cell);
 			if (!materialize) continue;
 			this.pendingCellMaterializers.delete(cell);
-			finalizers.push(materialize());
+			finalizers.push(materialize(heights.get(cell) ?? 0));
 		}
-		for (const finalizer of finalizers) finalizer.measure();
 		for (const finalizer of finalizers) finalizer.commit();
 		return finalizers.length > 0;
 	}
@@ -3470,8 +3445,10 @@ export class KanbanView extends ItemView {
 		const taskLookup = createCompactTaskLookup(allTasks);
 		const workflowStatusIdentityIndex = buildWorkflowStatusIdentityIndex(settings.pipelines);
 		const readOnlyChips = boardEl.classList.contains('is-mobile-layout');
+		const viewportHeightPx = next.preset.swimlaneBy === null
+			? boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport')?.clientHeight ?? 0
+			: normalizeKanbanCellHeightPx(settings.kanbanCellHeightPx);
 		const finalizers: KanbanCellRenderFinalizer[] = [];
-		const changedRows = new Set<HTMLElement>();
 
 		for (const cellKey of changedCellKeys) {
 			const separator = cellKey.indexOf('::');
@@ -3483,14 +3460,13 @@ export class KanbanView extends ItemView {
 			const lane = nextLanes.get(laneKey);
 			const cell = this.findKanbanCell(boardEl, statusId, laneKey);
 			if (!column || !lane || !cell) return false;
-			const row = cell.closest<HTMLElement>('.operon-kanban-row');
-			if (row) changedRows.add(row);
 			const tasks = next.cellMap.get(cellKey) ?? [];
 			const taskCount = next.cellCountMap.get(cellKey) ?? tasks.length;
 			const isCollapsed = collapsedStatusIds.has(statusId)
 				|| collapsedLaneKeys.has(laneKey)
 				|| (searchActive && taskCount === 0);
 			cell.classList.toggle('is-collapsed', isCollapsed);
+			cell.classList.toggle('is-scroll-limited', !isCollapsed);
 			if (isCollapsed) {
 				this.unobserveKanbanCellContent(cell);
 				this.pendingCellMaterializers.delete(cell);
@@ -3515,7 +3491,6 @@ export class KanbanView extends ItemView {
 			const materialize = this.createKanbanCellMaterializer(
 				cell,
 				tasks,
-				taskCount,
 				next,
 				column,
 				lane,
@@ -3527,18 +3502,6 @@ export class KanbanView extends ItemView {
 			);
 			if (this.pendingCellMaterializers.has(cell)) {
 				this.pendingCellMaterializers.set(cell, materialize);
-				const estimatedHeightPx = estimateKanbanCellPlaceholderHeightPx({
-					taskCount: tasks.length,
-					maxVisibleTasks: settings.kanbanMaxVisibleTasksPerCell,
-					renderBatchSize: KANBAN_CARD_RENDER_BATCH_SIZE,
-					cardHeightPx: KANBAN_ESTIMATED_CARD_HEIGHT_PX,
-					cardGapPx: KANBAN_ESTIMATED_CARD_GAP_PX,
-				});
-				if (estimatedHeightPx > 0) {
-					cell.style.minHeight = `var(--operon-kanban-cell-min-height, ${estimatedHeightPx}px)`;
-				} else {
-					cell.style.removeProperty('min-height');
-				}
 				continue;
 			}
 			this.unobserveKanbanCellContent(cell);
@@ -3552,10 +3515,9 @@ export class KanbanView extends ItemView {
 				cleanupOperonHoverTooltips(child as HTMLElement);
 				child.remove();
 			}
-			finalizers.push(materialize());
+			finalizers.push(materialize(viewportHeightPx));
 		}
 
-		for (const finalizer of finalizers) finalizer.measure();
 		for (const finalizer of finalizers) finalizer.commit();
 		for (const laneKey of previousLaneKeys) {
 			if (nextLaneKeySet.has(laneKey)) continue;
@@ -3570,14 +3532,6 @@ export class KanbanView extends ItemView {
 			row.remove();
 		}
 		if (changedCellKeys.size > 0) this.updateKanbanBoardCounts(boardEl, next, changedCellKeys);
-		const connectedRows = Array.from(changedRows).filter(row => row.isConnected);
-		if (connectedRows.length > 0) {
-			this.syncRowCellHeights(connectedRows);
-			const labels = connectedRows
-				.map(row => row.querySelector<HTMLElement>(':scope > .operon-kanban-lane-label'))
-				.filter((label): label is HTMLElement => label !== null);
-			if (labels.length === connectedRows.length) this.syncLaneHeights(labels, connectedRows);
-		}
 		return true;
 	}
 
@@ -3753,9 +3707,6 @@ export class KanbanView extends ItemView {
 
 	private applyImmediateCardDrop(targetCell: HTMLElement, cardEl: HTMLElement, beforeTaskId: string | null): void {
 		if (!cardEl.isConnected) return;
-		const sourceCell = cardEl.closest<HTMLElement>('.operon-kanban-cell');
-		const sourceRow = sourceCell?.closest<HTMLElement>('.operon-kanban-row') ?? null;
-		const targetRow = targetCell.closest<HTMLElement>('.operon-kanban-row');
 		const targetStatusId = targetCell.dataset.kanbanStatusId;
 		if (targetStatusId) {
 			cardEl.dataset.kanbanStatusId = targetStatusId;
@@ -3780,21 +3731,8 @@ export class KanbanView extends ItemView {
 		} else {
 			targetCell.appendChild(cardEl);
 		}
-		const cardCount = targetCell.querySelectorAll(':scope > .operon-kanban-card').length;
-		this.applyCellHeightLimit(targetCell, this.getSettings().kanbanMaxVisibleTasksPerCell, cardCount);
-		if (sourceCell && sourceCell !== targetCell) {
-			const sourceCardCount = sourceCell.querySelectorAll(':scope > .operon-kanban-card').length;
-			this.applyCellHeightLimit(sourceCell, this.getSettings().kanbanMaxVisibleTasksPerCell, sourceCardCount);
-		}
 		const boardEl = targetCell.closest<HTMLElement>('.operon-kanban-board');
 		if (!boardEl) return;
-		const affectedRows = Array.from(new Set([sourceRow, targetRow]))
-			.filter((row): row is HTMLElement => row !== null && row.isConnected);
-		this.syncRowCellHeights(affectedRows);
-		const laneLabels = affectedRows
-			.map(row => row.querySelector<HTMLElement>(':scope > .operon-kanban-lane-label'))
-			.filter((label): label is HTMLElement => label !== null);
-		if (laneLabels.length === affectedRows.length) this.syncLaneHeights(laneLabels, affectedRows);
 		const gridViewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
 		if (gridViewport) this.scheduleBoardViewportAnchorRestore(gridViewport);
 	}
@@ -4320,11 +4258,11 @@ export class KanbanView extends ItemView {
 			boardEl.setCssProps({ '--operon-kanban-lane-column-width': `${KANBAN_LANE_COLUMN_MIN_WIDTH_PX}px` });
 			return;
 		}
-		const computed = window.getComputedStyle(firstLabel);
+		const computed = getOwnerWindow(firstLabel).getComputedStyle(firstLabel);
 		const countWidth = countButton.getBoundingClientRect().width;
 		const laneMetrics = laneTitles.map(title => {
 			const label = title.parentElement;
-			const labelComputed = label ? window.getComputedStyle(label) : computed;
+			const labelComputed = label ? getOwnerWindow(label).getComputedStyle(label) : computed;
 			return {
 				collapsed: label?.classList.contains('is-collapsed') === true,
 				gap: Number.parseFloat(labelComputed.columnGap || labelComputed.gap || '0') || 0,
@@ -4354,20 +4292,12 @@ export class KanbanView extends ItemView {
 
 	private bindBoardLayoutRefresh(
 		boardEl: HTMLElement,
-		laneLabels: HTMLElement[],
-		gridRows: HTMLElement[],
 		laneTitles: HTMLElement[],
 		hasSwimlanes: boolean,
 	): void {
 		const refresh = (): void => {
 			if (!boardEl.isConnected || boardEl.getBoundingClientRect().width <= 0) return;
-			const connectedRows = gridRows.filter(row => row.isConnected);
-			this.syncRowCellHeights(connectedRows);
 			if (hasSwimlanes) {
-				const connectedLaneLabels = laneLabels.filter(label => label.isConnected);
-				if (connectedLaneLabels.length === connectedRows.length) {
-					this.syncLaneHeights(connectedLaneLabels, connectedRows);
-				}
 				this.scheduleLaneColumnWidthRefresh(boardEl, laneTitles.filter(title => title.isConnected));
 			}
 			const gridViewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
@@ -4375,7 +4305,8 @@ export class KanbanView extends ItemView {
 		};
 		const scheduleRefresh = (): void => {
 			if (this.boardLayoutRefreshFrame !== null) return;
-			this.boardLayoutRefreshFrame = window.requestAnimationFrame(() => {
+			this.boardLayoutRefreshWindow = getOwnerWindow(boardEl);
+			this.boardLayoutRefreshFrame = this.boardLayoutRefreshWindow.requestAnimationFrame(() => {
 				this.boardLayoutRefreshFrame = null;
 				refresh();
 			});
@@ -4383,16 +4314,19 @@ export class KanbanView extends ItemView {
 
 		this.clearBoardLayoutRefresh();
 		scheduleRefresh();
-		window.requestAnimationFrame(scheduleRefresh);
+		getOwnerWindow(boardEl).requestAnimationFrame(scheduleRefresh);
 
+		let lastBoardHeight = boardEl.getBoundingClientRect().height;
 		let lastBoardWidth = boardEl.getBoundingClientRect().width;
 		let lastParentWidth = boardEl.parentElement?.getBoundingClientRect().width ?? null;
-		const observer = new ResizeObserver(entries => {
+		const observer = new (getOwnerWindow(boardEl) as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver(entries => {
 			let widthChanged = false;
 			for (const entry of entries) {
 				const width = entry.contentRect.width;
 				if (entry.target === boardEl) {
 					if (Math.abs(width - lastBoardWidth) > 0.5) widthChanged = true;
+					if (Math.abs(entry.contentRect.height - lastBoardHeight) > 0.5) widthChanged = true;
+					lastBoardHeight = entry.contentRect.height;
 					lastBoardWidth = width;
 					continue;
 				}
@@ -4412,9 +4346,10 @@ export class KanbanView extends ItemView {
 
 	private clearBoardLayoutRefresh(): void {
 		if (this.boardLayoutRefreshFrame !== null) {
-			window.cancelAnimationFrame(this.boardLayoutRefreshFrame);
+			this.boardLayoutRefreshWindow?.cancelAnimationFrame(this.boardLayoutRefreshFrame);
 			this.boardLayoutRefreshFrame = null;
 		}
+		this.boardLayoutRefreshWindow = null;
 		this.boardLayoutRefreshCleanup?.();
 		this.boardLayoutRefreshCleanup = null;
 	}
@@ -5152,16 +5087,12 @@ export class KanbanView extends ItemView {
 
 	private scheduleBoardLayoutRefreshFromCell(cell: HTMLElement): void {
 		const boardEl = cell.closest<HTMLElement>('.operon-kanban-board');
-		const row = cell.closest<HTMLElement>('.operon-kanban-row');
-		if (!boardEl || !row || this.boardLayoutRefreshFrame !== null) return;
-		this.boardLayoutRefreshFrame = window.requestAnimationFrame(() => {
+		if (!boardEl || this.boardLayoutRefreshFrame !== null) return;
+		this.boardLayoutRefreshWindow = getOwnerWindow(cell);
+		this.boardLayoutRefreshFrame = this.boardLayoutRefreshWindow.requestAnimationFrame(() => {
 			this.boardLayoutRefreshFrame = null;
-			if (!boardEl.isConnected || !row.isConnected) return;
-			this.syncRowCellHeights([row]);
-			if (!boardEl.classList.contains('is-no-swimlanes')) {
-				const laneLabel = row.querySelector<HTMLElement>(':scope > .operon-kanban-lane-label');
-				if (laneLabel) this.syncLaneHeights([laneLabel], [row]);
-			}
+			if (!boardEl.isConnected || !cell.isConnected) return;
+			this.restoreCellScrollIfPending(cell);
 			const gridViewport = boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport');
 			if (gridViewport) this.scheduleBoardViewportAnchorRestore(gridViewport);
 		});
@@ -5333,7 +5264,9 @@ export class KanbanView extends ItemView {
 			fallbackScroll: anchor.state.top,
 			allowTargetAnchor: dropAllowsTargetAnchor,
 		});
-		const compensation = resolveKanbanViewportScrollCompensation({
+		const compensation = anchor.clampToNaturalBounds
+			? { scrollTop: Math.max(0, desiredScrollTop), bottomCompensationPx: 0 }
+			: resolveKanbanViewportScrollCompensation({
 			desiredScrollTop,
 			naturalMaxScrollTop: Math.max(
 				0,
@@ -5677,89 +5610,6 @@ export class KanbanView extends ItemView {
 			};
 			this.scheduleBoardBottomScrollCompensationRelease(gridViewport);
 		});
-	}
-
-	private syncLaneHeights(laneLabels: HTMLElement[], gridRows: HTMLElement[]): void {
-		// Read phase: measure every row before mutating any label height.
-		const rowHeights = gridRows.map(gridRow => Math.ceil(gridRow.getBoundingClientRect().height));
-		for (let index = 0; index < laneLabels.length; index++) {
-			const laneLabel = laneLabels[index];
-			const rowHeight = rowHeights[index];
-			if (!laneLabel || !gridRows[index] || rowHeight === undefined) continue;
-			laneLabel.style.height = `${rowHeight}px`;
-		}
-	}
-
-	private syncRowCellHeights(gridRows: HTMLElement[]): void {
-		// Write phase: reset lane label heights so rows report natural content height.
-		for (const gridRow of gridRows) {
-			gridRow.querySelector<HTMLElement>(':scope > .operon-kanban-lane-label')?.style.removeProperty('height');
-		}
-		// Read phase: measure every row in one pass (single forced layout).
-		const rowHeights = gridRows.map(gridRow => Math.ceil(gridRow.getBoundingClientRect().height));
-		// Write phase: cap scroll-limited cells to their row height.
-		for (let index = 0; index < gridRows.length; index++) {
-			const gridRow = gridRows[index];
-			const rowHeight = rowHeights[index] ?? 0;
-			if (!gridRow || rowHeight <= 0) continue;
-			const cells = Array.from(gridRow.children)
-				.map(child => asHTMLElement(child))
-				.filter((child): child is HTMLElement => child !== null)
-				.filter(child => child.classList.contains('operon-kanban-cell'));
-			for (const cell of cells) {
-				if (
-					cell.classList.contains('is-scroll-limited')
-					&& !cell.classList.contains('is-collapsed')
-				) {
-					cell.style.maxHeight = `var(--operon-kanban-cell-height-limit, ${rowHeight}px)`;
-				}
-			}
-		}
-	}
-
-	private applyCellHeightLimit(cell: HTMLElement, maxVisibleTasks: number, totalTaskCount: number): void {
-		cell.classList.remove('is-scroll-limited');
-		cell.style.removeProperty('max-height');
-		this.commitCellHeightLimit(cell, this.measureCellHeightLimitPx(cell, maxVisibleTasks, totalTaskCount));
-	}
-
-	private measureCellHeightLimitPx(cell: HTMLElement, maxVisibleTasks: number, totalTaskCount: number): number | null {
-		if (!Number.isFinite(maxVisibleTasks) || maxVisibleTasks < 1) return null;
-		if (totalTaskCount <= maxVisibleTasks) return null;
-
-		const topLevelCards = Array.from(cell.children)
-			.map(child => asHTMLElement(child))
-			.filter((child): child is HTMLElement => child !== null)
-			.filter(child => child.classList.contains('operon-kanban-card'));
-		if (topLevelCards.length === 0) return null;
-
-		const styles = window.getComputedStyle(cell);
-		const gap = Number.parseFloat(styles.rowGap || styles.gap || '0') || 0;
-		const paddingTop = Number.parseFloat(styles.paddingTop || '0') || 0;
-		const paddingBottom = Number.parseFloat(styles.paddingBottom || '0') || 0;
-		const borderTop = Number.parseFloat(styles.borderTopWidth || '0') || 0;
-		const borderBottom = Number.parseFloat(styles.borderBottomWidth || '0') || 0;
-
-		let maxHeight = paddingTop + paddingBottom + borderTop + borderBottom;
-		for (let index = 0; index < maxVisibleTasks; index++) {
-			const card = topLevelCards[index];
-			if (!card) break;
-			maxHeight += card.offsetHeight;
-			if (index > 0) {
-				maxHeight += gap;
-			}
-		}
-		return Math.ceil(maxHeight);
-	}
-
-	private commitCellHeightLimit(cell: HTMLElement, maxHeightPx: number | null): void {
-		if (maxHeightPx === null) {
-			cell.classList.remove('is-scroll-limited');
-			cell.style.removeProperty('max-height');
-			return;
-		}
-		cell.style.maxHeight = `var(--operon-kanban-cell-height-limit, ${maxHeightPx}px)`;
-		cell.classList.add('is-scroll-limited');
 	}
 
 	private ensureState(): KanbanLeafState {

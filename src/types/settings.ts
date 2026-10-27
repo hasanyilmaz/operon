@@ -462,6 +462,9 @@ const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 const CONTEXTUAL_MENU_SURFACE_ID_SET = new Set<ContextualMenuSurface>(CONTEXTUAL_MENU_SURFACES);
 export const KANBAN_EXPANDED_COLUMN_WIDTH_MIN = 220;
 export const KANBAN_EXPANDED_COLUMN_WIDTH_MAX = 520;
+export const KANBAN_CELL_HEIGHT_OPTIONS = [350, 400, 450, 500, 550] as const;
+export type KanbanCellHeightPx = typeof KANBAN_CELL_HEIGHT_OPTIONS[number];
+
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN = 1;
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX = 30;
 export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN = 600;
@@ -1981,6 +1984,8 @@ export interface OperonSettings extends TaskCardSettings {
 	kanbanPresets: KanbanPreset[];
 	kanbanDefaultPresetId: string | null;
 	kanbanExpandedColumnWidthPx: number;
+	kanbanCellHeightPx: KanbanCellHeightPx;
+	/** Legacy compatibility only; not used by the Kanban renderer. */
 	kanbanMaxVisibleTasksPerCell: number;
 	kanbanShowHoverAddButton: boolean;
 	kanbanTaskShowNotesPreview: boolean;
@@ -2526,6 +2531,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	kanbanPresets: cloneDefaultKanbanPresets(),
 	kanbanDefaultPresetId: DEFAULT_KANBAN_DEFAULT_PRESET_ID,
 	kanbanExpandedColumnWidthPx: 320,
+	kanbanCellHeightPx: 450,
 	kanbanMaxVisibleTasksPerCell: 7,
 	kanbanShowHoverAddButton: true,
 	kanbanTaskShowNotesPreview: false,
@@ -3265,6 +3271,12 @@ function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
 		KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
 		Math.min(KANBAN_EXPANDED_COLUMN_WIDTH_MAX, Math.round(raw)),
 	);
+}
+
+export function normalizeKanbanCellHeightPx(raw: unknown): KanbanCellHeightPx {
+	return typeof raw === 'number' && KANBAN_CELL_HEIGHT_OPTIONS.includes(raw as KanbanCellHeightPx)
+		? raw as KanbanCellHeightPx
+		: DEFAULT_SETTINGS.kanbanCellHeightPx;
 }
 
 function normalizeKanbanMaxVisibleTasksPerCell(raw: unknown): number {
@@ -4713,6 +4725,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.calendarMobileShowCompletedItems;
 	out.kanbanPresets = normalizeKanbanPresets(src.kanbanPresets);
 	out.kanbanExpandedColumnWidthPx = normalizeKanbanExpandedColumnWidthPx(src.kanbanExpandedColumnWidthPx);
+	out.kanbanCellHeightPx = normalizeKanbanCellHeightPx(src.kanbanCellHeightPx);
 	out.kanbanMaxVisibleTasksPerCell = normalizeKanbanMaxVisibleTasksPerCell(src.kanbanMaxVisibleTasksPerCell);
 	out.kanbanShowHoverAddButton = src.kanbanShowHoverAddButton !== false;
 	out.kanbanTaskShowNotesPreview = src.kanbanTaskShowNotesPreview === true;

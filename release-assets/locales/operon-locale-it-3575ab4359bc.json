@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "it",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Galleria attività — Prima immagine",
       "kanbanCardImageSource_taskGalleryLast": "Galleria attività — Ultima immagine",
       "kanbanCardImageSource_taskImage": "Immagine attività",
+      "kanbanCellHeight": "Altezza delle celle",
+      "kanbanCellHeightDesc": "Altezza di ogni cella di corsia espansa, inclusi spazi interni e bordi. Le bacheche classiche senza corsie occupano l’altezza disponibile del pannello.",
       "kanbanCollapseEmptyColumns": "Comprimi colonne vuote",
       "kanbanCollapseEmptyColumnsDesc": "Comprimi automaticamente le colonne pipeline che attualmente non hanno attività corrispondenti.",
       "kanbanCollapseEmptySwimlanes": "Comprimi corsie vuote",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Controlla come vengono ordinate le attività all'interno delle celle kanban.",
       "kanbanSwimlaneField": "Campo corsia",
       "kanbanSwimlaneFieldDesc": "Le righe vengono generate dai valori di questo campo.",
-      "kanbanSwimlaneMaxHeight": "Limite attività corsia Kanban",
-      "kanbanSwimlaneMaxHeightDesc": "Numero massimo di attività visibili per cella di corsia kanban prima che diventi scorrevole.",
       "kanbanSwimlane_assignees": "Assegnatari",
       "kanbanSwimlane_contexts": "Contesti",
       "kanbanSwimlane_dateDue": "Data di scadenza",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "302dcb6fe8d7ce38ad51bb52ec5634de6fea47048c191361bf85f0ea0a311d7b"
+  "sourceVersion": "fecfd794de887e36a2e8684ad1b04079682b12b14faf73b079ac00dabbbaffb4"
 }

@@ -178,6 +178,11 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 
 /** Verify additive card defaults separately, preserving the pre-card sealed fixtures. */
 function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void {
+ // Keep sealed grant fixtures byte-identical; verify the additive Kanban default separately.
+ if (Object.prototype.hasOwnProperty.call(data.settings, 'kanbanCellHeightPx')) {
+  if (verify) assert.equal(data.settings.kanbanCellHeightPx, 450);
+  Reflect.deleteProperty(data.settings, 'kanbanCellHeightPx');
+ }
  // Preserve the sealed legacy fixture while checking the additive visual preference separately.
  if (verify) assert.equal(data.ui.workspaceTweaks.workspaceTweaksBackgroundDimming, 50);
  Reflect.deleteProperty(data.ui.workspaceTweaks, 'workspaceTweaksBackgroundDimming');

@@ -24,7 +24,7 @@ function productionFunction(file, name) {
  return new Function(`${js}; return ${name};`)();
 }
 const compiled = await build({
- stdin: { contents: "export { projectKanbanLegacyAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+ stdin: { contents: "export { normalizeKanbanCellHeightPx } from './src/types/settings'; export { projectKanbanLegacyAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
  bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
  alias: { obsidian: fileURLToPath(new URL('./test-support/obsidian.ts', import.meta.url)) },
 });
@@ -166,7 +166,7 @@ for (const owner of ['main', 'pop-out']) test(`drop retains untouched source and
  assert.notEqual(cardById(target, 'a'), moved); assert.deepEqual(ids(source), ['b', 'c']); assert.deepEqual(ids(target), ['a', 'd']);
  assert.deepEqual(f.renders, ['a']); assert.equal(cleanups.includes(b), false);
  assert.equal(b.ownerDocument.windowName, owner);
- assert.deepEqual(f.measurements, ['measure:target', 'measure:source', 'commit:target', 'commit:source']);
+ assert.deepEqual(f.measurements, []);
  assert.equal(f.scrollRestores.length, 2);
 });
 
@@ -234,7 +234,7 @@ test('collapsed cells retain their summary behavior', () => {
 test('unmaterialized cells stay deferred and use the latest tasks on reveal', () => {
  const f = fixture(), source = f.cells.get('source'); source.empty(); f.subject.pendingCellMaterializers.set(source, () => {});
  f.patch(f.board(['b', 'c'], ['d'])); assert.equal(f.renders.length, 0); assert.deepEqual(ids(source), []);
- const finalizer = f.subject.pendingCellMaterializers.get(source)(); finalizer.measure(); finalizer.commit(); assert.deepEqual(ids(source), ['b', 'c']);
+ const finalizer = f.subject.pendingCellMaterializers.get(source)(); finalizer.commit(); assert.deepEqual(ids(source), ['b', 'c']);
 });
 
 test('ordinary late saves preserve unchanged cards instead of rebuilding the board', () => {

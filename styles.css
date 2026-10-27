@@ -7538,7 +7538,7 @@ body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus-vi
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
-	overscroll-behavior-y: contain;
+	overscroll-behavior: contain;
 	scroll-padding-block: 4px;
 }
 
@@ -24622,8 +24622,9 @@ button.operon-kanban-column-count-button:focus-visible {
 }
 
 .operon-kanban-row {
-	min-height: 118px;
-	height: max-content;
+	min-height: 0;
+	height: var(--operon-kanban-cell-height, 450px);
+	grid-template-rows: minmax(0, 1fr);
 }
 
 .operon-kanban-grid-content {
@@ -24644,33 +24645,29 @@ button.operon-kanban-column-count-button:focus-visible {
 	scrollbar-gutter: stable;
 }
 
-/* A desktop board without lanes uses the available pane height, not a card count. */
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) {
-	--operon-kanban-cell-height-limit: none;
-	--operon-kanban-cell-min-height: 0px;
-}
-
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-grid-content {
+/* Classic boards fill the available pane height on desktop and mobile. */
+.operon-kanban-board.is-no-swimlanes .operon-kanban-grid-content {
 	height: 100%;
 	min-height: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-header-row {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-header-row {
 	flex-shrink: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-row {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-row {
+	height: auto;
 	flex: 1 1 0;
 	min-height: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-cell {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-cell {
 	min-height: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-card {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-card {
 	flex-shrink: 0;
 }
 
@@ -24807,10 +24804,13 @@ body.operon-kanban-touch-drag-active {
 }
 
 .operon-kanban-row.is-collapsed {
+	height: 54px;
 	min-height: 54px;
 }
 
 .operon-kanban-lane-label {
+	min-height: 0;
+	overflow: hidden;
 	position: sticky;
 	left: 0;
 	z-index: 6;
@@ -24933,11 +24933,14 @@ button.operon-kanban-lane-count-button:focus-visible {
 }
 
 .operon-kanban-cell {
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	min-height: 118px;
+	min-height: 0;
 	height: 100%;
 	padding: 10px;
 	position: relative;
@@ -24946,7 +24949,9 @@ button.operon-kanban-lane-count-button:focus-visible {
 }
 
 .operon-kanban-cell.is-collapsed {
-	min-height: 54px;
+	overflow: hidden;
+	scrollbar-gutter: auto;
+	min-height: 0;
 	align-items: center;
 	justify-content: center;
 	padding: 0;
@@ -25159,6 +25164,10 @@ button.operon-kanban-lane-count-button:focus-visible {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-gutter: stable;
+}
+
+.operon-kanban-cell > .operon-kanban-card {
+	flex-shrink: 0;
 }
 
 .operon-kanban-lazy-sentinel {

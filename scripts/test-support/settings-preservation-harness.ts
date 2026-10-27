@@ -50,6 +50,12 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	// Only the two additive W034 defaults may appear in old sealed chip profiles.
 	// Keep every pre-existing choice and every other package byte under comparison.
 	expected = clone(expected);
+	if (!Object.prototype.hasOwnProperty.call(expected.settings, 'kanbanCellHeightPx')
+		&& Object.prototype.hasOwnProperty.call(actual.settings, 'kanbanCellHeightPx')) {
+		assert.equal(actual.settings.kanbanCellHeightPx, 450);
+		actual = clone(actual);
+		Reflect.deleteProperty(actual.settings, 'kanbanCellHeightPx');
+	}
  // A newly introduced preference may be persisted with its exact default during an existing settings save.
  // Old sealed fixtures stay immutable; all existing explicit values remain under exact comparison.
  if (!Object.prototype.hasOwnProperty.call(expected.ui.workspaceTweaks, 'workspaceTweaksBackgroundDimming')

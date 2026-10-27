@@ -1251,6 +1251,16 @@ export class OperonStorage {
 					pinnedTasks,
 				},
 			};
+			// Height defaults are interpreted in memory, never introduced by startup saves.
+			if (_options.forceRecoveredWrite === false) {
+				for (const key of ['kanbanCellHeightPx', 'kanbanMaxVisibleTasksPerCell'] as const) {
+					if (Object.prototype.hasOwnProperty.call(currentPackage.settings, key)) {
+						Object.assign(nextPackage.settings, { [key]: currentPackage.settings[key] });
+					} else {
+						Reflect.deleteProperty(nextPackage.settings, key);
+					}
+				}
+			}
 			// The new optional surface gets an in-memory default; opening the vault
 			// alone must not persist it. Explicit settings saves use the full matrix.
 			if (_options.forceRecoveredWrite === false && !Object.prototype.hasOwnProperty.call(currentPackage.ui.contextualMenu.contextualMenuSurfaceActionMatrix ?? {}, 'excalidrawTask')) {

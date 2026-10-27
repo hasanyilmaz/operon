@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "zh-TW",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "任務圖庫 — 第一張圖片",
       "kanbanCardImageSource_taskGalleryLast": "任務圖庫 — 最後一張圖片",
       "kanbanCardImageSource_taskImage": "任務圖片",
+      "kanbanCellHeight": "儲存格高度",
+      "kanbanCellHeightDesc": "每個展開的泳道儲存格的高度，包括內距和框線。沒有泳道的傳統看板會填滿面板的可用高度。",
       "kanbanCollapseEmptyColumns": "摺疊空列",
       "kanbanCollapseEmptyColumnsDesc": "自動摺疊當前沒有匹配任務的工作流列。",
       "kanbanCollapseEmptySwimlanes": "摺疊空泳道",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "控制任務在看板單元格內的排序方式。",
       "kanbanSwimlaneField": "泳道欄位",
       "kanbanSwimlaneFieldDesc": "行由此欄位的值生成。",
-      "kanbanSwimlaneMaxHeight": "看板泳道任務上限",
-      "kanbanSwimlaneMaxHeightDesc": "每個看板泳道單元格在變為可滾動前可見的最大任務數。",
       "kanbanSwimlane_assignees": "負責人",
       "kanbanSwimlane_contexts": "上下文",
       "kanbanSwimlane_dateDue": "截止日期",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "dec5035e53de4aa88def7d51a6be0377d460d6444ffcbcebf419722ca79aaec3"
+  "sourceVersion": "db00048239c886a29698a8c85c7965dad75bae06d0168a2a7ada7b91d285f009"
 }

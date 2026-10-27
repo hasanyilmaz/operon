@@ -22,9 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Kanban Cell height** replaces the swimlane task limit with 350, 400, 450, 500, and 550 px options, defaulting to 450 px. Swimlane cells stay the same height regardless of their contents, while classic boards fill the available pane height on desktop and mobile.
+
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Full local checks, **38/38** Kanban cell-height tests, **22/22** scroll tests, **91/91** settings-preservation tests, **109/109** local Kanban regressions, **18/18** isolated browser checks, code review, and manual Kanban verification passed.
 
 - Full local checks, **49/49** Kanban cell-action tests, **108/108** local Kanban regressions, related writer, recurrence, tracker, parent, and creator checks, code review, and manual Kanban verification passed.
 

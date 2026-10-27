@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import {
-	estimateKanbanCellPlaceholderHeightPx,
 	matchesKanbanProgrammaticScrollState,
 	resolveKanbanDropLaneAnchorScroll,
 	resolveKanbanViewportAnchorScroll,
@@ -169,16 +168,9 @@ test('bottom compensation preserves a target beyond the natural scroll range', (
 	}), true);
 });
 
-test('the five-card viewport estimate stays stable when a sixth task is added', () => {
-	const estimate = (taskCount: number): number => estimateKanbanCellPlaceholderHeightPx({
-		taskCount,
-		maxVisibleTasks: 5,
-		renderBatchSize: 20,
-		cardHeightPx: 80,
-		cardGapPx: 8,
-	});
-	assert.equal(estimate(5), 432);
-	assert.equal(estimate(6), 432);
+test('fixed row geometry is established before deferred card materialization', () => {
+	assert.match(stylesSource, /height: var\(--operon-kanban-cell-height, 450px\)/u);
+	assert.doesNotMatch(viewSource, /estimateKanbanCellPlaceholderHeightPx|measureCellHeightLimitPx/u);
 });
 
 test('task refreshes opt into viewport retention without changing ordinary Kanban renders', () => {
@@ -214,10 +206,10 @@ test('post-drop settlement batches first-scroll card materialization and avoids 
 	const batchStart = viewSource.indexOf('private materializeKanbanCellsIfPending(');
 	const batchEnd = viewSource.indexOf('\n\t}', batchStart);
 	const batchBody = viewSource.slice(batchStart, batchEnd);
-	const writeIndex = batchBody.indexOf('finalizers.push(materialize());');
-	const measureIndex = batchBody.indexOf('for (const finalizer of finalizers) finalizer.measure();');
+	const writeIndex = batchBody.indexOf('finalizers.push(materialize(heights.get(cell) ?? 0));');
 	const commitIndex = batchBody.indexOf('for (const finalizer of finalizers) finalizer.commit();');
-	assert.ok(writeIndex >= 0 && writeIndex < measureIndex && measureIndex < commitIndex);
+	assert.ok(writeIndex >= 0 && writeIndex < commitIndex);
+	assert.doesNotMatch(batchBody, /finalizer\.measure|offsetHeight/u);
 
 	const renderStart = viewSource.indexOf('private render(): void');
 	const renderEnd = viewSource.indexOf('\n\tprivate buildRenderSignature(', renderStart);
@@ -231,15 +223,15 @@ test('board layout settlement has no unconditional delayed full-row rewrite', ()
 	const refreshEnd = viewSource.indexOf('\n\tprivate clearBoardLayoutRefresh(', refreshStart);
 	const refreshBody = viewSource.slice(refreshStart, refreshEnd);
 	assert.doesNotMatch(refreshBody, /setTimeout\(scheduleRefresh, 120\)/u);
-	assert.match(refreshBody, /window\.requestAnimationFrame\(scheduleRefresh\)/u);
-	assert.match(refreshBody, /new ResizeObserver\(entries => \{[\s\S]*?entry\.contentRect\.width[\s\S]*?if \(widthChanged\) scheduleRefresh\(\)/u);
+	assert.match(refreshBody, /getOwnerWindow\(boardEl\)\.requestAnimationFrame\(scheduleRefresh\)/u);
+	assert.match(refreshBody, /ResizeObserver\(entries => \{[\s\S]*?entry\.contentRect\.width[\s\S]*?if \(widthChanged\) scheduleRefresh\(\)/u);
 	assert.doesNotMatch(refreshBody, /observer\.observe\(gridRow\)/u);
 
 	const cellRefreshStart = viewSource.indexOf('private scheduleBoardLayoutRefreshFromCell(');
 	const cellRefreshEnd = viewSource.indexOf('\n\tprivate clearKanbanLazyObservers(', cellRefreshStart);
 	const cellRefreshBody = viewSource.slice(cellRefreshStart, cellRefreshEnd);
-	assert.match(cellRefreshBody, /this\.syncRowCellHeights\(\[row\]\)/u);
-	assert.match(cellRefreshBody, /this\.syncLaneHeights\(\[laneLabel\], \[row\]\)/u);
+	assert.doesNotMatch(cellRefreshBody, /syncRowCellHeights|syncLaneHeights|offsetHeight/u);
+	assert.match(cellRefreshBody, /this\.restoreCellScrollIfPending\(cell\)/u);
 	assert.doesNotMatch(cellRefreshBody, /querySelectorAll<HTMLElement>\('\.operon-kanban-row'\)|syncRowCellHeights\(gridRows\)/u);
 });
 

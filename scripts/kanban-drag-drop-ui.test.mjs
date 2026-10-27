@@ -227,8 +227,7 @@ test('in-place settlement preserves board roots and limits writes to affected ce
 	const immediateStart = viewSource.indexOf('private applyImmediateCardDrop(');
 	const immediateEnd = viewSource.indexOf('\n\tprivate registerOptimisticMove(', immediateStart);
 	const immediateBody = viewSource.slice(immediateStart, immediateEnd);
-	assert.match(immediateBody, /const affectedRows = Array\.from\(new Set\(\[sourceRow, targetRow\]\)\)/u);
-	assert.match(immediateBody, /this\.syncRowCellHeights\(affectedRows\)/u);
+	assert.doesNotMatch(immediateBody, /syncRowCellHeights|syncLaneHeights|applyCellHeightLimit/u);
 	assert.doesNotMatch(immediateBody, /querySelectorAll<HTMLElement>\('\.operon-kanban-row'\)/u);
 });
 

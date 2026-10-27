@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "locale": "pt-BR",
   "keyCount": 3718,
-  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
+  "keyFingerprint": "1e39ebc7be9af9a196f45ef59939794dda63300e4791083adcd87d392f2f4c32",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1784,6 +1784,8 @@
       "kanbanCardImageSource_taskGalleryFirst": "Galeria da tarefa — Primeira imagem",
       "kanbanCardImageSource_taskGalleryLast": "Galeria da tarefa — Última imagem",
       "kanbanCardImageSource_taskImage": "Imagem da tarefa",
+      "kanbanCellHeight": "Altura da célula",
+      "kanbanCellHeightDesc": "Altura de cada célula de raia expandida, incluindo preenchimento e bordas. Quadros clássicos sem raias ocupam a altura disponível do painel.",
       "kanbanCollapseEmptyColumns": "Colapsar colunas vazias",
       "kanbanCollapseEmptyColumnsDesc": "Colapsa automaticamente as colunas do pipeline que não possuem tarefas correspondentes no momento.",
       "kanbanCollapseEmptySwimlanes": "Colapsar raias de nado vazias",
@@ -1868,8 +1870,6 @@
       "kanbanSortingDesc": "Controla a ordem das tarefas dentro das células kanban.",
       "kanbanSwimlaneField": "Campo de raia (swimlane)",
       "kanbanSwimlaneFieldDesc": "As linhas são geradas a partir dos valores deste campo.",
-      "kanbanSwimlaneMaxHeight": "Kanban limite de tarefas por faixa",
-      "kanbanSwimlaneMaxHeightDesc": "Número máximo de tarefas visíveis por célula de faixa Kanban antes que ela se torne rolável.",
       "kanbanSwimlane_assignees": "Responsáveis",
       "kanbanSwimlane_contexts": "Contextos",
       "kanbanSwimlane_dateDue": "Data de vencimento",
@@ -3763,5 +3763,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "97f8f2e8298e1bc4248ffc111e2f40c585e30ae53dff357958abff37833acc9a"
+  "sourceVersion": "dd38bccc2c7b4e70ae7cd46c5f3bcdbc24a1c058ea60d4d14266545a97049f96"
 }
