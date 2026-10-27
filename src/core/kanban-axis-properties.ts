@@ -134,5 +134,5 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 			return { state: 'ready', values: [...new Map(values.map(item => [kanbanAxisValueKey(item), item])).values()], target };
 		} catch { return { state: 'unavailable', reason: 'type-conflict' }; }
 	};
-	return { fields: fields.filter(field => resolve(field.reference).ok), resolve, read, revision: native.getRevision() };
+	return { fields: fields.filter(field => resolve(field.reference).ok), resolve, read, revision: native.getRevision(), getCurrentRevision: () => native.getRevision() };
 }

@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Full local checks, **57/57** Kanban grouping tests, **108/108** local Kanban regressions, and code review passed.
+
 - Full local checks, **33/33** Kanban axis tests, **97/97** settings backup tests, **112/112** Kanban drop and retention tests, **108/108** local Kanban regressions, code review, and manual preset verification passed.
 
 - Strict lint, **46/46** Kanban tests, **6/6** cell-summary checks, and manual Kanban verification passed.
