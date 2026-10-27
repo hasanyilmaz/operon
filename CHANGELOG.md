@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Kanban cell actions** apply destination fields together when moving, placing, or creating a task. Moving into a list group adds its value while preserving existing memberships.
+
 - **Kanban presets** preserve unsupported saved configurations and prevent incomplete edits from overwriting them.
 
 - Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
@@ -23,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Full local checks, **49/49** Kanban cell-action tests, **108/108** local Kanban regressions, related writer, recurrence, tracker, parent, and creator checks, code review, and manual Kanban verification passed.
 
 - Full local checks, **57/57** Kanban grouping tests, **108/108** local Kanban regressions, and code review passed.
 

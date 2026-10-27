@@ -1,3 +1,5 @@
+import { kanbanListIsTyped, kanbanListLaneKeys } from './kanban-list-values';
+import type { InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { projectKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { parseListValue } from '../core/parser';
@@ -44,6 +46,7 @@ export interface KanbanLane {
 }
 
 export interface KanbanBoardData {
+ inlinePropertyDefinitions?: InlinePropertyDefinitions;
 	preset: KanbanPreset;
 	pipeline: Pipeline | null;
 	filterSet: FilterSet | null;
@@ -56,6 +59,7 @@ export interface KanbanBoardData {
 }
 
 export function queryKanbanBoard(options: {
+ inlinePropertyDefinitions?: InlinePropertyDefinitions;
 	preset: KanbanPreset;
 	pipeline: Pipeline | null;
 	pipelines?: readonly Pipeline[];
@@ -98,7 +102,7 @@ export function queryKanbanBoard(options: {
 			.filter(task => !allowedTaskIds || allowedTaskIds.has(task.operonId))
 			.filter(task => !searchMatcher || searchMatcher(task, normalizedSearchQuery))
 		: [];
-	const lanes = buildKanbanLanes(relevantTasks, preset.swimlaneBy, priorities, keyMappings);
+	const lanes = buildKanbanLanes(relevantTasks, preset.swimlaneBy, priorities, keyMappings, options.inlinePropertyDefinitions);
 	const skippedStatusIds = new Set(options.skippedStatusIds ?? []);
 	const skippedLaneKeys = new Set(options.skippedLaneKeys ?? []);
 	const statusTaskCounts = new Map<string, number>();
@@ -111,7 +115,7 @@ export function queryKanbanBoard(options: {
 		if (!status) continue;
 		const statusId = status.id;
 		statusTaskCounts.set(statusId, (statusTaskCounts.get(statusId) ?? 0) + 1);
-		for (const laneKey of extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities)) {
+		for (const laneKey of extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities, options.inlinePropertyDefinitions)) {
 			const cellKey = buildKanbanCellKey(statusId, laneKey);
 			cellCountMap.set(cellKey, (cellCountMap.get(cellKey) ?? 0) + 1);
 			if (skippedStatusIds.has(statusId)) continue;
@@ -155,6 +159,7 @@ export function queryKanbanBoard(options: {
 	}
 
 	return {
+  inlinePropertyDefinitions: options.inlinePropertyDefinitions,
 		preset,
 		pipeline,
 		filterSet,
@@ -440,6 +445,7 @@ export function extractLaneKeys(
 	swimlaneBy: KanbanSwimlaneBy | null,
 	keyMappings: readonly KeyMapping[] = [],
 	priorities: readonly { label: string }[] = [],
+ inlinePropertyDefinitions?: InlinePropertyDefinitions,
 ): string[] {
 	if (!swimlaneBy) return [KANBAN_NO_VALUE_KEY];
 
@@ -458,7 +464,8 @@ export function extractLaneKeys(
 	if (customMapping) {
 		const rawValue = normalizeManagedFieldValue((task.fieldValues as Record<string, unknown>)[customMapping.canonicalKey]);
 		if (customMapping.type === 'list') {
-			const values = parseListValue(rawValue);
+			let values: string[];
+   try { values = kanbanListLaneKeys(rawValue, kanbanListIsTyped(customMapping, keyMappings, inlinePropertyDefinitions)); } catch { return []; }
 			return values.length > 0 ? Array.from(new Set(values)) : [KANBAN_NO_VALUE_KEY];
 		}
 		const value = rawValue;
@@ -496,6 +503,7 @@ function buildKanbanLanes(
 	swimlaneBy: KanbanSwimlaneBy | null,
 	priorities: { label: string; color?: string }[],
 	keyMappings: readonly KeyMapping[],
+ inlinePropertyDefinitions?: InlinePropertyDefinitions,
 ): KanbanLane[] {
 	if (!swimlaneBy) {
 		return [{
@@ -510,7 +518,7 @@ function buildKanbanLanes(
 
 	const laneCounts = new Map<string, number>();
 	for (const task of tasks) {
-		for (const key of extractLaneKeys(task, swimlaneBy, keyMappings, priorities)) {
+		for (const key of extractLaneKeys(task, swimlaneBy, keyMappings, priorities, inlinePropertyDefinitions)) {
 			laneCounts.set(key, (laneCounts.get(key) ?? 0) + 1);
 		}
 	}

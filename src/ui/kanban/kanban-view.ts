@@ -1000,6 +1000,7 @@ export class KanbanView extends ItemView {
 			? new Set<string>()
 			: this.resolveSkippedStatusMaterializationIds(pipeline, preset, state);
 		const board = queryKanbanBoard({
+   inlinePropertyDefinitions: settings.inlinePropertyDefinitions,
 			preset,
 			pipeline,
 			pipelines: settings.pipelines,
@@ -3019,7 +3020,7 @@ export class KanbanView extends ItemView {
 				move,
 				this.getSettings().keyMappings,
 				this.getSettings().pipelines,
-				this.getSettings().priorities,
+				this.getSettings().priorities, this.getSettings().inlinePropertyDefinitions,
 			)) {
 				this.optimisticMoves.delete(taskId);
 			}
@@ -3254,7 +3255,9 @@ export class KanbanView extends ItemView {
 		dragged.cardEl.setAttr('aria-busy', 'true');
 		dragged.cardEl.draggable = false;
 		this.registerOptimisticMove(operationContext);
-		if (applyImmediateDrop) {
+		const retainedSource = operationContext.sourceStatusId === operationContext.targetStatusId
+   && this.optimisticMoves.get(context.taskId)?.targetLaneKeys.includes(operationContext.sourceLaneKey);
+  if (applyImmediateDrop && !retainedSource) {
 			this.applyImmediateCardDrop(targetCell, dragged.cardEl, this.resolveImmediateKanbanDropBeforeTaskId(targetCell, operationContext, preset));
 		} else {
 			dragged.cardEl.removeClass('is-dragging');
@@ -3728,7 +3731,7 @@ export class KanbanView extends ItemView {
 		const task = this.indexer.getTask(context.taskId);
 		if (!task || !board?.pipeline) return null;
 		const move = this.optimisticMoves.get(task.operonId)
-			?? createKanbanDropOptimisticMove(context, { task, keyMappings: settings.keyMappings, priorities: settings.priorities });
+			?? createKanbanDropOptimisticMove(context, { inlinePropertyDefinitions: settings.inlinePropertyDefinitions, task, keyMappings: settings.keyMappings, priorities: settings.priorities });
 		const projectedTask = buildOptimisticMovedTask(task, move, board, settings.keyMappings);
 		const compare = buildKanbanTaskComparator({
 			preset, sorting, priorities: settings.priorities, keyMappings: settings.keyMappings,
@@ -3798,7 +3801,7 @@ export class KanbanView extends ItemView {
 
 	private registerOptimisticMove(context: KanbanDropContext): void {
 		this.optimisticMoves.set(context.taskId, createKanbanDropOptimisticMove(context, {
-			task: this.indexer.getTask(context.taskId),
+   inlinePropertyDefinitions: this.getSettings().inlinePropertyDefinitions,			task: this.indexer.getTask(context.taskId),
 			keyMappings: this.getSettings().keyMappings,
 			priorities: this.getSettings().priorities,
 		}));
@@ -4042,7 +4045,8 @@ export class KanbanView extends ItemView {
 		if (this.cardOperations.isTaskPending(task.operonId)) return;
 		const startedAt = enginePerfNow();
 		const plan = buildKanbanOptimisticStatusMovePlan({
-			taskIconClickAction: this.getSettings().taskIconClickAction,
+			inlinePropertyDefinitions: this.getSettings().inlinePropertyDefinitions,
+   taskIconClickAction: this.getSettings().taskIconClickAction,
 			task,
 			pipeline,
 			preset,
@@ -4101,6 +4105,7 @@ export class KanbanView extends ItemView {
 						this.getSettings().keyMappings,
 						this.getSettings().pipelines,
 						this.getSettings().priorities,
+                        this.getSettings().inlinePropertyDefinitions,
 					)) {
 						this.clearOptimisticMove(task.operonId, operation.id);
 					}

@@ -96,7 +96,7 @@ test('settings changes invalidate Runtime field-catalog caches before Kanban vie
 });
 
 test('Kanban UI writes full status and swimlane payloads without Runtime admission', () => {
-	assert.match(mainSource, /const plan = buildKanbanWritebackPlan\([\s\S]*?updatePluginUiTaskStatusAndRefresh\(task\.operonId, plan\.payload/u);
+	assert.match(mainSource, /const plan = await this\.prepareLegacyKanbanCellPlan\([\s\S]*?updatePluginUiTaskStatusAndRefresh\(task\.operonId, plan\.payload/u);
 	assert.doesNotMatch(mainSource, /attemptUiSemanticTransition|runKanbanDropTransition|buildUiSemanticTransitionChanges/u);
 });
 
@@ -132,7 +132,7 @@ test('manual drag behavior resolves source and target column sorting independent
 	assert.match(viewSource, /resolveKanbanEffectiveSorting\(preset, targetStatusId\)\.sortMode === 'manual'/u);
 	assert.match(mainSource, /const sourceIsManual = context\.sourceStatusId[\s\S]*?resolveKanbanEffectiveSorting\(preset, context\.sourceStatusId\)/u);
 	assert.match(mainSource, /const targetIsManual = resolveKanbanEffectiveSorting\(preset, context\.targetStatusId\)/u);
-	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual\)/u);
+	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual, this\.isKanbanTaskAtDropSource\(/u);
 });
 
 test('a stale board source is rejected before manual-order or Plugin-native writes', () => {

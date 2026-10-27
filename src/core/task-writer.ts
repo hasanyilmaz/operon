@@ -1,3 +1,4 @@
+import { encodeVaultPropertyValue } from './vault-property-codec';
 import type { TaskMarkdownSource } from './task-markdown-source';
 /**
  * Direct task writer for Operon.
@@ -49,6 +50,10 @@ import {
 import { canApplyFileTaskPropertyChanges, readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches, type FileTaskPropertyChange } from './file-task-property-draft';
 
 export interface TaskWriteOptions {
+    /** Internal compound operation owns the exclusive gate; never accepted without its live permit. */
+    mutationPermit?: TaskWriterExclusiveMutationPermit;
+    sourceTask?: IndexedTask;
+    sourcePathBeforeRename?: string;
     inlinePropertyDraft?: readonly InlinePropertyChange[];
     filePropertyDraft?: { changes: readonly FileTaskPropertyChange[]; body?: { expectedContent: string; content: string } };
     mode?: 'merge' | 'replace';
@@ -154,6 +159,7 @@ export interface TaskSourceMutationResult {
 }
 
 export interface GuardedTaskSourceFieldUpdate {
+    filePropertyDraft?: TaskWriteOptions['filePropertyDraft'];
     inlinePropertyDraft?: readonly InlinePropertyChange[];
     operonId: string;
     format: 'inline' | 'yaml';
@@ -1176,6 +1182,12 @@ export class TaskWriter {
                 renderedContent = patch.content;
                 continue;
             }
+            if (update.filePropertyDraft) {
+                const next = this.renderFilePropertyDraft(renderedContent, update.operonId, update.fieldValues, update.filePropertyDraft);
+                if (next === null) return { ok: false, content, reason: 'file-property-conflict' };
+                renderedContent = next;
+                continue;
+            }
             const aggregatePatch = tryPatchAggregateYamlFrontmatter(
                 renderedContent,
                 update.operonId,
@@ -1210,7 +1222,7 @@ export class TaskWriter {
 	): boolean {
 		const expectedValues = update.expectedFieldValues ?? {};
 		for (const expectedKey of Object.keys(expectedValues)) {
-			if (!['_tags', '_checkbox'].includes(expectedKey) && !getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
+			if (!['_tags', '_checkbox', '_description'].includes(expectedKey) && !getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
 		}
 		if (update.format === 'yaml') {
 			const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
@@ -1221,6 +1233,7 @@ export class TaskWriter {
 			if (!this.frontmatterMatchesOperonId(frontmatter, update.operonId)) return false;
 			return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
 				if (expectedKey === '_checkbox') return false;
+                if (expectedKey === '_description') return filePath.split('/').pop()?.replace(/\.md$/iu, '') === expectedValue;
 				if (expectedKey === '_tags') {
 					const raw = frontmatter.tags;
 					const tags = Array.isArray(raw) ? raw.map(String) : typeof raw === 'string' ? parseListValue(raw) : [];
@@ -1262,6 +1275,7 @@ export class TaskWriter {
 		if (update.expectedCheckbox !== undefined && parsed.checkbox !== update.expectedCheckbox) return false;
 		return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
 			if (expectedKey === '_checkbox') return parsed.checkbox === expectedValue;
+            if (expectedKey === '_description') return parsed.description === expectedValue;
 			if (expectedKey === '_tags') return this.expectedTagsMatch(parsed.tags, expectedValue);
 			const mapping = this.keyMappings.find(candidate => candidate.canonicalKey === expectedKey);
 			if (mapping?.isSystem === false && mapping.type === 'text') {
@@ -1313,9 +1327,12 @@ export class TaskWriter {
             preparedDefinitions = await this.hooks.prepareInlineProperties(options.inlinePropertyDraft.map(change =>
                 resolveInlinePropertyDefinition(change.sourceName, change.type, preparedMappings, this.hooks.getInlinePropertyDefinitions?.())), options.canCommit);
         }
-        const admitted = await this.runSharedTaskMutation(async permit => {
+        const writePrimary = async (permit: TaskWriterSharedMutationPermit) => {
             if (preparedDefinitions && this.keyMappings !== preparedMappings) return null;
-            const task = this.indexer.getTask(operonId);
+            const indexed = this.indexer.getTask(operonId);
+            const task = options.sourceTask ?? indexed;
+            if (options.sourceTask && (!indexed || indexed.operonId !== options.sourceTask.operonId
+                || options.mutationPermit?.token !== this.activeExclusiveMutationToken)) return null;
             if (!task) {
                 console.warn(`Operon TaskWriter [${operonId}]: task not found in index`);
                 return null;
@@ -1380,7 +1397,10 @@ export class TaskWriter {
                 writeResult,
                 relationshipMutation,
             };
-        });
+        };
+        if (options.mutationPermit && (options.mutationPermit.token !== this.activeExclusiveMutationToken
+            || options.reindex !== 'none' || options.touchAncestors !== false)) return false;
+        const admitted = options.mutationPermit ? await writePrimary(options.mutationPermit) : await this.runSharedTaskMutation(writePrimary);
         if (!admitted) return false;
         const { location, modifiedTimestamp, ancestorIds, writeResult, relationshipMutation } = admitted;
 
@@ -1492,6 +1512,39 @@ export class TaskWriter {
         }, permit);
     }
 
+    /** Shared pure rendering for ordinary native edits and guarded recurrence transitions. */
+    private renderFilePropertyDraft(content: string, operonId: string, fieldValues: Record<string, string>, draft: NonNullable<TaskWriteOptions['filePropertyDraft']>, mode: 'merge' | 'replace' = 'merge', createdAt?: number): string | null {
+        const document = readFileTaskPropertyDocument(content);
+        if (!document || !fileTaskPropertyIdentityMatches(document.frontmatter, operonId, this.keyMappings)
+            || !canApplyFileTaskPropertyChanges(document.frontmatter, draft.changes, this.keyMappings, this.hooks.getInlinePropertyDefinitions?.())
+            || draft.body && document.body !== draft.body.expectedContent) return null;
+        const nextFields = { ...fieldValues };
+        const createdPresent = getManagedYamlAliases('datetimeCreated', this.keyMappings).some(key => {
+            const raw = this.stringifyFrontmatterScalar(document.frontmatter[key]); return raw !== null && raw.trim() !== '';
+        });
+        if (createdAt !== undefined && !Object.prototype.hasOwnProperty.call(nextFields, 'datetimeCreated') && !createdPresent) {
+            const created = resolveYamlTaskCreatedBackfillValue(createdAt ?? 0);
+            if (created) nextFields.datetimeCreated = created;
+        }
+        const nativeMappings = this.keyMappings.filter(mapping => draft.changes.some(change => change.nativeType && [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.toLowerCase() === change.propertyName.toLowerCase())));
+        for (const mapping of nativeMappings) delete nextFields[mapping.canonicalKey];
+        const plan = applyYamlTaskFieldValues(document.frontmatter, nextFields, mode, this.keyMappings.filter(mapping => !nativeMappings.includes(mapping)));
+        for (const change of draft.changes) {
+            if (change.remove) delete document.frontmatter[change.propertyName];
+            else document.frontmatter[change.propertyName] = change.value;
+        }
+        const opening = content.startsWith('---\r\n') ? '---\r\n' : '---\n';
+        return normalizeYamlFrontmatterFormatting(`${opening}${[...document.order.filter(key => Object.prototype.hasOwnProperty.call(document.frontmatter, key)), ...Object.keys(document.frontmatter).filter(key => !document.order.includes(key))].map(key => stringifyYaml({ [key]: document.frontmatter[key] }).replace(/\r?\n$/, '')).join('\n')}\n---\n${draft.body?.content ?? document.body}`, plan);
+    }
+
+    private matchesCompoundSourceLocation(current: IndexedTask, file: TFile, options: TaskWriteOptions): boolean {
+        if (current.primary.filePath === file.path) return true;
+        return options.mutationPermit?.token === this.activeExclusiveMutationToken
+            && options.sourceTask?.operonId === current.operonId
+            && options.sourceTask.primary.filePath === file.path
+            && current.primary.filePath === options.sourcePathBeforeRename;
+    }
+
     /** File properties and managed editor/body changes commit in one native file transaction. */
     private async writeFileTaskEditorDraft(file: TFile, task: IndexedTask, fieldValues: Record<string, string>, options: TaskWriteOptions, permit: TaskWriterSharedMutationPermit): Promise<boolean> {
         if (task.primary.format !== 'yaml' || !options.filePropertyDraft) return false;
@@ -1505,7 +1558,7 @@ export class TaskWriter {
                     const currentTask = this.indexer.getTask(task.operonId);
                     const document = readFileTaskPropertyDocument(content);
                     if (options.canCommit?.() === false || !currentTask || currentTask.primary.format !== 'yaml'
-                        || currentTask.primary.filePath !== file.path || this.blockDuplicateConflict(task.operonId)
+                        || !this.matchesCompoundSourceLocation(currentTask, file, options) || this.blockDuplicateConflict(task.operonId)
                         || !document || !fileTaskPropertyIdentityMatches(document.frontmatter, task.operonId, this.keyMappings)
                         || !canApplyFileTaskPropertyChanges(document.frontmatter, draft.changes, this.keyMappings, this.hooks.getInlinePropertyDefinitions?.())
                         || (draft.body && document.body !== draft.body.expectedContent)) throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
@@ -1513,23 +1566,8 @@ export class TaskWriter {
                         const expected = this.prepareIndexedYamlExpectedFields(content, options.expectedFieldValues);
                         if (!expected || !this.taskFieldsMatchSourceContent(file.path, content, { operonId: task.operonId, format: 'yaml', fieldValues, expectedFieldValues: expected })) throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
                     }
-                    const nextFields = { ...fieldValues };
-                    const createdPresent = getManagedYamlAliases('datetimeCreated', this.keyMappings).some(key => {
-                        const raw = this.stringifyFrontmatterScalar(document.frontmatter[key]); return raw !== null && raw.trim() !== '';
-                    });
-                    if (!Object.prototype.hasOwnProperty.call(nextFields, 'datetimeCreated') && !createdPresent) {
-                        const created = resolveYamlTaskCreatedBackfillValue(file.stat.ctime);
-                        if (created) nextFields.datetimeCreated = created;
-                    }
-                    const nativeMappings = this.keyMappings.filter(mapping => draft.changes.some(change => change.nativeType && [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.toLowerCase() === change.propertyName.toLowerCase())));
-                    for (const mapping of nativeMappings) delete nextFields[mapping.canonicalKey];
-                    const plan = applyYamlTaskFieldValues(document.frontmatter, nextFields, options.mode ?? 'replace', this.keyMappings.filter(mapping => !nativeMappings.includes(mapping)));
-                    for (const change of draft.changes) {
-                        if (change.remove) delete document.frontmatter[change.propertyName];
-                        else document.frontmatter[change.propertyName] = change.value;
-                    }
-                    const opening = content.startsWith('---\r\n') ? '---\r\n' : '---\n';
-                    nextContent = normalizeYamlFrontmatterFormatting(`${opening}${[...document.order.filter(key => Object.prototype.hasOwnProperty.call(document.frontmatter, key)), ...Object.keys(document.frontmatter).filter(key => !document.order.includes(key))].map(key => stringifyYaml({ [key]: document.frontmatter[key] }).replace(/\r?\n$/, '')).join('\n')}\n---\n${draft.body?.content ?? document.body}`, plan);
+                    nextContent = this.renderFilePropertyDraft(content, task.operonId, fieldValues, draft, options.mode ?? 'replace', file.stat.ctime);
+                    if (nextContent === null) throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
                     if (nextContent !== content) this.hooks.onBeforeWriteFile?.(file.path);
                     return nextContent;
                 });
@@ -1553,7 +1591,7 @@ export class TaskWriter {
             let wrote = false;
             await this.processMarkdown(file, content => {
                 const current = this.indexer.getTask(task.operonId);
-                if (options.canCommit?.() === false || !current || current.primary.filePath !== file.path
+                if (options.canCommit?.() === false || !current || !this.matchesCompoundSourceLocation(current, file, options)
                     || this.blockDuplicateConflict(task.operonId)) return content;
                 let expectedFieldValues = options.expectedFieldValues;
                 if (task.primary.format === 'yaml' && expectedFieldValues) {
@@ -1733,12 +1771,14 @@ export class TaskWriter {
         operonId: string,
         expectedValues: Record<string, string>,
         filePropertyDraft?: { changes: readonly FileTaskPropertyChange[]; bodyContent?: string },
+        inlinePropertyDraft?: readonly InlinePropertyChange[],
+        nativeExpectation: 'before' | 'after' = 'after',
     ): Promise<boolean> {
         const task = this.indexer.getTask(operonId);
         if (!task || this.blockDuplicateConflict(operonId)) return false;
         for (const expectedKey of Object.keys(expectedValues)) {
             if (expectedKey === '_checkbox') continue;
-            if (expectedKey === '_tags' || ((task.primary.format === 'inline' || filePropertyDraft) && expectedKey === '_description')) continue;
+            if (expectedKey === '_tags' || expectedKey === '_description') continue;
             if (!getManagedTaskFieldType(expectedKey, this.keyMappings)) return false;
         }
         const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
@@ -1746,13 +1786,26 @@ export class TaskWriter {
 
         return await this.enqueueFileMutation(this.getFileWriteQueueKey(file.path), async () => {
             const content = await this.readMarkdown(file);
+            if (inlinePropertyDraft?.length) {
+                if (task.primary.format !== 'inline') return false;
+                const match = findInlinePropertyTask(content, file.path, operonId, this.keyMappings);
+                if (!match?.parsed) return false;
+                const projection = readParsedInlinePropertyProjection(match.parsed, Object.fromEntries(inlinePropertyDraft.map(change => [change.sourceName, change.type])), this.keyMappings, this.hooks.getInlinePropertyDefinitions?.());
+                if (!inlinePropertyDraft.every(change => {
+                    const actual = projection.properties.find(property => property.sourceName.toLowerCase() === change.sourceName.toLowerCase());
+                    if (!actual || !['valid', 'missing'].includes(actual.state)) return false;
+                    if (nativeExpectation === 'before') return change.expected.present ? actual.state === 'valid' && actual.rawValue === change.expected.rawValue : actual.state === 'missing';
+                    if (change.mutation.kind === 'remove') return actual.state === 'missing';
+                    try { return actual.state === 'valid' && encodeVaultPropertyValue(actual.value ?? null, change.type) === encodeVaultPropertyValue(change.mutation.value, change.type); } catch { return false; }
+                })) return false;
+            }
             if (filePropertyDraft) {
                 const document = readFileTaskPropertyDocument(content);
                 if (task.primary.format !== 'yaml' || !document || !fileTaskPropertyIdentityMatches(document.frontmatter, operonId, this.keyMappings)
                     || (filePropertyDraft.bodyContent !== undefined && document.body !== filePropertyDraft.bodyContent)
                     || !filePropertyDraft.changes.every(change => {
                         const actual = readRawYamlPropertyExpectation(document.frontmatter, change.propertyName);
-                        return actual !== null && rawYamlPropertyExpectationsEqual(actual, change.remove ? { present: false, value: undefined } : { present: true, value: change.value });
+                        return actual !== null && rawYamlPropertyExpectationsEqual(actual, nativeExpectation === 'before' ? change.expected : change.remove ? { present: false, value: undefined } : { present: true, value: change.value });
                     })) return false;
             }
 
@@ -1764,7 +1817,7 @@ export class TaskWriter {
                 const frontmatter = parsed as Record<string, unknown>;
                 if (!this.frontmatterMatchesOperonId(frontmatter, operonId)) return false;
                 return Object.entries(expectedValues).every(([expectedKey, expectedValue]) => {
-                    if (filePropertyDraft && expectedKey === '_description') return file.basename === expectedValue;
+                    if (expectedKey === '_description') return file.basename === expectedValue;
                     if (expectedKey === '_tags') {
                         const raw = frontmatter.tags;
                         const tags = Array.isArray(raw) ? raw.map(String) : typeof raw === 'string' ? parseListValue(raw) : [];

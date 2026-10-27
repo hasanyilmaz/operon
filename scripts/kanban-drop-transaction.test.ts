@@ -448,7 +448,7 @@ test('cross-lane drops retain real lane writeback', () => {
 	});
 	assert.deepEqual(plan.payload, {
 		status: 'Project.Doing',
-		_tags: 'alpha;omega;next',
+		_tags: 'alpha;lane;omega;next',
 	});
 });
 
@@ -522,7 +522,7 @@ test('scalar and list swimlanes write only on real lane changes', () => {
 			targetLaneKey: 'next',
 			swimlaneBy,
 		});
-		assert.equal(moved.payload[swimlaneBy], 'first; last; next');
+		assert.equal(moved.payload[swimlaneBy], 'first; lane; last; next');
 	}
 });
 
@@ -555,8 +555,8 @@ test('custom scalar and list swimlanes preserve unrelated ordered values', () =>
 		swimlaneBy: 'regions',
 		keyMappings: mappings,
 	});
-	assert.equal(listPlan.payload.regions, 'north; south; east');
-	assert.equal(listPlan.nextDraft.fieldValues.regions, 'north; south; east');
+	assert.equal(listPlan.payload.regions, 'north; central; south; east');
+	assert.equal(listPlan.nextDraft.fieldValues.regions, 'north; central; south; east');
 });
 
 test('custom list swimlanes write the first value when moving out of No value', () => {
