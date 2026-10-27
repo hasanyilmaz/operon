@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "{{count}} satır içi görev oluşturuldu",
       "inlineToFileTaskFailed": "Bu satır içi görevden dosya görevi oluşturulamadı.",
       "kanbanActionFailed": "Kanban eylemi başarısız oldu.",
+      "kanbanAxesUnavailable": "Bu Kanban eksen yapılandırması mevcut görünümde kullanılamıyor. Kayıtlı ayarları korundu.",
       "kanbanChoosePipeline": "Ayarlardan bu kanban ön ayarı için bir akış seç.",
       "kanbanCreatedTaskFilterMismatch": "Oluşturulan görev mevcut kanban filtresiyle eşleşmiyor.",
       "kanbanFilterMismatch": "Bu görev mevcut kanban filtresiyle eşleşmiyor. Görev editörü açılıyor.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3fcfc6ed75c213ff45a8b09de43ca91313e197c8dde03efa3eb61cc29eb7498a"
+  "sourceVersion": "24bfa4d42216ac33f020414a0e91cf5379f78d9d0f38c8fcd9bbcbe671b48fae"
 }

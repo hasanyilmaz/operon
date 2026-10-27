@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
 		"canvasGroupOverlap": "I gruppi Operon con la stessa proprietà a valore singolo non possono sovrapporsi. La modifica non è stata applicata.",
 		"canvasGroupDropPartial": "Impossibile completare in sicurezza una modifica del gruppo. Controlla l’attività e il Canvas prima di continuare.",
-		"taskCreatedTemplatePreferencesSaveFailed": "Attività creata, ma non è stato possibile salvare le preferenze del modello."
+		"taskCreatedTemplatePreferencesSaveFailed": "Attività creata, ma non è stato possibile salvare le preferenze del modello.",
+		"kanbanAxesUnavailable": "Questa configurazione degli assi Kanban non è disponibile nella vista attuale. Le impostazioni salvate sono state conservate."
 	},
 	"duplicateOperonId": {
 		"title": "Conflitto ID Operon",

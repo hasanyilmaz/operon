@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "{{count}} Inline-Aufgaben erstellt",
       "inlineToFileTaskFailed": "Aus der aktuellen Inline-Aufgabe konnte keine Datei-Aufgabe erstellt werden.",
       "kanbanActionFailed": "Kanban-Aktion fehlgeschlagen.",
+      "kanbanAxesUnavailable": "Diese Kanban-Achsenkonfiguration ist in der aktuellen Ansicht nicht verfügbar. Die gespeicherten Einstellungen bleiben erhalten.",
       "kanbanChoosePipeline": "Wähle in den Einstellungen einen Arbeitsablauf für diese Kanban-Voreinstellung.",
       "kanbanCreatedTaskFilterMismatch": "Die erstellte Aufgabe passt nicht zum aktuellen Kanban-Filter.",
       "kanbanFilterMismatch": "Diese Aufgabe passt nicht zum aktuellen Kanban-Filter. Der Aufgaben-Editor wird geöffnet.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "a5c375ff4505286fe5465cc95b5ab7e367f4127a94a96cf70a941bfdfd594895"
+  "sourceVersion": "52cd73aec84b201ec29c2d441c30b1a9722a0ddfad4c9bc35fc9af4c6fa4c01a"
 }

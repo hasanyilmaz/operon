@@ -161,6 +161,7 @@ export function buildKanbanDropBoardSignature(preset: KanbanPreset, pipeline: Pi
 	return JSON.stringify({
 		preset: {
 			id: preset.id,
+			...(preset.axes === undefined ? {} : { axes: preset.axes }),
 			pipelineId: preset.pipelineId,
 			filterSetId: preset.filterSetId,
 			swimlaneBy: preset.swimlaneBy,

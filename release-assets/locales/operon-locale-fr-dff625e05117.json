@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "{{count}} tâches en ligne créées",
       "inlineToFileTaskFailed": "Échec de la création d'une tâche-fichier à partir de la tâche en ligne actuelle.",
       "kanbanActionFailed": "Échec de l'action Kanban.",
+      "kanbanAxesUnavailable": "Cette configuration des axes Kanban n’est pas disponible dans la vue actuelle. Les paramètres enregistrés sont conservés.",
       "kanbanChoosePipeline": "Choisissez un pipeline pour ce préréglage Kanban dans les paramètres.",
       "kanbanCreatedTaskFilterMismatch": "La tâche créée ne correspond pas au filtre Kanban actuel.",
       "kanbanFilterMismatch": "Cette tâche ne correspond pas au filtre Kanban actuel. Ouverture de l'éditeur de tâche.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "5cad0bb7d5f0a082c695d181ea09c15b9e54fc905abde57bd1409eb8bbe3870a"
+  "sourceVersion": "63f836d9ec04653e27bec0f0b0c4eb8d1a03ca82a6fb83d86aa17fcf4c8ccb09"
 }

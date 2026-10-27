@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "无法应用分组更改。卡片已返回原来的位置。",
 		"canvasGroupOverlap": "具有相同单值属性的 Operon 分组不能重叠。更改未应用。",
 		"canvasGroupDropPartial": "无法安全完成分组更改。继续之前，请检查任务和 Canvas。",
-		"taskCreatedTemplatePreferencesSaveFailed": "任务已创建，但无法保存模板偏好设置。"
+		"taskCreatedTemplatePreferencesSaveFailed": "任务已创建，但无法保存模板偏好设置。",
+		"kanbanAxesUnavailable": "当前视图不支持此看板轴配置。已保留保存的设置。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 冲突",

@@ -627,8 +627,15 @@ export class OperonStorage {
 			await this.saveSettings();
 		});
 		this.kanbanPresetStore.setPackagePersistence(async (settings) => {
+			const previousPresets = this.settings.kanbanPresets;
+			const previousDefault = this.settings.kanbanDefaultPresetId;
 			Object.assign(this.settings, settings);
-			await this.saveSettings();
+			try { await this.saveSettings(); }
+			catch (error) {
+				if (this.settings.kanbanPresets === settings.kanbanPresets) this.settings.kanbanPresets = previousPresets;
+				if (this.settings.kanbanDefaultPresetId === settings.kanbanDefaultPresetId) this.settings.kanbanDefaultPresetId = previousDefault;
+				throw error;
+			}
 		});
 		this.kanbanOrderStore.setPackagePersistence(async () => {
 			await this.saveSettings();

@@ -1,3 +1,4 @@
+import { projectKanbanLegacyAxes } from '../../core/kanban-axis-model';
 import { taskDescriptionOpening } from '../task-text-link-opening';
 import { localToday } from '../../core/local-time';
 import { splitTaskListValue } from '../../core/task-field-patch';
@@ -756,6 +757,7 @@ export class KanbanView extends ItemView {
 		parentSearchUi: KanbanParentSearchUiState | null,
 	): boolean {
 		const previous = this.lastRenderedBoard;
+		if (!projectKanbanLegacyAxes(preset, settings.keyMappings).ok) return false;
 		if (!this.lastRenderSignature || !previous
 			|| this.lastRenderedBoardScope !== this.buildDropScrollAnchorScope()) return false;
 		// Task and file-property data are queried below; controls still require identical settings.
@@ -950,11 +952,11 @@ export class KanbanView extends ItemView {
 		settings: OperonSettings,
 		parentSearchUi: KanbanParentSearchUiState | null,
 	): void {
-		if (!pipeline) {
+		if (!pipeline || !projectKanbanLegacyAxes(preset, settings.keyMappings).ok) {
 			this.lastRenderedBoard = null;
 			this.lastRenderedBoardScope = null;
 			this.lastRenderedBoardTaskSignatures = null;
-			this.renderEmptyState(container, t('notifications', 'kanbanChoosePipeline'));
+			this.renderEmptyState(container, t('notifications', projectKanbanLegacyAxes(preset, settings.keyMappings).ok ? 'kanbanChoosePipeline' : 'kanbanAxesUnavailable'));
 			return;
 		}
 		const { board, searchActive } = this.queryKanbanBoardData(
@@ -3363,7 +3365,7 @@ export class KanbanView extends ItemView {
 		const state = this.ensureState();
 		const settings = this.getSettings();
 		const preset = settings.kanbanPresets.find(entry => entry.id === state.presetId) ?? null;
-		if (!preset || preset.id !== context.presetId || !preset.pipelineId) return false;
+		if (!preset || !projectKanbanLegacyAxes(preset, settings.keyMappings).ok || preset.id !== context.presetId || !preset.pipelineId) return false;
 		const pipeline = settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
 		if (!pipeline || buildKanbanDropBoardSignature(preset, pipeline) !== context.boardSignature) return false;
 		const boardEl = this.contentEl.querySelector<HTMLElement>('.operon-kanban-board');

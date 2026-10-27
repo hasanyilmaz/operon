@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "{{count}} attività in linea create",
       "inlineToFileTaskFailed": "Creazione di un'attività-file dall'attività in linea attuale non riuscita.",
       "kanbanActionFailed": "Azione Kanban non riuscita.",
+      "kanbanAxesUnavailable": "Questa configurazione degli assi Kanban non è disponibile nella vista attuale. Le impostazioni salvate sono state conservate.",
       "kanbanChoosePipeline": "Scegli una pipeline per questa preimpostazione Kanban nelle impostazioni.",
       "kanbanCreatedTaskFilterMismatch": "L'attività creata non corrisponde al filtro Kanban attuale.",
       "kanbanFilterMismatch": "Questa attività non corrisponde al filtro Kanban attuale. Apertura dell'editor attività.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "d26a8716046895658e26c0443c5e5d53cf89de50d745111fe12358ee679bd55d"
+  "sourceVersion": "302dcb6fe8d7ce38ad51bb52ec5634de6fea47048c191361bf85f0ea0a311d7b"
 }

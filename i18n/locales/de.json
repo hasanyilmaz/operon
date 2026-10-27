@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "Die Gruppenänderung konnte nicht angewendet werden. Die Karte wurde an ihre vorherige Position zurückgesetzt.",
 		"canvasGroupOverlap": "Operon-Gruppen mit derselben einwertigen Eigenschaft dürfen sich nicht überschneiden. Die Änderung wurde nicht angewendet.",
 		"canvasGroupDropPartial": "Eine Gruppenänderung konnte nicht sicher abgeschlossen werden. Prüfe die Aufgabe und das Canvas, bevor du fortfährst.",
-		"taskCreatedTemplatePreferencesSaveFailed": "Aufgabe erstellt, aber die Vorlageneinstellungen konnten nicht gespeichert werden."
+		"taskCreatedTemplatePreferencesSaveFailed": "Aufgabe erstellt, aber die Vorlageneinstellungen konnten nicht gespeichert werden.",
+		"kanbanAxesUnavailable": "Diese Kanban-Achsenkonfiguration ist in der aktuellen Ansicht nicht verfügbar. Die gespeicherten Einstellungen bleiben erhalten."
 	},
 	"duplicateOperonId": {
 		"title": "Operon-ID-Konflikt",

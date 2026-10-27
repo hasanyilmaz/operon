@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "Grup değişikliği uygulanamadı. Kart önceki konumuna döndü.",
 		"canvasGroupOverlap": "Aynı tek değerli property’ye ait Operon grupları kesişemez. Değişiklik uygulanmadı.",
 		"canvasGroupDropPartial": "Grup değişikliği güvenle tamamlanamadı. Devam etmeden task ve Canvas’ı kontrol edin.",
-		"taskCreatedTemplatePreferencesSaveFailed": "Görev oluşturuldu, ancak şablon tercihleri kaydedilemedi."
+		"taskCreatedTemplatePreferencesSaveFailed": "Görev oluşturuldu, ancak şablon tercihleri kaydedilemedi.",
+		"kanbanAxesUnavailable": "Bu Kanban eksen yapılandırması mevcut görünümde kullanılamıyor. Kayıtlı ayarları korundu."
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID Çakışması",

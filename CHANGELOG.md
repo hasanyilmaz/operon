@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Kanban presets** preserve unsupported saved configurations and prevent incomplete edits from overwriting them.
+
 - Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
 - **Task Creator** keeps icons for fields with values visible on desktop, making selected properties easier to review while empty fields retain their hover behavior.
 
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Full local checks, **33/33** Kanban axis tests, **97/97** settings backup tests, **112/112** Kanban drop and retention tests, **108/108** local Kanban regressions, code review, and manual preset verification passed.
 
 - Strict lint, **46/46** Kanban tests, **6/6** cell-summary checks, and manual Kanban verification passed.
 - Strict lint, Plugin release guard, and manual Task Creator field-icon verification passed.

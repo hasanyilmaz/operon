@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "Создано встроенных задач: {{count}}",
       "inlineToFileTaskFailed": "Не удалось создать файловую задачу из текущей встроенной задачи.",
       "kanbanActionFailed": "Не удалось выполнить действие канбана.",
+      "kanbanAxesUnavailable": "Эта конфигурация осей Kanban недоступна в текущем представлении. Сохранённые настройки сохранены.",
       "kanbanChoosePipeline": "Выберите конвейер для этого пресета канбана в настройках.",
       "kanbanCreatedTaskFilterMismatch": "Созданная задача не соответствует текущему фильтру канбана.",
       "kanbanFilterMismatch": "Эта задача не соответствует текущему фильтру канбана. Открывается редактор задач.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "14e363bef761366e7ca728313dd49602ba038bf6f4a01da4ca10c4ca828cb918"
+  "sourceVersion": "674aa498947b20c5bf265c13457a9938b94034f5de26ed8ad0d05a3684c27a10"
 }

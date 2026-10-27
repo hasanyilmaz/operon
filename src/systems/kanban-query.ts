@@ -1,3 +1,4 @@
+import { projectKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { parseListValue } from '../core/parser';
 import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
@@ -72,7 +73,11 @@ export function queryKanbanBoard(options: {
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	filterEvaluationOptions?: FilterEvaluationOptions;
 }): KanbanBoardData {
-	const { preset, pipeline, filterSet, priorities, pinnedCache } = options;
+	const { filterSet, priorities, pinnedCache } = options;
+	const projection = projectKanbanLegacyAxes(options.preset, options.keyMappings);
+	if (!projection.ok) return { preset: options.preset, pipeline: null, filterSet, scopedTasks: [], relevantTasks: [], columns: [], lanes: [], cellCountMap: new Map(), cellMap: new Map() };
+	const preset = { ...options.preset, pipelineId: projection.pipelineId, swimlaneBy: projection.swimlaneBy };
+	const pipeline = (options.pipelines ?? (options.pipeline ? [options.pipeline] : [])).find(entry => entry.id === projection.pipelineId) ?? null;
 	const keyMappings = options.keyMappings ?? [];
 	const normalizedSearchQuery = (options.searchQuery ?? '').trim().toLocaleLowerCase();
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;

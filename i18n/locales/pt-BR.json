@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "Não foi possível aplicar a alteração do grupo. O cartão voltou à posição anterior.",
 		"canvasGroupOverlap": "Grupos Operon com a mesma propriedade de valor único não podem se sobrepor. A alteração não foi aplicada.",
 		"canvasGroupDropPartial": "Não foi possível concluir uma alteração do grupo com segurança. Verifique a tarefa e o Canvas antes de continuar.",
-		"taskCreatedTemplatePreferencesSaveFailed": "Tarefa criada, mas não foi possível salvar as preferências de modelo."
+		"taskCreatedTemplatePreferencesSaveFailed": "Tarefa criada, mas não foi possível salvar as preferências de modelo.",
+		"kanbanAxesUnavailable": "Esta configuração dos eixos Kanban não está disponível na visualização atual. As configurações salvas foram preservadas."
 	},
 	"duplicateOperonId": {
 		"title": "Conflito de ID do Operon",

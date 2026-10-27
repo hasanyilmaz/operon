@@ -1,3 +1,4 @@
+import { cloneKanbanAxesPayload, decodeKanbanAxes, projectKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { normalizeLightboxSizes, type LightboxSizes } from '../core/lightbox-size';
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
@@ -3054,6 +3055,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 
 	return {
 		id: normalizeOptionalString(src.id) ?? createKanbanPresetId(),
+		...(src.axes === undefined ? {} : { axes: (() => { const result = decodeKanbanAxes(src.axes); return result.ok ? result.axes : cloneKanbanAxesPayload(src.axes); })() }),
 		name,
 		pipelineId: normalizeOptionalString(src.pipelineId) ?? null,
 		filterSetId: normalizeOptionalString(src.filterSetId) ?? null,
@@ -4869,15 +4871,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		}
 	}
 	out.pipelines = normalizePipelineIds(out.pipelines);
-	for (const preset of out.kanbanPresets) {
-		const pipeline = out.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		const columnSortOverrides = reconcileKanbanColumnSortOverrides(
-			preset.columnSortOverrides,
-			pipeline?.statuses.map(status => status.id) ?? [],
-		);
-		if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
-		else delete preset.columnSortOverrides;
-	}
+
 
 	if (!Array.isArray(src.priorities) || src.priorities.length === 0) {
 		out.priorities = cloneDefaultPriorities();
@@ -5007,8 +5001,22 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 	}
 	out.keyMappings = normalizeKeyMappingCollection(out.keyMappings);
+	out.kanbanPresets = out.kanbanPresets.map(preset => {
+		const projection = projectKanbanLegacyAxes(preset, out.keyMappings);
+		return projection.ok ? { ...preset, pipelineId: projection.pipelineId, swimlaneBy: projection.swimlaneBy } : preset;
+	});
 	out.keepInlineTasksWithParent = src.keepInlineTasksWithParent === true;
 	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
+	for (const preset of out.kanbanPresets) {
+		if (preset.axes !== undefined && (!projectKanbanLegacyAxes(preset, out.keyMappings).ok || !out.pipelines.some(pipeline => pipeline.id === preset.pipelineId))) continue;
+		const pipeline = out.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+		const columnSortOverrides = reconcileKanbanColumnSortOverrides(
+			preset.columnSortOverrides,
+			pipeline?.statuses.map(status => status.id) ?? [],
+		);
+		if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
+		else delete preset.columnSortOverrides;
+	}
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
 	out.childTaskInheritanceStatusPipelineSource = normalizeChildTaskInheritanceStatusPipelineSource(
 		src.childTaskInheritanceStatusPipelineSource,

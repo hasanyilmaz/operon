@@ -1,3 +1,4 @@
+import { cloneKanbanAxesPayload, projectKanbanLegacyAxes, updateKanbanLegacyAxes } from '../../core/kanban-axis-model';
 import { App, DropdownComponent, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
 import {
@@ -71,6 +72,11 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			return;
 		}
 
+		if (!projectKanbanLegacyAxes(preset, this.options.getSettings().keyMappings).ok) {
+			contentEl.createEl('p', { text: t('notifications', 'kanbanAxesUnavailable') });
+			return;
+		}
+
 		const presetCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionPreset'));
 		const nameSetting = new Setting(presetCard)
 			.setName(t('settings', 'kanbanPresetName'))
@@ -107,7 +113,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				dropdown.setValue(preset.pipelineId ?? '');
 				dropdown.onChange(async value => {
 					await this.updatePreset(current => {
-						current.pipelineId = value || null;
+						updateKanbanLegacyAxes(current, { pipelineId: value || null }, this.options.getSettings().keyMappings);
 						delete current.columnSortOverrides;
 					});
 					this.renderPreservingScroll();
@@ -146,7 +152,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				dropdown.setValue(preset.swimlaneBy ?? '');
 				dropdown.onChange(async value => {
 					await this.updatePreset(current => {
-						current.swimlaneBy = this.parseSwimlaneBy(value);
+						updateKanbanLegacyAxes(current, { swimlaneBy: this.parseSwimlaneBy(value) }, this.options.getSettings().keyMappings);
 					});
 				});
 			});
@@ -691,6 +697,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 function cloneKanbanPreset(preset: KanbanPreset): KanbanPreset {
 	return {
 		...preset,
+		...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		...(preset.columnSortOverrides?.length
 			? { columnSortOverrides: cloneKanbanColumnSortOverrides(preset.columnSortOverrides) }

@@ -1,3 +1,4 @@
+import { kanbanPresetReferencesManagedField } from './kanban-axis-model';
 import { CANONICAL_KEY_MAP } from '../types/keys';
 import type { IndexedTask } from '../types/fields';
 import type { KanbanPreset } from '../types/kanban';
@@ -302,7 +303,7 @@ function collectKanbanPresetNamesReferencingField(
 ): string[] {
 	const names: string[] = [];
 	for (const preset of kanbanPresets) {
-		if (preset.swimlaneBy !== canonicalKey && !preset.sortRules.some(rule => rule.field === canonicalKey)) {
+		if (preset.swimlaneBy !== canonicalKey && !kanbanPresetReferencesManagedField(preset, canonicalKey) && !preset.sortRules.some(rule => rule.field === canonicalKey)) {
 			continue;
 		}
 		names.push(preset.name.trim() || preset.id);

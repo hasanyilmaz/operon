@@ -1,3 +1,4 @@
+import { projectKanbanLegacyAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
 import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
@@ -4056,7 +4057,8 @@ export default class OperonPlugin extends Plugin {
 	private getKanbanPresetForLeaf(leaf: import('obsidian').WorkspaceLeaf) {
 		const presetId = this.getKanbanLeafPresetId(leaf);
 		if (!presetId) return null;
-		return this.settings.kanbanPresets.find(preset => preset.id === presetId) ?? null;
+		const preset = this.settings.kanbanPresets.find(preset => preset.id === presetId) ?? null;
+		return preset && projectKanbanLegacyAxes(preset, this.settings.keyMappings).ok ? preset : null;
 	}
 
 	async openFilterViewById(filterSetId: string | null | undefined): Promise<void> {
@@ -20347,6 +20349,11 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 		}
+		const axisSignature = JSON.stringify(preset.axes);
+		const kanbanAxesCanCommit = (): boolean => {
+			const current = this.getKanbanPresetForLeaf(leaf);
+			return !!current && current.id === preset.id && JSON.stringify(current.axes) === axisSignature;
+		};
 		const sourceIsManual = context.sourceStatusId
 			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
 			: false;
@@ -20358,6 +20365,7 @@ export default class OperonPlugin extends Plugin {
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
 		const persistManualOrderIfCurrent = async (): Promise<void> => {
 			if (!manualOrderCells || !previousManualOrderCells) return;
+			if (!kanbanAxesCanCommit()) throw new Error('Kanban axes changed before manual order commit');
 			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
 				preset.id,
 				previousManualOrderCells,
@@ -20399,6 +20407,7 @@ export default class OperonPlugin extends Plugin {
 		const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
 			changedKeys: plan.changedKeys,
 			refreshReason: 'status-cycle',
+			canCommit: kanbanAxesCanCommit,
 		});
 		if (outcome === 'cancelled' || outcome === 'duplicate-task') return 'cancelled';
 		if (!isPluginUiMutationCommitted(outcome)) {
@@ -20548,6 +20557,7 @@ export default class OperonPlugin extends Plugin {
 		while (true) {
 			const actionId = await this.promptKanbanCellAction(context);
 			if (!actionId) return;
+			if (!this.getKanbanPresetForLeaf(leaf)) { new Notice(t('notifications', 'kanbanAxesUnavailable')); return; }
 
 			try {
 				if (actionId === 'pickTask') {
@@ -21048,11 +21058,13 @@ export default class OperonPlugin extends Plugin {
 		const filterSet = preset.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
+		const axisSignature = JSON.stringify(preset.axes);
+		const kanbanAxesCanCommit = () => { const current = this.getKanbanPresetForLeaf(leaf); return !!current && current.id === preset.id && JSON.stringify(current.axes) === axisSignature; };
 		const effectiveFilterSet = filterSet && !isSpecialDynamicFilterSet(filterSet) ? filterSet : null;
 
 		while (true) {
 			const task = await this.promptKanbanTaskSelection();
-			if (!task) return;
+			if (!task || !kanbanAxesCanCommit()) return;
 
 			const plan = buildKanbanWritebackPlan({
 				task,
@@ -21065,9 +21077,11 @@ export default class OperonPlugin extends Plugin {
 			});
 			if (plan.changedKeys.length === 0) return;
 
-			await this.updateDirectTaskFieldsAndRefresh(task.operonId, plan.payload, {
+			const committed = await this.updateDirectTaskFieldsAndRefresh(task.operonId, plan.payload, {
 				changedKeys: plan.changedKeys,
+				canCommit: kanbanAxesCanCommit,
 			});
+			if (!committed) return;
 			this.refreshViews();
 			await this.maybeOpenKanbanEditorForFilterMismatch(effectiveFilterSet, plan.nextDraft, () => {
 				this.openEditorForId(task.operonId);
@@ -21158,6 +21172,7 @@ export default class OperonPlugin extends Plugin {
 		tagsPresent: boolean;
 	} {
 		const preset = this.getKanbanPresetForLeaf(leaf);
+		if (!preset) throw new Error('Kanban axes are unavailable');
 		const pipeline = preset?.pipelineId
 			? this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
 			: null;

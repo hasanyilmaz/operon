@@ -48,36 +48,8 @@ const TABLE_FIELD_LABEL_OVERRIDES: Record<string, string> = {
 	progress: 'Subtask Progress',
 };
 
-export const TABLE_EDITABLE_TASK_FIELD_KEYS = new Set([
-	'description',
-	'note',
-	'status',
-	'priority',
-	'dateDue',
-	'dateScheduled',
-	'dateStarted',
-	'dateCompleted',
-	'dateCancelled',
-	'datetimeStart',
-	'datetimeEnd',
-	'datetimeRepeatEnd',
-	'estimate',
-	'repeat',
-	'repeatOccurrenceDate',
-	'parentTask',
-	'blocking',
-	'blockedBy',
-	'assignees',
-	'contexts',
-	'tags',
-	'links',
-	'taskIcon',
-	'taskColor',
-	'location',
-	'taskType',
-	'taskImage',
-	'taskGallery',
-]);
+import { EDITABLE_TASK_FIELD_KEYS as TABLE_EDITABLE_TASK_FIELD_KEYS } from '../../core/editable-task-fields';
+export { TABLE_EDITABLE_TASK_FIELD_KEYS };
 
 const SYNTHETIC_TABLE_FIELDS: Array<Omit<TableTaskField, 'aliases'>> = [
 	{ key: '__countdown', label: 'Countdown', type: 'datetime', group: 'scheduling', icon: 'hourglass', readonly: true },

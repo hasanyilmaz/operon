@@ -1,3 +1,4 @@
+import { cloneKanbanAxesPayload, updateKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
 import { saveDesktopBackdropDimming } from './modal-backdrop';
 import { BACKGROUND_DIMMING_OPTIONS, normalizeBackgroundDimming } from '../core/background-dimming';
@@ -8241,6 +8242,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			onClick: async () => {
 				const copy: KanbanPreset = {
 					...preset,
+					...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 					id: createKanbanPresetId(),
 					name: `${presetName} Copy`,
 					sortRules: preset.sortRules.map(rule => ({ ...rule })),
@@ -9181,7 +9183,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				dropdown.setValue(preset.pipelineId ?? '');
 				dropdown.onChange(async value => {
 					await this.updateKanbanPreset(preset.id, current => {
-						current.pipelineId = value || null;
+						updateKanbanLegacyAxes(current, { pipelineId: value || null }, this.settings.keyMappings);
 						delete current.columnSortOverrides;
 					});
 					this.redisplayPreservingScroll();
@@ -9227,7 +9229,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				dropdown.setValue(preset.swimlaneBy ?? '');
 				dropdown.onChange(async value => {
 					await this.updateKanbanPreset(preset.id, current => {
-						current.swimlaneBy = this.parseKanbanSwimlaneBy(value);
+						updateKanbanLegacyAxes(current, { swimlaneBy: this.parseKanbanSwimlaneBy(value) }, this.settings.keyMappings);
 					});
 				});
 			});

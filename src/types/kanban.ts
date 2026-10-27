@@ -1,3 +1,4 @@
+import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
 import type { KanbanTaskColorSource } from '../core/task-color-source';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -58,6 +59,8 @@ export interface KanbanEffectiveSorting {
 }
 
 export interface KanbanPreset {
+	/** Kept opaque on load to preserve unsupported/future settings; decode before use. */
+	axes?: unknown;
 	id: string;
 	name: string;
 	pipelineId: string | null;
@@ -209,6 +212,7 @@ export function normalizeKanbanCardImageSource(value: unknown): KanbanCardImageS
 export function cloneDefaultKanbanPresets(): KanbanPreset[] {
 	return DEFAULT_KANBAN_PRESETS.map(preset => ({
 		...preset,
+		...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 		sortMode: preset.sortMode ?? 'automatic',
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		...(preset.columnSortOverrides?.length
@@ -338,6 +342,7 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 	if (!isLegacyDefaultKanbanPreset(preset)) {
 		return {
 			...preset,
+		...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 			cardImageSource: normalizeKanbanCardImageSource(preset.cardImageSource),
 			sortMode: preset.sortMode ?? 'automatic',
 			sortRules: preset.sortRules.map(rule => ({ ...rule })),
@@ -357,7 +362,7 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 }
 
 function isLegacyDefaultKanbanPreset(preset: KanbanPreset): boolean {
-	return preset.id === DEFAULT_KANBAN_PRESET_ID
+	return preset.axes === undefined && preset.id === DEFAULT_KANBAN_PRESET_ID
 		&& preset.name === LEGACY_DEFAULT_KANBAN_NAME
 		&& preset.pipelineId === null
 		&& preset.filterSetId === null

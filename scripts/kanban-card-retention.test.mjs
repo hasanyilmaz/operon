@@ -24,7 +24,7 @@ function productionFunction(file, name) {
  return new Function(`${js}; return ${name};`)();
 }
 const compiled = await build({
- stdin: { contents: "export { buildKanbanTaskComparator } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+ stdin: { contents: "export { projectKanbanLegacyAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
  bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
  alias: { obsidian: fileURLToPath(new URL('./test-support/obsidian.ts', import.meta.url)) },
 });

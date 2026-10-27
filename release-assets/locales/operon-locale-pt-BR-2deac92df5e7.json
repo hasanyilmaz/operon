@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3717,
-  "keyFingerprint": "3171928544487f32a8ad71ae5270bdcd34044f33a41fe6e7a21e48e1da7054bf",
+  "keyCount": 3718,
+  "keyFingerprint": "3113815a42085d57c7b5806c69b4578fef12dccf79e508b151300b289f25f3be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -930,6 +930,7 @@
       "inlineTasksCreatedCount": "{{count}} tarefas inline criadas",
       "inlineToFileTaskFailed": "Falha ao criar uma tarefa em arquivo a partir da tarefa inline atual.",
       "kanbanActionFailed": "A ação Kanban falhou.",
+      "kanbanAxesUnavailable": "Esta configuração dos eixos Kanban não está disponível na visualização atual. As configurações salvas foram preservadas.",
       "kanbanChoosePipeline": "Escolha um pipeline para esta predefinição do Kanban nas configurações.",
       "kanbanCreatedTaskFilterMismatch": "A tarefa criada não corresponde ao filtro Kanban atual.",
       "kanbanFilterMismatch": "Esta tarefa não corresponde ao filtro atual do Kanban. Abrindo o Editor de Tarefa.",
@@ -3762,5 +3763,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "cbaf12670a8092f2dcff95f1ffd2b15c79ec00800d7fbf39fd4a9ff0301b2cbe"
+  "sourceVersion": "97f8f2e8298e1bc4248ffc111e2f40c585e30ae53dff357958abff37833acc9a"
 }

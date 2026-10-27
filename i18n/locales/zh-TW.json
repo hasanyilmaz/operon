@@ -397,7 +397,8 @@
 		"canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
 		"canvasGroupOverlap": "具有相同單值屬性的 Operon 群組不能重疊。變更未套用。",
 		"canvasGroupDropPartial": "無法安全完成群組變更。繼續之前，請檢查任務和 Canvas。",
-		"taskCreatedTemplatePreferencesSaveFailed": "任務已建立，但無法儲存範本偏好設定。"
+		"taskCreatedTemplatePreferencesSaveFailed": "任務已建立，但無法儲存範本偏好設定。",
+		"kanbanAxesUnavailable": "目前檢視不支援此看板軸設定。已保留儲存的設定。"
 	},
 	"duplicateOperonId": {
 		"title": "Operon ID 衝突",
