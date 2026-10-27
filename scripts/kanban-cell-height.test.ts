@@ -126,7 +126,7 @@ test('open rows own fixed geometry before any task materialization; content neve
  assert.match(rule('.operon-kanban-cell > .operon-kanban-card'),/flex-shrink: 0/);
  assert.match(rule('.operon-kanban-row.is-collapsed'),/height: 54px/);
  assert.doesNotMatch(view,/measureCellHeightLimitPx|syncRowCellHeights|syncLaneHeights|kanbanMaxVisibleTasksPerCell|estimateKanbanCellPlaceholderHeightPx/);
- assert.ok(view.indexOf("boardEl.style.setProperty('--operon-kanban-cell-height'")<view.indexOf('this.activateDeferredCellMaterialization(gridViewport, deferredCells)'));
+ assert.ok(view.indexOf("boardEl.style.setProperty('--operon-kanban-cell-height'")<view.indexOf('this.activateDeferredCellMaterialization(gridViewport, deferredCells.splice(0))'));
 });
 test('classic boards fill the pane at both desktop and mobile sizes',()=>{
  assert.match(rule('.operon-kanban-board.is-no-swimlanes .operon-kanban-grid-content'),/height: 100%/);

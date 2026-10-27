@@ -24664,7 +24664,6 @@ button.operon-kanban-column-count-button:focus-visible {
 .operon-kanban-board.is-no-swimlanes .operon-kanban-cell {
 	min-height: 0;
 	overflow-y: auto;
-	overscroll-behavior: contain;
 }
 
 .operon-kanban-board.is-no-swimlanes .operon-kanban-card {
@@ -24934,7 +24933,8 @@ button.operon-kanban-lane-count-button:focus-visible {
 
 .operon-kanban-cell {
 	overflow-y: auto;
-	overscroll-behavior: contain;
+	/* At a cell edge (including empty cells), continue scrolling the board. */
+	overscroll-behavior: auto;
 	scrollbar-gutter: stable;
 	box-sizing: border-box;
 	display: flex;
@@ -25162,7 +25162,6 @@ button.operon-kanban-lane-count-button:focus-visible {
 
 .operon-kanban-cell.is-scroll-limited {
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-gutter: stable;
 }
 
@@ -37150,4 +37149,56 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-session-card button.operon-status-dock-name {
  display: block; height: 28px; min-height: 28px; padding: 2px 6px;
  box-sizing: border-box; line-height: 24px;
+}
+
+/* The virtual canvas keeps the complete scroll extent; only nearby tracks own DOM. */
+.operon-kanban-grid-content.is-virtualized {
+	min-width: 0;
+	position: relative;
+}
+.operon-kanban-grid-content.is-virtualized > .operon-kanban-header-row {
+	display: block;
+	min-width: 0;
+	width: 100%;
+}
+.operon-kanban-grid-content.is-virtualized .operon-kanban-column-header {
+	position: absolute;
+	top: 0;
+	height: 100%;
+	box-sizing: border-box;
+}
+.operon-kanban-grid-content.is-virtualized .operon-kanban-corner-cell,
+.operon-kanban-grid-content.is-virtualized .operon-kanban-lane-label {
+	width: var(--operon-kanban-active-lane-column-width, var(--operon-kanban-lane-column-width, 96px));
+	height: 100%;
+}
+.operon-kanban-virtual-body {
+	position: relative;
+	width: 100%;
+	flex: 0 0 auto;
+}
+.operon-kanban-virtual-body > .operon-kanban-row {
+	position: absolute;
+	left: 0;
+	width: 100%;
+	min-width: 0;
+	display: block;
+}
+.operon-kanban-virtual-body > .operon-kanban-row > .operon-kanban-cell {
+	position: absolute;
+	top: 0;
+}
+
+.operon-kanban-axis-measure {
+	position: absolute;
+	visibility: hidden;
+	pointer-events: none;
+	left: 0;
+	top: 0;
+	width: 1px;
+	height: 0;
+	overflow: hidden;
+}
+.operon-kanban-axis-measure > .operon-kanban-column-header {
+	box-sizing: border-box;
 }

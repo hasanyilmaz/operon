@@ -52,7 +52,7 @@ const dependencies = {
  KANBAN_ESTIMATED_CARD_HEIGHT_PX: 100,
  KANBAN_ESTIMATED_CARD_GAP_PX: 8,
 };
-const methodNames = ['applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
+const methodNames = ['restoreBoardScrollState', 'restoreBoardViewportAnchor', 'applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
 const code = ts.transpileModule(`class Subject { ${methodNames.filter(name => viewClass.members.some(member => member.name?.getText(ast) === name)).map(method).join('\n')} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 const Subject = new Function(...Object.keys(dependencies), `${code}; return Subject;`)(...Object.values(dependencies));
 
@@ -125,10 +125,11 @@ function fixture(sourceIds = ['a', 'b', 'c'], targetIds = ['d'], windowName = 'm
  const settings = { kanbanMaxVisibleTasksPerCell: 5, pipelines: [] };
  Object.assign(subject, {
   ensureState: () => ({ expandedPreviewParentIds: [] }), buildDescendantSummary: () => ({ done: 0, open: 1, total: 1 }),
-  pendingCellMaterializers: new Map(), optimisticMoves: new Map(), indexer: { getAllTasks: () => [], secondary: { getChildIds: () => new Set(), getAllDescendantIds: () => new Set() } }, getSettings: () => settings,
+  pendingCellMaterializers: new Map(), virtualDropCells: new Map(), optimisticMoves: new Map(), indexer: { getAllTasks: () => [], secondary: { getChildIds: () => new Set(), getAllDescendantIds: () => new Set() } }, getSettings: () => settings,
   captureCellScrollStates() {}, resolveCollapsedStatusIds: () => new Set(), resolveCollapsedLaneKeys: () => new Set(),
   findKanbanCell: (_board, status) => cells.get(status), findKanbanRow: () => row,
   unobserveKanbanCellContent(cell) { for (const child of [...cell.children]) if (child.kind === 'sentinel') child.remove(); },
+  cleanupVirtualCardBindings() {},
   clearCellQuickAdd(cell) { for (const child of [...cell.children]) if (child.kind === 'overlay') child.remove(); },
   bindCellQuickAdd(cell) { cell.appendChild(new Node('overlay', {}, doc)); },
   renderCollapsedCellSummary(cell) { cell.empty(); cell.appendChild(new Node('summary', {}, doc)); },
@@ -491,4 +492,33 @@ test('a changed descendant progress summary updates only its owning parent card'
  const before = f.signatures(f.previous); summary = { done: 1, open: 0, total: 1 };
  assert.equal(f.subject.applyKanbanBoardPatchInPlace(f.boardEl, f.previous, f.previous, before, f.signatures(f.previous), null, {}, f.settings, false), true);
  assert.notEqual(cardById(source, 'b'), parent); assert.equal(cardById(source, 'c'), neighbor); assert.deepEqual(f.renders, ['b']);
+});
+
+
+test('offscreen changed cells update the model without creating DOM or forcing a rebuild', () => {
+ const f = fixture();
+ f.cells.get('target').remove(); f.cells.delete('target');
+ let latest;
+ f.subject.updateVirtualBoard = value => { latest = value; };
+ const next = f.board(['a','b','c'], [task('d','changed-offscreen')]);
+ f.patch(next, null);
+ assert.equal(latest, next); assert.deepEqual(f.renders, []);
+});
+
+test('a hidden board cannot overwrite saved scroll while an anchor expires', () => {
+ const subject = new Subject();
+ Object.assign(subject, { lastBoardScrollState: { left: 1200, top: 4800 },
+  pendingViewportAnchor: { scope: 'same', state: { left: 1200, top: 4800 }, expiresAt: Date.now() + 1000 },
+  buildDropScrollAnchorScope: () => 'same', suppressTaskNoteScrollCloseForFrame() {},
+  clearViewportAnchor() { throw new Error('Hidden layout must not consume the pending anchor'); },
+  markProgrammaticBoardScroll(board) { this.lastBoardScrollState = { left: board.scrollLeft, top: board.scrollTop }; },
+ });
+ const board = { clientWidth: 0, clientHeight: 0, scrollLeft: 0, scrollTop: 0 };
+ subject.restoreBoardViewportAnchor(board);
+ assert.deepEqual(subject.lastBoardScrollState, { left: 1200, top: 4800 });
+ subject.pendingViewportAnchor.expiresAt = Date.now() - 1;
+ subject.restoreBoardViewportAnchor(board);
+ Object.assign(board, { clientWidth: 1000, clientHeight: 700 });
+ subject.restoreBoardScrollState(board);
+ assert.equal(board.scrollLeft, 1200); assert.equal(board.scrollTop, 4800);
 });

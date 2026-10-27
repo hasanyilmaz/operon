@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position; scrolling over an empty cell or past its contents continues through the board.
+
 - **Kanban cell actions** apply destination fields together when moving, placing, or creating a task. Moving into a list group adds its value while preserving existing memberships.
 
 - **Kanban presets** preserve unsupported saved configurations and prevent incomplete edits from overwriting them.
@@ -27,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Full local checks, **22/22** Kanban virtualization tests, **23/23** scroll tests, **48/48** card-retention tests, **111/111** local Kanban regressions, **26/26** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
 
 - Full local checks, **38/38** Kanban cell-height tests, **22/22** scroll tests, **91/91** settings-preservation tests, **109/109** local Kanban regressions, **18/18** isolated browser checks, code review, and manual Kanban verification passed.
 

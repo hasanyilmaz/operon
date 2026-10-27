@@ -187,7 +187,7 @@ test('task refreshes opt into viewport retention without changing ordinary Kanba
 
 test('the rebuilt board restores raw scroll before materialization and content anchors after layout', () => {
 	const rawRestore = viewSource.indexOf('this.restoreBoardScrollState(gridViewport);');
-	const materialize = viewSource.indexOf('this.activateDeferredCellMaterialization(gridViewport, deferredCells);');
+	const materialize = viewSource.indexOf('this.activateDeferredCellMaterialization(gridViewport, deferredCells.splice(0));');
 	const anchorRestore = viewSource.indexOf('this.restoreBoardViewportAnchor(gridViewport);');
 	assert.ok(rawRestore >= 0 && materialize > rawRestore && anchorRestore > materialize);
 	assert.match(viewSource, /row\.dataset\.kanbanLaneKey = lane\.key/u);
@@ -197,19 +197,14 @@ test('the rebuilt board restores raw scroll before materialization and content a
 });
 
 test('post-drop settlement batches first-scroll card materialization and avoids a redundant rebuild', () => {
-	const observerStart = viewSource.indexOf('const observer = new IntersectionObserver(entries => {', viewSource.indexOf('private activateDeferredCellMaterialization('));
-	const observerEnd = viewSource.indexOf('}, { root: gridViewport', observerStart);
-	const observerBody = viewSource.slice(observerStart, observerEnd);
-	assert.match(observerBody, /this\.materializeKanbanCellsIfPending\(cells\)/u);
-	assert.doesNotMatch(observerBody, /this\.materializeKanbanCellIfPending\(cell\)/u);
-
-	const batchStart = viewSource.indexOf('private materializeKanbanCellsIfPending(');
+	const batchStart = viewSource.indexOf('private activateDeferredCellMaterialization(');
 	const batchEnd = viewSource.indexOf('\n\t}', batchStart);
 	const batchBody = viewSource.slice(batchStart, batchEnd);
-	const writeIndex = batchBody.indexOf('finalizers.push(materialize(heights.get(cell) ?? 0));');
+	const readIndex = batchBody.indexOf('deferredCells.map(entry => entry.cell.clientHeight)');
+	const writeIndex = batchBody.indexOf('entry.materialize(heights[index])');
 	const commitIndex = batchBody.indexOf('for (const finalizer of finalizers) finalizer.commit();');
-	assert.ok(writeIndex >= 0 && writeIndex < commitIndex);
-	assert.doesNotMatch(batchBody, /finalizer\.measure|offsetHeight/u);
+	assert.ok(readIndex >= 0 && readIndex < writeIndex && writeIndex < commitIndex);
+	assert.doesNotMatch(batchBody, /IntersectionObserver|finalizer\.measure|offsetHeight/u);
 
 	const renderStart = viewSource.indexOf('private render(): void');
 	const renderEnd = viewSource.indexOf('\n\tprivate buildRenderSignature(', renderStart);
@@ -324,4 +319,17 @@ test('task-only refresh attempts the existing cell patch before tearing down the
 	assert.doesNotMatch(refresh, /\.empty\(|\.remove\(/u);
 	assert.match(viewSource, /isStatusAutoCollapsed\(this\.lastRenderedBoard \?\? board, column\)/u);
 	assert.match(viewSource, /isLaneAutoCollapsed\(this\.lastRenderedBoard \?\? board, lane\)/u);
+});
+
+
+test('Kanban cells hand boundary scrolling to the board without escaping the viewport', () => {
+ const rules = Array.from(stylesSource.matchAll(/([^{}]+)\{([^{}]*)\}/gu));
+ const cellRules = rules.filter(([, selector]) => /\.operon-kanban-cell(?:[\s.:]|$)/u.test(selector.trim()));
+ assert.ok(cellRules.some(([, selector, body]) => selector.trim() === '.operon-kanban-cell' && /overscroll-behavior:\s*auto\s*;/u.test(body)));
+ for (const [, selector, body] of cellRules) {
+  assert.doesNotMatch(body, /overscroll-behavior(?:-[xy])?:\s*(?:contain|none)\b/u, `${selector.trim()} must allow scroll chaining`);
+ }
+ const viewport = rules.find(([, selector]) => selector.trim() === '.operon-kanban-grid-viewport');
+ assert.ok(viewport);
+ assert.match(viewport[2], /overscroll-behavior:\s*contain\s*;/u);
 });

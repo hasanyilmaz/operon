@@ -20,6 +20,7 @@ export interface FloatingPanel {
 export type FloatingPanelCloseReason = 'outside' | 'escape' | 'window-blur' | 'window-resize' | 'anchor-detach';
 
 interface FloatingPanelRecord {
+ getAnchorOwner: () => HTMLElement | null;
  reanchor: (anchor: HTMLElement | DOMRect) => void;
 	panel: HTMLElement;
 	anchorEl: HTMLElement | null;
@@ -593,6 +594,7 @@ export function createFloatingPanel(
 	let closed = false;
  let stopCardAnchor: (() => void) | null = null;
 	const record: FloatingPanelRecord = {
+  getAnchorOwner: () => anchorEl ?? rectAnchorOwnerEl,
 		panel,
 		anchorEl,
 		close: () => undefined,
@@ -868,6 +870,14 @@ function hasDisconnectedAnchor(record: FloatingPanelRecord): boolean {
 function isTopMostFloatingPanel(record: FloatingPanelRecord): boolean {
 	const records = Array.from(activeFloatingPanels);
 	return records[records.length - 1] === record;
+}
+
+/** View virtualization must retain an anchor while its picker owns a draft. */
+export function hasFloatingPanelForRoot(root: Node): boolean {
+ for (const record of activeFloatingPanels) {
+  if (containsNode(root, record.getAnchorOwner())) return true;
+ }
+ return false;
 }
 
 export function closeFloatingPanelsForRoot(root: ParentNode): boolean {
