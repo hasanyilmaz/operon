@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3751,
-  "keyFingerprint": "c21852987fcf5349c5de67f9737d568b70ec4856de916a41e195de1de2fe3d01",
+  "keyCount": 3754,
+  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1810,7 +1810,10 @@
       "kanbanCardImageSource_taskGalleryLast": "Galleria attività — Ultima immagine",
       "kanbanCardImageSource_taskImage": "Immagine attività",
       "kanbanCellHeight": "Altezza delle celle",
+      "kanbanCellHeightDecrease": "Riduci l’altezza delle celle",
       "kanbanCellHeightDesc": "Altezza di ogni cella di corsia espansa, inclusi spazi interni e bordi. Le bacheche classiche senza corsie occupano l’altezza disponibile del pannello.",
+      "kanbanCellHeightIncrease": "Aumenta l’altezza delle celle",
+      "kanbanCellHeightSaveFailed": "Impossibile salvare l’altezza delle celle.",
       "kanbanCollapseEmptyColumns": "Comprimi colonne vuote",
       "kanbanCollapseEmptyColumnsDesc": "Comprimi automaticamente le colonne pipeline che attualmente non hanno attività corrispondenti.",
       "kanbanCollapseEmptySwimlanes": "Comprimi corsie vuote",
@@ -3796,5 +3799,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "ff255851d2583acaf54032d8f530268c20c3fcad960b847d46654cd477afc774"
+  "sourceVersion": "c584df13c368e241d08f8f1bdf981d813529c3696daf5eb1b55b9db4a1c626fa"
 }

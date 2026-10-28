@@ -431,6 +431,9 @@
 		"introDock": "Здесь можно разрешить конфликты дублирующихся operonId. Это окно можно закрыть в любой момент и снова открыть из палитры команд или уведомления в доке состояния."
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "Увеличить высоту ячеек",
+		"kanbanCellHeightDecrease": "Уменьшить высоту ячеек",
+		"kanbanCellHeightSaveFailed": "Не удалось сохранить высоту ячеек.",
 		"excalidrawPropertyTargetRequired": "Перетащите на одну неперекрытую карточку задачи Operon на этом рисунке.",
 		"visualPropertyPool": "Property Pool для Canvas и Excalidraw",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",

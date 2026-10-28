@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3751,
-  "keyFingerprint": "c21852987fcf5349c5de67f9737d568b70ec4856de916a41e195de1de2fe3d01",
+  "keyCount": 3754,
+  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1810,7 +1810,10 @@
       "kanbanCardImageSource_taskGalleryLast": "任務圖庫 — 最後一張圖片",
       "kanbanCardImageSource_taskImage": "任務圖片",
       "kanbanCellHeight": "儲存格高度",
+      "kanbanCellHeightDecrease": "減少儲存格高度",
       "kanbanCellHeightDesc": "每個展開的泳道儲存格的高度，包括內距和框線。沒有泳道的傳統看板會填滿面板的可用高度。",
+      "kanbanCellHeightIncrease": "增加儲存格高度",
+      "kanbanCellHeightSaveFailed": "無法儲存儲存格高度。",
       "kanbanCollapseEmptyColumns": "摺疊空列",
       "kanbanCollapseEmptyColumnsDesc": "自動摺疊當前沒有匹配任務的工作流列。",
       "kanbanCollapseEmptySwimlanes": "摺疊空泳道",
@@ -3796,5 +3799,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "49430c1a1520c091ae17bacfe4e898d70fe0a29969f5de332ecd760afe19ac4a"
+  "sourceVersion": "ff85c11bb4ae69700acc379d12293efdf3dab38dbb17ad997487c5411d9b38bb"
 }

@@ -431,6 +431,9 @@
 		"introDock": "在此解決重複的 operonId 衝突。你可以隨時關閉此視窗，並透過命令面板或狀態停靠列提醒重新開啟。"
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "增加儲存格高度",
+		"kanbanCellHeightDecrease": "減少儲存格高度",
+		"kanbanCellHeightSaveFailed": "無法儲存儲存格高度。",
 		"excalidrawPropertyTargetRequired": "請放到此繪圖中一張未被遮擋的 Operon 任務卡片上。",
 		"visualPropertyPool": "Canvas 和 Excalidraw Property Pool",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",

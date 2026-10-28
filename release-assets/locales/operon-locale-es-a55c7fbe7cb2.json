@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3751,
-  "keyFingerprint": "c21852987fcf5349c5de67f9737d568b70ec4856de916a41e195de1de2fe3d01",
+  "keyCount": 3754,
+  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1810,7 +1810,10 @@
       "kanbanCardImageSource_taskGalleryLast": "Galería de tareas — Última imagen",
       "kanbanCardImageSource_taskImage": "Imagen de tarea",
       "kanbanCellHeight": "Altura de celda",
+      "kanbanCellHeightDecrease": "Reducir la altura de las celdas",
       "kanbanCellHeightDesc": "Altura de cada celda de carril expandida, incluidos el relleno y los bordes. Los tableros clásicos sin carriles ocupan la altura disponible del panel.",
+      "kanbanCellHeightIncrease": "Aumentar la altura de las celdas",
+      "kanbanCellHeightSaveFailed": "No se pudo guardar la altura de las celdas.",
       "kanbanCollapseEmptyColumns": "Contraer columnas vacías",
       "kanbanCollapseEmptyColumnsDesc": "Contraer automáticamente las columnas del flujo de trabajo que actualmente no tienen tareas coincidentes.",
       "kanbanCollapseEmptySwimlanes": "Contraer carriles vacíos",
@@ -3796,5 +3799,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3e93bff95db1cafcffafc01115898b76145dbea393876b7ee9823da969e1028c"
+  "sourceVersion": "3997ff8cb72d6b6c93576c83ebfc81e38927597f029964dda105f1854161cff6"
 }

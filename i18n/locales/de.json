@@ -431,6 +431,9 @@
 		"introDock": "Löse hier Konflikte durch doppelte operonIds. Du kannst dieses Fenster jederzeit schließen und über die Befehlspalette oder die Status-Dock-Warnung wieder öffnen."
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "Zellenhöhe erhöhen",
+		"kanbanCellHeightDecrease": "Zellenhöhe verringern",
+		"kanbanCellHeightSaveFailed": "Die Zellenhöhe konnte nicht gespeichert werden.",
 		"excalidrawPropertyTargetRequired": "Auf eine einzelne, unverdeckte Operon-Aufgabenkarte in dieser Zeichnung ziehen.",
 		"visualPropertyPool": "Canvas und Excalidraw Property Pool",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",

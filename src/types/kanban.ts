@@ -6,7 +6,7 @@ import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { IndexedTask } from './fields';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './related-views';
-import type { FilterSet } from './settings';
+import type { FilterSet, KanbanCellHeightPx } from './settings';
 
 export type BuiltInKanbanSwimlaneBy =
 	| 'priority'
@@ -156,6 +156,7 @@ export interface KanbanCardDropCommittedResult {
 export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
 export interface KanbanViewCallbacks {
+	onSetCellHeight?: (height: KanbanCellHeightPx) => Promise<void>;
 	onSelectPresetFilter?: (presetId: string, expectedFilterSetId: string | null, filterSetId: string | null) => Promise<void>;
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;

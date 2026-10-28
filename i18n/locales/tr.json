@@ -431,6 +431,9 @@
 		"introDock": "Çakışan operonId kopyalarını burada çöz. Bu pencereyi istediğin zaman kapatıp komut paletinden veya durum dock’u uyarısından tekrar açabilirsin."
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "Hücre yüksekliğini artır",
+		"kanbanCellHeightDecrease": "Hücre yüksekliğini azalt",
+		"kanbanCellHeightSaveFailed": "Hücre yüksekliği kaydedilemedi.",
 		"excalidrawPropertyTargetRequired": "Bu çizimde üzeri örtülmemiş tek bir Operon görev kartına bırakın.",
 		"visualPropertyPool": "Canvas ve Excalidraw Property Pool",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",

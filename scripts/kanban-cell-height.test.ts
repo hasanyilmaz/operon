@@ -34,6 +34,78 @@ function productionClass(file: string, className: string, names: string[], deps:
 }
 const targetSnapshot = () => ({ settings: settings(), settingsVersion: CURRENT_SETTINGS_VERSION, dataPackageSchemaVersion: 2, canonicalWritesSuspended: false, canonicalWriteSuspensionReason: null });
 
+function heightControlsHarness() {
+ const s = settings(), buttons: Array<{dataset: Record<string,string>; disabled: boolean; ariaDisabled?:string; label?: string; icon?: string; click?: () => void; focus:()=>void}> = [];
+ let focused: typeof buttons[number] | null = null;
+ const notices: string[] = [];
+ const Subject = productionClass('src/ui/kanban/kanban-view.ts', 'KanbanView',
+  ['renderCellHeightControls', 'syncCellHeightControls', 'restoreCellHeightControlFocus', 'changeCellHeight'], {
+   KANBAN_CELL_HEIGHT_OPTIONS, normalizeKanbanCellHeightPx, t: (_group:string,key:string)=>key,
+   setIcon: (button:{icon:string},icon:string)=>{button.icon=icon;},
+   setAccessibleLabelWithoutTooltip: (button:{label:string},label:string)=>{button.label=label;},
+   bindOperonHoverTooltip: ()=>{},
+   Notice: class {constructor(message:string){notices.push(message);}},
+   console: {error:()=>{}},
+  });
+ const subject = new Subject(), writes:number[]=[];
+ subject.getSettings=()=>s;
+ subject.contentEl={querySelectorAll:()=>buttons,querySelector:()=>focused};
+ subject.callbacks={onSetCellHeight:async(height:typeof s.kanbanCellHeightPx)=>{writes.push(height);s.kanbanCellHeightPx=height;}};
+ const board={createDiv:()=>({setAttribute:()=>{},createEl:(_tag:string,options:{attr:Record<string,string>})=>{
+  const button={dataset:{heightDirection:options.attr['data-height-direction']},disabled:false,ariaDisabled:'false',
+   focus:()=>{focused=button;},setAttribute:(_key:string,value:string)=>{button.ariaDisabled=value;},
+   addEventListener:(_event:string,fn:()=>void)=>{button.click=fn;},click:undefined as (()=>void)|undefined};
+  buttons.push(button);return button;
+ }})};
+ return {subject,s,buttons,board,writes,notices,getFocused:()=>focused};
+}
+
+test('floating height controls mount without writes, use plus/minus order and expose the current global value',()=>{
+ const h=heightControlsHarness();h.subject.renderCellHeightControls(h.board);
+ assert.deepEqual(h.buttons.map(button=>button.icon),['plus','minus']);
+ assert.ok(h.buttons.every(button=>!button.disabled && button.label?.includes('450 px')));
+ assert.deepEqual(h.writes,[]);
+ h.s.kanbanCellHeightPx=550;h.subject.syncCellHeightControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[true,false]);
+ h.s.kanbanCellHeightPx=350;h.subject.syncCellHeightControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[false,true]);
+});
+test('floating controls step through existing choices, read the latest setting and never write beyond the boundaries',async()=>{
+ const h=heightControlsHarness();h.subject.renderCellHeightControls(h.board);
+ await h.subject.changeCellHeight(1);assert.equal(h.s.kanbanCellHeightPx,500);
+ await h.subject.changeCellHeight(1);await h.subject.changeCellHeight(1);assert.equal(h.s.kanbanCellHeightPx,550);
+ h.s.kanbanCellHeightPx=400;await h.subject.changeCellHeight(-1);await h.subject.changeCellHeight(-1);
+ assert.equal(h.s.kanbanCellHeightPx,350);assert.deepEqual(h.writes,[500,550,350]);
+});
+test('a pending save rejects repeat activation and replacement controls become usable after settlement',async()=>{
+ const h=heightControlsHarness();let finish!:()=>void,calls=0;
+ h.subject.callbacks.onSetCellHeight=async(height:typeof h.s.kanbanCellHeightPx)=>{calls++;await new Promise<void>(resolve=>{finish=resolve;});h.s.kanbanCellHeightPx=height;};
+ h.subject.renderCellHeightControls(h.board);
+ const pending=h.subject.changeCellHeight(1);await h.subject.changeCellHeight(1);assert.equal(calls,1);
+ assert.equal(h.s.kanbanCellHeightPx,450);assert.ok(h.buttons.every(b=>b.ariaDisabled==='true'));
+ h.buttons.length=0;h.subject.renderCellHeightControls(h.board);assert.ok(h.buttons.every(b=>b.ariaDisabled==='true'));
+ finish();await pending;assert.equal(h.s.kanbanCellHeightPx,500);assert.ok(h.buttons.every(b=>!b.disabled&&b.ariaDisabled==='false'));
+});
+test('keyboard focus stays through saves and switches to the usable control only at a boundary',async()=>{
+ const h=heightControlsHarness();h.subject.renderCellHeightControls(h.board);h.buttons[0].focus();
+ await h.subject.changeCellHeight(1);assert.equal(h.getFocused(),h.buttons[0]);
+ await h.subject.changeCellHeight(1);assert.equal(h.getFocused(),h.buttons[1]);
+ assert.equal(h.s.kanbanCellHeightPx,550);
+ assert.match(view,/if \(heightControlDirection\) this\.restoreCellHeightControlFocus\(heightControlDirection\)/);
+});
+test('failed height save keeps the actual value, reports failure and permits an explicit retry',async()=>{
+ const h=heightControlsHarness();const commit=h.subject.callbacks.onSetCellHeight;
+ h.subject.callbacks.onSetCellHeight=async()=>{throw new Error('injected save fault');};
+ h.subject.renderCellHeightControls(h.board);await h.subject.changeCellHeight(1);
+ assert.equal(h.s.kanbanCellHeightPx,450);assert.deepEqual(h.writes,[]);assert.equal(h.notices.length,1);assert.ok(h.buttons.every(b=>!b.disabled));
+ h.subject.callbacks.onSetCellHeight=commit;await h.subject.changeCellHeight(1);assert.deepEqual(h.writes,[500]);
+});
+test('floating controls are swimlane-only, live outside the scrolling viewport, and use existing safe global persistence',()=>{
+ assert.match(view,/if \(hasSwimlanes\) this\.renderCellHeightControls\(boardEl\)/);
+ assert.match(rule('.operon-kanban-cell-height-controls'),/position: absolute/);
+ assert.match(view,/boardEl\.style\.setProperty\('--operon-kanban-header-height',/);
+ const main=readFileSync('main.ts','utf8');
+ assert.match(main,/onSetCellHeight: async height => \{\s*await this\.storage\.updateSettings\(\{ kanbanCellHeightPx: height \}\);\s*this\.refreshKanbanLeaves\(true\);/);
+});
+
 test('the global default and dropdown have exactly five pixel options', () => {
  assert.deepEqual(KANBAN_CELL_HEIGHT_OPTIONS, [350,400,450,500,550]);
  assert.equal(DEFAULT_SETTINGS.kanbanCellHeightPx,450);

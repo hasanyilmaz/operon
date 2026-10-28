@@ -431,6 +431,9 @@
 		"introDock": "Resolve duplicate operonId conflicts here. You can close this window anytime and reopen it from the command palette or status dock alert."
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "Increase cell height",
+		"kanbanCellHeightDecrease": "Decrease cell height",
+		"kanbanCellHeightSaveFailed": "Cell height could not be saved.",
 		"excalidrawPropertyTargetRequired": "Drop onto one unobscured Operon task card in this drawing.",
 		"visualPropertyPool": "Canvas and Excalidraw Property Pool",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",

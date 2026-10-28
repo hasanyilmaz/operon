@@ -431,6 +431,9 @@
 		"introDock": "重複した operonId の競合をここで解決します。このウィンドウはいつでも閉じることができ、コマンドパレットまたはステータスドックの通知から再度開けます。"
 	},
 	"settings": {
+		"kanbanCellHeightIncrease": "セルの高さを増やす",
+		"kanbanCellHeightDecrease": "セルの高さを減らす",
+		"kanbanCellHeightSaveFailed": "セルの高さを保存できませんでした。",
 		"excalidrawPropertyTargetRequired": "この図内の、他の要素に隠れていない1枚のOperonタスクカードにドロップしてください。",
 		"visualPropertyPool": "CanvasとExcalidrawのProperty Pool",
 		"excalidrawPropertyPool": "Excalidraw Property Pool",
