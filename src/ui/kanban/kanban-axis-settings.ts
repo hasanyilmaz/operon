@@ -49,6 +49,7 @@ export function renderKanbanAxisSettings(options: {
 	preparePicker?: (property?: import('../../core/kanban-axis-model').KanbanPropertyReference) => Promise<KanbanPickerData | null>;
 	onPickerClose?: () => void;
 	onPickerPreparationEnd?: () => void;
+	onPropertyPickerOpen?: () => void;
 	pinnedCache?: import('../../storage/pinned-cache').PinnedCache; filterEvaluationOptions?: FilterEvaluationOptions; refresh: () => void; retainPicker: (close: () => void) => void;
 }): void {
 	const { app, container, host, side, preset, settings, refresh, retainPicker } = options;
@@ -93,6 +94,7 @@ export function renderKanbanAxisSettings(options: {
 	const selected = axis?.kind === 'status' ? access.resolve({ source: 'managed', key: 'status', type: 'text' }) : axis ? access.resolve(axis.property) : null;
 	const label = selected?.ok ? propertyLabel(selected.field) : axis?.kind === 'property' ? axis.property.key : t('settings', 'kanbanAxisDisabled');
 	new Setting(container).setName(t('settings', 'kanbanAxisProperty')).addButton(button => button.setButtonText(label).onClick(() => {
+		options.onPropertyPickerOpen?.();
 		// Property selection needs only the catalog, never task values or scope counts.
 		const fields = access.fields.map(field => ({ field: field.identity, label: propertyLabel(field), descriptor: field }));
 		retainPicker(showSearchableFieldPicker(button.buttonEl, {

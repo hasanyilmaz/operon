@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
-- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned.
+- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned.
 
-- Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position; scrolling over an empty cell or past its contents continues through the board.
+- Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position and active editing or drag operations; scrolling over an empty cell or past its contents continues through the board.
 
 - **Kanban cell actions** apply destination fields together when moving, placing, or creating a task. Moving into a list group adds its value while preserving existing memberships.
 
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local checks, **35/35** axis-settings tests, **18/18** two-axis integration tests, **91/91** settings-preservation tests, **48/48** card-retention tests, **26/26** isolated browser checks, and **9/9** wheel checks passed for the integrated Kanban presets.
+- Full local checks, **5,266/5,266** local regression checks, **259/259** focused Kanban integration checks, **97/97** backup tests, **91/91** settings-preservation tests, **49/49** card-retention tests, **27/27** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
 
 - Full local checks, **22/22** Kanban virtualization tests, **23/23** scroll tests, **48/48** card-retention tests, **111/111** local Kanban regressions, **26/26** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
 

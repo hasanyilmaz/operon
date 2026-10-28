@@ -94,6 +94,11 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		this.renderPreservingScroll();
 	}
 
+	private cancelPendingPicker(): number {
+		this.pickerSession?.cancelPending();
+		return ++this.pickerRequest;
+	}
+
 	private onPickerClosed(): void {
 		this.pickerClose = null;
 		if (!this.nativeRefreshPending) return;
@@ -188,8 +193,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			host: contentEl, side, preset, settings, tasks,
 			filterEvaluationOptions, pinnedCache: filterDeps?.pinnedCache,
 			preparePicker: async property => {
-				const request = ++this.pickerRequest;
-				this.pickerSession?.cancelPending();
+				const request = this.cancelPendingPicker();
 				this.pickerPreparing++;
 				return await this.pickerSession?.prepareLatest(property, () => this.isOpen && request === this.pickerRequest) ?? null;
 			},
@@ -198,6 +202,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				if (this.nativeRefreshPending && !this.pickerClose) this.refreshNativePickerData();
 			},
 			onPickerClose: () => this.onPickerClosed(),
+			onPropertyPickerOpen: () => { this.cancelPendingPicker(); },
 			refresh: () => this.renderPreservingScroll(), retainPicker: close => { this.pickerClose?.(); this.pickerClose = close; },
 		});
 

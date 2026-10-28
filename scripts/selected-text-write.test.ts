@@ -8,7 +8,7 @@ import { compactNativeInline, persistNativePropertySource, restoreNativeProperty
 import { OperonIndexer } from '../src/indexer/indexer';
 import { TaskWriter } from '../src/core/task-writer';
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/types/settings';
-import { findInlinePropertyTask, prepareMappedInlineProperties, readParsedInlinePropertyProjection } from '../src/core/inline-property-source';
+import { findInlinePropertyTask, patchInlineProperties, prepareMappedInlineProperties, readParsedInlinePropertyProjection } from '../src/core/inline-property-source';
 import { resolveInlinePropertyDefinition } from '../src/core/inline-property-definitions';
 import { isEditableTableTaskFieldKey, normalizeTableTaskFieldKey } from '../src/ui/table/table-field-catalog';
 import { readFileTaskPropertyDocument } from '../src/core/file-task-property-draft';
@@ -20,7 +20,7 @@ export function registerSelectedTextWriteTests(test: (name: string, run: () => P
  const start = source.indexOf('// UI Text edits use the existing typed transaction');
  const end = source.indexOf('const writerStartedAt', start);
  const body = ts.transpileModule(`async function prepare(task: any, normalizedPayload: any, options: any) { const operonId = task.operonId; ${source.slice(start,end)} return options; }`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const prepare = new Function('TFile','findInlinePropertyTask','prepareMappedInlineProperties','readParsedInlinePropertyProjection','resolveInlinePropertyDefinition',body+';return prepare;')(TFile,findInlinePropertyTask,prepareMappedInlineProperties,readParsedInlinePropertyProjection,resolveInlinePropertyDefinition);
+ const prepare = new Function('TFile','findInlinePropertyTask','prepareMappedInlineProperties','readParsedInlinePropertyProjection','resolveInlinePropertyDefinition','patchInlineProperties',body+';return prepare;')(TFile,findInlinePropertyTask,prepareMappedInlineProperties,readParsedInlinePropertyProjection,resolveInlinePropertyDefinition,patchInlineProperties);
  test('W034 native Text rescan cache reads only marked source and rejects concurrent changes',async()=>{
   const indexSource=readFileSync('src/indexer/indexer.ts','utf8');
   const begin=indexSource.indexOf('const cachedInlineSources =');
@@ -68,7 +68,8 @@ export function registerSelectedTextWriteTests(test: (name: string, run: () => P
   const file = Object.assign(new TFile(...(['Text.md'] as unknown as [])),{path:'Text.md',basename:'Text',extension:'md',stat:{ctime:1,mtime:1,size:content.length}});
   const task:any={operonId:'text034',description:'Task',checkbox:'open',tags:[],fieldValues:{customText:'old'},primary:{filePath:file.path,lineNumber:0,format}};
   const app:any={metadataCache:{getFileCache:()=>({listItems:[{task:' '}]} )},vault:{modify:async(_file:unknown,next:string)=>{content=next;writes++;},getAbstractFileByPath:()=>file,read:async()=>content,process:async(_file:unknown,transform:(s:string)=>string)=>{const next=transform(content);if(next!==content){content=next;writes++;}return content;}},fileManager:{processFrontMatter:async(_file:unknown,transform:(fm:any)=>void)=>{const yaml=await import('yaml');const doc=readFileTaskPropertyDocument(content)!;transform(doc.frontmatter);content='---\n'+yaml.stringify(doc.frontmatter)+'---\n'+doc.body;writes++;}}};
-  const host:any={settings:{...DEFAULT_SETTINGS,keyMappings:mappings},storage:{getCommittedInlinePropertyDefinitions:()=>definitions},app};
+  const host:any={settings:{...DEFAULT_SETTINGS,keyMappings:mappings},storage:{getCommittedInlinePropertyDefinitions:()=>definitions,
+   ensureInlinePropertyDefinitions:async(requested:unknown,canCommit?:()=>boolean)=>{assert.notEqual(canCommit?.(),false);assert.deepEqual(requested,definitions.entries);return definitions;}},app};
   const writer=new TaskWriter(app,{getTask:()=>task,hasDuplicateOperonIdConflict:()=>false,scheduleReindex:()=>{}} as any,mappings,{getInlinePropertyDefinitions:()=>definitions,prepareInlineProperties:async()=>{if(normalize) publishNormalized.call(host);return definitions;}});
   const read=()=>format==='yaml'?readFileTaskPropertyDocument(content)!.frontmatter['Custom Text']:readParsedInlinePropertyProjection(findInlinePropertyTask(content,file.path,task.operonId,mappings)!.parsed!,{'Custom Text':'text'},mappings,definitions).properties[0].value;
   const reindex=async()=>{const settings={...DEFAULT_SETTINGS,keyMappings:mappings,inlinePropertyDefinitions:definitions};const indexer=new OperonIndexer(app,{getSettings:()=>settings} as any);await (indexer as any).indexFile(file,undefined,undefined,undefined,mappings,settings,content);task.fieldValues={...indexer.getTask(task.operonId)!.fieldValues};};

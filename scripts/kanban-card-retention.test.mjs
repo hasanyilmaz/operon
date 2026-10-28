@@ -529,3 +529,14 @@ test('a hidden board cannot overwrite saved scroll while an anchor expires', () 
  subject.restoreBoardScrollState(board);
  assert.equal(board.scrollLeft, 1200); assert.equal(board.scrollTop, 4800);
 });
+
+// Exercise the production retention predicate against many appearances of one task.
+test('pending task copies do not pin every visited cell; only note origin and drop endpoints remain',()=>{
+ const js=ts.transpileModule(`class Interaction { ${method('shouldKeepVirtualCell')} }`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const Interaction=new Function('hasFloatingPanelForRoot','buildKanbanCellKey',`${js};return Interaction;`)(()=>false,(c,r)=>`${c}::${r}`);
+ const subject=Object.assign(new Interaction(),{virtualDropCells:new Map([['pending',{source:'c0::r0',target:'c1::r1'}]]),activeTaskNotePopoverTaskId:'shared',activeTaskNoteCellKey:'c2::r2',pendingTaskNoteOpen:{cellKey:'c3::r3'}});
+ const cells=Array.from({length:200},(_,i)=>({ownerDocument:{activeElement:null},dataset:{kanbanStatusId:'c'+i,kanbanLaneKey:'r'+i},matches:()=>false,querySelector:selector=>selector.includes('is-drop-pending')||selector.includes('data-operon-task-id')?{}:null}));
+ assert.deepEqual(cells.map((c,i)=>subject.shouldKeepVirtualCell(c)?i:null).filter(i=>i!==null),[0,1,2,3]);
+ subject.virtualDropCells.clear();subject.activeTaskNoteCellKey=null;subject.pendingTaskNoteOpen=null;
+ assert.ok(cells.every(c=>!subject.shouldKeepVirtualCell(c)));
+});

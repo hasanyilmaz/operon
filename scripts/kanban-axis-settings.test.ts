@@ -33,10 +33,11 @@ function ui(){const settings=migrateSettings(structuredClone(DEFAULT_SETTINGS)),
 	const app={vault:{configDir:'.obsidian',adapter:{exists:async()=>false},getMarkdownFiles:()=>[]},metadataCache:{getFileCache:()=>null}} as unknown as App;
 	const host={createEl(){}} as unknown as HTMLElement;
 	let side:'columns'|'swimlanes'='columns';let preparePicker: Parameters<typeof renderKanbanAxisSettings>[0]['preparePicker'];
-	const render=()=>{rows.length=0;renderKanbanAxisSettings({app,container:host,host,side,preset,settings,tasks,preparePicker,refresh:render,retainPicker(){}});};
+	let onPropertyPickerOpen: (()=>void)|undefined;
+	const render=()=>{rows.length=0;renderKanbanAxisSettings({app,container:host,host,side,preset,settings,tasks,preparePicker,onPropertyPickerOpen,refresh:render,retainPicker(){}});};
 	const choose=(key:string)=>{rows.find(r=>r.name==='Property')!.controls[0].click();const option=axisPicker?.fields?.find(f=>f.descriptor.reference.key===key);assert.ok(option);axisPicker!.onSelect(option);};
 	const current=()=>{const r=resolveKanbanAxes(preset,settings.keyMappings);assert.ok(r.ok);return r.axes;};
-	render();return {app,tasks,settings,preset,original,render,choose,current,setPrepare(fn:typeof preparePicker){preparePicker=fn;render();},setSide(value:typeof side){side=value;render();},add(raw:string){rows.find(r=>r.name==='Add value')!.controls[0].click();const option=axisPicker!.options.find(o=>String(o.typed.value)===raw);assert.ok(option);axisPicker!.onSelect(option);}};
+	render();return {app,tasks,settings,preset,original,render,choose,current,setPropertyOpen(fn:()=>void){onPropertyPickerOpen=fn;render();},setPrepare(fn:typeof preparePicker){preparePicker=fn;render();},setSide(value:typeof side){side=value;render();},add(raw:string){rows.find(r=>r.name==='Add value')!.controls[0].click();const option=axisPicker!.options.find(o=>String(o.typed.value)===raw);assert.ok(option);axisPicker!.onSelect(option);}};
 }
 test('Status reveals pipeline on both axes; changing one property leaves the other intact',()=>{
 	const f=ui();assert.ok(rows.some(r=>r.controls.some(c=>Object.keys(c.items).length>0)));f.choose('estimate');f.add('1');
@@ -271,3 +272,18 @@ test('native readiness waits for preparation and picker close instead of cancell
  modal.onPickerClosed();await Promise.resolve();assert.equal(renders,1);
  modal.isOpen=false;modal.refreshNativePickerData();assert.equal(renders,1);
 });
+
+ test('Property supersedes a pending Add value without waiting or reopening stale choices',async()=>{
+ const f=ui();f.choose('tags');
+ const session=new KanbanPickerSession(f.app,()=>({settings:f.settings,tasks:f.tasks}),()=>1,async()=>{});
+ const data=await session.prepare({source:'managed',key:'tags',type:'list'});assert.ok(data);
+ let finish:(value:typeof data)=>void=()=>{};session.prepare=()=>new Promise(resolve=>{finish=resolve;});
+ const modal=Object.assign(Object.create(KanbanPresetQuickSettingsModal.prototype),{pickerSession:session,pickerRequest:0});
+ let pending:Promise<unknown>=Promise.resolve();
+ f.setPrepare(property=>{const request=modal.cancelPendingPicker();const result=session.prepareLatest(property,()=>request===modal.pickerRequest);pending=result;return result;});
+ f.setPropertyOpen(()=>modal.cancelPendingPicker());
+ const valueButton=rows.find(r=>r.name==='Add value')!.controls[0];valueButton.click();assert.equal(valueButton.disabled,true);
+ rows.find(r=>r.name==='Property')!.controls[0].click();const opened=axisPicker;assert.ok(opened!.fields);
+ finish(data);await pending;await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(axisPicker,opened);assert.equal(valueButton.disabled,false);session.dispose();
+ });

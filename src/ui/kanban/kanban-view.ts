@@ -520,11 +520,13 @@ export class KanbanView extends ItemView {
 	private readonly cellQuickAddCleanups = new WeakMap<HTMLElement, () => void>();
 	private activeTaskNotePopoverClose: (() => void) | null = null;
 	private activeTaskNotePopoverTaskId: string | null = null;
+	private activeTaskNoteCellKey: string | null = null;
 	private taskNoteShouldReturnFocus = true;
 	private pendingTaskNoteOpen: {
 		anchor: DOMRect;
 		task: IndexedTask;
 		openerSelector: string;
+		cellKey: string | null;
 	} | null = null;
 	private taskNoteScrollSuppressionFrame: { win: Window; id: number } | null = null;
 
@@ -2059,11 +2061,11 @@ export class KanbanView extends ItemView {
 		if ((active && cell.contains(active)) || hasFloatingPanelForRoot(cell)) return true;
 		const key = buildKanbanCellKey(cell.dataset.kanbanStatusId ?? '', cell.dataset.kanbanLaneKey ?? '');
 		for (const pending of this.virtualDropCells.values()) if (pending.source === key || pending.target === key) return true;
-		if (cell.matches('.is-drop-target') || cell.querySelector('.is-drop-pending, .is-mobile-touch-dragging')) return true;
+		if (cell.matches('.is-drop-target') || cell.querySelector('.is-mobile-touch-dragging')) return true;
 		const source = this.draggedCardContext;
 		if (source && cell.dataset.kanbanStatusId === source.sourceStatusId && cell.dataset.kanbanLaneKey === source.sourceLaneKey) return true;
 		if (this.hoverMenuAnchor && cell.contains(this.hoverMenuAnchor) && this.hoverMenu.isActive(this.hoverMenuAnchor.closest<HTMLElement>('[data-operon-task-id]')?.dataset.operonTaskId ?? '')) return true;
-		return !!this.activeTaskNotePopoverTaskId && !!cell.querySelector(`[data-operon-task-id="${CSS.escape(this.activeTaskNotePopoverTaskId)}"]`);
+		return key === this.activeTaskNoteCellKey || key === this.pendingTaskNoteOpen?.cellKey;
 	}
 
 	private cleanupVirtualCardBindings(root: HTMLElement): void {
@@ -2764,8 +2766,11 @@ export class KanbanView extends ItemView {
 		anchor: HTMLElement | DOMRect,
 		task: IndexedTask,
 		openerSelector?: string,
+		sourceCellKey?: string | null,
 	): void {
 		const anchorEl = asHTMLElement(anchor);
+		const cell = anchorEl?.closest<HTMLElement>('.operon-kanban-cell');
+		const cellKey = sourceCellKey ?? (cell ? buildKanbanCellKey(cell.dataset.kanbanStatusId ?? '', cell.dataset.kanbanLaneKey ?? '') : null);
 		const resolvedOpenerSelector = openerSelector
 			?? (anchorEl?.matches('.operon-kanban-card-note-preview')
 				? '.operon-kanban-card-note-preview'
@@ -2776,7 +2781,7 @@ export class KanbanView extends ItemView {
 			&& this.activeTaskNotePopoverTaskId !== task.operonId
 		) {
 			const rect = anchorEl ? anchorEl.getBoundingClientRect() : anchor as DOMRect;
-			this.pendingTaskNoteOpen = { anchor: rect, task, openerSelector: resolvedOpenerSelector };
+			this.pendingTaskNoteOpen = { anchor: rect, task, openerSelector: resolvedOpenerSelector, cellKey };
 			this.requestActiveTaskNotePopoverClose(false);
 			return;
 		}
@@ -2803,11 +2808,12 @@ export class KanbanView extends ItemView {
 				if (this.activeTaskNotePopoverClose === closePopover) {
 					this.activeTaskNotePopoverClose = null;
 					this.activeTaskNotePopoverTaskId = null;
+					this.activeTaskNoteCellKey = null;
 				}
 				const pending = this.pendingTaskNoteOpen;
 				this.pendingTaskNoteOpen = null;
 				if (pending) {
-					this.openTaskNotePopover(pending.anchor, pending.task, pending.openerSelector);
+					this.openTaskNotePopover(pending.anchor, pending.task, pending.openerSelector, pending.cellKey);
 					return;
 				}
 				if (this.taskNoteShouldReturnFocus) {
@@ -2818,6 +2824,7 @@ export class KanbanView extends ItemView {
 		});
 		this.activeTaskNotePopoverClose = closePopover;
 		this.activeTaskNotePopoverTaskId = task.operonId;
+		this.activeTaskNoteCellKey = cellKey;
 	}
 
 	private restoreTaskNoteTriggerFocus(operonId: string, openerSelector: string): void {
