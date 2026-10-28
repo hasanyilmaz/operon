@@ -937,6 +937,7 @@ export class FilterSetModal extends Modal {
 	private getFieldOptions(
 		includeConditionOnly = false,
 		includeHappensOn = false,
+		includeSortOnly = false,
 	): FilterFieldPickerOption[] {
 		const pseudoFields: FilterFieldPickerOption[] = [
 			buildFilterFieldPickerOption('checkbox', t('filterSets', 'fieldCheckbox'), 'checkbox', 'workflow', 'square-check-big'),
@@ -948,8 +949,10 @@ export class FilterSetModal extends Modal {
 		if (includeConditionOnly || includeHappensOn) {
 			pseudoFields.push(buildFilterFieldPickerOption('happensOn', t('filterSets', 'fieldHappensOn'), 'date', 'scheduling', 'calendar'));
 		}
-		if (includeConditionOnly) {
+		if (includeConditionOnly || includeSortOnly) {
 			pseudoFields.push(buildFilterFieldPickerOption('repeatOccurrenceDate', t('taskEditor', 'repeatReferenceDateField'), 'date', 'scheduling', 'calendars'));
+		}
+		if (includeConditionOnly) {
 			pseudoFields.push(buildFilterFieldPickerOption('trackedOn', t('filterSets', 'fieldTrackedOn'), 'date', 'scheduling', 'timer'));
 			pseudoFields.push(buildFilterFieldPickerOption('projectTree', t('filterSets', 'fieldProjectTree'), 'projectTree', 'dependencies', 'git-branch'));
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
@@ -2015,7 +2018,7 @@ export class FilterSetModal extends Modal {
 		const sep = container.createDiv('operon-filter-section operon-filter-sort-section');
 
 		const groupFieldOptions = this.getFieldOptions(false, true);
-		const sortFieldOptions = this.getFieldOptions(false, true);
+		const sortFieldOptions = this.getFieldOptions(false, true, true);
 		const groupOptions: FilterFieldPickerOption[] = [
 			{
 				field: '',

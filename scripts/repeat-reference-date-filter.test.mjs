@@ -48,14 +48,25 @@ const filter = cond => ({ id: 'reference-filter', name: 'Reference date', rootGr
 const task = (date, repeat = '') => ({ operonId: 'task', description: 'Task', checkbox: 'open', tags: [], primary: { filePath: 'Task.md', format: 'inline', lineNumber: 0 }, fieldValues: { repeat, [key]: date, dateScheduled: today, dateDue: today, dateStarted: today } });
 const matches = (cond, candidate, date = today) => h.evaluateFilterSet(filter(cond), [candidate], undefined, undefined, undefined, { today: date }).length === 1;
 
-test('condition field shares the Table label/icon/type and stays out of filter sort/group choices', () => {
+test('reference date shares the Table label/icon/type in conditions and sorting but not grouping', () => {
  const fields = getFieldOptions.call(subject, true);
  const options = fields.filter(field => field.field === key); assert.equal(options.length, 1);
  const table = h.getTableTaskField(key, h.DEFAULT_SETTINGS);
  assert.deepEqual([options[0].label, options[0].icon, options[0].type, options[0].group], [table.label, 'calendars', 'date', 'scheduling']);
  assert.equal(h.DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === key).isInternal, true);
  for (const happensOn of [false, true]) assert.equal(getFieldOptions.call(subject, false, happensOn).some(field => field.field === key), false);
+ assert.deepEqual(getFieldOptions.call(subject, false, true, true).filter(field => field.field === key), options);
+ assert.match(read(modalFile), /const sortFieldOptions = this\.getFieldOptions\(false, true, true\)/);
  assert.equal(fields.some(field => field.field === 'repeatSeriesId'), false);
+});
+test('reference date sorts file and inline tasks in both directions and survives settings normalization', () => {
+ const tasks = ['2026-10-20','2026-10-01','2026-10-12'].map((date,index) => ({...task(date),operonId:String(index),primary:{...task(date).primary,format:index===1?'file':'inline'}}));
+ for(const [order,expected] of [['asc',['1','2','0']],['desc',['0','2','1']]]) {
+  const preset = h.normalizeFilterSet({...filter(condition()),sorts:[{field:key,order}]});
+  assert.deepEqual(preset.sorts,[{field:key,order}]);
+  assert.deepEqual(h.sortTasksBySpecs(tasks,preset.sorts).map(task=>task.operonId),expected);
+ }
+ assert.deepEqual(tasks.map(task=>task.operonId),['0','1','2']);
 });
 test('reference date offers the complete existing date operator set', () => {
  assert.deepEqual(h.getOperatorsForField(key, 'date'), h.DATE_OPERATORS);
