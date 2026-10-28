@@ -460,9 +460,10 @@ const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id),
 );
 const CONTEXTUAL_MENU_SURFACE_ID_SET = new Set<ContextualMenuSurface>(CONTEXTUAL_MENU_SURFACES);
-export const KANBAN_EXPANDED_COLUMN_WIDTH_MIN = 220;
-export const KANBAN_EXPANDED_COLUMN_WIDTH_MAX = 520;
-export const KANBAN_CELL_HEIGHT_OPTIONS = [350, 400, 450, 500, 550] as const;
+export const KANBAN_EXPANDED_COLUMN_WIDTH_MIN = 250;
+export const KANBAN_EXPANDED_COLUMN_WIDTH_MAX = 500;
+export const KANBAN_COLUMN_WIDTH_OPTIONS = [250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550, 600, 700, 800] as const;
+export const KANBAN_CELL_HEIGHT_OPTIONS = [250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750] as const;
 export type KanbanCellHeightPx = typeof KANBAN_CELL_HEIGHT_OPTIONS[number];
 
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN = 1;
@@ -2530,7 +2531,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	kanbanPresets: cloneDefaultKanbanPresets(),
 	kanbanDefaultPresetId: DEFAULT_KANBAN_DEFAULT_PRESET_ID,
-	kanbanExpandedColumnWidthPx: 320,
+	kanbanExpandedColumnWidthPx: 325,
 	kanbanCellHeightPx: 450,
 	kanbanMaxVisibleTasksPerCell: 7,
 	kanbanShowHoverAddButton: true,
@@ -3063,6 +3064,7 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 		id: normalizeOptionalString(src.id) ?? createKanbanPresetId(),
 		...(src.axes === undefined ? {} : { axes: (() => { const result = decodeKanbanAxes(src.axes); return result.ok ? result.axes : cloneKanbanAxesPayload(src.axes); })() }),
 		name,
+		...resolveKanbanPresetLayout(src),
 		pipelineId: normalizeOptionalString(src.pipelineId) ?? null,
 		filterSetId: normalizeOptionalString(src.filterSetId) ?? null,
 		swimlaneBy,
@@ -3263,13 +3265,13 @@ function normalizeContextualMenuMobileAutoHideMs(raw: unknown): number {
 	return Math.max(1000, Math.min(30000, Math.round(raw)));
 }
 
-function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
+export function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
 	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
 		return DEFAULT_SETTINGS.kanbanExpandedColumnWidthPx;
 	}
 	return Math.max(
 		KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
-		Math.min(KANBAN_EXPANDED_COLUMN_WIDTH_MAX, Math.round(raw)),
+		Math.min(KANBAN_EXPANDED_COLUMN_WIDTH_MAX, Math.round(raw / 25) * 25),
 	);
 }
 
@@ -5607,4 +5609,11 @@ export function resolveTaskDisplayIcon(
 	}
 
 	return getFallbackStateIcon(settings, checkbox);
+}
+
+export function resolveKanbanPresetLayout(preset: { columnWidthPx?: unknown; cellHeightPx?: unknown } | null | undefined): { columnWidthPx: number; cellHeightPx: KanbanCellHeightPx } {
+ return {
+  columnWidthPx: typeof preset?.columnWidthPx === 'number' && (KANBAN_COLUMN_WIDTH_OPTIONS as readonly number[]).includes(preset.columnWidthPx) ? preset.columnWidthPx : 325,
+  cellHeightPx: typeof preset?.cellHeightPx === 'number' && (KANBAN_CELL_HEIGHT_OPTIONS as readonly number[]).includes(preset.cellHeightPx) ? preset.cellHeightPx as KanbanCellHeightPx : 450,
+ };
 }

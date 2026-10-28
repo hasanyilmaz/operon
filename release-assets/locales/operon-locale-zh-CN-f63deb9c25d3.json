@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "任务图片",
       "kanbanCellHeight": "单元格高度",
       "kanbanCellHeightDecrease": "减小单元格高度",
-      "kanbanCellHeightDesc": "每个展开的泳道单元格的高度，包括内边距和边框。没有泳道的经典看板会填满面板的可用高度。",
+      "kanbanCellHeightDesc": "此预设中展开泳道单元格的高度。",
+      "kanbanCellHeightDisabledDesc": "启用泳道以应用固定单元格高度。",
       "kanbanCellHeightIncrease": "增加单元格高度",
       "kanbanCellHeightSaveFailed": "无法保存单元格高度。",
       "kanbanCollapseEmptyColumns": "折叠空列",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "所有流水线列都已有独立排序。",
       "kanbanColumnSortingDesc": "仅控制此流水线列中的任务排序。",
       "kanbanColumnSortingNoPipeline": "请先选择流水线，再添加列排序。",
+      "kanbanColumnWidthDecrease": "减小列宽",
+      "kanbanColumnWidthIncrease": "增加列宽",
+      "kanbanColumnWidthSaveFailed": "无法保存列宽。",
       "kanbanCountsPartial": "部分",
       "kanbanDefaultPreset": "看板默认预设",
       "kanbanDefaultPresetDesc": "新的看板窗口将以此预设开始，除非该窗口已有自己保存的状态。",
       "kanbanDuplicatePreset": "复制预设",
       "kanbanEnableSwimlanes": "启用泳道",
       "kanbanEnableSwimlanesDesc": "按属性将看板划分为行。",
-      "kanbanExpandedColumnWidth": "展开列宽度（像素）",
-      "kanbanExpandedColumnWidthDesc": "控制所有预设中展开看板列的宽度。",
+      "kanbanExpandedColumnWidth": "列宽",
+      "kanbanExpandedColumnWidthDesc": "此预设中展开列的宽度。",
       "kanbanFallbackPresetName": "看板预设 {{number}}",
       "kanbanFilter": "看板筛选器",
       "kanbanGeneralSettings": "看板常规设置",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "367deda4eab6ac52ecd7b2d61dda8cc10d12a7b261e46c2f8805db74d5bfbb1c"
+  "sourceVersion": "5420241cd9bee27d3409685b9d2ba4bb99b13d104d02158ea8f3279cc0896688"
 }

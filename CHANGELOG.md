@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
-- Floating **Kanban cell-height controls** adjust the global height in 50 px steps directly from swimlane boards, saving each change while preserving scroll position and keyboard focus.
+- Floating **Kanban size controls** adjust column width and swimlane cell height for the active preset, saving each change while preserving scroll position and keyboard focus.
 
 - **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned.
 
@@ -30,11 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Kanban Cell height** replaces the swimlane task limit with 350, 400, 450, 500, and 550 px options, defaulting to 450 px. Swimlane cells stay the same height regardless of their contents, while classic boards fill the available pane height on desktop and mobile.
+- **Kanban Board layout** is now configured per preset, with column widths from 250 to 800 px and cell heights from 250 to 750 px. Existing presets retain their settings and begin at 325 × 450 px when no dimensions are saved. Swimlane cells keep a fixed height; classic boards fill the available pane height.
 
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Preset-specific **Board layout** passed **83/83** size tests, **91/91** settings-preservation tests, **50/50** isolated browser checks, settings backup checks, full local checks, Plugin release guard, independent persistence review, and manual verification.
 
 - **44/44** cell-height tests, **49/49** card-retention tests, **42/42** isolated browser checks, strict lint, TypeScript, Plugin release guard, code review, and manual cell-height control verification passed.
 

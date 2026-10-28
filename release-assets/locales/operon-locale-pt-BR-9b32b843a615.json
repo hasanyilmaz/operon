@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Imagem da tarefa",
       "kanbanCellHeight": "Altura da célula",
       "kanbanCellHeightDecrease": "Diminuir a altura das células",
-      "kanbanCellHeightDesc": "Altura de cada célula de raia expandida, incluindo preenchimento e bordas. Quadros clássicos sem raias ocupam a altura disponível do painel.",
+      "kanbanCellHeightDesc": "Altura das células de raia expandidas nesta predefinição.",
+      "kanbanCellHeightDisabledDesc": "Ative as raias para aplicar uma altura fixa às células.",
       "kanbanCellHeightIncrease": "Aumentar a altura das células",
       "kanbanCellHeightSaveFailed": "Não foi possível salvar a altura das células.",
       "kanbanCollapseEmptyColumns": "Colapsar colunas vazias",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Todas as colunas do pipeline já têm uma ordenação específica.",
       "kanbanColumnSortingDesc": "Controla a ordem apenas nesta coluna do pipeline.",
       "kanbanColumnSortingNoPipeline": "Escolha um pipeline antes de adicionar uma ordenação de coluna.",
+      "kanbanColumnWidthDecrease": "Diminuir a largura da coluna",
+      "kanbanColumnWidthIncrease": "Aumentar a largura da coluna",
+      "kanbanColumnWidthSaveFailed": "Não foi possível salvar a largura da coluna.",
       "kanbanCountsPartial": "Parcial",
       "kanbanDefaultPreset": "Predefinição padrão do Kanban",
       "kanbanDefaultPresetDesc": "Novas abas do Kanban começam com esta predefinição, a menos que a aba já tenha seu próprio estado salvo.",
       "kanbanDuplicatePreset": "Duplicar predefinição",
       "kanbanEnableSwimlanes": "Ativar raias",
       "kanbanEnableSwimlanesDesc": "Organize o quadro em linhas por propriedade.",
-      "kanbanExpandedColumnWidth": "Largura expandida da coluna (px)",
-      "kanbanExpandedColumnWidthDesc": "Controla a largura das colunas Kanban expandidas em todas as predefinições.",
+      "kanbanExpandedColumnWidth": "Largura da coluna",
+      "kanbanExpandedColumnWidthDesc": "Largura das colunas expandidas nesta predefinição.",
       "kanbanFallbackPresetName": "Predefinição do Kanban {{number}}",
       "kanbanFilter": "Filtro Kanban",
       "kanbanGeneralSettings": "Configurações Gerais Kanban",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "3e0c3ea7b26f64d1ceb9f95a08a87b5e5ccfb0cdc3fcc4042e596745248e61dc"
+  "sourceVersion": "499516aa960e4ce0a1791529c11128067311c74e29dac56b065257e2b4242c84"
 }

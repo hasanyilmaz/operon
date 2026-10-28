@@ -60,6 +60,8 @@ export interface KanbanEffectiveSorting {
 }
 
 export interface KanbanPreset {
+	columnWidthPx?: number;
+	cellHeightPx?: number;
 	/** Kept opaque on load to preserve unsupported/future settings; decode before use. */
 	axes?: unknown;
 	id: string;
@@ -156,7 +158,8 @@ export interface KanbanCardDropCommittedResult {
 export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
 export interface KanbanViewCallbacks {
-	onSetCellHeight?: (height: KanbanCellHeightPx) => Promise<void>;
+	onSetColumnWidth?: (preset: KanbanPreset, width: number) => Promise<void>;
+	onSetCellHeight?: (preset: KanbanPreset, height: KanbanCellHeightPx) => Promise<void>;
 	onSelectPresetFilter?: (presetId: string, expectedFilterSetId: string | null, filterSetId: string | null) => Promise<void>;
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;
@@ -188,6 +191,8 @@ export const DEFAULT_KANBAN_PRESETS: KanbanPreset[] = [
 	{
 		id: DEFAULT_KANBAN_PRESET_ID,
 		name: DEFAULT_KANBAN_NAME,
+		columnWidthPx: 325,
+		cellHeightPx: 450,
 		pipelineId: DEFAULT_KANBAN_PIPELINE_ID,
 		filterSetId: null,
 		swimlaneBy: 'priority',
@@ -362,6 +367,8 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 	const next = DEFAULT_KANBAN_PRESETS[0];
 	return {
 		...next,
+		...(preset.columnWidthPx === undefined ? {} : { columnWidthPx: preset.columnWidthPx }),
+		...(preset.cellHeightPx === undefined ? {} : { cellHeightPx: preset.cellHeightPx }),
 		sortRules: next.sortRules.map(rule => ({ ...rule })),
 		...(next.columnSortOverrides?.length
 			? { columnSortOverrides: cloneKanbanColumnSortOverrides(next.columnSortOverrides) }

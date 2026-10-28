@@ -507,10 +507,10 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 	validateNamedPresets(presets, `${path}.kanbanPresets`, [
 		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'cardImageSource', 'appearanceModeLight',
 		'appearanceModeDark', 'collapseEmptyColumns', 'collapseEmptySwimlanes', 'autoCollapseFinishedColumns',
-		'sortMode', 'sortRules', 'columnSortOverrides', 'axes',
+		'sortMode', 'sortRules', 'columnSortOverrides', 'axes', 'columnWidthPx', 'cellHeightPx',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.kanbanPresets[${index}]`, {
-		id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
+		columnWidthPx: 'number', cellHeightPx: 'number', id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
 		colorSource: 'string', cardImageSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
 		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array', columnSortOverrides: 'array',
 	}, diagnostics);

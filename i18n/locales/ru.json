@@ -431,6 +431,9 @@
 		"introDock": "Здесь можно разрешить конфликты дублирующихся operonId. Это окно можно закрыть в любой момент и снова открыть из палитры команд или уведомления в доке состояния."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Увеличить ширину столбца",
+		"kanbanColumnWidthDecrease": "Уменьшить ширину столбца",
+		"kanbanColumnWidthSaveFailed": "Не удалось сохранить ширину столбца.",
 		"kanbanCellHeightIncrease": "Увеличить высоту ячеек",
 		"kanbanCellHeightDecrease": "Уменьшить высоту ячеек",
 		"kanbanCellHeightSaveFailed": "Не удалось сохранить высоту ячеек.",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "Общие настройки канбана",
 		"kanbanDefaultPreset": "Пресет канбана по умолчанию",
 		"kanbanDefaultPresetDesc": "Новые вкладки канбана начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
-		"kanbanExpandedColumnWidth": "Ширина развёрнутого столбца (пикс.)",
-		"kanbanExpandedColumnWidthDesc": "Управляет шириной развёрнутых столбцов канбана во всех пресетах.",
+		"kanbanExpandedColumnWidth": "Ширина столбцов",
+		"kanbanExpandedColumnWidthDesc": "Ширина развёрнутых столбцов в этом пресете.",
 		"kanbanCellHeight": "Высота ячейки",
-		"kanbanCellHeightDesc": "Высота каждой ячейки развёрнутой дорожки, включая внутренние отступы и границы. Классические доски без дорожек занимают всю доступную высоту панели.",
+		"kanbanCellHeightDesc": "Высота развёрнутых ячеек дорожек в этом пресете.",
 		"kanbanShowHoverAddButton": "Показывать кнопку добавления при наведении в канбане",
 		"kanbanShowHoverAddButtonDesc": "Показывает центральную кнопку добавления при наведении на пустое место в ячейке канбана.",
 		"kanbanTaskShowNotesPreview": "Показывать предпросмотр заметок на карточках канбана",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Оставьте пустым, чтобы показать все значения в области фильтра доски.",
 		"kanbanAxisRemoveValue": "Удалить значение",
 		"kanbanAutoCollapseFinishedGroups": "Сворачивать группы завершённых статусов",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Автоматически сворачивать завершённые статусы в столбцах и дорожках."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Автоматически сворачивать завершённые статусы в столбцах и дорожках.",
+		"kanbanCellHeightDisabledDesc": "Включите дорожки, чтобы задать фиксированную высоту ячеек."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Уменьшить ширину",

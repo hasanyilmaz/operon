@@ -1304,8 +1304,17 @@ export class OperonStorage {
 					pinnedTasks,
 				},
 			};
-			// Height defaults are interpreted in memory, never introduced by startup saves.
+			// Layout defaults are interpreted in memory, never introduced by startup saves.
 			if (_options.forceRecoveredWrite === false) {
+				const previousPresets = new Map(currentPackage.views.kanbanPresets.kanbanPresets.map(preset => [preset.id, preset]));
+				for (const preset of nextPackage.views.kanbanPresets.kanbanPresets) {
+					const previous = previousPresets.get(preset.id);
+					for (const key of ['columnWidthPx', 'cellHeightPx'] as const) {
+						if (previous && Object.prototype.hasOwnProperty.call(previous, key)) {
+							Object.assign(preset, { [key]: previous[key] });
+						} else Reflect.deleteProperty(preset, key);
+					}
+				}
 				for (const key of ['kanbanCellHeightPx', 'kanbanMaxVisibleTasksPerCell'] as const) {
 					if (Object.prototype.hasOwnProperty.call(currentPackage.settings, key)) {
 						Object.assign(nextPackage.settings, { [key]: currentPackage.settings[key] });

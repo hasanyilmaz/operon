@@ -24524,32 +24524,40 @@ button.operon-kanban-toolbar-settings-button {
 
 .operon-kanban-cell-height-controls {
 	position: absolute;
-	/* Row gap plus half of a 34px control. */
-	top: calc(var(--operon-kanban-header-height, 54px) + 27px);
-	right: 0;
+	bottom: 83px;
+	right: 15px;
 	z-index: 10;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
-button.operon-kanban-cell-height-button {
+.operon-kanban-cell-width-controls {
+	position: absolute;
+	bottom: 23px;
+	right: 68px;
+	z-index: 10;
+	display: flex;
+	gap: 8px;
+}
+
+button.operon-kanban-cell-size-button {
 	background: var(--operon-kanban-surface-main);
 	border-radius: 8px;
 }
 
-button.operon-kanban-cell-height-button:hover:not(:disabled):not([aria-disabled='true']),
-button.operon-kanban-cell-height-button:focus-visible {
+button.operon-kanban-cell-size-button:hover:not(:disabled):not([aria-disabled='true']),
+button.operon-kanban-cell-size-button:focus-visible {
 	background: var(--operon-kanban-surface-hover);
 }
 
-button.operon-kanban-cell-height-button:focus-visible {
+button.operon-kanban-cell-size-button:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: -2px;
 }
 
-button.operon-kanban-cell-height-button:disabled,
-button.operon-kanban-cell-height-button[aria-disabled='true'] {
+button.operon-kanban-cell-size-button:disabled,
+button.operon-kanban-cell-size-button[aria-disabled='true'] {
 	cursor: default;
 	opacity: 0.45;
 }

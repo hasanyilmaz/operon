@@ -431,6 +431,9 @@
 		"introDock": "Resolva aqui conflitos de operonId duplicados. Você pode fechar esta janela a qualquer momento e reabri-la pela paleta de comandos ou pelo alerta da dock de status."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Aumentar a largura da coluna",
+		"kanbanColumnWidthDecrease": "Diminuir a largura da coluna",
+		"kanbanColumnWidthSaveFailed": "Não foi possível salvar a largura da coluna.",
 		"kanbanCellHeightIncrease": "Aumentar a altura das células",
 		"kanbanCellHeightDecrease": "Diminuir a altura das células",
 		"kanbanCellHeightSaveFailed": "Não foi possível salvar a altura das células.",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "Configurações Gerais Kanban",
 		"kanbanDefaultPreset": "Predefinição padrão do Kanban",
 		"kanbanDefaultPresetDesc": "Novas abas do Kanban começam com esta predefinição, a menos que a aba já tenha seu próprio estado salvo.",
-		"kanbanExpandedColumnWidth": "Largura expandida da coluna (px)",
-		"kanbanExpandedColumnWidthDesc": "Controla a largura das colunas Kanban expandidas em todas as predefinições.",
+		"kanbanExpandedColumnWidth": "Largura da coluna",
+		"kanbanExpandedColumnWidthDesc": "Largura das colunas expandidas nesta predefinição.",
 		"kanbanCellHeight": "Altura da célula",
-		"kanbanCellHeightDesc": "Altura de cada célula de raia expandida, incluindo preenchimento e bordas. Quadros clássicos sem raias ocupam a altura disponível do painel.",
+		"kanbanCellHeightDesc": "Altura das células de raia expandidas nesta predefinição.",
 		"kanbanShowHoverAddButton": "Mostrar botão adicionar ao passar o mouse sobre Kanban",
 		"kanbanShowHoverAddButtonDesc": "Mostrar o botão adicionar centralizado ao passar o mouse sobre um espaço vazio em uma célula Kanban.",
 		"kanbanTaskShowNotesPreview": "Mostrar prévia de notas nos cartões Kanban",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Deixe vazio para mostrar todos os valores no escopo do filtro do quadro.",
 		"kanbanAxisRemoveValue": "Remover valor",
 		"kanbanAutoCollapseFinishedGroups": "Recolher grupos de status concluídos",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Recolher automaticamente os status concluídos em colunas e raias."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Recolher automaticamente os status concluídos em colunas e raias.",
+		"kanbanCellHeightDisabledDesc": "Ative as raias para aplicar uma altura fixa às células."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Diminuir largura",

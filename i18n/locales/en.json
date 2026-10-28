@@ -431,6 +431,9 @@
 		"introDock": "Resolve duplicate operonId conflicts here. You can close this window anytime and reopen it from the command palette or status dock alert."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Increase column width",
+		"kanbanColumnWidthDecrease": "Decrease column width",
+		"kanbanColumnWidthSaveFailed": "Column width could not be saved.",
 		"kanbanCellHeightIncrease": "Increase cell height",
 		"kanbanCellHeightDecrease": "Decrease cell height",
 		"kanbanCellHeightSaveFailed": "Cell height could not be saved.",
@@ -1606,10 +1609,10 @@
 		"kanbanGeneralSettings": "General Kanban Settings",
 		"kanbanDefaultPreset": "Kanban default preset",
 		"kanbanDefaultPresetDesc": "New kanban leaves start with this preset unless the leaf already has its own saved state.",
-		"kanbanExpandedColumnWidth": "Expanded column width (px)",
-		"kanbanExpandedColumnWidthDesc": "Controls the width of expanded kanban columns across all presets.",
+		"kanbanExpandedColumnWidth": "Column width",
+		"kanbanExpandedColumnWidthDesc": "Width of expanded columns in this preset.",
 		"kanbanCellHeight": "Cell height",
-		"kanbanCellHeightDesc": "Height of each expanded swimlane cell, including padding and borders. Classic boards without swimlanes fill the available pane height.",
+		"kanbanCellHeightDesc": "Height of expanded swimlane cells in this preset.",
 		"kanbanShowHoverAddButton": "Show hover add button in Kanban",
 		"kanbanShowHoverAddButtonDesc": "Show the centered add button when hovering empty space in a Kanban cell.",
 		"kanbanTaskShowNotesPreview": "Show notes preview on Kanban cards",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Leave empty to show all values in the board’s filter scope.",
 		"kanbanAxisRemoveValue": "Remove value",
 		"kanbanAutoCollapseFinishedGroups": "Collapse finished status groups",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Automatically collapse finished statuses in columns and swimlanes."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Automatically collapse finished statuses in columns and swimlanes.",
+		"kanbanCellHeightDisabledDesc": "Enable swimlanes to apply a fixed cell height."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Decrease width",

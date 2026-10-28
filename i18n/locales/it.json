@@ -431,6 +431,9 @@
 		"introDock": "Risolvi qui i conflitti di operonId duplicati. Puoi chiudere questa finestra in qualsiasi momento e riaprirla dalla tavolozza dei comandi o dall'avviso nella dock di stato."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Aumenta la larghezza delle colonne",
+		"kanbanColumnWidthDecrease": "Riduci la larghezza delle colonne",
+		"kanbanColumnWidthSaveFailed": "Impossibile salvare la larghezza delle colonne.",
 		"kanbanCellHeightIncrease": "Aumenta l’altezza delle celle",
 		"kanbanCellHeightDecrease": "Riduci l’altezza delle celle",
 		"kanbanCellHeightSaveFailed": "Impossibile salvare l’altezza delle celle.",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "Impostazioni generali Kanban",
 		"kanbanDefaultPreset": "Preimpostazione Kanban predefinita",
 		"kanbanDefaultPresetDesc": "I nuovi riquadri kanban iniziano con questa preimpostazione a meno che il riquadro non abbia già un proprio stato salvato.",
-		"kanbanExpandedColumnWidth": "Larghezza colonna espansa (px)",
-		"kanbanExpandedColumnWidthDesc": "Controlla la larghezza delle colonne kanban espanse in tutte le preimpostazioni.",
+		"kanbanExpandedColumnWidth": "Larghezza colonne",
+		"kanbanExpandedColumnWidthDesc": "Larghezza delle colonne espanse in questo preset.",
 		"kanbanCellHeight": "Altezza delle celle",
-		"kanbanCellHeightDesc": "Altezza di ogni cella di corsia espansa, inclusi spazi interni e bordi. Le bacheche classiche senza corsie occupano l’altezza disponibile del pannello.",
+		"kanbanCellHeightDesc": "Altezza delle celle swimlane espanse in questo preset.",
 		"kanbanShowHoverAddButton": "Mostra pulsante di aggiunta al passaggio del mouse in Kanban",
 		"kanbanShowHoverAddButtonDesc": "Mostra il pulsante di aggiunta centrato al passaggio del mouse su uno spazio vuoto in una cella Kanban.",
 		"kanbanTaskShowNotesPreview": "Mostra anteprima note sulle schede Kanban",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Lascia vuoto per mostrare tutti i valori inclusi nel filtro della bacheca.",
 		"kanbanAxisRemoveValue": "Rimuovi valore",
 		"kanbanAutoCollapseFinishedGroups": "Comprimi i gruppi di stati completati",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Comprimi automaticamente gli stati completati nelle colonne e nelle corsie."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Comprimi automaticamente gli stati completati nelle colonne e nelle corsie.",
+		"kanbanCellHeightDisabledDesc": "Attiva le swimlane per applicare un’altezza fissa alle celle."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Riduci larghezza",

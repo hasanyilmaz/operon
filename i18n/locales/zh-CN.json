@@ -431,6 +431,9 @@
 		"introDock": "在此解决重复的 operonId 冲突。你可以随时关闭此窗口，并通过命令面板或状态停靠栏提醒重新打开。"
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "增加列宽",
+		"kanbanColumnWidthDecrease": "减小列宽",
+		"kanbanColumnWidthSaveFailed": "无法保存列宽。",
 		"kanbanCellHeightIncrease": "增加单元格高度",
 		"kanbanCellHeightDecrease": "减小单元格高度",
 		"kanbanCellHeightSaveFailed": "无法保存单元格高度。",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "看板常规设置",
 		"kanbanDefaultPreset": "看板默认预设",
 		"kanbanDefaultPresetDesc": "新的看板窗口将以此预设开始，除非该窗口已有自己保存的状态。",
-		"kanbanExpandedColumnWidth": "展开列宽度（像素）",
-		"kanbanExpandedColumnWidthDesc": "控制所有预设中展开看板列的宽度。",
+		"kanbanExpandedColumnWidth": "列宽",
+		"kanbanExpandedColumnWidthDesc": "此预设中展开列的宽度。",
 		"kanbanCellHeight": "单元格高度",
-		"kanbanCellHeightDesc": "每个展开的泳道单元格的高度，包括内边距和边框。没有泳道的经典看板会填满面板的可用高度。",
+		"kanbanCellHeightDesc": "此预设中展开泳道单元格的高度。",
 		"kanbanShowHoverAddButton": "在看板中显示悬停添加按钮",
 		"kanbanShowHoverAddButtonDesc": "当悬停在看板单元格的空白区域时，显示居中的添加按钮。",
 		"kanbanTaskShowNotesPreview": "在看板卡片上显示备注预览",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "留空以显示看板筛选范围内的所有值。",
 		"kanbanAxisRemoveValue": "移除值",
 		"kanbanAutoCollapseFinishedGroups": "折叠已完成状态组",
-		"kanbanAutoCollapseFinishedGroupsDesc": "自动折叠列和泳道中的已完成状态。"
+		"kanbanAutoCollapseFinishedGroupsDesc": "自动折叠列和泳道中的已完成状态。",
+		"kanbanCellHeightDisabledDesc": "启用泳道以应用固定单元格高度。"
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "减小宽度",

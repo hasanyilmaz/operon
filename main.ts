@@ -17789,8 +17789,12 @@ export default class OperonPlugin extends Plugin {
 				() => this.pinnedCache,
 				{
 					getManualOrder: (presetId) => this.storage.kanbanOrder.getBoard(presetId),
-					onSetCellHeight: async height => {
-						await this.storage.updateSettings({ kanbanCellHeightPx: height });
+					onSetColumnWidth: async (preset, width) => {
+						await this.storage.saveKanbanPresetIfUnchanged(preset, { ...preset, columnWidthPx: width });
+						this.refreshKanbanLeaves(true);
+					},
+					onSetCellHeight: async (preset, height) => {
+						await this.storage.saveKanbanPresetIfUnchanged(preset, { ...preset, cellHeightPx: height });
 						this.refreshKanbanLeaves(true);
 					},
 					onCardDrop: (context) => this.handleKanbanCardDrop(leaf, context),

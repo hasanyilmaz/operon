@@ -44,6 +44,8 @@ import {
 	FilterSet,
 	OperonSettings,
 	KANBAN_CELL_HEIGHT_OPTIONS,
+	KANBAN_COLUMN_WIDTH_OPTIONS,
+	resolveKanbanPresetLayout,
 	normalizeKanbanCellHeightPx,
 	resolveTaskDisplayIcon,
 	TaskFinderDefaultScopeKey,
@@ -522,7 +524,7 @@ export class KanbanView extends ItemView {
 	private activeTaskNotePopoverClose: (() => void) | null = null;
 	private activeTaskNotePopoverTaskId: string | null = null;
 	private activeTaskNoteCellKey: string | null = null;
-	private cellHeightSavePending = false;
+	private cellSizeSavePending = false;
 	private taskNoteShouldReturnFocus = true;
 	private pendingTaskNoteOpen: {
 		anchor: DOMRect;
@@ -702,9 +704,13 @@ export class KanbanView extends ItemView {
 		const container = this.contentEl;
 		const state = this.ensureState();
 		const settings = this.getSettings();
-		const previousHeight = this.lastRenderSignature ? (JSON.parse(this.lastRenderSignature) as { cellHeightPx?: number }).cellHeightPx : settings.kanbanCellHeightPx;
-		const heightChanged = previousHeight !== settings.kanbanCellHeightPx && this.lastRenderedBoardScope === this.buildDropScrollAnchorScope();
-		const preserveViewport = this.preserveViewportOnNextRender || heightChanged;
+		const layout = this.getPresetLayout();
+		const previousLayout = this.lastRenderSignature
+			? JSON.parse(this.lastRenderSignature) as { cellHeightPx?: number; columnWidthPx?: number }
+			: layout;
+		const layoutChanged = (previousLayout.cellHeightPx !== layout.cellHeightPx || previousLayout.columnWidthPx !== layout.columnWidthPx)
+			&& this.lastRenderedBoardScope === this.buildDropScrollAnchorScope();
+		const preserveViewport = this.preserveViewportOnNextRender || layoutChanged;
 		const preset = settings.kanbanPresets.find(entry => entry.id === state.presetId) ?? settings.kanbanPresets[0] ?? null;
 		const pipeline = preset?.pipelineId
 			? settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
@@ -729,10 +735,11 @@ export class KanbanView extends ItemView {
 		this.closeActivePresetPicker();
 		this.closeActiveFilterPopover();
 		this.hoverMenu.refreshAfterRender();
-		const heightControlDirection = container.querySelector<HTMLElement>('.operon-kanban-cell-height-button:focus')?.dataset.heightDirection;
+		const widthControlDirection = container.querySelector<HTMLElement>('.operon-kanban-cell-width-button:focus')?.dataset.sizeDirection;
+		const heightControlDirection = container.querySelector<HTMLElement>('.operon-kanban-cell-height-button:focus')?.dataset.sizeDirection;
 		this.captureSearchFocusState(container);
 		this.captureBoardScrollState(container, preserveViewport);
-		if (heightChanged && this.pendingViewportAnchor) this.pendingViewportAnchor.clampToNaturalBounds = true;
+		if (layoutChanged && this.pendingViewportAnchor) this.pendingViewportAnchor.clampToNaturalBounds = true;
 		this.clearKanbanSearchRefreshTimer();
 		this.clearBoardLayoutRefresh();
 		this.clearToolbarLayout();
@@ -756,7 +763,8 @@ export class KanbanView extends ItemView {
 		const optimisticMoveCountBeforeBoardRender = this.optimisticMoves.size;
 		this.renderBoardContent(content, state, preset, pipeline, filterSet, settings, parentSearchUi);
 		this.restoreSearchFocus(root);
-		if (heightControlDirection) this.restoreCellHeightControlFocus(heightControlDirection);
+		if (heightControlDirection) this.restoreCellSizeControlFocus(heightControlDirection);
+		if (widthControlDirection) this.restoreCellSizeControlFocus(widthControlDirection, true);
 		this.lastRenderSignature = this.optimisticMoves.size === optimisticMoveCountBeforeBoardRender
 			? nextSignature
 			: this.buildRenderSignature(container, state, preset, pipeline, filterSet, settings, parentSearchUi);
@@ -886,7 +894,8 @@ export class KanbanView extends ItemView {
 			kanbanTaskChipLocationSignature: getKanbanTaskChipLocationSignature(this.app, settings),
 			projectSerialSignature: this.callbacks.getProjectSerialSignature?.() ?? '',
 			repeatSkipSignature: this.callbacks.getRepeatSkipSignature?.() ?? '',
-			cellHeightPx: settings.kanbanCellHeightPx,
+			cellHeightPx: this.getPresetLayout().cellHeightPx,
+			columnWidthPx: this.getPresetLayout().columnWidthPx,
 			kanbanMobileLayoutChromeEnabled: settings.kanbanMobileLayoutChromeEnabled,
 			kanbanMobileLayoutMaxWidthPx: settings.kanbanMobileLayoutMaxWidthPx,
 			kanbanMobileCompactSwimlaneWidthPx: settings.kanbanMobileCompactSwimlaneWidthPx,
@@ -1739,62 +1748,76 @@ export class KanbanView extends ItemView {
 			});
 		}
 
-	private renderCellHeightControls(boardEl: HTMLElement): void {
-		if (!this.callbacks.onSetCellHeight) return;
-		const controls = boardEl.createDiv('operon-kanban-cell-height-controls');
-		controls.setAttribute('role', 'group');
-		setAccessibleLabelWithoutTooltip(controls, t('settings', 'kanbanCellHeight'));
-		for (const direction of [1, -1] as const) {
-			const button = controls.createEl('button', {
-				cls: 'operon-kanban-toolbar-settings-button operon-kanban-cell-height-button',
-				attr: { type: 'button', 'data-height-direction': String(direction) },
-			});
-			setIcon(button, direction === 1 ? 'plus' : 'minus');
-			button.addEventListener('click', () => { void this.changeCellHeight(direction); });
-		}
-		this.syncCellHeightControls();
+	private getPresetLayout(): ReturnType<typeof resolveKanbanPresetLayout> {
+		const settings = this.getSettings();
+		return resolveKanbanPresetLayout(settings.kanbanPresets.find(preset => preset.id === this.ensureState().presetId) ?? settings.kanbanPresets[0]);
 	}
 
-	private syncCellHeightControls(): void {
-		const focused = this.contentEl.querySelector<HTMLButtonElement>('.operon-kanban-cell-height-button:focus');
-		const height = normalizeKanbanCellHeightPx(this.getSettings().kanbanCellHeightPx);
-		const index = KANBAN_CELL_HEIGHT_OPTIONS.indexOf(height);
-		for (const button of Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>('.operon-kanban-cell-height-button'))) {
-			const direction = Number(button.dataset.heightDirection);
-			button.disabled = KANBAN_CELL_HEIGHT_OPTIONS[index + direction] === undefined;
+	private renderCellSizeControls(boardEl: HTMLElement, width = false): void {
+		if (!(width ? this.callbacks.onSetColumnWidth : this.callbacks.onSetCellHeight)) return;
+		const controls = boardEl.createDiv(`operon-kanban-cell-${width ? 'width' : 'height'}-controls`);
+		controls.setAttribute('role', 'group');
+		setAccessibleLabelWithoutTooltip(controls, t('settings', width ? 'kanbanExpandedColumnWidth' : 'kanbanCellHeight'));
+		for (const direction of [1, -1] as const) {
+			const button = controls.createEl('button', {
+				cls: `operon-kanban-toolbar-settings-button operon-kanban-cell-size-button operon-kanban-cell-${width ? 'width' : 'height'}-button`,
+				attr: { type: 'button', 'data-size-direction': String(direction) },
+			});
+			setIcon(button, direction === 1 ? 'plus' : 'minus');
+			button.addEventListener('click', () => { void this.changeCellSize(direction, width); });
+		}
+		this.syncCellSizeControls(width);
+	}
+
+	private syncCellSizeControls(width = false): void {
+		const focused = this.contentEl.querySelector<HTMLButtonElement>(`.operon-kanban-cell-${width ? 'width' : 'height'}-button:focus`);
+		const height = width ? this.getPresetLayout().columnWidthPx : this.getPresetLayout().cellHeightPx;
+		const options: readonly number[] = width ? KANBAN_COLUMN_WIDTH_OPTIONS : KANBAN_CELL_HEIGHT_OPTIONS;
+		const index = options.indexOf(height);
+		for (const button of Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>(`.operon-kanban-cell-${width ? 'width' : 'height'}-button`))) {
+			const direction = Number(button.dataset.sizeDirection);
+			button.disabled = options[index + direction] === undefined;
 			// Keep keyboard focus while persistence is pending; the action guard
 			// rejects repeat activation without disabling the focused element.
-			button.setAttribute('aria-disabled', String(button.disabled || this.cellHeightSavePending));
-			const action = t('settings', direction === 1 ? 'kanbanCellHeightIncrease' : 'kanbanCellHeightDecrease');
-			const current = `${t('settings', 'kanbanCellHeight')}: ${height} px`;
+			button.setAttribute('aria-disabled', String(button.disabled || this.cellSizeSavePending));
+			const action = t('settings', width ? (direction === 1 ? 'kanbanColumnWidthIncrease' : 'kanbanColumnWidthDecrease') : (direction === 1 ? 'kanbanCellHeightIncrease' : 'kanbanCellHeightDecrease'));
+			const current = `${t('settings', width ? 'kanbanExpandedColumnWidth' : 'kanbanCellHeight')}: ${height} px`;
 			setAccessibleLabelWithoutTooltip(button, `${action}. ${current}`);
 			bindOperonHoverTooltip(button, { title: action, content: current, taskColor: null });
 		}
-		if (focused?.disabled) this.restoreCellHeightControlFocus(focused.dataset.heightDirection ?? '');
+		if (focused?.disabled) this.restoreCellSizeControlFocus(focused.dataset.sizeDirection ?? '', width);
 	}
 
-	private restoreCellHeightControlFocus(direction: string): void {
-		const buttons = Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>('.operon-kanban-cell-height-button'));
-		const target = buttons.find(button => !button.disabled && button.dataset.heightDirection === direction)
+	private restoreCellSizeControlFocus(direction: string, width = false): void {
+		const buttons = Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>(`.operon-kanban-cell-${width ? 'width' : 'height'}-button`));
+		const target = buttons.find(button => !button.disabled && button.dataset.sizeDirection === direction)
 			?? buttons.find(button => !button.disabled);
 		target?.focus({ preventScroll: true });
 	}
 
-	private async changeCellHeight(direction: 1 | -1): Promise<void> {
-		if (this.cellHeightSavePending || !this.callbacks.onSetCellHeight) return;
-		const current = normalizeKanbanCellHeightPx(this.getSettings().kanbanCellHeightPx);
-		const next = KANBAN_CELL_HEIGHT_OPTIONS[KANBAN_CELL_HEIGHT_OPTIONS.indexOf(current) + direction];
+	private async changeCellSize(direction: 1 | -1, width = false): Promise<void> {
+		if (this.cellSizeSavePending || !(width ? this.callbacks.onSetColumnWidth : this.callbacks.onSetCellHeight)) return;
+		const settings = this.getSettings();
+		const preset = settings.kanbanPresets.find(entry => entry.id === this.ensureState().presetId) ?? settings.kanbanPresets[0];
+		if (!preset) return;
+		const expected = structuredClone(preset);
+		const current = width ? this.getPresetLayout().columnWidthPx : this.getPresetLayout().cellHeightPx;
+		const options: readonly number[] = width ? KANBAN_COLUMN_WIDTH_OPTIONS : KANBAN_CELL_HEIGHT_OPTIONS;
+		const next = options[options.indexOf(current) + direction];
 		if (next === undefined) return;
-		this.cellHeightSavePending = true;
-		this.syncCellHeightControls();
+		this.cellSizeSavePending = true;
+		this.syncCellSizeControls();
+		this.syncCellSizeControls(true);
 		try {
-			await this.callbacks.onSetCellHeight(next);
+			if (width) await this.callbacks.onSetColumnWidth!(expected, next);
+			else await this.callbacks.onSetCellHeight!(expected, normalizeKanbanCellHeightPx(next));
 		} catch (error) {
-			console.error('Operon: Kanban cell height save failed', error);
-			new Notice(t('settings', 'kanbanCellHeightSaveFailed'));
+			console.error('Operon: Kanban cell size save failed', error);
+			new Notice(t('settings', width ? 'kanbanColumnWidthSaveFailed' : 'kanbanCellHeightSaveFailed'));
 		} finally {
-			this.cellHeightSavePending = false;
-			this.syncCellHeightControls();
+			this.cellSizeSavePending = false;
+			this.syncCellSizeControls();
+			this.syncCellSizeControls(true);
 		}
 	}
 
@@ -1803,11 +1826,12 @@ export class KanbanView extends ItemView {
 		boardEl.dataset.kanbanDropBoardSignature = buildKanbanDropBoardSignature(board.preset, board.pipeline, this.getSettings());
 		this.bindBoardDelegatedCardEvents(boardEl);
 		const hasSwimlanes = !board.snapshot.rowAxisHidden;
-		if (hasSwimlanes) this.renderCellHeightControls(boardEl);
+		if (hasSwimlanes) this.renderCellSizeControls(boardEl);
+		this.renderCellSizeControls(boardEl, true);
 		boardEl.toggleClass('is-no-swimlanes', !hasSwimlanes);
-		boardEl.style.setProperty('--operon-kanban-cell-height', `${normalizeKanbanCellHeightPx(this.getSettings().kanbanCellHeightPx)}px`);
+		boardEl.style.setProperty('--operon-kanban-cell-height', `${this.getPresetLayout().cellHeightPx}px`);
 		boardEl.toggleClass('is-manual-order', hasManualKanbanSorting(board.preset));
-		boardEl.style.setProperty('--operon-kanban-column-width', `${this.getSettings().kanbanExpandedColumnWidthPx}px`);
+		boardEl.style.setProperty('--operon-kanban-column-width', `${this.getPresetLayout().columnWidthPx}px`);
 		boardEl.style.setProperty('--operon-kanban-collapsed-width', `${KANBAN_COLLAPSED_COLUMN_WIDTH_PX}px`);
 		boardEl.style.setProperty('--operon-kanban-lane-column-width', `${clampKanbanLaneColumnWidth(this.lastLaneColumnWidthPx ?? KANBAN_LANE_COLUMN_MIN_WIDTH_PX)}px`);
 		const state = this.ensureState();
@@ -2043,7 +2067,7 @@ export class KanbanView extends ItemView {
 				const header = host.createDiv('operon-kanban-column-header');
 				const collapsed = collapsedStatusIds.has(column.statusId);
 				header.toggleClass('is-collapsed', collapsed);
-				header.style.width = `${collapsed ? KANBAN_COLLAPSED_COLUMN_WIDTH_PX : this.getSettings().kanbanExpandedColumnWidthPx}px`;
+				header.style.width = `${collapsed ? KANBAN_COLLAPSED_COLUMN_WIDTH_PX : this.getPresetLayout().columnWidthPx}px`;
 				header.createDiv({ cls: 'operon-kanban-column-header-title', text: column.statusLabel });
 				const count = header.createEl('button', { cls: 'operon-kanban-column-count-button', text: String(column.count) });
 				count.tabIndex = -1;
@@ -2074,8 +2098,8 @@ export class KanbanView extends ItemView {
 			const computed = getOwnerWindow(boardEl).getComputedStyle(boardEl);
 			const rail = hasSwimlanes ? Number.parseFloat(computed.getPropertyValue('--operon-kanban-active-lane-column-width')) || this.lastLaneColumnWidthPx || KANBAN_LANE_COLUMN_MIN_WIDTH_PX : 0;
 			this.cellViewport?.update({
-				rows: board.lanes.map(lane => ({ key: lane.key, size: collapsedLaneKeys.has(lane.key) ? 54 : normalizeKanbanCellHeightPx(this.getSettings().kanbanCellHeightPx) })),
-				columns: board.columns.map(column => ({ key: column.statusId, size: collapsedStatusIds.has(column.statusId) ? KANBAN_COLLAPSED_COLUMN_WIDTH_PX : this.getSettings().kanbanExpandedColumnWidthPx })),
+				rows: board.lanes.map(lane => ({ key: lane.key, size: collapsedLaneKeys.has(lane.key) ? 54 : this.getPresetLayout().cellHeightPx })),
+				columns: board.columns.map(column => ({ key: column.statusId, size: collapsedStatusIds.has(column.statusId) ? KANBAN_COLLAPSED_COLUMN_WIDTH_PX : this.getPresetLayout().columnWidthPx })),
 				gap: 10, railWidth: rail, headerHeight, classic: !hasSwimlanes,
 			});
 		};
@@ -3613,7 +3637,7 @@ export class KanbanView extends ItemView {
 		const readOnlyChips = boardEl.classList.contains('is-mobile-layout');
 		const viewportHeightPx = next.snapshot.rowAxisHidden
 			? boardEl.querySelector<HTMLElement>('.operon-kanban-grid-viewport')?.clientHeight ?? 0
-			: normalizeKanbanCellHeightPx(settings.kanbanCellHeightPx);
+			: this.getPresetLayout().cellHeightPx;
 		const finalizers: KanbanCellRenderFinalizer[] = [];
 
 		for (const cellKey of changedCellKeys) {

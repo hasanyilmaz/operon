@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Imagen de tarea",
       "kanbanCellHeight": "Altura de celda",
       "kanbanCellHeightDecrease": "Reducir la altura de las celdas",
-      "kanbanCellHeightDesc": "Altura de cada celda de carril expandida, incluidos el relleno y los bordes. Los tableros clásicos sin carriles ocupan la altura disponible del panel.",
+      "kanbanCellHeightDesc": "Altura de las celdas de carril expandidas en este preajuste.",
+      "kanbanCellHeightDisabledDesc": "Activa los carriles para aplicar una altura de celda fija.",
       "kanbanCellHeightIncrease": "Aumentar la altura de las celdas",
       "kanbanCellHeightSaveFailed": "No se pudo guardar la altura de las celdas.",
       "kanbanCollapseEmptyColumns": "Contraer columnas vacías",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Todas las columnas del pipeline ya tienen un orden específico.",
       "kanbanColumnSortingDesc": "Controla el orden solo dentro de esta columna del pipeline.",
       "kanbanColumnSortingNoPipeline": "Elige un pipeline antes de añadir el orden de columnas.",
+      "kanbanColumnWidthDecrease": "Reducir el ancho de columna",
+      "kanbanColumnWidthIncrease": "Aumentar el ancho de columna",
+      "kanbanColumnWidthSaveFailed": "No se pudo guardar el ancho de columna.",
       "kanbanCountsPartial": "Parcial",
       "kanbanDefaultPreset": "Preajuste predeterminado de Kanban",
       "kanbanDefaultPresetDesc": "Las nuevas hojas de kanban empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",
       "kanbanDuplicatePreset": "Duplicar preajuste",
       "kanbanEnableSwimlanes": "Activar carriles",
       "kanbanEnableSwimlanesDesc": "Organiza el tablero en filas por propiedad.",
-      "kanbanExpandedColumnWidth": "Ancho de columna expandida (px)",
-      "kanbanExpandedColumnWidthDesc": "Controla el ancho de las columnas de kanban expandidas en todos los preajustes.",
+      "kanbanExpandedColumnWidth": "Ancho de columna",
+      "kanbanExpandedColumnWidthDesc": "Ancho de las columnas expandidas en este preajuste.",
       "kanbanFallbackPresetName": "Preajuste de Kanban {{number}}",
       "kanbanFilter": "Filtro de Kanban",
       "kanbanGeneralSettings": "Configuración general de Kanban",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3997ff8cb72d6b6c93576c83ebfc81e38927597f029964dda105f1854161cff6"
+  "sourceVersion": "3b48c34775e400ca1d5d04e7433dc2fc5aedc2c75fa695b5dbaf26cb39cabc92"
 }

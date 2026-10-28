@@ -1,3 +1,4 @@
+import { KANBAN_COLUMN_WIDTH_OPTIONS, KANBAN_CELL_HEIGHT_OPTIONS, resolveKanbanPresetLayout } from '../../types/settings';
 import { renderKanbanAxisSettings, renderKanbanTaskCounts } from './kanban-axis-settings';
 import { createKanbanPropertyAccess } from '../../core/kanban-axis-properties';
 import { buildKanbanGroupingSnapshot } from '../../systems/kanban-grouping';
@@ -264,6 +265,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				});
 			});
 
+
+		this.renderBoardLayout(contentEl, preset);
 		const visibilityCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionVisibility'));
 		new Setting(visibilityCard)
 			.setName(t('settings', 'kanbanCollapseEmptyColumns'))
@@ -302,6 +305,24 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			});
 
 		this.renderButtons(contentEl);
+	}
+
+	private renderBoardLayout(contentEl: HTMLElement, preset: KanbanPreset): void {
+  const layoutCard = this.createPresetSection(contentEl, t('settings', 'kanbanBoardLayout'));
+  const layout = resolveKanbanPresetLayout(preset);
+  const axes = resolveKanbanAxes(preset, this.options.getSettings().keyMappings);
+  const swimlanesEnabled = axes.ok && axes.axes.swimlanes !== null;
+  for (const width of [true, false]) {
+   new Setting(layoutCard)
+    .setName(t('settings', width ? 'kanbanExpandedColumnWidth' : 'kanbanCellHeight'))
+    .setDesc(t('settings', width ? 'kanbanExpandedColumnWidthDesc' : swimlanesEnabled ? 'kanbanCellHeightDesc' : 'kanbanCellHeightDisabledDesc'))
+    .addDropdown(drop => {
+     for (const value of width ? KANBAN_COLUMN_WIDTH_OPTIONS : KANBAN_CELL_HEIGHT_OPTIONS) drop.addOption(String(value), `${value} px`);
+     drop.setValue(String(width ? layout.columnWidthPx : layout.cellHeightPx));
+     drop.setDisabled(!width && !swimlanesEnabled);
+     drop.onChange(value => { void this.updatePreset(current => { if (width) current.columnWidthPx = Number(value); else current.cellHeightPx = Number(value); }); });
+    });
+  }
 	}
 
 	private createPresetSection(container: HTMLElement, title: string): HTMLElement {

@@ -24,7 +24,7 @@ function productionFunction(file, name) {
  return new Function(`${js}; return ${name};`)();
 }
 const compiled = await build({
- stdin: { contents: "export { normalizeKanbanCellHeightPx } from './src/types/settings'; export { projectKanbanLegacyAxes, resolveKanbanAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator, parseKanbanCellKey } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+ stdin: { contents: "export { resolveKanbanPresetLayout, normalizeKanbanCellHeightPx } from './src/types/settings'; export { projectKanbanLegacyAxes, resolveKanbanAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator, parseKanbanCellKey } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
  bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
  alias: { obsidian: fileURLToPath(new URL('./test-support/obsidian.ts', import.meta.url)) },
 });
@@ -52,7 +52,7 @@ const dependencies = {
  KANBAN_ESTIMATED_CARD_HEIGHT_PX: 100,
  KANBAN_ESTIMATED_CARD_GAP_PX: 8,
 };
-const methodNames = ['getColumnSorting', 'registerOptimisticMove','restoreBoardScrollState', 'restoreBoardViewportAnchor', 'applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
+const methodNames = ['getPresetLayout', 'getColumnSorting', 'registerOptimisticMove','restoreBoardScrollState', 'restoreBoardViewportAnchor', 'applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
 const code = ts.transpileModule(`class Subject { ${methodNames.filter(name => viewClass.members.some(member => member.name?.getText(ast) === name)).map(method).join('\n')} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 const Subject = new Function(...Object.keys(dependencies), `${code}; return Subject;`)(...Object.values(dependencies));
 
@@ -122,7 +122,7 @@ function fixture(sourceIds = ['a', 'b', 'c'], targetIds = ['d'], windowName = 'm
    cellCountMap: new Map([['source::lane', source.length], ['target::lane', target.length]]) };
  }
  const subject = new Subject(); const renders = [], measurements = [], lazy = [], scrollRestores = [];
- const settings = { kanbanMaxVisibleTasksPerCell: 5, pipelines: [] };
+ const settings = { kanbanPresets: [], kanbanMaxVisibleTasksPerCell: 5, pipelines: [] };
  Object.assign(subject, {
   ensureState: () => ({ expandedPreviewParentIds: [] }), buildDescendantSummary: () => ({ done: 0, open: 1, total: 1 }),
   pendingCellMaterializers: new Map(), virtualDropCells: new Map(), optimisticMoves: new Map(), indexer: { getAllTasks: () => [], secondary: { getChildIds: () => new Set(), getAllDescendantIds: () => new Set() } }, getSettings: () => settings,

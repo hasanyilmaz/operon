@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Aufgabenbild",
       "kanbanCellHeight": "Zellenhöhe",
       "kanbanCellHeightDecrease": "Zellenhöhe verringern",
-      "kanbanCellHeightDesc": "Höhe jeder aufgeklappten Swimlane-Zelle einschließlich Innenabstand und Rahmen. Klassische Boards ohne Swimlanes nutzen die verfügbare Höhe.",
+      "kanbanCellHeightDesc": "Höhe der ausgeklappten Swimlane-Zellen in dieser Vorlage.",
+      "kanbanCellHeightDisabledDesc": "Aktiviere Swimlanes, um eine feste Zellenhöhe anzuwenden.",
       "kanbanCellHeightIncrease": "Zellenhöhe erhöhen",
       "kanbanCellHeightSaveFailed": "Die Zellenhöhe konnte nicht gespeichert werden.",
       "kanbanCollapseEmptyColumns": "Leere Spalten einklappen",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Alle Pipeline-Spalten haben bereits eine eigene Sortierung.",
       "kanbanColumnSortingDesc": "Steuere die Reihenfolge nur in dieser Pipeline-Spalte.",
       "kanbanColumnSortingNoPipeline": "Wähle zuerst eine Pipeline aus.",
+      "kanbanColumnWidthDecrease": "Spaltenbreite verkleinern",
+      "kanbanColumnWidthIncrease": "Spaltenbreite vergrößern",
+      "kanbanColumnWidthSaveFailed": "Spaltenbreite konnte nicht gespeichert werden.",
       "kanbanCountsPartial": "Unvollständig",
       "kanbanDefaultPreset": "Kanban-Standard-Voreinstellung",
       "kanbanDefaultPresetDesc": "Neue Kanban-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",
       "kanbanDuplicatePreset": "Voreinstellung duplizieren",
       "kanbanEnableSwimlanes": "Swimlanes aktivieren",
       "kanbanEnableSwimlanesDesc": "Das Board nach Eigenschaft in Zeilen gliedern.",
-      "kanbanExpandedColumnWidth": "Breite aufgeklappter Spalten (px)",
-      "kanbanExpandedColumnWidthDesc": "Steuert die Breite aufgeklappter Kanban-Spalten in allen Voreinstellungen.",
+      "kanbanExpandedColumnWidth": "Spaltenbreite",
+      "kanbanExpandedColumnWidthDesc": "Breite der ausgeklappten Spalten in dieser Vorlage.",
       "kanbanFallbackPresetName": "Kanban-Voreinstellung {{number}}",
       "kanbanFilter": "Kanban-Filter",
       "kanbanGeneralSettings": "Allgemeine Kanban-Einstellungen",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8397b4a20cd387174a4f3d10a9b0f9267c7132b6a12d2adbdcfa5b20cf3d638f"
+  "sourceVersion": "538b095c4e00deee524ba2beb2cb1b9dbcceef9a476b97ddf42991781247415f"
 }

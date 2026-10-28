@@ -224,8 +224,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('integrations', 'coreGeneral', 'developerApi', 'settings', 'developerApiIntegrationsTitle', 'developerApiIntegrationsDesc', ['developer API', 'plugins', 'permissions', 'grants', 'audit', 'integration']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),
-	e('views', 'viewsKanban', 'kanbanExpandedColumnWidthPx', 'settings', 'kanbanExpandedColumnWidth', 'kanbanExpandedColumnWidthDesc', 'number', ['kanban', 'board', 'column', 'kanban column width']),
-	e('views', 'viewsKanban', 'kanbanCellHeightPx', 'settings', 'kanbanCellHeight', 'kanbanCellHeightDesc', 'dropdown', ['kanban', 'board', 'swimlane', 'cell height', 'pixels']),
 	e('views', 'viewsKanban', 'kanbanShowHoverAddButton', 'settings', 'kanbanShowHoverAddButton', 'kanbanShowHoverAddButtonDesc', 'toggle', ['kanban', 'quick add', 'hover add', 'add button', 'plus button']),
 	e('views', 'viewsKanban', 'kanbanTaskShowNotesPreview', 'settings', 'kanbanTaskShowNotesPreview', 'kanbanTaskShowNotesPreviewDesc', 'toggle', ['kanban', 'kanban card notes', 'kanban note preview', 'notes preview', 'card notes', 'not önizleme']),
 	e('views', 'viewsKanban', 'kanbanTaskShowSubtaskProgress', 'settings', 'kanbanTaskShowSubtaskProgress', 'kanbanTaskShowSubtaskProgressDesc', 'toggle', ['kanban', 'kanban card progress', 'subtask progress', 'subtasks progress', 'body progress', 'task title progress', 'between title and chips']),

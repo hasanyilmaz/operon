@@ -431,6 +431,9 @@
 		"introDock": "Çakışan operonId kopyalarını burada çöz. Bu pencereyi istediğin zaman kapatıp komut paletinden veya durum dock’u uyarısından tekrar açabilirsin."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Sütun genişliğini artır",
+		"kanbanColumnWidthDecrease": "Sütun genişliğini azalt",
+		"kanbanColumnWidthSaveFailed": "Sütun genişliği kaydedilemedi.",
 		"kanbanCellHeightIncrease": "Hücre yüksekliğini artır",
 		"kanbanCellHeightDecrease": "Hücre yüksekliğini azalt",
 		"kanbanCellHeightSaveFailed": "Hücre yüksekliği kaydedilemedi.",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "Genel Kanban Ayarları",
 		"kanbanDefaultPreset": "Kanban varsayılan ön ayarı",
 		"kanbanDefaultPresetDesc": "Yeni kanban sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
-		"kanbanExpandedColumnWidth": "Genişletilmiş sütun genişliği (px)",
-		"kanbanExpandedColumnWidthDesc": "Tüm ön ayarlarda genişletilmiş kanban sütunlarının genişliğini kontrol eder.",
+		"kanbanExpandedColumnWidth": "Sütun genişliği",
+		"kanbanExpandedColumnWidthDesc": "Bu presetteki açık sütunların genişliği.",
 		"kanbanCellHeight": "Hücre yüksekliği",
-		"kanbanCellHeightDesc": "Açık swimlane hücrelerinin iç boşluk ve kenarlık dahil yüksekliği. Swimlane olmayan klasik panolar kullanılabilir panel yüksekliğini doldurur.",
+		"kanbanCellHeightDesc": "Bu presetteki açık swimlane hücrelerinin yüksekliği.",
 		"kanbanShowHoverAddButton": "Kanban'da hover ekleme butonunu göster",
 		"kanbanShowHoverAddButtonDesc": "Kanban hücresindeki boş alana gelindiğinde ortadaki ekleme butonunu gösterir.",
 		"kanbanTaskShowNotesPreview": "Kanban kartlarında not önizlemesini göster",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Pano filtresi kapsamındaki tüm değerleri göstermek için boş bırakın.",
 		"kanbanAxisRemoveValue": "Değeri kaldır",
 		"kanbanAutoCollapseFinishedGroups": "Tamamlanan status gruplarını daralt",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Sütun ve swimlane içindeki tamamlanan status gruplarını otomatik daralt."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Sütun ve swimlane içindeki tamamlanan status gruplarını otomatik daralt.",
+		"kanbanCellHeightDisabledDesc": "Sabit hücre yüksekliği uygulamak için swimlane’leri etkinleştirin."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Genişliği azalt",

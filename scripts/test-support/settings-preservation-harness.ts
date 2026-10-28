@@ -50,6 +50,22 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	// Only the two additive W034 defaults may appear in old sealed chip profiles.
 	// Keep every pre-existing choice and every other package byte under comparison.
 	expected = clone(expected);
+	actual = clone(actual);
+	// The previously accepted global dropdown rounded the sealed 320px value to 325px.
+	// Verify that exact legacy transition; preset sizing does not read this field.
+	if (expected.settings.kanbanExpandedColumnWidthPx === 320 && actual.settings.kanbanExpandedColumnWidthPx !== 320) {
+		assert.equal(actual.settings.kanbanExpandedColumnWidthPx, 325);
+		expected.settings.kanbanExpandedColumnWidthPx = 325;
+	}
+	for (const preset of actual.views.kanbanPresets.kanbanPresets) {
+		const previous = expected.views.kanbanPresets.kanbanPresets.find(entry => entry.id === preset.id);
+		for (const [key, fallback] of [['columnWidthPx', 325], ['cellHeightPx', 450]] as const) {
+			if (previous && !Object.prototype.hasOwnProperty.call(previous, key) && Object.prototype.hasOwnProperty.call(preset, key)) {
+				assert.equal(preset[key], fallback);
+				Reflect.deleteProperty(preset, key);
+			}
+		}
+	}
 	if (!Object.prototype.hasOwnProperty.call(expected.settings, 'kanbanCellHeightPx')
 		&& Object.prototype.hasOwnProperty.call(actual.settings, 'kanbanCellHeightPx')) {
 		assert.equal(actual.settings.kanbanCellHeightPx, 450);

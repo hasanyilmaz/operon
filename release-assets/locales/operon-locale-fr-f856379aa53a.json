@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Image de tâche",
       "kanbanCellHeight": "Hauteur des cellules",
       "kanbanCellHeightDecrease": "Réduire la hauteur des cellules",
-      "kanbanCellHeightDesc": "Hauteur de chaque cellule de couloir dépliée, marges intérieures et bordures comprises. Les tableaux classiques sans couloirs occupent la hauteur disponible du panneau.",
+      "kanbanCellHeightDesc": "Hauteur des cellules de couloir développées dans ce préréglage.",
+      "kanbanCellHeightDisabledDesc": "Activez les couloirs pour appliquer une hauteur de cellule fixe.",
       "kanbanCellHeightIncrease": "Augmenter la hauteur des cellules",
       "kanbanCellHeightSaveFailed": "La hauteur des cellules n’a pas pu être enregistrée.",
       "kanbanCollapseEmptyColumns": "Réduire les colonnes vides",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Toutes les colonnes du pipeline ont déjà un tri spécifique.",
       "kanbanColumnSortingDesc": "Contrôlez l'ordre uniquement dans cette colonne du pipeline.",
       "kanbanColumnSortingNoPipeline": "Choisissez un pipeline avant d'ajouter un tri de colonne.",
+      "kanbanColumnWidthDecrease": "Réduire la largeur des colonnes",
+      "kanbanColumnWidthIncrease": "Augmenter la largeur des colonnes",
+      "kanbanColumnWidthSaveFailed": "Impossible d’enregistrer la largeur des colonnes.",
       "kanbanCountsPartial": "Partiel",
       "kanbanDefaultPreset": "Préréglage Kanban par défaut",
       "kanbanDefaultPresetDesc": "Les nouveaux volets Kanban démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
       "kanbanDuplicatePreset": "Dupliquer le préréglage",
       "kanbanEnableSwimlanes": "Activer les couloirs",
       "kanbanEnableSwimlanesDesc": "Organisez le tableau en lignes par propriété.",
-      "kanbanExpandedColumnWidth": "Largeur des colonnes développées (px)",
-      "kanbanExpandedColumnWidthDesc": "Contrôle la largeur des colonnes Kanban développées dans tous les préréglages.",
+      "kanbanExpandedColumnWidth": "Largeur des colonnes",
+      "kanbanExpandedColumnWidthDesc": "Largeur des colonnes développées dans ce préréglage.",
       "kanbanFallbackPresetName": "Préréglage Kanban {{number}}",
       "kanbanFilter": "Filtre Kanban",
       "kanbanGeneralSettings": "Paramètres généraux du Kanban",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7c806a7514d0600b5a73712c9eb93af30ee00ef921dd9befdb8aba571d256f1f"
+  "sourceVersion": "eedcb00b72eeb87cd6243575341eb718059d061b4dfb24a768173c463591fba9"
 }

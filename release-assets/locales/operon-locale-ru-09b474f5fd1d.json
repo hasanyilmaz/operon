@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Изображение задачи",
       "kanbanCellHeight": "Высота ячейки",
       "kanbanCellHeightDecrease": "Уменьшить высоту ячеек",
-      "kanbanCellHeightDesc": "Высота каждой ячейки развёрнутой дорожки, включая внутренние отступы и границы. Классические доски без дорожек занимают всю доступную высоту панели.",
+      "kanbanCellHeightDesc": "Высота развёрнутых ячеек дорожек в этом пресете.",
+      "kanbanCellHeightDisabledDesc": "Включите дорожки, чтобы задать фиксированную высоту ячеек.",
       "kanbanCellHeightIncrease": "Увеличить высоту ячеек",
       "kanbanCellHeightSaveFailed": "Не удалось сохранить высоту ячеек.",
       "kanbanCollapseEmptyColumns": "Сворачивать пустые столбцы",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Для всех колонок процесса уже настроена отдельная сортировка.",
       "kanbanColumnSortingDesc": "Управляйте порядком задач только в этой колонке процесса.",
       "kanbanColumnSortingNoPipeline": "Сначала выберите процесс.",
+      "kanbanColumnWidthDecrease": "Уменьшить ширину столбца",
+      "kanbanColumnWidthIncrease": "Увеличить ширину столбца",
+      "kanbanColumnWidthSaveFailed": "Не удалось сохранить ширину столбца.",
       "kanbanCountsPartial": "Неполные данные",
       "kanbanDefaultPreset": "Пресет канбана по умолчанию",
       "kanbanDefaultPresetDesc": "Новые вкладки канбана начинаются с этого пресета, если у вкладки ещё нет собственного сохранённого состояния.",
       "kanbanDuplicatePreset": "Дублировать пресет",
       "kanbanEnableSwimlanes": "Включить дорожки",
       "kanbanEnableSwimlanesDesc": "Разделить доску на строки по свойству.",
-      "kanbanExpandedColumnWidth": "Ширина развёрнутого столбца (пикс.)",
-      "kanbanExpandedColumnWidthDesc": "Управляет шириной развёрнутых столбцов канбана во всех пресетах.",
+      "kanbanExpandedColumnWidth": "Ширина столбцов",
+      "kanbanExpandedColumnWidthDesc": "Ширина развёрнутых столбцов в этом пресете.",
       "kanbanFallbackPresetName": "Пресет канбана {{number}}",
       "kanbanFilter": "Фильтр канбана",
       "kanbanGeneralSettings": "Общие настройки канбана",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "998ec43ea67a663314118999dd7fe71c5c0185e05ad3c19765bb3878f4d2eb4d"
+  "sourceVersion": "f6365093868feb8a2fd475f40b379b8d43ef281b5cddce72d789bb2f4de757bd"
 }

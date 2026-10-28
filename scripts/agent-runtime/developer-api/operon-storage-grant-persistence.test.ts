@@ -178,6 +178,15 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 
 /** Verify additive card defaults separately, preserving the pre-card sealed fixtures. */
 function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void {
+ // Keep sealed permission fixtures unchanged; layout defaults have separate persistence tests.
+ for (const preset of data.views.kanbanPresets.kanbanPresets) {
+  if (verify && preset.columnWidthPx !== undefined) assert.equal(preset.columnWidthPx, 325);
+  if (verify && preset.cellHeightPx !== undefined) assert.equal(preset.cellHeightPx, 450);
+  Reflect.deleteProperty(preset, 'columnWidthPx'); Reflect.deleteProperty(preset, 'cellHeightPx');
+ }
+ // Verify the new width default while retaining the sealed 320 px fixture bytes.
+ if (verify) assert.equal(data.settings.kanbanExpandedColumnWidthPx, 325);
+ data.settings.kanbanExpandedColumnWidthPx = 320;
  // Keep sealed grant fixtures byte-identical; verify the additive Kanban default separately.
  if (Object.prototype.hasOwnProperty.call(data.settings, 'kanbanCellHeightPx')) {
   if (verify) assert.equal(data.settings.kanbanCellHeightPx, 450);

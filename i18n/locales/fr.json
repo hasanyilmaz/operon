@@ -431,6 +431,9 @@
 		"introDock": "Résolvez ici les conflits de doublons d'operonId. Vous pouvez fermer cette fenêtre à tout moment et la rouvrir depuis la palette de commandes ou l'alerte de la dock de statut."
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "Augmenter la largeur des colonnes",
+		"kanbanColumnWidthDecrease": "Réduire la largeur des colonnes",
+		"kanbanColumnWidthSaveFailed": "Impossible d’enregistrer la largeur des colonnes.",
 		"kanbanCellHeightIncrease": "Augmenter la hauteur des cellules",
 		"kanbanCellHeightDecrease": "Réduire la hauteur des cellules",
 		"kanbanCellHeightSaveFailed": "La hauteur des cellules n’a pas pu être enregistrée.",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "Paramètres généraux du Kanban",
 		"kanbanDefaultPreset": "Préréglage Kanban par défaut",
 		"kanbanDefaultPresetDesc": "Les nouveaux volets Kanban démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
-		"kanbanExpandedColumnWidth": "Largeur des colonnes développées (px)",
-		"kanbanExpandedColumnWidthDesc": "Contrôle la largeur des colonnes Kanban développées dans tous les préréglages.",
+		"kanbanExpandedColumnWidth": "Largeur des colonnes",
+		"kanbanExpandedColumnWidthDesc": "Largeur des colonnes développées dans ce préréglage.",
 		"kanbanCellHeight": "Hauteur des cellules",
-		"kanbanCellHeightDesc": "Hauteur de chaque cellule de couloir dépliée, marges intérieures et bordures comprises. Les tableaux classiques sans couloirs occupent la hauteur disponible du panneau.",
+		"kanbanCellHeightDesc": "Hauteur des cellules de couloir développées dans ce préréglage.",
 		"kanbanShowHoverAddButton": "Afficher le bouton d'ajout au survol dans Kanban",
 		"kanbanShowHoverAddButtonDesc": "Affiche le bouton d'ajout centré au survol d'un espace vide dans une cellule Kanban.",
 		"kanbanTaskShowNotesPreview": "Afficher l'aperçu des notes sur les cartes Kanban",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "Laissez vide pour afficher toutes les valeurs du périmètre du filtre.",
 		"kanbanAxisRemoveValue": "Supprimer la valeur",
 		"kanbanAutoCollapseFinishedGroups": "Replier les groupes de statuts terminés",
-		"kanbanAutoCollapseFinishedGroupsDesc": "Replier automatiquement les statuts terminés dans les colonnes et les couloirs."
+		"kanbanAutoCollapseFinishedGroupsDesc": "Replier automatiquement les statuts terminés dans les colonnes et les couloirs.",
+		"kanbanCellHeightDisabledDesc": "Activez les couloirs pour appliquer une hauteur de cellule fixe."
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "Réduire la largeur",

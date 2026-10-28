@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3754,
-  "keyFingerprint": "92dc174701ed7ba0785c86f2e0b81b867d788af83f35ceed05400769b27fd1af",
+  "keyCount": 3758,
+  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1811,7 +1811,8 @@
       "kanbanCardImageSource_taskImage": "Görev görseli",
       "kanbanCellHeight": "Hücre yüksekliği",
       "kanbanCellHeightDecrease": "Hücre yüksekliğini azalt",
-      "kanbanCellHeightDesc": "Açık swimlane hücrelerinin iç boşluk ve kenarlık dahil yüksekliği. Swimlane olmayan klasik panolar kullanılabilir panel yüksekliğini doldurur.",
+      "kanbanCellHeightDesc": "Bu presetteki açık swimlane hücrelerinin yüksekliği.",
+      "kanbanCellHeightDisabledDesc": "Sabit hücre yüksekliği uygulamak için swimlane’leri etkinleştirin.",
       "kanbanCellHeightIncrease": "Hücre yüksekliğini artır",
       "kanbanCellHeightSaveFailed": "Hücre yüksekliği kaydedilemedi.",
       "kanbanCollapseEmptyColumns": "Boş sütunları daralt",
@@ -1822,14 +1823,17 @@
       "kanbanColumnSortingAllConfigured": "Bütün pipeline kolonlarında özel sıralama var.",
       "kanbanColumnSortingDesc": "Yalnızca bu pipeline kolonundaki görevlerin nasıl sıralanacağını kontrol et.",
       "kanbanColumnSortingNoPipeline": "Kolon sıralaması eklemeden önce bir pipeline seç.",
+      "kanbanColumnWidthDecrease": "Sütun genişliğini azalt",
+      "kanbanColumnWidthIncrease": "Sütun genişliğini artır",
+      "kanbanColumnWidthSaveFailed": "Sütun genişliği kaydedilemedi.",
       "kanbanCountsPartial": "Kısmi",
       "kanbanDefaultPreset": "Kanban varsayılan ön ayarı",
       "kanbanDefaultPresetDesc": "Yeni kanban sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
       "kanbanDuplicatePreset": "Ön ayarı çoğalt",
       "kanbanEnableSwimlanes": "Swimlane’leri etkinleştir",
       "kanbanEnableSwimlanesDesc": "Panoyu property değerlerine göre satırlara ayırın.",
-      "kanbanExpandedColumnWidth": "Genişletilmiş sütun genişliği (px)",
-      "kanbanExpandedColumnWidthDesc": "Tüm ön ayarlarda genişletilmiş kanban sütunlarının genişliğini kontrol eder.",
+      "kanbanExpandedColumnWidth": "Sütun genişliği",
+      "kanbanExpandedColumnWidthDesc": "Bu presetteki açık sütunların genişliği.",
       "kanbanFallbackPresetName": "Kanban Ön ayar {{number}}",
       "kanbanFilter": "Kanban filtresi",
       "kanbanGeneralSettings": "Genel Kanban Ayarları",
@@ -3799,5 +3803,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "84a4269217d4f5fea734f1d5fcdf3cf5843ba49b67efcc5207dce8a39942c351"
+  "sourceVersion": "9c24f889458dc55438585fa8ad0acb5bea954199994a2a97971e9768b38c71c6"
 }

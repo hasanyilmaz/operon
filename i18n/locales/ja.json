@@ -431,6 +431,9 @@
 		"introDock": "重複した operonId の競合をここで解決します。このウィンドウはいつでも閉じることができ、コマンドパレットまたはステータスドックの通知から再度開けます。"
 	},
 	"settings": {
+		"kanbanColumnWidthIncrease": "列幅を広げる",
+		"kanbanColumnWidthDecrease": "列幅を狭める",
+		"kanbanColumnWidthSaveFailed": "列幅を保存できませんでした。",
 		"kanbanCellHeightIncrease": "セルの高さを増やす",
 		"kanbanCellHeightDecrease": "セルの高さを減らす",
 		"kanbanCellHeightSaveFailed": "セルの高さを保存できませんでした。",
@@ -1607,10 +1610,10 @@
 		"kanbanGeneralSettings": "カンバンの一般設定",
 		"kanbanDefaultPreset": "カンバンのデフォルトプリセット",
 		"kanbanDefaultPresetDesc": "新しいカンバンは、すでに独自の保存状態がない限り、このプリセットで開始します。",
-		"kanbanExpandedColumnWidth": "展開した列の幅（px）",
-		"kanbanExpandedColumnWidthDesc": "すべてのプリセットで展開したカンバンの列の幅を制御します。",
+		"kanbanExpandedColumnWidth": "列の幅",
+		"kanbanExpandedColumnWidthDesc": "このプリセットの展開された列の幅。",
 		"kanbanCellHeight": "セルの高さ",
-		"kanbanCellHeightDesc": "展開されたスイムレーンの各セルの高さです。内側の余白と枠線を含みます。スイムレーンのない従来のボードは、ペインの利用可能な高さ全体を使用します。",
+		"kanbanCellHeightDesc": "このプリセットの展開されたスイムレーンセルの高さ。",
 		"kanbanShowHoverAddButton": "Kanban でホバー追加ボタンを表示",
 		"kanbanShowHoverAddButtonDesc": "Kanban セルの空き領域にホバーしたとき、中央の追加ボタンを表示します。",
 		"kanbanTaskShowNotesPreview": "Kanban カードにノートプレビューを表示",
@@ -2326,7 +2329,8 @@
 		"kanbanAxisAllValuesDesc": "空欄にすると、ボードフィルターの範囲内のすべての値を表示します。",
 		"kanbanAxisRemoveValue": "値を削除",
 		"kanbanAutoCollapseFinishedGroups": "完了ステータスのグループを折りたたむ",
-		"kanbanAutoCollapseFinishedGroupsDesc": "列とスイムレーンの完了ステータスを自動的に折りたたみます。"
+		"kanbanAutoCollapseFinishedGroupsDesc": "列とスイムレーンの完了ステータスを自動的に折りたたみます。",
+		"kanbanCellHeightDisabledDesc": "固定セル高を適用するにはスイムレーンを有効にしてください。"
 	},
 	"buttons": {
 		"lightboxWidthDecrease": "幅を狭くする",
