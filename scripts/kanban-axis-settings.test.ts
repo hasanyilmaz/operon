@@ -25,7 +25,7 @@ proto.setName=function(name:string){this.row={name,controls:[]};rows.push(this.r
 proto.setDesc=function(description:string){this.row.description=description;return this;};
 for(const method of ['addText','addButton','addDropdown','addExtraButton','addToggle']) proto[method]=function(build:Function){
 	const c:Control={label:'',icon:'',disabled:false,click(){},change(){},items:{}};
-	const component={buttonEl:{isConnected:true,textContent:""},setValue(){return component;},setPlaceholder(){return component;},setTooltip(){return component;},setButtonText(v:string){c.label=v;component.buttonEl.textContent=v;return component;},setIcon(v:string){c.icon=v;return component;},setDisabled(v:boolean){c.disabled=v;return component;},onClick(fn:()=>void){c.click=fn;return component;},onChange(fn:(v:string|boolean)=>void){c.change=fn;return component;},addOption(k:string,v:string){c.items[k]=v;return component;}};
+	const component={buttonEl:{isConnected:true,textContent:""},setClass(){return component;},setValue(){return component;},setPlaceholder(){return component;},setTooltip(){return component;},setButtonText(v:string){c.label=v;component.buttonEl.textContent=v;return component;},setIcon(v:string){c.icon=v;return component;},setDisabled(v:boolean){c.disabled=v;return component;},onClick(fn:()=>void){c.click=fn;return component;},onChange(fn:(v:string|boolean)=>void){c.change=fn;return component;},addOption(k:string,v:string){c.items[k]=v;return component;}};
 	this.row.controls.push(c);build(component);return this;
 };
 function ui(){const settings=migrateSettings(structuredClone(DEFAULT_SETTINGS)),original=cloneDefaultKanbanPresets()[0],preset=structuredClone(original);

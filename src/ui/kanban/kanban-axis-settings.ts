@@ -93,7 +93,7 @@ export function renderKanbanAxisSettings(options: {
 	}
 	const selected = axis?.kind === 'status' ? access.resolve({ source: 'managed', key: 'status', type: 'text' }) : axis ? access.resolve(axis.property) : null;
 	const label = selected?.ok ? propertyLabel(selected.field) : axis?.kind === 'property' ? axis.property.key : t('settings', 'kanbanAxisDisabled');
-	new Setting(container).setName(t('settings', 'kanbanAxisProperty')).addButton(button => button.setButtonText(label).onClick(() => {
+	new Setting(container).setName(t('settings', 'kanbanAxisProperty')).addButton(button => button.setClass('dropdown').setButtonText(label).onClick(() => {
 		options.onPropertyPickerOpen?.();
 		// Property selection needs only the catalog, never task values or scope counts.
 		const fields = access.fields.map(field => ({ field: field.identity, label: propertyLabel(field), descriptor: field }));
@@ -131,7 +131,7 @@ export function renderKanbanAxisSettings(options: {
 	const valueLabel = (value: KanbanAxisValue, labelSettings = settings): string => value.kind === 'empty' ? t('settings', 'kanbanAxisNoValue')
 		: value.kind === 'priority' ? labelSettings.priorities.find(p => p.id === value.id)?.label ?? `${value.id} — ${t('notifications', 'kanbanAxesUnavailable')}`
 			: value.kind === 'status' ? value.id : String(value.value);
-	new Setting(container).setName(t('settings', 'kanbanAxisAddValue')).setDesc(t('settings', 'kanbanAxisAllValuesDesc')).addButton(button => button.setButtonText(t('settings', 'kanbanAxisChooseValue')).setDisabled(!selected?.ok).onClick(() => runPicker(button, axis.property, ({ scope, access, settings, tasks, memo = (_key, calculate) => calculate() }) => {
+	new Setting(container).setName(t('settings', 'kanbanAxisAddValue')).setDesc(t('settings', 'kanbanAxisAllValuesDesc')).addButton(button => button.setClass('dropdown').setButtonText(t('settings', 'kanbanAxisChooseValue')).setDisabled(!selected?.ok).onClick(() => runPicker(button, axis.property, ({ scope, access, settings, tasks, memo = (_key, calculate) => calculate() }) => {
 		const resolved = access.resolve(axis.property); if (!resolved.ok) return;
 		const result = memo(`values:${JSON.stringify(axis.property)}`, () => {
 		const counts = new Map<string, number>(); let complete = scope.scope.scopeComplete;

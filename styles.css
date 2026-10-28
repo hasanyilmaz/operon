@@ -19636,6 +19636,13 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	max-width: 100%;
 }
 
+.operon-kanban-preset-quick-settings-modal .setting-item-control button.dropdown {
+	text-align: start;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .operon-calendar-preset-quick-settings-modal .setting-item-control input,
 .operon-calendar-preset-quick-settings-modal .setting-item-control select,
 .operon-calendar-preset-quick-settings-modal .setting-item-control .dropdown,
@@ -27091,7 +27098,11 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 }
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-setting {
-	margin-inline: 8px;
+	margin-inline: 0;
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-setting .setting-item-control {
+	justify-content: flex-start;
 }
 
 .operon-kanban-sort-mode-select {
@@ -27102,8 +27113,9 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 }
 
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-select {
-	width: 160px;
-	max-width: 160px;
+	flex: 1 1 100%;
+	width: 100%;
+	max-width: 280px;
 }
 
 .operon-kanban-sort-row {

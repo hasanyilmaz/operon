@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Floating **Kanban size controls** adjust column width and swimlane cell height for the active preset, saving each change while preserving scroll position and keyboard focus.
 
-- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned.
+- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned. Column and swimlane selectors and the board order mode use consistent dropdown widths and arrows.
 
 - Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position and active editing or drag operations; scrolling over an empty cell or past its contents continues through the board.
 
@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Kanban dropdown standardization passed **36/36** axis-settings tests, **7/7** sorting-settings tests, **42/42** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
 
 - Preset-specific **Board layout** passed **83/83** size tests, **91/91** settings-preservation tests, **50/50** isolated browser checks, settings backup checks, full local checks, Plugin release guard, independent persistence review, and manual verification.
 
