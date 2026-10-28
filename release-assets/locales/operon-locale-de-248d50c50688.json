@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Neue Kanban-Voreinstellung {{number}}",
       "kanbanNoPipeline": "Kein Arbeitsablauf",
       "kanbanNoSwimlane": "Keine Swimlane",
+      "kanbanNoSwimlanes": "Keine Swimlanes",
       "kanbanPipeline": "Arbeitsablauf",
       "kanbanPipelineColumnSorting": "Sortierung nach Pipeline-Spalte",
       "kanbanPipelineDesc": "Die Spalten werden aus den ausgewählten Arbeitsablaufstatus erzeugt.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "538b095c4e00deee524ba2beb2cb1b9dbcceef9a476b97ddf42991781247415f"
+  "sourceVersion": "c8cda5b065ea698a19258bac5b8484f55b2995e523bac34a0370bfe29d1084e0"
 }

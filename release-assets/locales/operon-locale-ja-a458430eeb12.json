@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "新しいカンバンプリセット {{number}}",
       "kanbanNoPipeline": "ワークフローなし",
       "kanbanNoSwimlane": "スイムレーンなし",
+      "kanbanNoSwimlanes": "スイムレーンなし",
       "kanbanPipeline": "ワークフロー",
       "kanbanPipelineColumnSorting": "パイプライン列の並べ替え",
       "kanbanPipelineDesc": "列は選択したワークフローのステータスから生成されます。",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e07c5fcc783a5467adb6cd9108374f27df42cb6e596bb15243677dbcd67a20fd"
+  "sourceVersion": "f1127d49564b96222067ad852a86eaf26a7809d3fe1eae859a6847b767bce464"
 }

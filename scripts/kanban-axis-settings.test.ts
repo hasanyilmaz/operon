@@ -35,7 +35,7 @@ function ui(){const settings=migrateSettings(structuredClone(DEFAULT_SETTINGS)),
 	let side:'columns'|'swimlanes'='columns';let preparePicker: Parameters<typeof renderKanbanAxisSettings>[0]['preparePicker'];
 	let onPropertyPickerOpen: (()=>void)|undefined;
 	const render=()=>{rows.length=0;renderKanbanAxisSettings({app,container:host,host,side,preset,settings,tasks,preparePicker,onPropertyPickerOpen,refresh:render,retainPicker(){}});};
-	const choose=(key:string)=>{rows.find(r=>r.name==='Property')!.controls[0].click();const option=axisPicker?.fields?.find(f=>f.descriptor.reference.key===key);assert.ok(option);axisPicker!.onSelect(option);};
+	const choose=(key:string)=>{rows.find(r=>r.name==='Property')!.controls[0].click();const option=axisPicker?.fields?.find(f=>(f.descriptor?.reference.key ?? f.field)===key);assert.ok(option);axisPicker!.onSelect(option);};
 	const current=()=>{const r=resolveKanbanAxes(preset,settings.keyMappings);assert.ok(r.ok);return r.axes;};
 	render();return {app,tasks,settings,preset,original,render,choose,current,setPropertyOpen(fn:()=>void){onPropertyPickerOpen=fn;render();},setPrepare(fn:typeof preparePicker){preparePicker=fn;render();},setSide(value:typeof side){side=value;render();},add(raw:string){rows.find(r=>r.name==='Add value')!.controls[0].click();const option=axisPicker!.options.find(o=>String(o.typed.value)===raw);assert.ok(option);axisPicker!.onSelect(option);}};
 }
@@ -95,22 +95,22 @@ test('legacy numeric list members, colors and icons match task-reader identities
 	f.app.metadataCache.getFileCache=()=>({frontmatter});
 	for(const [key,expected] of [['contexts','0'],['taskColor','ff9900'],['taskIcon','star']]){f.choose(key);rows.find(r=>r.name==='Add value')!.controls[0].click();assert.deepEqual(axisPicker!.options.map(o=>[o.label,o.trailingText]),[['No value','2'],[expected,'1']]);}
 });
-test('swimlane toggle is first, hides controls, and restores ordered values independently of columns',()=>{
+test('No swimlanes hides controls and restores ordered values independently of columns',()=>{
 	const f=ui();f.setSide('swimlanes');f.choose('tags');f.add('book');f.add('action');const before=structuredClone(f.current().swimlanes);
-	assert.equal(rows[0].name,'Enable swimlanes');rows[0].controls[0].change(false);assert.deepEqual(rows.map(r=>r.name),['Enable swimlanes']);assert.equal(f.current().swimlanes,null);
-	f.setSide('columns');f.choose('estimate');f.add('5');f.setSide('swimlanes');rows[0].controls[0].change(true);
+	assert.equal(rows[0].name,'Property');f.choose('no-swimlanes');assert.deepEqual(rows.map(r=>r.name),['Property']);assert.equal(f.current().swimlanes,null);
+	f.setSide('columns');f.choose('estimate');f.add('5');f.setSide('swimlanes');f.choose('tags');
 	assert.deepEqual(f.current().swimlanes,before);assert.equal(f.current().inactiveSwimlanes,undefined);assert.ok(!rows.some(r=>r.name==='All values'));assert.equal(f.original.axes,undefined);
 });
 test('status swimlane toggle restores pipeline and does not show value controls',()=>{
 	const f=ui();f.setSide('swimlanes');f.choose('status');const id=f.settings.pipelines[0].id;rows.find(r=>r.name==='Pipeline')!.controls[0].change(id);
-	rows[0].controls[0].change(false);rows[0].controls[0].change(true);assert.deepEqual(f.current().swimlanes,{kind:'status',pipelineId:id});assert.ok(!rows.some(r=>r.name==='Add value'));
+	f.choose('no-swimlanes');f.choose('status');assert.deepEqual(f.current().swimlanes,{kind:'status',pipelineId:id});assert.ok(!rows.some(r=>r.name==='Add value'));
 });
 test('disabled swimlane choices survive save and reopening without activating the axis',async()=>withSettingsFixture({},async h=>{
-	const f=ui();f.setSide('swimlanes');f.choose('tags');f.add('book');rows[0].controls[0].change(false);
+	const f=ui();f.setSide('swimlanes');f.choose('tags');f.add('book');f.choose('no-swimlanes');
 	const storage=h.createStorage();await storage.initialize();const before=structuredClone(storage.getSettings().kanbanPresets[0]);
 	const next={...before,axes:structuredClone(f.preset.axes),swimlaneBy:null};await storage.saveKanbanPresetIfUnchanged(before,next);
 	const reopened=h.createStorage();await reopened.initialize();const saved=reopened.getSettings().kanbanPresets[0];const decoded=resolveKanbanAxes(saved,f.settings.keyMappings);assert.ok(decoded.ok);assert.equal(decoded.axes.swimlanes,null);assert.deepEqual(decoded.axes.inactiveSwimlanes,f.current().inactiveSwimlanes);
-	f.preset.axes=structuredClone(saved.axes);f.render();rows[0].controls[0].change(true);assert.deepEqual(f.current().swimlanes,decoded.axes.inactiveSwimlanes);h.assertIsolation();
+	f.preset.axes=structuredClone(saved.axes);f.render();f.choose('tags');assert.deepEqual(f.current().swimlanes,decoded.axes.inactiveSwimlanes);h.assertIsolation();
 }));
 test('property picker uses one line and includes renamed canonical keys',()=>{
 	const f=ui();f.settings.keyMappings.find(m=>m.canonicalKey==='priority')!.visiblePropertyName='Tier';f.render();rows[0].controls[0].click();
@@ -287,3 +287,10 @@ test('native readiness waits for preparation and picker close instead of cancell
  finish(data);await pending;await new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(axisPicker,opened);assert.equal(valueButton.disabled,false);session.dispose();
  });
+
+test('No swimlanes is first only for rows and a different restored property starts empty',()=>{
+ const f=ui();rows[0].controls[0].click();assert.ok(!axisPicker!.fields!.some(o=>o.field==='no-swimlanes'));
+ f.setSide('swimlanes');rows[0].controls[0].click();assert.equal(axisPicker!.fields![0].label,'No swimlanes');
+ f.choose('tags');f.add('book');f.choose('no-swimlanes');assert.equal(rows[0].controls[0].label,'No swimlanes');
+ f.choose('estimate');const axis=f.current().swimlanes;assert.ok(axis?.kind==='property');assert.equal(axis.property.key,'estimate');assert.deepEqual(axis.values,[]);assert.equal(f.current().inactiveSwimlanes,undefined);
+});

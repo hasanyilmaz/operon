@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Nuevo preajuste de Kanban {{number}}",
       "kanbanNoPipeline": "Sin flujo de trabajo",
       "kanbanNoSwimlane": "Sin carril",
+      "kanbanNoSwimlanes": "Sin carriles",
       "kanbanPipeline": "Flujo de trabajo",
       "kanbanPipelineColumnSorting": "Orden de columnas del pipeline",
       "kanbanPipelineDesc": "Las columnas se generan a partir de los estados del flujo de trabajo seleccionado.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3b48c34775e400ca1d5d04e7433dc2fc5aedc2c75fa695b5dbaf26cb39cabc92"
+  "sourceVersion": "0dad3574c97ea4a27a7b090e150057b9186354ed55f78d0592775aedc428acdc"
 }

@@ -79,31 +79,37 @@ export function renderKanbanAxisSettings(options: {
 		setKanbanPresetAxes(preset, { ...current.axes, [side]: next }, settings.keyMappings);
 		refresh();
 	};
-	if (side === 'swimlanes') {
-		new Setting(container).setName(t('settings', 'kanbanEnableSwimlanes')).setDesc(t('settings', 'kanbanEnableSwimlanesDesc')).addToggle(toggle => toggle.setValue(axis !== null).onChange(enabled => {
-			const current = resolveKanbanAxes(preset, settings.keyMappings);
-			if (!current.ok || enabled === (current.axes.swimlanes !== null)) return;
-			const { inactiveSwimlanes, ...axes } = current.axes;
-			setKanbanPresetAxes(preset, enabled
-				? { ...axes, swimlanes: inactiveSwimlanes ?? { kind: 'property', property: { source: 'managed', key: 'priority', type: 'text' }, values: [] } }
-				: { ...axes, swimlanes: null, inactiveSwimlanes: axes.swimlanes! }, settings.keyMappings);
-			refresh();
-		}));
-		if (!axis) return;
-	}
 	const selected = axis?.kind === 'status' ? access.resolve({ source: 'managed', key: 'status', type: 'text' }) : axis ? access.resolve(axis.property) : null;
-	const label = selected?.ok ? propertyLabel(selected.field) : axis?.kind === 'property' ? axis.property.key : t('settings', 'kanbanAxisDisabled');
+	const label = selected?.ok ? propertyLabel(selected.field) : axis?.kind === 'property' ? axis.property.key : t('settings', 'kanbanNoSwimlanes');
 	new Setting(container).setName(t('settings', 'kanbanAxisProperty')).addButton(button => button.setClass('dropdown').setButtonText(label).onClick(() => {
 		options.onPropertyPickerOpen?.();
 		// Property selection needs only the catalog, never task values or scope counts.
-		const fields = access.fields.map(field => ({ field: field.identity, label: propertyLabel(field), descriptor: field }));
+		const fields: { field: string; label: string; descriptor: KanbanPropertyDescriptor | null }[] = access.fields.map(field => ({ field: field.identity, label: propertyLabel(field), descriptor: field }));
+		if (side === 'swimlanes') fields.unshift({ field: 'no-swimlanes', label: t('settings', 'kanbanNoSwimlanes'), descriptor: null });
 		retainPicker(showSearchableFieldPicker(button.buttonEl, {
-			value: selected?.ok ? selected.field.identity : null, fields,
+			value: selected?.ok ? selected.field.identity : side === 'swimlanes' && !axis ? 'no-swimlanes' : null, fields,
 			placeholder: t('settings', 'kanbanAxisProperty'), ariaLabel: t('settings', 'kanbanAxisProperty'), noMatchesText: t('settings', 'kanbanAxisNoMatches'),
 			floatingHost: host, floatingScrollHost: host,
 			variantClassName: 'operon-kanban-value-picker', getSearchText: item => item.label,
 			onClose: options.onPickerClose,
 			onSelect: item => {
+				if (!item.descriptor) {
+					if (side === 'swimlanes' && axis) {
+						setKanbanPresetAxes(preset, { ...decoded.axes, swimlanes: null, inactiveSwimlanes: axis }, settings.keyMappings);
+						refresh();
+					}
+					return;
+				}
+				if (side === 'swimlanes' && !axis && decoded.axes.inactiveSwimlanes) {
+					const { inactiveSwimlanes, ...axes } = decoded.axes;
+					const previous = access.resolve(inactiveSwimlanes.kind === 'status' ? { source: 'managed', key: 'status', type: 'text' } : inactiveSwimlanes.property);
+					const next: KanbanAxis = previous.ok && previous.field.identity === item.field ? inactiveSwimlanes
+						: item.descriptor.reference.source === 'managed' && item.descriptor.reference.key === 'status' ? { kind: 'status', pipelineId: null }
+							: { kind: 'property', property: item.descriptor.reference, values: [] };
+					setKanbanPresetAxes(preset, { ...axes, swimlanes: next }, settings.keyMappings);
+					refresh();
+					return;
+				}
 				if (selected?.ok && selected.field.identity === item.field) return;
 				const property = item.descriptor.reference;
 				change(property.source === 'managed' && property.key === 'status' ? { kind: 'status', pipelineId: null } : { kind: 'property', property, values: [] });

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "新看板預設 {{number}}",
       "kanbanNoPipeline": "無工作流",
       "kanbanNoSwimlane": "無泳道",
+      "kanbanNoSwimlanes": "無泳道",
       "kanbanPipeline": "工作流",
       "kanbanPipelineColumnSorting": "流程欄排序",
       "kanbanPipelineDesc": "列由所選工作流的狀態生成。",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "fd2a2e324709f054e3c758018950e24d3fb977ae88b901cf35cc944ba2106de6"
+  "sourceVersion": "c954e208ebccc0571b1bed7efb5a2a58c0c2788390adb1fa4c77c662ac9be625"
 }

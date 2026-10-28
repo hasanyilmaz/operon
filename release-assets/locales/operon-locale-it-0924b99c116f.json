@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Nuova preimpostazione Kanban {{number}}",
       "kanbanNoPipeline": "Nessuna pipeline",
       "kanbanNoSwimlane": "Nessuna corsia",
+      "kanbanNoSwimlanes": "Nessuna corsia",
       "kanbanPipeline": "Pipeline",
       "kanbanPipelineColumnSorting": "Ordinamento colonne pipeline",
       "kanbanPipelineDesc": "Le colonne vengono generate dagli stati della pipeline selezionata.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "3c624fd8303206b14a5bed1775c6f775323d51babc272dc8b360772e23a2dd1d"
+  "sourceVersion": "f4a2c1e11db3c73225b19d61008b34aed5e30b3cf64bb716a3f98ffa4b146e47"
 }

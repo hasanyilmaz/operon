@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Nouveau préréglage Kanban {{number}}",
       "kanbanNoPipeline": "Aucun pipeline",
       "kanbanNoSwimlane": "Aucun couloir",
+      "kanbanNoSwimlanes": "Aucun couloir",
       "kanbanPipeline": "Pipeline",
       "kanbanPipelineColumnSorting": "Tri des colonnes du pipeline",
       "kanbanPipelineDesc": "Les colonnes sont générées à partir des statuts du pipeline sélectionné.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "eedcb00b72eeb87cd6243575341eb718059d061b4dfb24a768173c463591fba9"
+  "sourceVersion": "a9e8e0101a1afde7df2323375f66673cb6a7a5780e7eca5ba0c92fc095204e3e"
 }

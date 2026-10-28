@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Новый пресет канбана {{number}}",
       "kanbanNoPipeline": "Нет конвейера",
       "kanbanNoSwimlane": "Без дорожки",
+      "kanbanNoSwimlanes": "Без дорожек",
       "kanbanPipeline": "Конвейер",
       "kanbanPipelineColumnSorting": "Сортировка колонок процесса",
       "kanbanPipelineDesc": "Столбцы создаются на основе статусов выбранного конвейера.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f6365093868feb8a2fd475f40b379b8d43ef281b5cddce72d789bb2f4de757bd"
+  "sourceVersion": "484b07fb83406b806a315b0fe3fbb16155faa633e9bb0139d0c1dc316c71cc7b"
 }

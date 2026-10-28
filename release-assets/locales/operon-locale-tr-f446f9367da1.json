@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Yeni Kanban Ön ayar {{number}}",
       "kanbanNoPipeline": "Akış yok",
       "kanbanNoSwimlane": "Kulvar yok",
+      "kanbanNoSwimlanes": "Swimlane yok",
       "kanbanPipeline": "Akış",
       "kanbanPipelineColumnSorting": "Pipeline kolon sıralaması",
       "kanbanPipelineDesc": "Sütunlar seçilen akış durumlarından oluşturulur.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "9c24f889458dc55438585fa8ad0acb5bea954199994a2a97971e9768b38c71c6"
+  "sourceVersion": "0699cda86974f8bc81ef91dc4901b2b3de8749c746a4b74b117c767b765e6963"
 }

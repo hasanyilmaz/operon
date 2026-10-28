@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3758,
-  "keyFingerprint": "3e424c0b92ecd62be8d1ed8cd5ea4f82efa846082b7c36e978ae1c0b193be52d",
+  "keyCount": 3759,
+  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1854,6 +1854,7 @@
       "kanbanNewPresetName": "Nova predefinição do Kanban {{number}}",
       "kanbanNoPipeline": "Nenhum pipeline",
       "kanbanNoSwimlane": "Sem raia",
+      "kanbanNoSwimlanes": "Sem raias",
       "kanbanPipeline": "Pipeline",
       "kanbanPipelineColumnSorting": "Ordenação de colunas do pipeline",
       "kanbanPipelineDesc": "As colunas são geradas a partir dos status do pipeline selecionado.",
@@ -3803,5 +3804,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "499516aa960e4ce0a1791529c11128067311c74e29dac56b065257e2b4242c84"
+  "sourceVersion": "0cd671f16b4738f16003c27468fc9c10adb9470d1de6b09e82c2b2938e46e6c1"
 }
