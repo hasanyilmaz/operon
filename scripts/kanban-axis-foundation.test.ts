@@ -18,7 +18,8 @@ import { WriteQueue } from '../src/storage/write-queue';
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
 import { parseOperonSettingsBackupV1 } from '../src/core/settings-backup-format';
 import { validateOperonSettingsBackupGroupsV1 } from '../src/core/settings-backup-group-validation';
-import { queryKanbanBoard } from '../src/systems/kanban-query';
+
+import { queryKanbanBoard } from './test-support/kanban-legacy-query';
 import type { IndexedTask } from '../src/types/fields';
 
 const settings = () => migrateSettings(structuredClone(DEFAULT_SETTINGS));
@@ -190,6 +191,14 @@ test('backup export/import validation retains native axes and rejects invalid/fu
  }
 });
 
+test('inactive swimlanes survive portable backups, validate references and remain separate from active lanes', () => {
+ const s=settings(); const a=axes(ref('list','tags','managed')); a.inactiveSwimlanes={kind:'property',property:ref('list','tags','managed'),values:[{kind:'value',value:'book'},{kind:'empty'}]}; a.swimlanes=null;s.kanbanPresets[0].axes=a;
+ const exported=exportOperonSettingsBackupJsonV1({settings:s,source:{pluginVersion:'4.3.0',obsidianVersion:'1.13.0',dataPackageSchemaVersion:2},createdAt:'2026-10-27T12:00:00.000Z'});assert.ok(exported.ok,JSON.stringify(exported.diagnostics));
+ const parsed=parseOperonSettingsBackupV1(exported.json);assert.ok(parsed.ok);const decoded=validateOperonSettingsBackupGroupsV1(parsed.value.body.groups);assert.ok(decoded.ok,JSON.stringify(decoded.diagnostics));assert.deepEqual(decoded.payloads.kanban?.kanbanPresets[0].axes,a);
+ assert.equal(decodeKanbanAxes({...a,swimlanes:a.inactiveSwimlanes}).ok,false);assert.equal(decodeKanbanAxes({...a,inactiveSwimlanes:{kind:'invalid'}}).ok,false);
+ const invalid=structuredClone(parsed.value.body.groups);(invalid.kanban!.data as unknown as {kanbanPresets: typeof s.kanbanPresets}).kanbanPresets[0].axes={...a,inactiveSwimlanes:{kind:'status',pipelineId:'missing'}};assert.equal(validateOperonSettingsBackupGroupsV1(invalid).ok,false);
+});
+
 test('preset store clones callers, serializes saves and does not advance after rejection', async () => {
  const s=settings(), initial={kanbanPresets:s.kanbanPresets,kanbanDefaultPresetId:s.kanbanDefaultPresetId};
  const app={vault:{configDir:'.test',adapter:{exists:async()=>true}}} as unknown as App;
@@ -234,7 +243,7 @@ test('future axes survive initialization and unrelated saves cannot erase them',
 });
 test('existing modal draft and duplicate paths deep-clone axes; renderer has a compatibility guard',()=>{
  for(const file of ['src/ui/settings-tab.ts','src/ui/kanban/kanban-preset-quick-settings-modal.ts']) assert.match(readFileSync(file,'utf8'),/axes: cloneKanbanAxesPayload\(preset.axes\)/);
- assert.match(readFileSync('src/ui/kanban/kanban-view.ts','utf8'),/kanbanAxesUnavailable/);
+ assert.match(readFileSync('src/ui/kanban/kanban-view.ts','utf8'),/kanbanAxisReason\(reason \?\? 'unavailable'\)/);
 });
 
 test('deleted managed identity is not rebound to another field label', () => {

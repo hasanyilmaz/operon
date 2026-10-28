@@ -427,7 +427,7 @@ async function run(): Promise<void> {
 	);
 	assert.match(
 		mainSettingsSource,
-		/cardImageSource: 'none',[\s\S]*?this\.settings\.kanbanPresets\.push\(saved\)/u,
+		/cardImageSource: 'none',[\s\S]*?this\.storage\.createKanbanPreset\(saved\)/u,
 		'New Kanban presets must start with card images disabled.',
 	);
 	assertions += 4;

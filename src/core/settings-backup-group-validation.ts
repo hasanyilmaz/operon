@@ -686,7 +686,7 @@ function validateReferences(
 	for (const [index, preset] of (payloads.kanban?.kanbanPresets ?? []).entries()) {
 		const base = `$.body.groups.kanban.data.kanbanPresets[${index}]`;
 		const axes = decodeKanbanAxes(preset.axes);
-		if (axes.ok) for (const [axisName, axis] of [['columns', axes.axes.columns], ['swimlanes', axes.axes.swimlanes]] as const) {
+		if (axes.ok) for (const [axisName, axis] of [['columns', axes.axes.columns], ['swimlanes', axes.axes.swimlanes], ['inactiveSwimlanes', axes.axes.inactiveSwimlanes]] as const) {
 			if (!axis) continue;
 			const axisPath = `${base}.axes.${axisName}`;
 			if (axis.kind === 'status') {

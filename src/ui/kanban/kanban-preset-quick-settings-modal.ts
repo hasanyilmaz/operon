@@ -1,4 +1,10 @@
-import { cloneKanbanAxesPayload, projectKanbanLegacyAxes, updateKanbanLegacyAxes } from '../../core/kanban-axis-model';
+import { renderKanbanAxisSettings, renderKanbanTaskCounts } from './kanban-axis-settings';
+import { createKanbanPropertyAccess } from '../../core/kanban-axis-properties';
+import { buildKanbanGroupingSnapshot } from '../../systems/kanban-grouping';
+import { getNativePropertyIndex } from '../../indexer/native-property-index';
+import { KanbanPickerSession } from './kanban-picker-session';
+import type { IndexedTask } from '../../types/fields';
+import { cloneKanbanAxesPayload, resolveKanbanAxes } from '../../core/kanban-axis-model';
 import { App, DropdownComponent, Modal, Notice, Setting, setIcon } from 'obsidian';
 import { APPEARANCE_SCHEME_LIGHT_OPTIONS, APPEARANCE_SCHEME_DARK_OPTIONS, addAppearanceSchemeOptions } from '../appearance-schemes';
 import {
@@ -10,10 +16,7 @@ import {
 	KanbanSortEmptyPlacement,
 	KanbanSortMode,
 	KanbanSortRule,
-	KanbanSwimlaneBy,
-	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCardImageSource,
-	normalizeKanbanCustomFieldReference,
 } from '../../types/kanban';
 import type { FilterSet, OperonSettings } from '../../types/settings';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
@@ -26,7 +29,7 @@ import { getNormalFilterSets } from '../../core/dynamic-file-task-filter';
 import { t } from '../../core/i18n';
 import { runSettingsAsync, settingsAsyncHandler } from '../settings/async-settings-action';
 import { parsePresetNumber } from '../settings/preset-control-helpers';
-import { getKanbanSwimlaneCustomFieldOptions, getManagedCustomFieldOptionMapping, getManagedCustomFieldOptions } from '../../core/managed-task-fields';
+import { getManagedCustomFieldOptions } from '../../core/managed-task-fields';
 import { renderPresetFilterActions } from '../preset-filter-actions';
 import type { FilterModalEvalDeps, FilterSetModalOptions } from '../filter-set-modal';
 import { isPresetFavorite } from '../../core/preset-favorites';
@@ -36,7 +39,9 @@ import { addKanbanCardImageSourceOptions } from '../../core/kanban-card-image-so
 interface KanbanPresetQuickSettingsModalOptions {
 	getSettings: () => OperonSettings;
 	preset: KanbanPreset | null;
-	onSave: (preset: KanbanPreset) => Promise<void>;
+	onSave: (preset: KanbanPreset, expected: KanbanPreset) => Promise<void>;
+	getTasks?: () => IndexedTask[];
+	getTaskRevision?: () => number;
 	onToggleFavorite: (presetId: string) => Promise<void>;
 	onSaveFilterSet: (filterSet: FilterSet) => Promise<void>;
 	onToggleFilterFavorite?: (filterSetId: string) => Promise<void>;
@@ -46,20 +51,63 @@ interface KanbanPresetQuickSettingsModalOptions {
 
 export class KanbanPresetQuickSettingsModal extends Modal {
 	private readonly options: KanbanPresetQuickSettingsModalOptions;
+	private pickerClose: (() => void) | null = null;
+	private isOpen = false;
+	private pickerSession?: KanbanPickerSession;
+	private pickerRequest = 0;
+	private pickerPreparing = 0;
+	private nativeRefreshPending = false;
+	private pickerCleanup: (() => void)[] = [];
+	private readonly expectedPreset: KanbanPreset | null;
 	private readonly draftPreset: KanbanPreset | null;
 
 	constructor(app: App, options: KanbanPresetQuickSettingsModalOptions) {
 		super(app);
 		this.options = options;
+		this.expectedPreset = options.preset ? cloneKanbanPreset(options.preset) : null;
 		this.draftPreset = options.preset ? cloneKanbanPreset(options.preset) : null;
 	}
 
 	onOpen(): void {
 		this.modalEl.addClass('operon-kanban-preset-quick-settings-modal');
+		this.isOpen = true;
+		this.pickerSession = new KanbanPickerSession(this.app, () => {
+			const settings = this.options.getSettings(), tasks = this.options.getTasks?.() ?? [];
+			const deps = this.options.getFilterModalEvalDeps?.();
+			return { settings, tasks, filterSet: settings.filterSets.find(f => f.id === this.getPreset()?.filterSetId), pinnedCache: deps?.pinnedCache,
+				filterEvaluationOptions: { filePropertyContext: deps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes } };
+		}, () => this.options.getTaskRevision?.() ?? 0, () => new Promise(resolve => this.contentEl.ownerDocument.defaultView!.setTimeout(resolve, 0)));
+		const invalidate = () => this.pickerSession?.invalidate();
+		const metadata = this.app.metadataCache.on('changed', invalidate);
+		this.pickerCleanup.push(() => this.app.metadataCache.offref(metadata));
+		const vaultRefs = [this.app.vault.on('create', invalidate), this.app.vault.on('delete', invalidate), this.app.vault.on('rename', invalidate), this.app.vault.on('modify', invalidate)];
+		this.pickerCleanup.push(() => vaultRefs.forEach(ref => this.app.vault.offref(ref)));
 		this.render();
+		const native = getNativePropertyIndex(this.app);
+		native.configure(this.options.getSettings());
+		void native.ensure(this.options.getTasks?.() ?? []).then(() => this.refreshNativePickerData()).catch(() => { if (this.isOpen) new Notice(t('settings', 'kanbanAxisPoolPending')); });
 	}
 
+	private refreshNativePickerData(): void {
+		if (!this.isOpen) return;
+		if (this.pickerPreparing > 0 || this.pickerClose) { this.nativeRefreshPending = true; return; }
+		this.renderPreservingScroll();
+	}
+
+	private onPickerClosed(): void {
+		this.pickerClose = null;
+		if (!this.nativeRefreshPending) return;
+		this.nativeRefreshPending = false;
+		queueMicrotask(() => this.refreshNativePickerData());
+	}
+
+	onClose(): void { this.isOpen = false; this.pickerRequest++; this.pickerSession?.dispose(); this.pickerSession = undefined; this.pickerCleanup.splice(0).forEach(cleanup => cleanup()); this.pickerClose?.(); this.pickerClose = null; this.contentEl.empty(); }
+
 	private render(): void {
+		this.nativeRefreshPending = false;
+		this.pickerRequest++;
+		this.pickerSession?.cancelPending();
+		this.pickerClose?.(); this.pickerClose = null;
 		const { contentEl } = this;
 		const preset = this.getPreset();
 		contentEl.empty();
@@ -72,12 +120,12 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			return;
 		}
 
-		if (!projectKanbanLegacyAxes(preset, this.options.getSettings().keyMappings).ok) {
+		if (!resolveKanbanAxes(preset, this.options.getSettings().keyMappings).ok) {
 			contentEl.createEl('p', { text: t('notifications', 'kanbanAxesUnavailable') });
 			return;
 		}
 
-		const presetCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionPreset'));
+		const presetCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetNameScope'));
 		const nameSetting = new Setting(presetCard)
 			.setName(t('settings', 'kanbanPresetName'))
 			.setDesc(t('settings', 'kanbanQuickPresetNameDesc'))
@@ -102,27 +150,9 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 		nameSetting.settingEl.addClass('operon-kanban-preset-name-setting');
 
 		const settings = this.options.getSettings();
-		new Setting(presetCard)
-			.setName(t('settings', 'kanbanPipeline'))
-			.setDesc(t('settings', 'kanbanPipelineDesc'))
-			.addDropdown(dropdown => {
-				dropdown.addOption('', t('settings', 'kanbanNoPipeline'));
-				for (const pipeline of settings.pipelines) {
-					dropdown.addOption(pipeline.id, pipeline.name);
-				}
-				dropdown.setValue(preset.pipelineId ?? '');
-				dropdown.onChange(async value => {
-					await this.updatePreset(current => {
-						updateKanbanLegacyAxes(current, { pipelineId: value || null }, this.options.getSettings().keyMappings);
-						delete current.columnSortOverrides;
-					});
-					this.renderPreservingScroll();
-				});
-			});
-
 		const filterSets = getNormalFilterSets(settings.filterSets);
 		const currentFilter = filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
-		const filteringCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionFilteringLanes'));
+		const filteringCard = presetCard;
 		renderPresetFilterActions({
 			app: this.app,
 			setting: new Setting(filteringCard)
@@ -144,18 +174,32 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			errorContextPrefix: 'kanban preset',
 		});
 
-		new Setting(filteringCard)
-			.setName(t('settings', 'kanbanSwimlaneField'))
-			.setDesc(t('settings', 'kanbanSwimlaneFieldDesc'))
-			.addDropdown(dropdown => {
-				this.addSwimlaneOptions(dropdown);
-				dropdown.setValue(preset.swimlaneBy ?? '');
-				dropdown.onChange(async value => {
-					await this.updatePreset(current => {
-						updateKanbanLegacyAxes(current, { swimlaneBy: this.parseSwimlaneBy(value) }, this.options.getSettings().keyMappings);
-					});
-				});
-			});
+		const tasks = this.options.getTasks?.() ?? [];
+		const filterDeps = this.options.getFilterModalEvalDeps?.();
+		const filterEvaluationOptions = { filePropertyContext: filterDeps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes };
+		const native = getNativePropertyIndex(this.app);
+		native.configure(settings);
+		renderKanbanTaskCounts(presetCard, buildKanbanGroupingSnapshot({ preset, settings, tasks,
+			propertyAccess: createKanbanPropertyAccess(settings, native), revision: { tasks: 0, settings: 0 },
+			filterSet: currentFilter, filterEvaluationOptions, pinnedCache: filterDeps?.pinnedCache }));
+
+		for (const side of ['columns', 'swimlanes'] as const) renderKanbanAxisSettings({
+			app: this.app, container: this.createPresetSection(contentEl, t('settings', side === 'columns' ? 'kanbanColumnSelection' : 'kanbanSwimlaneSelection')),
+			host: contentEl, side, preset, settings, tasks,
+			filterEvaluationOptions, pinnedCache: filterDeps?.pinnedCache,
+			preparePicker: async property => {
+				const request = ++this.pickerRequest;
+				this.pickerSession?.cancelPending();
+				this.pickerPreparing++;
+				return await this.pickerSession?.prepareLatest(property, () => this.isOpen && request === this.pickerRequest) ?? null;
+			},
+			onPickerPreparationEnd: () => {
+				this.pickerPreparing--;
+				if (this.nativeRefreshPending && !this.pickerClose) this.refreshNativePickerData();
+			},
+			onPickerClose: () => this.onPickerClosed(),
+			refresh: () => this.renderPreservingScroll(), retainPicker: close => { this.pickerClose?.(); this.pickerClose = close; },
+		});
 
 		const sortingCard = this.createPresetSection(contentEl, t('settings', 'kanbanPresetSectionSorting'));
 		this.renderSortSection(sortingCard, preset, null);
@@ -241,8 +285,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			});
 
 		new Setting(visibilityCard)
-			.setName(t('settings', 'kanbanAutoCollapseFinishedColumns'))
-			.setDesc(t('settings', 'kanbanAutoCollapseFinishedColumnsDesc'))
+			.setName(t('settings', 'kanbanAutoCollapseFinishedGroups'))
+			.setDesc(t('settings', 'kanbanAutoCollapseFinishedGroupsDesc'))
 			.addToggle(toggle => {
 				toggle.setValue(preset.autoCollapseFinishedColumns);
 				toggle.onChange(async value => {
@@ -308,7 +352,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 				return;
 			}
 			preset.name = name;
-			await this.options.onSave(cloneKanbanPreset(preset));
+			if (!this.expectedPreset) return;
+			await this.options.onSave(cloneKanbanPreset(preset), cloneKanbanPreset(this.expectedPreset));
 			this.close();
 		}));
 	}
@@ -499,7 +544,9 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 	}
 
 	private renderPipelineColumnSortSection(container: HTMLElement, preset: KanbanPreset): void {
-		const pipeline = this.options.getSettings().pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
+		const axes = resolveKanbanAxes(preset, this.options.getSettings().keyMappings);
+		const column = axes.ok ? axes.axes.columns : null;
+		const pipeline = column?.kind === 'status' ? this.options.getSettings().pipelines.find(entry => entry.id === column.pipelineId) ?? null : null;
 		if (!pipeline) {
 			container.createDiv({ text: t('settings', 'kanbanColumnSortingNoPipeline'), cls: 'operon-kanban-preset-section-desc' });
 			return;
@@ -624,27 +671,6 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			});
 	}
 
-	private addSwimlaneOptions(dropdown: DropdownComponent): void {
-		dropdown.addOption('', t('settings', 'kanbanNoSwimlane'));
-		dropdown.addOption('priority', this.getSwimlaneLabel('priority'));
-		dropdown.addOption('tags', this.getSwimlaneLabel('tags'));
-		dropdown.addOption('contexts', this.getSwimlaneLabel('contexts'));
-		dropdown.addOption('assignees', this.getSwimlaneLabel('assignees'));
-		dropdown.addOption('dateDue', this.getSwimlaneLabel('dateDue'));
-		dropdown.addOption('dateScheduled', this.getSwimlaneLabel('dateScheduled'));
-		for (const option of getKanbanSwimlaneCustomFieldOptions(this.options.getSettings().keyMappings)) {
-			dropdown.addOption(option.field, option.label);
-		}
-	}
-
-	private getSwimlaneLabel(value: KanbanSwimlaneBy): string {
-		const customMapping = getManagedCustomFieldOptionMapping(value, this.options.getSettings().keyMappings);
-		if (customMapping) return customMapping.visiblePropertyName?.trim() || customMapping.canonicalKey;
-		const key = `kanbanSwimlane_${value}`;
-		const localized = t('settings', key);
-		return localized === key ? value : localized;
-	}
-
 	private getKanbanSortFieldOptions(): Array<{ value: KanbanSortRule['field']; label: string }> {
 		return [
 			...KANBAN_SORT_FIELD_OPTIONS.map(option => ({
@@ -664,11 +690,6 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			: `kanbanSortField_${option.value}`;
 		const localized = t('settings', key);
 		return localized === key ? option.label : localized;
-	}
-
-	private parseSwimlaneBy(value: string): KanbanSwimlaneBy | null {
-		if (isBuiltInKanbanSwimlaneBy(value)) return value;
-		return normalizeKanbanCustomFieldReference(value);
 	}
 
 	private formatSortDirection(direction: KanbanSortDirection): string {

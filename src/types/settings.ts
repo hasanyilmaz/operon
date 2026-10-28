@@ -55,7 +55,7 @@ import {
 	normalizeKanbanCustomFieldReference,
 	normalizeBuiltInKanbanPreset,
 	normalizeKanbanCardImageSource,
-	reconcileKanbanColumnSortOverrides,
+
 } from './kanban';
 import {
 	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
@@ -5020,16 +5020,6 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	});
 	out.keepInlineTasksWithParent = src.keepInlineTasksWithParent === true;
 	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
-	for (const preset of out.kanbanPresets) {
-		if (preset.axes !== undefined && (!projectKanbanLegacyAxes(preset, out.keyMappings).ok || !out.pipelines.some(pipeline => pipeline.id === preset.pipelineId))) continue;
-		const pipeline = out.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		const columnSortOverrides = reconcileKanbanColumnSortOverrides(
-			preset.columnSortOverrides,
-			pipeline?.statuses.map(status => status.id) ?? [],
-		);
-		if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
-		else delete preset.columnSortOverrides;
-	}
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
 	out.childTaskInheritanceStatusPipelineSource = normalizeChildTaskInheritanceStatusPipelineSource(
 		src.childTaskInheritanceStatusPipelineSource,

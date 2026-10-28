@@ -1,3 +1,8 @@
+import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
+import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
+import { getNativePropertyIndex } from '../indexer/native-property-index';
+import type { KanbanPreset } from '../types/kanban';
+import { resolveKanbanAxes } from '../core/kanban-axis-model';
 import { normalizeTaskAfterCreateAction } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
@@ -1097,6 +1102,54 @@ export class OperonStorage {
 		});
 	}
 
+
+	/** Save a modal draft against the exact preset it opened, together with existing order aliases. */
+	async reorderKanbanPresets(expectedIds: readonly string[], index: number, targetIndex: number): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			const matches = () => JSON.stringify(this.settings.kanbanPresets.map(p => p.id)) === JSON.stringify(expectedIds);
+			if (!matches() || index < 0 || targetIndex < 0 || targetIndex >= expectedIds.length || index >= expectedIds.length) throw new Error('Kanban preset order changed. Try again.');
+			const presets = [...this.settings.kanbanPresets];
+			presets.splice(targetIndex, 0, presets.splice(index, 1)[0]);
+			await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, false, { kanbanPresets: presets }, matches);
+			this.syncKanbanPresetStoreFromSettings();
+		});
+	}
+
+	async createKanbanPreset(draft: KanbanPreset, source?: KanbanPreset): Promise<void> {
+		const next = structuredClone(draft), expectedSource = source ? JSON.stringify(source) : null;
+		await this.kanbanOrderStore.withExclusiveMutation(() => this.enqueueSettingsTransaction(async () => {
+			const valid = () => !this.settings.kanbanPresets.some(p => p.id === next.id)
+				&& (!source || JSON.stringify(this.settings.kanbanPresets.find(p => p.id === source.id)) === expectedSource);
+			if (!valid() || !resolveKanbanAxes(next, this.settings.keyMappings).ok) throw new Error('Kanban preset changed or is unavailable.');
+			const presets = [...this.settings.kanbanPresets], order = this.kanbanOrderStore.toPackage();
+			presets.splice(source ? presets.findIndex(p => p.id === source.id) + 1 : presets.length, 0, next);
+			if (source && order.boards[source.id]) order.boards[next.id] = structuredClone(order.boards[source.id]);
+			await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, false,
+				{ kanbanPresets: presets, kanbanDefaultPresetId: this.settings.kanbanDefaultPresetId ?? next.id }, valid, undefined, order.boards);
+			this.kanbanOrderStore.loadFromPackage(order);
+			this.syncKanbanPresetStoreFromSettings();
+		}));
+	}
+
+	async saveKanbanPresetIfUnchanged(expected: KanbanPreset, next: KanbanPreset): Promise<void> {
+		const before = JSON.stringify(expected), draft = structuredClone(next);
+		await this.kanbanOrderStore.withExclusiveMutation(() => this.enqueueSettingsTransaction(async () => {
+			const matches = () => JSON.stringify(this.settings.kanbanPresets.find(p => p.id === expected.id)) === before;
+			if (draft.id !== expected.id || !matches()) throw new Error('Kanban preset changed while editing. Reopen its settings.');
+			if (!resolveKanbanAxes(draft, this.settings.keyMappings).ok) throw new Error('Kanban axes cannot be saved without losing unsupported data.');
+			const native = getNativePropertyIndex(this.app);
+			native.configure(this.settings);
+			const order = this.kanbanOrderStore.toPackage();
+			const bound = preserveKanbanOrderForAxisEdit(expected, order.boards[expected.id] ?? {}, this.settings, createKanbanPropertyAccess(this.settings, native));
+			if (Object.keys(bound).length) order.boards[expected.id] = bound;
+			else delete order.boards[expected.id];
+			await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, false,
+				{ kanbanPresets: this.settings.kanbanPresets.map(p => p.id === draft.id ? draft : p) }, matches, undefined, order.boards);
+			this.kanbanOrderStore.loadFromPackage(order);
+			this.syncKanbanPresetStoreFromSettings();
+		}));
+	}
+
 	async attachKanbanPresetFilterIfUnchanged(
 		presetId: string,
 		expectedFilterSetId: string | null,
@@ -1132,13 +1185,13 @@ export class OperonStorage {
 		this.publishCommittedMappings = publish;
 	}
 
-	private async persistSettings(_options: RecoveredStoreWriteOptions, entries: readonly InlinePropertyDefinition[] = [], mappings?: KeyMapping[], coordinated = false, patch: Partial<OperonSettings> = {}, canCommit: () => boolean = () => true, unusedDefinitions?: InlinePropertyDefinitions): Promise<void> {
+	private async persistSettings(_options: RecoveredStoreWriteOptions, entries: readonly InlinePropertyDefinition[] = [], mappings?: KeyMapping[], coordinated = false, patch: Partial<OperonSettings> = {}, canCommit: () => boolean = () => true, unusedDefinitions?: InlinePropertyDefinitions, kanbanOrderBoards?: Record<string, Record<string, string[]>>): Promise<void> {
 		if (!canCommit()) throw new Error('Settings operation cancelled');
 		mappings ??= patch.keyMappings;
 		const currentMappings = this.dataPackageStore.getDataPackage().taxonomy.keyMappings;
 		const mappingsChanged = JSON.stringify([...currentMappings.system, ...currentMappings.custom]) !== JSON.stringify(mappings ?? this.settings.keyMappings);
 		if (mappingsChanged && !coordinated) {
-			return this.mappingMutationCoordinator(() => this.persistSettings(_options, entries, mappings, true, patch, canCommit));
+			return this.mappingMutationCoordinator(() => this.persistSettings(_options, entries, mappings, true, patch, canCommit, unusedDefinitions, kanbanOrderBoards));
 		}
 		if (!this.dataPackageStore.canPersist()) {
 			if (_options.forceRecoveredWrite === false) return;
@@ -1159,7 +1212,7 @@ export class OperonStorage {
 		const normalized = migrateSettings({ ...submitted, ...patch, keyMappings: mappings ?? submitted.keyMappings, inlinePropertyDefinitions: definitions });
 		const dataPackage = buildOperonDataPackageFromSettings(normalized, {
 			filterSets: this.filterStore.getAll(),
-			kanbanOrderBoards: this.kanbanOrderStore.toPackage().boards,
+			kanbanOrderBoards: kanbanOrderBoards ?? this.kanbanOrderStore.toPackage().boards,
 			pinnedTasks: this.pinnedCache.toPackage(),
 		});
 		const updateDataPackage = (currentPackage: OperonDataPackageV1): OperonDataPackageV1 => {

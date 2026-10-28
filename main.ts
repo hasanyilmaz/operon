@@ -1,8 +1,10 @@
+import { normalizeKanbanAxisLeafState } from './src/systems/kanban-axis-state';
+import { queryKanbanAxisBoard, kanbanTaskMatchesCell, type KanbanBoardData } from './src/systems/kanban-board';
 import { executeTaskSourceRenameTransaction, TaskSourceRenameUncertainError } from './src/storage/task-source-rename-transaction';
 import { KanbanCardOperationRegistry } from './src/systems/kanban-drop-transaction';
-import { buildKanbanCellPlan, splitKanbanCreatorSeeds, resolveLegacyKanbanCellTarget, kanbanPayloadMatchesPlan, type KanbanCellPlan } from './src/systems/kanban-cell-actions';
+import { buildKanbanCellPlan, splitKanbanCreatorSeeds, resolveLegacyKanbanCellTarget, kanbanPayloadMatchesPlan, type KanbanCellPlan, type KanbanCellTarget } from './src/systems/kanban-cell-actions';
 import { createKanbanPropertyAccess } from './src/core/kanban-axis-properties';
-import { projectKanbanLegacyAxes } from './src/core/kanban-axis-model';
+import { resolveKanbanAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
 import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
@@ -902,12 +904,10 @@ import {
 	KanbanLeafState,
 	KanbanPreset,
 	type KanbanPresetFilterCommitRequest,
-	buildKanbanLaneCollapseScopeKey,
-	buildKanbanStatusCollapseScopeKey,
+
 	cloneDefaultKanbanPresets,
 	createKanbanPresetId,
-	normalizeKanbanLeafState,
-	resolveKanbanEffectiveSorting,
+
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask, TaskLocation } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
@@ -1055,7 +1055,7 @@ import {
 import {
 	buildKanbanCellKey,
 	extractLaneKeys,
-	queryKanbanBoard,
+
 	resolveTaskStatusDefinition,
 } from './src/systems/kanban-query';
 import { getManagedTaskFieldType } from './src/core/managed-task-fields';
@@ -4066,7 +4066,7 @@ export default class OperonPlugin extends Plugin {
 		const presetId = this.getKanbanLeafPresetId(leaf);
 		if (!presetId) return null;
 		const preset = this.settings.kanbanPresets.find(preset => preset.id === presetId) ?? null;
-		return preset && projectKanbanLegacyAxes(preset, this.settings.keyMappings).ok ? preset : null;
+		return preset && resolveKanbanAxes(preset, this.settings.keyMappings).ok ? preset : null;
 	}
 
 	async openFilterViewById(filterSetId: string | null | undefined): Promise<void> {
@@ -4219,25 +4219,7 @@ export default class OperonPlugin extends Plugin {
 		const leaf = this.app.workspace.getLeaf('tab');
 		if (!leaf) return;
 
-		const availablePresetIds = this.settings.kanbanPresets.map(preset => preset.id);
-		const fallbackPresetId = this.settings.kanbanDefaultPresetId ?? this.settings.kanbanPresets[0]?.id ?? null;
-		const requestedPresetId = typeof state?.presetId === 'string' && state.presetId.trim()
-			? state.presetId
-			: fallbackPresetId;
-		const preset = this.settings.kanbanPresets.find(entry => entry.id === requestedPresetId)
-			?? this.settings.kanbanPresets.find(entry => entry.id === fallbackPresetId)
-			?? this.settings.kanbanPresets[0]
-			?? null;
-		const pipeline = preset?.pipelineId
-			? this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
-			: null;
-		const nextState = normalizeKanbanLeafState(state, {
-			availablePresetIds,
-			availableStatusIds: pipeline?.statuses.map(status => status.id) ?? [],
-			defaultPresetId: fallbackPresetId,
-			statusCollapseScopeKey: buildKanbanStatusCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null),
-			laneCollapseScopeKey: buildKanbanLaneCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null, preset?.swimlaneBy ?? null),
-		});
+		const nextState = normalizeKanbanAxisLeafState(state, this.settings, createKanbanPropertyAccess(this.settings, getNativePropertyIndex(this.app)));
 
 		await leaf.setViewState({
 			type: KANBAN_VIEW_TYPE,
@@ -17852,11 +17834,10 @@ export default class OperonPlugin extends Plugin {
 						new KanbanPresetQuickSettingsModal(this.app, {
 							getSettings: () => this.settings,
 						preset,
-						onSave: async (updated) => {
-							const previous = this.cloneKanbanPresetForSorting(preset);
-							this.replaceKanbanPreset(updated);
-							await this.storage.saveSettings();
-							await this.handleKanbanPresetSortingChange(previous, updated);
+						getTasks: () => this.indexer.getAllTasks(),
+							getTaskRevision: () => this.indexer.getGeneration(),
+						onSave: async (updated, expected) => {
+							await this.storage.saveKanbanPresetIfUnchanged(expected, updated);
 							this.refreshViews();
 							},
 							onToggleFavorite: presetId => this.togglePresetFavoriteAndRefresh('kanban', presetId),
@@ -19499,11 +19480,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (target.type === 'kanban') {
 			const preset = this.createRelatedKanbanPreset(target.filterSetId, target.presetName);
-			this.settings.kanbanPresets.push(preset);
-			if (!this.settings.kanbanDefaultPresetId) {
-				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
-			}
-			await this.storage.saveSettings();
+			await this.storage.createKanbanPreset(preset);
 			await this.handleKanbanPresetSortingChange(null, preset);
 			this.refreshViews();
 			await this.openKanbanView({ presetId: preset.id });
@@ -20113,65 +20090,8 @@ export default class OperonPlugin extends Plugin {
 		}).open();
 	}
 
-	private async handleKanbanPresetSortingChange(
-		previous: KanbanPreset | null,
-		updated: KanbanPreset,
-	): Promise<void> {
-		const pipeline = this.settings.pipelines.find(entry => entry.id === updated.pipelineId) ?? null;
-		const statusIds = pipeline?.statuses.map(status => status.id) ?? [];
-		const statusIdSet = new Set(statusIds);
-		const currentOrder = this.storage.kanbanOrder.getBoard(updated.id);
-		const nextCells: Record<string, string[]> = {};
-
-		for (const cellKey of Object.keys(currentOrder)) {
-			const statusId = cellKey.slice(0, cellKey.indexOf('::'));
-			if (!statusIdSet.has(statusId)) nextCells[cellKey] = [];
-		}
-
-		if (previous?.pipelineId === updated.pipelineId) {
-			const nextOverrideIds = new Set((updated.columnSortOverrides ?? []).map(override => override.statusId));
-			for (const override of previous.columnSortOverrides ?? []) {
-				if (
-					nextOverrideIds.has(override.statusId)
-					|| resolveKanbanEffectiveSorting(updated, override.statusId).sortMode === 'manual'
-				) continue;
-				for (const cellKey of Object.keys(currentOrder)) {
-					if (cellKey.startsWith(`${override.statusId}::`)) nextCells[cellKey] = [];
-				}
-			}
-		}
-
-		for (const statusId of statusIds) {
-			const previousMode = previous?.pipelineId === updated.pipelineId
-				? resolveKanbanEffectiveSorting(previous, statusId).sortMode
-				: 'automatic';
-			const nextMode = resolveKanbanEffectiveSorting(updated, statusId).sortMode;
-			if (nextMode !== 'manual' || previousMode === 'manual') continue;
-			const snapshot = this.buildKanbanManualOrderSnapshotForStatus(updated, statusId, currentOrder);
-			for (const [cellKey, taskIds] of Object.entries(snapshot)) {
-				if (!Object.prototype.hasOwnProperty.call(currentOrder, cellKey)) nextCells[cellKey] = taskIds;
-			}
-		}
-
-		const cellKeys = Object.keys(nextCells);
-		if (cellKeys.length === 0) return;
-		const expectedCells = Object.fromEntries(
-			cellKeys.map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
-		);
-		const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(updated.id, expectedCells, nextCells);
-		if (!applied) throw new Error(`Kanban sorting changed while manual order was being prepared (${updated.id})`);
-	}
-
-	private cloneKanbanPresetForSorting(preset: KanbanPreset | null): KanbanPreset | null {
-		if (!preset) return null;
-		return {
-			...preset,
-			sortRules: preset.sortRules.map(rule => ({ ...rule })),
-			...(preset.columnSortOverrides?.length ? { columnSortOverrides: preset.columnSortOverrides.map(override => ({
-				...override,
-				sortRules: override.sortRules.map(rule => ({ ...rule })),
-			})) } : {}),
-		};
+	private async handleKanbanPresetSortingChange(_previous: KanbanPreset | null, _updated: KanbanPreset): Promise<void> {
+		// Manual ordering is captured only when the user reorders a cell.
 	}
 
 	private async copyKanbanManualOrder(sourcePresetId: string, targetPresetId: string): Promise<void> {
@@ -20182,61 +20102,17 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.kanbanOrder.removeBoard(presetId);
 	}
 
-	private buildKanbanManualOrderSnapshotForStatus(
-		preset: KanbanPreset,
-		statusId: string,
-		manualOrder: Record<string, string[]>,
-	): Record<string, string[]> {
-		const snapshotPreset = this.cloneKanbanPresetForSorting(preset);
-		if (!snapshotPreset) return {};
-		const override = snapshotPreset.columnSortOverrides?.find(entry => entry.statusId === statusId) ?? null;
-		if (override) override.sortMode = 'automatic';
-		else snapshotPreset.sortMode = 'automatic';
-		const board = this.queryKanbanBoardForOrder(snapshotPreset, manualOrder);
-		if (!board) return {};
-		const prefix = `${statusId}::`;
-		return Object.fromEntries(
-			Object.entries(this.extractKanbanBoardOrder(board.cellMap)).filter(([cellKey]) => cellKey.startsWith(prefix)),
-		);
-	}
-
-	private queryKanbanBoardForOrder(
-		preset: KanbanPreset,
-		manualOrder?: Record<string, string[]>,
-	): ReturnType<typeof queryKanbanBoard> | null {
-		if (!preset.pipelineId) return null;
-		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) return null;
-		const filterSet = preset.filterSetId
-			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
-			: null;
+	private queryKanbanBoardForOrder(preset: KanbanPreset, manualOrder?: Record<string, string[]>): KanbanBoardData | null {
+		const native = getNativePropertyIndex(this.app);
+		native.configure(this.settings);
+		const filterSet = this.settings.filterSets.find(f => f.id === preset.filterSetId) ?? null;
 		if (filterSet && isSpecialDynamicFilterSet(filterSet)) return null;
-		return queryKanbanBoard({
-   inlinePropertyDefinitions: this.settings.inlinePropertyDefinitions,
-			preset,
-			pipeline,
-			pipelines: this.settings.pipelines,
-			filterSet,
-			tasks: this.indexer.getAllTasks(),
-			priorities: this.settings.priorities,
-			pinnedCache: this.pinnedCache,
-			manualOrder,
-			keyMappings: this.settings.keyMappings,
-			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
-			filterEvaluationOptions: {
-				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
-			},
-		});
-	}
-
-	private extractKanbanBoardOrder(cellMap: Map<string, IndexedTask[]>): Record<string, string[]> {
-		const order: Record<string, string[]> = {};
-		for (const [cellKey, tasks] of cellMap.entries()) {
-			if (tasks.length > 0) {
-				order[cellKey] = tasks.map(task => task.operonId);
-			}
-		}
-		return order;
+		const board = queryKanbanAxisBoard({ preset, settings: this.settings, tasks: this.indexer.getAllTasks(),
+			propertyAccess: createKanbanPropertyAccess(this.settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
+			filterSet, pinnedCache: this.pinnedCache, manualOrder,
+			getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
+			filterEvaluationOptions: { filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
+		return 'state' in board ? null : board;
 	}
 
 	private buildKanbanManualDropOrderCells(
@@ -20254,9 +20130,9 @@ export default class OperonPlugin extends Plugin {
 		const targetCellKey = buildKanbanCellKey(context.targetStatusId, context.targetLaneKey);
 		const cells: Record<string, string[]> = {};
 		const sourceIds = sourceCellKey
-			? (board?.cellMap.get(sourceCellKey) ?? []).map(task => task.operonId)
+			? (context.sourceStatusId ? board?.getCellTasks(context.sourceStatusId, context.sourceLaneKey) ?? [] : []).map(task => task.operonId)
 			: [];
-		const targetIds = (board?.cellMap.get(targetCellKey) ?? []).map(task => task.operonId);
+		const targetIds = (board?.getCellTasks(context.targetStatusId, context.targetLaneKey) ?? []).map(task => task.operonId);
 
 		if (sourceCellKey && sourceCellKey === targetCellKey && targetIsManual) {
 			cells[targetCellKey] = this.insertKanbanTaskIdBefore(sourceIds, context.taskId, context.targetBeforeTaskId);
@@ -20293,11 +20169,12 @@ export default class OperonPlugin extends Plugin {
 
  private readonly kanbanCellOperations = new KanbanCardOperationRegistry();
 
- private async prepareLegacyKanbanCellPlan(task: IndexedTask | undefined, preset: KanbanPreset, statusId: string, laneKey: string): Promise<KanbanCellPlan> {
+ private async prepareLegacyKanbanCellPlan(task: IndexedTask | undefined, preset: KanbanPreset, statusId: string, laneKey: string, target?: KanbanCellTarget): Promise<KanbanCellPlan> {
   const native = getNativePropertyIndex(this.app);
   native.configure(this.settings);
   if (task) await native.ensure([task]);
-  const resolved = resolveLegacyKanbanCellTarget(preset, statusId, laneKey, this.settings);
+  const axes = resolveKanbanAxes(preset, this.settings.keyMappings);
+  const resolved = target && axes.ok ? { axes: axes.axes, target } : resolveLegacyKanbanCellTarget(preset, statusId, laneKey, this.settings);
   if (!resolved) throw new Error('Kanban target is unavailable');
   const plan = buildKanbanCellPlan({ ...resolved, task, settings: this.settings, access: createKanbanPropertyAccess(this.settings, native) });
   if (plan.state === 'blocked') throw new Error(`Kanban cell action blocked: ${plan.reason}`);
@@ -20342,7 +20219,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) throw new Error('Kanban drop failed: preset has no pipeline');
+		if (!preset) throw new Error('Kanban preset unavailable');
 		if (context.presetId && context.presetId !== preset.id) {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board preset changed before apply (${context.taskId})`),
@@ -20354,10 +20231,8 @@ export default class OperonPlugin extends Plugin {
 			);
 		}
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
-		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
-		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
-		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline)) {
+		const targetStatus = this.resolveKanbanTargetStatus(preset, context);
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline, this.settings)) {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board configuration changed before apply (${context.taskId})`),
 				{
@@ -20367,48 +20242,22 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 		}
-		const currentStatusIdentity = resolveConfiguredStatusIdentity(
-			task.fieldValues['status'] ?? '',
-			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-		);
-		const currentLaneKeys = extractLaneKeys(
-			task,
-			context.swimlaneBy ?? preset.swimlaneBy,
-			this.settings.keyMappings,
-			this.settings.priorities, this.settings.inlinePropertyDefinitions,
-		);
-		if (!matchesKanbanDropSource({
-			actualStatusId: currentStatusIdentity.kind === 'configured'
-				? currentStatusIdentity.status.id
-				: null,
-			actualStatusValue: task.fieldValues['status'] ?? '',
-			actualLaneKeys: currentLaneKeys,
-			sourceStatusId: context.sourceStatusId,
-			sourceStatusValue: context.sourceStatusValue,
-			sourceLaneKey: context.sourceLaneKey,
-		})) {
-			throw attachKanbanDropFailureCause(
-				new Error(`Kanban drop failed: source cell changed before apply (${context.taskId})`),
-				{
-					phase: 'preflight',
-					stage: 'prepare',
-					code: 'stale-source',
-				},
-			);
-		}
-		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline);
+		if (!this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context)) throw attachKanbanDropFailureCause(
+			new Error('Kanban source cell changed before apply'), { phase: 'preflight', stage: 'prepare', code: 'stale-source' });
+		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
   const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
 		const kanbanAxesCanCommit = (): boolean => {
 			const current = this.getKanbanPresetForLeaf(leaf);
-			return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+			return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
 		};
-		const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey);
+		const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
+		const orderingBoard = this.queryKanbanBoardForOrder(preset);
 		const sourceIsManual = context.sourceStatusId
-			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
+			? orderingBoard?.getSorting(context.sourceStatusId).sortMode === 'manual'
 			: false;
-		const targetIsManual = resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode === 'manual';
+		const targetIsManual = orderingBoard?.getSorting(context.targetStatusId).sortMode === 'manual';
 		const manualOrderChange = sourceIsManual || targetIsManual
-			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual, this.isKanbanTaskAtDropSource({ ...task, ...plan.nextDraft }, preset.swimlaneBy, context))
+			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual, this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context, plan))
 			: null;
 		const manualOrderCells = manualOrderChange?.nextCells ?? null;
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
@@ -20465,7 +20314,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		let committedRepairRequired = outcome === 'committed-repair-scheduled';
 		const freshTask = this.indexer.getTask(context.taskId);
-		const recurrenceReplacementTask = targetStatus.isFinished
+		const recurrenceReplacementTask = targetStatus?.isFinished
 			? this.resolveKanbanRecurrenceReplacement(task)
 			: null;
 		let postflightSettlement = classifyKanbanDropSettlement({
@@ -20542,10 +20391,12 @@ export default class OperonPlugin extends Plugin {
 
 	private isKanbanTaskAtDropTarget(
 		task: IndexedTask,
-		pipeline: import('./src/types/pipeline').Pipeline,
+		pipeline: import('./src/types/pipeline').Pipeline | null,
 		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
 		context: KanbanDropContext,
 	): boolean {
+		if (context.target) return this.matchesKanbanTypedTarget(task, context.presetId, context.target);
+		if (!pipeline) return false;
 		const status = resolveTaskStatusDefinition(task, pipeline, this.settings.pipelines);
 		if (status?.id !== context.targetStatusId) return false;
 		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities, this.settings.inlinePropertyDefinitions);
@@ -20556,7 +20407,9 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
 		context: KanbanDropContext,
+		plan?: KanbanCellPlan,
 	): boolean {
+		if (context.source) return this.matchesKanbanTypedTarget(task, context.presetId, context.source, plan);
 		const statusIdentity = resolveConfiguredStatusIdentity(
 			task.fieldValues['status'] ?? '',
 			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
@@ -20574,6 +20427,19 @@ export default class OperonPlugin extends Plugin {
 			sourceStatusValue: context.sourceStatusValue,
 			sourceLaneKey: context.sourceLaneKey,
 		});
+	}
+
+	private matchesKanbanTypedTarget(task: IndexedTask, presetId: string | undefined, target: KanbanCellTarget, plan?: KanbanCellPlan): boolean {
+		const preset = this.settings.kanbanPresets.find(p => p.id === presetId);
+		if (!preset) return false;
+		const axes = resolveKanbanAxes(preset, this.settings.keyMappings);
+		return axes.ok && kanbanTaskMatchesCell(axes.axes, target, task, createKanbanPropertyAccess(this.settings, getNativePropertyIndex(this.app)), plan);
+	}
+
+	private resolveKanbanTargetStatus(preset: KanbanPreset, context: KanbanCellActionContext | KanbanDropContext) {
+		const value = context.target ? [context.target.columns, context.target.swimlanes].find(v => v?.kind === 'status') : null;
+		return value?.kind === 'status' ? this.settings.pipelines.find(p => p.id === value.pipelineId)?.statuses.find(s => s.id === value.id) ?? null
+			: this.settings.pipelines.find(p => p.id === preset.pipelineId)?.statuses.find(s => s.id === context.targetStatusId) ?? null;
 	}
 
 	private resolveKanbanRecurrenceReplacement(sourceTask: IndexedTask): IndexedTask | null {
@@ -21091,17 +20957,16 @@ export default class OperonPlugin extends Plugin {
 		context: KanbanCellActionContext,
 	): Promise<void> {
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) return;
+		if (!preset) return;
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) return;
-		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
-		if (!targetStatus) return;
+		if (context.presetId && context.presetId !== preset.id) return;
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline, this.settings)) return;
 		const filterSet = preset.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
-		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline);
+		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
   const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
-		const kanbanAxesCanCommit = () => { const current = this.getKanbanPresetForLeaf(leaf); return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]); };
+		const kanbanAxesCanCommit = () => { const current = this.getKanbanPresetForLeaf(leaf); return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]); };
 		const effectiveFilterSet = filterSet && !isSpecialDynamicFilterSet(filterSet) ? filterSet : null;
 
 		while (true) {
@@ -21111,7 +20976,7 @@ export default class OperonPlugin extends Plugin {
    const operation = this.kanbanCellOperations.begin(task.operonId, preset.id, 'drop', axisSignature ?? '');
    if (!operation) return;
    try {
-   const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey);
+   const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
    if (plan.state === 'noop') return;
    const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, this.kanbanCellWriteOptions(plan, task, kanbanAxesCanCommit));
    const committed = isPluginUiMutationCommitted(outcome);
@@ -21135,13 +21000,14 @@ export default class OperonPlugin extends Plugin {
 		initialDraft: TaskCreatorDraft | null = null,
 	): Promise<void> {
 		const preset = this.getKanbanPresetForLeaf(leaf);
-        if (!preset) return;
-        const signature = buildKanbanDropBoardSignature(preset, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null);
+        if (!preset || context.presetId && context.presetId !== preset.id) return;
+        const signature = buildKanbanDropBoardSignature(preset, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null, this.settings);
+        if (context.boardSignature && context.boardSignature !== signature) return;
         const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
         const canSubmit = () => {
             const current = this.getKanbanPresetForLeaf(leaf);
             const valid = !!current && current.id === preset.id
-                && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null) === signature
+                && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === signature
                 && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
             if (!valid) new Notice(t('notifications', 'kanbanAxesUnavailable'));
             return valid;
@@ -21151,7 +21017,7 @@ export default class OperonPlugin extends Plugin {
 		this.openTaskCreator(draft, {
    kanbanSurfaceSeeds: initialDraft ? undefined : seed.seeds,
 			submitMode,
-   singleMemberSurfaceKeys: !initialDraft && context.swimlaneBy ? [context.swimlaneBy] : [],
+   singleMemberSurfaceKeys: [],
 			onSubmitFile: async (nextDraft) => canSubmit() && await this.createKanbanFileTaskFromCreatorDraft(leaf, context, nextDraft, seed.tagsPresent === true),
 			onSubmitInline: async (nextDraft) => canSubmit() && await this.createKanbanInlineTaskFromCreatorDraft(leaf, context, nextDraft),
 		});
@@ -21202,9 +21068,8 @@ export default class OperonPlugin extends Plugin {
 		leaf: import('obsidian').WorkspaceLeaf,
 	): IndexedTask['checkbox'] {
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) return 'open';
-		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		const targetStatus = pipeline?.statuses.find(status => status.id === context.targetStatusId) ?? null;
+		if (!preset) return 'open';
+		const targetStatus = this.resolveKanbanTargetStatus(preset, context);
 		if (!targetStatus) return 'open';
 		if (targetStatus.isFinished) return 'done';
 		if (targetStatus.isCancelled) return 'cancelled';
@@ -21214,7 +21079,7 @@ export default class OperonPlugin extends Plugin {
  private async buildKanbanSeedForCell(leaf: import('obsidian').WorkspaceLeaf, context: KanbanCellActionContext) {
   const preset = this.getKanbanPresetForLeaf(leaf);
   if (!preset) throw new Error('Kanban axes are unavailable');
-  const plan = await this.prepareLegacyKanbanCellPlan(undefined, preset, context.targetStatusId, context.targetLaneKey);
+  const plan = await this.prepareLegacyKanbanCellPlan(undefined, preset, context.targetStatusId, context.targetLaneKey, context.target);
   return { description: plan.nextDraft.description, fieldValues: plan.nextDraft.fieldValues, tags: plan.nextDraft.tags,
    tagsPresent: plan.requirements.some(req => req.field.reference.key === 'tags'), seeds: plan.seeds.filter(seed => seed.sourceName !== 'description') };
  }

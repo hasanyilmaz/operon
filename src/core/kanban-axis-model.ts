@@ -11,7 +11,7 @@ export interface KanbanPropertyReference {
 export type KanbanAxisValue = { kind: 'empty' } | { kind: 'value'; value: string | number | boolean } | { kind: 'priority'; id: string } | { kind: 'status'; pipelineId: string; id: string };
 export type KanbanAxis = { kind: 'status'; pipelineId: string | null }
 	| { kind: 'property'; property: KanbanPropertyReference; values: KanbanAxisValue[] };
-export interface KanbanAxes { version: 1; columns: KanbanAxis; swimlanes: KanbanAxis | null; }
+export interface KanbanAxes { version: 1; columns: KanbanAxis; swimlanes: KanbanAxis | null; inactiveSwimlanes?: KanbanAxis; }
 export type KanbanAxesResult = { ok: true; axes: KanbanAxes } | { ok: false; reason: 'invalid' | 'future-version' | 'missing-property' };
 const TYPES: readonly string[] = ['text', 'number', 'date', 'datetime', 'checkbox', 'list'];
 const LEGACY_FIELDS: Readonly<Record<string, ValueType>> = {
@@ -79,11 +79,13 @@ function decodeAxis(raw: unknown): KanbanAxis | null {
 export function decodeKanbanAxes(raw: unknown): KanbanAxesResult {
 	if (!record(raw)) return { ok: false, reason: 'invalid' };
 	if (typeof raw.version === 'number' && raw.version > 1) return { ok: false, reason: 'future-version' };
-	if (raw.version !== 1 || !keys(raw, ['version', 'columns', 'swimlanes'])) return { ok: false, reason: 'invalid' };
+	if (raw.version !== 1 || !keys(raw, ['version', 'columns', 'swimlanes', 'inactiveSwimlanes'])) return { ok: false, reason: 'invalid' };
 	const columns = decodeAxis(raw.columns);
 	const swimlanes = raw.swimlanes === null ? null : decodeAxis(raw.swimlanes);
+	const inactiveSwimlanes = raw.inactiveSwimlanes === undefined ? undefined : decodeAxis(raw.inactiveSwimlanes);
 	return !columns || raw.swimlanes !== null && !swimlanes
-		? { ok: false, reason: 'invalid' } : { ok: true, axes: { version: 1, columns, swimlanes } };
+		|| raw.inactiveSwimlanes !== undefined && (!inactiveSwimlanes || swimlanes !== null)
+		? { ok: false, reason: 'invalid' } : { ok: true, axes: { version: 1, columns, swimlanes, ...(inactiveSwimlanes ? { inactiveSwimlanes } : {}) } };
 }
 /** Does not add an axes envelope to legacy settings or cause persistence. */
 export function resolveKanbanAxes(preset: KanbanPreset, mappings: readonly KeyMapping[] = []): KanbanAxesResult {
@@ -115,8 +117,10 @@ export function updateKanbanLegacyAxes(preset: KanbanPreset, patch: { pipelineId
 	if (!projection.ok) throw new Error('This Kanban axis configuration cannot be edited by the current controls');
 	const next = { ...projection, ...patch };
 	if (preset.axes !== undefined) {
+		const previous = decodeKanbanAxes(preset.axes);
 		const resolved = resolveKanbanAxes({ ...preset, axes: undefined, pipelineId: next.pipelineId, swimlaneBy: next.swimlaneBy }, mappings);
 		if (!resolved.ok) throw new Error('Kanban property is unavailable');
+		if (!resolved.axes.swimlanes && previous.ok && previous.axes.inactiveSwimlanes) resolved.axes.inactiveSwimlanes = previous.axes.inactiveSwimlanes;
 		preset.axes = resolved.axes;
 	}
 	preset.pipelineId = next.pipelineId;
@@ -124,7 +128,7 @@ export function updateKanbanLegacyAxes(preset: KanbanPreset, patch: { pipelineId
 }
 export function kanbanPresetReferencesManagedField(preset: KanbanPreset, key: string): boolean {
 	const result = decodeKanbanAxes(preset.axes);
-	return result.ok && [result.axes.columns, result.axes.swimlanes].some(axis => axis?.kind === 'property'
+	return result.ok && [result.axes.columns, result.axes.swimlanes, result.axes.inactiveSwimlanes].some(axis => axis?.kind === 'property'
 		&& axis.property.source === 'managed' && axis.property.key === key);
 }
 export function assertKanbanAxesWritable(presets: readonly KanbanPreset[]): void {
@@ -133,4 +137,12 @@ export function assertKanbanAxesWritable(presets: readonly KanbanPreset[]): void
 }
 export function kanbanManagedReferenceType(key: string, mappings: readonly KeyMapping[]): ValueType | null {
 	return mappings.find(mapping => mapping.canonicalKey === key)?.type ?? (key === 'tags' ? 'list' : key === 'description' ? 'text' : CANONICAL_KEY_MAP.get(key)?.type ?? null);
+}
+
+/** Explicit draft/save operation; readers must use resolveKanbanAxes instead. */
+export function setKanbanPresetAxes(preset: KanbanPreset, axes: KanbanAxes, mappings: readonly KeyMapping[]): void {
+	preset.axes = cloneKanbanAxesPayload(axes);
+	const projection = projectKanbanLegacyAxes(preset, mappings);
+	preset.pipelineId = projection.ok ? projection.pipelineId : null;
+	preset.swimlaneBy = projection.ok ? projection.swimlaneBy : null;
 }

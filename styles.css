@@ -3085,6 +3085,27 @@ body .operon-filter-condition-picker-panel button.operon-filter-condition-picker
 	line-height: 1.4;
 }
 
+body .operon-kanban-value-picker-panel button.operon-kanban-value-picker-item {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	text-align: left;
+}
+
+.operon-kanban-value-picker-item .operon-searchable-option-picker-item-label {
+	flex: 1;
+	min-width: 0;
+	text-align: left;
+}
+
+.operon-kanban-value-picker-item .operon-searchable-option-picker-item-trailing {
+	flex-shrink: 0;
+	margin-inline-start: auto;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-muted);
+}
+
 .operon-searchable-option-picker-item-icon {
 	display: inline-flex;
 	align-items: center;
@@ -20025,6 +20046,26 @@ body .modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"])
 		justify-content: flex-start;
 		width: 100%;
 	}
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-task-counts {
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.operon-kanban-task-count {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.operon-kanban-task-count-label {
+	color: var(--text-muted);
+}
+
+.operon-kanban-task-count-value {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 
 .operon-calendar-toolbar.is-compact {

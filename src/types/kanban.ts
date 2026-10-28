@@ -1,4 +1,5 @@
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
+import type { KanbanCellTarget } from '../systems/kanban-cell-actions';
 import type { KanbanTaskColorSource } from '../core/task-color-source';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -107,6 +108,9 @@ export interface KanbanLeafStateNormalizationOptions {
 }
 
 export interface KanbanDropContext {
+	/** Typed cell constraints; the historical status/lane names below carry opaque axis keys. */
+	target?: KanbanCellTarget;
+	source?: KanbanCellTarget;
 	taskId: string;
 	/** Plugin-local ownership metadata; never serialized into Runtime V1 requests. */
 	operationId?: string;
@@ -125,6 +129,9 @@ export interface KanbanDropContext {
 export type KanbanCellActionId = 'pickTask' | 'createFileTask' | 'createInlineTask';
 
 export interface KanbanCellActionContext {
+	target?: KanbanCellTarget;
+	presetId?: string;
+	boardSignature?: string;
 	targetStatusId: string;
 	targetStatusLabel: string;
 	targetLaneKey: string;

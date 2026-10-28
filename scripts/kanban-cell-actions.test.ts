@@ -23,7 +23,8 @@ import { readFileTaskPropertyDocument } from '../src/core/file-task-property-dra
 import { readInlinePropertyProjection } from '../src/core/inline-property-source';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../src/core/vault-property-codec';
 import { createKanbanDropOptimisticMove, applyKanbanOptimisticMovesToBoard } from '../src/systems/kanban-optimistic-move';
-import { queryKanbanBoard, buildKanbanCellKey } from '../src/systems/kanban-query';
+import {  buildKanbanCellKey } from '../src/systems/kanban-query';
+import { queryKanbanBoard } from './test-support/kanban-legacy-query';
 import { buildKanbanGroupingSnapshot } from '../src/systems/kanban-grouping';
 
 const settings = () => migrateSettings(structuredClone(DEFAULT_SETTINGS));
@@ -239,7 +240,7 @@ test('additive list optimism retains source position and unique totals; only tar
  const board=queryKanbanBoard({preset,pipeline,pipelines:s.pipelines,filterSet:null,tasks:[a,b],priorities:s.priorities,keyMappings:s.keyMappings,manualOrder:order});
  const context={taskId:a.operonId,sourceStatusId:status.id,sourceLaneKey:'book',targetStatusId:status.id,targetLaneKey:'action',swimlaneBy:'tags' as const,targetBeforeTaskId:b.operonId};
  const probe=integration(['buildKanbanManualDropOrderCells','insertKanbanTaskIdBefore'],{buildKanbanCellKey});
- Object.assign(probe,{storage:{kanbanOrder:{getBoard:()=>order}},queryKanbanBoardForOrder:()=>board});
+ Object.assign(probe,{storage:{kanbanOrder:{getBoard:()=>order}},queryKanbanBoardForOrder:()=>({...board,getCellTasks:(c:string,r:string)=>board.cellMap.get(buildKanbanCellKey(c,r))??[]})});
  const records=probe.buildKanbanManualDropOrderCells(preset,context,true,true,true);
  assert.deepEqual(Object.keys(records.nextCells),[target]);assert.deepEqual(records.nextCells[target],[a.operonId,b.operonId]);assert.deepEqual(order[source],[b.operonId,a.operonId]);
  const move=createKanbanDropOptimisticMove(context,{task:a,keyMappings:s.keyMappings,priorities:s.priorities});

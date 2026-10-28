@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
+
 - Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor. Its tooltips use standard Operon colors and open away from the Dock whenever space allows.
 
 ### Improved
+
+- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and preserve swimlane selections when toggled off. Property choices open without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned.
 
 - Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position; scrolling over an empty cell or past its contents continues through the board.
 
@@ -29,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- Full local checks, **35/35** axis-settings tests, **18/18** two-axis integration tests, **91/91** settings-preservation tests, **48/48** card-retention tests, **26/26** isolated browser checks, and **9/9** wheel checks passed for the integrated Kanban presets.
 
 - Full local checks, **22/22** Kanban virtualization tests, **23/23** scroll tests, **48/48** card-retention tests, **111/111** local Kanban regressions, **26/26** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
 

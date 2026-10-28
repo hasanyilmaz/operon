@@ -13,6 +13,7 @@ try {
   entryPoints: [path.join(root, 'scripts/settings-preservation.test.ts')],
   outfile, bundle: true, format: 'esm', platform: 'node', target: ['node18'], logLevel: 'silent',
   alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') },
+  banner: { js: `import { createRequire as createTestRequire } from 'node:module'; const require = createTestRequire(${JSON.stringify(path.join(root, 'package.json'))});` },
  });
  process.exitCode = await new Promise((resolve, reject) => {
   const child = spawn(process.execPath, ['--test', '--test-reporter=tap', outfile], { cwd: root, stdio: 'inherit' });

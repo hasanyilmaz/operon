@@ -110,6 +110,7 @@ test('fuzzy search covers unloaded items and preserves initial priority for tied
  const opts=Array.from({length:200},(_,i)=>({value:String(i),label:i===199?'Needle':'Other '+i}));showSearchableOptionPicker(new Element() as any,{value:null,options:opts,placeholder:'',ariaLabel:'',noMatchesText:'Empty',pageSize:50,fuzzySearch:true,onSelect:()=>{}});
  inputEl().value='needle';inputEl().fire('input');assert.equal(rows().length,1);assert.equal(rows()[0].textContent,'Needle');
  assert.deepEqual(filterSearchableOptions(['x test','test first','test second'],'test',x=>x,true),['test first','test second','x test']);
+ assert.deepEqual(filterSearchableOptions(['x test','test first','test second'],'test',x=>x,true,true),['x test','test first','test second']);
  assert.equal(filterSearchableOptions(opts,'',x=>x.label).length,200);
 });
 test('default shared picker still renders all substring matches in supplied order',()=>{

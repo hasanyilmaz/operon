@@ -1,5 +1,3 @@
-import { TFile, type App } from 'obsidian';
-import { scanFileWithMappings } from '../src/indexer/file-scanner';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
@@ -8,9 +6,11 @@ import { cloneDefaultKanbanPresets } from '../src/types/kanban';
 import { createKanbanPropertyAccess } from '../src/core/kanban-axis-properties';
 import type { KanbanAxis, KanbanAxisValue, KanbanPropertyReference } from '../src/core/kanban-axis-model';
 import { buildKanbanGroupingSnapshot, buildKanbanGroupingCellKey, type KanbanGroupingOptions, type KanbanGroupingSnapshot } from '../src/systems/kanban-grouping';
-import { queryKanbanBoard, buildKanbanCellKey } from '../src/systems/kanban-query';
+import {  buildKanbanCellKey } from '../src/systems/kanban-query';
+import { queryKanbanBoard } from './test-support/kanban-legacy-query';
 import type { IndexedTask } from '../src/types/fields';
-import { NativePropertyIndex } from '../src/indexer/native-property-index';
+import { nativeFixture } from './test-support/kanban-native-fixture';
+import type { NativePropertyIndex } from '../src/indexer/native-property-index';
 import { getTimeScopedFieldValues } from '../src/core/time-scope-values';
 
 const settings = () => migrateSettings(structuredClone(DEFAULT_SETTINGS));
@@ -68,6 +68,20 @@ test('base filter excludes values before domains are discovered',()=>{
  f.options.filterSet={id:'f',name:'Filter',conditions:[condition],matchLogic:'all',rootGroup:{id:'g',logic:'all',children:[condition]},sorts:[]} as FilterSet;
  assert.deepEqual(labels(ready(f.options)),['1']);
 });
+test('preset counts distinguish filtered scope from unique board membership without querying cells',()=>{
+ const tasks=Array.from({length:110},(_,i)=>task(`${i<100?'in':'out'}-${i}`,{},i<57?['book','action']:['other']));
+ const f=setup(axis('tags','list',[value('book'),value('action')]),axis('tags','list',[value('book'),value('action')]),[...tasks,tasks[0]]);
+ const condition={id:'c',field:'description',fieldType:'text' as const,operator:'contains',value:'in-'};
+ f.options.filterSet={id:'f',name:'Filter',conditions:[condition],matchLogic:'all',rootGroup:{id:'g',logic:'all',children:[condition]},sorts:[]} as FilterSet;
+ const result=ready(f.options);assert.equal(result.scopedTotal,100);assert.equal(result.scopeComplete,true);assert.equal(result.total,57);
+ f.p.axes={version:1,columns:axis('tags','list',[value('other')]),swimlanes:null};const changed=ready(f.options);assert.equal(changed.scopedTotal,100);assert.equal(changed.total,43);
+ f.options.filterSet=null;assert.equal(ready(f.options).scopedTotal,110);
+ f.p.axes={version:1,columns:{kind:'status',pipelineId:null},swimlanes:null};const invalid=buildKanbanGroupingSnapshot(f.options);assert.equal(invalid.state,'unavailable');assert.equal(invalid.scopedTotal,110);
+});
+test('scope counts mark conflicting task identities incomplete',()=>{
+ const f=setup(axis('tags','list'),null,[task('same',{},['a']),task('same',{},['b']),task('good',{},['a'])]);
+ const result=ready(f.options);assert.equal(result.scopedTotal,1);assert.equal(result.scopeComplete,false);assert.equal(result.countsComplete,false);
+});
 test('numeric equality, false and empty retain separate identities and selected ordering',()=>{
  const f=setup(axis('estimate','number'),null,[task('one',{estimate:'01'}),task('two',{estimate:'1.0'}),task('zero',{estimate:'0'}),task('empty')]);
  const s=ready(f.options);assert.deepEqual(s.columns.map(h=>h.value),[value(0),value(1),{kind:'empty'}]);assert.deepEqual(s.columns.map(h=>h.count),[1,2,1]);
@@ -103,6 +117,37 @@ test('invalid values are partial; missing fields, changed types and future prese
  const f=setup(axis('estimate','number'),null,[task('good',{estimate:'1'}),task('bad',{estimate:'no'})]);assert.equal(ready(f.options).state,'partial');
  for(const columns of [axis('missing'),axis('estimate','date')]){f.p.axes={version:1,columns,swimlanes:null};assert.equal(buildKanbanGroupingSnapshot(f.options).state,'unavailable');}
  f.p.axes={version:999};assert.equal(buildKanbanGroupingSnapshot(f.options).state,'unavailable');
+});
+test('Status partial results exclude unrelated unknown pipelines on either axis',()=>{
+ for(const side of ['columns','swimlanes'] as const){
+  const f=setup();const pipeline=f.s.pipelines[0];pipeline.name='Movies.Library';
+  const status:KanbanAxis={kind:'status',pipelineId:pipeline.id};
+  f.p.axes={version:1,columns:side==='columns'?status:axis('tags','list'),swimlanes:side==='swimlanes'?status:axis('tags','list')};
+  f.options.tasks=[task('movie',{status:`${pipeline.name}.${pipeline.statuses[0].label}`},['book']),task('payment',{status:'Payment.Completed'},['103']),task('other',{status:'Abc.Done'},['104'])];f.refresh();
+  const s=ready(f.options);assert.equal(s.state,'ready');assert.equal(s.countsComplete,true);assert.equal(s.total,1);assert.deepEqual(s.diagnostics,[]);
+  const tagHeaders=side==='columns'?s.rows:s.columns;
+  assert.deepEqual(tagHeaders.map(h=>h.label),['103','104','book'],'All keeps the base-filter value pool, including numeric tag strings');
+  f.options.tasks=[...f.options.tasks,task('invalid-movie',{status:`${pipeline.name}.Removed`},['book'])];
+  const partial=ready(f.options);assert.equal(partial.state,'partial');assert.deepEqual(partial.diagnostics.map(d=>d.taskId),['invalid-movie']);assert.equal(partial.total,1);
+ }
+});
+test('readable axis exclusions and active searches do not create false partial totals',()=>{
+ const f=setup(axis('estimate','number'),axis('tags','list',[value('keep')]),[task('good',{estimate:'1'},['keep']),task('outside',{estimate:'bad'},['other']),task('pending-match',{estimate:'bad'},['keep'])]);
+ const partial=ready(f.options);assert.deepEqual(partial.diagnostics.map(d=>d.taskId),['pending-match']);
+ f.options.searchQuery='good';const searched=ready(f.options);assert.equal(searched.state,'ready');assert.equal(searched.total,1);
+ f.options.searchQuery='';f.options.taskIdFilter=['good'];assert.equal(ready(f.options).state,'ready');
+});
+test('pending native values outside a readable Status axis do not make that board incomplete',()=>{
+ for(const side of ['columns','swimlanes'] as const){
+  const f=setup();const selected=f.s.pipelines[0],other={...structuredClone(selected),id:'other-pipeline',name:'Other'};f.s.pipelines.push(other);
+  const status:KanbanAxis={kind:'status',pipelineId:selected.id},native=axis('Effort','number',[],'native');
+  f.p.axes={version:1,columns:side==='columns'?status:native,swimlanes:side==='swimlanes'?status:native};
+  f.options.tasks=[task('outside',{status:`${other.name}.${other.statuses[0].label}`})];
+  f.options.propertyAccess=createKanbanPropertyAccess(f.s,{getTypes:()=>({Effort:'number'}),getRevision:()=>1,isReady:()=>false,getTask:()=>({available:false,revision:'1',properties:new Map()})});
+  assert.equal(ready(f.options).state,'ready');
+  f.options.tasks=[task('inside',{status:`${selected.name}.${selected.statuses[0].label}`})];
+  assert.equal(ready(f.options).state,'partial');
+ }
 });
 test('sorts reuse global/Status override/manual behavior without modifying source or following settings edits',()=>{
  const f=setup(axis('tags','list'),null,[task('z',{},['x']),task('a',{},['x'])]);const before=JSON.stringify(f.options.tasks);let s=ready(f.options);const c=s.columns[0].key,r=s.rows[0].key;
@@ -145,29 +190,6 @@ test('frozen input is not mutated and cell result arrays are independent',()=>{
  const freeze=(object:unknown):void=>{if(object&&typeof object==='object'){for(const v of Object.values(object))freeze(v);Object.freeze(object);}};freeze(f.s);freeze(f.p);freeze(f.options.tasks);
  const s=ready(f.options),c=s.columns[0].key,r=s.rows[0].key;const ids=s.getCellTaskIds(c,r);ids.push('bad');assert.deepEqual(s.getCellTaskIds(c,r),['one']);assert.equal(s.getCellCount('missing',r),0);
 });
-
-async function nativeFixture() {
- const s = settings(); s.keyMappings = s.keyMappings.map(m => ({ ...m, visiblePropertyName: m.canonicalKey }));
- const contents = new Map([
-  ['File.md', '---\noperonId: file001\nEffort: 0\nFlag: false\nItems: ["a; b", 0, "0"]\n---\n'],
-  ['Inline.md', '---\nEffort: 99\n---\n- [ ] First {{operonId:: line001}} {{Effort:: 5}} {{Flag:: false}}\n- [ ] Second {{operonId:: line002}} {{Effort:: 20}}\n'],
- ]);
- const files = new Map([...contents.keys()].map(path => { const f = new TFile(...([path] as unknown as [])); Object.assign(f, { path, basename: path.slice(0,-3), extension: 'md', stat: { mtime: 1, ctime: 1, size: 1 } }); return [path,f]; }));
- let reads = 0;
- const app = { vault: { configDir: '.obsidian', getAbstractFileByPath: (p: string) => files.get(p),
- read: async (f: TFile) => { reads++; return contents.get(f.path)!; } }, metadataCache: { getFileCache: () => ({}) } } as unknown as App;
- const native = new NativePropertyIndex(app); native.configure(s); native.setTypes({ Effort: 'number', Flag: 'checkbox', Items: 'multitext', Missing: 'text' });
- const tasks: IndexedTask[] = [];
- for (const [path, file] of files) {
-  const scan = await scanFileWithMappings(app, file, s.keyMappings);
-  native.accept(path, scan.nativeProperties);
-  if (scan.yamlTask) tasks.push({ ...task(scan.yamlTask.operonId, scan.yamlTask.fieldValues), primary: { filePath:path, format:'yaml', lineNumber:0 } });
-  for (const parsed of scan.inlineTasks) tasks.push({ ...task(parsed.operonId!, parsed.fields.reduce((a,f) => ({ ...a, [f.key]: f.value }), {})),
-   primary: { filePath: path, format: 'inline', lineNumber: parsed.lineNumber } });
- }
- native.reconcile(tasks, new Set());
- return { s, native, tasks, reads: () => reads };
-}
 
 test('actual native index groups file and neighboring inline values with zero extra file reads',async()=>{
  const f=await nativeFixture(),p=cloneDefaultKanbanPresets()[0];p.axes={version:1,columns:axis('Effort','number',[],'native'),swimlanes:null};

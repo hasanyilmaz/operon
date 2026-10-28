@@ -120,7 +120,7 @@ test('Plugin-native writes use one attempt and recurrence replacement remains a 
 	assert.doesNotMatch(handler, /retry|mutationMayHaveApplied|reindexCommittedMutationSources/u);
 	assert.match(handler, /outcome === 'outcome-unknown'[\s\S]*?'move-outcome-unknown'/u);
 	assert.match(handler, /postflightSettlement !== 'target' && postflightSettlement !== 'recurrence-replacement'/u);
-	assert.match(mainSource, /targetStatus\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
+	assert.match(mainSource, /targetStatus\?\.isFinished[\s\S]*?resolveKanbanRecurrenceReplacement\(task\)/u);
 	assert.match(
 		mainSource,
 		/resolveKanbanRecurrenceReplacement[\s\S]*?repeatSeries\.getEntry[\s\S]*?indexer\.getTask\(sourceTask\.operonId\)[\s\S]*?resolveKanbanRecurrenceReplacementCandidate/u,
@@ -128,15 +128,15 @@ test('Plugin-native writes use one attempt and recurrence replacement remains a 
 });
 
 test('manual drag behavior resolves source and target column sorting independently', () => {
-	assert.match(viewSource, /resolveKanbanEffectiveSorting\(preset, column\.statusId\)\.sortMode === 'manual'/u);
-	assert.match(viewSource, /resolveKanbanEffectiveSorting\(preset, targetStatusId\)\.sortMode === 'manual'/u);
-	assert.match(mainSource, /const sourceIsManual = context\.sourceStatusId[\s\S]*?resolveKanbanEffectiveSorting\(preset, context\.sourceStatusId\)/u);
-	assert.match(mainSource, /const targetIsManual = resolveKanbanEffectiveSorting\(preset, context\.targetStatusId\)/u);
+	assert.match(viewSource, /this\.getColumnSorting\(preset, column\.statusId\)\.sortMode === 'manual'/u);
+	assert.match(viewSource, /this\.getColumnSorting\(preset, targetStatusId\)\.sortMode === 'manual'/u);
+	assert.match(mainSource, /const sourceIsManual = context\.sourceStatusId[\s\S]*?orderingBoard\?\.getSorting\(context\.sourceStatusId\)/u);
+	assert.match(mainSource, /const targetIsManual = orderingBoard\?\.getSorting\(context\.targetStatusId\)/u);
 	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual, this\.isKanbanTaskAtDropSource\(/u);
 });
 
 test('a stale board source is rejected before manual-order or Plugin-native writes', () => {
-	const sourceFence = mainSource.indexOf('if (!matchesKanbanDropSource({');
+	const sourceFence = mainSource.indexOf('if (!this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context))');
 	const manualOrderBuild = mainSource.indexOf('const sourceIsManual', sourceFence);
 	const manualOrderApply = mainSource.indexOf('await persistManualOrderIfCurrent()', sourceFence);
 	const pluginWrite = mainSource.indexOf('updatePluginUiTaskStatusAndRefresh', sourceFence);
@@ -216,7 +216,7 @@ test('in-place settlement preserves board roots and limits writes to affected ce
 	const patchStart = viewSource.indexOf('private applyKanbanBoardPatchInPlace(');
 	const patchEnd = viewSource.indexOf('\n\tprivate buildKanbanBoardTaskSignatures(', patchStart);
 	const patchBody = viewSource.slice(patchStart, patchEnd);
-	assert.match(patchBody, /collectKanbanInPlaceChangedCellKeys\([\s\S]*?forcedCellKeys/u);
+	assert.match(patchBody, /new Set\(forcedCellKeys\)[\s\S]*?boardEl\.querySelectorAll<HTMLElement>\([\s\S]*?next\.getCellTasks/u);
 	assert.match(patchBody, /this\.pendingCellMaterializers\.set\(cell, materialize\)/u);
 	assert.match(patchBody, /this\.clearCellQuickAdd\(cell\)/u);
 	assert.match(viewSource, /private unobserveKanbanCellContent[\s\S]*?this\.clearCellLazySentinelObserver\(cell\)/u);
@@ -239,8 +239,8 @@ test('successful late callbacks are fenced before touching a replaced board scop
 });
 
 test('status clicks share card ownership and operation-scoped cleanup with drops', () => {
-	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?task\.operonId,[\s\S]*?preset\.id,[\s\S]*?'status',[\s\S]*?buildKanbanDropBoardSignature\(preset, pipeline\)/u);
-	assert.match(viewSource, /\.\.\.optimisticMove,[\s\S]*?operationId: operation\.id,[\s\S]*?presetId: preset\.id/u);
+	assert.match(viewSource, /cardOperations\.begin\([\s\S]*?task\.operonId,[\s\S]*?preset\.id,[\s\S]*?'status',[\s\S]*?buildKanbanDropBoardSignature\(preset, pipeline, this\.(?:getSettings\(\)|settings)\)/u);
+	assert.match(viewSource, /kind: 'status',[\s\S]*?operationId: operation\.id,[\s\S]*?presetId: preset\.id/u);
 	assert.match(viewSource, /clearOptimisticMove\(task\.operonId, operation\.id\)/u);
 	assert.match(viewSource, /cardOperations\.isUiCurrent\([\s\S]*?operation,[\s\S]*?currentPreset\.id,[\s\S]*?resolveKanbanDropBoardSignature\(currentPreset\)/u);
 });
@@ -253,11 +253,11 @@ test('drag context seals the exact raw status for unconfigured source cells', ()
 });
 
 test('same-ID preset and pipeline changes are fenced by a captured board signature', () => {
-	assert.match(viewSource, /kanbanDropBoardSignature = buildKanbanDropBoardSignature\(board\.preset, board\.pipeline\)/u);
+	assert.match(viewSource, /kanbanDropBoardSignature = buildKanbanDropBoardSignature\(board\.preset, board\.pipeline, this\.getSettings\(\)\)/u);
 	assert.equal((viewSource.match(/boardSignature: dragged\.boardSignature/gu) ?? []).length, 2);
-	assert.match(viewSource, /move\.boardSignature !== boardSignature/u);
+	assert.match(viewSource, /move\.boardSignature !== signature/u);
 	assert.match(viewSource, /boardSignature: operation\.boardSignature/u);
-	assert.match(mainSource, /context\.boardSignature !== buildKanbanDropBoardSignature\(preset, pipeline\)[\s\S]*?code: 'stale-context'/u);
+	assert.match(mainSource, /context\.boardSignature !== buildKanbanDropBoardSignature\(preset, pipeline, this\.(?:getSettings\(\)|settings)\)[\s\S]*?code: 'stale-context'/u);
 });
 
 test('card image remains non-draggable and does not introduce a special click action', () => {

@@ -1,4 +1,5 @@
-import { cloneKanbanAxesPayload, updateKanbanLegacyAxes } from '../core/kanban-axis-model';
+import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
+import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
 import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
 import { saveDesktopBackdropDimming } from './modal-backdrop';
 import { BACKGROUND_DIMMING_OPTIONS, normalizeBackgroundDimming } from '../core/background-dimming';
@@ -90,7 +91,7 @@ import {
 	createKanbanPresetId,
 	isBuiltInKanbanSwimlaneBy,
 	normalizeKanbanCustomFieldReference,
-	reconcileKanbanColumnSortOverrides,
+
 } from '../types/kanban';
 import { OperonStorage } from '../storage/operon-storage';
 import type { TablePresetFileConflictResolutionResult } from '../types/table-preset-file-conflict';
@@ -207,7 +208,6 @@ import { detectRepeatSeriesNamingConfig } from '../systems/recurring-file-naming
 import {
 	CALENDAR_PRESET_TASK_COLOR_SOURCES,
 	CALENDAR_TASK_COLOR_SOURCES,
-	KANBAN_TASK_COLOR_SOURCES,
 	PINNED_DOCK_TASK_COLOR_SOURCES,
 	TASK_STATUS_ICON_COLOR_SOURCES,
 	addTaskColorSourceOptions,
@@ -271,7 +271,7 @@ export type {
 	SettingsBackupSelectedFile,
 } from './settings-backup-ui';
 import {
-	maybeCopyKanbanManualOrderForPresetDuplicate,
+
 	removeKanbanManualOrderForPresetDelete,
 } from '../systems/kanban-manual-order-runtime';
 import { createSettingsCollapsibleCard } from './settings/collapsible-card';
@@ -8155,12 +8155,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 				sortRules: createDefaultKanbanSortRules(),
 			};
 			this.openKanbanPresetSettingsModal(preset, async saved => {
-				this.settings.kanbanPresets.push(saved);
-				if (!this.settings.kanbanDefaultPresetId) {
-					this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
-				}
-				await this.saveSettings();
-				await this.handleKanbanPresetSortingChange(null, saved);
+				await this.storage.createKanbanPreset(saved);
+				this.notifySettingsChanged();
 				refresh();
 			});
 		}));
@@ -8176,9 +8172,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const total = this.settings.kanbanPresets.length;
 		const isOnlyPreset = total === 1;
 		const presetName = preset.name.trim() || t('settings', 'kanbanFallbackPresetName', { number: String(index + 1) });
-		const pipelineName = this.settings.pipelines.find(p => p.id === preset.pipelineId)?.name ?? t('settings', 'kanbanNoPipeline');
+		const pipelineName = kanbanAxisSummary(preset, 'columns', this.settings);
 		const filterName = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId)?.name ?? t('calendar', 'noFilter');
-		const swimlaneLabel = this.getKanbanSwimlaneLabel(preset.swimlaneBy);
+		const swimlaneLabel = kanbanAxisSummary(preset, 'swimlanes', this.settings);
 		const card = createSettingsListCard({
 			containerEl: listEl,
 			icon: 'square-kanban',
@@ -8239,11 +8235,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 			text: 'Edit',
 			wide: true,
 			onClick: () => {
-				this.openKanbanPresetSettingsModal(preset, async saved => {
-					const previous = cloneWorkflowKanbanPresets([preset])[0];
-					this.replaceKanbanPreset(saved);
-					await this.saveSettings();
-					await this.handleKanbanPresetSortingChange(previous, saved);
+				this.openKanbanPresetSettingsModal(preset, async (saved, expected) => {
+					await this.storage.saveKanbanPresetIfUnchanged(expected, saved);
+					this.notifySettingsChanged();
 					refresh();
 				});
 			},
@@ -8267,9 +8261,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 						sortRules: override.sortRules.map(rule => ({ ...rule })),
 					})) } : {}),
 				};
-				this.settings.kanbanPresets.splice(index + 1, 0, copy);
-				await this.saveSettings();
-				await maybeCopyKanbanManualOrderForPresetDuplicate(preset, copy.id, this.copyKanbanManualOrder);
+				await this.storage.createKanbanPreset(copy, preset);
+				this.notifySettingsChanged();
 				refreshTab();
 			},
 		});
@@ -9078,8 +9071,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		await this.storage.togglePresetFavorite(kind, presetId);
 	}
 
-	private openKanbanPresetSettingsModal(preset: KanbanPreset | null, onSave: (preset: KanbanPreset) => Promise<void>): void {
+	private openKanbanPresetSettingsModal(preset: KanbanPreset | null, onSave: (preset: KanbanPreset, expected: KanbanPreset) => Promise<void>): void {
 		scopeSettingsModal(new KanbanPresetQuickSettingsModal(this.app, {
+			getTasks: () => this.indexer?.getAllTasks() ?? [],
+			getTaskRevision: () => this.indexer?.getGeneration() ?? 0,
 			getSettings: () => this.settings,
 			filterEditorPickerPresentation: 'modal',
 			preset,
@@ -9107,225 +9102,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (!this.settings.kanbanPresets.some(entry => entry.id === this.settings.kanbanDefaultPresetId)) {
 			this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
 		}
-	}
-
-	private renderKanbanPresetCard(containerEl: HTMLElement, preset: KanbanPreset, index: number): void {
-		const isOnlyPreset = this.settings.kanbanPresets.length === 1;
-		const isOpen = isOnlyPreset || this.expandedPresetIds.has(preset.id);
-		const pipelineName = this.settings.pipelines.find(p => p.id === preset.pipelineId)?.name ?? t('settings', 'kanbanNoPipeline');
-		const swimlaneLabel = this.getKanbanSwimlaneLabel(preset.swimlaneBy);
-		const card = createSettingsCollapsibleCard({
-			containerEl,
-			cardId: `kanban-preset-${preset.id}`,
-			title: preset.name || t('calendar', 'presetFallbackName', { number: String(index + 1) }),
-			subtitle: `${pipelineName} · ${swimlaneLabel}`,
-			isOpen,
-			actions: [
-				{
-					type: 'icon',
-					icon: 'arrow-up',
-					label: t('calendar', 'movePresetUp'),
-						disabled: index === 0,
-						onClick: settingsAsyncHandler('settings kanban preset move up failed', async () => {
-							if (index === 0) return;
-							if (await this.moveKanbanPreset(index, -1)) this.redisplayPreservingScroll();
-						}),
-					},
-				{
-					type: 'icon',
-					icon: 'arrow-down',
-					label: t('calendar', 'movePresetDown'),
-						disabled: index === this.settings.kanbanPresets.length - 1,
-						onClick: settingsAsyncHandler('settings kanban preset move down failed', async () => {
-							if (index >= this.settings.kanbanPresets.length - 1) return;
-							if (await this.moveKanbanPreset(index, 1)) this.redisplayPreservingScroll();
-						}),
-					},
-				{
-					type: 'text',
-					label: t('calendar', 'removePreset'),
-					disabled: isOnlyPreset,
-					onClick: settingsAsyncHandler('settings kanban preset remove failed', async () => {
-						if (this.settings.kanbanPresets.length === 1) {
-							new Notice(t('settings', 'kanbanAtLeastOnePresetRequired'));
-							return;
-						}
-						const confirmed = await this.confirmDeleteKanbanPreset(preset.name || t('calendar', 'presetFallbackName', { number: String(index + 1) }));
-						if (!confirmed) return;
-						this.settings.kanbanPresets = this.settings.kanbanPresets.filter(entry => entry.id !== preset.id);
-						if (!this.settings.kanbanPresets.some(entry => entry.id === this.settings.kanbanDefaultPresetId)) {
-							this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
-						}
-						await this.saveSettings();
-						this.redisplayPreservingScroll();
-					}),
-				},
-			],
-			onToggle: opening => {
-				if (opening) {
-					this.expandedPresetIds.add(preset.id);
-				} else {
-					this.expandedPresetIds.delete(preset.id);
-				}
-			},
-		});
-		const titleMain = card.titleEl;
-		const bodyInner = card.bodyInnerEl;
-
-		const nameSetting = new Setting(bodyInner)
-			.setName(t('settings', 'kanbanPresetName'))
-			.setDesc(t('settings', 'kanbanPresetNameDesc'))
-			.addText(text => {
-				text.setValue(preset.name);
-				text.inputEl.addClass('operon-preset-name-input');
-				text.onChange(async (value) => {
-					const trimmed = value.trim() || t('settings', 'kanbanFallbackPresetName', { number: String(index + 1) });
-					await this.updateKanbanPreset(preset.id, current => {
-						current.name = trimmed;
-					});
-					titleMain.setText(trimmed);
-				});
-			});
-		nameSetting.settingEl.addClass('operon-preset-name-setting');
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanPipeline'))
-			.setDesc(t('settings', 'kanbanPipelineDesc'))
-			.addDropdown(dropdown => {
-				dropdown.addOption('', t('settings', 'kanbanNoPipeline'));
-				for (const pipeline of this.settings.pipelines) {
-					dropdown.addOption(pipeline.id, pipeline.name);
-				}
-				dropdown.setValue(preset.pipelineId ?? '');
-				dropdown.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						updateKanbanLegacyAxes(current, { pipelineId: value || null }, this.settings.keyMappings);
-						delete current.columnSortOverrides;
-					});
-					this.redisplayPreservingScroll();
-				});
-			});
-
-		const currentFilter = getNormalFilterSets(this.settings.filterSets).find(entry => entry.id === preset.filterSetId) ?? null;
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanFilter'))
-			.setDesc(currentFilter?.name ?? t('calendar', 'noFilter'))
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'chooseFilter'));
-				button.onClick(() => {
-					showFilterSetPicker(button.buttonEl, {
-						settingsApp: this.app,
-						value: preset.filterSetId,
-						filterSets: getNormalFilterSets(this.settings.filterSets),
-						onChooseFilter: settingsAsyncHandler('settings kanban preset filter selection failed', async (filterSetId) => {
-							await this.updateKanbanPreset(preset.id, current => {
-								current.filterSetId = filterSetId;
-							});
-							this.redisplayPreservingScroll();
-						}),
-					});
-				});
-			})
-			.addButton(button => {
-				button.setButtonText(t('calendar', 'clearFilter'));
-				button.setDisabled(!preset.filterSetId);
-				button.onClick(settingsAsyncHandler('settings kanban preset filter clear failed', async () => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.filterSetId = null;
-					});
-					this.redisplayPreservingScroll();
-				}));
-			});
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanSwimlaneField'))
-			.setDesc(t('settings', 'kanbanSwimlaneFieldDesc'))
-			.addDropdown(dropdown => {
-				this.addKanbanSwimlaneOptions(dropdown);
-				dropdown.setValue(preset.swimlaneBy ?? '');
-				dropdown.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						updateKanbanLegacyAxes(current, { swimlaneBy: this.parseKanbanSwimlaneBy(value) }, this.settings.keyMappings);
-					});
-				});
-			});
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanTaskColorSource'))
-			.setDesc(t('settings', 'kanbanTaskColorSourceDesc'))
-			.addDropdown(dropdown => {
-				addTaskColorSourceOptions(dropdown, KANBAN_TASK_COLOR_SOURCES);
-				dropdown.setValue(normalizeTaskColorSource(preset.colorSource, KANBAN_TASK_COLOR_SOURCES, 'noColor'));
-				dropdown.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.colorSource = normalizeTaskColorSource(value, KANBAN_TASK_COLOR_SOURCES, 'noColor');
-					});
-				});
-			});
-
-		this.renderKanbanSortSection(bodyInner, preset);
-
-		new Setting(bodyInner)
-			.setName(t('calendar', 'appearanceLight'))
-			.setDesc(t('calendar', 'appearanceLightDesc'))
-			.addDropdown(dropdown => {
-				addAppearanceSchemeOptions(dropdown, APPEARANCE_SCHEME_LIGHT_OPTIONS);
-				dropdown.setValue(preset.appearanceModeLight);
-				dropdown.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.appearanceModeLight = value as KanbanPreset['appearanceModeLight'];
-					});
-				});
-			});
-
-		new Setting(bodyInner)
-			.setName(t('calendar', 'appearanceDark'))
-			.setDesc(t('calendar', 'appearanceDarkDesc'))
-			.addDropdown(dropdown => {
-				addAppearanceSchemeOptions(dropdown, APPEARANCE_SCHEME_DARK_OPTIONS);
-				dropdown.setValue(preset.appearanceModeDark);
-				dropdown.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.appearanceModeDark = value as KanbanPreset['appearanceModeDark'];
-					});
-				});
-			});
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanCollapseEmptyColumns'))
-			.setDesc(t('settings', 'kanbanCollapseEmptyColumnsDesc'))
-			.addToggle(toggle => {
-				toggle.setValue(preset.collapseEmptyColumns);
-				toggle.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.collapseEmptyColumns = value;
-					});
-				});
-			});
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanCollapseEmptySwimlanes'))
-			.setDesc(t('settings', 'kanbanCollapseEmptySwimlanesDesc'))
-			.addToggle(toggle => {
-				toggle.setValue(preset.collapseEmptySwimlanes);
-				toggle.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.collapseEmptySwimlanes = value;
-					});
-				});
-			});
-
-		new Setting(bodyInner)
-			.setName(t('settings', 'kanbanAutoCollapseFinishedColumns'))
-			.setDesc(t('settings', 'kanbanAutoCollapseFinishedColumnsDesc'))
-			.addToggle(toggle => {
-				toggle.setValue(preset.autoCollapseFinishedColumns);
-				toggle.onChange(async value => {
-					await this.updateKanbanPreset(preset.id, current => {
-						current.autoCollapseFinishedColumns = value;
-					});
-				});
-			});
 	}
 
 	private renderKanbanSortSection(container: HTMLElement, preset: KanbanPreset): void {
@@ -11169,9 +10945,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				if (!confirmed) return;
 				const deletedWasDefault = this.settings.defaultPipelineName === currentPipeline.name;
 				this.settings.pipelines.splice(currentPipelineIndex, 1);
-				for (const preset of this.settings.kanbanPresets) {
-					if (preset.pipelineId === currentPipeline.id) preset.pipelineId = null;
-				}
+				// Missing pipeline references stay visible for explicit repair.
 				if (deletedWasDefault) {
 					this.settings.defaultPipelineName = this.settings.pipelines[0]?.name ?? '';
 				} else if (!this.settings.pipelines.some(candidate => candidate.name === this.settings.defaultPipelineName)) {
@@ -12118,12 +11892,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private async moveKanbanPreset(index: number, direction: -1 | 1): Promise<boolean> {
 		const targetIndex = index + direction;
 		if (targetIndex < 0 || targetIndex >= this.settings.kanbanPresets.length) return false;
-		const presets = [...this.settings.kanbanPresets];
-		const [moved] = presets.splice(index, 1);
-		if (!moved) return false;
-		presets.splice(targetIndex, 0, moved);
-		this.settings.kanbanPresets = presets;
-		await this.saveSettings();
+		const ids = this.settings.kanbanPresets.map(preset => preset.id);
+		await this.storage.reorderKanbanPresets(ids, index, targetIndex);
+		this.notifySettingsChanged();
 		return true;
 	}
 
@@ -14521,32 +14292,16 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private async saveWorkflowSettings(): Promise<void> {
-		const previousPresets = cloneWorkflowKanbanPresets(this.settings.kanbanPresets);
 		const nextPipelines = this.settings.pipelines.map(pipeline => clonePipeline(pipeline));
-		const nextPresets = cloneWorkflowKanbanPresets(this.settings.kanbanPresets);
-		for (const preset of nextPresets) {
-			const pipeline = nextPipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-			const columnSortOverrides = reconcileKanbanColumnSortOverrides(
-				preset.columnSortOverrides,
-				pipeline?.statuses.map(status => status.id) ?? [],
-			);
-			if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
-			else delete preset.columnSortOverrides;
-		}
 		const pendingSettings = {
 			pipelines: nextPipelines,
 			defaultPipelineName: this.settings.defaultPipelineName,
-			kanbanPresets: nextPresets,
 		};
 		try {
 			await this.storage.updateSettings(pendingSettings);
 		} catch (error) {
 			this.redisplayPreservingScroll();
 			throw error;
-		}
-		for (const updated of nextPresets) {
-			const previous = previousPresets.find(preset => preset.id === updated.id) ?? null;
-			await this.handleKanbanPresetSortingChange(previous, updated);
 		}
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.notifySettingsChanged();

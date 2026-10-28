@@ -29,7 +29,8 @@ import {
 	applyKanbanOptimisticMovesToBoard,
 	createKanbanDropOptimisticMove,
 } from '../src/systems/kanban-optimistic-move';
-import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, queryKanbanBoard } from '../src/systems/kanban-query';
+import { buildKanbanCellKey, buildKanbanTaskComparator, KANBAN_NO_VALUE_KEY, } from '../src/systems/kanban-query';
+import { queryKanbanBoard } from './test-support/kanban-legacy-query';
 import {
 	KANBAN_BUILT_IN_SORT_FIELDS,
 	reconcileKanbanColumnSortOverrides,

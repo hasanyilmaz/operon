@@ -27,6 +27,8 @@ export interface KanbanGroupingDiagnostic {
 	readonly reason: string;
 }
 export interface KanbanGroupingSnapshot {
+	readonly scopedTotal: number;
+	readonly scopeComplete: boolean;
 	readonly state: 'ready' | 'partial';
 	readonly countsComplete: boolean;
 	readonly revision: Readonly<{ tasks: string | number; settings: string | number; native: number }>;
@@ -34,6 +36,7 @@ export interface KanbanGroupingSnapshot {
 	readonly rows: readonly KanbanGroupHeader[];
 	readonly rowAxisHidden: boolean;
 	readonly total: number;
+	readonly taskIds: readonly string[];
 	readonly diagnostics: readonly KanbanGroupingDiagnostic[];
 	/** Memberships contain only tasks contributing to this snapshot's displayed totals. */
 	readonly columnMembers: ReadonlyMap<string, ReadonlySet<string>>;
@@ -43,6 +46,8 @@ export interface KanbanGroupingSnapshot {
 	getCellTaskIds(columnKey: string, rowKey: string, manualOrderIds?: readonly string[]): string[];
 }
 export type KanbanGroupingResult = KanbanGroupingSnapshot | {
+	readonly scopedTotal: number;
+	readonly scopeComplete: boolean;
 	readonly state: 'unavailable';
 	readonly reason: string;
 	readonly axis: 'columns' | 'rows' | 'both';
@@ -68,6 +73,7 @@ interface AxisPlan {
 	priority: boolean;
 	metadata: Map<string, { label: string; color: string | null }>;
 	status: boolean;
+	statusPrefix?: string;
 }
 const HIDDEN_ROW_KEY = JSON.stringify(['hidden-row']);
 export function buildKanbanGroupingCellKey(columnKey: string, rowKey: string): string {
@@ -94,7 +100,7 @@ function prepareAxis(axis: KanbanAxis | null, options: KanbanGroupingOptions): A
 		const property: KanbanPropertyReference = { source: 'managed', key: 'status', type: 'text' };
 		const resolved = options.propertyAccess.resolve(property);
 		if (!resolved.ok) return resolved.reason;
-		return { identity: JSON.stringify(['status', pipeline.id]), property, fixed, type: 'text', priority: false, metadata, status: true };
+		return { identity: JSON.stringify(['status', pipeline.id]), property, fixed, type: 'text', priority: false, metadata, status: true, statusPrefix: `${pipeline.name}.` };
 	}
 	const resolved = options.propertyAccess.resolve(axis.property);
 	if (!resolved.ok) return resolved.reason;
@@ -137,16 +143,8 @@ function equivalentTaskRecords(left: IndexedTask, right: IndexedTask): boolean {
  });
  return serialize(left) === serialize(right) && getTimeScopeSignature(left) === getTimeScopeSignature(right);
 }
-/** Pure, synchronous query over ready index data. No hydration, Cartesian expansion, or retained cell cache. */
-export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): KanbanGroupingResult {
-	if (options.propertyAccess.revision !== options.propertyAccess.getCurrentRevision()) return { state: 'unavailable', axis: 'both', reason: 'stale-property-access' };
-	const decoded = resolveKanbanAxes(options.preset, options.settings.keyMappings);
-	if (!decoded.ok) return { state: 'unavailable', axis: 'both', reason: decoded.reason };
-	const column = prepareAxis(decoded.axes.columns, options), row = prepareAxis(decoded.axes.swimlanes, options);
-	if (typeof column === 'string') return { state: 'unavailable', axis: 'columns', reason: column };
-	if (typeof row === 'string') return { state: 'unavailable', axis: 'rows', reason: row };
-	const axes = [column, row];
-	const domains = axes.map(() => new Map<string, KanbanAxisValue>());
+/** Shared filter scope, independent of either axis and transient board search. */
+export function collectKanbanScope(options: Pick<KanbanGroupingOptions, 'tasks' | 'settings' | 'filterSet' | 'pinnedCache' | 'filterEvaluationOptions'>) {
 	const diagnostics: KanbanGroupingDiagnostic[] = [];
 	// Repeated references are harmless; conflicting records must not pick an arbitrary owner.
 	const unique = new Map<string, IndexedTask>(), conflicts = new Set<string>();
@@ -164,6 +162,20 @@ export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): Kan
 		...options.filterEvaluationOptions, pipelines: options.settings.pipelines,
 		dependencyTasks: tasks, projectSerialScopeTasks: tasks,
 	});
+	const scope = { scopedTotal: new Set(scoped.map(task => task.operonId)).size, scopeComplete: conflicts.size === 0 };
+	return { tasks, scoped, scope, diagnostics };
+}
+/** Pure, synchronous query over ready index data. No hydration, Cartesian expansion, or retained cell cache. */
+export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): KanbanGroupingResult {
+	const { tasks, scoped, scope, diagnostics } = collectKanbanScope(options);
+	if (options.propertyAccess.revision !== options.propertyAccess.getCurrentRevision()) return { ...scope, state: 'unavailable', axis: 'both', reason: 'stale-property-access' };
+	const decoded = resolveKanbanAxes(options.preset, options.settings.keyMappings);
+	if (!decoded.ok) return { ...scope, state: 'unavailable', axis: 'both', reason: decoded.reason };
+	const column = prepareAxis(decoded.axes.columns, options), row = prepareAxis(decoded.axes.swimlanes, options);
+	if (typeof column === 'string') return { ...scope, state: 'unavailable', axis: 'columns', reason: column };
+	if (typeof row === 'string') return { ...scope, state: 'unavailable', axis: 'rows', reason: row };
+	const axes = [column, row];
+	const domains = axes.map(() => new Map<string, KanbanAxisValue>());
 	const reads = new Map<string, [KanbanPropertyRead | null, KanbanPropertyRead | null]>();
 	for (const task of scoped) {
 		const byProperty = new Map<string, KanbanPropertyRead>();
@@ -174,7 +186,7 @@ export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): Kan
 			if (!read) { read = options.propertyAccess.read(task, axis.property); byProperty.set(identity, read); }
 			if (read.state === 'ready' || read.state === 'empty') {
 				for (const value of read.values) domains[index].set(kanbanAxisValueKey(value), value);
-			} else if ('reason' in read) diagnostics.push({ taskId: task.operonId, axis: index === 0 ? 'columns' : 'rows', state: read.state, reason: read.reason });
+			}
 			return read;
 		}) as [KanbanPropertyRead | null, KanbanPropertyRead | null];
 		reads.set(task.operonId, pair);
@@ -195,13 +207,33 @@ export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): Kan
 	for (const task of scoped) {
 		if (allowed && !allowed.has(task.operonId) || matcher && !matcher(task, search)) continue;
 		const pair = reads.get(task.operonId)!;
-		if (pair.some(read => read && read.state !== 'ready' && read.state !== 'empty')) continue;
 		const keys = axes.map((axis, index) => {
 			if (!axis.property) return [HIDDEN_ROW_KEY];
 			const read = pair[index];
 			if (!read || read.state !== 'ready' && read.state !== 'empty') return [];
 			return [...new Set(read.values.map(value => groupKey(axis, value)).filter(key => memberships[index].has(key)))];
 		});
+		// Values still come from the whole filter scope, but incomplete totals concern
+		// only tasks that could belong to the selected board and active search.
+		if (axes.some((axis, index) => {
+			const read = pair[index];
+			if (!read) return false;
+			if (read.state === 'ready' || read.state === 'empty') return keys[index].length === 0;
+			if (axis.statusPrefix && 'reason' in read && read.reason === 'unresolved-status') {
+				const raw = task.fieldValues.status?.trim() ?? '';
+				// Unknown values from another named workflow cannot match this pipeline.
+				// Keep unknown values in this pipeline (including dotted names) diagnostic.
+				return raw.includes('.') && !raw.startsWith(axis.statusPrefix);
+			}
+			return false;
+		})) continue;
+		let incomplete = false;
+		pair.forEach((read, index) => {
+			if (!read || !('reason' in read)) return;
+			diagnostics.push({ taskId: task.operonId, axis: index === 0 ? 'columns' : 'rows', state: read.state, reason: read.reason });
+			incomplete = true;
+		});
+		if (incomplete) continue;
 		if (!keys[0].length || !keys[1].length) continue;
 		displayed.set(task.operonId, task);
 		keys.forEach((list, index) => { for (const key of list) memberships[index].get(key)!.add(task.operonId); });
@@ -220,25 +252,26 @@ export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): Kan
 		for (const id of small) if (large.has(id)) visit(id);
 	};
 	return {
+		...scope,
 		state: diagnostics.length ? 'partial' : 'ready', countsComplete: diagnostics.length === 0,
 		revision: Object.freeze({ ...options.revision, native: options.propertyAccess.revision }),
 		columns: Object.freeze(headers[0].map(header => Object.freeze({ ...header, count: memberships[0].get(header.key)!.size }))),
 		rows: Object.freeze(headers[1].map(header => Object.freeze({ ...header, count: memberships[1].get(header.key)!.size }))),
-		rowAxisHidden: !row.property, total: displayed.size, diagnostics: Object.freeze(diagnostics.map(entry => Object.freeze(entry))),
+		rowAxisHidden: !row.property, total: displayed.size, taskIds: Object.freeze([...displayed.keys()]), diagnostics: Object.freeze(diagnostics.map(entry => Object.freeze(entry))),
 		columnMembers: memberships[0], rowMembers: memberships[1],
 		getTask: id => displayed.get(id),
 		getCellCount: (columnKey, rowKey) => { let count = 0; visitCell(columnKey, rowKey, () => count++); return count; },
 		getCellTaskIds: (columnKey, rowKey, manualOrderIds = []) => {
 			const result: IndexedTask[] = [];
 			visitCell(columnKey, rowKey, id => result.push(displayed.get(id)!));
-			if (sorting.get(columnKey)?.sortMode === 'manual') applyManualKanbanTaskOrder(result, [...manualOrderIds]);
-			else {
+			{
 				const policy = sorting.get(columnKey);
 				const key = JSON.stringify(policy?.sortRules ?? preset.sortRules);
 				let comparator = comparators.get(key);
 				if (!comparator) { comparator = buildKanbanTaskComparator({ preset, sorting: policy, priorities, keyMappings, getProjectSerialDisplay: options.getProjectSerialDisplay }); comparators.set(key, comparator); }
 				result.sort(comparator);
 			}
+			if (sorting.get(columnKey)?.sortMode === 'manual') applyManualKanbanTaskOrder(result, [...manualOrderIds]);
 			return result.map(task => task.operonId);
 		},
 	};
