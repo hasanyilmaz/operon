@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **Next Occurrence Date** as a filter condition, sorting option, and calculated Table column, making recurring tasks easier to find and order by their occurrence dates while keeping Repeat reference date separate. Table cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
+- Added **Next Occurrence Date** as a filter condition, sorting option, and calculated Table column, making recurring tasks easier to find and order by their occurrence dates while keeping Repeat reference date separate. Table headers and cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
 
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
 

@@ -312,7 +312,7 @@ test('repeat chip date tone matches Scheduled for past/today/future and terminal
 
 test('next occurrence Table column is a readonly date with shared calculation and skip handling', () => {
  const field = h.getTableTaskField('taskOccurrenceDate', h.DEFAULT_SETTINGS);
- assert.equal(field.label, 'Next Occurrence Date'); assert.equal(field.type, 'date'); assert.equal(field.readonly, true);
+ assert.equal(field.label, 'Next Occurrence Date'); assert.equal(field.icon, 'repeat'); assert.equal(field.type, 'date'); assert.equal(field.readonly, true);
  assert.equal(h.isEditableTableTaskFieldKey('taskOccurrenceDate', h.DEFAULT_SETTINGS), true);
  for (const file of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
   assert.ok(read(file).includes("canonicalKey: key === 'repeatOccurrenceDate' || key === 'taskOccurrenceDate' ? 'repeat' : key,"));

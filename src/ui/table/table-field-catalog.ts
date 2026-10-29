@@ -227,7 +227,7 @@ function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSetti
 	const occurrenceLabel = t('filterSets', 'fieldTaskOccurrenceDate');
 	addField(fields, seen, {
 		key: 'taskOccurrenceDate', label: occurrenceLabel, type: 'date',
-		group: 'scheduling', icon: 'calendars', readonly: true,
+		group: 'scheduling', icon: 'repeat', readonly: true,
 		aliases: buildAliases('taskOccurrenceDate', occurrenceLabel),
 	});
 
