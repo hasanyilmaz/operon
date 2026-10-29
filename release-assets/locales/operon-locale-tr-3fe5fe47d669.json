@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "Project Serial Grubu",
       "fieldProjectTree": "Proje Ağacı",
       "fieldTags": "Etiketler",
+      "fieldTaskOccurrenceDate": "Sonraki Tekrar Tarihi",
       "fieldTrackedOn": "Kaydedilen zaman",
       "filePropertyInvalidConditionValue": "Bu özellik koşulu için geçerli bir değer girin.",
       "filePropertySourceType": "YAML özelliği · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "0699cda86974f8bc81ef91dc4901b2b3de8749c746a4b74b117c767b765e6963"
+  "sourceVersion": "1062bb0b3410c915f71441af4b8631a4f7ff6a4e9cba8107fe6a502336fe7f43"
 }

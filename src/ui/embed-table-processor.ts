@@ -317,6 +317,8 @@ import {
 import { showLocationMapPreview } from './location-map-preview';
 
 export interface EmbedTableDeps {
+	getRepeatSkipDates?: (seriesId: string) => string[];
+	getRepeatSkipSignature?: () => string;
 	app: App;
 	indexer: OperonIndexer;
 	getSettings: () => OperonSettings;
@@ -1023,12 +1025,12 @@ function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTable
 	}
 	const normalizedSearchQuery = searchContext.activeSearchQuery.trim().toLocaleLowerCase();
 	const searchCacheScopeKey = buildTableSearchCacheScopeKey(
-		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${deps.getRepeatSkipSignature?.() ?? ''}`,
 		taskColumns,
 		preset.sortRules,
 	);
 	const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(
-		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+		`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${deps.getRepeatSkipSignature?.() ?? ''}`,
 		taskColumns,
 		preset,
 	);
@@ -1043,8 +1045,8 @@ function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTable
 			settings,
 			generation: deps.indexer.getGeneration(),
 			columns: taskColumns,
-			valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
-			valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+			valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay, getRepeatSkipDates: deps.getRepeatSkipDates },
+			valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${deps.getRepeatSkipSignature?.() ?? ''}`,
 			filePropertyContext: filePropertySnapshot,
 		})
 		: undefined;
@@ -1096,6 +1098,7 @@ function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTable
 		tasks: allTasks,
 		priorities: settings.priorities,
 		pinnedCache: deps.getPinnedCache(),
+		getRepeatSkipDates: deps.getRepeatSkipDates,
 		projectSerialScopes: settings.projectSerialScopes,
 		filePropertyContext: filterFilePropertyContext,
 		settings,
@@ -1357,6 +1360,7 @@ function buildEmbedTableRenderSignature(
 		filterFilePropertySignature,
 		deps.getSettings().dateDisplayFormat,
 		deps.getProjectSerialSignature?.() ?? '',
+		deps.getRepeatSkipSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(deps.getSettings()),
 		buildEmbedTableToolbarSignature(deps),
 		instance.ganttSession.enabled ? 'gantt-split' : 'table-only',
@@ -1388,6 +1392,7 @@ function buildEmbedTableQuerySignature(
 		filePropertySignature,
 		filterFilePropertySignature,
 		deps.getProjectSerialSignature?.() ?? '',
+		deps.getRepeatSkipSignature?.() ?? '',
 		buildTableRelevantSettingsSignature(settings),
 		buildEmbedTableToolbarSignature(deps),
 		canWriteEmbedTable(deps) ? 'write' : 'readonly',
@@ -1868,6 +1873,7 @@ function openEmbedTableFilterPopover(
 			deps.getSettings().priorities,
 			deps.getPinnedCache(),
 				{
+					getRepeatSkipDates: deps.getRepeatSkipDates,
 					projectSerialScopes: deps.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: deps.indexer.getAllTasks(),
 					dependencyTasks: deps.indexer.getAllTasks(),
@@ -3271,6 +3277,7 @@ function resolveEmbedTableSearchContext(
 		tasks,
 		priorities: settings.priorities,
 			pinnedCache: deps.getPinnedCache(),
+			getRepeatSkipDates: deps.getRepeatSkipDates,
 			projectSerialScopes: settings.projectSerialScopes,
 			pipelines: settings.pipelines,
 			filePropertyContext,
@@ -3317,6 +3324,7 @@ function buildEmbedTableSearchScopeKey(
 		filterSetSignature,
 		buildTableRelevantSettingsSignature(settings),
 		deps.getProjectSerialSignature?.() ?? '',
+		deps.getRepeatSkipSignature?.() ?? '',
 		filePropertySignature,
 		JSON.stringify(instance.searchScope),
 		instance.searchScope.showRecentModified ? `recentModifiedCutoff=${recentModifiedCutoff}` : '',
@@ -3354,6 +3362,7 @@ function resolveEmbedTableSortedSearchBaseRows(
 		tasks: input.tasks,
 		priorities: input.settings.priorities,
 		pinnedCache: deps.getPinnedCache(),
+		getRepeatSkipDates: deps.getRepeatSkipDates,
 		projectSerialScopes: input.settings.projectSerialScopes,
 		filePropertyContext: input.filterFilePropertyContext,
 		settings: input.settings,
@@ -3719,7 +3728,7 @@ function scheduleEmbedTableSearchPrewarm(
 	}
 	const generation = deps.indexer.getGeneration();
 	const projectSerialSignature = deps.getProjectSerialSignature?.() ?? '';
-	const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`;
+	const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${deps.getRepeatSkipSignature?.() ?? ''}`;
 	const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, valueResolverSignature);
 	if (instance.completedSearchPrewarmKey === prewarmKey || instance.searchPrewarmKey === prewarmKey) return;
 	cancelEmbedTableSearchPrewarm(instance);
@@ -3757,8 +3766,8 @@ function runEmbedTableSearchPrewarmChunk(
 		settings,
 		generation,
 		columns,
-		valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay },
-		valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+		valueResolverOptions: { getProjectSerialDisplay: deps.getProjectSerialDisplay, getRepeatSkipDates: deps.getRepeatSkipDates },
+		valueResolverSignature: `${deps.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${deps.getRepeatSkipSignature?.() ?? ''}`,
 		filePropertyContext: filePropertySnapshot,
 	}, {
 		startIndex: instance.searchPrewarmIndex,

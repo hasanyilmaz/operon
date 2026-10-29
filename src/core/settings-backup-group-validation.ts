@@ -177,6 +177,7 @@ const BUILT_IN_FILTER_FIELDS = new Set([
 	'description',
 	'pinned',
 	'happensOn',
+	'taskOccurrenceDate',
 	'trackedOn',
 	'folders',
 	'projectTree',

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "Grupo Serial do Projeto",
       "fieldProjectTree": "Árvore do Projeto",
       "fieldTags": "Tags",
+      "fieldTaskOccurrenceDate": "Data da próxima ocorrência",
       "fieldTrackedOn": "Tempo registrado",
       "filePropertyInvalidConditionValue": "Insira um valor válido para esta condição de propriedade.",
       "filePropertySourceType": "Propriedade YAML · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "0cd671f16b4738f16003c27468fc9c10adb9470d1de6b09e82c2b2938e46e6c1"
+  "sourceVersion": "a16af90ab804672caa0d4297afd031026d1058bc0cb6c228bdfb13a6d3e4e134"
 }

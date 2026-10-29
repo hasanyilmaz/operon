@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **Next Occurrence Date** as a filter condition, sorting option, and read-only Table column, making recurring tasks easier to find and order by their calculated occurrence dates while keeping Repeat reference date separate.
+
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
 
 - Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor. Its tooltips use standard Operon colors and open away from the Dock whenever space allows.
@@ -32,13 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Repeat chips** now show the occurrence date in your chosen date format, with the recurrence rule in a **Recurrence Rule** tooltip. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
+
 - **Kanban Board layout** is now configured per preset, with column widths from 250 to 800 px and cell heights from 250 to 750 px. Existing presets retain their settings and begin at 325 × 450 px when no dimensions are saved. Swimlane cells keep a fixed height; classic boards fill the available pane height.
 
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
 
-- **Repeat reference date** filtering and sorting passed **36/36** focused checks, including ascending and descending order and settings normalization.
+- **Reference and Next Occurrence Date** filtering, sorting, Table values, search, formatting, and chip behavior passed **70/70** focused checks, full local checks, strict lint, production build, Plugin release guard, independent code review, and manual verification.
 
 - **No swimlanes** selection passed **37/37** axis-settings tests, completed local checks, production build, Plugin release guard, independent code review, and manual verification.
 

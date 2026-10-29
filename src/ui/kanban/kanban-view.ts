@@ -1046,7 +1046,7 @@ export class KanbanView extends ItemView {
 		}
 		const board = queryKanbanAxisBoard({ preset, settings, tasks, propertyAccess: access,
 			revision: { tasks: this.indexer.getGeneration(), settings: signature }, filterSet,
-			filterEvaluationOptions: { filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes },
+			filterEvaluationOptions: { getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes },
 			pinnedCache: this.getPinnedCache(), searchQuery: activeSearchQuery, taskIdFilter,
 			manualOrder: this.callbacks.getManualOrder?.(preset.id), overlays: [...this.optimisticMoves.values()],
 			getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay });
@@ -1360,6 +1360,7 @@ export class KanbanView extends ItemView {
 				this.getSettings().priorities,
 				this.getPinnedCache(),
 				{
+					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -5940,7 +5941,7 @@ export class KanbanView extends ItemView {
 		const native = getNativePropertyIndex(this.app);
 		const board = queryKanbanAxisBoard({ preset, settings, tasks: this.indexer.getAllTasks(),
 			propertyAccess: createKanbanPropertyAccess(settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
-			filterSet, pinnedCache: this.getPinnedCache(), filterEvaluationOptions: { filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes } });
+			filterSet, pinnedCache: this.getPinnedCache(), filterEvaluationOptions: { getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes } });
 		return 'state' in board ? [] : board.relevantTasks;
 	}
 

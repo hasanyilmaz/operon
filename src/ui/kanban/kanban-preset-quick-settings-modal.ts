@@ -76,8 +76,8 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			const settings = this.options.getSettings(), tasks = this.options.getTasks?.() ?? [];
 			const deps = this.options.getFilterModalEvalDeps?.();
 			return { settings, tasks, filterSet: settings.filterSets.find(f => f.id === this.getPreset()?.filterSetId), pinnedCache: deps?.pinnedCache,
-				filterEvaluationOptions: { filePropertyContext: deps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes } };
-		}, () => this.options.getTaskRevision?.() ?? 0, () => new Promise(resolve => this.contentEl.ownerDocument.defaultView!.setTimeout(resolve, 0)));
+				filterEvaluationOptions: { getRepeatSkipDates: deps?.getRepeatSkipDates, filePropertyContext: deps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes } };
+		}, () => `${this.options.getTaskRevision?.() ?? 0}:${this.options.getFilterModalEvalDeps?.()?.getRepeatSkipSignature?.() ?? ''}`, () => new Promise(resolve => this.contentEl.ownerDocument.defaultView!.setTimeout(resolve, 0)));
 		const invalidate = () => this.pickerSession?.invalidate();
 		const metadata = this.app.metadataCache.on('changed', invalidate);
 		this.pickerCleanup.push(() => this.app.metadataCache.offref(metadata));
@@ -182,7 +182,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 
 		const tasks = this.options.getTasks?.() ?? [];
 		const filterDeps = this.options.getFilterModalEvalDeps?.();
-		const filterEvaluationOptions = { filePropertyContext: filterDeps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes };
+		const filterEvaluationOptions = { getRepeatSkipDates: filterDeps?.getRepeatSkipDates, filePropertyContext: filterDeps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes };
 		const native = getNativePropertyIndex(this.app);
 		native.configure(settings);
 		renderKanbanTaskCounts(presetCard, buildKanbanGroupingSnapshot({ preset, settings, tasks,

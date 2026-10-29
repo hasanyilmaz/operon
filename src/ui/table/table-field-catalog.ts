@@ -224,6 +224,13 @@ function buildTableTaskFieldCatalogUncached(settings: TableTaskFieldCatalogSetti
 		aliases: buildAliases('repeatOccurrenceDate', referenceDateLabel),
 	});
 
+	const occurrenceLabel = t('filterSets', 'fieldTaskOccurrenceDate');
+	addField(fields, seen, {
+		key: 'taskOccurrenceDate', label: occurrenceLabel, type: 'date',
+		group: 'scheduling', icon: 'calendars', readonly: true,
+		aliases: buildAliases('taskOccurrenceDate', occurrenceLabel),
+	});
+
 	for (const canonical of CANONICAL_KEYS) {
 		if (canonical.internal === true || isRetiredKeyMapping(canonical.name)) continue;
 		if (getManagedCustomKeyMapping(canonical.name, keyMappings)?.isSystem === false) continue;

@@ -3374,6 +3374,7 @@
 		"fieldTags": "Etichette",
 		"fieldDescription": "Descrizione",
 		"fieldPinned": "Fissata",
+		"fieldTaskOccurrenceDate": "Data della prossima occorrenza",
 		"fieldHappensOn": "Si verifica il",
 		"fieldProjectTree": "Albero del progetto",
 		"fieldFolders": "Cartelle",

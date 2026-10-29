@@ -3374,6 +3374,7 @@
 		"fieldTags": "Tags",
 		"fieldDescription": "Beschreibung",
 		"fieldPinned": "Angeheftet",
+		"fieldTaskOccurrenceDate": "Nächstes Wiederholungsdatum",
 		"fieldHappensOn": "Findet statt am",
 		"fieldProjectTree": "Projektbaum",
 		"fieldFolders": "Ordner",

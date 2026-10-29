@@ -3374,6 +3374,7 @@
 		"fieldTags": "标签",
 		"fieldDescription": "描述",
 		"fieldPinned": "已置顶",
+		"fieldTaskOccurrenceDate": "下次重复日期",
 		"fieldHappensOn": "发生于",
 		"fieldProjectTree": "项目树",
 		"fieldFolders": "文件夹",

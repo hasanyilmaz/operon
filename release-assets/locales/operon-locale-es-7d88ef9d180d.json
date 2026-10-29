@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "Grupo de serial de proyecto",
       "fieldProjectTree": "Árbol del proyecto",
       "fieldTags": "Etiquetas",
+      "fieldTaskOccurrenceDate": "Fecha de la próxima repetición",
       "fieldTrackedOn": "Tiempo registrado",
       "filePropertyInvalidConditionValue": "Introduce un valor válido para esta condición de propiedad.",
       "filePropertySourceType": "Propiedad YAML · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "0dad3574c97ea4a27a7b090e150057b9186354ed55f78d0592775aedc428acdc"
+  "sourceVersion": "a7f9e14e265e384d29c485d1be0622a894046c002723e75fb376283d752ce758"
 }

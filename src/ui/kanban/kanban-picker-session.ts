@@ -23,7 +23,7 @@ export class KanbanPickerSession {
 	private prepared = new Map<string, string>();
 	private results = new Map<string, unknown>();
 	private scopeKey = '';
-	constructor(private app: App, private context: () => KanbanPickerContext, private revision: () => number,
+	constructor(private app: App, private context: () => KanbanPickerContext, private revision: () => number | string,
 		private yieldControl: () => Promise<void>) {}
 	cancelPending(): void { this.epoch++; this.reads = new WeakMap(); this.prepared.clear(); }
 	invalidate(): void { this.key = ''; this.epoch++; this.access = undefined; this.reads = new WeakMap(); this.prepared.clear(); this.results.clear(); this.scopeKey = ''; }

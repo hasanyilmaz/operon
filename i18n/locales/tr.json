@@ -3374,6 +3374,7 @@
 		"fieldTags": "Etiketler",
 		"fieldDescription": "Açıklama",
 		"fieldPinned": "Sabitlenmiş",
+		"fieldTaskOccurrenceDate": "Sonraki Tekrar Tarihi",
 		"fieldHappensOn": "Gerçekleşme tarihi",
 		"fieldProjectTree": "Proje Ağacı",
 		"fieldFolders": "Klasörler",

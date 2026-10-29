@@ -414,6 +414,7 @@ export class FilterView extends ItemView {
 				priorities: this.getPriorities(),
 				pipelines: this.getPipelines(),
 				isTaskPinned: callbacks.isTaskPinned,
+		getRepeatSkipDates: this.getRepeatSkipDates,
 				projectSerialScopeResolver: createProjectSerialScopeFilterResolver(
 					this.getSettings().projectSerialScopes,
 					this.indexer.getAllTasks(),
@@ -513,6 +514,7 @@ export class FilterView extends ItemView {
 		const list = retainedList.cloneNode(false) as HTMLElement;
 		try {
 			const filterEvaluationOptions = {
+				getRepeatSkipDates: this.getRepeatSkipDates,
 				projectSerialScopes: this.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,

@@ -3374,6 +3374,7 @@
 		"fieldTags": "Tags",
 		"fieldDescription": "Descrição",
 		"fieldPinned": "Fixado",
+		"fieldTaskOccurrenceDate": "Data da próxima ocorrência",
 		"fieldHappensOn": "Ocorre em",
 		"fieldProjectTree": "Árvore do Projeto",
 		"fieldFolders": "Pastas",

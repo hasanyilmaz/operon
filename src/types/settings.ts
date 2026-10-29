@@ -3809,7 +3809,7 @@ function normalizeFilterFieldType(field: string, rawType: unknown): FilterFieldT
 	if (field === 'projectTree') return 'projectTree';
 	if (field === 'folders') return 'folders';
 	if (field === 'projectSerialScope') return 'projectSerialScope';
-	if (field === 'happensOn' || field === 'trackedOn') return 'date';
+	if (field === 'happensOn' || field === 'trackedOn' || field === 'taskOccurrenceDate') return 'date';
 	return 'text';
 }
 

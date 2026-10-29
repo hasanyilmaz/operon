@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
+      "fieldTaskOccurrenceDate": "次回の繰り返し日",
       "fieldTrackedOn": "記録時間",
       "filePropertyInvalidConditionValue": "このプロパティ条件に有効な値を入力してください。",
       "filePropertySourceType": "YAML プロパティ · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "f1127d49564b96222067ad852a86eaf26a7809d3fe1eae859a6847b767bce464"
+  "sourceVersion": "67ce2b95efbd00addb7346f12dd269cea8cc4eab3699db546e1700b8d105e704"
 }

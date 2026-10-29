@@ -3374,6 +3374,7 @@
 		"fieldTags": "Etiquetas",
 		"fieldDescription": "Descripción",
 		"fieldPinned": "Fijada",
+		"fieldTaskOccurrenceDate": "Fecha de la próxima repetición",
 		"fieldHappensOn": "Ocurre el",
 		"fieldProjectTree": "Árbol del proyecto",
 		"fieldFolders": "Carpetas",

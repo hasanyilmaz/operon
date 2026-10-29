@@ -4598,6 +4598,7 @@ export default class OperonPlugin extends Plugin {
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
 				pipelines: this.settings.pipelines,
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 			},
 		);
@@ -17758,6 +17759,7 @@ export default class OperonPlugin extends Plugin {
 					onCalendarDragInteractionEnd: () => this.flushPendingCalendarRefresh(),
 					hasEditableFocus: () => this.hasActiveEditableFocus() || this.isTaskEditorModalOpen(),
 					getRepeatSeriesRevision: () => this.storage.repeatSeries.getRevision(),
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.calendarPresets.find(entry => entry.id === presetId) ?? null;
 						new CalendarPresetQuickSettingsModal(this.app, {
@@ -17866,6 +17868,8 @@ export default class OperonPlugin extends Plugin {
 				() => this.settings,
 				() => this.pinnedCache,
 				{
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+					getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
 					resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
 					getTablePresets: () => this.getTablePresetsForSurfaces(),
 					onOpenTaskEditor: (operonId) => this.openEditorForId(operonId),
@@ -17909,7 +17913,9 @@ export default class OperonPlugin extends Plugin {
 				() => this.pinnedCache,
 					{
 						resolveTableFile: (path, source) => this.resolveTableFileForView(path, source),
-						resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
+						getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+					getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+					resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
 						getTablePresets: () => this.getTablePresetsForSurfaces(),
 						onOpenTaskEditor: (operonId) => this.openEditorForId(operonId),
 						onOpenTaskSource: openTaskSourceInNewTab,
@@ -20080,6 +20086,7 @@ export default class OperonPlugin extends Plugin {
 					pinnedCache: this.pinnedCache,
 					scope: scopedPreset.search.scope,
 					settings: this.settings,
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				});
 				const parent = scopedPreset.search.parent;
@@ -20119,7 +20126,7 @@ export default class OperonPlugin extends Plugin {
 			propertyAccess: createKanbanPropertyAccess(this.settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
 			filterSet, pinnedCache: this.pinnedCache, manualOrder,
 			getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
-			filterEvaluationOptions: { filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
+			filterEvaluationOptions: { getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
 		return 'state' in board ? null : board;
 	}
 
@@ -20851,6 +20858,7 @@ export default class OperonPlugin extends Plugin {
 			this.settings.priorities,
 			this.pinnedCache,
 			{
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				dependencyTasks,
 				pipelines: this.settings.pipelines,
@@ -20887,6 +20895,7 @@ export default class OperonPlugin extends Plugin {
 					projectSerialScopeTasks: allTasks,
 					dependencyTasks: allTasks,
 					pipelines: this.settings.pipelines,
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 				},
 			).length > 0;
@@ -22866,6 +22875,8 @@ export default class OperonPlugin extends Plugin {
 
 	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
 		return {
+			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 			indexer: this.indexer,
 			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 			getPipelines: () => this.settings.pipelines,
@@ -23026,6 +23037,8 @@ export default class OperonPlugin extends Plugin {
 
 	private buildTableSurfaceDeps(): EmbedTableDeps {
 		return {
+			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 			app: this.app,
 			indexer: this.indexer,
 			getSettings: () => this.settings,

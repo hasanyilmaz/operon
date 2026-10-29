@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
+      "fieldTaskOccurrenceDate": "Nächstes Wiederholungsdatum",
       "fieldTrackedOn": "Erfasste Zeit",
       "filePropertyInvalidConditionValue": "Gib einen gültigen Wert für diese Eigenschaftsbedingung ein.",
       "filePropertySourceType": "YAML-Eigenschaft · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c8cda5b065ea698a19258bac5b8484f55b2995e523bac34a0370bfe29d1084e0"
+  "sourceVersion": "9b9ea26216f3ba83cf67d5e20dfc76abd6cd4b68c954152848160ba77fe44c5c"
 }

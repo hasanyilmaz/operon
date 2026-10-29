@@ -3374,6 +3374,7 @@
 		"fieldTags": "タグ",
 		"fieldDescription": "説明",
 		"fieldPinned": "ピン留め",
+		"fieldTaskOccurrenceDate": "次回の繰り返し日",
 		"fieldHappensOn": "対象日",
 		"fieldProjectTree": "プロジェクトツリー",
 		"fieldFolders": "フォルダー",

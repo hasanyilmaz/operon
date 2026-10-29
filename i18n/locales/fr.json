@@ -3374,6 +3374,7 @@
 		"fieldTags": "Étiquettes",
 		"fieldDescription": "Description",
 		"fieldPinned": "Épinglée",
+		"fieldTaskOccurrenceDate": "Date de la prochaine occurrence",
 		"fieldHappensOn": "Se produit le",
 		"fieldProjectTree": "Arborescence du projet",
 		"fieldFolders": "Dossiers",

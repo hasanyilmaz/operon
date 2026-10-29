@@ -10,7 +10,7 @@ export function resolveTaskDateTone(
 	value: string,
 	fieldValues: Partial<Record<string, string | undefined>> = {},
 ): TaskDateTone {
-	if (key !== 'dateScheduled' && key !== 'dateDue') return 'default';
+	if (key !== 'dateScheduled' && key !== 'dateDue' && key !== 'repeat' && key !== 'taskOccurrenceDate') return 'default';
 	if (hasTerminalTaskDate(fieldValues)) return 'default';
 	if (!isValidDateKey(value)) return 'default';
 

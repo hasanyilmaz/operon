@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3759,
-  "keyFingerprint": "ec53a194645809f2f390f05bd084e422633d55ad9ec5c966a73da89059245835",
+  "keyCount": 3760,
+  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -461,6 +461,7 @@
       "fieldProjectSerialGroup": "專案序列群組",
       "fieldProjectTree": "專案樹",
       "fieldTags": "標籤",
+      "fieldTaskOccurrenceDate": "下次重複日期",
       "fieldTrackedOn": "記錄時間",
       "filePropertyInvalidConditionValue": "請輸入此屬性條件的有效值。",
       "filePropertySourceType": "YAML 屬性 · {{type}}",
@@ -3804,5 +3805,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c954e208ebccc0571b1bed7efb5a2a58c0c2788390adb1fa4c77c662ac9be625"
+  "sourceVersion": "54169827e5dd890d12b28a9c66fb8ea0e8c15ffe8d7899dfe531a742e415ee75"
 }
