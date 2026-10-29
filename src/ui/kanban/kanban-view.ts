@@ -1759,7 +1759,7 @@ export class KanbanView extends ItemView {
 		const controls = boardEl.createDiv(`operon-kanban-cell-${width ? 'width' : 'height'}-controls`);
 		controls.setAttribute('role', 'group');
 		setAccessibleLabelWithoutTooltip(controls, t('settings', width ? 'kanbanExpandedColumnWidth' : 'kanbanCellHeight'));
-		for (const direction of [1, -1] as const) {
+		for (const direction of [-1, 1] as const) {
 			const button = controls.createEl('button', {
 				cls: `operon-kanban-toolbar-settings-button operon-kanban-cell-size-button operon-kanban-cell-${width ? 'width' : 'height'}-button`,
 				attr: { type: 'button', 'data-size-direction': String(direction) },

@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Filter sorting now includes **Repeat reference date**, so recurring tasks can be ordered by their reference dates in ascending or descending order.
 
-- Floating **Kanban size controls** adjust column width and swimlane cell height for the active preset, saving each change while preserving scroll position and keyboard focus.
+- Floating **Kanban size controls** adjust column width and swimlane cell height for the active preset, saving each change while preserving scroll position and keyboard focus. Width increases to the right and height increases downward, with minus before plus in each control pair.
 
 - **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and let you choose **No swimlanes** directly from the Property dropdown. Selecting the previous property again restores its values and order, or its pipeline selection. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned. Column and swimlane selectors and the board order mode use consistent dropdown widths and arrows.
 

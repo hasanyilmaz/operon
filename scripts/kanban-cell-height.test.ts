@@ -61,13 +61,13 @@ function heightControlsHarness() {
  return {subject,s,buttons,board,writes,notices,getFocused:()=>focused};
 }
 
-test('floating height controls mount without writes, use plus/minus order and expose the current preset value',()=>{
+test('floating height controls mount without writes, use minus/plus order and expose the current preset value',()=>{
  const h=heightControlsHarness();h.subject.renderCellSizeControls(h.board);
- assert.deepEqual(h.buttons.map(button=>button.icon),['plus','minus']);
+ assert.deepEqual(h.buttons.map(button=>button.icon),['minus','plus']);
  assert.ok(h.buttons.every(button=>!button.disabled && button.label?.includes('450 px')));
  assert.deepEqual(h.writes,[]);
- h.s.kanbanPresets[0].cellHeightPx=750;h.subject.syncCellSizeControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[true,false]);
- h.s.kanbanPresets[0].cellHeightPx=250;h.subject.syncCellSizeControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[false,true]);
+ h.s.kanbanPresets[0].cellHeightPx=750;h.subject.syncCellSizeControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[false,true]);
+ h.s.kanbanPresets[0].cellHeightPx=250;h.subject.syncCellSizeControls();assert.deepEqual(h.buttons.map(b=>b.disabled),[true,false]);
 });
 test('floating controls step through existing choices, read the latest setting and never write beyond the boundaries',async()=>{
  const h=heightControlsHarness();h.subject.renderCellSizeControls(h.board);
@@ -88,11 +88,11 @@ test('a pending save rejects repeat activation and replacement controls become u
  finish();await pending;assert.equal(h.s.kanbanPresets[0].cellHeightPx,500);assert.ok(h.buttons.every(b=>!b.disabled&&b.ariaDisabled==='false'));
 });
 test('keyboard focus stays through saves and switches to the usable control only at a boundary',async()=>{
- const h=heightControlsHarness();h.subject.renderCellSizeControls(h.board);h.buttons[0].focus();
- await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[0]);
- await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[0]);
- await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[0]);
- await h.subject.changeCellSize(1);await h.subject.changeCellSize(1);await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[1]);
+ const h=heightControlsHarness();h.subject.renderCellSizeControls(h.board);h.buttons[1].focus();
+ await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[1]);
+ await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[1]);
+ await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[1]);
+ await h.subject.changeCellSize(1);await h.subject.changeCellSize(1);await h.subject.changeCellSize(1);assert.equal(h.getFocused(),h.buttons[0]);
  assert.equal(h.s.kanbanPresets[0].cellHeightPx,750);
  assert.match(view,/if \(heightControlDirection\) this\.restoreCellSizeControlFocus\(heightControlDirection\)/);
 });
@@ -257,9 +257,9 @@ test('width buttons step through all choices, stop at bounds and preserve height
  h.subject.callbacks.onSetColumnWidth=async(_preset:unknown,width:number)=>{writes.push(width);h.s.kanbanPresets[0].columnWidthPx=width;};
  h.subject.renderCellSizeControls(h.board,true);
  for(let i=0;i<20;i++)await h.subject.changeCellSize(1,true);
- assert.equal(h.s.kanbanPresets[0].columnWidthPx,800);assert.equal(h.buttons[0].disabled,true);
+ assert.equal(h.s.kanbanPresets[0].columnWidthPx,800);assert.equal(h.buttons[1].disabled,true);
  for(let i=0;i<20;i++)await h.subject.changeCellSize(-1,true);
- assert.equal(h.s.kanbanPresets[0].columnWidthPx,250);assert.equal(h.buttons[1].disabled,true);
+ assert.equal(h.s.kanbanPresets[0].columnWidthPx,250);assert.equal(h.buttons[0].disabled,true);
  assert.deepEqual(writes,[350,375,400,425,450,475,500,550,600,700,800,700,600,550,500,475,450,425,400,375,350,325,300,275,250]);
  assert.equal(h.s.kanbanPresets[0].cellHeightPx,450);
  h.subject.callbacks.onSetColumnWidth=async()=>{throw new Error('injected');};
