@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- **5,268/5,268** local regression checks and **92/92** settings-preservation checks passed, including Status Dock menu preferences, with strict lint and TypeScript validation.
+
 - **Custom property picker suggestions** passed **71/71** focused workspace checks, full local checks, production build, Plugin release guard, independent code review, and manual verification.
 
 - **File Task completion** passed **113/113** recurrence regressions, full local checks, production build, Plugin release guard, independent code review, and manual verification.

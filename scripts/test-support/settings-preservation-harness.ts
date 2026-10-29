@@ -110,7 +110,7 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		views: value.views,
 		ui: {
 			...value.ui,
-			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask']) },
+			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask', 'statusDock']) },
 			taskCreationProfile: withoutNewFields(value.ui.taskCreationProfile, ['inheritPropertiesOnParentLink']),
 			taskUiPreferences: withoutNewFields(value.ui.taskUiPreferences, ['assigneeImageProperty', 'taskEditorHighlightActiveLine', 'taskEditorSections']),
 		},
@@ -128,9 +128,11 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	}
 	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
 		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');
-	const expectedExcalidraw = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
-	const actualExcalidraw = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
-	if (expectedExcalidraw !== undefined || actualExcalidraw !== undefined) assert.deepEqual(actualExcalidraw, expectedExcalidraw ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask, 'Excalidraw choices must be preserved or use standard defaults');
+	for (const surface of ['excalidrawTask', 'statusDock'] as const) {
+		const before = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.[surface];
+		const after = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.[surface];
+		if (before !== undefined || after !== undefined) assert.deepEqual(after, before ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix[surface], `${surface} choices must be preserved or use standard defaults`);
+	}
 	assert.equal(actual.ui.taskUiPreferences.taskEditorHighlightActiveLine ?? true,
 		expected.ui.taskUiPreferences.taskEditorHighlightActiveLine ?? true, 'Active-line preference must be preserved; missing defaults on');
 	assert.deepEqual(actual.ui.taskUiPreferences.taskEditorSections ?? DEFAULT_SETTINGS.taskEditorSections, expected.ui.taskUiPreferences.taskEditorSections ?? DEFAULT_SETTINGS.taskEditorSections, 'Existing task editor section preferences must be preserved');
