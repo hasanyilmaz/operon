@@ -2,7 +2,7 @@
 Notes: The object model behind Operon tasks
 Icon: network
 Color: "#16a34a"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Operon core concepts
@@ -40,7 +40,7 @@ Task fields keep a stable meaning. Status, priority, scheduled date, due date, p
 
 ## Views are surfaces, not separate databases
 
-A view is a way to look at the same task records, never a second copy. A filter is a saved slice of work. The Calendar gives scheduled work a place in time. The Kanban gives status a visual workflow. The Table lays the same tasks out as rows and columns for comparison. Task Finder helps you recover a task when you remember the words but not the file. Each surface reveals the same task from a different angle.
+A view is a way to look at the same task records, never a second copy. A filter is a saved slice of work. The Calendar gives scheduled work a place in time. The Kanban groups tasks by chosen properties in columns and optional rows, with Status available for a visual workflow. The Table lays the same tasks out as rows and columns for comparison. Task Finder helps you recover a task when you remember the words but not the file. Each surface reveals the same task from a different angle.
 
 ## Recurrence and time tracking belong to the task
 

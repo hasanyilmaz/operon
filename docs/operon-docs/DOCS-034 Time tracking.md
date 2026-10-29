@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-10-29T18:28:32+01:00
 ---
 
 # Time tracking
@@ -23,9 +23,13 @@ The menu reflects the task you opened it for. Stop checks that the same task and
 
 ## Track from the Status Dock
 
-On desktop, the [[DOCS-152 Status Dock|Status Dock]] keeps Play/Stop and the active task available across main workspace tabs. Coffee finishes the current work session and starts a break shared with FlowTime. Play resumes the waiting task in a new session; ending the break alone does not restart work.
+On desktop, the [[DOCS-152 Status Dock|Status Dock]] keeps Play/Stop and the active task available across main workspace tabs. Play/Stop does not automatically open FlowTime. Coffee finishes the current work session and starts a break shared with FlowTime. Play resumes the waiting task in a new session; ending the break alone does not restart work.
 
 When idle, during a break, after a break, or while tracking without an assigned task, the available Finder and Creator controls let you choose or create a task to track. Calendar-task icons in the dock reveal Play on hover, while task-name clicks follow the dock’s source/editor opening preference.
+
+The dock also offers **Overdue** and **Happens Today** lists when matching open tasks exist. Hover over a list card to reveal its Play/Stop control; using it keeps the list open.
+
+A newly saved task session produces a temporary card while the dock is visible. Click its duration to open **Edit session**. The card waits while a task list is open; clicking elsewhere on the dock closes the list and runs the chosen action. See [[DOCS-053 Time session history|Time session history]] for other editing entry points.
 
 Use **Toggle status dock** to hide or show this surface without stopping tracking. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 

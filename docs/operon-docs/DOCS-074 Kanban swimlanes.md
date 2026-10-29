@@ -2,12 +2,12 @@
 Notes: Split the Kanban into horizontal lanes by a second field
 Icon: rows-3
 Color: "#0284c7"
-Updated: 2026-08-29T17:11:29
+Updated: 2026-10-29T18:22:34+01:00
 ---
 
 # Kanban swimlanes
 
-The [[DOCS-030 Kanban overview|Kanban]] groups tasks into columns by status. **Swimlanes** add a second dimension: horizontal lanes that split the same board by another field. So columns still answer *how far along*, while lanes answer *which group*, and every card sits at the intersection of the two. It turns one board into a small grid without leaving the Kanban.
+**Swimlanes** are the horizontal rows of a [[DOCS-030 Kanban overview|Kanban]] board. Columns and rows each use a property, and a card appears where its values match both. Status × Priority is one possible layout; Assignees × Tags or Number × Priority can work just as well.
 
 > **MEDIA-DOCS-074-1:** A Kanban with status columns across the top and priority swimlanes down the side.
 
@@ -15,71 +15,65 @@ The [[DOCS-030 Kanban overview|Kanban]] groups tasks into columns by status. **S
 
 ## Columns and lanes
 
-Keep the two axes separate in your head:
+Choose the two properties independently in [[DOCS-153 Kanban presets|Kanban presets]]. Either direction can use Status, a suitable built-in property, or a supported custom or vault property. Text, Number, Date, Datetime, Checkbox, and List are supported; automatic or internal fields are not ordinary editable axes.
 
-- **Columns** come from the board's pipeline, one column per status. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
-- **Swimlanes** come from a field you choose, one lane per value of that field.
+The same property and even the same value can be selected on both axes. For a single-valued property such as priority, only matching intersections can hold tasks: Priority A × Priority B stays empty. For a list property, a task can match several intersections.
 
-A card lands in the column for its status and the lane for its swimlane value, so "high priority, in progress" is one cell of the grid. Moving a card between columns changes its status as usual; the lane reflects the swimlane field.
+Sorting is applied independently inside each cell. Board sorting is the fallback; a Status column can have its own override. A Status row does not turn that override into a row-specific rule. See [[DOCS-031 Kanban manual order|Kanban manual order]].
 
-Sorting is resolved per status column and then applied independently inside each swimlane cell. A Pipeline column sorting override wins for that column; otherwise the cell uses Board sorting. Manual order is therefore kept separately for each status-and-lane intersection rather than as one list for the whole board. See [[DOCS-031 Kanban manual order|Kanban manual order]].
+## Choosing the swimlane property
 
-## Choosing the swimlane field
+In the preset's **Swimlane selection**, open **Property** and choose a field. Choose **No swimlanes**, at the top of the picker, for a classic columns-only board. The extra row settings then disappear. Selecting the same property again restores its previous value selections and order; choosing a different property starts with all values.
 
-Swimlanes are set per Kanban preset, in the preset's quick settings, through a **Swimlane field** dropdown. Pick one of the built-in fields, or any custom field, or leave it empty for no swimlanes.
-
-| Swimlane field | Lanes become |
+| Example property | Rows represent |
 |---|---|
-| Priority | One lane per priority (the default) |
-| Tags | One lane per tag |
-| Contexts | One lane per context |
-| Assignees | One lane per assignee |
-| Due date | Lanes by due date |
-| Scheduled date | Lanes by scheduled date |
-| A custom field | One lane per value of that key |
+| Status | The chosen pipeline's statuses in their configured order |
+| Priority | Priorities, or the subset you select |
+| Tags, Contexts, or Assignees | Individual list members |
+| Due date or Scheduled date | Dates used by tasks |
+| A custom or vault property | Values of the selected supported field |
 
-Because the setting lives on the preset, you can keep one saved board grouped by priority and another grouped by assignee, and switch between them. See [[DOCS-031 Kanban manual order|Kanban manual order]] for how presets hold board settings.
+For properties other than Status, **Add value** selects the headings you want. Leave the selection empty to use all values in the board's filter scope. Explicit selections can keep an empty row available for planning and assigning tasks. The picker and All behavior are explained in [[DOCS-153 Kanban presets|Kanban presets]].
 
 > **MEDIA-DOCS-074-2:** The Swimlane field dropdown in a Kanban preset's quick settings.
 
 ![MEDIA-DOCS-074-2 - The Swimlane field dropdown in a Kanban preset's quick settings](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-074-2.png)
 
-## List-valued swimlanes and card moves
+## List-valued axes and card moves
 
-Tags, Contexts, Assignees, and a custom key configured as a **List** can hold more than one value. A task therefore appears once in every lane named by its current list values. These are visible copies of one task, not separate tasks.
+Tags, Contexts, Assignees, and custom or vault List fields can hold multiple members. One task can appear in every matching cell without becoming several tasks.
 
-- **Move across status columns in the same lane:** only the task status changes. Every visible copy moves to the matching status column because all copies share that one status.
-- **Move vertically from one list lane to another:** Operon removes the source lane value, adds the target lane value, and preserves all unrelated list values. For example, moving `1a → 1b` replaces `1a` with `1b`; it does not keep both merely because the task was dragged from a multi-value field.
-- **Move from No value to a named lane:** the target value becomes the task's first value for that list field.
-- **Move to No value:** the source value is removed. The task appears in No value only when no list values remain.
+| Move | Effect |
+|---|---|
+| To a different single-valued field value | Replace that field's value with the target value |
+| From `book` to `action` on a Tags axis | Add `action` and keep `book` and other tags |
+| To a list member already present | Do not add it again |
+| From No value to a list member | Add the member to the empty list |
+| From a populated list to No value | Reject the move; clear the list in its field editor instead |
+| Within the same cell | Change manual order only |
 
-A text-style custom key remains single-valued, so a vertical move replaces its one current value with the target value. Horizontal and vertical moves use the same task write path for inline and file tasks.
+Both axes are applied together. A list move leaves the source card visible if the task still matches the source cell's other axis. If both axes use the same list, both target members are added to that list. If they demand incompatible values of a single-valued field, or both No value and a member of the same list, the cell remains visible but moving, placing, or creating a task there is blocked.
 
-## Empty lanes
+Changing a Status axis still follows normal task completion and recurrence rules. Inline and file tasks use the same cell rules.
 
-A swimlane field can produce lanes that hold no cards right now. The preset has a **collapse empty swimlanes** option so those lanes fold away instead of taking up space, which keeps a board grouped by a wide field, like tags, readable. Turn it off when you want every possible lane shown even when empty.
+## Counts and empty rows
+
+A task appears at most once per cell. Row and column totals count each task once within that row or column, and the board total counts each task once across the board. For example, a task with two assignees and three tags can appear in six cells but contributes **one** to the board total.
+
+**Collapse empty swimlanes** keeps empty headings but folds their cells into compact rows. This also applies to an explicitly selected unused value; you can expand its row again. **Collapse finished status groups** works on whichever axis uses Status, including both axes. Temporarily unreadable data is not treated as an empty property value.
+
+Expanded rows use the preset's fixed **Cell height**. A collapsed row stays compact, and collapsing only a column does not shorten an expanded row. With No swimlanes selected, the board fills the available pane height instead.
 
 ## When swimlanes help
 
-Swimlanes are most useful when you want to see two things at once:
+- Status × Assignees shows each person's workflow.
+- Scheduled × Priority separates dated work by importance.
+- Assignees × Tags shows overlapping responsibilities without duplicating tasks.
 
-- Status across the columns and **owner** down the lanes, to see each person's pipeline.
-- Status across the columns and **priority** down the lanes, to see what is urgent at each stage.
-- Status across the columns and a **custom field** down the lanes, to slice the board by whatever you track.
-
-When you only care about status, leave the swimlane field empty and the board stays a simple set of columns.
-
-## FAQ
-
-**Do swimlanes change a task's data?** Merely showing or grouping lanes does not. Dragging a card into a different lane does change the grouped field, just as moving it to another column changes status. One drag can change both.
-
-**Can two boards group differently?** Yes. The swimlane field is saved per preset, so each board can group by its own field.
-
-**My board has lots of empty lanes.** Turn on collapse empty swimlanes in the preset so unused lanes fold away.
-
-**Why does one task appear in several swimlanes?** Its selected swimlane field is list-valued and contains several values. A horizontal move changes the shared status for every copy; a vertical move replaces only the source lane value with the destination value and keeps the other list values.
+Select the values you need before assigning work; an empty selected row is still a valid destination when its two property values can be applied together.
 
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]
+- [[DOCS-153 Kanban presets|Kanban presets]]
 - [[DOCS-040 Custom keys|Custom keys]]

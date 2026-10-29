@@ -2,7 +2,7 @@
 Notes: Walk through writing a task and triggering field pickers in the Task Creator
 Icon: square-pen
 Color: "#0F766E"
-Updated: 2026-10-26T12:23:25+01:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # How to create a task with Task Creator
@@ -59,7 +59,7 @@ So after renaming `priority` to `Importance`, typing `pri` brings up nothing for
 
 ## Step 3: Pick the value
 
-Choosing a field opens its picker, the same one Operon uses everywhere. Which picker opens is decided by the field, the dispatch explained in [[DOCS-062 Field pickers overview|Field pickers overview]]. Pick the value the picker offers and it is set.
+Choosing a field opens the shared picker appropriate to its type, as explained in [[DOCS-062 Field pickers overview|Field pickers overview]]. Text and List fields can suggest existing Inline Task and frontmatter values, including values you have already seen in a chip or Table picker. Choose a suggestion or enter a supported new value; the result stays in the Creator draft until you submit.
 
 This is where the no-parsing point matters: you do not write "next friday" into the description and expect a due date. You name the date field, its [[DOCS-063 Date and time picker|date picker]] opens, and you set the date there. The picker itself can accept natural-language input, but the description text is never parsed on its own.
 
@@ -70,6 +70,8 @@ This is where the no-parsing point matters: you do not write "next friday" into 
 ## Step 4: The value is set on the field
 
 When you pick a value, it is stored on that field. The description text stays as the task's words; the value does not get written into it. Below the description, **Task Creator Chips** provides your configured controls and the prepared draft fields. Template-supplied fields can appear even when they are not permanently enabled, and their indicators distinguish set and empty fields. Open a field again to change or clear it.
+
+On desktop, a filled field’s icon stays visible when you move away from the toolbar. Empty fields keep their hover behavior, so the icons left visible help you review what you have set.
 
 The toolbar is also a second way to add fields: instead of typing a name, you can click a field's button to open its picker directly. Typing the name and clicking the button reach the same pickers.
 

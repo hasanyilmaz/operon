@@ -1,13 +1,13 @@
 ---
-Notes: Move tasks through status columns on the Kanban
+Notes: Plan tasks in property-based columns and swimlanes
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Kanban overview
 
-The Kanban shows your tasks as cards in columns by status. It is the best surface for seeing what is planned, active, blocked, finished, or dropped, and for moving work through stages. A card can be an [[DOCS-011 Inline tasks|inline task]] or a [[DOCS-013 File tasks|file task]]; both flow through the same columns, so the board is one view of all your work regardless of how each task is written. Where the Calendar plans by *when*, the Kanban plans by *how far along*.
+The Kanban shows inline and file tasks as cards in columns, with optional horizontal rows called **swimlanes**. Each direction can use its own property: Status × Priority for workflow planning, Scheduled × Assignees for assigning dated work, or two other supported fields. Cards are views of the same task records, so edits are reflected wherever those tasks appear.
 
 Open it with **Operon Kanban** from the command palette.
 
@@ -17,13 +17,13 @@ Open it with **Operon Kanban** from the command palette.
 
 ## How the board is built
 
-The columns come from your pipeline: each status in the pipeline is a column, and a task's `status` decides which column its card sits in. So the board is a live picture of your pipeline, with every task standing in the stage it has reached.
+A **Kanban preset** chooses the board filter, column property, optional swimlane property, value selections, sorting, and appearance. Open the preset settings from the toolbar or **Settings → Operon → Views → Kanban**. See [[DOCS-153 Kanban presets|Kanban presets]] for the full setup.
 
-You can also split the board into **swimlanes**, horizontal rows that group cards by another field such as priority, assignee, context, or a date. With swimlanes on, each card sits where its status column meets its lane, which is how you see, say, what is in progress *per person* or *per priority* at a glance. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+Each card appears at the intersection of its column and row values. When an axis uses **Status**, choose a pipeline and its statuses become that axis's headings in pipeline order. Other properties can show all values used within the board's filter scope or only values you select. Priority is an exception: All uses its configured choices. Status can be used in rows as well as columns; a board does not need a Status axis.
 
-A board is shaped by a **Kanban preset**, which chooses the pipeline, the swimlane field, the sort order, the card color source, and an optional filter that limits which tasks appear. **Board sorting** is the fallback order for every column. **Pipeline column sorting** can override that fallback for selected status columns, so Automatic and Manual columns can coexist on the same board. Saving presets lets you keep several boards for different pipelines or slices of work, and switch between them. See [[DOCS-031 Kanban manual order|Kanban manual order]] and [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+List properties can place one task in several cells. Each cell shows that task only once, and row, column, and board totals count unique tasks in their own scope. The board total is not the sum of cell totals. Empty cells do not display a task-count **0**; header totals can still show zero. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
 
-The toolbar's center holds one button per **favorite** preset, favorite any preset from its **Edit preset** settings or its row in **Settings → Operon → Views → Kanban**, so your most-used boards are one click away. A picker button beside them opens a searchable list of every preset, favorite or not, and picks up a calm accent when the active preset is not itself a favorite. On a narrow pane the favorite buttons wrap to a second row; on mobile a plain preset dropdown takes over instead.
+The toolbar's center holds one button per **favorite** preset. Favorite a preset from its editor or its row in Kanban settings. The picker beside the favorites searches all presets and picks up a calm accent when the active preset is not a favorite. On a narrow pane, favorite buttons wrap; on mobile a preset dropdown takes over.
 
 ## Card chips and actions
 
@@ -64,11 +64,13 @@ On desktop, **right-click** the filter button to edit the filter's conditions. I
 
 ## Moving a card changes the task
 
-Dragging a card to another column is a real change, not a visual one. The card's `status` updates, and that change is written back to the task's Markdown and reflected everywhere else the task appears. The Kanban is one surface over the same task records, so a move here is a move everywhere. See [[DOCS-005 Operon core concepts|Operon core concepts]].
+Dragging a card to a different cell applies the destination's column and row values together. A single-valued field, such as priority, takes the target value. A list field, such as tags or assignees, **adds** the target value and keeps its existing members. The source card therefore remains when the task still matches that cell. Moving within the same cell in Manual mode changes order only.
 
-When the board has **swimlanes**, dragging a card into a different lane edits the field that lane is grouped by, the same way a column move edits status. Drop a card in another priority lane and its priority changes; drop it in another assignee's lane and its assignee changes. A single drag can change both at once, the column for status and the lane for that field. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+These are real edits to the task's Markdown, shared by every view. Existing completion, recurrence, and dependency rules still apply when a move changes Status. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]] for list behavior and conflicting targets.
 
-On desktop-layout tablets and other hybrid devices, touch and pen use press-and-hold before a card begins to drag. You can then reorder it in a Manual column or move it across columns and swimlanes. Moving before activation scrolls the board or lane, and a normal tap still opens the card. Links, chips, menus, and inline editors inside a card keep their own actions and do not start a card drag. Mouse and trackpad keep the existing direct drag-and-drop behavior.
+Placing an existing task into a cell uses the same value rules. Creating a task from a cell prefills both axis values in [[DOCS-020 Task Creator|Task Creator]]; you can change the draft before saving. Cancelling does not create a task.
+
+On desktop-layout tablets and other hybrid devices, touch and pen use press-and-hold before a card begins to drag. Moving before activation scrolls the board or cell, and a normal tap still opens the card. Links, chips, menus, and inline editors keep their own actions. Mouse and trackpad support direct drag-and-drop.
 
 ## Open a card
 
@@ -76,7 +78,7 @@ Click a card to open it in the [[DOCS-021 Task Editor|Task Editor]]. Hold **Cmd*
 
 ## When the Kanban fits
 
-Reach for it when work moves through clear stages:
+Use it for workflows such as:
 
 - Content production.
 - Editorial work.
@@ -88,7 +90,7 @@ If your work is mostly date-driven rather than stage-driven, the [[DOCS-028 Cale
 
 ## Card order
 
-Within a column, Operon uses that column's effective sorting: its own Pipeline column override when one exists, otherwise Board sorting. Automatic rules can sort by fields such as priority, dates, or **Project Serial**; Manual mode keeps the deliberate order you set by dragging. With swimlanes, the same effective column rule is applied independently inside each status-and-lane cell. See [[DOCS-031 Kanban manual order|Kanban manual order]].
+Each cell uses **Board sorting**, unless its Status column has a **Pipeline column sorting** override. Overrides apply only when columns use Status. Automatic rules can sort by fields such as priority, dates, or **Project Serial**; Manual mode stores the order you set within each cell. See [[DOCS-031 Kanban manual order|Kanban manual order]].
 
 ## Searching the board
 
@@ -102,9 +104,17 @@ The important part: **these scopes filter the board on their own, with or withou
 
 ### It narrows the board, it does not flatten it
 
-However you filter, by text, by scope, or both, the Kanban stays a board. Matching cards remain in their status columns and swimlanes, in their normal Kanban order; the non-matching ones simply drop away. A saved filter decides which cards qualify, but any presentation sorting attached to that filter does not replace Board sorting or Pipeline column sorting. You never get a flat list of results: you get the same board showing fewer cards. That keeps the structure you are planning against intact while you focus on a slice of it.
+However you filter, by text, by scope, or both, the Kanban stays a board. Matching cards remain in their property columns and swimlanes, in their normal Kanban order; the non-matching ones simply drop away. A saved filter decides which cards qualify, but any presentation sorting attached to that filter does not replace Board sorting or Pipeline column sorting. You never get a flat list of results: you get the same board showing fewer cards. That keeps the structure you are planning against intact while you focus on a slice of it.
+
+Search and temporary scope buttons narrow cards and totals without changing the preset’s All-value heading pool. A heading can still collapse under the preset’s visibility rules.
 
 For exactly which fields are matched and how Task Finder ranks its own results, see [[DOCS-027 Task Finder|Task Finder]].
+
+## Cell size and scrolling
+
+Each preset has its own **Column width** and **Cell height** in **Board layout**. Expanded swimlane cells keep a fixed height even when cards contain long notes or images; extra content scrolls inside the cell. Without swimlanes, columns fill the available pane height. Floating **+/−** controls save size changes to the active preset only.
+
+Scroll inside a cell to reach its cards. At the cell's scroll limit, scrolling continues through the board; an empty cell also lets you scroll the board. Large boards draw cells near the visible area as needed and retain a visited cell's inner scroll position while the view remains open.
 
 ## Tips
 
@@ -115,21 +125,21 @@ For exactly which fields are matched and how Task Finder ranks its own results, 
 
 ## FAQ
 
-**Where do the columns come from?** From your pipeline's statuses. Configure them in [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+**Where do the columns come from?** From the preset’s Column selection property and values. Status columns use the selected pipeline’s statuses.
 
-**Does moving a card edit my note?** Yes. A move updates the task's `status` in Markdown, so the change is permanent and visible in every view.
+**Does moving a card edit my note?** Yes. Moving between cells updates their axis properties; reordering within a cell only saves its manual order.
 
 **Can I have more than one board?** Yes. Kanban presets let you save boards for different pipelines or slices of work.
 
 **How do I switch boards quickly?** Favorite the presets you use most; their buttons sit in the toolbar's center. The picker button beside them searches every preset, favorite or not.
 
-**Can I group cards into rows as well as columns?** Yes. Turn on swimlanes to group cards by a field such as priority or assignee, and dragging a card between lanes changes that field. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+**Can I group cards into rows as well as columns?** Yes. Choose a property under Swimlane selection to group cards by priority, assignee, or another supported field. Dragging between lanes sets a single value or adds a list membership. Choose No swimlanes for columns only. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
 
 **Can I filter the board without typing?** Yes. Click the search box and use the scope buttons; scopes like Overdue or a project scope narrow the board on their own, with the search box empty.
 
 ## Settings
 
-Operon settings for the board live in **Settings → Operon → Views → Kanban**, under **Board Layout** for column width, swimlane limits, and the hover add button; **Card Content** for notes and progress previews; and **Kanban Presets** for saved boards and the default preset. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
+General board settings live in **Settings → Operon → Views → Kanban**: **Board Layout** contains the hover add button setting, **Card Content** controls notes and progress previews, and **Kanban Presets** manages saved boards and the default preset. Column width and cell height belong to each preset’s **Board layout**, not the general settings. Card chip visibility and order live in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
 
 ## Related
 

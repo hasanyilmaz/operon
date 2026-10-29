@@ -2,7 +2,7 @@
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Filter View
@@ -35,12 +35,15 @@ A condition is not limited to Operon's own fields, either. Any unmanaged frontma
 ## Useful filters to keep
 
 - Open tasks scheduled this week.
+- Missed recurring tasks: **Task Occurrence Date → before today** and **Operon Task → is open**, combined with **All**.
 - High-priority open tasks.
 - Everything under one project or parent task.
 - Tasks in a specific folder.
 - Tasks with time recorded in the last seven days.
 
 Each is a different slice of the same records. Keep a handful of well-named filters rather than one giant query.
+
+For recurrence, **Task Occurrence Date** reads the date of each saved task, not its future successor. Add it under **Sort** to put earlier occurrences first. **Repeat reference date** remains a separate condition and sort choice; valid values come from the same saved date. See [[DOCS-073 Filter conditions and operators|Filter conditions and operators]] for the date operators and empty-value behavior.
 
 ## One filter, many views
 

@@ -2,7 +2,7 @@
 Notes: When a task is not showing in Operon's views, and how to fix it
 Icon: search-x
 Color: "#dc2626"
-Updated: 2026-10-13T17:01:21+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Missing tasks
@@ -29,7 +29,7 @@ Operon only shows lines it recognizes as tasks. A line that lost its `operonId`,
 
 ## Is it just filtered out?
 
-A task can be indexed and present but hidden by the view you are looking at. A filter that excludes its status or date, or a Kanban board on a different pipeline, will not show it. This is not a missing task; it is a view choice. Widen the filter or check a different view. See [[DOCS-025 Filter View|Filter View]].
+A task can be indexed and present but hidden by the view you are looking at. A filter that excludes its status or date, or a Kanban axis whose selected values do not match it, will not show it. A Status axis also limits matches to its chosen pipeline. This is not a missing task; it is a view choice. Widen the filter or review the axis selections. See [[DOCS-025 Filter View|Filter View]] and [[DOCS-153 Kanban presets|Kanban presets]].
 
 ## Could it be a duplicate conflict?
 

@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-10-19T13:40:31+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Filter conditions and operators
@@ -76,6 +76,21 @@ When a task Date or Date & time condition opens the date picker, its selected da
 **Repeat reference date** tests the saved recurrence reference date. It uses the normal Date operators above, including relative dates and **has any value / has no value**. It is separate from the next occurrence calculated for a recurring task: if no reference date is saved, a calculated suggestion is not substituted into the condition.
 
 Choose the date through the normal filter date control. Changing the saved reference through the [[DOCS-064 Recurrence picker|Repeat picker]] refreshes matching results. A Table can show the same stored value in its **Repeat reference date** column; see [[DOCS-106 Table columns|Table columns]].
+
+### Task Occurrence Date
+
+**Task Occurrence Date** tests the recorded date of the current task occurrence, not the calculated date of a future successor. It uses the full Date operator set above, including **before today**, relative periods, and **has any value / has no value**. Date comparisons are day-based; this condition does not select a recurrence time of day.
+
+A missing or invalid recorded date is empty. Operon does not substitute Scheduled, Due, creation time, today, or a forecast from the recurrence rule. For valid dates, **Repeat reference date** and **Task Occurrence Date** read the same saved field; the existing Reference date option remains available.
+
+To find missed occurrences that still need work, use **All** with:
+
+- **Task Occurrence Date → before today**
+- **Operon Task → is open**
+
+For example, an open task recorded for 9 October still matches after that date even if the next task would occur in November. Completed and cancelled tasks do not match the combined filter. Only saved task occurrences are considered; the filter does not generate missed tasks or enumerate uncreated recurrence dates.
+
+Both recurrence date options are also available in the filter editor's **Sort** section. Ascending orders dated tasks from earlier to later; descending reverses them. They are not additional Group by choices in the filter editor. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]] for Table sorting.
 
 ### Tracked time
 

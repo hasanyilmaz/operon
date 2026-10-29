@@ -2,12 +2,12 @@
 Notes: The right-click and hover action menu on tasks
 Icon: menu
 Color: "#ca8a04"
-Updated: 2026-10-22T22:06:42+02:00
+Updated: 2026-10-29T18:28:32+01:00
 ---
 
 # Contextual menu actions
 
-Wherever a task appears, Operon offers a contextual menu of actions on it: from a filter row, a Calendar item, a Kanban card, a pinned task, an [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] card, a [[DOCS-141 Canvas Task Cards|Canvas Task Card]], an [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Card]], an [[DOCS-142 Embedded Task Cards|Embedded Task Card]], or an inline task. Task icons also expose contextual hover menus across supported surfaces, including Calendar and the task icon column in the [[DOCS-105 Table overview|Table]]. It is the mouse-friendly counterpart to the [[DOCS-022 Command palette reference|command palette]].
+Wherever a task appears, Operon offers a contextual menu of actions on it: from a filter row, a Calendar item, a Kanban card, a pinned task, a [[DOCS-152 Status Dock|Status Dock]] task-list or recent-session card, an [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] card, a [[DOCS-141 Canvas Task Cards|Canvas Task Card]], an [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Card]], an [[DOCS-142 Embedded Task Cards|Embedded Task Card]], or an inline task. Task icons also expose contextual hover menus across supported surfaces, including Calendar and the task icon column in the [[DOCS-105 Table overview|Table]]. It is the mouse-friendly counterpart to the [[DOCS-022 Command palette reference|command palette]].
 
 The menu is **context-aware**: an action only appears when the current task and surface actually support it. A scheduled task offers **Unschedule**; a recurring occurrence offers **Skip this occurrence**; a task with no due date will not show **Clear due date**; the **Subtasks** action shows only on an open task that actually has subtasks.
 
@@ -79,7 +79,9 @@ Turning an action off leaves its row in place and hides its matrix column. The u
 
 Rows represent surfaces and columns represent globally enabled actions. A selected cell allows the action on that surface; an unselected cell hides it there. Locked cells mean that the surface does not support that action. No selection bypasses task-specific availability or read-only restrictions.
 
-**Upcoming Tasks** is under **Task Lists**; **Task wikilink overlay** is under **Note Surfaces**. **Task Cards** covers the task-icon menus shared by Canvas and embedded cards, separately from Kanban. **Excalidraw** has its own surface selection, so its task-icon actions can be configured independently. Calendar timed items and Calendar task pool tasks appear in the **Calendar** group. **Time Session History** appears under **Time Tracking**.
+**Upcoming Tasks** and **Status Dock** are under **Task Lists**; **Task wikilink overlay** is under **Note Surfaces**. **Task Cards** covers the task-icon menus shared by Canvas and embedded cards, separately from Kanban. **Excalidraw** has its own surface selection, so its task-icon actions can be configured independently. Calendar timed items and Calendar task pool tasks appear in the **Calendar** group. **Time Session History** appears under **Time Tracking**.
+
+The **Status Dock** row controls hover-menu actions on its Overdue and Happens Today cards and its recent-session card. It is independent of the other task-list rows. It does not control the dock's scope icons or its cards' inline Play/Stop control; task-specific availability still applies.
 
 A disabled action's column disappears without deleting its surface selections. Surface rows remain present. If every action is off, the section asks you to enable an action instead of showing an empty table.
 
@@ -100,3 +102,4 @@ Tune this once to keep the menu short and relevant to how you work.
 - [[DOCS-116 Reminders|Reminders]]
 - [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]
 - [[DOCS-099 State Icons|State Icons]]
+- [[DOCS-152 Status Dock|Status Dock]]

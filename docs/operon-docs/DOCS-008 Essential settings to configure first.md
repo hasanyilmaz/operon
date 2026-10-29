@@ -2,7 +2,7 @@
 Notes: The few settings to set before real use
 Icon: sliders-horizontal
 Color: "#16a34a"
-Updated: 2026-10-13T16:48:42+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Essential settings to configure first
@@ -27,7 +27,7 @@ In the same Task Router page, check the File Task default folder, pipeline-speci
 
 ## 3. Your pipeline and statuses
 
-Open **Core → Pipelines** and look at the workflow stages a task moves through. These are the columns you will see on the Kanban. You do not have to perfect them on day one, but the first status names should already make sense to you. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+Open **Core → Pipelines** and look at the workflow stages a task moves through. These become Kanban headings when an axis uses Status; other properties can also define columns or rows. You do not have to perfect them on day one, but the first status names should already make sense to you. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 
 ## 4. Priorities
 

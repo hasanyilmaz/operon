@@ -2,7 +2,7 @@
 Notes: Why inline and file tasks are one system, not two
 Icon: workflow
 Color: "#7c3aed"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-10-29T18:49:24+01:00
 ---
 
 # One workflow, two task shapes
@@ -34,7 +34,7 @@ This is easiest to feel in the views, because that is where the two shapes meet:
 |---|---|
 | [[DOCS-025 Filter View\|Filter View]] | A filter matches on fields, so inline and file tasks fill one list. |
 | [[DOCS-028 Calendar overview\|Calendar]] | Either shape lands on a date and is planned side by side. |
-| [[DOCS-030 Kanban overview\|Kanban]] | Cards flow through the same status columns regardless of shape. |
+| [[DOCS-030 Kanban overview\|Kanban]] | Cards share the same property columns and swimlanes regardless of shape. |
 | [[DOCS-032 Pinned Task Dock\|Pinned dock]] | Both can be pinned to the same focus list. |
 | [[DOCS-033 Recurring tasks\|Recurrence]] | Both can repeat from the same rule. |
 | [[DOCS-034 Time tracking\|Time tracking]] | Both record real effort the same way. |
