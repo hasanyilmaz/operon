@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "プロジェクトシリアルグループ",
       "fieldProjectTree": "プロジェクトツリー",
       "fieldTags": "タグ",
-      "fieldTaskOccurrenceDate": "次回の繰り返し日",
+      "fieldTaskOccurrenceDate": "タスクの繰り返し日",
       "fieldTrackedOn": "記録時間",
       "filePropertyInvalidConditionValue": "このプロパティ条件に有効な値を入力してください。",
       "filePropertySourceType": "YAML プロパティ · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "{{date}} に終了",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "次の繰り返し",
-      "repeatChipNextWhenDone": "完了後",
-      "repeatChipNoNextOccurrence": "なし",
+      "repeatChipNoOccurrenceDate": "繰り返し日なし",
       "repeatChipRuleTitle": "繰り返しルール",
       "repeatChipUnsupportedByPicker": "ピッカー非対応",
       "repeatClear": "クリア",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "67ce2b95efbd00addb7346f12dd269cea8cc4eab3699db546e1700b8d105e704"
+  "sourceVersion": "43d57534758ac330c1289a2f8cabaa4e65f62c0afd1b4199999f87955e44e5a4"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "專案序列群組",
       "fieldProjectTree": "專案樹",
       "fieldTags": "標籤",
-      "fieldTaskOccurrenceDate": "下次重複日期",
+      "fieldTaskOccurrenceDate": "任務重複日期",
       "fieldTrackedOn": "記錄時間",
       "filePropertyInvalidConditionValue": "請輸入此屬性條件的有效值。",
       "filePropertySourceType": "YAML 屬性 · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "結束 {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "下一次發生",
-      "repeatChipNextWhenDone": "完成後",
-      "repeatChipNoNextOccurrence": "無",
+      "repeatChipNoOccurrenceDate": "無重複日期",
       "repeatChipRuleTitle": "重複規則",
       "repeatChipUnsupportedByPicker": "選擇器不支援",
       "repeatClear": "清除",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "54169827e5dd890d12b28a9c66fb8ea0e8c15ffe8d7899dfe531a742e415ee75"
+  "sourceVersion": "a10cc2e98f3330427a994bd0b370a358e2af35f853fd07efcc3d97e2bc495547"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Gruppo di serie di progetto",
       "fieldProjectTree": "Albero del progetto",
       "fieldTags": "Etichette",
-      "fieldTaskOccurrenceDate": "Data della prossima occorrenza",
+      "fieldTaskOccurrenceDate": "Data di occorrenza dell’attività",
       "fieldTrackedOn": "Tempo registrato",
       "filePropertyInvalidConditionValue": "Inserisci un valore valido per questa condizione di proprietà.",
       "filePropertySourceType": "Proprietà YAML · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Termina {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Prossima occorrenza",
-      "repeatChipNextWhenDone": "Dopo il completamento",
-      "repeatChipNoNextOccurrence": "Nessuna",
+      "repeatChipNoOccurrenceDate": "Nessuna data di occorrenza",
       "repeatChipRuleTitle": "Regola di ricorrenza",
       "repeatChipUnsupportedByPicker": "Non supportato dal selettore",
       "repeatClear": "Cancella",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f036b624136243bd8b34bd549db1e96f673c261c20e5c7e43adfda61a9e216d1"
+  "sourceVersion": "f08dc3fd2325f1232364d0d8f96d6ed8ae153053aea3483ccd9cf83a0f416df0"
 }

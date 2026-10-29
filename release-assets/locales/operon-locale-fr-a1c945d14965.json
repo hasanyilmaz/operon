@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Groupe de serial de projet",
       "fieldProjectTree": "Arborescence du projet",
       "fieldTags": "Étiquettes",
-      "fieldTaskOccurrenceDate": "Date de la prochaine occurrence",
+      "fieldTaskOccurrenceDate": "Date d’occurrence de la tâche",
       "fieldTrackedOn": "Temps enregistré",
       "filePropertyInvalidConditionValue": "Saisissez une valeur valide pour cette condition de propriété.",
       "filePropertySourceType": "Propriété YAML · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Fin {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Prochaine occurrence",
-      "repeatChipNextWhenDone": "Après achèvement",
-      "repeatChipNoNextOccurrence": "Aucune",
+      "repeatChipNoOccurrenceDate": "Aucune date d’occurrence",
       "repeatChipRuleTitle": "Règle de récurrence",
       "repeatChipUnsupportedByPicker": "Non pris en charge par le sélecteur",
       "repeatClear": "Effacer",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "ef44ecc8b7d98113396784c4182f3262a1d9adf3a9b9057e6e2c72feec936775"
+  "sourceVersion": "cfef8d966ff5127c36d566f7319bc6357fbbf136c08f9cf01ad922f17c7ae000"
 }

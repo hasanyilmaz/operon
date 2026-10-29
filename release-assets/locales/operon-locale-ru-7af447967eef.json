@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Группа серий проекта",
       "fieldProjectTree": "Дерево проекта",
       "fieldTags": "Теги",
-      "fieldTaskOccurrenceDate": "Дата следующего повторения",
+      "fieldTaskOccurrenceDate": "Дата повторения задачи",
       "fieldTrackedOn": "Учтённое время",
       "filePropertyInvalidConditionValue": "Введите допустимое значение для этого условия свойства.",
       "filePropertySourceType": "Свойство YAML · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Заканчивается {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Следующее повторение",
-      "repeatChipNextWhenDone": "После завершения",
-      "repeatChipNoNextOccurrence": "Нет",
+      "repeatChipNoOccurrenceDate": "Дата повторения не указана",
       "repeatChipRuleTitle": "Правило повтора",
       "repeatChipUnsupportedByPicker": "Не поддерживается средством выбора",
       "repeatClear": "Очистить",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d521e333437ec42fa34ef89910984e3b626fcd0225a85775f5d217ce3af1bfe6"
+  "sourceVersion": "256fe14fe3018b82a0034a84d16d127ba67abfeefd3e27502cb9ea03b47b57e2"
 }

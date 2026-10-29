@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Project-Serial-Gruppe",
       "fieldProjectTree": "Projektbaum",
       "fieldTags": "Tags",
-      "fieldTaskOccurrenceDate": "Nächstes Wiederholungsdatum",
+      "fieldTaskOccurrenceDate": "Wiederholungsdatum der Aufgabe",
       "fieldTrackedOn": "Erfasste Zeit",
       "filePropertyInvalidConditionValue": "Gib einen gültigen Wert für diese Eigenschaftsbedingung ein.",
       "filePropertySourceType": "YAML-Eigenschaft · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Endet {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Nächste Instanz",
-      "repeatChipNextWhenDone": "Nach Erledigung",
-      "repeatChipNoNextOccurrence": "Keine",
+      "repeatChipNoOccurrenceDate": "Kein Wiederholungsdatum",
       "repeatChipRuleTitle": "Wiederholungsregel",
       "repeatChipUnsupportedByPicker": "Von der Auswahl nicht unterstützt",
       "repeatClear": "Leeren",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "9b9ea26216f3ba83cf67d5e20dfc76abd6cd4b68c954152848160ba77fe44c5c"
+  "sourceVersion": "669f3a109521602d5dadc1b409ee318f8793c0ea1954e5989d831346aa8f60c7"
 }

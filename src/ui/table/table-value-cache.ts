@@ -166,7 +166,7 @@ export function createTableValueResolver(
 			const value = filePropertyValue !== null
 				? filePropertyValue
 				: key === 'taskOccurrenceDate'
-					? getTaskOccurrenceDate(task.fieldValues, options.getRepeatSkipDates)
+					? getTaskOccurrenceDate(task.fieldValues)
 				: key === PROJECT_SERIAL_TABLE_FIELD_KEY
 					? resolveProjectSerialDisplay(task)?.label ?? ''
 					: (key === 'progress' || key === 'checkboxProgress' ? getProgressLookup().resolveRawValue(task, key) : null) ?? getTableTaskRawValue(

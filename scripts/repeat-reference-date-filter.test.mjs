@@ -15,7 +15,7 @@ after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
  export * from './src/core/task-occurrence-date';
- export { parseRepeatRule } from './src/core/repeat-rule';
+ export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { buildInlineTaskCompactChipEntries } from './src/ui/compact-task-layout';
  export { localToday } from './src/core/local-time';
  export { resolveTaskDateTone } from './src/core/task-date-tone';
@@ -229,53 +229,60 @@ const occurrenceMatches = (candidate, operator, value, options = {}) => h.evalua
 test('occurrence option is date condition/sort only, with its own label and full date operators', () => {
  for (const args of [[true], [false, true, true]]) {
   const fields = getFieldOptions.call(subject, ...args).filter(f => f.field === 'taskOccurrenceDate');
-  assert.equal(fields.length, 1); assert.equal(fields[0].label, 'Next Occurrence Date'); assert.equal(fields[0].type, 'date');
+  assert.equal(fields.length, 1); assert.equal(fields[0].label, 'Task Occurrence Date'); assert.equal(fields[0].type, 'date');
  }
  assert.equal(getFieldOptions.call(subject, false, true).some(f => f.field === 'taskOccurrenceDate'), false);
  assert.deepEqual(h.getOperatorsForField('taskOccurrenceDate', 'date'), h.DATE_OPERATORS);
 });
 function previousDay(date) { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10); }
-for (const [operator, target, yes, no] of cases) test(`computed occurrence: ${operator} uses existing date boundaries`, () => {
- const make = date => date ? recurring(previousDay(date)) : task('');
+for (const [operator, target, yes, no] of cases) test(`stored occurrence: ${operator} uses existing date boundaries`, () => {
+ const make = date => date ? recurring(date) : task('');
  assert.equal(occurrenceMatches(make(yes), operator, target), true);
  assert.equal(occurrenceMatches(make(no), operator, target), false);
 });
-test('occurrence chip uses shared date and rule tooltip, including past dates, skips, end, count and done', () => {
+test('materialized chip date stays fixed across skip, end, count, done and rule changes', () => {
  const base = recurring('2026-10-09', 'mode=schedule|freq=week|interval=1|days=we,fr');
  base.fieldValues.repeatSeriesId = 'series';
- for (const [extra, skips, expected] of [
-  [{}, [], '2026-10-14'], [{}, ['2026-10-14'], '2026-10-16'],
-  [{datetimeRepeatEnd:'2026-10-13'}, [], ''], [{datetimeRepeatEnd:'2026-10-14'}, [], '2026-10-14'],
-  [{repeat:'mode=done|freq=day|interval=1'}, [], ''], [{repeat:'mode=count|freq=day|interval=1|count=1'}, [], ''],
-  [{repeat:'mode=count|freq=day|interval=1|count=2'}, [], '2026-10-10'],
- ]) {
-  const fields = {...base.fieldValues,...extra}, resolver = () => skips;
-  assert.equal(h.getTaskOccurrenceDate(fields,resolver),expected);
+ for (const extra of [{}, {datetimeRepeatEnd:'2026-10-08'}, {repeat:'mode=done|freq=day|interval=1'},
+  {repeat:'mode=count|freq=day|interval=1|count=1'}, {repeat:'mode=count|freq=day|interval=1|count=2'},
+  {repeat:'mode=schedule|freq=month|interval=3|monthdays=1'}, {repeat:'nonsense'}, {dateCompleted:'2026-10-10'}, {dateCancelled:'2026-10-10'}]) {
+  const fields = Object.freeze({...base.fieldValues,...extra});
+  const resolver = () => { throw new Error('Stored occurrence must not read series skips'); };
+  assert.equal(h.getTaskOccurrenceDate(fields),'2026-10-09');
   const settings={...h.DEFAULT_SETTINGS,dateDisplayFormat:'DD/MM/YYYY'};
-  const entries=h.buildInlineTaskCompactChipEntries(fields,[],settings,[],[{key:'repeat',visible:true}],undefined,{repeatSkipDateResolver:resolver});
-  const chip=entries.find(e=>e.key==='repeat'); assert.ok(chip);
-  assert.equal(chip.tooltipTitle,'Recurrence Rule');
-  assert.ok(chip.tooltipContent.length>0);
-  if(expected) assert.equal(chip.label,h.formatUiDate(expected,settings));
-  const t = {...base,fieldValues:fields};
-  assert.equal(occurrenceMatches(t,expected?'dateIs':'hasNoValue',expected,{getRepeatSkipDates:resolver}),true);
+  const chip=h.buildInlineTaskCompactChipEntries(fields,[],settings,[],[{key:'repeat',visible:true}],undefined,{repeatSkipDateResolver:resolver}).find(e=>e.key==='repeat');
+  assert.ok(chip); assert.equal(chip.tooltipTitle,'Recurrence Rule'); assert.ok(chip.tooltipContent.length>0);
+  assert.equal(chip.label,h.formatUiDate('2026-10-09',settings));
+  assert.equal(occurrenceMatches({...base,fieldValues:fields},'dateIs','2026-10-09',{getRepeatSkipDates:resolver}),true);
  }
  assert.equal(occurrenceMatches(base,'beforeToday',''),true);
  assert.equal(base.fieldValues.repeatOccurrenceDate,'2026-10-09');
 });
-test('missing/invalid rule, no anchor and exhausted end are empty without falling back to today', () => {
- for(const fields of [{},{repeat:'nonsense'},{repeat:'mode=schedule|freq=day|interval=1'}, {repeat:'mode=schedule|freq=day|interval=1',repeatOccurrenceDate:'invalid'}]) {
+test('missing or invalid stored dates do not invent a date from scheduled, due or creation fields', () => {
+ for (const repeatOccurrenceDate of ['', 'invalid', '2026-02-30', '2025-02-29', '2026-13-01', '2026-10-09T10:30:00']) {
+  const fields=Object.freeze({repeat:'mode=schedule|freq=day|interval=1',repeatOccurrenceDate,
+   dateScheduled:'2026-10-20',dateDue:'2026-10-21',dateStarted:'2026-10-22',datetimeStart:'2026-10-23T10:00:00',
+   datetimeEnd:'2026-10-23T11:00:00',datetimeCreated:'2026-10-24T10:00:00'});
   assert.equal(h.getTaskOccurrenceDate(fields),'');
+  assert.equal(occurrenceMatches({...task(''),fieldValues:fields},'hasNoValue',''),true);
+  const chip=h.buildInlineTaskCompactChipEntries(fields,[],h.DEFAULT_SETTINGS,[],[{key:'repeat',visible:true}])[0];
+  assert.equal(chip.label,'No occurrence date'); assert.equal(chip.iconTone,'default');
+  assert.equal(h.createTableValueResolver([{...task(''),fieldValues:fields}],h.DEFAULT_SETTINGS).getRawValue({...task(''),fieldValues:fields},'taskOccurrenceDate'),'');
  }
- const fields={ repeat:'mode=schedule|freq=day|interval=1',dateDue:'2026-10-09'};
- assert.equal(h.getTaskOccurrenceDate(fields),'2026-10-10');
- assert.equal(h.getTaskOccurrenceDate({...fields,repeatOccurrenceDate:'2026-10-05'}),'2026-10-06');
+ assert.equal(h.getTaskOccurrenceDate({}),'');
+ assert.equal(h.getTaskOccurrenceDate({repeatOccurrenceDate:'2024-02-29'}),'2024-02-29');
+ assert.equal(h.getTaskOccurrenceDate({repeatOccurrenceDate:' 2026-10-09 '}),'2026-10-09');
 });
-test('file/inline sorting computes once per task per pass, ignores stored pseudo-values, and refreshes skips', () => {
+test('file/inline sorting reads the stored occurrence, ignores pseudo-values and does not consult skips', () => {
  const tasks=Array.from({length:30},(_,i)=>({...recurring(`2026-10-${String(30-i).padStart(2,'0')}`),operonId:String(i)}));
- for(const [i,t] of tasks.entries()) {t.primary.format=i%2?'file':'inline';t.fieldValues.repeatSeriesId='s';t.fieldValues.taskOccurrenceDate='1900-01-01';}
- const before=JSON.stringify(tasks); let reads=0;
- const options={getRepeatSkipDates:()=>{reads++;return [];}};
+ let reads=0;
+ for(const [i,t] of tasks.entries()) {
+  t.primary.format=i%2?'file':'inline';t.fieldValues.repeatSeriesId='s';t.fieldValues.taskOccurrenceDate='1900-01-01';
+  const value=t.fieldValues.repeatOccurrenceDate;
+  Object.defineProperty(t.fieldValues,'repeatOccurrenceDate',{get:()=>{reads++;return value;},enumerable:true});
+ }
+ const before=JSON.stringify(tasks);
+ const options={getRepeatSkipDates:()=>{throw new Error('Unexpected skip lookup');}};
  for(const order of ['asc','desc']) {
   reads=0; const result=h.sortTasksBySpecs(tasks,[{field:'taskOccurrenceDate',order}],options);
   assert.equal(reads,tasks.length);
@@ -283,8 +290,8 @@ test('file/inline sorting computes once per task per pass, ignores stored pseudo
  }
  assert.equal(JSON.stringify(tasks),before);
  const t=tasks[29];
- assert.equal(occurrenceMatches(t,'dateIs','2026-10-02',{getRepeatSkipDates:()=>[]}),true);
- assert.equal(occurrenceMatches(t,'dateIs','2026-10-03',{getRepeatSkipDates:()=>['2026-10-02']}),true);
+ assert.equal(occurrenceMatches(t,'dateIs','2026-10-01',options),true);
+ assert.equal(occurrenceMatches(t,'dateIs','2026-10-02',options),false);
 });
 test('computed field survives normalization, grouped sorting and backup round-trip alongside reference', () => {
  const cond=occurrenceCondition('hasAnyValue','');
@@ -302,7 +309,7 @@ test('computed field survives normalization, grouped sorting and backup round-tr
 test('repeat chip date tone matches Scheduled for past/today/future and terminal tasks', () => {
  const today=h.localToday();const tomorrow=new Date(today+'T12:00:00Z');tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
  for(const date of [previousDay(today),today,tomorrow.toISOString().slice(0,10)]) for(const terminal of [{},{dateCompleted:today},{dateCancelled:today}]) {
-  const fields={repeat:'mode=schedule|freq=day|interval=1',repeatOccurrenceDate:previousDay(date),...terminal};
+  const fields={repeat:'mode=schedule|freq=day|interval=1',repeatOccurrenceDate:date,...terminal};
   const chip=h.buildInlineTaskCompactChipEntries(fields,[],h.DEFAULT_SETTINGS,[],[{key:'repeat',visible:true}])[0];
   assert.equal(chip.iconTone,h.resolveTaskDateTone('dateScheduled',date,fields));
   assert.equal(chip.iconTone,Object.keys(terminal).length?'default':date<today?'overdue':date===today?'today':'default');
@@ -310,9 +317,9 @@ test('repeat chip date tone matches Scheduled for past/today/future and terminal
 });
 
 
-test('next occurrence Table column is a readonly date with shared calculation and skip handling', () => {
+test('task occurrence Table column keeps the repeat picker and reads its own stored date', () => {
  const field = h.getTableTaskField('taskOccurrenceDate', h.DEFAULT_SETTINGS);
- assert.equal(field.label, 'Next Occurrence Date'); assert.equal(field.icon, 'repeat'); assert.equal(field.type, 'date'); assert.equal(field.readonly, true);
+ assert.equal(field.label, 'Task Occurrence Date'); assert.equal(field.icon, 'repeat'); assert.equal(field.type, 'date'); assert.equal(field.readonly, true);
  assert.equal(h.isEditableTableTaskFieldKey('taskOccurrenceDate', h.DEFAULT_SETTINGS), true);
  for (const file of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
   assert.ok(read(file).includes("canonicalKey: key === 'repeatOccurrenceDate' || key === 'taskOccurrenceDate' ? 'repeat' : key,"));
@@ -323,13 +330,13 @@ test('next occurrence Table column is a readonly date with shared calculation an
  candidate.fieldValues.repeatSeriesId = 'series';
  let calls = 0;
  const resolver = h.createTableValueResolver([candidate], h.DEFAULT_SETTINGS, { getRepeatSkipDates: () => { calls++; return ['2026-10-14']; } });
- assert.equal(resolver.getRawValue(candidate, 'taskOccurrenceDate'), '2026-10-16');
- assert.equal(resolver.getRawValue(candidate, 'taskOccurrenceDate'), '2026-10-16');
- assert.equal(calls, 1);
+ assert.equal(resolver.getRawValue(candidate, 'taskOccurrenceDate'), '2026-10-09');
+ assert.equal(resolver.getRawValue(candidate, 'taskOccurrenceDate'), '2026-10-09');
+ assert.equal(calls, 0);
  assert.equal(resolver.getRawValue(candidate, 'repeatOccurrenceDate'), '2026-10-09');
 });
 
-test('next occurrence Table icon follows Scheduled tone including terminal tasks', () => {
+test('task occurrence Table icon follows Scheduled tone including terminal tasks', () => {
  for (const date of ['2000-01-01', h.localToday(), '2099-01-01', '']) {
   for (const fields of [{}, {dateCompleted: '2026-01-01'}, {dateCancelled: '2026-01-01'}]) {
    assert.equal(h.resolveTaskDateTone('taskOccurrenceDate', date, fields), h.resolveTaskDateTone('dateScheduled', date, fields));
@@ -338,12 +345,42 @@ test('next occurrence Table icon follows Scheduled tone including terminal tasks
 });
 
 
-test('Table occurrence search and date formatting use the displayed skipped date', () => {
+test('Table occurrence search and date formatting use the materialized date', () => {
  const candidate = task('2026-10-09', 'mode=schedule|freq=week|interval=1|days=we,fr');
  candidate.fieldValues.repeatSeriesId = 'series';
  const matcher = h.buildTableTaskSearchMatcher([candidate], h.DEFAULT_SETTINGS, [{key:'taskOccurrenceDate'}], {getRepeatSkipDates: () => ['2026-10-14']});
- assert.equal(matcher(candidate, '2026-10-16'), true);
+ assert.equal(matcher(candidate, '2026-10-09'), true);
  assert.equal(matcher(candidate, '2026-10-14'), false);
  const settings = {...h.DEFAULT_SETTINGS, dateDisplayFormat:'DD/MM/YYYY'};
  assert.equal(h.formatTableDetailedDatetimeValue('taskOccurrenceDate', '2026-10-16', settings), h.formatTableDetailedDatetimeValue('repeatOccurrenceDate', '2026-10-16', settings));
+});
+
+// A long interval made the old forecast hide an already missed materialized task.
+test('missed materialized task remains overdue even when the successor is in the future', () => {
+ const candidate=recurring('2026-10-09','mode=schedule|freq=month|interval=1|monthdays=9');
+ assert.equal(occurrenceMatches(candidate,'beforeToday',''),true);
+ assert.equal(occurrenceMatches(candidate,'dateIs','2026-11-09'),false);
+ assert.equal(h.createTableValueResolver([candidate],h.DEFAULT_SETTINGS).getRawValue(candidate,'taskOccurrenceDate'),'2026-10-09');
+ const chip=h.buildInlineTaskCompactChipEntries(candidate.fieldValues,[],h.DEFAULT_SETTINGS,[],[{key:'repeat',visible:true}])[0];
+ assert.equal(chip.label,h.formatUiDate('2026-10-09',h.DEFAULT_SETTINGS));
+ // The engine still computes a successor; changing its display must not change recurrence.
+ assert.equal(h.calculateNextRepeatDate(h.parseRepeatRule(candidate.fieldValues.repeat),{anchorDate:'2026-10-09'}),'2026-11-09');
+});
+
+test('overdue plus open-state filter returns only the missed materialized task', () => {
+ const dateCondition=occurrenceCondition('beforeToday','');
+ const stateCondition={id:'state',field:'checkbox',fieldType:'checkbox',operator:'isOpen'};
+ const fs=filter(dateCondition);fs.rootGroup.children.push(stateCondition);fs.conditions.push(stateCondition);
+ const candidates=[
+  {...recurring('2026-10-09'),operonId:'missed'},
+  {...recurring('2026-10-09'),operonId:'completed',checkbox:'done'},
+  {...recurring('2026-10-09'),operonId:'cancelled',checkbox:'cancelled'},
+  {...recurring('2026-10-30'),operonId:'future'},
+  {...recurring(''),operonId:'undated'},
+ ];
+ for(const candidate of candidates) candidate.fieldValues.repeatSeriesId='same-series';
+ assert.deepEqual(h.evaluateFilterSet(fs,candidates,undefined,undefined,undefined,{today}).map(t=>t.operonId),['missed']);
+ const resolver=h.createTableValueResolver(candidates,h.DEFAULT_SETTINGS);
+ assert.equal(resolver.getRawValue(candidates[0],'taskOccurrenceDate'),'2026-10-09');
+ assert.equal(resolver.getRawValue(candidates[3],'taskOccurrenceDate'),'2026-10-30');
 });

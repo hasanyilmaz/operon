@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "项目序列组",
       "fieldProjectTree": "项目树",
       "fieldTags": "标签",
-      "fieldTaskOccurrenceDate": "下次重复日期",
+      "fieldTaskOccurrenceDate": "任务重复日期",
       "fieldTrackedOn": "记录时间",
       "filePropertyInvalidConditionValue": "请输入此属性条件的有效值。",
       "filePropertySourceType": "YAML 属性 · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "结束 {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "下一次发生",
-      "repeatChipNextWhenDone": "完成后",
-      "repeatChipNoNextOccurrence": "无",
+      "repeatChipNoOccurrenceDate": "无重复日期",
       "repeatChipRuleTitle": "重复规则",
       "repeatChipUnsupportedByPicker": "选择器不支持",
       "repeatClear": "清除",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "eeb84faa2783a1f423405451b1c72662f2e621295c74562570d16ffafb5b6e6d"
+  "sourceVersion": "e3f6c082d4df175d7356bb3360bcf950c2157989ec59dea73ef32f958a71d7e9"
 }

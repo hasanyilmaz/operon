@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Grupo de serial de proyecto",
       "fieldProjectTree": "Árbol del proyecto",
       "fieldTags": "Etiquetas",
-      "fieldTaskOccurrenceDate": "Fecha de la próxima repetición",
+      "fieldTaskOccurrenceDate": "Fecha de ocurrencia de la tarea",
       "fieldTrackedOn": "Tiempo registrado",
       "filePropertyInvalidConditionValue": "Introduce un valor válido para esta condición de propiedad.",
       "filePropertySourceType": "Propiedad YAML · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Termina {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Siguiente ocurrencia",
-      "repeatChipNextWhenDone": "Después de finalizar",
-      "repeatChipNoNextOccurrence": "Ninguna",
+      "repeatChipNoOccurrenceDate": "Sin fecha de ocurrencia",
       "repeatChipRuleTitle": "Regla de repetición",
       "repeatChipUnsupportedByPicker": "No compatible con el selector",
       "repeatClear": "Limpiar",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a7f9e14e265e384d29c485d1be0622a894046c002723e75fb376283d752ce758"
+  "sourceVersion": "2f88bc8a527ed4713cc33950ee094a631eba71f993e25b6fc778792d58dfd91a"
 }

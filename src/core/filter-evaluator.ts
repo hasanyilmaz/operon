@@ -747,7 +747,7 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 	}
 	const isDescriptionField = cond.field === 'description';
 	const rawFieldValue = cond.field === 'taskOccurrenceDate'
-		? readTaskOccurrenceDate(task, context.occurrenceDates, context.getRepeatSkipDates)
+		? readTaskOccurrenceDate(task, context.occurrenceDates)
 		: isDescriptionField ? task.description : task.fieldValues[cond.field];
 	const hasProperty = isDescriptionField
 		? true
@@ -1374,7 +1374,7 @@ export function sortTasksBySpecs(
 
 	return [...tasks].sort((a, b) => {
 		for (const sort of sorts) {
-			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver, context.filePropertyContext, filePropertyFields, filePropertyStateCache, occurrenceDates, context.getRepeatSkipDates);
+			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver, context.filePropertyContext, filePropertyFields, filePropertyStateCache, occurrenceDates);
 			if (cmp !== 0) return cmp;
 		}
 		return 0;
@@ -1413,7 +1413,6 @@ function compareTaskBySortSpec(
 	filePropertyFields?: ReadonlyMap<string, FilePropertyFieldDescriptor>,
 	filePropertyStateCache?: WeakMap<IndexedTask, Map<string, FilePropertyValueState>>,
 	occurrenceDates = new WeakMap<IndexedTask, string>(),
-	getRepeatSkipDates?: RepeatSkipDateResolver,
 ): number {
 	const asc = sort.order !== 'desc';
 	if (sort.field.startsWith('file.property:')) {
@@ -1433,7 +1432,7 @@ function compareTaskBySortSpec(
 	let cmp = 0;
 
 	if (sort.field === 'taskOccurrenceDate') {
-		cmp = readTaskOccurrenceDate(a, occurrenceDates, getRepeatSkipDates).localeCompare(readTaskOccurrenceDate(b, occurrenceDates, getRepeatSkipDates));
+		cmp = readTaskOccurrenceDate(a, occurrenceDates).localeCompare(readTaskOccurrenceDate(b, occurrenceDates));
 	} else if (sort.field === 'checkbox') {
 		const order: Record<string, number> = { open: 0, done: 1, cancelled: 2 };
 		cmp = (order[a.checkbox] ?? 0) - (order[b.checkbox] ?? 0);
@@ -1738,10 +1737,10 @@ function buildPriorityRankMap(priorities?: { label: string }[]): Record<string, 
 	return priorityRankMap;
 }
 
-function readTaskOccurrenceDate(task: IndexedTask, cache: WeakMap<IndexedTask, string>, getSkipDates?: RepeatSkipDateResolver): string {
+function readTaskOccurrenceDate(task: IndexedTask, cache: WeakMap<IndexedTask, string>): string {
 	let date = cache.get(task);
 	if (date === undefined) {
-		date = getTaskOccurrenceDate(task.fieldValues, getSkipDates);
+		date = getTaskOccurrenceDate(task.fieldValues);
 		cache.set(task, date);
 	}
 	return date;

@@ -331,12 +331,12 @@ export function buildInlineTaskCompactChipEntries(
 				const rawValue = fieldValues['repeat']?.trim();
 				if (!rawValue) break;
 				const rule = parseRepeatRule(rawValue);
-				const occurrenceDate = getTaskOccurrenceDate(fieldValues, options?.repeatSkipDateResolver, rule);
+				const occurrenceDate = getTaskOccurrenceDate(fieldValues);
 				const entry = createEntry(
 					settings,
 					key,
 					occurrenceDate ? formatUiDate(occurrenceDate, settings)
-						: rule ? t('taskEditor', rule.mode === 'done' ? 'repeatChipNextWhenDone' : 'repeatChipNoNextOccurrence') : rawValue,
+						: rule ? t('taskEditor', 'repeatChipNoOccurrenceDate') : rawValue,
 					item?.iconOnly === true,
 				);
 				entry.iconTone = resolveTaskDateTone('repeat', occurrenceDate, fieldValues);

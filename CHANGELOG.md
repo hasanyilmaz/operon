@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added **Overdue and Today task lists** to the Status Dock, using the same scopes as Task Finder. Their icons appear only when matching tasks exist; open a list to browse tasks with the nearest dates and times closest to the Dock, access task actions, or start and stop tracking from a hover control. Lists stay open until dismissed, and Dock cards have their own **Context Menu → Task Lists → Status Dock** action preferences.
 
-- Added **Next Occurrence Date** as a filter condition, sorting option, and calculated Table column, making recurring tasks easier to find and order by their occurrence dates while keeping Repeat reference date separate. Table headers and cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
+- Added **Task Occurrence Date** as a filter condition, sorting option, and Table column, showing the stored occurrence date of each existing task so missed recurring tasks can be found without advancing to the next occurrence. Repeat reference date remains available. Table headers and cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
 
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
 
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Repeat chips** now show the occurrence date in your chosen date format, with the recurrence rule in a **Recurrence Rule** tooltip. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
+- **Repeat chips** now show each task’s stored occurrence date in your chosen date format, with the recurrence rule in a **Recurrence Rule** tooltip. Tasks without a stored occurrence date show “No occurrence date” instead of a calculated future date. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
 
 - **Kanban Board layout** is now configured per preset, with column widths from 250 to 800 px and cell heights from 250 to 750 px. Existing presets retain their settings and begin at 325 × 450 px when no dimensions are saved. Swimlane cells keep a fixed height; classic boards fill the available pane height.
 
@@ -58,9 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Status Dock task lists and hover timers** passed **131/131** focused tests, **63/63** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
 
-- **Next Occurrence Date** Table repeat icons and recurrence-picker activation passed **70/70** focused checks, strict lint, focused code review, and manual verification.
-
-- **Reference and Next Occurrence Date** filtering, sorting, Table values, search, formatting, and chip behavior passed **70/70** focused checks, full local checks, strict lint, production build, Plugin release guard, independent code review, and manual verification.
+- **Task Occurrence Date** and Reference date passed **72/72** filtering, sorting, formatting, and chip checks, **33/33** Table repeat-cell checks, full local checks, production build, Plugin release guard, independent code review, and manual verification.
 
 - **No swimlanes** selection passed **37/37** axis-settings tests, completed local checks, production build, Plugin release guard, independent code review, and manual verification.
 

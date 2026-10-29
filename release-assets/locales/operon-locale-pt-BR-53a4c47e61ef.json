@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3760,
-  "keyFingerprint": "77845bdd1edcb5dda2e6481f52770c6433f1eeb2a03ca63d18cb420d2dd3dea2",
+  "keyCount": 3759,
+  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -461,7 +461,7 @@
       "fieldProjectSerialGroup": "Grupo Serial do Projeto",
       "fieldProjectTree": "Árvore do Projeto",
       "fieldTags": "Tags",
-      "fieldTaskOccurrenceDate": "Data da próxima ocorrência",
+      "fieldTaskOccurrenceDate": "Data de ocorrência da tarefa",
       "fieldTrackedOn": "Tempo registrado",
       "filePropertyInvalidConditionValue": "Insira um valor válido para esta condição de propriedade.",
       "filePropertySourceType": "Propriedade YAML · {{type}}",
@@ -3550,8 +3550,7 @@
       "repeatChipEndsOn": "Termina em {{date}}",
       "repeatChipNextOccurrence": "{{date}}",
       "repeatChipNextOccurrenceTitle": "Próxima ocorrência",
-      "repeatChipNextWhenDone": "Após a conclusão",
-      "repeatChipNoNextOccurrence": "Nenhum",
+      "repeatChipNoOccurrenceDate": "Sem data de ocorrência",
       "repeatChipRuleTitle": "Regra de repetição",
       "repeatChipUnsupportedByPicker": "Não suportado pelo seletor",
       "repeatClear": "Limpar",
@@ -3805,5 +3804,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a16af90ab804672caa0d4297afd031026d1058bc0cb6c228bdfb13a6d3e4e134"
+  "sourceVersion": "94eb78a23c7ccd5b1fa10a411b4426206c8d14283ee7c856a97caf05a99aadd4"
 }
