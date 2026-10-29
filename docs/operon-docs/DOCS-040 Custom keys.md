@@ -2,7 +2,7 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-10-26T12:26:55+01:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Custom keys
@@ -62,7 +62,7 @@ A custom key is not forced into every surface. You choose where it appears with 
 - **Show in editor**: as a control in the [[DOCS-021 Task Editor|Task Editor]] and the Live Preview field menus.
 - **Show in creator**: as a field in the [[DOCS-020 Task Creator|Task Creator]].
 - **Show in chips**: as a compact chip on the task. See [[DOCS-041 Task chips display and behavior|Task chips]].
-- **Show in Kanban swimlanes**: as a grouping option for [[DOCS-030 Kanban overview|Kanban]] swimlanes.
+- **Show in Kanban swimlanes** remains a legacy surface preference. The current Kanban Property pickers offer technically eligible custom fields for either axis independently of this toggle. See [[DOCS-153 Kanban presets|Kanban presets]].
 
 The general Custom Key surface selector does not offer Checkbox fields as ordinary custom picker controls. This is separate from native Checkbox editing in Additional, prepared template fields, and Tables. Existing Checkbox value chips in Task Editor use checked/unchecked icons where that rendering path is already available; this does not add new chip surfaces. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-115 File task property columns|Vault Properties]].
 
@@ -73,6 +73,12 @@ Task Editor's **Additional** section and Creator's property selection keep eligi
 An unused field with only an old type declaration, and no active custom definition, is not offered solely because of that declaration. Restarting Operon or refreshing the index does not turn that stale declaration back into a custom field. This rule does not remove used normal Obsidian properties or change Table's own column catalog rules.
 
 Creator, Task Editor, and native Table property controls use the active custom field's configured icon, whether the property is identified by its canonical key or visible name. The type icon is the fallback when no custom icon is configured. Checkbox true/false indicators and genuine read-only warning icons take priority over a decorative field icon.
+
+## Reusing existing values
+
+Text and List values already used for a custom field are available through the shared suggestion pool in Task Creator, Task Editor, task-chip pickers, and Tables. This includes values used only on Inline Tasks as well as compatible frontmatter values under the field's canonical or mapped name. You do not need to enter those values again just because you opened a different editing surface.
+
+Defining an unused field makes its control available where supported; it does not invent suggestions. Empty values are not suggested, and incompatible types or ambiguous mappings are not treated as valid choices. See [[DOCS-070 Custom field pickers|Custom field pickers]] for searching and editing.
 
 ## Description for shared context
 

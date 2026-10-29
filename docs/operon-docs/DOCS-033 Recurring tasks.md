@@ -2,7 +2,7 @@
 Notes: Generate future work from a repeating pattern
 Icon: repeat
 Color: "#9333ea"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Recurring tasks
@@ -38,9 +38,21 @@ The modes matter most, because they change how the routine behaves: `schedule` k
 
 Behind the scenes, Operon tracks a recurrence series so that future occurrences inherit the right state and timing. The most recent occurrence is usually the best source for carrying state forward, which lets your edits survive into the next run. Because of this, a single task line does not hold the whole recurrence model; the series does.
 
+## The date of this occurrence
+
+**Task Occurrence Date** tells you when this particular saved task was meant to occur. It reads the task's recorded `repeatOccurrenceDate`; it does not calculate the date of a future successor. If a monthly task belongs to **9 October**, it continues to show 9 October even when its next run would be 9 November.
+
+The repeat chip shows this date in your preferred Date format. Hover for the **Recurrence Rule**, or click to open the [[DOCS-064 Recurrence picker|recurrence picker]]. With a valid rule but no valid recorded date, the chip says **No occurrence date** rather than borrowing a scheduled, due, or creation date.
+
+**Repeat reference date** remains available in filters and Tables. For a valid recorded date, it and Task Occurrence Date read the same saved field; they are not two independently stored dates. The Reference date control in the recurrence picker edits that field. Calculating the next run is a separate recurrence operation.
+
+To find missed saved occurrences, combine **Task Occurrence Date → before today** with **Operon Task → is open** using **All**. This excludes completed, cancelled, future, and undated tasks. It finds existing task records, not every uncreated date in a repeating schedule. See [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
+
 ## Completing a recurring task safely
 
 When completing a recurring inline or File Task should create another occurrence, Operon first makes sure that exactly one valid, open successor can be prepared. Only then does it keep the terminal change. If the source changed or disappeared, the recurrence rule is invalid, or the successor cannot be created safely, the task remains open and a short notice explains that the next occurrence could not be prepared. A series that has genuinely reached its configured end completes normally without creating another occurrence.
+
+For a File Task, **Mark done** in the contextual menu uses the same protected completion flow as **Finish** in Task Editor, including creating the next occurrence when required. A genuine source change still requires refreshing and reviewing the task before retrying.
 
 On Calendar, a successfully created successor is resolved after it is saved. If it matches the active Calendar filter, it can appear normally. If the task exists but the filter excludes it, Operon keeps the completion and tells you that the next occurrence was created but is hidden by the current Calendar filter; it does not bypass the filter to force the card into view.
 

@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Glossary of Operon terms
@@ -33,7 +33,8 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Dynamic file task filter**: an automatic filter shown inside a file task note, locked to that file's `operonId`, that lists its subtasks. See [[DOCS-026 Dynamic file task filter|Dynamic file task filter]].
 - **Task Finder**: fast search to jump to a single task by its text. See [[DOCS-027 Task Finder|Task Finder]].
 - **Calendar**: tasks placed on dates and times. See [[DOCS-028 Calendar overview|Calendar overview]].
-- **Kanban**: tasks shown as cards in columns by status. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Kanban**: tasks shown as cards in property-based columns and optional rows called swimlanes. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Kanban preset**: a saved board setup with its filter, column and swimlane properties, value selections, sorting, appearance, and dimensions. See [[DOCS-153 Kanban presets|Kanban presets]].
 - **Canvas Task Card**: an interactive representation of an Inline Task or File Task on an Obsidian Canvas, linked to its source by `operonId`. It is a view of the task, not a third task type. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 - **Excalidraw Task Card**: an interactive view of an Inline Task or File Task inside an Excalidraw drawing. It follows the source task while the drawing stores its placement. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
@@ -50,7 +51,7 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Favorite preset**: a preset marked with a star for quick access. Table, Calendar, and Kanban favorites appear as shortcuts in the view's toolbar; saved filters can be favorited too. See [[DOCS-109 Table presets|Table presets]].
 - **Column summary**: a value rolled up at the foot of a table column, such as a count, a sum, or the earliest date, shown per group and for the whole table. See [[DOCS-108 Table summaries|Table summaries]].
 - **Pinned Task Dock**: a surface that keeps chosen tasks always in view, as a floating dock or a side panel. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
-- **Status Dock**: the compact desktop surface for the timer, shared FlowTime breaks, current and upcoming calendar tasks, and duplicate-ID warnings. Unlike the Pinned Task Dock, it follows tracking and scheduling state rather than a manually pinned list. See [[DOCS-152 Status Dock|Status Dock]].
+- **Status Dock**: the compact desktop surface for the timer, shared FlowTime breaks, overdue and today task lists, recent saved sessions, current and upcoming calendar tasks, and duplicate-ID warnings. Unlike the Pinned Task Dock, it follows tracking and scheduling state rather than a manually pinned list. See [[DOCS-152 Status Dock|Status Dock]].
 - **Contextual menu**: the right-click and hover menu of task actions, with a configurable, context-aware action list. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
 ## Time
@@ -60,7 +61,9 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Reminder**: a notification Operon raises about an open task at a chosen moment, separate from the task's due date. See [[DOCS-116 Reminders|Reminders]].
 - **ReminderDatetimes**: the field holding reminders set at a fixed moment, which never move when the task's dates change.
 - **ReminderRules**: the field holding reminders defined as an offset from one of the task's own dates, so they move when that date moves. See [[DOCS-117 Reminder rules|Reminder rules]].
-- **Reference date**: the task date a reminder rule counts back from, one of `dateDue`, `dateScheduled`, `dateStarted`, `datetimeStart`, or `datetimeEnd`.
+- **Task Occurrence Date**: the recorded date of an existing recurring task, stored in `repeatOccurrenceDate`. It describes that task, not a forecast of its successor. See [[DOCS-033 Recurring tasks|Recurring tasks]].
+- **Repeat reference date**: the recurrence picker's saved reference, which uses the same stored field as Task Occurrence Date for valid dates. It remains a separate filter and sort option. See [[DOCS-064 Recurrence picker|Recurrence picker]].
+- **Reminder reference date**: the task date a reminder rule counts back from, one of `dateDue`, `dateScheduled`, `dateStarted`, `datetimeStart`, or `datetimeEnd`. This is separate from the recurrence reference.
 - **Offset**: how long before its reference date a reminder rule fires, written as `1d`, `2h`, `30m`, or a combination.
 - **Time tracking**: recording effort against a task, so duration becomes part of its history. See [[DOCS-034 Time tracking|Time tracking]].
 - **TrackTime**: the count-up mode of time tracking, a stopwatch running on a task.

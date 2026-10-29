@@ -2,7 +2,7 @@
 Notes: Manage additional File and Inline Task properties, their declared types, supported surfaces, and safe editing
 Icon: scan-search
 Color: "#ca8a04"
-Updated: 2026-10-22T21:53:13+02:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Vault Properties
@@ -51,7 +51,8 @@ Nested objects and unsupported list members do not become editable merely becaus
 | Task Creator | Supported template properties, including empty fields, are prepared before creating either a File or Inline Task. User edits are retained through template changes. Unsupported fields follow the creation mode's restrictions. |
 | Main and embedded Tables | File and Inline property values can be displayed and edited through supported cells, with Table search, sorting, grouping, and summaries appropriate to the type. |
 | Other filter surfaces | Existing File Task frontmatter conditions remain available in filters used by Filter View, Calendar, Kanban, and their supported previews and embeds. Do not assume native Inline Table support extends the same property to every Filter View, Calendar, or Kanban query. |
-| Chips and Kanban swimlanes | A Vault Property does not automatically create a chip or swimlane option. Configured Custom Key surfaces retain their own limits. |
+| Kanban columns and swimlanes | Suitable declared Text, Number, Date, Date & time, Checkbox, and List properties can be selected for either axis. Inline values belong to each task line; File Task values come from its frontmatter. See [[DOCS-153 Kanban presets\|Kanban presets]]. |
+| Task chips | A Vault Property does not automatically create a chip. Configured Custom Key chip surfaces retain their own limits. |
 
 The desktop Task Editor layout also runs on phones when selected. The separate existing mobile layout keeps its own controls; do not assume desktop Additional support changes that layout. See [[DOCS-101 Mobile General|Mobile General]].
 
@@ -71,7 +72,7 @@ Open a supported property control to change its value. Its type determines wheth
 
 On desktop Tables, a complete, existing wikilink in a **Text** value or individual text **List** item opens the [[DOCS-151 Lightbox|lightbox]]. Plain text, mixed text, HTTP Text values, and missing targets retain the normal editor or picker. List members are evaluated separately; other native member types are not converted to links. The cell area outside the link remains the editing entry point. This changes navigation, not the property's source name, type, or save path.
 
-Text pickers show the current value above an empty search field. Click the current value to edit it; supported multiline values use the shared text editor and retain their content. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-112 Table cells display and behavior|Table cells]]. Task Editor and Creator keep their own property-editing controls.
+Supported Text pickers show the current value above an empty search field. Click the current value to edit it; supported multiline values use the shared text editor and retain their content. Text and List controls in Task Editor and Task Creator reuse the shared value pool, including compatible Inline Task and frontmatter values. Native list suggestions preserve member types and separators; opening a picker does not write a value. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-112 Table cells display and behavior|Table cells]].
 
 These distinctions matter:
 

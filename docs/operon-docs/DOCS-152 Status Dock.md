@@ -1,13 +1,13 @@
 ---
-Notes: Track time, take breaks, and access current and upcoming tasks from one desktop dock
+Notes: Track time, review recent sessions, and access overdue, today, and upcoming tasks from one desktop dock
 Icon: panel-bottom
 Color: "#0F766E"
-Updated: 2026-10-26T12:14:54+01:00
+Updated: 2026-10-29T18:28:32+01:00
 ---
 
 # Status Dock
 
-The **Status Dock** brings your timer, break controls, ongoing calendar tasks, next upcoming task, and duplicate-ID warnings into one compact desktop surface. It stays available while you work in ordinary Obsidian tabs, including Markdown notes. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]], which holds tasks you choose to pin.
+The **Status Dock** brings your timer, break controls, overdue and today task lists, ongoing calendar tasks, next upcoming task, and duplicate-ID warnings into one compact desktop surface. A temporary card also lets you review the latest saved time session. It stays available while you work in ordinary Obsidian tabs, including Markdown notes. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]], which holds tasks you choose to pin.
 
 > **MEDIA-DOCS-152-1:** The desktop Status Dock with an assigned running timer, Coffee, two ongoing calendar tasks, and the next upcoming task with its countdown. Show the six-dot drag handle and hover over one calendar task so its icon becomes Play. Keep task names readable; ongoing tasks should have no visible Now label or zero countdown.
 
@@ -25,13 +25,13 @@ The dock has one compact, single-line layout. When several calendar tasks do not
 
 ## Track time and take a break
 
-The left section contains **Play or Stop**, the timer, the task name, and controls appropriate to the current state.
+The tracking section contains **Play or Stop**, the timer, the task name, and controls appropriate to the current state. These controls do not automatically open the FlowTime panel.
 
 | State | Available actions |
 |---|---|
-| No timer and no waiting task | Play starts an unassigned timer and opens FlowTime. Task Finder and Task Creator let you choose or create a task to track. |
+| No timer and no waiting task | Play starts an unassigned timer. Task Finder and Task Creator let you choose or create a task to track. |
 | An unassigned timer is running | Stop ends the timer. Task Finder and Task Creator let you attach a task through the tracking flow. |
-| A task is being tracked | Stop finishes the work session and opens FlowTime. Coffee records the current work session and starts a break without opening FlowTime. |
+| A task is being tracked | Stop finishes and saves the work session. Coffee records the current work session and starts a break without opening FlowTime. |
 | A break is active | Play starts a new work session for the waiting task. Coffee ends the break without restarting work. Finder and Creator let you start a different task instead. |
 | A break has ended and a task is waiting | Play resumes that task in a new session. Finder and Creator let you choose a different task. |
 
@@ -45,7 +45,46 @@ Controls respond immediately while session saving completes. A failed save does 
 
 Durations below one minute show seconds, such as **29s**. Longer durations use minutes, such as **41m** or **2h 34m**. The next-task countdown uses the same compact format. The dock does not change duration formatting in other views.
 
-An idle or waiting timer has no **0s** label. Without an assigned task, **Track time** or **Select or create a new task** is plain text. Use the Finder or Creator icon beside it. Time values themselves do not open a task or show its opening tooltip.
+An idle or waiting timer has no **0s** label. Without an assigned task, **Track time** or **Select or create a new task** is plain text. Use the Finder or Creator icon beside it. The timer and countdown values in the bar do not open a task or show its opening tooltip. The separate recent-session card has a clickable duration, described below.
+
+## Overdue and Happens Today lists
+
+Two icons beside the drag handle open task lists using the same scopes as [[DOCS-027 Task Finder|Task Finder]]:
+
+| List | Open tasks included |
+|---|---|
+| **Overdue** — calendar-search icon | Scheduled or due before today. |
+| **Happens Today** — lightning icon | Due, scheduled, or started today. |
+
+These lists use indexed tasks across the vault, independently of the filter in your current view. Dates follow your local day. A task appears once within each list; it can qualify for both lists. Each icon appears only when its scope contains tasks. When both scopes are empty, their separator also disappears.
+
+Click an icon to open its list. Click it again to close it, or click the other icon to switch lists. Cards are ordered with the nearest qualifying date or time closest to the dock. They normally stack above the dock and can appear below it when there is more room there. The visible area fits up to **ten complete cards**, or fewer in a shorter window; scroll to reach the remaining tasks.
+
+List cards show the task icon and description, without a duration or a timed dismissal. They share the recent-session card's height and fixed width, constrained by the available window space. Short names do not shrink the card; longer names use the available space before ending in an ellipsis.
+
+- **Task icon:** clicking follows the global **Task icon click action** preference. Hovering opens the task's contextual menu.
+- **Task description:** clicking follows the Status Dock's source/editor opening preference below.
+- **Play/Stop:** hovering over a card reveals this action at its right edge. Its border appears when the control itself is hovered or focused. It starts or stops that task's timer without closing the list. There is no inline Unpin button.
+
+Click outside the list or elsewhere on the dock bar to close it. A dock action still runs normally after closing the list. Menus and editors opened from a card remain usable without being treated as an outside click. With focus in the dock or list, **Escape** closes the list once its own popup has been dismissed. The list also closes when its scope becomes empty or the dock is hidden.
+
+Configure the cards' hover-menu actions in **Interface → Context Menu → Action Visibility by Surface → Task Lists → Status Dock**. This controls menu actions, not whether the two scope icons or the inline Play/Stop control appear. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
+
+## Review the latest saved session
+
+While the dock is visible, a newly saved task session shows a temporary card beside it. This includes stopping a task timer from another surface, starting a break with Coffee, or adding a session manually. Editing or deleting an existing session does not create a new card, and stopping an unassigned timer does not produce a task-session card.
+
+The card contains the task icon, its recorded duration with seconds, such as **34m 22s**, and the task description:
+
+- Click the **duration** to open **Edit session** for that saved record.
+- Click the **description** to use the Status Dock's source/editor opening preference.
+- Click or hover over the **task icon** to use the same icon action and contextual menu as the dock's task-list cards.
+
+The card disappears after **ten seconds** of active display time. The countdown pauses while the pointer is over it, it has keyboard focus, or its task menu or an action is in use. It also pauses while the window's document is hidden.
+
+Only the latest saved session is shown. If an Overdue or Happens Today list is open, the session card waits until the list closes instead of overlapping it. Clicking the dock's Stop or Coffee control closes the list and lets the newly saved session appear. Hiding the dock dismisses these temporary cards without changing saved sessions.
+
+The card aligns with the dock's left edge and adapts to available space. Its Operon tooltips prefer the side away from the dock when there is room. For other ways to correct a session, see [[DOCS-053 Time session history|Time session history]].
 
 ## Current and upcoming tasks
 
@@ -70,7 +109,7 @@ Go to **Settings → Operon → Interface → Workspace Tweaks → Operon status
 - **Source File + Task Editor** — the default
 - **Task Editor Only**
 
-This preference applies to assigned tracking-task names and the calendar-task names in the dock. Source opening uses the supported source lightbox flow; it does not add support for otherwise unsupported source previews. See [[DOCS-151 Lightbox|Lightbox]] and [[DOCS-021 Task Editor|Task Editor]].
+This preference applies to assigned tracking-task names, calendar-task names, and descriptions in the Overdue, Happens Today, and recent-session cards. Source opening uses the supported source lightbox flow; it does not add support for otherwise unsupported source previews. See [[DOCS-151 Lightbox|Lightbox]] and [[DOCS-021 Task Editor|Task Editor]].
 
 Calendar visibility remains controlled by the upcoming-task visibility toggle in Upcoming Tasks settings. Hiding that section does not hide the tracking controls.
 
@@ -86,3 +125,5 @@ When Operon detects duplicate task IDs, a warning icon and count appear at the r
 - [[DOCS-034 Time tracking|Time tracking]]
 - [[DOCS-035 FlowTime focus sessions|FlowTime focus sessions]]
 - [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]
+- [[DOCS-053 Time session history|Time session history]]
+- [[DOCS-042 Contextual menu actions|Contextual menu actions]]

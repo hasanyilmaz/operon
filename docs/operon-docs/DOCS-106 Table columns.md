@@ -2,7 +2,7 @@
 Notes: Choose, arrange, size, color, and format the columns on a table
 Icon: table-properties
 Color: "#0284c7"
-Updated: 2026-10-19T13:37:14+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Table columns
@@ -23,10 +23,13 @@ Almost any field a task carries can become a column:
 - **Source and file fields**: read-only columns that describe where the task lives, such as **Source**, source path, source line, and the file name, basename, path, and folder.
 - **Identity**: the task's [[DOCS-015 Task identity and operonId|operonId]], as a read-only column, and its [[DOCS-097 Project serials|Project Serial]] where a scope is set up, also read-only.
 - **Repeat reference date**: the saved recurrence reference date, shown in your Date format and edited through the Repeat picker. A missing saved date leaves the cell empty.
+- **Task Occurrence Date**: the recorded date of this existing task occurrence, not a forecast of its successor. Its header and cells use the repeat icon. The date follows your Date format; a missing or invalid recorded date leaves the cell empty. Clicking an editable cell opens the Repeat picker.
 - **Countdown**: a read-only calculated column showing time remaining until a Scheduled or Due target, without adding a task property.
 - **Task Tree**: a read-only presentation column that can expand the parent and subtask hierarchy around a row without writing a task field.
 
 You add a column from a header's menu with **Add column to left...** or **Add column to right...**, or from the preset's **Columns** section. See [[DOCS-109 Table presets|Table presets]].
+
+Task Occurrence Date and Repeat reference date use the same saved field for valid recorded dates. Task Occurrence Date adds the Scheduled-style red/blue icon cue for past/today dates; the reference column keeps its existing presentation. The occurrence date is not edited as a separate property: both date cells open the recurrence configuration. See [[DOCS-112 Table cells display and behavior|Table cells: display and behavior]].
 
 **Pipeline is the derived-field exception.** It never appears in the column picker, because it is not a column at all, only a field you can group, subgroup, or sort by. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 

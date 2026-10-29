@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Operon system map
@@ -23,7 +23,7 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Filter View**: filtered, saved lists of tasks from across your vault. Your everyday "what should I work on" surface. Run **Operon Filter View**. See [[DOCS-025 Filter View|Filter View]].
 - **Task Finder**: fast search to jump to a single task when you remember it but not where it is. Run **Task Finder**. See [[DOCS-027 Task Finder|Task Finder]].
 - **Calendar**: tasks placed on dates and times, including due markers and recurring tasks. Use it to plan *when*. Timed presets can show rolling days or a fixed calendar week on desktop and tablet. Run **Operon Calendar**. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
-- **Kanban**: tasks as cards in columns by status, moved through your workflow. Use it to plan *how far along*. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Kanban**: tasks as cards grouped by a column property and an optional row property. Use Status for workflow stages, or other properties for dates, people, and other planning dimensions. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Operon Table**. See [[DOCS-105 Table overview|Table overview]].
 - **Canvas Task Cards**: arrange tasks as a project map, gather existing work from the Canvas Task Pool, and set parent–child or blocking relationships on connections. Run **Add task to Canvas** from an editable Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 - **Excalidraw Task Cards**: arrange tasks beside sketches, convert drawing text into tasks, and edit relationships on arrows. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
@@ -33,9 +33,9 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 - **Embedded Task Cards**: keep one live task beside the text of a note, with its fields, progress, and controls. Use **Copy task card embed** in Task Editor. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
 - **Pinned Task Dock**: keeps chosen tasks always in view. It can float over your notes (run **Toggle Pinned Tasks dock**) or live in a side panel (run **Open Pinned Tasks**, or set it to open in the sidebar). See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - **Upcoming Tasks**: automatically groups dated tasks by day in a sidebar. Current and next timed tasks also appear in the desktop Status Dock. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]].
-- **Status Dock**: a compact desktop surface for tracking, breaks, ongoing calendar tasks, the next-task countdown, and duplicate-ID warnings. Drag it to reposition it, or run **Toggle status dock** to hide or show it. It is separate from the list of tasks you pin. See [[DOCS-152 Status Dock|Status Dock]].
+- **Status Dock**: a compact desktop surface for tracking, breaks, overdue and today task lists, recent saved sessions, ongoing calendar tasks, the next-task countdown, and duplicate-ID warnings. Drag it to reposition it, or run **Toggle status dock** to hide or show it. It is separate from the list of tasks you pin. See [[DOCS-152 Status Dock|Status Dock]].
 
-Planning a day or week by date? Use the Calendar. Planning by stage of work? Use the Kanban. Comparing fields, task hierarchy, and a longer schedule? Use the Table and its Gantt timeline.
+Planning a day or week by date? Use the Calendar. Planning by workflow stage or property intersections? Use the Kanban. Comparing fields, task hierarchy, and a longer schedule? Use the Table and its Gantt timeline.
 
 ## Ways to control and automate
 

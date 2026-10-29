@@ -2,7 +2,7 @@
 Notes: How the Kanban board works on a phone, with touch layout, status snap, and the compact swimlane rail
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-10-29T18:22:34+01:00
 ---
 
 # Mobile Kanban
@@ -19,12 +19,12 @@ Two settings decide this. **Enable mobile Kanban layout** turns the touch behavi
 
 This is why the same board can look one way on your phone and another on a tablet or desktop: it is the view's width, not the device alone, that flips the layout.
 
-## Status snap: one column at a time
+## Column navigation with status snap
 
-The headline of the mobile layout is **horizontal status snap**, on by default. With it on:
+The **horizontal status snap** setting is on by default. Despite its name, it follows the preset’s columns whether their property is Status, a date, or another supported field. With it on:
 
-- Horizontal scrolling **settles on whole status columns** rather than stopping mid-column, so you always land on a clean column instead of a sliver of two.
-- Dragging a card near the **side edges** advances it by a whole column, so you can move a card across statuses without needing the next column already on screen.
+- Horizontal scrolling **settles on whole columns** rather than stopping mid-column, so you always land on a clean column instead of a sliver of two.
+- Dragging a card near the **side edges** advances it by a whole column, so you can move a card across column values without needing the next column already on screen.
 
 Together these make a narrow board feel like flipping through columns one at a time, which is far easier than free-scrolling a wide board on a small screen. Turn the snap off if you prefer continuous horizontal scrolling.
 
@@ -34,6 +34,12 @@ When the board is grouped into [[DOCS-074 Kanban swimlanes|swimlanes]], the mobi
 
 - **Mobile Kanban swimlane rail width** sets how wide that colored rail is, from 6 px (a slim stripe, the default) up to 48 px.
 - **Always show swimlane rail**, on by default, keeps the rail visible at all times. Turn it off and the rail appears only after you scroll horizontally, freeing a little more room until you need the cue.
+
+## Preset sizes and cell scrolling
+
+The same preset's **Column width** and **Cell height** are used on desktop and mobile. Change them in its **Board layout** section; the available widths extend to 800 px and heights to 750 px. A wide column can require horizontal scrolling on a phone. See [[DOCS-153 Kanban presets|Kanban presets]] for all sizes and floating controls.
+
+Expanded swimlane cells keep their selected height, with overflowing cards scrolling inside the cell. At its scroll limit, scrolling can continue through the board; empty cells do not block board scrolling. Without swimlanes, the classic board fills the available pane height instead of using the fixed cell height.
 
 ## Task chips on mobile cards
 
