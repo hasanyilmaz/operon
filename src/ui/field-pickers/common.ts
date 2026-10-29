@@ -860,7 +860,7 @@ function containsNode(root: Node, target: Node | null | undefined): boolean {
 }
 
 function floatingPanelBelongsToRoot(root: Node, record: FloatingPanelRecord): boolean {
-	return containsNode(root, record.panel) || containsNode(root, record.anchorEl);
+	return containsNode(root, record.panel) || containsNode(root, record.getAnchorOwner());
 }
 
 function hasDisconnectedAnchor(record: FloatingPanelRecord): boolean {
