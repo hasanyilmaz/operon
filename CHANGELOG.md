@@ -9,38 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **Overdue and Today task lists** to the Status Dock, using the same scopes as Task Finder. Their icons appear only when matching tasks exist; open a list to browse tasks with the nearest dates and times closest to the Dock, access task actions, or start and stop tracking from a hover control. Lists stay open until dismissed, and Dock cards have their own **Context Menu → Task Lists → Status Dock** action preferences.
+- Added **Overdue and Today task lists** to the Status Dock, using Task Finder scopes and appearing only when matching tasks exist. Lists show up to ten complete cards, with the nearest dates and times closest to the Dock, and stay open until dismissed. Hover to start or stop tracking; configure task actions under **Context Menu → Task Lists → Status Dock**.
 
-- Added **Task Occurrence Date** as a filter condition, sorting option, and Table column, showing the stored occurrence date of each existing task so missed recurring tasks can be found without advancing to the next occurrence. Repeat reference date remains available. Table headers and cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
+- Added **Task Occurrence Date** as a filter condition, sorting option, and Table column to help find missed recurring tasks by their stored occurrence dates. Table cells use the repeat icon and open the recurrence rule picker when clicked. **Repeat reference date** remains available separately.
 
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
 
-- Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor. Its tooltips use standard Operon colors and open away from the Dock whenever space allows.
+- Added a **last-session card** above the Status Dock when a time session is recorded. Click its duration to edit the session or its task name to follow your Dock opening preference. The ten-second timeout pauses during interaction. Session and task-list cards share a fixed width, shortening names only when they exceed the available space.
 
 ### Improved
 
-- **Status Dock task and last-session cards** share a fixed width, with names shortened only when they exceed the available space. Task lists show up to ten complete cards at a time, adapting to smaller windows, with transparent gaps and Play/Stop backgrounds; the timer button border appears only on direct hover or keyboard focus.
-
 - Filter sorting now includes **Repeat reference date**, so recurring tasks can be ordered by their reference dates in ascending or descending order.
 
-- Floating **Kanban size controls** adjust column width and swimlane cell height for the active preset, saving each change while preserving scroll position and keyboard focus. Width increases to the right and height increases downward, with minus before plus in each control pair.
-
-- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and let you choose **No swimlanes** directly from the Property dropdown. Selecting the previous property again restores its values and order, or its pipeline selection. Property choices open immediately without usage counting; value choices show scoped usage counts and include known values for planning empty groups. Picker labels are left-aligned. Column and swimlane selectors and the board order mode use consistent dropdown widths and arrows.
+- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and offer **No swimlanes** without losing the previous selection. Consistent dropdowns provide fast property selection and value usage counts, including known values for planning empty groups. Unsupported saved configurations remain protected from incomplete edits.
 
 - Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position and active editing or drag operations; scrolling over an empty cell or past its contents continues through the board.
 
 - **Kanban cell actions** apply destination fields together when moving, placing, or creating a task. Moving into a list group adds its value while preserving existing memberships.
-
-- **Kanban presets** preserve unsupported saved configurations and prevent incomplete edits from overwriting them.
 
 - Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
 - **Task Creator** keeps icons for fields with values visible on desktop, making selected properties easier to review while empty fields retain their hover behavior.
 
 ### Changed
 
-- **Repeat chips** now show each task’s stored occurrence date in your chosen date format, with the recurrence rule in a **Recurrence Rule** tooltip. Tasks without a stored occurrence date show “No occurrence date” instead of a calculated future date. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
+- **Repeat chips** now display **Task Occurrence Date** in your chosen date format, with the rule in a **Recurrence Rule** tooltip and “No occurrence date” when no date is stored. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
 
-- **Kanban Board layout** is now configured per preset, with column widths from 250 to 800 px and cell heights from 250 to 750 px. Existing presets retain their settings and begin at 325 × 450 px when no dimensions are saved. Swimlane cells keep a fixed height; classic boards fill the available pane height.
+- **Kanban Board layout** is now preset-specific: column widths range from 250 to 800 px and cell heights from 250 to 750 px, starting at 325 × 450 px when no dimensions are saved. Floating **−/+ controls** adjust and save the active preset’s dimensions while preserving scroll position and keyboard focus. Classic boards continue to fill the available height.
 
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
@@ -52,39 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- **5,268/5,268** local regression checks and **92/92** settings-preservation checks passed, including Status Dock menu preferences, with strict lint and TypeScript validation.
-
-- **Custom property picker suggestions** passed **71/71** focused workspace checks, full local checks, production build, Plugin release guard, independent code review, and manual verification.
-
-- **File Task completion** passed **113/113** recurrence regressions, full local checks, production build, Plugin release guard, independent code review, and manual verification.
-
-- **Status Dock task lists and hover timers** passed **131/131** focused tests, **63/63** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
-
-- **Task Occurrence Date** and Reference date passed **72/72** filtering, sorting, formatting, and chip checks, **33/33** Table repeat-cell checks, full local checks, production build, Plugin release guard, independent code review, and manual verification.
-
-- **No swimlanes** selection passed **37/37** axis-settings tests, completed local checks, production build, Plugin release guard, independent code review, and manual verification.
-
-- Kanban dropdown standardization passed **36/36** axis-settings tests, **7/7** sorting-settings tests, **42/42** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
-
-- Preset-specific **Board layout** passed **83/83** size tests, **91/91** settings-preservation tests, **50/50** isolated browser checks, settings backup checks, full local checks, Plugin release guard, independent persistence review, and manual verification.
-
-- **44/44** cell-height tests, **49/49** card-retention tests, **42/42** isolated browser checks, strict lint, TypeScript, Plugin release guard, code review, and manual cell-height control verification passed.
-
-- Full local checks, **5,266/5,266** local regression checks, **259/259** focused Kanban integration checks, **97/97** backup tests, **91/91** settings-preservation tests, **49/49** card-retention tests, **27/27** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
-
-- Full local checks, **22/22** Kanban virtualization tests, **23/23** scroll tests, **48/48** card-retention tests, **111/111** local Kanban regressions, **26/26** isolated browser checks, **9/9** wheel checks, code review, and manual Kanban verification passed.
-
-- Full local checks, **38/38** Kanban cell-height tests, **22/22** scroll tests, **91/91** settings-preservation tests, **109/109** local Kanban regressions, **18/18** isolated browser checks, code review, and manual Kanban verification passed.
-
-- Full local checks, **49/49** Kanban cell-action tests, **108/108** local Kanban regressions, related writer, recurrence, tracker, parent, and creator checks, code review, and manual Kanban verification passed.
-
-- Full local checks, **57/57** Kanban grouping tests, **108/108** local Kanban regressions, and code review passed.
-
-- Full local checks, **33/33** Kanban axis tests, **97/97** settings backup tests, **112/112** Kanban drop and retention tests, **108/108** local Kanban regressions, code review, and manual preset verification passed.
-
-- Strict lint, **46/46** Kanban tests, **6/6** cell-summary checks, and manual Kanban verification passed.
-- Strict lint, Plugin release guard, and manual Task Creator field-icon verification passed.
-- Full local checks, **118/118** Status Dock tests, **185/185** Runtime mutation tests, schema checks, Plugin release guard, and manual Status Dock verification passed.
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **5,268/5,268** local regression tests.
 
 ## [4.3.0] - 2026-10-26
 
