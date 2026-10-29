@@ -40,13 +40,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed inline tasks revealing raw metadata when opening **Notes or chip pickers** in Live Preview, while preserving intentional source editing.
+
 - Fixed custom **Text and List** pickers in **Task Creator and Task Editor** missing existing values. Suggestions now include inline and file property values from the shared pool while preserving list members and value types.
 
 - Fixed **Mark as done** incorrectly reporting that a File Task had changed elsewhere when used from a context menu. Recurring File Tasks now complete and create their next occurrence while still protecting against real source changes and duplicate successors.
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **5,268/5,268** local regression tests.
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **24** picker-focus scenarios, **157** note checks, and **5,268/5,268** local regression tests.
 
 ## [4.3.0] - 2026-10-26
 
