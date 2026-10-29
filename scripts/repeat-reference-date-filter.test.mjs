@@ -30,7 +30,8 @@ await build({ stdin: { contents: `
  export { buildTableTaskSearchMatcher } from './src/ui/table/table-search';
  export { formatTableDetailedDatetimeValue } from './src/ui/table/table-datetime-format';
  export { createTableValueResolver } from './src/ui/table/table-value-cache';
- export { getTableTaskField } from './src/ui/table/table-field-catalog';
+ export { resolveTableValueCellIcon } from './src/ui/table/table-icon-only-cell';
+ export { getTableTaskField, isEditableTableTaskFieldKey } from './src/ui/table/table-field-catalog';
 `, resolveDir: root }, outfile: path.join(temp, 'helpers.mjs'), bundle: true, format: 'esm', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const h = await import(pathToFileURL(path.join(temp, 'helpers.mjs')).href);
 const modalFile = 'src/ui/filter-set-modal.ts';
@@ -312,6 +313,12 @@ test('repeat chip date tone matches Scheduled for past/today/future and terminal
 test('next occurrence Table column is a readonly date with shared calculation and skip handling', () => {
  const field = h.getTableTaskField('taskOccurrenceDate', h.DEFAULT_SETTINGS);
  assert.equal(field.label, 'Next Occurrence Date'); assert.equal(field.type, 'date'); assert.equal(field.readonly, true);
+ assert.equal(h.isEditableTableTaskFieldKey('taskOccurrenceDate', h.DEFAULT_SETTINGS), true);
+ for (const file of ['src/ui/table/operon-table-view.ts', 'src/ui/embed-table-processor.ts']) {
+  assert.ok(read(file).includes("canonicalKey: key === 'repeatOccurrenceDate' || key === 'taskOccurrenceDate' ? 'repeat' : key,"));
+ }
+ assert.equal(h.resolveTableValueCellIcon('taskOccurrenceDate', '2026-10-16', h.DEFAULT_SETTINGS, field.icon), 'repeat');
+ assert.equal(h.getTableTaskField('repeatOccurrenceDate', h.DEFAULT_SETTINGS).icon, 'calendars');
  const candidate = task('2026-10-09', 'mode=schedule|freq=week|interval=1|days=we,fr');
  candidate.fieldValues.repeatSeriesId = 'series';
  let calls = 0;

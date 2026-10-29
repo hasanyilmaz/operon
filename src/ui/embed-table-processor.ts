@@ -4629,7 +4629,7 @@ function decorateEmbedTableEditableTaskCell(
 			app: deps.app,
 			settings: renderState.settings,
 			allTasks,
-			canonicalKey: key === 'repeatOccurrenceDate' ? 'repeat' : key,
+			canonicalKey: key === 'repeatOccurrenceDate' || key === 'taskOccurrenceDate' ? 'repeat' : key,
 			anchor: snapshotFloatingRectAnchor(cell),
 			currentFieldValues: task.fieldValues,
 			currentTags: task.tags,

@@ -343,7 +343,8 @@ export function getTableColumnLabel(
 }
 
 export function isEditableTableTaskFieldKey(key: string, settings: TableTaskFieldCatalogSettings): boolean {
-	if (TABLE_EDITABLE_TASK_FIELD_KEYS.has(key)) return true;
+	// Calculated occurrence cells edit the underlying recurrence rule, never the derived date.
+	if (key === 'taskOccurrenceDate' || TABLE_EDITABLE_TASK_FIELD_KEYS.has(key)) return true;
 	const field = getTableTaskField(key, settings);
 	return field?.group === 'custom' && field.readonly === false && field.type !== 'checkbox';
 }

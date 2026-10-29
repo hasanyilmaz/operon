@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **Next Occurrence Date** as a filter condition, sorting option, and read-only Table column, making recurring tasks easier to find and order by their calculated occurrence dates while keeping Repeat reference date separate.
+- Added **Next Occurrence Date** as a filter condition, sorting option, and calculated Table column, making recurring tasks easier to find and order by their occurrence dates while keeping Repeat reference date separate. Table cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
 
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
 
@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- **Next Occurrence Date** Table repeat icons and recurrence-picker activation passed **70/70** focused checks, strict lint, focused code review, and manual verification.
 
 - **Reference and Next Occurrence Date** filtering, sorting, Table values, search, formatting, and chip behavior passed **70/70** focused checks, full local checks, strict lint, production build, Plugin release guard, independent code review, and manual verification.
 
