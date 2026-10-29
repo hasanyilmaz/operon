@@ -44,7 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
+### Fixed
+
+- Fixed **Mark as done** incorrectly reporting that a File Task had changed elsewhere when used from a context menu. Recurring File Tasks now complete and create their next occurrence while still protecting against real source changes and duplicate successors.
+
 ### Validation
+
+- **File Task completion** passed **113/113** recurrence regressions, full local checks, production build, Plugin release guard, independent code review, and manual verification.
 
 - **Status Dock task lists and hover timers** passed **131/131** focused tests, **63/63** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
 

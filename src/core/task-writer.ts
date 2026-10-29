@@ -1096,15 +1096,26 @@ export class TaskWriter {
 
     /** Adapt normalized index expectations only; raw Runtime guards remain exact. */
     prepareIndexedYamlExpectedFields(
-        content: string, expected: Record<string, string>,
+        content: string, expected: Record<string, string>, task?: IndexedTask,
     ): Record<string, string> | null {
+        const result = { ...expected };
+        if (result['_checkbox'] !== undefined) {
+            // File Task checkbox state is derived, not stored in YAML. Keep its
+            // entire indexed source basis guarded, including absent terminal dates.
+            if (!task || task.primary.format !== 'yaml' || result['_checkbox'] !== task.checkbox) return null;
+            for (const key of ['status', 'dateCompleted', 'dateCancelled']) {
+                const indexedValue = task.fieldValues[key] ?? '';
+                if (result[key] !== undefined && result[key] !== indexedValue) return null;
+                result[key] = indexedValue;
+            }
+            delete result['_checkbox'];
+        }
         const keys = ['taskColor', 'taskIcon'].filter(key => expected[key] !== undefined);
-        if (keys.length === 0) return { ...expected };
+        if (keys.length === 0) return result;
         const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u);
         let parsed: unknown;
         try { parsed = match ? parseYaml(match[1]) : null; } catch { return null; }
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-        const result = { ...expected };
         for (const key of keys) {
             const source = this.readYamlFieldForConditionalWrite(parsed as Record<string, unknown>, key);
             const normalize = key === 'taskColor' ? normalizeTaskColorValue : normalizeTaskIconValue;
@@ -1563,7 +1574,7 @@ export class TaskWriter {
                         || !canApplyFileTaskPropertyChanges(document.frontmatter, draft.changes, this.keyMappings, this.hooks.getInlinePropertyDefinitions?.())
                         || (draft.body && document.body !== draft.body.expectedContent)) throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
                     if (options.expectedFieldValues) {
-                        const expected = this.prepareIndexedYamlExpectedFields(content, options.expectedFieldValues);
+                        const expected = this.prepareIndexedYamlExpectedFields(content, options.expectedFieldValues, task);
                         if (!expected || !this.taskFieldsMatchSourceContent(file.path, content, { operonId: task.operonId, format: 'yaml', fieldValues, expectedFieldValues: expected })) throw EXACT_MARKDOWN_SOURCE_MUTATION_ABORT;
                     }
                     nextContent = this.renderFilePropertyDraft(content, task.operonId, fieldValues, draft, options.mode ?? 'replace', file.stat.ctime);
@@ -1595,7 +1606,7 @@ export class TaskWriter {
                     || this.blockDuplicateConflict(task.operonId)) return content;
                 let expectedFieldValues = options.expectedFieldValues;
                 if (task.primary.format === 'yaml' && expectedFieldValues) {
-                    const prepared = this.prepareIndexedYamlExpectedFields(content, expectedFieldValues);
+                    const prepared = this.prepareIndexedYamlExpectedFields(content, expectedFieldValues, task);
                     if (!prepared) return content;
                     expectedFieldValues = prepared;
                 }

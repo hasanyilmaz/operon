@@ -34591,7 +34591,7 @@ export default class OperonPlugin extends Plugin {
 			const sourceFile = this.app.vault.getAbstractFileByPath(options.fileRenameSourcePath ?? task.primary.filePath);
 			if (!(sourceFile instanceof TFile)) return { outcome: 'blocked', reason: 'source-missing' };
 			const expectedContent = await this.app.vault.read(sourceFile);
-			const indexedExpected = this.writer.prepareIndexedYamlExpectedFields(expectedContent, Object.fromEntries(Object.entries({ ...task.fieldValues, ...options.expectedFieldValues }).filter(([key]) => key !== '_description')));
+			const indexedExpected = this.writer.prepareIndexedYamlExpectedFields(expectedContent, Object.fromEntries(Object.entries({ ...task.fieldValues, ...options.expectedFieldValues }).filter(([key]) => key !== '_description')), task);
 			if (!indexedExpected) return { outcome: 'blocked', reason: 'source-changed' };
 			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
 				task.primary.filePath,
