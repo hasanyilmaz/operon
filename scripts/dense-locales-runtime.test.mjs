@@ -184,6 +184,18 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		assert.equal(runtime.getCurrentLang(), 'pt-BR', locale);
 	}
 	assert.equal(runtime.resolveSupportedLocale('pt-PT'), null);
+	runtime.initI18n(undefined, 'ko');
+	assert.equal(runtime.t('notifications', 'indexRebuilt', { count: '3' }), '인덱스를 다시 구축했습니다 — 작업 3개');
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'year', interval: 1, month: 8, monthdays: [1] }),
+		'매년 8월 1일',
+	);
+	for (const locale of ['ko', 'ko-KR', 'KO-kr', ' ko-KR ']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'ko', locale);
+		runtime.initI18n(locale, undefined);
+		assert.equal(runtime.getCurrentLang(), 'ko', locale);
+		assert.equal(runtime.t('buttons', 'save'), '저장');
+	}
 	runtime.initI18n('zh-HK', 'zh-CN');
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');

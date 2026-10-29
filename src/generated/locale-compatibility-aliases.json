@@ -10,7 +10,8 @@
       "アンバー",
       "Янтарный",
       "Ambra",
-      "Âmbar"
+      "Âmbar",
+      "호박색"
     ],
     "colorNameBlack": [
       "Black",
@@ -22,7 +23,8 @@
       "黒",
       "Чёрный",
       "Nero",
-      "Preto"
+      "Preto",
+      "검정"
     ],
     "colorNameBlue": [
       "Blue",
@@ -34,7 +36,8 @@
       "藍色",
       "青",
       "Синий",
-      "Blu"
+      "Blu",
+      "파랑"
     ],
     "colorNameBrown": [
       "Brown",
@@ -46,7 +49,8 @@
       "茶",
       "Коричневый",
       "Marrone",
-      "Marrom"
+      "Marrom",
+      "갈색"
     ],
     "colorNameBurgundy": [
       "Burgundy",
@@ -58,7 +62,8 @@
       "酒紅色",
       "バーガンディ",
       "Бордовый",
-      "Borgonha"
+      "Borgonha",
+      "버건디"
     ],
     "colorNameCharcoal": [
       "Charcoal",
@@ -70,7 +75,8 @@
       "チャコール",
       "Угольный",
       "Antracite",
-      "Carvão"
+      "Carvão",
+      "숯색"
     ],
     "colorNameCoral": [
       "Coral",
@@ -80,7 +86,8 @@
       "珊瑚色",
       "コーラル",
       "Коралловый",
-      "Corallo"
+      "Corallo",
+      "산호색"
     ],
     "colorNameCyan": [
       "Cyan",
@@ -89,7 +96,8 @@
       "青色",
       "シアン",
       "Голубой",
-      "Ciano"
+      "Ciano",
+      "청록"
     ],
     "colorNameEmerald": [
       "Emerald",
@@ -101,7 +109,8 @@
       "翠綠色",
       "エメラルド",
       "Изумрудный",
-      "Smeraldo"
+      "Smeraldo",
+      "에메랄드"
     ],
     "colorNameFuchsia": [
       "Fuchsia",
@@ -111,7 +120,8 @@
       "品紅色",
       "フクシア",
       "Фуксия",
-      "Fúcsia"
+      "Fúcsia",
+      "자홍"
     ],
     "colorNameGreen": [
       "Green",
@@ -122,7 +132,8 @@
       "绿色",
       "綠色",
       "緑",
-      "Зелёный"
+      "Зелёный",
+      "초록"
     ],
     "colorNameIndigo": [
       "Indigo",
@@ -132,7 +143,8 @@
       "靛藍色",
       "インディゴ",
       "Индиго",
-      "Indaco"
+      "Indaco",
+      "남색"
     ],
     "colorNameLime": [
       "Lime",
@@ -145,7 +157,8 @@
       "ライム",
       "Лаймовый",
       "Verde lime",
-      "Limão"
+      "Limão",
+      "라임"
     ],
     "colorNameOlive": [
       "Olive",
@@ -155,7 +168,8 @@
       "橄榄色",
       "橄欖色",
       "オリーブ",
-      "Оливковый"
+      "Оливковый",
+      "올리브"
     ],
     "colorNameOrange": [
       "Orange",
@@ -165,7 +179,8 @@
       "オレンジ",
       "Оранжевый",
       "Arancione",
-      "Laranja"
+      "Laranja",
+      "주황"
     ],
     "colorNamePink": [
       "Pink",
@@ -175,7 +190,8 @@
       "粉色",
       "ピンク",
       "Розовый",
-      "Rosa chiaro"
+      "Rosa chiaro",
+      "분홍"
     ],
     "colorNamePurple": [
       "Purple",
@@ -187,7 +203,8 @@
       "紫",
       "Пурпурный",
       "Viola",
-      "Roxo"
+      "Roxo",
+      "보라"
     ],
     "colorNameRed": [
       "Red",
@@ -200,7 +217,8 @@
       "赤",
       "Красный",
       "Rosso",
-      "Vermelho"
+      "Vermelho",
+      "빨강"
     ],
     "colorNameRose": [
       "Rose",
@@ -210,7 +228,8 @@
       "玫瑰色",
       "ローズ",
       "Роза",
-      "Rosa"
+      "Rosa",
+      "장미색"
     ],
     "colorNameSand": [
       "Sand",
@@ -221,7 +240,8 @@
       "サンド",
       "Песочный",
       "Sabbia",
-      "Areia"
+      "Areia",
+      "모래색"
     ],
     "colorNameSky": [
       "Sky",
@@ -234,7 +254,8 @@
       "スカイ",
       "Небесный",
       "Azzurro",
-      "Céu"
+      "Céu",
+      "하늘색"
     ],
     "colorNameSlate": [
       "Slate",
@@ -246,7 +267,8 @@
       "スレート",
       "Сланцевый",
       "Ardesia",
-      "Ardósia"
+      "Ardósia",
+      "슬레이트색"
     ],
     "colorNameSteel": [
       "Steel",
@@ -259,7 +281,8 @@
       "スチール",
       "Стальной",
       "Acciaio",
-      "Aço"
+      "Aço",
+      "강철색"
     ],
     "colorNameTaupe": [
       "Taupe",
@@ -268,7 +291,8 @@
       "灰褐色",
       "トープ",
       "Тауп",
-      "Tortora"
+      "Tortora",
+      "회갈색"
     ],
     "colorNameTeal": [
       "Teal",
@@ -280,7 +304,8 @@
       "ティール",
       "Бирюзовый",
       "Verde petrolio",
-      "Verde-azulado"
+      "Verde-azulado",
+      "짙은 청록"
     ],
     "colorNameViolet": [
       "Violet",
@@ -292,7 +317,8 @@
       "紫羅蘭色",
       "バイオレット",
       "Фиолетовый",
-      "Lavanda"
+      "Lavanda",
+      "제비꽃색"
     ],
     "colorNameYellow": [
       "Yellow",
@@ -305,7 +331,8 @@
       "黄",
       "Жёлтый",
       "Giallo",
-      "Amarelo"
+      "Amarelo",
+      "노랑"
     ],
     "colorNameZinc": [
       "Zinc",
@@ -315,7 +342,8 @@
       "鋅灰色",
       "ジンク",
       "Цинковый",
-      "Zinco"
+      "Zinco",
+      "아연색"
     ]
   }
 }

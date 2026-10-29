@@ -463,7 +463,8 @@ function isNonEnglishLangCode(value: string): value is NonEnglishLangCode {
 		|| value === 'ja'
 		|| value === 'ru'
 		|| value === 'it'
-		|| value === 'pt-BR';
+		|| value === 'pt-BR'
+		|| value === 'ko';
 }
 
 function getErrorMessage(error: unknown): string {

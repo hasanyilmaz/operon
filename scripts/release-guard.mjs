@@ -330,6 +330,7 @@ function compareLocaleFiles() {
 		Russian: flattenStringLeaves(readJson('i18n/locales/ru.json')),
 		Italian: flattenStringLeaves(readJson('i18n/locales/it.json')),
 		'Brazilian Portuguese': flattenStringLeaves(readJson('i18n/locales/pt-BR.json')),
+		Korean: flattenStringLeaves(readJson('i18n/locales/ko.json')),
 	};
 
 	for (const [label, locale] of Object.entries(translations)) {
@@ -370,7 +371,7 @@ function checkVersionAndAssets() {
 	assertFileExists('src/generated/locale-pack-catalog.json');
 	assertFileExists('src/generated/locale-compatibility-aliases.json');
 	const catalog = readJson('src/generated/locale-pack-catalog.json');
-	const expectedLocales = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'];
+	const expectedLocales = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR', 'ko'];
 	assertEqual('locale catalog source version', catalog.sourceVersion, manifest.version);
 	if (JSON.stringify(catalog.languageOrder) !== JSON.stringify(expectedLocales)) {
 		fail(`locale catalog language order: expected ${expectedLocales.join(',')}`);
