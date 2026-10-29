@@ -46,9 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed custom **Text and List** pickers in **Task Creator and Task Editor** missing existing values. Suggestions now include inline and file property values from the shared pool while preserving list members and value types.
+
 - Fixed **Mark as done** incorrectly reporting that a File Task had changed elsewhere when used from a context menu. Recurring File Tasks now complete and create their next occurrence while still protecting against real source changes and duplicate successors.
 
 ### Validation
+
+- **Custom property picker suggestions** passed **71/71** focused workspace checks, full local checks, production build, Plugin release guard, independent code review, and manual verification.
 
 - **File Task completion** passed **113/113** recurrence regressions, full local checks, production build, Plugin release guard, independent code review, and manual verification.
 

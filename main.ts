@@ -30,7 +30,6 @@ import type { PreparedCreationTemplate } from './src/core/task-creation-template
 import { prepareCreationCommit, type PreparedCreationContent } from './src/core/task-creation-commit';
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
-import { createVaultFilePropertySnapshot } from './src/ui/table/table-file-property';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
 import { writeTableNativeProperty } from './src/ui/table/table-native-property';
 import type { TableFilePropertyUpdateRequest } from './src/ui/table/table-file-property-editor';
@@ -597,7 +596,7 @@ import {
 	LivePreviewEphemeralSessionController,
 	shouldAbandonLivePreviewSessionForWorkspaceFile,
 } from './src/ui/live-preview-ephemeral-session';
-import { invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
+import { collectNativeFieldValueCandidates, invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
 import {
 	moveOperonDocsFolder,
@@ -30602,7 +30601,6 @@ export default class OperonPlugin extends Plugin {
   const parentVersions = new Map<string,string>();
   const pendingParents = new Set<string>();
   const parentVersion = (task: IndexedTask) => JSON.stringify([task.primary, task.fieldValues, task.tags, native.getTask(task).revision]);
-  const candidates = createVaultFilePropertySnapshot(this.app, createCachedTableFilePropertyTypeResolver({ ...native.getTypes() }), { keyMappings:this.settings.keyMappings,nativeListCandidates:true });
   const modal = new TaskCreatorModal(this.app, {
    onSubmissionStateChange: () => {
     this.backgroundTaskCreators ??= new Set();
@@ -30633,7 +30631,11 @@ export default class OperonPlugin extends Plugin {
      }
      return { fields:task.fieldValues,tags:task.tags,nativeValues };
     },
-    candidates: name => { const field=candidates.fields.find(item=>item.propertyName.toLowerCase()===name.toLowerCase());return field ? candidates.getCandidates(field.key) : []; },
+    candidates: name => {
+     const property = propertyCatalog.resolve(name);
+     return property.type && !property.readOnlyReason
+      ? collectNativeFieldValueCandidates(this.app, this.indexer.getAllTasks(), this.settings.keyMappings, name, property.type) : [];
+    },
     onSubmit: async request => {
      if (metadataKey() !== initialMetadataKey) return { outcome:'failed',message:t('taskEditor','creatorMetadataChanged') };
      const enabledAtSubmit=request.createType==='inline' ? this.settings.inlineTaskUseLastTemplateAsDefault : this.settings.fileTaskUseLastTemplateAsDefault;
