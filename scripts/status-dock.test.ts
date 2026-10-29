@@ -1,3 +1,7 @@
+import { StatusDockTaskList } from '../src/ui/status-dock-task-list';
+import { buildStatusDockTaskScopes } from '../src/ui/status-dock-task-scope';
+import { localToday } from '../src/core/local-time';
+import { CONTEXTUAL_MENU_SURFACE_GROUPS, isContextualMenuActionSupportedOnSurface } from '../src/core/contextual-menu-engine';
 import { showTaskContextualHoverMenu, hideTaskContextualHoverMenu, isTaskContextualHoverMenuActive } from '../src/ui/contextual-hover-menu';
 import { TimeTracker } from '../src/systems/time-tracker';
 import { StatusDockSessionCard, StatusDockSessionLifetime } from '../src/ui/status-dock-session-card';
@@ -262,7 +266,7 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 		on: (name: string, callback: (...args: unknown[]) => void) => { events.set(name, callback); return { dispose: () => events.delete(name) }; },
 		onLayoutReady: (callback: () => void) => callback() };
 	const app = { workspace } as unknown as App; const settings = { ...DEFAULT_SETTINGS, statusDockMode: 'detailed' as const, upcomingShowStatusBar: false }; let starts = 0;
-	const dock = new OperonStatusDock(app, { indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
+	const dock = new OperonStatusDock(app, { toggleTaskTimer: async () => true, indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
 		timeTracker: { getActiveState: () => null, getTransitionState: () => null, subscribe: () => () => {}, startUnassigned: async () => { starts++; return true; } } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: null, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, subscribe: () => () => {} } as never,
 		getSettings: () => settings, startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
@@ -341,7 +345,7 @@ test('native tooltip attributes stay absent and append-only icon updates never a
 test('dock source clicks retain the clicked owner anchor and idle selection starts only a current task', async () => {
 	const f = statusDockDocument(); const settings = { ...DEFAULT_SETTINGS }; let active: StatusDockSnapshot['active'] = snapshot().active;
 	let pending: string | null = null; let transition: any = null; let selected: string | null = 'chosen'; let picks = 0, starts = 0; const opened: Array<[string, HTMLElement, string]> = [];
-	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, {
+	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => active, getTransitionState: () => transition } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: pending, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, selectPendingTask: async (pick: () => Promise<string | null>) => { const before = active, id = await pick(); if (!id || active !== before) return false; starts++; return true; } } as never,
@@ -464,7 +468,7 @@ test('real click preference saves preserve unrelated data; failures and stale sa
 test('tracking and upcoming route all three click choices with their owner anchor and hold the action lock', async () => {
 	const f = statusDockDocument(), settings = { ...DEFAULT_SETTINGS }; const opened: unknown[] = [];
 	let release!: () => void, gate = Promise.resolve();
-	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, {
+	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => snapshot().active, getTransitionState: () => null } as never,
 		breakController: { getSnapshot: () => snapshot().breakSnapshot, getElapsedSeconds: () => 0 } as never,
@@ -524,7 +528,7 @@ function feedbackHarness() {
 			state.transition = null; emit(); return true;
 		}, playReminderSound: async () => {}, scheduleTick: () => () => {},
 	});
-	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, {
+	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
 		indexer: { getTask: id => tasks.get(id), getAllTasks: () => [], getGeneration: () => 1 }, timeTracker: tracker as never,
 		breakController: controller, getSettings: () => settings,
 		startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {},
@@ -1076,7 +1080,11 @@ function sessionTrackerHarness() {
   // Intentionally mutate the same indexed object: notifications must use a sealed preimage.
   Object.assign(currentTask.fieldValues, fields); return true;
  } };
- const store = { getActiveForUser: () => active, clearActiveForUser: async () => { active = null; } };
+ const store = { getActiveForUser: () => active, clearActiveForUser: async () => { active = null; },
+  setActiveForUser: async (record: Record<string, unknown>, guard?: () => boolean) => {
+   if (guard && !guard()) throw new Error('Cancelled active tracker write');
+   active = { ...record, id: 'active' }; return active;
+  } };
  const tracker = new TimeTracker({} as App, indexer as never, writer as never, store as never, () => settings,
   undefined, async () => {});
  const created: TrackerSession[] = []; tracker.subscribeSessionCreated(session => created.push(session));
@@ -1212,4 +1220,220 @@ test('session card stays while its task menu is open, then resumes the remaining
   now = 66999; f.flush(); assert.equal(el.hidden, false);
   now = 67000; f.flush(); assert.equal(el.hidden, true);
  } finally { card.destroy(); h.tracker.destroy(); }
+});
+
+function scopedTask(id: string, values: Record<string, string>, checkbox: 'open' | 'done' | 'cancelled' = 'open'): IndexedTask {
+ return { ...task(id, ''), description: id, checkbox, fieldValues: values };
+}
+function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Promise<unknown>, isTracking?: (id: string) => boolean) {
+ const f = statusDockDocument(); const host = f.doc.body.createDiv('operon-status-dock');
+ host.createDiv('operon-status-dock-tracker');
+ host.getBoundingClientRect = () => ({ left: 100, top: 500, right: 600, bottom: 544, width: 500, height: 44 });
+ const tasks = [scopedTask('first', { dateDue: localToday() }), scopedTask('second', { dateScheduled: localToday() })];
+ const tracking = new Set<string>();
+ const calls: string[] = []; let held: TrackerSession | null = null;
+ const sessionCard = { show(session: TrackerSession) { calls.push(`session:${session.operonId}`); }, takeSession() { const value = held; held = null; return value; } } as StatusDockSessionCard;
+ const settings = structuredClone(DEFAULT_SETTINGS);
+ const list = new StatusDockTaskList(host, { getSettings: () => settings, getTask: id => tasks.find(t => t.operonId === id),
+ isTracking: isTracking ?? (id => tracking.has(id)), toggleTimer: timerAction ?? (async (id, guard) => { if (guard()) { calls.push(`timer:${id}`); if (tracking.has(id)) tracking.delete(id); else tracking.add(id); } }), sessionCard, actions: {
+  openTask: async id => { calls.push(`open:${id}`); }, clickIcon: async id => { calls.push(`icon:${id}`); },
+  openSession: async () => {}, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false,
+ } });
+ const panel = host.querySelector('.operon-status-dock-task-list');
+ const controls = host.querySelector('.operon-status-dock-scopes');
+ return { ...f, host, list, panel, controls, tasks, calls, settings, tracking, hold: (session: TrackerSession) => { held = session; } };
+}
+
+test('dock scopes reuse Finder dates, exclude terminal tasks, deduplicate and sort closest first', () => {
+ const today = localToday(); const now = new Date(`${today}T12:00:00`);
+ const tasks = [scopedTask('far', {dateDue: '2000-01-01'}), scopedTask('near', {dateScheduled: '2020-01-01'}),
+  scopedTask('timed-far', {dateScheduled: today, datetimeStart: `${today}T23:00:00`}),
+  scopedTask('timed-near', {dateScheduled: today, datetimeStart: `${today}T12:05:00`}),
+  scopedTask('all-day', {dateStarted: today}), scopedTask('done', {dateDue: today}, 'done'),
+  scopedTask('cancelled', {dateDue: '2000-01-01'}, 'cancelled'), scopedTask('future', {dateDue: '2999-01-01'})];
+ const result = buildStatusDockTaskScopes([...tasks, tasks[0]], now);
+ assert.deepEqual(result.overdue.map(t => t.operonId), ['near', 'far']);
+ assert.deepEqual(result.today.map(t => t.operonId), ['all-day', 'timed-near', 'timed-far']);
+ assert.equal(result.today[1], tasks[3]);
+});
+
+test('dock scope icons and separator appear only for populated scopes; one list opens at a time', () => {
+ const f = scopeListFixture();
+ try {
+  assert.equal(f.controls.hidden, true);
+  f.list.update({overdue: [f.tasks[0]], today: []});
+  assert.equal(f.controls.hidden, false); assert.equal(f.controls.children[0].hidden, false); assert.equal(f.controls.children[1].hidden, true);
+  f.list.toggle('overdue'); assert.equal(f.panel.hidden, false); assert.equal(f.panel.children.length, 1);
+  f.list.update({overdue: [f.tasks[0]], today: [f.tasks[1]]}); f.list.toggle('today');
+  assert.equal(f.panel.children.length, 1); assert.equal(f.controls.children[0].getAttribute('aria-expanded'), 'false');
+  assert.equal(f.controls.children[1].getAttribute('aria-expanded'), 'true');
+  f.list.toggle('today'); assert.equal(f.panel.hidden, true);
+  f.list.toggle('overdue'); f.list.update({overdue: [], today: []});
+  assert.equal(f.panel.hidden, true); assert.equal(f.controls.hidden, true);
+ } finally { f.list.destroy(); }
+});
+
+test('scope cards omit duration, preserve nodes across refresh, and route name and icon actions', async () => {
+ const f = scopeListFixture();
+ try {
+  f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today');
+  const row = f.panel.children[0];
+  assert.equal(row.querySelector('.operon-status-dock-time'), null);
+  row.querySelector('.operon-status-dock-name').click(); row.querySelector('.operon-status-dock-session-icon').click();
+  await Promise.resolve(); await Promise.resolve();
+  assert.deepEqual(f.calls, ['open:first', 'icon:first']); assert.equal(f.panel.hidden, false);
+  f.list.update({overdue: [], today: f.tasks}); assert.equal(f.panel.children[0], row);
+  f.list.update({overdue: [], today: [...f.tasks].reverse()}); assert.equal(f.panel.children[1], row);
+ } finally { f.list.destroy(); }
+});
+
+test('dock click closes without consuming the action; scope triggers, cards and portals stay interactive', () => {
+ const f = scopeListFixture();
+ try {
+  const open = () => { f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today'); };
+  open();
+  for (const target of [f.controls.children[1], f.panel.children[0], f.doc.body.createDiv('operon-calendar-hover-menu'), f.doc.body.createDiv('operon-floating-panel'), f.doc.body.createDiv('modal-container')]) {
+   f.emit('click', {target}); assert.equal(f.panel.hidden, false);
+  }
+  let stopped = false;
+  f.emit('click', {target: f.host.querySelector('.operon-status-dock-tracker'), stopPropagation: () => {stopped = true;} });
+  assert.equal(f.panel.hidden, true); assert.equal(stopped, false);
+  open(); f.emit('click', {target: f.doc.body}); assert.equal(f.panel.hidden, true);
+ } finally { f.list.destroy(); }
+});
+
+test('latest session waits until scope closes; hiding/destroying discards the queue and listeners', () => {
+ const f = scopeListFixture();
+ f.list.update({overdue: [], today: f.tasks});
+ f.hold({operonId:'previous'} as TrackerSession); f.list.toggle('today');
+ f.list.showSession({operonId:'first'} as TrackerSession); f.list.showSession({operonId:'last'} as TrackerSession);
+ assert.deepEqual(f.calls, []); f.list.close(); assert.deepEqual(f.calls, ['session:last']);
+ f.list.toggle('today'); f.list.showSession({operonId:'hidden'} as TrackerSession); f.list.close(false);
+ assert.deepEqual(f.calls, ['session:last']);
+ f.list.toggle('today'); f.list.destroy(); f.flush();
+ assert.equal(f.panel.isConnected, false);
+ for (const key of ['click', 'keydown', 'pointermove']) assert.equal(f.listeners.get(key)?.size ?? 0, 0);
+});
+
+test('scope list positions away from dock and reverses stacking only above it', () => {
+ const f = scopeListFixture();
+ try {
+  f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today');
+  assert.equal(f.panel.classList.contains('is-below'), false);
+  f.host.getBoundingClientRect = () => ({left:100, top:15, right:600, bottom:59, width:500, height:44});
+  f.emitWindow('resize', {}); f.flush(); assert.equal(f.panel.classList.contains('is-below'), true);
+  assert.equal(f.panel.style.maxHeight, '172px'); // Two complete 80px mock cards, gap and padding.
+ } finally {f.list.destroy();}
+});
+
+test('Status Dock is its own Task Lists menu surface and retains independently saved visibility', () => {
+ assert.ok(CONTEXTUAL_MENU_SURFACE_GROUPS.find(g => g.id === 'taskLists')?.surfaces.includes('statusDock'));
+ assert.equal(isContextualMenuActionSupportedOnSurface('statusDock', 'setAsTracked'), true);
+ const settings = migrateSettings({...DEFAULT_SETTINGS, contextualMenuSurfaceActionMatrix: {...DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix, statusDock: ['openEditor']} });
+ const data = buildOperonDataPackageFromSettings(settings);
+ const restored = composeOperonSettingsFromDataPackage(data, DEFAULT_SETTINGS);
+ assert.deepEqual(restored.contextualMenuSurfaceActionMatrix.statusDock, ['openEditor']);
+ assert.deepEqual(restored.contextualMenuSurfaceActionMatrix.flowTimeTask, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.flowTimeTask);
+});
+
+
+test('scope Escape dismisses an owned menu before dismissing the list', () => {
+ const f = scopeListFixture();
+ try {
+  f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today');
+  const icon = f.panel.children[0].querySelector('.operon-status-dock-session-icon'); icon.focus();
+  assert.equal(showTaskContextualHoverMenu(icon, {surface:'statusDock', taskId:'first', getTask:()=>f.tasks[0], getSettings:()=>f.settings, onAction:()=>{}}), true);
+  f.emit('keydown', {key:'Escape', target:icon, preventDefault() {}, stopPropagation() {}});
+  assert.equal(f.panel.hidden, false);
+  hideTaskContextualHoverMenu(true, f.panel);
+  f.emit('keydown', {key:'Escape', target:icon, preventDefault() {}, stopPropagation() {}});
+  assert.equal(f.panel.hidden, true);
+ } finally { f.list.destroy(); }
+});
+
+test('separate-window scope lists have independent open state and listener cleanup', () => {
+ const first = scopeListFixture(), second = scopeListFixture();
+ try {
+  for (const f of [first,second]) { f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today'); }
+  first.emit('click', {target:first.doc.body});
+  assert.equal(first.panel.hidden, true); assert.equal(second.panel.hidden, false);
+  first.list.destroy(); second.flush(); assert.equal(second.panel.hidden, false);
+ } finally {second.list.destroy();}
+});
+
+
+test('scope hover timer toggles only its task, refreshes without task changes, and keeps list open', async () => {
+ const f = scopeListFixture();
+ try {
+  f.list.update({overdue: f.tasks, today: f.tasks}); f.list.toggle('today');
+  const row = f.panel.children[0], timer = row.querySelector('.operon-status-dock-scope-timer');
+  assert.ok(timer); assert.equal(timer.classList.contains('is-active'), false);
+  timer.click(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(f.calls, ['timer:first']); assert.equal(f.panel.hidden, false);
+  assert.equal(timer.classList.contains('is-active'), true);
+  f.tracking.clear(); f.list.update({overdue: f.tasks, today: f.tasks});
+  assert.equal(timer.classList.contains('is-active'), false);
+  assert.equal(f.panel.children[0], row);
+  assert.equal(timer.getAttribute('title'), null);
+ } finally { f.list.destroy(); }
+});
+
+test('scope timer prevents double clicks and invalidates a pending write when the list closes', async () => {
+ let release: (() => void) | undefined, allowed: boolean | undefined, count = 0;
+ const f = scopeListFixture(async (_id, guard) => { count++; await new Promise<void>(resolve => { release = resolve; }); allowed = guard(); });
+ try {
+  f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today');
+  const timer = f.panel.children[0].querySelector('.operon-status-dock-scope-timer');
+  timer.click(); timer.click(); assert.equal(count, 1); assert.equal(timer.disabled, true);
+  f.list.close(); release?.(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(allowed, false); assert.equal(timer.disabled, false);
+ } finally { f.list.destroy(); }
+});
+
+
+test('scope Play and Stop complete through the real TimeTracker without rejecting their own state change', async () => {
+ const h = sessionTrackerHarness(), results: boolean[] = [];
+ const f = scopeListFixture(async (id, guard) => {
+  results.push(h.tracker.isTimerRunning(id)
+   ? await h.tracker.stop('manual', '2026-10-26T10:01:00', guard)
+   : await h.tracker.start(id, 'status-bar', '2026-10-26T10:00:00', undefined, guard));
+ }, id => h.tracker.isTimerRunning(id));
+ try {
+  f.tasks[0].operonId = 'recorded';
+  f.list.update({overdue: [], today: f.tasks}); f.list.toggle('today');
+  const timer = f.panel.children[0].querySelector('.operon-status-dock-scope-timer');
+  timer.click(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(results, [true]); assert.equal(h.tracker.isTimerRunning('recorded'), true);
+  assert.equal(timer.classList.contains('is-active'), true);
+  timer.click(); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(results, [true, true]); assert.equal(h.tracker.isTimerRunning('recorded'), false);
+  assert.equal(timer.classList.contains('is-active'), false); assert.equal(h.created.length, 1);
+  assert.equal(f.panel.hidden, false);
+ } finally { f.list.destroy(); h.tracker.destroy(); }
+});
+
+
+test('scope Play/Stop and task refresh replace append-only SVG glyphs without losing labels', async () => {
+ const globals = globalThis as typeof globalThis & { __operonTestSetIcon?: (target: HTMLElement, icon: string) => void };
+ const previous = globals.__operonTestSetIcon;
+ globals.__operonTestSetIcon = (target, icon) => {
+  const glyph = target.ownerDocument.createElement('svg'); glyph.dataset.icon = icon; target.appendChild(glyph);
+ };
+ const f = scopeListFixture();
+ try {
+  f.list.update({ overdue: f.tasks, today: f.tasks }); f.list.toggle('today');
+  const row = f.panel.children[0], timer = row.querySelector('.operon-status-dock-scope-timer');
+  const icon = row.querySelector('.operon-status-dock-session-icon');
+  for (let cycle = 0; cycle < 6; cycle++) {
+   timer.click(); await new Promise(resolve => setTimeout(resolve, 0));
+   f.tasks[0].description = `Updated task ${cycle}`;
+   f.list.update({ overdue: f.tasks, today: f.tasks });
+   for (const button of [timer, icon]) {
+    assert.equal(button.children.filter((child: Element) => child.tagName === 'SVG').length, 1);
+    assert.ok(button.getAttribute('aria-labelledby'));
+    assert.equal(button.getAttribute('title'), null);
+   }
+   assert.equal(timer.children.find((child: HTMLElement) => child.tagName === 'SVG')?.dataset.icon, cycle % 2 === 0 ? 'square' : 'play');
+  }
+ } finally { f.list.destroy(); globals.__operonTestSetIcon = previous; }
 });

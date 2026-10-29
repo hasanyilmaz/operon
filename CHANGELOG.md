@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **Overdue and Today task lists** to the Status Dock, using the same scopes as Task Finder. Their icons appear only when matching tasks exist; open a list to browse tasks with the nearest dates and times closest to the Dock, access task actions, or start and stop tracking from a hover control. Lists stay open until dismissed, and Dock cards have their own **Context Menu → Task Lists → Status Dock** action preferences.
+
 - Added **Next Occurrence Date** as a filter condition, sorting option, and calculated Table column, making recurring tasks easier to find and order by their occurrence dates while keeping Repeat reference date separate. Table headers and cells use the repeat icon; clicking a cell opens the recurrence rule picker in both normal and embedded tables.
 
 - **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
@@ -16,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a temporary **last-session card** above the Status Dock whenever a new time session is recorded, providing quick access to the session and task. It shows the task icon, duration with seconds, and task name; click the duration to edit the session or the name to use your Dock opening preference. Its ten-second timeout pauses while you interact with the card, its task menu, or the session editor. Its tooltips use standard Operon colors and open away from the Dock whenever space allows.
 
 ### Improved
+
+- **Status Dock task and last-session cards** share a fixed width, with names shortened only when they exceed the available space. Task lists show up to ten complete cards at a time, adapting to smaller windows, with transparent gaps and Play/Stop backgrounds; the timer button border appears only on direct hover or keyboard focus.
 
 - Filter sorting now includes **Repeat reference date**, so recurring tasks can be ordered by their reference dates in ascending or descending order.
 
@@ -41,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
 
 ### Validation
+
+- **Status Dock task lists and hover timers** passed **131/131** focused tests, **63/63** isolated browser checks, strict lint, production build, Plugin release guard, code review, and manual verification.
 
 - **Next Occurrence Date** Table repeat icons and recurrence-picker activation passed **70/70** focused checks, strict lint, focused code review, and manual verification.
 

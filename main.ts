@@ -17043,6 +17043,7 @@ export default class OperonPlugin extends Plugin {
 		};
 		if (Platform.isDesktopApp) {
 			this.statusDock = this.addChild(new OperonStatusDock(this.app, {
+				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
 				getSettings: () => this.settings,

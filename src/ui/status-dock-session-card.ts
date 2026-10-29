@@ -103,14 +103,14 @@ export class StatusDockSessionCard {
   cleanupOperonHoverTooltips(duration);
   bindOperonHoverTooltip(duration, { get preferredVertical() { return tooltipVerticalPreference(); }, title: t('taskEditor', 'editSession'), content: task.description, taskColor });
   const name = this.el.querySelector<HTMLElement>('.operon-status-dock-name')!;
-  name.empty(); renderCompactTaskMarkdown(name, { value: task.description || task.operonId, mode: 'visual-only', maxCharacters: 40 });
+  name.empty(); renderCompactTaskMarkdown(name, { value: task.description || task.operonId, mode: 'visual-only' });
   const behavior = resolveStatusDockClickAction(settings.statusDockClickAction);
   const openLabel = t('settings', behavior === 'source' ? 'taskFinderResultSourceOnly' : behavior === 'editor' ? 'taskFinderResultEditorOnly' : 'taskFinderResultSourceAndEditor');
   setAccessibleLabelWithoutTooltip(name, `${openLabel}: ${task.description}`);
   cleanupOperonHoverTooltips(name);
   bindOperonHoverTooltip(name, { get preferredVertical() { return tooltipVerticalPreference(); }, title: openLabel, content: task.description, taskColor });
   bindTaskContextualHoverMenu(icon, {
-   followAnchor: true, surface: 'flowTimeTask', menuKey: `status-dock-session:${task.operonId}:${current.start}:${current.end}`,
+   followAnchor: true, surface: 'statusDock', menuKey: `status-dock-session:${task.operonId}:${current.start}:${current.end}`,
    captureWriteGuard: () => { const revision = this.revision; return () => !this.disposed && revision === this.revision && !!this.session; },
    taskId: task.operonId, getTask: () => this.options.getTask(task.operonId) ?? null,
    getSettings: this.options.getSettings,
@@ -147,6 +147,7 @@ export class StatusDockSessionCard {
   if (!this.lifetime.advance(this.owner.performance.now(), paused)) { this.clear(); return; }
   this.timer = this.owner.setTimeout(() => { this.refresh(); this.tick(); }, 100);
  }
+ takeSession(): TrackerSession | null { const session = this.session; this.clear(); return session; }
  clear(): void {
   this.revision++; this.session = null; this.lifetime = null; this.signature = ''; this.busy = 0; this.hover = false;
   if (this.timer !== null) this.owner.clearTimeout(this.timer); this.timer = null;

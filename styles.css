@@ -37137,6 +37137,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-status-dock-slot[hidden], .operon-status-dock [hidden] { display: none; }
 .operon-status-dock {
+	--operon-status-dock-card-width: calc(40ch + 67px);
 	position: relative;
 	display: flex; align-items: center; gap: 5px; max-width: 100%; width: max-content;
 	min-height: 44px; height: 44px; padding: 7px 9px;
@@ -37224,7 +37225,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 /* The last committed session follows the window-owned Status Dock. */
 .operon-status-dock-session-card {
  position: absolute; bottom: auto; left: -1px;
- display: inline-flex; align-items: center; gap: 7px; width: max-content;
+ display: inline-flex; align-items: center; gap: 7px; width: min(var(--operon-status-dock-card-width), calc(100vw - 24px - var(--operon-status-dock-card-gutter, 0px)));
  max-width: calc(100vw - 24px); min-height: 44px; padding: 7px 9px;
  border: 1px solid var(--background-modifier-border); border-radius: 8px;
  background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s);
@@ -37234,7 +37235,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-session-card .operon-status-dock-session-icon { flex: 0 0 28px; }
 .operon-status-dock-session-card .operon-status-dock-session-icon svg { width: 16px; height: 16px; }
 .operon-status-dock-session-card button.operon-status-dock-name {
- flex: 0 1 auto; max-width: calc(40ch + 12px);
+ flex: 1 1 0; min-width: 0; max-width: none;
  overflow: hidden; text-overflow: ellipsis; text-align: left; color: var(--text-muted);
 }
 
@@ -37295,3 +37296,37 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-kanban-axis-measure > .operon-kanban-column-header {
 	box-sizing: border-box;
 }
+
+/* Scope cards share the recent-session surface; the nearest task stays beside the Dock. */
+.operon-status-dock-scopes { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.operon-status-dock-scopes .is-active { color: var(--interactive-accent); }
+.operon-status-dock-task-list {
+ position: absolute; left: -1px; width: calc(var(--operon-status-dock-card-width) + var(--operon-status-dock-card-gutter, 0px)); max-width: calc(100vw - 24px);
+ display: flex; flex-direction: column-reverse; gap: 8px;
+ overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 2px 0;
+ background: transparent; box-shadow: none; box-sizing: border-box;
+ scroll-snap-type: y mandatory; scroll-padding-block: 2px; scrollbar-gutter: stable;
+ pointer-events: auto;
+}
+.operon-status-dock-task-list.is-below { flex-direction: column; }
+.operon-status-dock-task-list > .operon-status-dock-scope-card {
+ position: relative; inset: auto; flex: 0 0 auto; width: 100%; max-width: 100%;
+ box-shadow: none; scroll-snap-align: end;
+}
+.operon-status-dock-task-list.is-below > .operon-status-dock-scope-card { scroll-snap-align: start; }
+
+/* Scope list timer actions follow the pinned-task hover pattern. */
+.operon-status-dock .operon-status-dock-scope-timer {
+ position: absolute; top: 7px; right: 9px; width: 28px; min-width: 28px;
+ border: 1px solid transparent; border-radius: 8px;
+ background: transparent; color: var(--text-muted);
+ opacity: 0; pointer-events: none;
+}
+.operon-status-dock-scope-timer svg { width: 16px; height: 16px; }
+.operon-status-dock .operon-status-dock-scope-timer.is-active { color: var(--text-error); }
+.operon-status-dock-scope-card:is(:hover, :focus-within) > .operon-status-dock-scope-timer {
+ opacity: 1; pointer-events: auto;
+}
+.operon-status-dock-scope-card:is(:hover, :focus-within) > button.operon-status-dock-name { padding-right: 40px; }
+
+.operon-status-dock .operon-status-dock-scope-timer:is(:hover, :focus-visible):not(:disabled) { border-color: var(--background-modifier-border); }

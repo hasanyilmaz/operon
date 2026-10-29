@@ -206,6 +206,10 @@ function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void 
   data.ui.taskUiPreferences[key] = items.filter(item => item.key !== 'taskInfo.projectSerial' && item.key !== 'taskInfo.source');
  }
 
+ // Preserve sealed permission fixture bytes while verifying the additive Dock surface independently.
+ const statusDock = data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.statusDock;
+ if (verify && statusDock !== undefined) assert.deepEqual(statusDock, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.statusDock);
+ delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.statusDock;
  const excalidraw = data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.excalidrawTask;
  if (verify && excalidraw !== undefined) assert.deepEqual(excalidraw, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask);
  delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.excalidrawTask;
