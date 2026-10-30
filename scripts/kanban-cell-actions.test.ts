@@ -4,7 +4,9 @@ import { PreparedTaskCreatorDraft } from '../src/ui/task-creator-prepared-draft'
 import { parseFrontmatterDocument } from '../src/core/file-task-template-merge';
 import { executeFileRecurrenceTerminalTransaction } from '../src/systems/file-recurrence-terminal-transaction';
 import { executeTaskSourceRenameTransaction, TaskSourceRenameUncertainError, type TaskSourceRenamePorts } from '../src/storage/task-source-rename-transaction';
-import { kanbanListLaneKeys } from '../src/systems/kanban-list-values';
+import { kanbanListLaneKeys, addKanbanListLane } from '../src/systems/kanban-list-values';
+import { parseListValue } from '../src/core/parser';
+import { buildKanbanWritebackPlan } from '../src/systems/kanban-writeback';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TFile, type App } from 'obsidian';
@@ -22,7 +24,7 @@ import { retainInlinePropertyDefinition } from '../src/core/inline-property-defi
 import { readFileTaskPropertyDocument } from '../src/core/file-task-property-draft';
 import { readInlinePropertyProjection } from '../src/core/inline-property-source';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../src/core/vault-property-codec';
-import { createKanbanDropOptimisticMove, applyKanbanOptimisticMovesToBoard } from '../src/systems/kanban-optimistic-move';
+import { createKanbanDropOptimisticMove, applyKanbanOptimisticMovesToBoard, buildOptimisticMovedTask } from '../src/systems/kanban-optimistic-move';
 import {  buildKanbanCellKey } from '../src/systems/kanban-query';
 import { queryKanbanBoard } from './test-support/kanban-legacy-query';
 import { buildKanbanGroupingSnapshot } from '../src/systems/kanban-grouping';
@@ -270,3 +272,55 @@ test('cell writer refuses a moved source, changed format, removed property and s
  current=f.input.task;boardValid=false;assert.equal(options.canCommit(),false);boardValid=true;
  f.s.keyMappings.push({canonicalKey:'note',visiblePropertyName:'Ambiguous',type:'number',sync:'yes',enabled:true,isSystem:false});assert.equal(options.canCommit(),false);
 });
+
+
+test('legacy list lanes preserve literal backslashes, escaped separators and Unicode without double escaping',()=>{
+ const raw=String.raw`C:\Work; A\; B`,lane=String.raw`猫\;new`;
+ const encoded=addKanbanListLane(raw,lane,false);
+ assert.deepEqual(parseListValue(encoded),[String.raw`C:\Work`,'A; B',lane]);
+ assert.equal(addKanbanListLane(encoded,lane,false),encoded);
+ assert.deepEqual(parseListValue(addKanbanListLane('First','Last\\',false)),['First','Last\\']);
+ assert.throws(()=>addKanbanListLane('Last\\','Added',false),/cannot be represented losslessly/);
+});
+
+test('typed list lanes retain their own codec and numeric identities',()=>{
+ const original=encodeVaultPropertyValue([String.raw`C:\Work`,'semi;colon',0,'0'],'list');
+ const added=encodeVaultPropertyValue(['Last\\'],'list');
+ const encoded=addKanbanListLane(original,added,true);
+ assert.deepEqual(kanbanListLaneKeys(encoded,true),[String.raw`C:\Work`,'semi;colon',0,'0','Last\\'].map(v=>encodeVaultPropertyValue([v],'list')));
+ assert.equal(addKanbanListLane(encoded,added,true),encoded);
+});
+
+for(const key of ['contexts','assignees'] as const){
+ test(`${key} cell planning and writeback preserve legacy member boundaries`,()=>{
+  const s=settings(),pipeline=s.pipelines[0],status=pipeline.statuses[0];
+  const original=task({status:`${pipeline.name}.${status.label}`,[key]:String.raw`C:\Work; A\; B`});
+  const before=structuredClone(original),lane=String.raw`猫\;new`;
+  const expected=[String.raw`C:\Work`,'A; B',lane];
+  const p=planned(buildKanbanCellPlan(setup(axis(key,'list'),null,value(lane),null,original).input));
+  const writeback=buildKanbanWritebackPlan({task:original,pipeline,targetStatus:status,sourceLaneKey:'A; B',targetLaneKey:lane,swimlaneBy:key,keyMappings:s.keyMappings});
+  assert.deepEqual(parseListValue(p.payload[key]),expected);
+  assert.deepEqual(parseListValue(writeback.payload[key]),expected);
+  const preset={...cloneDefaultKanbanPresets()[0],pipelineId:pipeline.id,swimlaneBy:key};
+  const board=queryKanbanBoard({preset,pipeline,pipelines:s.pipelines,filterSet:null,tasks:[original],priorities:s.priorities,keyMappings:s.keyMappings});
+  const move=createKanbanDropOptimisticMove({taskId:original.operonId,sourceStatusId:status.id,sourceLaneKey:'A; B',targetStatusId:status.id,targetLaneKey:lane,swimlaneBy:key,targetBeforeTaskId:null},{task:original,keyMappings:s.keyMappings});
+  assert.deepEqual(new Set(move.targetLaneKeys),new Set(expected));
+  assert.equal(buildOptimisticMovedTask(original,move,board,s.keyMappings).fieldValues[key],writeback.payload[key]);
+  assert.deepEqual(original,before);
+ });
+
+ test(`${key} rejects an unrepresentable boundary before mutating optimistic cards or totals`,()=>{
+  const s=settings(),pipeline=s.pipelines[0],status=pipeline.statuses[0];
+  const original=task({status:`${pipeline.name}.${status.label}`,[key]:'Last\\'}),before=structuredClone(original);
+  const result=buildKanbanCellPlan(setup(axis(key,'list'),null,value('Added'),null,original).input);
+  assert.deepEqual(result,{state:'blocked',reason:'unrepresentable-legacy-list'});
+  assert.throws(()=>buildKanbanWritebackPlan({task:original,pipeline,targetStatus:status,sourceLaneKey:'Last\\',targetLaneKey:'Added',swimlaneBy:key,keyMappings:s.keyMappings}),/cannot be represented losslessly/);
+  const preset={...cloneDefaultKanbanPresets()[0],pipelineId:pipeline.id,swimlaneBy:key};
+  const board=queryKanbanBoard({preset,pipeline,pipelines:s.pipelines,filterSet:null,tasks:[original],priorities:s.priorities,keyMappings:s.keyMappings});
+  const boardBefore=structuredClone({cells:board.cellMap,counts:board.cellCountMap,columns:board.columns,lanes:board.lanes});
+  const move=createKanbanDropOptimisticMove({taskId:original.operonId,sourceStatusId:status.id,sourceLaneKey:'Last\\',targetStatusId:status.id,targetLaneKey:'Added',swimlaneBy:key,targetBeforeTaskId:null});
+  assert.throws(()=>applyKanbanOptimisticMovesToBoard(board,s.priorities,[move],s.keyMappings),/cannot be represented losslessly/);
+  assert.deepEqual({cells:board.cellMap,counts:board.cellCountMap,columns:board.columns,lanes:board.lanes},boardBefore);
+  assert.deepEqual(original,before);
+ });
+}

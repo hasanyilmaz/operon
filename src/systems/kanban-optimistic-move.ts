@@ -1,3 +1,4 @@
+import { serializeTaskListValue } from '../core/subtask-inheritance';
 import { addKanbanListLane, kanbanListIsTyped } from './kanban-list-values';
 import type { InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { toLocalDatetime } from '../core/local-time';
@@ -185,6 +186,9 @@ export function applyKanbanOptimisticMovesToBoard(
 		const targetSorting = resolveKanbanEffectiveSorting(board.preset, move.targetStatusId);
 		if (sameCells && targetSorting.sortMode !== 'manual') continue;
 
+		// Validate the complete task before changing any optimistic memberships or totals.
+		const targetTask = buildOptimisticMovedTask(task, move, board, keyMappings);
+
 		for (const sourceKey of sourceKeys) {
 			if (!targetKeys.includes(sourceKey) || sourceKey === buildKanbanCellKey(move.targetStatusId, move.targetLaneKey)) removeTaskFromBoardCell(board, sourceKey, move.taskId);
 			if (!targetKeys.includes(sourceKey)) incrementCellCount(board, sourceKey, -1);
@@ -211,7 +215,6 @@ export function applyKanbanOptimisticMovesToBoard(
 
 		for (const targetLaneKey of targetLaneKeys) {
 			const targetKey = buildKanbanCellKey(move.targetStatusId, targetLaneKey);
-			const targetTask = buildOptimisticMovedTask(task, move, board, keyMappings);
 			const targetTasks = board.cellMap.get(targetKey) ?? [];
 			if (targetSorting.sortMode === 'manual') {
 				if (targetLaneKey === move.targetLaneKey) insertManualOptimisticTask(targetTasks, targetTask, move.targetBeforeTaskId);
@@ -340,7 +343,7 @@ function buildOptimisticListLaneValue(
 	if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
 		nextValues.add(targetLaneKey);
 	}
-	return Array.from(nextValues).map(value => value.replace(/;/g, '\\;')).join('; ');
+	return serializeTaskListValue(Array.from(nextValues));
 }
 
 function removeTaskFromBoardCell(board: KanbanBoardData, cellKey: string, taskId: string): void {

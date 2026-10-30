@@ -1,3 +1,4 @@
+import { serializeTaskListValue } from '../core/subtask-inheritance';
 import { addKanbanListLane, kanbanListIsTyped } from './kanban-list-values';
 import type { InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { parseListValue } from '../core/parser';
@@ -122,7 +123,7 @@ export function buildKanbanWritebackPlan(options: {
 		if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
 			nextValues.add(targetLaneKey);
 		}
-		const serialized = Array.from(nextValues).map(value => value.replace(/;/g, '\\;')).join('; ');
+		const serialized = serializeTaskListValue(Array.from(nextValues));
 		if ((task.fieldValues[swimlaneBy] ?? '') !== serialized) {
 			payload[swimlaneBy] = serialized;
 			nextDraft.fieldValues[swimlaneBy] = serialized;

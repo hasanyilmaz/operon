@@ -1,3 +1,4 @@
+import { serializeTaskListValue } from '../core/subtask-inheritance';
 import { kanbanListIsTyped } from './kanban-list-values';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
@@ -94,7 +95,8 @@ export function buildKanbanCellPlan(input: { axes: KanbanAxes; target: KanbanCel
   if (field.encoding === 'legacy') {
    if (ref.type === 'list') {
     // Legacy fields have no quoting grammar. Reject lossy values instead of splitting an individual member.
-    serialized = (value as (string | number)[]).map(item => String(item).replace(/;/g, '\\;')).join('; ');
+    try { serialized = serializeTaskListValue((value as (string | number)[]).map(String)); }
+    catch { return { state: 'blocked', reason: 'unrepresentable-legacy-list' }; }
     if (JSON.stringify(parseListValue(serialized)) !== JSON.stringify(value)) return { state: 'blocked', reason: 'unrepresentable-legacy-list' };
    } else if (ref.type === 'text') serialized = String(value ?? '');
    if (!matches) plan.payload[key] = serialized;
