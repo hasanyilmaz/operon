@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.4.0] - 2026-10-30
+
 ### New
 
 - Added **Overdue and Today task lists** to the Status Dock, using Task Finder scopes and appearing only when matching tasks exist. Lists show up to ten complete cards, with the nearest dates and times closest to the Dock, and stay open until dismissed. Hover to start or stop tracking; configure task actions under **Context Menu → Task Lists → Status Dock**.
@@ -50,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **56** picker/popover scenarios, **157** note checks, and **5,268/5,268** local regression tests.
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **56** picker/popover scenarios, **157** note checks, and **5,269/5,269** local regression tests.
 
 ## [4.3.0] - 2026-10-26
 
