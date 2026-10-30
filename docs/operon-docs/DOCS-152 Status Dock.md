@@ -2,7 +2,7 @@
 Notes: Track time, review recent sessions, and access overdue, today, and upcoming tasks from one desktop dock
 Icon: panel-bottom
 Color: "#0F766E"
-Updated: 2026-10-29T18:28:32+01:00
+Updated: 2026-10-30T10:44:00+01:00
 ---
 
 # Status Dock
@@ -57,6 +57,10 @@ Two icons beside the drag handle open task lists using the same scopes as [[DOCS
 | **Happens Today** — lightning icon | Due, scheduled, or started today. |
 
 These lists use indexed tasks across the vault, independently of the filter in your current view. Dates follow your local day. A task appears once within each list; it can qualify for both lists. Each icon appears only when its scope contains tasks. When both scopes are empty, their separator also disappears.
+
+> **MEDIA-DOCS-152-2:** The Status Dock with Happens Today selected, showing its task cards stacked above the dock and the active lightning icon.
+
+![MEDIA-DOCS-152-2 - Status Dock with the Happens Today task list open](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-152-2.png)
 
 Click an icon to open its list. Click it again to close it, or click the other icon to switch lists. Cards are ordered with the nearest qualifying date or time closest to the dock. They normally stack above the dock and can appear below it when there is more room there. The visible area fits up to **ten complete cards**, or fewer in a shorter window; scroll to reach the remaining tasks.
 

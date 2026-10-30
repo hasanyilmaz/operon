@@ -2,7 +2,7 @@
 Notes: Configure a Kanban board's scope, property axes, value selections, and layout
 Icon: panels-top-left
 Color: "#0284c7"
-Updated: 2026-10-29T18:22:34+01:00
+Updated: 2026-10-30T10:41:48+01:00
 ---
 
 # Kanban presets
@@ -23,6 +23,10 @@ The **Task counts** row previews the current draft:
 | Board tasks | Unique tasks that also match the column and active swimlane selections |
 
 For example, a filter can include 100 tasks while selected assignees and dates leave 57 on the board. These counts describe the preset, not the toolbar's temporary search. If data is incomplete, the preview indicates that the counts are partial rather than presenting them as final.
+
+> **MEDIA-DOCS-153-1:** Kanban preset settings showing Preset name & scope, the Scoped tasks and Board tasks counts, and the Column selection and Swimlane selection controls.
+
+![MEDIA-DOCS-153-1 - Kanban preset settings with scope, task counts, and axis selections](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-153-1.png)
 
 ## Column selection and Swimlane selection
 
@@ -88,6 +92,10 @@ This section sits between Appearance and Visibility. Its dimensions belong to th
 **Column width** controls expanded columns. **Cell height** is the outer height of expanded swimlane cells, including their padding and borders; column headings and gaps are separate. Long cards or images scroll inside the cell instead of stretching the row.
 
 With No swimlanes selected, Cell height is disabled but its value is retained. Classic boards fill the available pane height. New presets, and older presets without their own sizes, start at 325 × 450 px; old global dimensions are not copied into them. Duplicating a preset keeps its dimensions.
+
+> **MEDIA-DOCS-153-2:** A Kanban board showing the floating −/+ controls for cell height on the right and column width along the bottom.
+
+![MEDIA-DOCS-153-2 - Kanban board floating column width and cell height controls](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-153-2.png)
 
 The board's floating **+/−** buttons move through these same choices and save immediately to the active preset. Width decreases on the left and increases on the right; height decreases above and increases below. Height controls appear only with swimlanes; width controls also work on classic boards. Another preset's sizes are not changed.
 
