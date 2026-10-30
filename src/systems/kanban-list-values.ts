@@ -1,3 +1,4 @@
+import { serializeTaskListValue } from '../core/subtask-inheritance';
 import { parseListValue } from '../core/parser';
 import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
 import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -15,5 +16,5 @@ export function addKanbanListLane(raw: string, lane: string, typed: boolean): st
   const values = new Map([...decodeVaultPropertyList(raw), ...added].map(value => [JSON.stringify([typeof value, value]), value]));
   return encodeVaultPropertyValue([...values.values()], 'list');
  }
- return [...new Set([...parseListValue(raw), lane])].map(value => value.replace(/;/g, '\\;')).join('; ');
+ return serializeTaskListValue([...new Set([...parseListValue(raw), lane])]);
 }
