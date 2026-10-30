@@ -12061,6 +12061,7 @@ export default class OperonPlugin extends Plugin {
 		const hydrated = await hydrator.hydrate({
 			task,
 			keyMappings: this.settings.keyMappings,
+			pipelines: this.settings.pipelines,
 			ramGeneration: this.indexer.getGeneration(),
 			includeSourceMarkdown: false,
 			sourceSnapshot: snapshot,
