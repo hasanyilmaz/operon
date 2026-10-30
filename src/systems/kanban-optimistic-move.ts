@@ -1,3 +1,6 @@
+import { serializeTaskListValue } from '../core/subtask-inheritance';
+import { addKanbanListLane, kanbanListIsTyped } from './kanban-list-values';
+import type { InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { toLocalDatetime } from '../core/local-time';
 import { buildKanbanWritebackPlan } from './kanban-writeback';
 import { IndexedTask } from '../types/fields';
@@ -39,6 +42,7 @@ export interface KanbanOptimisticStatusMovePlan {
 }
 
 interface KanbanDropOptimisticMoveOptions {
+ inlinePropertyDefinitions?: InlinePropertyDefinitions;
 	task?: IndexedTask | null;
 	keyMappings?: readonly KeyMapping[];
 	priorities?: readonly { label: string }[];
@@ -55,7 +59,8 @@ export type KanbanOptimisticStatusFallbackReason =
 	| 'source-lane-missing';
 
 export function buildKanbanOptimisticStatusMovePlan(options: {
-	taskIconClickAction?: OperonSettings['taskIconClickAction'];
+	inlinePropertyDefinitions?: InlinePropertyDefinitions;
+ taskIconClickAction?: OperonSettings['taskIconClickAction'];
 	task: IndexedTask | null | undefined;
 	pipeline: Pipeline | null | undefined;
 	preset: KanbanPreset | null | undefined;
@@ -78,7 +83,7 @@ export function buildKanbanOptimisticStatusMovePlan(options: {
 		return { move: null, fallbackReason: 'context-status-mismatch' };
 	}
 
-	const sourceLaneKeys = uniqueStrings(extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities));
+	const sourceLaneKeys = uniqueStrings(extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities, options.inlinePropertyDefinitions));
 	if (sourceLaneKeys.length === 0) return { move: null, fallbackReason: 'source-lane-missing' };
 	if (sourceLaneKey && !sourceLaneKeys.includes(sourceLaneKey)) {
 		return { move: null, fallbackReason: 'context-lane-mismatch' };
@@ -120,14 +125,14 @@ export function createKanbanDropOptimisticMove(
 	const keyMappings = options.keyMappings ?? [];
 	const priorities = options.priorities ?? [];
 	const sourceLaneKeys = options.task
-		? uniqueStrings(extractLaneKeys(options.task, context.swimlaneBy, keyMappings, priorities))
+		? uniqueStrings(extractLaneKeys(options.task, context.swimlaneBy, keyMappings, priorities, options.inlinePropertyDefinitions))
 		: [context.sourceLaneKey];
 	const targetLaneKeys = options.task
 		? uniqueStrings(extractLaneKeys(
-			buildOptimisticDroppedTask(options.task, context, context.targetLaneKey, keyMappings),
+			buildOptimisticDroppedTask(options.task, context, context.targetLaneKey, keyMappings, options.inlinePropertyDefinitions),
 			context.swimlaneBy,
 			keyMappings,
-			priorities,
+			priorities, options.inlinePropertyDefinitions,
 		))
 		: [context.targetLaneKey];
 	return {
@@ -151,11 +156,12 @@ export function isKanbanOptimisticMoveSatisfied(
 	keyMappings: readonly KeyMapping[] = [],
 	pipelines: readonly Pipeline[] = pipeline ? [pipeline] : [],
 	priorities: readonly { label: string }[] = [],
+ inlinePropertyDefinitions?: InlinePropertyDefinitions,
 ): boolean {
 	if (!pipeline) return false;
 	const status = resolveTaskStatusDefinition(task, pipeline, pipelines);
 	if (status?.id !== move.targetStatusId) return false;
-	const laneKeys = extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities);
+	const laneKeys = extractLaneKeys(task, preset.swimlaneBy, keyMappings, priorities, inlinePropertyDefinitions);
 	return move.targetLaneKeys.every(laneKey => laneKeys.includes(laneKey));
 }
 
@@ -180,13 +186,16 @@ export function applyKanbanOptimisticMovesToBoard(
 		const targetSorting = resolveKanbanEffectiveSorting(board.preset, move.targetStatusId);
 		if (sameCells && targetSorting.sortMode !== 'manual') continue;
 
+		// Validate the complete task before changing any optimistic memberships or totals.
+		const targetTask = buildOptimisticMovedTask(task, move, board, keyMappings);
+
 		for (const sourceKey of sourceKeys) {
-			removeTaskFromBoardCell(board, sourceKey, move.taskId);
-			if (!sameCells) incrementCellCount(board, sourceKey, -1);
+			if (!targetKeys.includes(sourceKey) || sourceKey === buildKanbanCellKey(move.targetStatusId, move.targetLaneKey)) removeTaskFromBoardCell(board, sourceKey, move.taskId);
+			if (!targetKeys.includes(sourceKey)) incrementCellCount(board, sourceKey, -1);
 		}
 		if (!sameCells) {
 			for (const targetKey of targetKeys) {
-				incrementCellCount(board, targetKey, 1);
+				if (!sourceKeys.includes(targetKey)) incrementCellCount(board, targetKey, 1);
 			}
 		}
 
@@ -206,10 +215,10 @@ export function applyKanbanOptimisticMovesToBoard(
 
 		for (const targetLaneKey of targetLaneKeys) {
 			const targetKey = buildKanbanCellKey(move.targetStatusId, targetLaneKey);
-			const targetTask = buildOptimisticMovedTask(task, move, board, keyMappings);
 			const targetTasks = board.cellMap.get(targetKey) ?? [];
 			if (targetSorting.sortMode === 'manual') {
-				insertManualOptimisticTask(targetTasks, targetTask, move.targetBeforeTaskId);
+				if (targetLaneKey === move.targetLaneKey) insertManualOptimisticTask(targetTasks, targetTask, move.targetBeforeTaskId);
+    else { const index = targetTasks.findIndex(entry => entry.operonId === targetTask.operonId); if (index >= 0) targetTasks[index] = targetTask; else targetTasks.push(targetTask); }
 			} else {
 				const comparator = buildKanbanTaskComparator({
 					preset: board.preset,
@@ -259,7 +268,7 @@ export function buildOptimisticMovedTask(
 	const writeback = move.kind === 'drop' && board.pipeline && targetStatus
 		? buildKanbanWritebackPlan({
 			task, pipeline: board.pipeline, targetStatus, sourceLaneKey: move.sourceLaneKey,
-			targetLaneKey: move.targetLaneKey, swimlaneBy: move.swimlaneBy, keyMappings,
+			targetLaneKey: move.targetLaneKey, swimlaneBy: move.swimlaneBy, keyMappings, inlinePropertyDefinitions: board.inlinePropertyDefinitions,
 		})
 		: null;
 	const movedTask = writeback
@@ -268,7 +277,7 @@ export function buildOptimisticMovedTask(
 				? toLocalDatetime(new Date(move.expiresAt - KANBAN_OPTIMISTIC_MOVE_TTL_MS))
 				: task.datetimeModified }
 		: move.kind === 'drop'
-			? buildOptimisticDroppedTask(task, move, move.targetLaneKey, keyMappings)
+			? buildOptimisticDroppedTask(task, move, move.targetLaneKey, keyMappings, board.inlinePropertyDefinitions)
 			: task;
 	const fieldValues = { ...movedTask.fieldValues };
 	if (targetColumn) fieldValues['status'] = targetColumn.statusValue;
@@ -284,14 +293,12 @@ function buildOptimisticDroppedTask(
 	move: Pick<KanbanDropContext, 'sourceLaneKey' | 'swimlaneBy'>,
 	targetLaneKey: string,
 	keyMappings: readonly KeyMapping[],
+ inlinePropertyDefinitions?: InlinePropertyDefinitions,
 ): IndexedTask {
 	if (!move.swimlaneBy) return task;
 	const targetIsNoValue = targetLaneKey === KANBAN_NO_VALUE_KEY;
 	if (move.swimlaneBy === 'tags') {
 		const nextTags = new Set(task.tags.map(value => value.trim()).filter(Boolean));
-		if (move.sourceLaneKey && move.sourceLaneKey !== KANBAN_NO_VALUE_KEY) {
-			nextTags.delete(move.sourceLaneKey);
-		}
 		if (!targetIsNoValue) {
 			nextTags.add(targetLaneKey);
 		}
@@ -313,11 +320,7 @@ function buildOptimisticDroppedTask(
 
 	const customSwimlaneMapping = getManagedCustomFieldOptionMapping(move.swimlaneBy, keyMappings);
 	if (customSwimlaneMapping?.type === 'list') {
-		fieldValues[customSwimlaneMapping.canonicalKey] = buildOptimisticListLaneValue(
-			task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '',
-			move.sourceLaneKey,
-			targetLaneKey,
-		);
+		fieldValues[customSwimlaneMapping.canonicalKey] = targetIsNoValue ? task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '' : addKanbanListLane(task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '', targetLaneKey, kanbanListIsTyped(customSwimlaneMapping, keyMappings, inlinePropertyDefinitions));
 		return { ...task, fieldValues };
 	}
 	if (customSwimlaneMapping) {
@@ -333,17 +336,14 @@ function buildOptimisticDroppedTask(
 
 function buildOptimisticListLaneValue(
 	rawValue: string,
-	sourceLaneKey: string | null | undefined,
+	_sourceLaneKey: string | null | undefined,
 	targetLaneKey: string,
 ): string {
 	const nextValues = new Set(parseListValue(rawValue));
-	if (sourceLaneKey && sourceLaneKey !== KANBAN_NO_VALUE_KEY) {
-		nextValues.delete(sourceLaneKey);
-	}
 	if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
 		nextValues.add(targetLaneKey);
 	}
-	return Array.from(nextValues).join('; ');
+	return serializeTaskListValue(Array.from(nextValues));
 }
 
 function removeTaskFromBoardCell(board: KanbanBoardData, cellKey: string, taskId: string): void {

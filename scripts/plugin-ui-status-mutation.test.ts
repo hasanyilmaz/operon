@@ -91,8 +91,8 @@ for (const [name, body] of [
 
 equal(
 	(mainSource.match(/updatePluginUiTaskStatusAndRefresh\(/gu) ?? []).length,
-	9,
-	'The helper has exactly eight UI call sites including Excalidraw chips plus its declaration.',
+	10,
+	'The helper has nine UI call sites including Kanban placement and Excalidraw chips plus its declaration.',
 );
 includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Terminal status writes finalize active timers transactionally.');
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');
@@ -174,7 +174,7 @@ includes(inlineRecurrenceBody, 'expectedCheckbox: task.checkbox', 'The sealed so
 includes(inlineRecurrenceBody, "task.checkbox === 'done'", 'An already completed inline task cannot materialize another successor during an unrelated edit.');
 includes(inlineRecurrenceBody, "task.checkbox === 'cancelled'", 'An already cancelled inline task cannot materialize another successor during an unrelated edit.');
 excludes(inlineRecurrenceBody, 'materializeNextOccurrence(', 'The atomic path cannot invoke the legacy post-completion materializer.');
-includes(fileRecurrenceBody, 'this.writer.runExclusiveTaskMutation<', 'File completion and successor writes share one exclusive mutation lease.');
+includes(fileRecurrenceBody, 'this.writer.runExclusiveTaskMutation(commit)', 'File completion and successor writes share one exclusive mutation lease.');
 includes(fileRecurrenceBody, 'this.writer.renderGuardedTaskSourceContent(', 'File completion is rendered before any source mutation.');
 includes(fileRecurrenceBody, 'expectedFieldValues: indexedExpected', 'A stale File Task snapshot fails closed before recurrence planning.');
 includes(fileRecurrenceBody, "task.checkbox === 'done'", 'An already completed File Task cannot materialize another successor during an unrelated edit.');

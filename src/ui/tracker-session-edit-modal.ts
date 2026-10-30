@@ -28,6 +28,7 @@ export interface TrackerSessionTaskNoteOptions {
 
 export interface TrackerSessionEditModalOptions {
 	title: string;
+	onClosed?: () => void;
 	contextTitle?: string;
 	contextMeta?: string[];
 	initialStart?: string;
@@ -421,6 +422,7 @@ export class TrackerSessionEditModal extends Modal {
 		this.setModalActionsDisabled = null;
 		cleanupOperonHoverTooltips(this.contentEl);
 		this.contentEl.empty();
+		this.options.onClosed?.();
 	}
 
 	private closeOwnedTaskNotePopover(): Promise<boolean> {

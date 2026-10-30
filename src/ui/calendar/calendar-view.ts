@@ -769,6 +769,7 @@ interface MobileTimeGridScrollPreserveOptions {
 }
 
 export interface CalendarViewCallbacks {
+	getRepeatSkipDates?: (seriesId: string) => string[];
 	getFilePropertyContext?: () => FilePropertyQueryContext;
 	getExternalCalendarItems?: (rangeStart: string, rangeEnd: string, presetId?: string, showExternalCalendarsOverride?: boolean) => CalendarItem[];
 	getTrackedSessions?: (rangeStart: string, rangeEnd: string) => TrackerSession[];
@@ -1249,6 +1250,7 @@ export class CalendarView extends ItemView {
 			context.settings.priorities,
 			this.getPinnedCache(),
 			{
+				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -1635,6 +1637,7 @@ export class CalendarView extends ItemView {
 				settings.priorities,
 				this.getPinnedCache(),
 				{
+					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -1736,6 +1739,7 @@ export class CalendarView extends ItemView {
 				settings.priorities,
 				this.getPinnedCache(),
 				{
+					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -2082,6 +2086,7 @@ export class CalendarView extends ItemView {
 			settings.priorities,
 			this.getPinnedCache(),
 			{
+				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -2479,6 +2484,7 @@ export class CalendarView extends ItemView {
 			settings.priorities,
 			this.getPinnedCache(),
 			{
+				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),

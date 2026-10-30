@@ -24,7 +24,7 @@ import {
 	projectPlainCheckboxEditorValue,
 	unprojectPlainCheckboxEditorValue,
 } from './plain-checkbox-editor-buffer';
-import { createFloatingPanel, type FloatingPanelCloseReason } from './field-pickers/common';
+import { createFloatingPanel, snapshotFloatingRectAnchor, type FloatingPanelCloseReason } from './field-pickers/common';
 import {
 	PLAIN_CHECKBOX_POPOVER_EDITOR_CLASS,
 	PLAIN_CHECKBOX_POPOVER_EDITOR_HOST_CLASS,
@@ -141,6 +141,7 @@ export async function showPlainCheckboxPopover(
 	const scope = resolvePlainCheckboxScope(options.task);
 	const sessionKey = resolvePlainCheckboxPopoverSessionKey(file, scope);
 	const anchorEl = asHTMLElement(anchor);
+	const taskEditorHost = asHTMLElement(anchorEl?.closest('.operon-task-editor-modal-container, .operon-task-workspace') ?? null, anchorEl);
 	const anchorDocument = anchorEl?.ownerDocument ?? getActiveDocument();
 	const reuseExistingSession = (): boolean => {
 		const existingSession = activePlainCheckboxPopovers.get(sessionKey);
@@ -151,7 +152,13 @@ export async function showPlainCheckboxPopover(
 		}
 		existingSession.adoptGuard(options.canCommit);
 		existingSession.addSaveListener(options.onSaved, options.saveListenerSignal);
-		if (options.followAnchor) reanchorFloatingPanel(existingSession.panel, anchor);
+		if (taskEditorHost && existingSession.panel.parentElement !== taskEditorHost) {
+			taskEditorHost.appendChild(existingSession.panel);
+			existingSession.panel.setCssProps({ position: 'fixed' });
+		}
+		if (options.followAnchor || (taskEditorHost && anchorEl)) {
+			reanchorFloatingPanel(existingSession.panel, options.followAnchor || !anchorEl ? anchor : snapshotFloatingRectAnchor(anchorEl));
+		}
 		existingSession.bringToFront();
 		options.onDispose?.();
 		return true;
@@ -212,8 +219,12 @@ export async function showPlainCheckboxPopover(
 		return false;
 	};
 	const anchorRect: DOMRect = anchorEl?.getBoundingClientRect() ?? anchor as DOMRect;
+	// Stay inside the modal/workspace focus scope, outside its clipped/transformed content.
+	// The full-window container preserves the viewport coordinates used for dragging.
+	const floatingAnchor = options.followAnchor ? anchor
+		: taskEditorHost && anchorEl ? snapshotFloatingRectAnchor(anchorEl) : anchorRect;
 	const { panel, close } = createFloatingPanel(
-		options.followAnchor ? anchor : anchorRect,
+		floatingAnchor,
 		`operon-floating-panel ${PLAIN_CHECKBOX_POPOVER_PANEL_CLASS}`,
 		() => {
 			menuLayer?.close();
@@ -233,6 +244,9 @@ export async function showPlainCheckboxPopover(
 			repositionOnPanelResize: options.followAnchor === true,
 			repositionOnScroll: options.followAnchor === true,
 			shouldClose: shouldCloseFromFloatingPanel,
+			floatingHost: taskEditorHost ?? undefined,
+			floatingScrollHost: taskEditorHost ? getOwnerWindow(taskEditorHost) : undefined,
+			constrainToFloatingHost: false,
 			outsideClickExclusions: () => menuLayer?.elements() ?? [],
 			shouldHandleEscape: () => !menuLayer?.isOpen(),
 		},

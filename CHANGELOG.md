@@ -7,7 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Overdue and Today task lists** to the Status Dock, using Task Finder scopes and appearing only when matching tasks exist. Lists show up to ten complete cards, with the nearest dates and times closest to the Dock, and stay open until dismissed. Hover to start or stop tracking; configure task actions under **Context Menu → Task Lists → Status Dock**.
+
+- Added **Task Occurrence Date** as a filter condition, sorting option, and Table column to help find missed recurring tasks by their stored occurrence dates. Table cells use the repeat icon and open the recurrence rule picker when clicked. **Repeat reference date** remains available separately.
+
+- **Kanban presets** can group columns and swimlanes by independent properties, including custom and native vault fields. Choose specific values in your preferred order or show all values, with unique task totals even when list values place a task in several cells.
+
+- Added a **last-session card** above the Status Dock when a time session is recorded. Click its duration to edit the session or its task name to follow your Dock opening preference. The ten-second timeout pauses during interaction. Session and task-list cards share a fixed width, shortening names only when they exceed the available space.
+
+### Improved
+
+- Filter sorting now includes **Repeat reference date**, so recurring tasks can be ordered by their reference dates in ascending or descending order.
+
+- **Kanban preset settings** separate scope, columns, and swimlanes, show scoped and board task totals, and offer **No swimlanes** without losing the previous selection. Consistent dropdowns provide fast property selection and value usage counts, including known values for planning empty groups. Unsupported saved configurations remain protected from incomplete edits.
+
+- Large **Kanban boards** render only nearby cells while preserving each visited cell’s scroll position and active editing or drag operations; scrolling over an empty cell or past its contents continues through the board.
+
+- **Kanban cell actions** apply destination fields together when moving, placing, or creating a task. Moving into a list group adds its value while preserving existing memberships.
+
+- Hid zero counts in empty **Kanban cells** to reduce visual clutter while preserving row, column, and board totals.
+- **Task Creator** keeps icons for fields with values visible on desktop, making selected properties easier to review while empty fields retain their hover behavior.
+
+### Changed
+
+- **Repeat chips** now display **Task Occurrence Date** in your chosen date format, with the rule in a **Recurrence Rule** tooltip and “No occurrence date” when no date is stored. Chip and Table occurrence-date icons use the same overdue and today colors as Scheduled dates.
+
+- **Kanban Board layout** is now preset-specific: column widths range from 250 to 800 px and cell heights from 250 to 750 px, starting at 325 × 450 px when no dimensions are saved. Floating **−/+ controls** adjust and save the active preset’s dimensions while preserving scroll position and keyboard focus. Classic boards continue to fill the available height.
+
+- **Status Dock play/stop** now starts and stops time tracking without automatically opening the FlowTime panel.
+
+### Fixed
+
+- Fixed **Task Editor checkbox popovers** not accepting text input, while preserving dragging and unsaved drafts.
+
+- Fixed inline tasks revealing raw metadata when opening **Notes or chip pickers** in Live Preview, while preserving intentional source editing.
+
+- Fixed custom **Text and List** pickers in **Task Creator and Task Editor** missing existing values. Suggestions now include inline and file property values from the shared pool while preserving list members and value types.
+
+- Fixed **Mark as done** incorrectly reporting that a File Task had changed elsewhere when used from a context menu. Recurring File Tasks now complete and create their next occurrence while still protecting against real source changes and duplicate successors.
+
 ### Validation
+
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **56** picker/popover scenarios, **157** note checks, and **5,268/5,268** local regression tests.
 
 ## [4.3.0] - 2026-10-26
 

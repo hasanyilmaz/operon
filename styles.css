@@ -3085,6 +3085,27 @@ body .operon-filter-condition-picker-panel button.operon-filter-condition-picker
 	line-height: 1.4;
 }
 
+body .operon-kanban-value-picker-panel button.operon-kanban-value-picker-item {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	text-align: left;
+}
+
+.operon-kanban-value-picker-item .operon-searchable-option-picker-item-label {
+	flex: 1;
+	min-width: 0;
+	text-align: left;
+}
+
+.operon-kanban-value-picker-item .operon-searchable-option-picker-item-trailing {
+	flex-shrink: 0;
+	margin-inline-start: auto;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-muted);
+}
+
 .operon-searchable-option-picker-item-icon {
 	display: inline-flex;
 	align-items: center;
@@ -7538,7 +7559,7 @@ body .modal.operon-task-finder-modal textarea.operon-task-finder-search:focus-vi
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
-	overscroll-behavior-y: contain;
+	overscroll-behavior: contain;
 	scroll-padding-block: 4px;
 }
 
@@ -19615,6 +19636,13 @@ body .operon-calendar-root .operon-calendar-toolbar .operon-calendar-quick-actio
 	max-width: 100%;
 }
 
+.operon-kanban-preset-quick-settings-modal .setting-item-control button.dropdown {
+	text-align: start;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .operon-calendar-preset-quick-settings-modal .setting-item-control input,
 .operon-calendar-preset-quick-settings-modal .setting-item-control select,
 .operon-calendar-preset-quick-settings-modal .setting-item-control .dropdown,
@@ -20025,6 +20053,26 @@ body .modal .operon-preset-favorite-button:is(.is-active, [aria-pressed="true"])
 		justify-content: flex-start;
 		width: 100%;
 	}
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-task-counts {
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.operon-kanban-task-count {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.operon-kanban-task-count-label {
+	color: var(--text-muted);
+}
+
+.operon-kanban-task-count-value {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 
 .operon-calendar-toolbar.is-compact {
@@ -24481,6 +24529,46 @@ button.operon-kanban-toolbar-settings-button {
 	position: relative;
 }
 
+.operon-kanban-cell-height-controls {
+	position: absolute;
+	bottom: 83px;
+	right: 15px;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.operon-kanban-cell-width-controls {
+	position: absolute;
+	bottom: 23px;
+	right: 68px;
+	z-index: 10;
+	display: flex;
+	gap: 8px;
+}
+
+button.operon-kanban-cell-size-button {
+	background: var(--operon-kanban-surface-main);
+	border-radius: 8px;
+}
+
+button.operon-kanban-cell-size-button:hover:not(:disabled):not([aria-disabled='true']),
+button.operon-kanban-cell-size-button:focus-visible {
+	background: var(--operon-kanban-surface-hover);
+}
+
+button.operon-kanban-cell-size-button:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+button.operon-kanban-cell-size-button:disabled,
+button.operon-kanban-cell-size-button[aria-disabled='true'] {
+	cursor: default;
+	opacity: 0.45;
+}
+
 .operon-kanban-corner-cell,
 .operon-kanban-lane-label,
 .operon-kanban-column-header,
@@ -24622,8 +24710,9 @@ button.operon-kanban-column-count-button:focus-visible {
 }
 
 .operon-kanban-row {
-	min-height: 118px;
-	height: max-content;
+	min-height: 0;
+	height: var(--operon-kanban-cell-height, 450px);
+	grid-template-rows: minmax(0, 1fr);
 }
 
 .operon-kanban-grid-content {
@@ -24644,33 +24733,28 @@ button.operon-kanban-column-count-button:focus-visible {
 	scrollbar-gutter: stable;
 }
 
-/* A desktop board without lanes uses the available pane height, not a card count. */
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) {
-	--operon-kanban-cell-height-limit: none;
-	--operon-kanban-cell-min-height: 0px;
-}
-
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-grid-content {
+/* Classic boards fill the available pane height on desktop and mobile. */
+.operon-kanban-board.is-no-swimlanes .operon-kanban-grid-content {
 	height: 100%;
 	min-height: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-header-row {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-header-row {
 	flex-shrink: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-row {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-row {
+	height: auto;
 	flex: 1 1 0;
 	min-height: 0;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-cell {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-cell {
 	min-height: 0;
 	overflow-y: auto;
-	overscroll-behavior: contain;
 }
 
-.operon-kanban-board.is-no-swimlanes:not(.is-mobile-layout) .operon-kanban-card {
+.operon-kanban-board.is-no-swimlanes .operon-kanban-card {
 	flex-shrink: 0;
 }
 
@@ -24807,10 +24891,13 @@ body.operon-kanban-touch-drag-active {
 }
 
 .operon-kanban-row.is-collapsed {
+	height: 54px;
 	min-height: 54px;
 }
 
 .operon-kanban-lane-label {
+	min-height: 0;
+	overflow: hidden;
 	position: sticky;
 	left: 0;
 	z-index: 6;
@@ -24933,11 +25020,15 @@ button.operon-kanban-lane-count-button:focus-visible {
 }
 
 .operon-kanban-cell {
+	overflow-y: auto;
+	/* At a cell edge (including empty cells), continue scrolling the board. */
+	overscroll-behavior: auto;
+	scrollbar-gutter: stable;
 	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	min-height: 118px;
+	min-height: 0;
 	height: 100%;
 	padding: 10px;
 	position: relative;
@@ -24946,7 +25037,9 @@ button.operon-kanban-lane-count-button:focus-visible {
 }
 
 .operon-kanban-cell.is-collapsed {
-	min-height: 54px;
+	overflow: hidden;
+	scrollbar-gutter: auto;
+	min-height: 0;
 	align-items: center;
 	justify-content: center;
 	padding: 0;
@@ -25157,8 +25250,11 @@ button.operon-kanban-lane-count-button:focus-visible {
 
 .operon-kanban-cell.is-scroll-limited {
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-gutter: stable;
+}
+
+.operon-kanban-cell > .operon-kanban-card {
+	flex-shrink: 0;
 }
 
 .operon-kanban-lazy-sentinel {
@@ -27002,7 +27098,11 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 }
 
 .operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-setting {
-	margin-inline: 8px;
+	margin-inline: 0;
+}
+
+.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-setting .setting-item-control {
+	justify-content: flex-start;
 }
 
 .operon-kanban-sort-mode-select {
@@ -27013,8 +27113,9 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-column-sort
 }
 
 body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-select {
-	width: 160px;
-	max-width: 160px;
+	flex: 1 1 100%;
+	width: 100%;
+	max-width: 280px;
 }
 
 .operon-kanban-sort-row {
@@ -36643,15 +36744,15 @@ body:not(.is-mobile) .operon-task-creator-tool.is-active::after {
 body:not(.is-mobile) .operon-task-creator-tool.is-property-warning::after {
 	background: var(--text-error);
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active) {
 	border-color: transparent;
 	background: transparent;
 	box-shadow: none;
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool .operon-task-creator-tool-icon {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active) .operon-task-creator-tool-icon {
 	opacity: 0;
 }
-body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool::after {
+body:not(.is-mobile) .operon-task-creator:not(.has-active-creator-toolbar.has-active-creator-toolbar):not(.has-open-creator-picker):not(.has-open-creator-picker *) .operon-task-creator-tool:not(.is-active)::after {
 	opacity: 1;
 }
 
@@ -37036,6 +37137,8 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-status-dock-slot[hidden], .operon-status-dock [hidden] { display: none; }
 .operon-status-dock {
+	--operon-status-dock-card-width: calc(40ch + 67px);
+	position: relative;
 	display: flex; align-items: center; gap: 5px; max-width: 100%; width: max-content;
 	min-height: 44px; height: 44px; padding: 7px 9px;
 	border: 1px solid var(--background-modifier-border); border-radius: 8px;
@@ -37118,3 +37221,112 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-leading-icon { width: 28px; height: 28px; }
 .operon-status-dock-calendar-task > .operon-status-dock-reading > .operon-status-dock-copy { height: 28px; }
 .operon-status-dock .operon-status-dock-calendar-task > .operon-status-dock-reading:hover { box-shadow: none; }
+
+/* The last committed session follows the window-owned Status Dock. */
+.operon-status-dock-session-card {
+ position: absolute; bottom: auto; left: -1px;
+ display: inline-flex; align-items: center; gap: 7px; width: min(var(--operon-status-dock-card-width), calc(100vw - 24px - var(--operon-status-dock-card-gutter, 0px)));
+ max-width: calc(100vw - 24px); min-height: 44px; padding: 7px 9px;
+ border: 1px solid var(--background-modifier-border); border-radius: 8px;
+ background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s);
+ box-sizing: border-box; pointer-events: auto;
+}
+.operon-status-dock-session-card[hidden] { display: none; }
+.operon-status-dock-session-card .operon-status-dock-session-icon { flex: 0 0 28px; }
+.operon-status-dock-session-card .operon-status-dock-session-icon svg { width: 16px; height: 16px; }
+.operon-status-dock-session-card button.operon-status-dock-name {
+ flex: 1 1 0; min-width: 0; max-width: none;
+ overflow: hidden; text-overflow: ellipsis; text-align: left; color: var(--text-muted);
+}
+
+.operon-status-dock-session-card button.operon-status-dock-time,
+.operon-status-dock-session-card button.operon-status-dock-name {
+ display: block; height: 28px; min-height: 28px; padding: 2px 6px;
+ box-sizing: border-box; line-height: 24px;
+}
+
+/* The virtual canvas keeps the complete scroll extent; only nearby tracks own DOM. */
+.operon-kanban-grid-content.is-virtualized {
+	min-width: 0;
+	position: relative;
+}
+.operon-kanban-grid-content.is-virtualized > .operon-kanban-header-row {
+	display: block;
+	min-width: 0;
+	width: 100%;
+}
+.operon-kanban-grid-content.is-virtualized .operon-kanban-column-header {
+	position: absolute;
+	top: 0;
+	height: 100%;
+	box-sizing: border-box;
+}
+.operon-kanban-grid-content.is-virtualized .operon-kanban-corner-cell,
+.operon-kanban-grid-content.is-virtualized .operon-kanban-lane-label {
+	width: var(--operon-kanban-active-lane-column-width, var(--operon-kanban-lane-column-width, 96px));
+	height: 100%;
+}
+.operon-kanban-virtual-body {
+	position: relative;
+	width: 100%;
+	flex: 0 0 auto;
+}
+.operon-kanban-virtual-body > .operon-kanban-row {
+	position: absolute;
+	left: 0;
+	width: 100%;
+	min-width: 0;
+	display: block;
+}
+.operon-kanban-virtual-body > .operon-kanban-row > .operon-kanban-cell {
+	position: absolute;
+	top: 0;
+}
+
+.operon-kanban-axis-measure {
+	position: absolute;
+	visibility: hidden;
+	pointer-events: none;
+	left: 0;
+	top: 0;
+	width: 1px;
+	height: 0;
+	overflow: hidden;
+}
+.operon-kanban-axis-measure > .operon-kanban-column-header {
+	box-sizing: border-box;
+}
+
+/* Scope cards share the recent-session surface; the nearest task stays beside the Dock. */
+.operon-status-dock-scopes { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.operon-status-dock-scopes .is-active { color: var(--interactive-accent); }
+.operon-status-dock-task-list {
+ position: absolute; left: -1px; width: calc(var(--operon-status-dock-card-width) + var(--operon-status-dock-card-gutter, 0px)); max-width: calc(100vw - 24px);
+ display: flex; flex-direction: column-reverse; gap: 8px;
+ overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 2px 0;
+ background: transparent; box-shadow: none; box-sizing: border-box;
+ scroll-snap-type: y mandatory; scroll-padding-block: 2px; scrollbar-gutter: stable;
+ pointer-events: auto;
+}
+.operon-status-dock-task-list.is-below { flex-direction: column; }
+.operon-status-dock-task-list > .operon-status-dock-scope-card {
+ position: relative; inset: auto; flex: 0 0 auto; width: 100%; max-width: 100%;
+ box-shadow: none; scroll-snap-align: end;
+}
+.operon-status-dock-task-list.is-below > .operon-status-dock-scope-card { scroll-snap-align: start; }
+
+/* Scope list timer actions follow the pinned-task hover pattern. */
+.operon-status-dock .operon-status-dock-scope-timer {
+ position: absolute; top: 7px; right: 9px; width: 28px; min-width: 28px;
+ border: 1px solid transparent; border-radius: 8px;
+ background: transparent; color: var(--text-muted);
+ opacity: 0; pointer-events: none;
+}
+.operon-status-dock-scope-timer svg { width: 16px; height: 16px; }
+.operon-status-dock .operon-status-dock-scope-timer.is-active { color: var(--text-error); }
+.operon-status-dock-scope-card:is(:hover, :focus-within) > .operon-status-dock-scope-timer {
+ opacity: 1; pointer-events: auto;
+}
+.operon-status-dock-scope-card:is(:hover, :focus-within) > button.operon-status-dock-name { padding-right: 40px; }
+
+.operon-status-dock .operon-status-dock-scope-timer:is(:hover, :focus-visible):not(:disabled) { border-color: var(--background-modifier-border); }

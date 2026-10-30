@@ -1,3 +1,4 @@
+import { getTaskOccurrenceDate, type RepeatSkipDateResolver } from './task-occurrence-date';
 import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from './time-scope-values';
 /**
  * Filter evaluator for Operon filter sets.
@@ -76,6 +77,8 @@ export interface GroupedFilterResults {
 }
 
 interface EvalContext {
+	getRepeatSkipDates?: RepeatSkipDateResolver;
+	occurrenceDates: WeakMap<IndexedTask, string>;
 	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
 	timeScopeTasks: readonly IndexedTask[];
 	today: string;
@@ -97,6 +100,7 @@ interface EvalContext {
 }
 
 export interface FilterEvaluationOptions {
+	getRepeatSkipDates?: RepeatSkipDateResolver;
 	/** Complete hierarchy, including descendants excluded from the input task scope. */
 	timeScopeTasks?: readonly IndexedTask[];
 	/** One local calendar-day snapshot for deterministic date evaluation. */
@@ -109,6 +113,7 @@ export interface FilterEvaluationOptions {
 }
 
 export interface TaskSortContext {
+	getRepeatSkipDates?: RepeatSkipDateResolver;
 	priorities?: { label: string }[];
 	pipelines?: readonly Pipeline[];
 	isTaskPinned?: (taskId: string) => boolean;
@@ -381,7 +386,7 @@ export function evaluateFilterSetWithTimeScope(
 
 function sortScopedFilterTasks(tasks: IndexedTask[], sorts: FilterSortSpec[], context: EvalContext): IndexedTask[] {
 	const evaluation = context.trackedOnEvaluation;
-	if (!evaluation) return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
+	if (!evaluation) return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext, context.getRepeatSkipDates);
 	const originals = new Map<IndexedTask, IndexedTask>();
 	const projected = tasks.map(task => {
 		const time = evaluation.evaluate(task).time;
@@ -389,7 +394,7 @@ function sortScopedFilterTasks(tasks: IndexedTask[], sorts: FilterSortSpec[], co
 		originals.set(projection, task);
 		return projection;
 	});
-	return sortTasks(projected, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext)
+	return sortTasks(projected, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext, context.getRepeatSkipDates)
 		.map(task => originals.get(task) ?? task);
 }
 
@@ -404,7 +409,7 @@ export function sortFilterTasks(
 ): IndexedTask[] {
 	const sorts = getFilterSortSpecs(filterSet);
 	const context = createEvalContext(tasks, priorities, pinnedCache, pipelines, { sorts }, options);
-	return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext);
+	return sortTasks(tasks, sorts, context.priorityRankMap, context.workflowStatusOrder, context.pinnedCache, context.projectSerialScopeResolver, context.filePropertyContext, context.getRepeatSkipDates);
 }
 
 /** Filter tasks using filter-set matching only, preserving the original input order. */
@@ -470,6 +475,7 @@ export function groupFilterTasks(
 		context.pinnedCache,
 		context.projectSerialScopeResolver,
 		context.filePropertyContext,
+		context.getRepeatSkipDates,
 	);
 	return groupSortedFilterTasks(filterSet, sortedTasks, context);
 }
@@ -740,7 +746,9 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 		);
 	}
 	const isDescriptionField = cond.field === 'description';
-	const rawFieldValue = isDescriptionField ? task.description : task.fieldValues[cond.field];
+	const rawFieldValue = cond.field === 'taskOccurrenceDate'
+		? readTaskOccurrenceDate(task, context.occurrenceDates)
+		: isDescriptionField ? task.description : task.fieldValues[cond.field];
 	const hasProperty = isDescriptionField
 		? true
 		: Object.prototype.hasOwnProperty.call(task.fieldValues, cond.field) === true;
@@ -1334,6 +1342,7 @@ function sortTasks(
 	pinnedCache?: PinnedCache | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 	filePropertyContext?: FilePropertyQueryContext | null,
+	getRepeatSkipDates?: RepeatSkipDateResolver,
 ): IndexedTask[] {
 	return sortTasksBySpecs(tasks, sorts, {
 		priorityRankMap,
@@ -1341,6 +1350,7 @@ function sortTasks(
 		isTaskPinned: pinnedCache ? taskId => pinnedCache.isPinned(taskId) : undefined,
 		projectSerialScopeResolver,
 		filePropertyContext,
+		getRepeatSkipDates,
 	});
 }
 
@@ -1360,10 +1370,11 @@ export function sortTasksBySpecs(
 		(context.filePropertyContext?.fields ?? []).map(field => [field.key, field] as const),
 	);
 	const filePropertyStateCache = new WeakMap<IndexedTask, Map<string, FilePropertyValueState>>();
+	const occurrenceDates = new WeakMap<IndexedTask, string>();
 
 	return [...tasks].sort((a, b) => {
 		for (const sort of sorts) {
-			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver, context.filePropertyContext, filePropertyFields, filePropertyStateCache);
+			const cmp = compareTaskBySortSpec(a, b, sort, priorityRankMap, workflowStatusOrder, context.isTaskPinned, context.projectSerialScopeResolver, context.filePropertyContext, filePropertyFields, filePropertyStateCache, occurrenceDates);
 			if (cmp !== 0) return cmp;
 		}
 		return 0;
@@ -1401,6 +1412,7 @@ function compareTaskBySortSpec(
 	filePropertyContext?: FilePropertyQueryContext | null,
 	filePropertyFields?: ReadonlyMap<string, FilePropertyFieldDescriptor>,
 	filePropertyStateCache?: WeakMap<IndexedTask, Map<string, FilePropertyValueState>>,
+	occurrenceDates = new WeakMap<IndexedTask, string>(),
 ): number {
 	const asc = sort.order !== 'desc';
 	if (sort.field.startsWith('file.property:')) {
@@ -1419,7 +1431,9 @@ function compareTaskBySortSpec(
 	}
 	let cmp = 0;
 
-	if (sort.field === 'checkbox') {
+	if (sort.field === 'taskOccurrenceDate') {
+		cmp = readTaskOccurrenceDate(a, occurrenceDates).localeCompare(readTaskOccurrenceDate(b, occurrenceDates));
+	} else if (sort.field === 'checkbox') {
 		const order: Record<string, number> = { open: 0, done: 1, cancelled: 2 };
 		cmp = (order[a.checkbox] ?? 0) - (order[b.checkbox] ?? 0);
 	} else if (sort.field === 'description') {
@@ -1669,6 +1683,8 @@ function createEvalContext(
 		? [...(pipelines ?? options?.pipelines ?? [])]
 		: [];
 	return {
+		getRepeatSkipDates: options?.getRepeatSkipDates,
+		occurrenceDates: new WeakMap(),
 		today: options?.today ?? localToday(),
 		trackedOnEvaluation: undefined,
 		timeScopeTasks: options?.timeScopeTasks ?? options?.projectSerialScopeTasks ?? options?.dependencyTasks ?? tasks,
@@ -1719,4 +1735,13 @@ function buildPriorityRankMap(priorities?: { label: string }[]): Record<string, 
 		priorityRankMap[normalizePriorityValue(priority.label)] = index;
 	});
 	return priorityRankMap;
+}
+
+function readTaskOccurrenceDate(task: IndexedTask, cache: WeakMap<IndexedTask, string>): string {
+	let date = cache.get(task);
+	if (date === undefined) {
+		date = getTaskOccurrenceDate(task.fieldValues);
+		cache.set(task, date);
+	}
+	return date;
 }

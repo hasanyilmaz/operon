@@ -118,6 +118,7 @@ export function queryTableRows(options: {
 	pinnedCache?: PinnedCache | null;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	filePropertyContext?: TableFilePropertyQueryContext;
+	getRepeatSkipDates?: (seriesId: string) => readonly string[];
 	settings?: TableQuerySettings;
 	searchQuery?: string | null;
 	searchMatcher?: (task: IndexedTask, normalizedQuery: string) => boolean;
@@ -145,6 +146,7 @@ export function queryTableRows(options: {
 			dependencyTasks: tasks,
 			pipelines: options.settings?.pipelines,
 			filePropertyContext: options.filePropertyContext,
+			getRepeatSkipDates: options.getRepeatSkipDates,
 		});
 	const scopedAt = enginePerfNow();
 	const allowedTaskIds = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
@@ -161,7 +163,7 @@ export function queryTableRows(options: {
 		? scopeFilteredTasks.filter(task => options.searchMatcher?.(task, normalizedSearchQuery) ?? true)
 		: scopeFilteredTasks;
 	const searchedAt = enginePerfNow();
-	const valueResolver = createTableValueResolver(tasks, options.settings, { ...options.valueResolverOptions, countdownTarget: preset.columns.find(column => column.key === '__countdown')?.countdownTarget });
+	const valueResolver = createTableValueResolver(tasks, options.settings, { ...options.valueResolverOptions, getRepeatSkipDates: options.getRepeatSkipDates, countdownTarget: preset.columns.find(column => column.key === '__countdown')?.countdownTarget });
 	const priorityRank = buildPriorityRankMap(priorities);
 	const workflowStatusOrder = buildWorkflowStatusOrderIndex(options.settings?.pipelines ?? []);
 	const resolverReadyAt = enginePerfNow();

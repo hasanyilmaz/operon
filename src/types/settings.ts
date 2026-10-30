@@ -1,3 +1,4 @@
+import { cloneKanbanAxesPayload, decodeKanbanAxes, projectKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { normalizeLightboxSizes, type LightboxSizes } from '../core/lightbox-size';
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
@@ -54,7 +55,7 @@ import {
 	normalizeKanbanCustomFieldReference,
 	normalizeBuiltInKanbanPreset,
 	normalizeKanbanCardImageSource,
-	reconcileKanbanColumnSortOverrides,
+
 } from './kanban';
 import {
 	DEFAULT_TABLE_EMBED_DEFAULT_WIDTH_PERCENT,
@@ -459,8 +460,12 @@ const CONTEXTUAL_MENU_ACTION_ID_SET = new Set<ContextualMenuActionId>(
 	CONFIGURABLE_CONTEXTUAL_MENU_ACTIONS.map(action => action.id),
 );
 const CONTEXTUAL_MENU_SURFACE_ID_SET = new Set<ContextualMenuSurface>(CONTEXTUAL_MENU_SURFACES);
-export const KANBAN_EXPANDED_COLUMN_WIDTH_MIN = 220;
-export const KANBAN_EXPANDED_COLUMN_WIDTH_MAX = 520;
+export const KANBAN_EXPANDED_COLUMN_WIDTH_MIN = 250;
+export const KANBAN_EXPANDED_COLUMN_WIDTH_MAX = 500;
+export const KANBAN_COLUMN_WIDTH_OPTIONS = [250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 550, 600, 700, 800] as const;
+export const KANBAN_CELL_HEIGHT_OPTIONS = [250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750] as const;
+export type KanbanCellHeightPx = typeof KANBAN_CELL_HEIGHT_OPTIONS[number];
+
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MIN = 1;
 export const KANBAN_MAX_VISIBLE_TASKS_PER_CELL_MAX = 30;
 export const KANBAN_MOBILE_LAYOUT_MAX_WIDTH_MIN = 600;
@@ -1980,6 +1985,8 @@ export interface OperonSettings extends TaskCardSettings {
 	kanbanPresets: KanbanPreset[];
 	kanbanDefaultPresetId: string | null;
 	kanbanExpandedColumnWidthPx: number;
+	kanbanCellHeightPx: KanbanCellHeightPx;
+	/** Legacy compatibility only; not used by the Kanban renderer. */
 	kanbanMaxVisibleTasksPerCell: number;
 	kanbanShowHoverAddButton: boolean;
 	kanbanTaskShowNotesPreview: boolean;
@@ -2524,7 +2531,8 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 
 	kanbanPresets: cloneDefaultKanbanPresets(),
 	kanbanDefaultPresetId: DEFAULT_KANBAN_DEFAULT_PRESET_ID,
-	kanbanExpandedColumnWidthPx: 320,
+	kanbanExpandedColumnWidthPx: 325,
+	kanbanCellHeightPx: 450,
 	kanbanMaxVisibleTasksPerCell: 7,
 	kanbanShowHoverAddButton: true,
 	kanbanTaskShowNotesPreview: false,
@@ -3054,7 +3062,9 @@ function normalizeKanbanPresetDefinition(raw: unknown): KanbanPreset | null {
 
 	return {
 		id: normalizeOptionalString(src.id) ?? createKanbanPresetId(),
+		...(src.axes === undefined ? {} : { axes: (() => { const result = decodeKanbanAxes(src.axes); return result.ok ? result.axes : cloneKanbanAxesPayload(src.axes); })() }),
 		name,
+		...resolveKanbanPresetLayout(src),
 		pipelineId: normalizeOptionalString(src.pipelineId) ?? null,
 		filterSetId: normalizeOptionalString(src.filterSetId) ?? null,
 		swimlaneBy,
@@ -3255,14 +3265,20 @@ function normalizeContextualMenuMobileAutoHideMs(raw: unknown): number {
 	return Math.max(1000, Math.min(30000, Math.round(raw)));
 }
 
-function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
+export function normalizeKanbanExpandedColumnWidthPx(raw: unknown): number {
 	if (typeof raw !== 'number' || !Number.isFinite(raw)) {
 		return DEFAULT_SETTINGS.kanbanExpandedColumnWidthPx;
 	}
 	return Math.max(
 		KANBAN_EXPANDED_COLUMN_WIDTH_MIN,
-		Math.min(KANBAN_EXPANDED_COLUMN_WIDTH_MAX, Math.round(raw)),
+		Math.min(KANBAN_EXPANDED_COLUMN_WIDTH_MAX, Math.round(raw / 25) * 25),
 	);
+}
+
+export function normalizeKanbanCellHeightPx(raw: unknown): KanbanCellHeightPx {
+	return typeof raw === 'number' && KANBAN_CELL_HEIGHT_OPTIONS.includes(raw as KanbanCellHeightPx)
+		? raw as KanbanCellHeightPx
+		: DEFAULT_SETTINGS.kanbanCellHeightPx;
 }
 
 function normalizeKanbanMaxVisibleTasksPerCell(raw: unknown): number {
@@ -3575,6 +3591,7 @@ export function buildDefaultContextualMenuSurfaceActionMatrix(): ContextualMenuS
 		upcomingTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		trackerTask: [...DEFAULT_CONTEXTUAL_MENU_TRACKER_ACTIONS],
 		flowTimeTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
+		statusDock: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		filterTask: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
 		tableTask: [...DEFAULT_CONTEXTUAL_MENU_WITH_CANCEL_ACTIONS],
 		taskCard: [...DEFAULT_CONTEXTUAL_MENU_COMMON_SURFACE_ACTIONS],
@@ -3793,7 +3810,7 @@ function normalizeFilterFieldType(field: string, rawType: unknown): FilterFieldT
 	if (field === 'projectTree') return 'projectTree';
 	if (field === 'folders') return 'folders';
 	if (field === 'projectSerialScope') return 'projectSerialScope';
-	if (field === 'happensOn' || field === 'trackedOn') return 'date';
+	if (field === 'happensOn' || field === 'trackedOn' || field === 'taskOccurrenceDate') return 'date';
 	return 'text';
 }
 
@@ -4711,6 +4728,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.calendarMobileShowCompletedItems;
 	out.kanbanPresets = normalizeKanbanPresets(src.kanbanPresets);
 	out.kanbanExpandedColumnWidthPx = normalizeKanbanExpandedColumnWidthPx(src.kanbanExpandedColumnWidthPx);
+	out.kanbanCellHeightPx = normalizeKanbanCellHeightPx(src.kanbanCellHeightPx);
 	out.kanbanMaxVisibleTasksPerCell = normalizeKanbanMaxVisibleTasksPerCell(src.kanbanMaxVisibleTasksPerCell);
 	out.kanbanShowHoverAddButton = src.kanbanShowHoverAddButton !== false;
 	out.kanbanTaskShowNotesPreview = src.kanbanTaskShowNotesPreview === true;
@@ -4869,15 +4887,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		}
 	}
 	out.pipelines = normalizePipelineIds(out.pipelines);
-	for (const preset of out.kanbanPresets) {
-		const pipeline = out.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		const columnSortOverrides = reconcileKanbanColumnSortOverrides(
-			preset.columnSortOverrides,
-			pipeline?.statuses.map(status => status.id) ?? [],
-		);
-		if (columnSortOverrides.length > 0) preset.columnSortOverrides = columnSortOverrides;
-		else delete preset.columnSortOverrides;
-	}
+
 
 	if (!Array.isArray(src.priorities) || src.priorities.length === 0) {
 		out.priorities = cloneDefaultPriorities();
@@ -5007,6 +5017,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		out.keyMappings = dedupeKeyMappingsByCanonicalKey(out.keyMappings);
 	}
 	out.keyMappings = normalizeKeyMappingCollection(out.keyMappings);
+	out.kanbanPresets = out.kanbanPresets.map(preset => {
+		const projection = projectKanbanLegacyAxes(preset, out.keyMappings);
+		return projection.ok ? { ...preset, pipelineId: projection.pipelineId, swimlaneBy: projection.swimlaneBy } : preset;
+	});
 	out.keepInlineTasksWithParent = src.keepInlineTasksWithParent === true;
 	out.inheritPropertiesOnParentLink = src.inheritPropertiesOnParentLink === true;
 	out.childTaskInheritanceFields = normalizeChildTaskInheritanceFields(src.childTaskInheritanceFields, out.keyMappings);
@@ -5596,4 +5610,11 @@ export function resolveTaskDisplayIcon(
 	}
 
 	return getFallbackStateIcon(settings, checkbox);
+}
+
+export function resolveKanbanPresetLayout(preset: { columnWidthPx?: unknown; cellHeightPx?: unknown } | null | undefined): { columnWidthPx: number; cellHeightPx: KanbanCellHeightPx } {
+ return {
+  columnWidthPx: typeof preset?.columnWidthPx === 'number' && (KANBAN_COLUMN_WIDTH_OPTIONS as readonly number[]).includes(preset.columnWidthPx) ? preset.columnWidthPx : 325,
+  cellHeightPx: typeof preset?.cellHeightPx === 'number' && (KANBAN_CELL_HEIGHT_OPTIONS as readonly number[]).includes(preset.cellHeightPx) ? preset.cellHeightPx as KanbanCellHeightPx : 450,
+ };
 }

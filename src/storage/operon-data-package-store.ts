@@ -1,3 +1,4 @@
+import { assertKanbanAxesWritable } from '../core/kanban-axis-model';
 import { prepareInlinePropertyUpgradeBackup } from './inline-property-upgrade';
 import { isSupportedDataPackageSchema, OPERON_TYPED_PROPERTY_SCHEMA_VERSION } from './operon-data-package';
 import { prepareSettingsVersionBackup, SettingsBackupConflictError } from './settings-version-backup';
@@ -1515,6 +1516,11 @@ export class OperonDataPackageStore {
 		allowReloadRecovery = false,
 	): Promise<boolean> {
 		this.assertWritesAllowed(allowReloadRecovery);
+		assertKanbanAxesWritable(dataPackage.views.kanbanPresets.kanbanPresets);
+		if (typeof this.canonicalSource === 'string') {
+			const current = JSON.parse(this.canonicalSource) as OperonDataPackageV1;
+			if (Array.isArray(current.views?.kanbanPresets?.kanbanPresets)) assertKanbanAxesWritable(current.views.kanbanPresets.kanbanPresets);
+		}
 		if (!canCommit()) throw new Error('Settings operation cancelled');
 		const expected = this.canonicalSource;
 		if (!isStructurallyCompleteOperonDataPackageV1(dataPackage)) throw new Error('Invalid settings candidate');

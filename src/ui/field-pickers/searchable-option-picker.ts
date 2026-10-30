@@ -12,6 +12,7 @@ export interface SearchableOptionPickerItem {
 	value: string;
 	label: string;
 	description?: string;
+	trailingText?: string;
 	icon?: string | null;
 	iconColor?: string;
 	title?: string;
@@ -33,6 +34,7 @@ export interface SearchableOptionPickerOptions<TOption extends SearchableOptionP
 	getSearchText?: (option: TOption) => string;
 	/** Opt-in: existing pickers retain substring matching and unlimited rendering. */
 	fuzzySearch?: boolean;
+	preserveSearchOrder?: boolean;
 	pageSize?: number;
 	matchWidth?: number;
 	closeOnWindowResize?: boolean;
@@ -174,11 +176,12 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			const content = item.createSpan('operon-searchable-option-picker-item-content');
 			content.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
 			content.createSpan({ cls: 'operon-searchable-option-picker-item-description', text: match.description });
-		} else if (match.icon) {
+		} else if (match.icon || match.trailingText !== undefined) {
 			item.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
 		} else {
 			item.textContent = match.label || match.value;
 		}
+		if (match.trailingText !== undefined) item.createSpan({ cls: 'operon-searchable-option-picker-item-trailing', text: match.trailingText });
 
 		item.addEventListener('mouseenter', () => {
 			if (activeIndex === index) return;
@@ -223,7 +226,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 
 	const updateMatches = (query: string): void => {
 		const normalizedQuery = normalizeSearchableOptionQuery(query);
-		matches = filterSearchableOptions(options.options, normalizedQuery, option => getSearchableOptionSearchText(option, options), options.fuzzySearch);
+		matches = filterSearchableOptions(options.options, normalizedQuery, option => getSearchableOptionSearchText(option, options), options.fuzzySearch, options.preserveSearchOrder);
 		const selectedIndex = matches.findIndex(match => match.value === getCurrentValue());
 		activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
 		visibleCount = Math.max(pageSize, activeIndex + 1);
@@ -286,12 +289,12 @@ function getSearchableOptionSearchText<TOption extends SearchableOptionPickerIte
 }
 
 /** Stable ties retain the caller's destination priority. Searches always cover the full input. */
-export function filterSearchableOptions<T>(items: readonly T[], query: string, text: (item: T) => string, fuzzy = false): T[] {
+export function filterSearchableOptions<T>(items: readonly T[], query: string, text: (item: T) => string, fuzzy = false, preserveOrder = false): T[] {
 	if (!query) return [...items];
 	if (!fuzzy) return items.filter(item => text(item).toLowerCase().includes(query.toLowerCase()));
 	const search = prepareFuzzySearch(query);
 	return items.map((item, index) => ({ item, index, match: search(text(item)) }))
 		.filter(result => result.match !== null)
-		.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0) || a.index - b.index)
+		.sort((a, b) => (preserveOrder ? 0 : (b.match?.score ?? 0) - (a.match?.score ?? 0)) || a.index - b.index)
 		.map(result => result.item);
 }

@@ -9,14 +9,18 @@ import { resolveFlowTimeRenderedState } from '../systems/flow-time-optimistic';
 import type { ActiveTrackerState } from '../types/tracker';
 import { getNativeLightboxLeaves } from './native-lightbox-lifecycle';
 import { t } from '../core/i18n';
+import { StatusDockSessionCard, type StatusDockSessionActions } from './status-dock-session-card';
+import { StatusDockTaskList } from './status-dock-task-list';
+import { buildStatusDockTaskScopes, type StatusDockTaskScopes } from './status-dock-task-scope';
 import { StatusDockWidget, type StatusDockAlert, type StatusDockSnapshot } from './status-dock-widget';
 
 interface StatusDockDependencies {
+	toggleTaskTimer: (taskId: string, canCommit: () => boolean) => Promise<boolean>;
 	indexer: Pick<OperonIndexer, 'getTask' | 'getAllTasks' | 'getGeneration'>;
 	timeTracker: TimeTracker;
 	breakController: FlowTimeBreakController;
 	getSettings: () => OperonSettings;
-	openFlowTime: () => Promise<void>;
+	sessionActions?: Omit<StatusDockSessionActions, 'openTask'>;
 	openTask: (taskId: string, anchor: HTMLElement, behavior: TaskFinderResultBehavior) => Promise<void>;
 	pickTrackerTask: () => Promise<string | null>;
 	openConflicts: () => void;
@@ -25,6 +29,8 @@ interface StatusDockDependencies {
 }
 interface DockWindow {
 	widget: StatusDockWidget;
+	sessionCard?: StatusDockSessionCard;
+	taskList?: StatusDockTaskList;
 	host: HTMLElement | null;
 	leaf: WorkspaceLeaf | null;
 	dispose: () => void;
@@ -47,6 +53,9 @@ export class OperonStatusDock extends Component {
 	private refreshTimer: number | null = null;
 	private disposed = false;
 	private visible = true;
+	private scopeCacheKey = '';
+	private scopeCache: StatusDockTaskScopes = { overdue: [], today: [] };
+	private scopeTimer: number | null = null;
 	private action: Promise<void> | null = null;
 	private presentation: ((state: StatusDockSnapshot) => StatusDockSnapshot) | null = null;
 
@@ -61,6 +70,11 @@ export class OperonStatusDock extends Component {
 		const { workspace } = this.app;
 		this.register(this.upcoming.subscribe(() => this.renderWidgets()));
 		this.register(this.dependencies.timeTracker.subscribe(() => this.renderWidgets()));
+		const unsubscribeSessions = this.dependencies.timeTracker.subscribeSessionCreated?.(session => {
+			if (this.disposed || !this.visible) return;
+			for (const context of this.windows.values()) if (!context.widget.slot.hidden) { if (context.taskList) context.taskList.showSession(session); else context.sessionCard?.show(session); }
+		});
+		if (unsubscribeSessions) this.register(unsubscribeSessions);
 		this.register(this.dependencies.breakController.subscribe(() => this.renderWidgets()));
 		this.registerEvent(workspace.on('active-leaf-change', leaf => {
 			if (leaf && isStatusDockLeaf(this.app, leaf)) this.recent.set(leaf.getContainer(), leaf);
@@ -73,6 +87,13 @@ export class OperonStatusDock extends Component {
 		}));
 		workspace.onLayoutReady(() => { if (!this.disposed) this.refresh(); });
 		this.refresh();
+		this.refreshScopesOnClock();
+	}
+
+	private refreshScopesOnClock(): void {
+		if (this.disposed) return;
+		this.renderWidgets();
+		this.scopeTimer = this.owner.setTimeout(() => this.refreshScopesOnClock(), 60_000);
 	}
 
 	refresh(): void {
@@ -84,7 +105,10 @@ export class OperonStatusDock extends Component {
 	toggleVisibility(): void {
 		if (this.disposed) return;
 		this.visible = !this.visible;
-		for (const { widget } of this.windows.values()) widget.setVisible(this.visible);
+		for (const { widget, sessionCard, taskList } of this.windows.values()) {
+			widget.setVisible(this.visible);
+			if (!this.visible) { taskList?.close(false); sessionCard?.clear(); }
+		}
 	}
 
 	setDuplicateAlert(state: StatusDockAlert['state'], count = 0): void {
@@ -93,6 +117,9 @@ export class OperonStatusDock extends Component {
 	}
 
 	onunload(): void {
+		if (this.scopeTimer !== null) this.owner.clearTimeout(this.scopeTimer);
+		this.scopeTimer = null;
+		this.scopeCache = { overdue: [], today: [] };
 		this.disposed = true;
 		this.presentation = null;
 		if (this.refreshTimer !== null) this.owner.clearTimeout(this.refreshTimer);
@@ -164,6 +191,22 @@ export class OperonStatusDock extends Component {
 		}, error => { console.warn('Operon: status dock action failed', error); new Notice(t('notifications', 'taskSaveFailed')); });
 		widget.setVisible(this.visible);
 		const context: DockWindow = { widget, host: null, leaf: null, dispose: () => {} };
+		if (this.dependencies.sessionActions) context.sessionCard = new StatusDockSessionCard(widget.root, {
+			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
+			getSessions: id => this.dependencies.timeTracker.getTaskSessions(id),
+			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), actions: {
+				...this.dependencies.sessionActions,
+				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
+			},
+		});
+		if (this.dependencies.sessionActions && context.sessionCard) context.taskList = new StatusDockTaskList(widget.root, {
+			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
+			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), sessionCard: context.sessionCard,
+			toggleTimer: (id, canCommit) => this.runAction(async () => { await this.dependencies.toggleTaskTimer(id, canCommit); }),
+			actions: { ...this.dependencies.sessionActions,
+				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
+			},
+		});
 		const resize = () => this.updateViewport(container, widget);
 		const refresh = () => { if (!this.disposed) { this.upcoming.refresh(); this.scheduleReconcile(); } };
 		container.win.addEventListener('resize', resize);
@@ -175,7 +218,7 @@ export class OperonStatusDock extends Component {
 			container.win.removeEventListener('resize', resize); container.win.removeEventListener('focus', refresh);
 			container.doc.removeEventListener('visibilitychange', refresh);
 			container.win.visualViewport?.removeEventListener('resize', resize);
-			container.win.visualViewport?.removeEventListener('scroll', resize); widget.destroy();
+			container.win.visualViewport?.removeEventListener('scroll', resize); context.taskList?.destroy(); context.sessionCard?.destroy(); widget.destroy();
 		};
 		return context;
 	}
@@ -232,7 +275,14 @@ export class OperonStatusDock extends Component {
 	private renderWidgets(): void {
 		if (this.disposed) return;
 		const snapshot = this.snapshot();
-		for (const { widget } of this.windows.values()) widget.update(snapshot);
+		const scopeKey = `${this.dependencies.indexer.getGeneration()}:${Math.floor(Date.now() / 60_000)}`;
+		if (scopeKey !== this.scopeCacheKey) {
+			this.scopeCacheKey = scopeKey;
+			this.scopeCache = buildStatusDockTaskScopes(this.dependencies.indexer.getAllTasks());
+		}
+		for (const { widget, sessionCard, taskList } of this.windows.values()) {
+			widget.update(snapshot); sessionCard?.refresh(); taskList?.update(this.scopeCache);
+		}
 	}
 
 	private async createTaskForTimer(anchor: HTMLElement): Promise<void> {
@@ -262,17 +312,16 @@ export class OperonStatusDock extends Component {
 	}
 
 	private async toggleTimer(): Promise<void> {
-		const { timeTracker, breakController, openFlowTime } = this.dependencies;
+		const { timeTracker, breakController } = this.dependencies;
 		const expected = timeTracker.getActiveState();
 		await this.runAction(async () => {
 			if (expected) {
-				const stopped = await timeTracker.stop('manual', undefined, () => {
+				await timeTracker.stop('manual', undefined, () => {
 					const active = timeTracker.getActiveState();
 					return !this.disposed && !breakController.getSnapshot().actionPending && active?.operonId === expected.operonId && active?.start === expected.start;
 				});
-				if (stopped && !this.disposed) await openFlowTime();
 			} else if (breakController.getSnapshot().pendingTaskId) await breakController.resumePending('status-bar');
-			else if (await timeTracker.startUnassigned('status-bar') && !this.disposed) await openFlowTime();
+			else await timeTracker.startUnassigned('status-bar');
 		}, this.previewTimerAction(expected ? 'stop' : 'start'));
 	}
 

@@ -18,6 +18,7 @@ function fixture(surface,{iconOnly=false,format='inline',blocked=false,noWriter=
  const callbacks={app:{},getSettings:()=>({}),getAllTasks:()=>[latest],getTaskById:()=>latest,canMutate:()=>mutable,updateField:(...args)=>writes.push(args)};
  if(noWriter)delete callbacks.updateField;
  const deps={bindDesktopChipOpening:()=>false,shouldOpenIconOnlyChipPreview:()=>true,openIconOnlyChipPreview:()=>preview++,openTaskFieldPicker:o=>{opened.push(o);return()=>o.onClose?.();},getLivePreviewCurrentFieldValues:()=>task.fieldValues,getLivePreviewDescriptionEndCursor:()=>17,snapshotLivePreviewAnchor:()=>({left:1,top:2,width:10,height:10}),getKanbanDirectChipManualDatePickerOptions:()=>undefined};
+ if(surface==='live')deps.bindLivePreviewControlMouseGuard=extract('live-preview-conceal','bindLivePreviewControlMouseGuard');
  deps.commitKanbanChipPayload=extract('compact-card-chips','commitKanbanChipPayload');
  deps.openKanbanTaskFieldPicker=extract('compact-card-chips','openKanbanTaskFieldPicker',deps);
  const entry={key:'tags',label:'old',iconOnly};const committed=()=>commits++;
@@ -28,7 +29,16 @@ function fixture(surface,{iconOnly=false,format='inline',blocked=false,noWriter=
  return {chip,opened,writes,callbacks,get commits(){return commits;},get preview(){return preview;},setMutable:v=>mutable=v};
 }
 for(const surface of ['live','reading','card','overlay'])for(const iconOnly of [false,true])test(`${surface} ${iconOnly?'icon':'detailed'}: correct task, no-write close, duplicate guard and tags writes`,()=>{
- const f=fixture(surface,{iconOnly});f.chip.click();f.chip.click();assert.equal(f.opened.length,1);assert.equal(f.preview,0);
+ const f=fixture(surface,{iconOnly});
+ if(surface==='live'){
+  for(const button of [0,1,2]){
+   let prevented=0,stopped=0;
+   f.chip.listeners.mousedown({button,preventDefault(){prevented++;},stopPropagation(){stopped++;}});
+   assert.equal(prevented,button===0?1:0);assert.equal(stopped,button===0?1:0);
+  }
+  assert.deepEqual(f.writes,[]);assert.equal(f.opened.length,0);
+ }
+ f.chip.click();f.chip.click();assert.equal(f.opened.length,1);assert.equal(f.preview,0);
  const p=f.opened[0];assert.equal(p.canonicalKey,'tags');assert.deepEqual(p.currentTags,['work','project/nested']);assert.equal(p.sourcePath,'Tasks/a.md');assert.deepEqual(f.writes,[]);assert.equal(f.commits,0);
  p.onClose();assert.deepEqual(f.writes,[]);f.chip.click();assert.equal(f.opened.length,2);
  f.opened[1].onCommit({tags:['work','new']});assert.deepEqual(f.writes[0].slice(0,3),['task-a','_tags','work; new']);
