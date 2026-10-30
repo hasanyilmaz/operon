@@ -1,3 +1,10 @@
+import { normalizeKanbanAxisLeafState } from './src/systems/kanban-axis-state';
+import { queryKanbanAxisBoard, kanbanTaskMatchesCell, type KanbanBoardData } from './src/systems/kanban-board';
+import { executeTaskSourceRenameTransaction, TaskSourceRenameUncertainError } from './src/storage/task-source-rename-transaction';
+import { KanbanCardOperationRegistry } from './src/systems/kanban-drop-transaction';
+import { buildKanbanCellPlan, splitKanbanCreatorSeeds, resolveLegacyKanbanCellTarget, kanbanPayloadMatchesPlan, type KanbanCellPlan, type KanbanCellTarget } from './src/systems/kanban-cell-actions';
+import { createKanbanPropertyAccess } from './src/core/kanban-axis-properties';
+import { resolveKanbanAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
 import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
@@ -23,7 +30,6 @@ import type { PreparedCreationTemplate } from './src/core/task-creation-template
 import { prepareCreationCommit, type PreparedCreationContent } from './src/core/task-creation-commit';
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
-import { createVaultFilePropertySnapshot } from './src/ui/table/table-file-property';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
 import { writeTableNativeProperty } from './src/ui/table/table-native-property';
 import type { TableFilePropertyUpdateRequest } from './src/ui/table/table-file-property-editor';
@@ -590,7 +596,7 @@ import {
 	LivePreviewEphemeralSessionController,
 	shouldAbandonLivePreviewSessionForWorkspaceFile,
 } from './src/ui/live-preview-ephemeral-session';
-import { invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
+import { collectNativeFieldValueCandidates, invalidateCustomFieldValueCandidateCache } from './src/ui/custom-field-surfaces';
 import { openTaskFieldPicker } from './src/ui/task-field-picker-dispatch';
 import {
 	moveOperonDocsFolder,
@@ -897,12 +903,10 @@ import {
 	KanbanLeafState,
 	KanbanPreset,
 	type KanbanPresetFilterCommitRequest,
-	buildKanbanLaneCollapseScopeKey,
-	buildKanbanStatusCollapseScopeKey,
+
 	cloneDefaultKanbanPresets,
 	createKanbanPresetId,
-	normalizeKanbanLeafState,
-	resolveKanbanEffectiveSorting,
+
 } from './src/types/kanban';
 import { DuplicateRegistrySnapshot, IndexedTask, IndexedTaskInstance, OperonField, ParsedTask, TaskLocation } from './src/types/fields';
 import { CANONICAL_KEY_MAP } from './src/types/keys';
@@ -1035,7 +1039,6 @@ import { TablePresetMutationQueue } from './src/ui/table/table-preset-mutation-q
 import { TablePresetQuickSettingsModal } from './src/ui/table/table-preset-quick-settings-modal';
 import { KanbanPresetQuickSettingsModal } from './src/ui/kanban/kanban-preset-quick-settings-modal';
 import { KanbanCellActionModal } from './src/ui/kanban/kanban-cell-action-modal';
-import { buildKanbanWritebackPlan } from './src/systems/kanban-writeback';
 import {
 	attachKanbanDropFailureCause,
 	buildKanbanDropBoardSignature,
@@ -1051,11 +1054,10 @@ import {
 import {
 	buildKanbanCellKey,
 	extractLaneKeys,
-	KANBAN_NO_VALUE_KEY,
-	queryKanbanBoard,
+
 	resolveTaskStatusDefinition,
 } from './src/systems/kanban-query';
-import { getManagedCustomFieldOptionMapping, getManagedTaskFieldType } from './src/core/managed-task-fields';
+import { getManagedTaskFieldType } from './src/core/managed-task-fields';
 import {
 	enginePerfLog,
 	enginePerfNow,
@@ -1202,7 +1204,8 @@ interface OpenTaskCreatorOptions {
  onClose?: () => void;
  getInlineParentPreview?: (draft: TaskCreatorDraft) => string | null;
  /** A selected lane denotes one member, not a serialized list. */
- singleMemberSurfaceKeys?: readonly string[];
+ kanbanSurfaceSeeds?: { sourceName: string; value: import('./src/core/vault-property-codec').VaultPropertyValue }[];
+  singleMemberSurfaceKeys?: readonly string[];
 	activeFilePath?: string | null;
 	submitMode?: TaskCreatorSubmitMode;
 	initialCreateType?: TaskCreatorCreateType;
@@ -1355,6 +1358,11 @@ interface DirectTaskEditContext {
 }
 
 interface TaskFieldsUpdateOptions {
+ ownedMutationPermit?: TaskWriterExclusiveMutationPermit;
+ fileRenameSourcePath?: string;
+ beforeFileCommit?: () => Promise<boolean>;
+ filePropertyDraft?: import('./src/core/task-writer').TaskWriteOptions['filePropertyDraft'];
+ validateFieldPayload?: (payload: Record<string, string>) => boolean;
  inlinePropertyDraft?: readonly InlinePropertyChange[];
  tableCommittedSource?: boolean;
  ownedDrawingSources?: readonly InlineMarkdownSource[];
@@ -4056,7 +4064,8 @@ export default class OperonPlugin extends Plugin {
 	private getKanbanPresetForLeaf(leaf: import('obsidian').WorkspaceLeaf) {
 		const presetId = this.getKanbanLeafPresetId(leaf);
 		if (!presetId) return null;
-		return this.settings.kanbanPresets.find(preset => preset.id === presetId) ?? null;
+		const preset = this.settings.kanbanPresets.find(preset => preset.id === presetId) ?? null;
+		return preset && resolveKanbanAxes(preset, this.settings.keyMappings).ok ? preset : null;
 	}
 
 	async openFilterViewById(filterSetId: string | null | undefined): Promise<void> {
@@ -4209,25 +4218,7 @@ export default class OperonPlugin extends Plugin {
 		const leaf = this.app.workspace.getLeaf('tab');
 		if (!leaf) return;
 
-		const availablePresetIds = this.settings.kanbanPresets.map(preset => preset.id);
-		const fallbackPresetId = this.settings.kanbanDefaultPresetId ?? this.settings.kanbanPresets[0]?.id ?? null;
-		const requestedPresetId = typeof state?.presetId === 'string' && state.presetId.trim()
-			? state.presetId
-			: fallbackPresetId;
-		const preset = this.settings.kanbanPresets.find(entry => entry.id === requestedPresetId)
-			?? this.settings.kanbanPresets.find(entry => entry.id === fallbackPresetId)
-			?? this.settings.kanbanPresets[0]
-			?? null;
-		const pipeline = preset?.pipelineId
-			? this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
-			: null;
-		const nextState = normalizeKanbanLeafState(state, {
-			availablePresetIds,
-			availableStatusIds: pipeline?.statuses.map(status => status.id) ?? [],
-			defaultPresetId: fallbackPresetId,
-			statusCollapseScopeKey: buildKanbanStatusCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null),
-			laneCollapseScopeKey: buildKanbanLaneCollapseScopeKey(preset?.id ?? null, preset?.pipelineId ?? null, preset?.swimlaneBy ?? null),
-		});
+		const nextState = normalizeKanbanAxisLeafState(state, this.settings, createKanbanPropertyAccess(this.settings, getNativePropertyIndex(this.app)));
 
 		await leaf.setViewState({
 			type: KANBAN_VIEW_TYPE,
@@ -4606,6 +4597,7 @@ export default class OperonPlugin extends Plugin {
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
 				pipelines: this.settings.pipelines,
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 			},
 		);
@@ -14461,6 +14453,15 @@ export default class OperonPlugin extends Plugin {
 		request: MutationApplyRequestV1,
 		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
+  const observeSessionCreation = request.plan.mutationKind === 'timer.control'
+   || (request.plan.mutationKind === 'timer.session' && request.plan.spec.operation === 'add-session');
+  const sessionPreimages = new Map<string, string>();
+  if (observeSessionCreation) {
+   const ids = request.plan.targets.map(target => target.operonId);
+   const activeId = this.timeTracker.getActiveState()?.operonId;
+   if (activeId) ids.push(activeId);
+   for (const id of ids) if (id) sessionPreimages.set(id, this.indexer.getTask(id)?.fieldValues['trackers'] ?? '');
+  }
   const target = this.excalidrawTaskIntegration && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
   const deletedTasks = target ? target.primary.format === 'yaml'
    ? this.indexer.getAllTasks().filter(task => task.primary.filePath === target.primary.filePath) : [target] : [];
@@ -14483,6 +14484,9 @@ export default class OperonPlugin extends Plugin {
 		const result = request.plan.mutationKind === 'timer.session'
 			? await this.timeTracker.runSerializedSessionMutation(apply)
 			: await apply();
+  if (result.status === 'applied') {
+   for (const [id, previousTrackers] of sessionPreimages) this.timeTracker.notifyCreatedSessions(id, previousTrackers);
+  }
   releaseDeletion?.(result.status === 'applied');
   if (result.status === 'applied' && deletedTasks.length) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
   return result;
@@ -17038,9 +17042,17 @@ export default class OperonPlugin extends Plugin {
 		};
 		if (Platform.isDesktopApp) {
 			this.statusDock = this.addChild(new OperonStatusDock(this.app, {
+				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
-				getSettings: () => this.settings, openFlowTime: () => this.openFlowTimeView(),
+				getSettings: () => this.settings,
+				sessionActions: {
+					openSession: session => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve)),
+					clickIcon: id => this.handleTaskIconClick(id),
+					contextualAction: (id, action, context, invocation) => this.handleContextualMenuAction(id, action, context, invocation),
+					isPinned: id => this.storage.pinned.isPinned(id),
+					hasSubtasks: id => this.indexer.secondary.getChildIds(id).size > 0,
+				},
 				openTask: async (taskId, anchor, behavior) => {
 					if (behavior === 'source') await this.openTaskSourcePreview(taskId, anchor);
 					else await this.openEditorForId(taskId, behavior === 'source-and-editor', anchor);
@@ -17747,6 +17759,7 @@ export default class OperonPlugin extends Plugin {
 					onCalendarDragInteractionEnd: () => this.flushPendingCalendarRefresh(),
 					hasEditableFocus: () => this.hasActiveEditableFocus() || this.isTaskEditorModalOpen(),
 					getRepeatSeriesRevision: () => this.storage.repeatSeries.getRevision(),
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					onOpenPresetSettings: (presetId) => {
 						const preset = this.settings.calendarPresets.find(entry => entry.id === presetId) ?? null;
 						new CalendarPresetQuickSettingsModal(this.app, {
@@ -17778,6 +17791,14 @@ export default class OperonPlugin extends Plugin {
 				() => this.pinnedCache,
 				{
 					getManualOrder: (presetId) => this.storage.kanbanOrder.getBoard(presetId),
+					onSetColumnWidth: async (preset, width) => {
+						await this.storage.saveKanbanPresetIfUnchanged(preset, { ...preset, columnWidthPx: width });
+						this.refreshKanbanLeaves(true);
+					},
+					onSetCellHeight: async (preset, height) => {
+						await this.storage.saveKanbanPresetIfUnchanged(preset, { ...preset, cellHeightPx: height });
+						this.refreshKanbanLeaves(true);
+					},
 					onCardDrop: (context) => this.handleKanbanCardDrop(leaf, context),
 					onDragInteractionEnd: () => this.flushPendingKanbanRefresh(),
 					onCellAction: (context) => this.handleKanbanCellAction(leaf, context),
@@ -17823,11 +17844,10 @@ export default class OperonPlugin extends Plugin {
 						new KanbanPresetQuickSettingsModal(this.app, {
 							getSettings: () => this.settings,
 						preset,
-						onSave: async (updated) => {
-							const previous = this.cloneKanbanPresetForSorting(preset);
-							this.replaceKanbanPreset(updated);
-							await this.storage.saveSettings();
-							await this.handleKanbanPresetSortingChange(previous, updated);
+						getTasks: () => this.indexer.getAllTasks(),
+							getTaskRevision: () => this.indexer.getGeneration(),
+						onSave: async (updated, expected) => {
+							await this.storage.saveKanbanPresetIfUnchanged(expected, updated);
 							this.refreshViews();
 							},
 							onToggleFavorite: presetId => this.togglePresetFavoriteAndRefresh('kanban', presetId),
@@ -17848,6 +17868,8 @@ export default class OperonPlugin extends Plugin {
 				() => this.settings,
 				() => this.pinnedCache,
 				{
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+					getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
 					resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
 					getTablePresets: () => this.getTablePresetsForSurfaces(),
 					onOpenTaskEditor: (operonId) => this.openEditorForId(operonId),
@@ -17891,7 +17913,9 @@ export default class OperonPlugin extends Plugin {
 				() => this.pinnedCache,
 					{
 						resolveTableFile: (path, source) => this.resolveTableFileForView(path, source),
-						resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
+						getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+					getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+					resolveTablePreset: (presetId) => this.resolveTablePresetForSurface(presetId),
 						getTablePresets: () => this.getTablePresetsForSurfaces(),
 						onOpenTaskEditor: (operonId) => this.openEditorForId(operonId),
 						onOpenTaskSource: openTaskSourceInNewTab,
@@ -19255,18 +19279,20 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef): void {
-		if (!session.operonId) return;
+	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void): void {
+		if (!session.operonId) { onClosed?.(); return; }
 		const currentSession = this.resolveTrackedSessionByRange(session);
 		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
 		if (!currentSession || !task) {
 			this.handleCalendarTrackedSessionStale();
+			onClosed?.();
 			return;
 		}
 		const taskLabel = task.description || task.operonId;
 
 		new TrackerSessionEditModal(this.app, {
 			title: t('taskEditor', 'editSession'),
+			onClosed,
 			taskNote: {
 				operonId: session.operonId,
 				sourcePath: task.primary.filePath,
@@ -19468,11 +19494,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		if (target.type === 'kanban') {
 			const preset = this.createRelatedKanbanPreset(target.filterSetId, target.presetName);
-			this.settings.kanbanPresets.push(preset);
-			if (!this.settings.kanbanDefaultPresetId) {
-				this.settings.kanbanDefaultPresetId = this.settings.kanbanPresets[0]?.id ?? null;
-			}
-			await this.storage.saveSettings();
+			await this.storage.createKanbanPreset(preset);
 			await this.handleKanbanPresetSortingChange(null, preset);
 			this.refreshViews();
 			await this.openKanbanView({ presetId: preset.id });
@@ -20064,6 +20086,7 @@ export default class OperonPlugin extends Plugin {
 					pinnedCache: this.pinnedCache,
 					scope: scopedPreset.search.scope,
 					settings: this.settings,
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				});
 				const parent = scopedPreset.search.parent;
@@ -20082,65 +20105,8 @@ export default class OperonPlugin extends Plugin {
 		}).open();
 	}
 
-	private async handleKanbanPresetSortingChange(
-		previous: KanbanPreset | null,
-		updated: KanbanPreset,
-	): Promise<void> {
-		const pipeline = this.settings.pipelines.find(entry => entry.id === updated.pipelineId) ?? null;
-		const statusIds = pipeline?.statuses.map(status => status.id) ?? [];
-		const statusIdSet = new Set(statusIds);
-		const currentOrder = this.storage.kanbanOrder.getBoard(updated.id);
-		const nextCells: Record<string, string[]> = {};
-
-		for (const cellKey of Object.keys(currentOrder)) {
-			const statusId = cellKey.slice(0, cellKey.indexOf('::'));
-			if (!statusIdSet.has(statusId)) nextCells[cellKey] = [];
-		}
-
-		if (previous?.pipelineId === updated.pipelineId) {
-			const nextOverrideIds = new Set((updated.columnSortOverrides ?? []).map(override => override.statusId));
-			for (const override of previous.columnSortOverrides ?? []) {
-				if (
-					nextOverrideIds.has(override.statusId)
-					|| resolveKanbanEffectiveSorting(updated, override.statusId).sortMode === 'manual'
-				) continue;
-				for (const cellKey of Object.keys(currentOrder)) {
-					if (cellKey.startsWith(`${override.statusId}::`)) nextCells[cellKey] = [];
-				}
-			}
-		}
-
-		for (const statusId of statusIds) {
-			const previousMode = previous?.pipelineId === updated.pipelineId
-				? resolveKanbanEffectiveSorting(previous, statusId).sortMode
-				: 'automatic';
-			const nextMode = resolveKanbanEffectiveSorting(updated, statusId).sortMode;
-			if (nextMode !== 'manual' || previousMode === 'manual') continue;
-			const snapshot = this.buildKanbanManualOrderSnapshotForStatus(updated, statusId, currentOrder);
-			for (const [cellKey, taskIds] of Object.entries(snapshot)) {
-				if (!Object.prototype.hasOwnProperty.call(currentOrder, cellKey)) nextCells[cellKey] = taskIds;
-			}
-		}
-
-		const cellKeys = Object.keys(nextCells);
-		if (cellKeys.length === 0) return;
-		const expectedCells = Object.fromEntries(
-			cellKeys.map(cellKey => [cellKey, currentOrder[cellKey] ?? []]),
-		);
-		const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(updated.id, expectedCells, nextCells);
-		if (!applied) throw new Error(`Kanban sorting changed while manual order was being prepared (${updated.id})`);
-	}
-
-	private cloneKanbanPresetForSorting(preset: KanbanPreset | null): KanbanPreset | null {
-		if (!preset) return null;
-		return {
-			...preset,
-			sortRules: preset.sortRules.map(rule => ({ ...rule })),
-			...(preset.columnSortOverrides?.length ? { columnSortOverrides: preset.columnSortOverrides.map(override => ({
-				...override,
-				sortRules: override.sortRules.map(rule => ({ ...rule })),
-			})) } : {}),
-		};
+	private async handleKanbanPresetSortingChange(_previous: KanbanPreset | null, _updated: KanbanPreset): Promise<void> {
+		// Manual ordering is captured only when the user reorders a cell.
 	}
 
 	private async copyKanbanManualOrder(sourcePresetId: string, targetPresetId: string): Promise<void> {
@@ -20151,60 +20117,17 @@ export default class OperonPlugin extends Plugin {
 		await this.storage.kanbanOrder.removeBoard(presetId);
 	}
 
-	private buildKanbanManualOrderSnapshotForStatus(
-		preset: KanbanPreset,
-		statusId: string,
-		manualOrder: Record<string, string[]>,
-	): Record<string, string[]> {
-		const snapshotPreset = this.cloneKanbanPresetForSorting(preset);
-		if (!snapshotPreset) return {};
-		const override = snapshotPreset.columnSortOverrides?.find(entry => entry.statusId === statusId) ?? null;
-		if (override) override.sortMode = 'automatic';
-		else snapshotPreset.sortMode = 'automatic';
-		const board = this.queryKanbanBoardForOrder(snapshotPreset, manualOrder);
-		if (!board) return {};
-		const prefix = `${statusId}::`;
-		return Object.fromEntries(
-			Object.entries(this.extractKanbanBoardOrder(board.cellMap)).filter(([cellKey]) => cellKey.startsWith(prefix)),
-		);
-	}
-
-	private queryKanbanBoardForOrder(
-		preset: KanbanPreset,
-		manualOrder?: Record<string, string[]>,
-	): ReturnType<typeof queryKanbanBoard> | null {
-		if (!preset.pipelineId) return null;
-		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) return null;
-		const filterSet = preset.filterSetId
-			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
-			: null;
+	private queryKanbanBoardForOrder(preset: KanbanPreset, manualOrder?: Record<string, string[]>): KanbanBoardData | null {
+		const native = getNativePropertyIndex(this.app);
+		native.configure(this.settings);
+		const filterSet = this.settings.filterSets.find(f => f.id === preset.filterSetId) ?? null;
 		if (filterSet && isSpecialDynamicFilterSet(filterSet)) return null;
-		return queryKanbanBoard({
-			preset,
-			pipeline,
-			pipelines: this.settings.pipelines,
-			filterSet,
-			tasks: this.indexer.getAllTasks(),
-			priorities: this.settings.priorities,
-			pinnedCache: this.pinnedCache,
-			manualOrder,
-			keyMappings: this.settings.keyMappings,
-			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
-			filterEvaluationOptions: {
-				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
-			},
-		});
-	}
-
-	private extractKanbanBoardOrder(cellMap: Map<string, IndexedTask[]>): Record<string, string[]> {
-		const order: Record<string, string[]> = {};
-		for (const [cellKey, tasks] of cellMap.entries()) {
-			if (tasks.length > 0) {
-				order[cellKey] = tasks.map(task => task.operonId);
-			}
-		}
-		return order;
+		const board = queryKanbanAxisBoard({ preset, settings: this.settings, tasks: this.indexer.getAllTasks(),
+			propertyAccess: createKanbanPropertyAccess(this.settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
+			filterSet, pinnedCache: this.pinnedCache, manualOrder,
+			getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
+			filterEvaluationOptions: { getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
+		return 'state' in board ? null : board;
 	}
 
 	private buildKanbanManualDropOrderCells(
@@ -20212,6 +20135,7 @@ export default class OperonPlugin extends Plugin {
 		context: KanbanDropContext,
 		sourceIsManual: boolean,
 		targetIsManual: boolean,
+  retainSource = false,
 	): { currentCells: Record<string, string[]>; nextCells: Record<string, string[]> } {
 		const currentOrder = this.storage.kanbanOrder.getBoard(preset.id);
 		const board = this.queryKanbanBoardForOrder(preset, currentOrder);
@@ -20221,9 +20145,9 @@ export default class OperonPlugin extends Plugin {
 		const targetCellKey = buildKanbanCellKey(context.targetStatusId, context.targetLaneKey);
 		const cells: Record<string, string[]> = {};
 		const sourceIds = sourceCellKey
-			? (board?.cellMap.get(sourceCellKey) ?? []).map(task => task.operonId)
+			? (context.sourceStatusId ? board?.getCellTasks(context.sourceStatusId, context.sourceLaneKey) ?? [] : []).map(task => task.operonId)
 			: [];
-		const targetIds = (board?.cellMap.get(targetCellKey) ?? []).map(task => task.operonId);
+		const targetIds = (board?.getCellTasks(context.targetStatusId, context.targetLaneKey) ?? []).map(task => task.operonId);
 
 		if (sourceCellKey && sourceCellKey === targetCellKey && targetIsManual) {
 			cells[targetCellKey] = this.insertKanbanTaskIdBefore(sourceIds, context.taskId, context.targetBeforeTaskId);
@@ -20233,7 +20157,7 @@ export default class OperonPlugin extends Plugin {
 			};
 		}
 
-		if (sourceCellKey && sourceIsManual) {
+		if (sourceCellKey && sourceIsManual && !retainSource) {
 			cells[sourceCellKey] = sourceIds.filter(taskId => taskId !== context.taskId);
 		}
 		if (targetIsManual) {
@@ -20258,10 +20182,48 @@ export default class OperonPlugin extends Plugin {
 		return next;
 	}
 
+ private readonly kanbanCellOperations = new KanbanCardOperationRegistry();
+
+ private async prepareLegacyKanbanCellPlan(task: IndexedTask | undefined, preset: KanbanPreset, statusId: string, laneKey: string, target?: KanbanCellTarget): Promise<KanbanCellPlan> {
+  const native = getNativePropertyIndex(this.app);
+  native.configure(this.settings);
+  if (task) await native.ensure([task]);
+  const axes = resolveKanbanAxes(preset, this.settings.keyMappings);
+  const resolved = target && axes.ok ? { axes: axes.axes, target } : resolveLegacyKanbanCellTarget(preset, statusId, laneKey, this.settings);
+  if (!resolved) throw new Error('Kanban target is unavailable');
+  const plan = buildKanbanCellPlan({ ...resolved, task, settings: this.settings, access: createKanbanPropertyAccess(this.settings, native) });
+  if (plan.state === 'blocked') throw new Error(`Kanban cell action blocked: ${plan.reason}`);
+  return plan;
+ }
+
+ private kanbanCellWriteOptions(plan: KanbanCellPlan, task: IndexedTask, canCommit: () => boolean): TaskFieldsUpdateOptions {
+  const valid = () => {
+   if (!canCommit()) return false;
+   const current = this.indexer.getTask(task.operonId);
+   if (!current || current.primary.format !== task.primary.format) return false;
+   const requestedName = plan.payload._description;
+   const slash = task.primary.filePath.lastIndexOf('/');
+   const renamedPath = task.primary.format === 'yaml' && requestedName ? `${task.primary.filePath.slice(0, slash + 1)}${requestedName}.md` : null;
+   if (current.primary.filePath !== task.primary.filePath && current.primary.filePath !== renamedPath) return false;
+   const access = createKanbanPropertyAccess(this.settings, getNativePropertyIndex(this.app));
+   return plan.requirements.every(req => {
+    const resolved = access.resolve(req.field.reference);
+    return resolved.ok && resolved.field.identity === req.field.identity && resolved.field.encoding === req.field.encoding;
+   });
+  };
+  return { changedKeys: plan.changedKeys, expectedFieldValues: plan.expectedFieldValues, canCommit: valid,
+   ...(plan.inlinePropertyDraft.length ? { inlinePropertyDraft: plan.inlinePropertyDraft } : {}),
+   ...(plan.filePropertyDraft.changes.length ? { filePropertyDraft: plan.filePropertyDraft } : {}),
+   validateFieldPayload: payload => kanbanPayloadMatchesPlan(plan, task, payload) };
+ }
+
 	private async handleKanbanCardDrop(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanDropContext,
 	): Promise<KanbanCardDropCommittedResult | 'cancelled' | 'failed'> {
+  const operation = this.kanbanCellOperations.begin(context.taskId, context.presetId ?? '', 'drop', context.boardSignature ?? '');
+  if (!operation) return 'cancelled';
+  try {
 		const task = this.indexer.getTask(context.taskId);
 		if (!task) {
 			this.schedulePluginUiTaskIndexRefresh();
@@ -20272,7 +20234,7 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) throw new Error('Kanban drop failed: preset has no pipeline');
+		if (!preset) throw new Error('Kanban preset unavailable');
 		if (context.presetId && context.presetId !== preset.id) {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board preset changed before apply (${context.taskId})`),
@@ -20284,10 +20246,8 @@ export default class OperonPlugin extends Plugin {
 			);
 		}
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) throw new Error(`Kanban drop failed: pipeline not found (${preset.pipelineId})`);
-		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
-		if (!targetStatus) throw new Error(`Kanban drop failed: target status not found (${context.targetStatusId})`);
-		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline)) {
+		const targetStatus = this.resolveKanbanTargetStatus(preset, context);
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline, this.settings)) {
 			throw attachKanbanDropFailureCause(
 				new Error(`Kanban drop failed: board configuration changed before apply (${context.taskId})`),
 				{
@@ -20297,46 +20257,28 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 		}
-		const currentStatusIdentity = resolveConfiguredStatusIdentity(
-			task.fieldValues['status'] ?? '',
-			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
-		);
-		const currentLaneKeys = extractLaneKeys(
-			task,
-			context.swimlaneBy ?? preset.swimlaneBy,
-			this.settings.keyMappings,
-			this.settings.priorities,
-		);
-		if (!matchesKanbanDropSource({
-			actualStatusId: currentStatusIdentity.kind === 'configured'
-				? currentStatusIdentity.status.id
-				: null,
-			actualStatusValue: task.fieldValues['status'] ?? '',
-			actualLaneKeys: currentLaneKeys,
-			sourceStatusId: context.sourceStatusId,
-			sourceStatusValue: context.sourceStatusValue,
-			sourceLaneKey: context.sourceLaneKey,
-		})) {
-			throw attachKanbanDropFailureCause(
-				new Error(`Kanban drop failed: source cell changed before apply (${context.taskId})`),
-				{
-					phase: 'preflight',
-					stage: 'prepare',
-					code: 'stale-source',
-				},
-			);
-		}
+		if (!this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context)) throw attachKanbanDropFailureCause(
+			new Error('Kanban source cell changed before apply'), { phase: 'preflight', stage: 'prepare', code: 'stale-source' });
+		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
+  const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+		const kanbanAxesCanCommit = (): boolean => {
+			const current = this.getKanbanPresetForLeaf(leaf);
+			return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+		};
+		const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
+		const orderingBoard = this.queryKanbanBoardForOrder(preset);
 		const sourceIsManual = context.sourceStatusId
-			? resolveKanbanEffectiveSorting(preset, context.sourceStatusId).sortMode === 'manual'
+			? orderingBoard?.getSorting(context.sourceStatusId).sortMode === 'manual'
 			: false;
-		const targetIsManual = resolveKanbanEffectiveSorting(preset, context.targetStatusId).sortMode === 'manual';
+		const targetIsManual = orderingBoard?.getSorting(context.targetStatusId).sortMode === 'manual';
 		const manualOrderChange = sourceIsManual || targetIsManual
-			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual)
+			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual, this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context, plan))
 			: null;
 		const manualOrderCells = manualOrderChange?.nextCells ?? null;
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
 		const persistManualOrderIfCurrent = async (): Promise<void> => {
 			if (!manualOrderCells || !previousManualOrderCells) return;
+			if (!kanbanAxesCanCommit()) throw new Error('Kanban axes changed before manual order commit');
 			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
 				preset.id,
 				previousManualOrderCells,
@@ -20350,16 +20292,8 @@ export default class OperonPlugin extends Plugin {
 			}
 		};
 
-		const plan = buildKanbanWritebackPlan({
-			task,
-			pipeline,
-			targetStatus,
-			sourceLaneKey: context.sourceLaneKey,
-			targetLaneKey: context.targetLaneKey,
-			swimlaneBy: context.swimlaneBy ?? preset.swimlaneBy,
-			keyMappings: this.settings.keyMappings,
-		});
-		if (plan.changedKeys.length === 0) {
+
+		if (plan.state === 'noop') {
 			if (this.isKanbanTaskAtDropTarget(task, pipeline, preset.swimlaneBy, context)) {
 				await persistManualOrderIfCurrent();
 				this.refreshViews();
@@ -20376,7 +20310,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		let settledByRecurrenceReplacement = false;
 		const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
-			changedKeys: plan.changedKeys,
+			...this.kanbanCellWriteOptions(plan, task, kanbanAxesCanCommit),
 			refreshReason: 'status-cycle',
 		});
 		if (outcome === 'cancelled' || outcome === 'duplicate-task') return 'cancelled';
@@ -20395,7 +20329,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		let committedRepairRequired = outcome === 'committed-repair-scheduled';
 		const freshTask = this.indexer.getTask(context.taskId);
-		const recurrenceReplacementTask = targetStatus.isFinished
+		const recurrenceReplacementTask = targetStatus?.isFinished
 			? this.resolveKanbanRecurrenceReplacement(task)
 			: null;
 		let postflightSettlement = classifyKanbanDropSettlement({
@@ -20412,11 +20346,11 @@ export default class OperonPlugin extends Plugin {
 				this.getTaskMutationFieldValue(task, key),
 			]));
 			try {
-				if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, plan.payload)) {
+				if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, plan.payload, plan.filePropertyDraft.changes.length ? plan.filePropertyDraft : undefined, plan.inlinePropertyDraft.length ? plan.inlinePropertyDraft : undefined)) {
 					postflightSettlement = 'target';
 					committedRepairRequired = true;
 					this.indexer.scheduleReindex(task.primary.filePath);
-				} else if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, beforeValues)) {
+				} else if (await this.writer.taskFieldsMatchCurrentSource(task.operonId, beforeValues, plan.filePropertyDraft.changes.length ? plan.filePropertyDraft : undefined, plan.inlinePropertyDraft.length ? plan.inlinePropertyDraft : undefined, 'before')) {
 					postflightSettlement = 'source';
 				} else {
 					postflightSettlement = 'uncertain';
@@ -20467,17 +20401,20 @@ export default class OperonPlugin extends Plugin {
 				? recurrenceReplacementTask?.operonId ?? null
 				: freshTask?.operonId ?? context.taskId,
 		};
+  } finally { this.kanbanCellOperations.end(operation); }
 	}
 
 	private isKanbanTaskAtDropTarget(
 		task: IndexedTask,
-		pipeline: import('./src/types/pipeline').Pipeline,
+		pipeline: import('./src/types/pipeline').Pipeline | null,
 		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
 		context: KanbanDropContext,
 	): boolean {
+		if (context.target) return this.matchesKanbanTypedTarget(task, context.presetId, context.target);
+		if (!pipeline) return false;
 		const status = resolveTaskStatusDefinition(task, pipeline, this.settings.pipelines);
 		if (status?.id !== context.targetStatusId) return false;
-		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities);
+		const laneKeys = extractLaneKeys(task, context.swimlaneBy ?? presetSwimlaneBy, this.settings.keyMappings, this.settings.priorities, this.settings.inlinePropertyDefinitions);
 		return laneKeys.includes(context.targetLaneKey);
 	}
 
@@ -20485,7 +20422,9 @@ export default class OperonPlugin extends Plugin {
 		task: IndexedTask,
 		presetSwimlaneBy: KanbanDropContext['swimlaneBy'],
 		context: KanbanDropContext,
+		plan?: KanbanCellPlan,
 	): boolean {
+		if (context.source) return this.matchesKanbanTypedTarget(task, context.presetId, context.source, plan);
 		const statusIdentity = resolveConfiguredStatusIdentity(
 			task.fieldValues['status'] ?? '',
 			buildWorkflowStatusIdentityIndex(this.settings.pipelines),
@@ -20497,12 +20436,25 @@ export default class OperonPlugin extends Plugin {
 				task,
 				context.swimlaneBy ?? presetSwimlaneBy,
 				this.settings.keyMappings,
-				this.settings.priorities,
+				this.settings.priorities, this.settings.inlinePropertyDefinitions,
 			),
 			sourceStatusId: context.sourceStatusId,
 			sourceStatusValue: context.sourceStatusValue,
 			sourceLaneKey: context.sourceLaneKey,
 		});
+	}
+
+	private matchesKanbanTypedTarget(task: IndexedTask, presetId: string | undefined, target: KanbanCellTarget, plan?: KanbanCellPlan): boolean {
+		const preset = this.settings.kanbanPresets.find(p => p.id === presetId);
+		if (!preset) return false;
+		const axes = resolveKanbanAxes(preset, this.settings.keyMappings);
+		return axes.ok && kanbanTaskMatchesCell(axes.axes, target, task, createKanbanPropertyAccess(this.settings, getNativePropertyIndex(this.app)), plan);
+	}
+
+	private resolveKanbanTargetStatus(preset: KanbanPreset, context: KanbanCellActionContext | KanbanDropContext) {
+		const value = context.target ? [context.target.columns, context.target.swimlanes].find(v => v?.kind === 'status') : null;
+		return value?.kind === 'status' ? this.settings.pipelines.find(p => p.id === value.pipelineId)?.statuses.find(s => s.id === value.id) ?? null
+			: this.settings.pipelines.find(p => p.id === preset.pipelineId)?.statuses.find(s => s.id === context.targetStatusId) ?? null;
 	}
 
 	private resolveKanbanRecurrenceReplacement(sourceTask: IndexedTask): IndexedTask | null {
@@ -20527,6 +20479,7 @@ export default class OperonPlugin extends Plugin {
 		while (true) {
 			const actionId = await this.promptKanbanCellAction(context);
 			if (!actionId) return;
+			if (!this.getKanbanPresetForLeaf(leaf)) { new Notice(t('notifications', 'kanbanAxesUnavailable')); return; }
 
 			try {
 				if (actionId === 'pickTask') {
@@ -20535,12 +20488,12 @@ export default class OperonPlugin extends Plugin {
 				}
 
 				if (actionId === 'createFileTask') {
-					this.openKanbanTaskCreator(leaf, context, 'file-only');
+					await this.openKanbanTaskCreator(leaf, context, 'file-only');
 					return;
 				}
 
 				if (actionId === 'createInlineTask') {
-					this.openKanbanTaskCreator(leaf, context, 'inline-only');
+					await this.openKanbanTaskCreator(leaf, context, 'inline-only');
 					return;
 				}
 			} catch (error) {
@@ -20905,6 +20858,7 @@ export default class OperonPlugin extends Plugin {
 			this.settings.priorities,
 			this.pinnedCache,
 			{
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				dependencyTasks,
 				pipelines: this.settings.pipelines,
@@ -20941,6 +20895,7 @@ export default class OperonPlugin extends Plugin {
 					projectSerialScopeTasks: allTasks,
 					dependencyTasks: allTasks,
 					pipelines: this.settings.pipelines,
+					getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 					filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 				},
 			).length > 0;
@@ -21019,34 +20974,30 @@ export default class OperonPlugin extends Plugin {
 		context: KanbanCellActionContext,
 	): Promise<void> {
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) return;
+		if (!preset) return;
 		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (!pipeline) return;
-		const targetStatus = pipeline.statuses.find(status => status.id === context.targetStatusId) ?? null;
-		if (!targetStatus) return;
+		if (context.presetId && context.presetId !== preset.id) return;
+		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline, this.settings)) return;
 		const filterSet = preset.filterSetId
 			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
 			: null;
+		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
+  const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+		const kanbanAxesCanCommit = () => { const current = this.getKanbanPresetForLeaf(leaf); return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]); };
 		const effectiveFilterSet = filterSet && !isSpecialDynamicFilterSet(filterSet) ? filterSet : null;
 
 		while (true) {
 			const task = await this.promptKanbanTaskSelection();
-			if (!task) return;
+			if (!task || !kanbanAxesCanCommit()) return;
 
-			const plan = buildKanbanWritebackPlan({
-				task,
-				pipeline,
-				targetStatus,
-				sourceLaneKey: this.resolveKanbanSourceLaneKey(task, context.swimlaneBy, context.targetLaneKey),
-				targetLaneKey: context.targetLaneKey,
-				swimlaneBy: context.swimlaneBy,
-				keyMappings: this.settings.keyMappings,
-			});
-			if (plan.changedKeys.length === 0) return;
-
-			await this.updateDirectTaskFieldsAndRefresh(task.operonId, plan.payload, {
-				changedKeys: plan.changedKeys,
-			});
+   const operation = this.kanbanCellOperations.begin(task.operonId, preset.id, 'drop', axisSignature ?? '');
+   if (!operation) return;
+   try {
+   const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
+   if (plan.state === 'noop') return;
+   const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, this.kanbanCellWriteOptions(plan, task, kanbanAxesCanCommit));
+   const committed = isPluginUiMutationCommitted(outcome);
+			if (!committed) return;
 			this.refreshViews();
 			await this.maybeOpenKanbanEditorForFilterMismatch(effectiveFilterSet, plan.nextDraft, () => {
 				this.openEditorForId(task.operonId);
@@ -21054,23 +21005,38 @@ export default class OperonPlugin extends Plugin {
 			new Notice(t('notifications', 'kanbanPlaced', {
 				label: task.description || task.operonId,
 			}));
+   } finally { this.kanbanCellOperations.end(operation); }
 			return;
 		}
 	}
 
-	private openKanbanTaskCreator(
+	private async openKanbanTaskCreator(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanCellActionContext,
 		submitMode: TaskCreatorSubmitMode,
 		initialDraft: TaskCreatorDraft | null = null,
-	): void {
-		const seed = this.buildKanbanSeedForCell(leaf, context);
-		const draft = initialDraft ?? buildKanbanTaskCreatorDraft(seed);
+	): Promise<void> {
+		const preset = this.getKanbanPresetForLeaf(leaf);
+        if (!preset || context.presetId && context.presetId !== preset.id) return;
+        const signature = buildKanbanDropBoardSignature(preset, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null, this.settings);
+        if (context.boardSignature && context.boardSignature !== signature) return;
+        const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+        const canSubmit = () => {
+            const current = this.getKanbanPresetForLeaf(leaf);
+            const valid = !!current && current.id === preset.id
+                && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === signature
+                && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+            if (!valid) new Notice(t('notifications', 'kanbanAxesUnavailable'));
+            return valid;
+        };
+        const seed = await this.buildKanbanSeedForCell(leaf, context);
+		const draft = initialDraft ?? buildKanbanTaskCreatorDraft(seed, seed.description);
 		this.openTaskCreator(draft, {
+   kanbanSurfaceSeeds: initialDraft ? undefined : seed.seeds,
 			submitMode,
-   singleMemberSurfaceKeys: !initialDraft && context.swimlaneBy ? [context.swimlaneBy] : [],
-			onSubmitFile: (nextDraft) => this.createKanbanFileTaskFromCreatorDraft(leaf, context, nextDraft, seed.tagsPresent === true),
-			onSubmitInline: (nextDraft) => this.createKanbanInlineTaskFromCreatorDraft(leaf, context, nextDraft),
+   singleMemberSurfaceKeys: [],
+			onSubmitFile: async (nextDraft) => canSubmit() && await this.createKanbanFileTaskFromCreatorDraft(leaf, context, nextDraft, seed.tagsPresent === true),
+			onSubmitInline: async (nextDraft) => canSubmit() && await this.createKanbanInlineTaskFromCreatorDraft(leaf, context, nextDraft),
 		});
 	}
 
@@ -21119,86 +21085,22 @@ export default class OperonPlugin extends Plugin {
 		leaf: import('obsidian').WorkspaceLeaf,
 	): IndexedTask['checkbox'] {
 		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset?.pipelineId) return 'open';
-		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		const targetStatus = pipeline?.statuses.find(status => status.id === context.targetStatusId) ?? null;
+		if (!preset) return 'open';
+		const targetStatus = this.resolveKanbanTargetStatus(preset, context);
 		if (!targetStatus) return 'open';
 		if (targetStatus.isFinished) return 'done';
 		if (targetStatus.isCancelled) return 'cancelled';
 		return 'open';
 	}
 
-	private buildKanbanSeedForCell(
-		leaf: import('obsidian').WorkspaceLeaf,
-		context: KanbanCellActionContext,
-	): {
-		fieldValues: Record<string, string>;
-		tags: string[];
-		tagsPresent: boolean;
-	} {
-		const preset = this.getKanbanPresetForLeaf(leaf);
-		const pipeline = preset?.pipelineId
-			? this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null
-			: null;
-		const targetStatus = pipeline?.statuses.find(status => status.id === context.targetStatusId) ?? null;
-		const fieldValues: Record<string, string> = {};
-		const tags: string[] = [];
-		let tagsPresent = false;
+ private async buildKanbanSeedForCell(leaf: import('obsidian').WorkspaceLeaf, context: KanbanCellActionContext) {
+  const preset = this.getKanbanPresetForLeaf(leaf);
+  if (!preset) throw new Error('Kanban axes are unavailable');
+  const plan = await this.prepareLegacyKanbanCellPlan(undefined, preset, context.targetStatusId, context.targetLaneKey, context.target);
+  return { description: plan.nextDraft.description, fieldValues: plan.nextDraft.fieldValues, tags: plan.nextDraft.tags,
+   tagsPresent: plan.requirements.some(req => req.field.reference.key === 'tags'), seeds: plan.seeds.filter(seed => seed.sourceName !== 'description') };
+ }
 
-		if (pipeline && targetStatus) {
-			fieldValues.status = composeStatusValue(pipeline.name, targetStatus.label);
-			if (targetStatus.isFinished) {
-				fieldValues.dateCompleted = localToday();
-			} else if (targetStatus.isCancelled) {
-				fieldValues.dateCancelled = localToday();
-			}
-		}
-
-		const customSwimlaneMapping = getManagedCustomFieldOptionMapping(context.swimlaneBy, this.settings.keyMappings);
-		if (context.swimlaneBy === 'priority' || context.swimlaneBy === 'dateDue' || context.swimlaneBy === 'dateScheduled') {
-			fieldValues[context.swimlaneBy] = context.targetLaneKey === KANBAN_NO_VALUE_KEY ? '' : context.targetLaneKey;
-		} else if (context.swimlaneBy === 'tags') {
-			tagsPresent = true;
-			if (context.targetLaneKey !== KANBAN_NO_VALUE_KEY) {
-				tags.push(context.targetLaneKey);
-			}
-		} else if (context.swimlaneBy === 'contexts' || context.swimlaneBy === 'assignees') {
-			fieldValues[context.swimlaneBy] = context.targetLaneKey === KANBAN_NO_VALUE_KEY ? '' : context.targetLaneKey;
-		} else if (customSwimlaneMapping) {
-			fieldValues[customSwimlaneMapping.canonicalKey] = context.targetLaneKey === KANBAN_NO_VALUE_KEY ? '' : context.targetLaneKey;
-		}
-
-		return { fieldValues, tags, tagsPresent };
-	}
-
-	private resolveKanbanSourceLaneKey(
-		task: IndexedTask,
-		swimlaneBy: KanbanCellActionContext['swimlaneBy'],
-		targetLaneKey: string,
-	): string | null {
-		if (!swimlaneBy) return KANBAN_NO_VALUE_KEY;
-		if (swimlaneBy === 'priority') {
-			// Resolve to the canonical lane key so lenient-cased priorities match their lane.
-			return extractLaneKeys(task, 'priority', this.settings.keyMappings, this.settings.priorities)[0] ?? KANBAN_NO_VALUE_KEY;
-		}
-		if (swimlaneBy === 'dateDue' || swimlaneBy === 'dateScheduled') {
-			return (task.fieldValues[swimlaneBy] ?? '').trim() || KANBAN_NO_VALUE_KEY;
-		}
-		if (swimlaneBy === 'tags') {
-			return task.tags.includes(targetLaneKey) ? targetLaneKey : null;
-		}
-		if (swimlaneBy === 'contexts' || swimlaneBy === 'assignees') {
-			return parseListValue(task.fieldValues[swimlaneBy] ?? '').includes(targetLaneKey) ? targetLaneKey : null;
-		}
-		const customSwimlaneMapping = getManagedCustomFieldOptionMapping(swimlaneBy, this.settings.keyMappings);
-		if (customSwimlaneMapping?.type === 'list') {
-			return parseListValue(task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '').includes(targetLaneKey) ? targetLaneKey : null;
-		}
-		if (customSwimlaneMapping) {
-			return (task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '').trim() || KANBAN_NO_VALUE_KEY;
-		}
-		return null;
-	}
 
 	private async assignTaskToCalendarSelection(
 		leaf: import('obsidian').WorkspaceLeaf,
@@ -22973,6 +22875,8 @@ export default class OperonPlugin extends Plugin {
 
 	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
 		return {
+			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 			indexer: this.indexer,
 			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 			getPipelines: () => this.settings.pipelines,
@@ -23133,6 +23037,8 @@ export default class OperonPlugin extends Plugin {
 
 	private buildTableSurfaceDeps(): EmbedTableDeps {
 		return {
+			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 			app: this.app,
 			indexer: this.indexer,
 			getSettings: () => this.settings,
@@ -30680,6 +30586,13 @@ export default class OperonPlugin extends Plugin {
    }
    if (initialDraft.subtaskIds.length) user.push({ sourceName:'subtasks',value:initialDraft.subtaskIds });
   }
+  if (options.kanbanSurfaceSeeds) {
+   const keys = new Set(options.kanbanSurfaceSeeds.map(seed => propertyCatalog.resolve(seed.sourceName).canonicalKey ?? seed.sourceName.toLowerCase()));
+   for (let i = surface.length - 1; i >= 0; i--) if (keys.has(propertyCatalog.resolve(surface[i].sourceName).canonicalKey ?? surface[i].sourceName.toLowerCase())) surface.splice(i, 1);
+   const seeded = splitKanbanCreatorSeeds(options.kanbanSurfaceSeeds);
+   surface.push(...seeded.surface);
+   user.push(...seeded.user);
+  }
   const defaults: CreationDraftFieldInput[] = [
    { sourceName:'status',value:resolveDefaultFileTaskStatus(this.settings.pipelines,this.settings.defaultPipelineName) ?? '' },
    { sourceName:'priority',value:this.settings.defaultPriority },
@@ -30688,7 +30601,6 @@ export default class OperonPlugin extends Plugin {
   const parentVersions = new Map<string,string>();
   const pendingParents = new Set<string>();
   const parentVersion = (task: IndexedTask) => JSON.stringify([task.primary, task.fieldValues, task.tags, native.getTask(task).revision]);
-  const candidates = createVaultFilePropertySnapshot(this.app, createCachedTableFilePropertyTypeResolver({ ...native.getTypes() }), { keyMappings:this.settings.keyMappings,nativeListCandidates:true });
   const modal = new TaskCreatorModal(this.app, {
    onSubmissionStateChange: () => {
     this.backgroundTaskCreators ??= new Set();
@@ -30719,7 +30631,11 @@ export default class OperonPlugin extends Plugin {
      }
      return { fields:task.fieldValues,tags:task.tags,nativeValues };
     },
-    candidates: name => { const field=candidates.fields.find(item=>item.propertyName.toLowerCase()===name.toLowerCase());return field ? candidates.getCandidates(field.key) : []; },
+    candidates: name => {
+     const property = propertyCatalog.resolve(name);
+     return property.type && !property.readOnlyReason
+      ? collectNativeFieldValueCandidates(this.app, this.indexer.getAllTasks(), this.settings.keyMappings, name, property.type) : [];
+    },
     onSubmit: async request => {
      if (metadataKey() !== initialMetadataKey) return { outcome:'failed',message:t('taskEditor','creatorMetadataChanged') };
      const enabledAtSubmit=request.createType==='inline' ? this.settings.inlineTaskUseLastTemplateAsDefault : this.settings.fileTaskUseLastTemplateAsDefault;
@@ -34458,6 +34374,7 @@ export default class OperonPlugin extends Plugin {
 			if (wrote) return 'committed';
 		} catch (error) {
 			console.error('Operon: Plugin UI task mutation failed', error);
+            if (error instanceof TaskSourceRenameUncertainError) return 'outcome-unknown';
 		}
 		if (directEdit.placementOutcome && directEdit.placementOutcome !== 'committed') return directEdit.placementOutcome === 'outcome-unknown' ? 'outcome-unknown' : 'cancelled';
 		if (committed) {
@@ -34475,11 +34392,11 @@ export default class OperonPlugin extends Plugin {
 			return 'source-missing';
 		}
 		try {
-			if (writeStarted && await this.writer.taskFieldsMatchCurrentSource(operonId, afterValues)) {
+			if (writeStarted && await this.writer.taskFieldsMatchCurrentSource(operonId, afterValues, options.filePropertyDraft, options.inlinePropertyDraft)) {
 				this.indexer.scheduleReindex(task.primary.filePath);
 				return 'committed-repair-scheduled';
 			}
-			if (await this.writer.taskFieldsMatchCurrentSource(operonId, beforeValues)) {
+			if (await this.writer.taskFieldsMatchCurrentSource(operonId, beforeValues, options.filePropertyDraft, options.inlinePropertyDraft, 'before')) {
 				return 'failed-before-commit';
 			}
 			return 'source-changed';
@@ -34671,12 +34588,12 @@ export default class OperonPlugin extends Plugin {
 			return { outcome: 'not-applicable' };
 		}
 
-		return await this.writer.runExclusiveTaskMutation<FileTerminalRecurrenceCommitResult>(async permit => {
+		const commit = async (permit: TaskWriterExclusiveMutationPermit): Promise<FileTerminalRecurrenceCommitResult> => {
    if (options.canCommit?.() === false) return { outcome: 'failed' };
-			const sourceFile = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+			const sourceFile = this.app.vault.getAbstractFileByPath(options.fileRenameSourcePath ?? task.primary.filePath);
 			if (!(sourceFile instanceof TFile)) return { outcome: 'blocked', reason: 'source-missing' };
 			const expectedContent = await this.app.vault.read(sourceFile);
-			const indexedExpected = this.writer.prepareIndexedYamlExpectedFields(expectedContent, { ...task.fieldValues, ...options.expectedFieldValues });
+			const indexedExpected = this.writer.prepareIndexedYamlExpectedFields(expectedContent, Object.fromEntries(Object.entries({ ...task.fieldValues, ...options.expectedFieldValues }).filter(([key]) => key !== '_description')), task);
 			if (!indexedExpected) return { outcome: 'blocked', reason: 'source-changed' };
 			const renderedTerminal = this.writer.renderGuardedTaskSourceContent(
 				task.primary.filePath,
@@ -34685,6 +34602,7 @@ export default class OperonPlugin extends Plugin {
 					operonId: task.operonId,
 					format: 'yaml',
 					fieldValues: payload,
+     filePropertyDraft: options.filePropertyDraft,
 					expectedFieldValues: indexedExpected,
 				}],
 			);
@@ -34700,7 +34618,7 @@ export default class OperonPlugin extends Plugin {
 			if (!yamlTask || yamlTask.operonId !== task.operonId) return { outcome: 'blocked', reason: 'scan-identity-mismatch' };
 			const completedTask: IndexedTask = {
 				...task,
-				description: yamlTask.description,
+				description: payload._description ?? yamlTask.description,
 				checkbox: terminalCheckbox,
 				fieldValues: { ...yamlTask.fieldValues },
 				tags: [...yamlTask.tags],
@@ -34743,7 +34661,10 @@ export default class OperonPlugin extends Plugin {
 				return { outcome: 'blocked', reason: 'plan-blocked' };
 			}
 
-			if (plan.disposition === 'series-ended') {
+			if (options.fileRenameSourcePath && plan.disposition === 'materialize-file'
+                && (plan.preview.sourceTaskFinalFilePath ?? task.primary.filePath) !== task.primary.filePath) return { outcome: 'blocked', reason: 'plan-blocked' };
+            if (plan.disposition === 'series-ended') {
+                if (options.beforeFileCommit && !await options.beforeFileCommit()) return { outcome: 'failed' };
 				onWriteStarted?.();
 				const sourceWrite = await this.writer.applyTaskSourceMutation({
 					kind: 'modify',
@@ -34786,7 +34707,8 @@ export default class OperonPlugin extends Plugin {
 				|| !repeatOccurrenceDate
 			) return { outcome: 'blocked', reason: 'successor-invalid' };
    if (options.canCommit?.() === false) return { outcome: 'failed' };
-			if (!await this.recurrenceService.ensureFileRecurrenceTargetFolder(
+			if (options.beforeFileCommit && !await options.beforeFileCommit()) return { outcome: 'failed' };
+            if (!await this.recurrenceService.ensureFileRecurrenceTargetFolder(
 				completedTask,
 				successorFields,
 			)) return { outcome: 'blocked', reason: 'target-folder-unavailable' };
@@ -34862,7 +34784,8 @@ export default class OperonPlugin extends Plugin {
 					},
 				],
 			};
-		});
+		};
+        return options.ownedMutationPermit ? commit(options.ownedMutationPermit) : this.writer.runExclusiveTaskMutation(commit);
 	}
 
 	private async settleFileTerminalRecurrenceCommit(
@@ -35110,6 +35033,7 @@ export default class OperonPlugin extends Plugin {
 			options.directEdit ?? { targetId: task.operonId, placementAttempted: false }, options.canCommit, undefined, options.ownedDrawingSources);
 		return placement ?? await this.writer.writeTaskFields(task.operonId, payload, {
 			mode: options.mode, expectedFieldValues: options.expectedFieldValues, canCommit: options.canCommit, reindex: 'none',
+   inlinePropertyDraft: options.inlinePropertyDraft, filePropertyDraft: options.filePropertyDraft,
 		});
 	}
 
@@ -35125,8 +35049,9 @@ export default class OperonPlugin extends Plugin {
 		options: TaskFieldsUpdateOptions = {},
 	): Promise<boolean> {
 		if (this.redirectDuplicateOperonIdAction(operonId)) return false;
-		const task = this.indexer.getTask(operonId);
-		if (!task) return false;
+		const indexedBefore = this.indexer.getTask(operonId);
+		if (!indexedBefore) return false;
+        let task: IndexedTask = indexedBefore;
 
 		const normalizeStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 		const inheritedPayload = await this.inheritFieldsOnParentLink(task, { ...payload });
@@ -35139,6 +35064,7 @@ export default class OperonPlugin extends Plugin {
 			this.ensureRepeatSeriesIdPayload(task, normalizedPayload);
 			await this.applyDerivedRepeatFieldsToPayload(task, normalizedPayload);
 			const mode = options.mode ?? 'merge';
+   if (options.validateFieldPayload?.(normalizedPayload) === false) { options.onMutationCancelled?.(); return false; }
 			if (!this.validateDependencyPayloadChanges(task, normalizedPayload, mode)) {
 				options.onMutationCancelled?.();
 				return false;
@@ -35150,9 +35076,10 @@ export default class OperonPlugin extends Plugin {
 			}
 			await this.maybeApplyPeriodicNoteParentRealignmentToPayload(task, normalizedPayload, { mode });
    if (options.canCommit?.() === false) { options.onMutationCancelled?.(); return false; }
+			if (options.validateFieldPayload?.(normalizedPayload) === false) { options.onMutationCancelled?.(); return false; }
 			// Guard requested/inherited fields before adding the automatic timestamp.
 			const parentLinkExpected = this.getParentLinkExpectedFields(task, normalizedPayload);
-			if (Object.keys(normalizedPayload).length > 0 && !Object.prototype.hasOwnProperty.call(normalizedPayload, 'datetimeModified')) {
+			if ((Object.keys(normalizedPayload).length > 0 || options.inlinePropertyDraft?.length || options.filePropertyDraft?.changes.length) && !Object.prototype.hasOwnProperty.call(normalizedPayload, 'datetimeModified')) {
 				normalizedPayload['datetimeModified'] = localNow();
 			}
 			this.setStatusCyclePerfChangedKeys(options.statusCycleTrace, Object.keys(normalizedPayload));
@@ -35164,7 +35091,8 @@ export default class OperonPlugin extends Plugin {
 			const mappings = this.settings.keyMappings;
 			const mappingSnapshot = JSON.stringify(mappings);
 			const textMappings = mappings.filter(mapping => mapping.isSystem === false && mapping.type === 'text'
-				&& Object.prototype.hasOwnProperty.call(normalizedPayload, mapping.canonicalKey));
+				&& Object.prototype.hasOwnProperty.call(normalizedPayload, mapping.canonicalKey)
+    && !options.inlinePropertyDraft?.some(change => [mapping.canonicalKey, mapping.visiblePropertyName].includes(change.sourceName)));
 			if (textMappings.length) {
 				try {
 					const definitions = this.storage.getCommittedInlinePropertyDefinitions();
@@ -35187,32 +35115,44 @@ export default class OperonPlugin extends Plugin {
 							nativeMappings.map(mapping => ({ field: mapping.canonicalKey,
 								value: normalizedPayload[mapping.canonicalKey] || undefined })), mappings, definitions);
 						const canCommit = options.canCommit;
-						options = { ...options, inlinePropertyDraft: prepared.changes,
+						options = { ...options, inlinePropertyDraft: [...(options.inlinePropertyDraft ?? []).filter(change => !prepared.changes.some(next => next.sourceName.toLowerCase() === change.sourceName.toLowerCase())), ...prepared.changes],
 							canCommit: () => JSON.stringify(this.settings.keyMappings) === mappingSnapshot && canCommit?.() !== false };
 					}
 				} catch { return false; }
 			}
 		}
 
+  if (options.inlinePropertyDraft?.length) {
+   const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+   if (!(file instanceof TFile) || options.canCommit?.() === false) return false;
+   try {
+    patchInlineProperties(await this.app.vault.read(file), file.path, task.operonId, options.inlinePropertyDraft, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
+    await this.storage.ensureInlinePropertyDefinitions(options.inlinePropertyDraft.map(change => resolveInlinePropertyDefinition(change.sourceName, change.type, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions())), options.canCommit);
+   } catch { return false; }
+  }
 			const writerStartedAt = options.statusCycleTrace ? enginePerfNow() : 0;
 			const precommittedAggregateIds = new Set<string>();
 			let coalescedSameFile = false;
 			let coalescedFallbackReason = 'not-attempted';
 			let wroteTask = false;
-		const inlineRecurrenceCommit = await this.commitInlineTerminalRecurrenceMutation(
+        const commits: { inline: Awaited<ReturnType<OperonPlugin['commitInlineTerminalRecurrenceMutation']>>; file: FileTerminalRecurrenceCommitResult } = {
+            inline: { outcome: 'not-applicable' }, file: { outcome: 'not-applicable' },
+        };
+        const commitPrimary = async (): Promise<boolean> => {
+		commits.inline = await this.commitInlineTerminalRecurrenceMutation(
 			task,
 			normalizedPayload,
 			options.onTaskWriteStarted,
 			options,
 		);
-		if (inlineRecurrenceCommit.outcome === 'blocked') {
+		if (commits.inline.outcome === 'blocked') {
 			options.onRecurrenceBlocked?.();
 			return false;
 		}
-		if (inlineRecurrenceCommit.outcome === 'failed') {
+		if (commits.inline.outcome === 'failed') {
 			return false;
 		}
-		const fileRecurrenceCommit = inlineRecurrenceCommit.outcome === 'not-applicable'
+		commits.file = commits.inline.outcome === 'not-applicable'
 			? await this.commitFileTerminalRecurrenceMutation(
 				task,
 				normalizedPayload,
@@ -35220,22 +35160,23 @@ export default class OperonPlugin extends Plugin {
     options,
 			)
 			: { outcome: 'not-applicable' as const };
-		if (fileRecurrenceCommit.outcome === 'blocked') {
-			console.warn('Operon: file recurrence blocked', fileRecurrenceCommit.reason);
-			options.onRecurrenceBlocked?.(fileRecurrenceCommit.reason);
+		if (commits.file.outcome === 'blocked') {
+			console.warn('Operon: file recurrence blocked', commits.file.reason);
+			options.onRecurrenceBlocked?.(commits.file.reason);
 			return false;
 		}
-		if (fileRecurrenceCommit.outcome === 'failed') {
+		if (commits.file.outcome === 'failed') {
 			return false;
 		}
-		if (inlineRecurrenceCommit.outcome === 'committed') {
+		if (commits.inline.outcome === 'committed') {
 			wroteTask = true;
 			coalescedFallbackReason = 'inline-terminal-recurrence';
-		} else if (fileRecurrenceCommit.outcome === 'committed') {
+		} else if (commits.file.outcome === 'committed') {
 			wroteTask = true;
 			coalescedFallbackReason = 'file-terminal-recurrence';
 		} else {
-			options.onTaskWriteStarted?.();
+			if (options.beforeFileCommit && !await options.beforeFileCommit()) return false;
+            options.onTaskWriteStarted?.();
 		}
 		if (!wroteTask && options.directEdit) {
 			const parentId = (normalizedPayload.parentTask ?? (mode === 'replace' ? '' : task.fieldValues.parentTask) ?? '').trim();
@@ -35278,7 +35219,9 @@ export default class OperonPlugin extends Plugin {
 		if (!wroteTask) {
 			wroteTask = await this.writer.writeTaskFields(operonId, normalizedPayload, {
 				mode,
+                mutationPermit: options.ownedMutationPermit, sourceTask: options.ownedMutationPermit ? task : undefined, sourcePathBeforeRename: options.fileRenameSourcePath,
 				inlinePropertyDraft: options.inlinePropertyDraft,
+                filePropertyDraft: options.filePropertyDraft,
                 expectedFieldValues: parentLinkExpected
                     ? { ...parentLinkExpected, ...options.expectedFieldValues }
                     : options.expectedFieldValues, canCommit: options.canCommit,
@@ -35286,6 +35229,41 @@ export default class OperonPlugin extends Plugin {
 				touchAncestors: false,
 			});
 		}
+
+            return wroteTask;
+        };
+        const description = normalizedPayload._description;
+        if (task.primary.format === 'yaml' && description !== undefined && description !== task.description) {
+            const original = task;
+            const file = this.app.vault.getAbstractFileByPath(original.primary.filePath);
+            if (!(file instanceof TFile) || !description || this.sanitizeTaskFileName(description) !== description) return false;
+            const previousPath = file.path;
+            const folder = previousPath.includes('/') ? previousPath.slice(0, previousPath.lastIndexOf('/') + 1) : '';
+            const candidatePath = `${folder}${description}.md`;
+            wroteTask = await this.writer.runExclusiveTaskMutation(permit => executeTaskSourceRenameTransaction({
+                previousPath, candidatePath, currentPath: () => file.path,
+                owns: path => this.app.vault.getAbstractFileByPath(path) === file,
+                occupied: path => this.app.vault.getAbstractFileByPath(path) !== null,
+                read: () => this.app.vault.read(file),
+                rename: path => this.app.fileManager.renameFile(file, path),
+                canCommit: () => options.canCommit?.() !== false && !this.indexer.hasDuplicateOperonIdConflict(operonId),
+                validate: content => file.basename === original.description && this.writer.renderGuardedTaskSourceContent(previousPath, content, [{
+                    operonId, format: 'yaml', fieldValues: normalizedPayload, filePropertyDraft: options.filePropertyDraft,
+                    expectedFieldValues: { ...parentLinkExpected, ...options.expectedFieldValues, _description: original.description },
+                }]).ok,
+                validateCommitted: content => parseFrontmatterDocument(content, this.settings.keyMappings).managedFieldValues.operonId === operonId,
+                commit: async ensureRenamed => {
+                    task = { ...original, description, primary: { ...original.primary, filePath: candidatePath } };
+                    options = { ...options, ownedMutationPermit: permit, fileRenameSourcePath: previousPath, beforeFileCommit: ensureRenamed,
+                        expectedFieldValues: { ...options.expectedFieldValues, _description: description } };
+                    return commitPrimary();
+                },
+            }));
+            if (!wroteTask) return false;
+        } else {
+            await commitPrimary();
+        }
+        const { inline: inlineRecurrenceCommit, file: fileRecurrenceCommit } = commits;
 		this.logStatusCyclePerfStage(
 			options.statusCycleTrace,
 			'writer',

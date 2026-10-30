@@ -1,7 +1,10 @@
 import { Platform, type App } from 'obsidian';
 import { getManagedYamlAliases } from '../core/yaml-fields';
 import { parseListValue } from '../core/parser';
-import { isRetiredKeyMapping, KeyMapping, OperonSettings } from '../types/settings';
+import { encodeVaultPropertyValue, type VaultPropertyValue } from '../core/vault-property-codec';
+import { getNativePropertyIndex } from '../indexer/native-property-index';
+import { nativePropertyValueReadOnlyReason } from '../core/task-editor-native-properties';
+import { isRetiredKeyMapping, KeyMapping, OperonSettings, type FilterFieldType } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import {
 	compareManagedCustomFieldMappings,
@@ -27,6 +30,7 @@ interface VaultFrontmatterCandidateCache {
 	dirty: boolean;
 	byFieldName: Map<string, Set<string>>;
 	scalarByFieldName: Map<string, Set<string>>;
+	typedByFieldName: Map<string, Map<string, VaultPropertyValue>>;
 }
 
 const vaultFrontmatterCandidateCaches = new WeakMap<object, VaultFrontmatterCandidateCache>();
@@ -198,6 +202,35 @@ export function collectCustomFieldValueCandidates(
 	return Array.from(candidates).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
+/** Native picker suggestions share the typed vault pool and ready task index. Never read sources or write drafts. */
+export function collectNativeFieldValueCandidates(
+ app: App, tasks: readonly IndexedTask[], mappings: readonly KeyMapping[], sourceName: string, type: FilterFieldType,
+): string[] {
+ if (type !== 'text' && type !== 'list') return [];
+ const identity = sourceName.trim().toLowerCase();
+ const matches = mappings.filter(mapping => [mapping.canonicalKey, mapping.visiblePropertyName]
+  .some(name => name.trim().toLowerCase() === identity));
+ if (matches.length > 1 || matches.length === 1 && matches[0].type !== type) return [];
+ const aliases = [...new Set([sourceName, ...(matches.length ? getManagedYamlAliases(matches[0].canonicalKey, [matches[0]]) : [])]
+  .map(name => name.trim().toLowerCase()))];
+ const candidates = new Set<string>();
+ const remember = (value: unknown): void => {
+  if (value === undefined || value === null || nativePropertyValueReadOnlyReason(value, type)) return;
+  if (type === 'list') {
+   if (Array.isArray(value)) for (const member of value) candidates.add(encodeVaultPropertyValue([member], 'list'));
+  } else if (typeof value === 'string' && value.trim()) candidates.add(value);
+ };
+ const index = getNativePropertyIndex(app);
+ for (const task of tasks) {
+  const row = index.getTask(task);
+  if (!row.available) continue;
+  const properties = aliases.flatMap(alias => row.properties.has(alias) ? [row.properties.get(alias)!] : []);
+  if (properties.length === 1 && !properties[0].reason && properties[0].type === type) remember(properties[0].value);
+ }
+ for (const value of getVaultPropertyValueCandidates(app, aliases)) remember(value);
+ return [...candidates].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
 export function normalizeCustomFieldRawValue(value: unknown): string {
 	return normalizeManagedFieldValue(value);
 }
@@ -208,6 +241,13 @@ export function invalidateCustomFieldValueCandidateCache(
 	if (!app) return;
 	const cache = vaultFrontmatterCandidateCaches.get(app);
 	if (cache) cache.dirty = true;
+}
+
+/** Typed candidates share the editor's metadata-cache index and invalidation; no source reads. */
+export function getVaultPropertyValueCandidates(app: Pick<App, 'metadataCache' | 'vault'>, names: readonly string[]): readonly VaultPropertyValue[] {
+	getVaultFrontmatterCandidateIndex(app, false);
+	const index = vaultFrontmatterCandidateCaches.get(app)?.typedByFieldName;
+	return names.flatMap(name => [...(index?.get(name.trim().toLocaleLowerCase())?.values() ?? [])]);
 }
 
 function getVaultFrontmatterCandidateIndex(
@@ -228,6 +268,7 @@ function getVaultFrontmatterCandidateIndex(
 			dirty: false,
 			byFieldName: new Map(),
 			scalarByFieldName: new Map(),
+			typedByFieldName: new Map(),
 		};
 		vaultFrontmatterCandidateCaches.set(cacheKey, cache);
 	}
@@ -241,15 +282,23 @@ function getVaultFrontmatterCandidateIndex(
 function buildVaultFrontmatterCandidateIndex(
 	app: Pick<App, 'metadataCache' | 'vault'>,
 	files: ReturnType<App['vault']['getMarkdownFiles']>,
-): Pick<VaultFrontmatterCandidateCache, 'byFieldName' | 'scalarByFieldName'> {
+): Pick<VaultFrontmatterCandidateCache, 'byFieldName' | 'scalarByFieldName' | 'typedByFieldName'> {
 	const byFieldName = new Map<string, Set<string>>();
 	const scalarByFieldName = new Map<string, Set<string>>();
+	const typedByFieldName = new Map<string, Map<string, VaultPropertyValue>>();
 	for (const file of files) {
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (!fm) continue;
 		for (const [key, rawValue] of Object.entries(fm)) {
 			const normalizedKey = key.trim().toLocaleLowerCase();
 			if (!normalizedKey) continue;
+			const scalar = (value: unknown): value is string | number | boolean => typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value);
+			if (scalar(rawValue) || Array.isArray(rawValue) && rawValue.every(item => typeof item === 'string' || typeof item === 'number' && Number.isFinite(item))) {
+				const value = Array.isArray(rawValue) ? [...(rawValue as (string | number)[])] : rawValue;
+				const typed = typedByFieldName.get(normalizedKey) ?? new Map<string, VaultPropertyValue>();
+				typed.set(JSON.stringify(value), value);
+				typedByFieldName.set(normalizedKey, typed);
+			}
 			let bucket = byFieldName.get(normalizedKey);
 			if (!bucket) {
 				bucket = new Set<string>();
@@ -263,7 +312,7 @@ function buildVaultFrontmatterCandidateIndex(
 			}
 		}
 	}
-	return { byFieldName, scalarByFieldName };
+	return { byFieldName, scalarByFieldName, typedByFieldName };
 }
 
 function rememberVaultFrontmatterCandidateValue(bucket: Set<string>, rawValue: unknown): void {

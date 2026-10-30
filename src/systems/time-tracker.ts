@@ -95,6 +95,8 @@ export class TimeTracker {
 	private transitionState: TimeTrackerTransitionState | null = null;
 	private finalizedActiveRecordIds: Set<string> = new Set();
 	private historyCache: HistoryCacheEntry | null = null;
+	private readonly sessionCreatedListeners = new Set<(session: TrackerSession) => void>();
+	private readonly announcedSessions = new Set<string>();
 
 	constructor(
 		app: App,
@@ -132,6 +134,36 @@ export class TimeTracker {
 	subscribe(listener: TimeTrackerListener): () => void {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
+	}
+
+	/** Internal UI notification; public Runtime events and persistence remain unchanged. */
+	subscribeSessionCreated(listener: (session: TrackerSession) => void): () => void {
+		this.sessionCreatedListeners.add(listener);
+		return () => this.sessionCreatedListeners.delete(listener);
+	}
+
+	notifyCreatedSessions(operonId: string, previousTrackers: string): void {
+		const previous = new Map<string, number>();
+		for (const entry of parseTrackerList(previousTrackers)) {
+			const key = `${entry.start}/${entry.end}`;
+			previous.set(key, (previous.get(key) ?? 0) + 1);
+		}
+		// Stored order means the newest midnight fragment becomes the visible record.
+		for (const session of this.getTaskSessions(operonId).sort((a, b) => a.sessionIndex - b.sessionIndex)) {
+			const range = `${session.start}/${session.end}`;
+			const remaining = previous.get(range) ?? 0;
+			if (remaining > 0) { previous.set(range, remaining - 1); continue; }
+			const key = `${operonId}/${range}/${session.sessionIndex}`;
+			if (this.announcedSessions.has(key)) continue;
+			this.announcedSessions.add(key);
+			if (this.announcedSessions.size > 256) {
+				const oldest: unknown = this.announcedSessions.values().next().value;
+				if (typeof oldest === 'string') this.announcedSessions.delete(oldest);
+			}
+			for (const listener of this.sessionCreatedListeners) {
+				try { listener(session); } catch (error) { console.warn('Operon: session notification failed', error); }
+			}
+		}
 	}
 
 	private emit(event: TimeTrackerEvent): void {
@@ -774,6 +806,7 @@ export class TimeTracker {
 					end,
 					{},
 					canCommit,
+					true,
 				);
 				this.finalizedActiveRecordIds.add(current.id);
 			} catch (error) {
@@ -842,6 +875,7 @@ export class TimeTracker {
 			timerPayload['duration'] = trackers ? String(calculateDurationFromTrackers(trackers)) : '';
 		}
 
+		const previousTrackers = task.fieldValues['trackers'] ?? '';
 		let persisted = false;
 		try {
 			persisted = await persistPayload(timerPayload);
@@ -860,6 +894,7 @@ export class TimeTracker {
 		}
 		if (!alreadyPersisted) {
 			this.finalizedActiveRecordIds.add(current.id);
+			this.notifyCreatedSessions(operonId, previousTrackers);
 		}
 
 		try {
@@ -942,7 +977,7 @@ export class TimeTracker {
 				...existingSessions.map(session => session.raw),
 				...this.buildStoredSessionRanges(start, end),
 			]);
-			await this.persistTaskSessions(task, nextTrackers, localNow(), {}, canCommit);
+			await this.persistTaskSessions(task, nextTrackers, localNow(), {}, canCommit, true);
 			this.emit('history');
 			this.emit('state');
 			return true;
@@ -1212,6 +1247,8 @@ export class TimeTracker {
 	destroy(): void {
 		this.stopTicker();
 		this.listeners.clear();
+		this.sessionCreatedListeners.clear();
+		this.announcedSessions.clear();
 		this.activeTracker = null;
 	}
 
@@ -1221,7 +1258,9 @@ export class TimeTracker {
 		now: string,
 		extraFields: Record<string, string> = {},
 		canCommit?: () => boolean,
+		created = false,
 	): Promise<void> {
+		const previousTrackers = task.fieldValues['trackers'] ?? '';
 		const duration = trackers ? String(calculateDurationFromTrackers(trackers)) : '';
 		// Ancestor timestamps are handled by the duration aggregate refresh below
 		// in the same write as totalDuration; touching them here would write every
@@ -1242,6 +1281,8 @@ export class TimeTracker {
 		await this.indexer.reindexFilePath(task.primary.filePath, { notify: false });
 		this.invalidateHistoryCache();
 		await this.refreshAggregateChains(task.operonId, now);
+		if (created) this.notifyCreatedSessions(task.operonId, previousTrackers);
+		else this.announcedSessions.clear();
 	}
 
 	private activeRecordToInternal(record: ActiveTrackerRecord): InternalActiveTracker {

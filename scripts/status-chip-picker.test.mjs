@@ -18,6 +18,7 @@ function fixture(surface,{iconOnly=false,format='inline',blocked=false,noWriter=
  const callbacks={app:{},getSettings:()=>({}),getAllTasks:()=>[latest],getTaskById:()=>latest,canMutate:()=>mutable,updateField:(...args)=>writes.push(args)};
  if(noWriter)delete callbacks.updateField;
  const deps={bindDesktopChipOpening:()=>false,shouldOpenIconOnlyChipPreview:()=>true,openIconOnlyChipPreview:()=>preview++,openTaskFieldPicker:o=>{opened.push(o);return()=>o.onClose?.();},getLivePreviewCurrentFieldValues:()=>task.fieldValues,getLivePreviewDescriptionEndCursor:()=>17,snapshotLivePreviewAnchor:()=>({left:1,top:2,width:10,height:10}),getKanbanDirectChipManualDatePickerOptions:()=>undefined};
+ if(surface==='live')deps.bindLivePreviewControlMouseGuard=extract('live-preview-conceal','bindLivePreviewControlMouseGuard');
  deps.commitKanbanChipPayload=extract('compact-card-chips','commitKanbanChipPayload');
  deps.openKanbanTaskFieldPicker=extract('compact-card-chips','openKanbanTaskFieldPicker',deps);
  const entry={key,label:'Project.Active',iconOnly};const committed=()=>commits++;
@@ -35,7 +36,15 @@ for(const surface of ['live','reading','card','overlay'])for(const iconOnly of [
  if(surface==='live')assert.equal(f.writes[0][3],17);
  f.chip.click();assert.equal(f.opened.length,3);f.opened[2].onCommit({status:''});assert.deepEqual(f.writes[1].slice(0,3),['task-a','status','']);
 });
-test('Live Preview status mousedown prevents editor caret placement before click',()=>{const f=fixture('live');let prevented=0,stopped=0;f.chip.listeners.mousedown({preventDefault(){prevented++;},stopPropagation(){stopped++;}});assert.equal(prevented,1);assert.equal(stopped,1);assert.deepEqual(f.writes,[]);assert.equal(f.opened.length,0);});
+test('Live Preview status mousedown prevents primary editor caret placement before click',()=>{
+ const f=fixture('live');
+ for(const button of [0,1,2]){
+  let prevented=0,stopped=0;
+  f.chip.listeners.mousedown({button,preventDefault(){prevented++;},stopPropagation(){stopped++;}});
+  assert.equal(prevented,button===0?1:0);assert.equal(stopped,button===0?1:0);
+ }
+ assert.deepEqual(f.writes,[]);assert.equal(f.opened.length,0);
+});
 for(const surface of ['reading','card','overlay'])test(`${surface}: file task context survives status selection`,()=>{const f=fixture(surface,{format:'yaml'});f.chip.click();assert.equal(f.opened[0].taskFormat,'yaml');});
 test('card read-only, mutation locks and missing writers stay protected',()=>{
  for(const options of [{blocked:true},{noWriter:true}]){const f=fixture('card',options);f.chip.click();assert.equal(f.opened.length,0);}

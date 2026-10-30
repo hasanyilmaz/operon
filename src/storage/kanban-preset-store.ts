@@ -1,3 +1,4 @@
+import { assertKanbanAxesWritable } from '../core/kanban-axis-model';
 import { App } from 'obsidian';
 import { KanbanPreset, normalizeBuiltInKanbanPreset } from '../types/kanban';
 import type { OperonSettings } from '../types/settings';
@@ -26,6 +27,7 @@ export class KanbanPresetStore {
 	private settings: KanbanPresetStoreSettings;
 	private serializedSettings: string;
 	private recoveredFromMalformed = false;
+	private pendingReplace: Promise<void> = Promise.resolve();
 	private packagePersist: ((settings: KanbanPresetStoreSettings) => Promise<void>) | null = null;
 
 	constructor(app: App, writeQueue: WriteQueue, defaults: KanbanPresetStoreSettings) {
@@ -86,35 +88,32 @@ export class KanbanPresetStore {
 	}
 
 	async replaceAll(settings: KanbanPresetStoreSettings, options: RecoveredStoreWriteOptions = {}): Promise<void> {
-		const nextSettings = cloneSettings(settings);
-		const nextSerialized = JSON.stringify(nextSettings);
-		const adapter = this.app.vault.adapter;
-		if (shouldSkipStoreWrite(
-			nextSerialized === this.serializedSettings,
-			await adapter.exists(this.getFilePath()),
-			this.recoveredFromMalformed,
-			options,
-		)) {
-			this.settings = nextSettings;
-			return;
-		}
-		this.settings = nextSettings;
-		this.serializedSettings = nextSerialized;
-		if (this.packagePersist) {
-			await this.packagePersist(this.getAll());
-			this.recoveredFromMalformed = false;
-			return;
-		}
-		await this.persist();
+		const next = cloneSettings(settings);
+		const operation = this.pendingReplace.then(() => this.replaceNow(next, options));
+		this.pendingReplace = operation.catch(() => undefined);
+		await operation;
 	}
 
-	private async persist(): Promise<void> {
+	private async replaceNow(next: KanbanPresetStoreSettings, options: RecoveredStoreWriteOptions): Promise<void> {
+		assertKanbanAxesWritable(this.settings.kanbanPresets);
+		assertKanbanAxesWritable(next.kanbanPresets);
+		const serialized = JSON.stringify(next);
+		if (shouldSkipStoreWrite(serialized === this.serializedSettings,
+			await this.app.vault.adapter.exists(this.getFilePath()), this.recoveredFromMalformed, options)) return;
+		if (this.packagePersist) await this.packagePersist(cloneSettings(next));
+		else await this.persist(next);
+		this.settings = next;
+		this.serializedSettings = serialized;
+		this.recoveredFromMalformed = false;
+	}
+
+	private async persist(settings = this.settings): Promise<void> {
 		const adapter = this.app.vault.adapter;
 		const filePath = this.getFilePath();
 		const data: KanbanPresetStoreData = {
 			version: KANBAN_PRESET_STORE_VERSION,
-			presets: cloneKanbanPresets(this.settings.kanbanPresets),
-			defaultPresetId: this.settings.kanbanDefaultPresetId,
+			presets: cloneKanbanPresets(settings.kanbanPresets),
+			defaultPresetId: settings.kanbanDefaultPresetId,
 		};
 		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
 			await writeJsonSafely(adapter, filePath, data);

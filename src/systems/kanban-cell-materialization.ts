@@ -23,31 +23,25 @@ export function shouldMaterializeKanbanCell(
 		&& cellRect.top <= viewportRect.bottom + marginPx;
 }
 
-/**
- * Computes how many cards a cell must render on its first pass so a pending
- * per-cell scroll restore does not clamp against lazily rendered content.
- * Without a saved scroll position this mirrors the plain initial limit:
- * max(renderBatchSize, maxVisibleTasks) capped to the task count. With one,
- * enough cards are added to cover the saved depth plus one visible window,
- * so the restored scrollTop lands inside already-rendered content.
+/** Render enough cards for the viewport and any pending scroll restoration.
+ * Card estimates affect batching only; CSS owns the fixed row geometry.
  */
 export function resolveKanbanCellInitialRenderLimit(options: {
 	taskCount: number;
 	renderBatchSize: number;
-	maxVisibleTasks: number;
+	viewportHeightPx: number;
 	savedScrollTopPx: number;
 	cardHeightPx: number;
 	cardGapPx: number;
 }): number {
-	const { taskCount, renderBatchSize, maxVisibleTasks, savedScrollTopPx, cardHeightPx, cardGapPx } = options;
+	const { taskCount, renderBatchSize, viewportHeightPx, savedScrollTopPx, cardHeightPx, cardGapPx } = options;
 	if (taskCount <= 0) return 0;
-	const heightLimited = Number.isFinite(maxVisibleTasks) && maxVisibleTasks >= 1;
-	const baseLimit = Math.min(taskCount, Math.max(renderBatchSize, heightLimited ? maxVisibleTasks : 0));
-	if (!(savedScrollTopPx > 0) || cardHeightPx <= 0) return baseLimit;
-	const cardStridePx = cardHeightPx + Math.max(0, cardGapPx);
-	const cardsAboveViewport = Math.ceil(savedScrollTopPx / cardStridePx);
-	const visibleWindow = heightLimited ? maxVisibleTasks : renderBatchSize;
-	return Math.min(taskCount, Math.max(baseLimit, cardsAboveViewport + Math.max(1, visibleWindow)));
+	const stride = Math.max(1, cardHeightPx + Math.max(0, cardGapPx));
+	const visibleWindow = Number.isFinite(viewportHeightPx) && viewportHeightPx > 0
+		? Math.ceil(viewportHeightPx / stride) : renderBatchSize;
+	const cardsAboveViewport = Number.isFinite(savedScrollTopPx) && savedScrollTopPx > 0
+		? Math.ceil(savedScrollTopPx / stride) : 0;
+	return Math.min(taskCount, Math.max(renderBatchSize, cardsAboveViewport + Math.max(1, visibleWindow)));
 }
 
 export interface KanbanCellScrollAnchor {
@@ -179,20 +173,4 @@ export function resolveKanbanCellScrollRestore(options: {
 	if (now > expiresAt) return 'expired';
 	if (Math.abs(achievedTop - targetTop) <= tolerancePx) return 'satisfied';
 	return canGrow ? 'retry' : 'satisfied';
-}
-
-export function estimateKanbanCellPlaceholderHeightPx(options: {
-	taskCount: number;
-	maxVisibleTasks: number;
-	renderBatchSize: number;
-	cardHeightPx: number;
-	cardGapPx: number;
-}): number {
-	const { taskCount, maxVisibleTasks, renderBatchSize, cardHeightPx, cardGapPx } = options;
-	if (taskCount <= 0) return 0;
-	const heightLimited = Number.isFinite(maxVisibleTasks) && maxVisibleTasks >= 1;
-	const visibleCount = heightLimited
-		? Math.min(taskCount, maxVisibleTasks)
-		: Math.min(taskCount, Math.max(1, renderBatchSize));
-	return (visibleCount * cardHeightPx) + (Math.max(0, visibleCount - 1) * cardGapPx);
 }

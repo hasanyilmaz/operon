@@ -23,6 +23,8 @@ try {
 			platform: 'node',
 			target: ['node18'],
 			logLevel: 'silent',
+			alias: { obsidian: path.resolve(scriptDirectory, '../../test-support/obsidian-native-yaml.ts') },
+			banner: { js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(path.resolve(scriptDirectory, '../../../package.json'))});` },
 		});
 		await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
 	}

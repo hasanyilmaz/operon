@@ -141,6 +141,7 @@ import { formatReminderDisplayItem } from './reminder-display';
 import type { ReminderPickerFieldKey } from '../core/reminder-list-mutation';
 import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import {
+	collectNativeFieldValueCandidates,
 	getNativePropertyIcon,
 	getCheckboxPropertyIcon,
 	getCheckboxPropertyTypeIcon,
@@ -3564,7 +3565,7 @@ export class TaskEditorContent {
   closePicker = openTableFilePropertyPicker({
    app: this.app, anchor: pickerAnchor, field: entry.field, label: name, textEditRoute,
    cellValue: { present: entry.baseline?.present ?? true, rawValue: entry.value, normalizedValue: isEmptyFilePropertyValue(entry.value) ? '' : String(entry.value) },
-   candidates: this.getVaultFilePropertySnapshot().getCandidates(entry.field.key), settings: this.settings, sourcePath: this.fileBodyContext?.filePath ?? '', lifecycleOwner: surface.action, preserveListValues: true, nativeList: true, editListIndex,
+   candidates: collectNativeFieldValueCandidates(this.app, this.indexer.getAllTasks(), this.settings.keyMappings, name, entry.field.type), settings: this.settings, sourcePath: this.fileBodyContext?.filePath ?? '', lifecycleOwner: surface.action, preserveListValues: true, nativeList: true, editListIndex,
    onMutation: mutation => { this.setFilePropertyValue(name, mutation.kind === 'delete' ? entry.field.type === 'text' ? '' : entry.field.type === 'list' ? [] : null : mutation.value); },
    onClose: close,
   });

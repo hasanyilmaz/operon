@@ -25,6 +25,7 @@ export async function runFileCreationRecurrenceTests(rootDir) {
   const outfile = path.join(dir, 'test.mjs');
   await build({stdin: {resolveDir: rootDir, loader: 'ts', contents: `
 import assert from 'node:assert/strict';
+import { mock } from 'node:test';
 import { RepeatSeriesStore } from './src/storage/repeat-series-store';
 import { WriteQueue } from './src/storage/write-queue';
 import { RecurrenceService } from './src/systems/recurrence-service';
@@ -48,6 +49,9 @@ const waiting=actualIndex.forceReindexFilePathAfterMutation('Tasks/Test.md');
 await Promise.resolve();assert.deepEqual(order,[],'Fresh scan must await older scan');
 finishOldScan();await waiting;assert.deepEqual(order,['fresh','native-pending','scan','finished']);
 
+// Series preservation is independent of wall-clock second boundaries.
+mock.timers.enable({ apis: ['Date'], now: new Date('2026-09-16T12:00:00Z') });
+try {
 for(const kind of ['task','subtask']) for(const mode of ['normal','older-scan','missing','wrong-path','changed-repeat','duplicate-id','index-failure','write-failure','existing-series','missing-series-id','null-series','wrong-series','changed-after-followup']) {
  notices=[];let visible=null, freshScans=0, attempts=0, reopened=0;
  const files=new Map();
@@ -81,6 +85,7 @@ for(const kind of ['task','subtask']) for(const mode of ['normal','older-scan','
   if(mode!=='write-failure')assert.equal(attempts,0,mode);
  }
 }
+} finally { mock.timers.reset(); }
 console.log('File creation recurrence: 26 task/subtask scenarios passed');
 `},bundle:true,format:'esm',platform:'node',outfile,logLevel:'silent',alias:{obsidian:path.join(rootDir,'scripts/test-support/obsidian.ts')}});
   await import(pathToFileURL(outfile).href);

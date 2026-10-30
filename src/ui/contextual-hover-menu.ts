@@ -42,6 +42,7 @@ export interface ContextualHoverMenuBindOptions {
  captureWriteGuard?: () => (() => boolean);
 	/** Optional trigger identity, independent of the shared action surface. */
 	menuKey?: string;
+	followAnchor?: boolean;
 	surface: ContextualMenuSurface;
 	taskId: string;
 	getTask: () => ContextualTaskActionSource | null;
@@ -209,6 +210,10 @@ export class ContextualHoverMenuController {
 
 	hideWithin(root: HTMLElement, immediate = true): void {
 		if (this.activeTrigger && root.contains(this.activeTrigger)) this.hide(immediate);
+	}
+
+	isActiveWithin(root: HTMLElement): boolean {
+		return !!this.activeMenuEl && !!this.activeTrigger && root.contains(this.activeTrigger);
 	}
 
 	isActive(key: string): boolean {
@@ -696,6 +701,10 @@ const sharedTaskHoverMenu = new ContextualHoverMenuController({
 	},
 });
 
+export function isTaskContextualHoverMenuActive(root: HTMLElement): boolean {
+	return sharedTaskHoverMenu.isActiveWithin(root);
+}
+
 export function hideTaskContextualHoverMenu(immediate = true, root?: HTMLElement): void {
 	if (root) sharedTaskHoverMenu.hideWithin(root, immediate);
 	else sharedTaskHoverMenu.hide(immediate);
@@ -760,7 +769,7 @@ export function showTaskContextualHoverMenu(
 	const canMutate = options.captureWriteGuard?.();
 	const opened = sharedTaskHoverMenu.show({
   themeTarget: triggerEl,
-  followAnchor: options.surface === 'taskCard' || options.surface === 'excalidrawTask' ? triggerEl : undefined,
+  followAnchor: options.followAnchor || options.surface === 'taskCard' || options.surface === 'excalidrawTask' ? triggerEl : undefined,
 		key: menuKey,
 		taskId: options.taskId,
 		actions,

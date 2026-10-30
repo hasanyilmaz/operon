@@ -1,3 +1,5 @@
+import { addKanbanListLane, kanbanListIsTyped } from './kanban-list-values';
+import type { InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { parseListValue } from '../core/parser';
 import { localToday } from '../core/local-time';
 import { composeStatusValue, Pipeline, StatusDefinition } from '../types/pipeline';
@@ -28,6 +30,7 @@ export function buildKanbanWritebackPlan(options: {
 	targetLaneKey: string;
 	swimlaneBy: KanbanSwimlaneBy | null;
 	keyMappings?: readonly KeyMapping[];
+ inlinePropertyDefinitions?: InlinePropertyDefinitions;
 }): KanbanWritebackPlan {
 	const { task, pipeline, targetStatus, sourceLaneKey, targetLaneKey, swimlaneBy } = options;
 	const keyMappings = options.keyMappings ?? [];
@@ -102,21 +105,8 @@ export function buildKanbanWritebackPlan(options: {
 			nextDraft.fieldValues[swimlaneBy] = nextValue;
 		}
 	} else if (swimlaneBy === 'tags') {
-		if (targetLaneKey === KANBAN_NO_VALUE_KEY && sourceLaneKey === null) {
-			if (task.tags.length > 0) {
-				payload._tags = '';
-				nextDraft.tags = [];
-			}
-			return {
-				payload,
-				changedKeys: Object.keys(payload),
-				nextDraft,
-			};
-		}
+		if (targetLaneKey === KANBAN_NO_VALUE_KEY) return { payload, changedKeys: Object.keys(payload), nextDraft };
 		const nextTags = new Set(task.tags.map(value => value.trim()).filter(Boolean));
-		if (sourceLaneKey && sourceLaneKey !== KANBAN_NO_VALUE_KEY) {
-			nextTags.delete(sourceLaneKey);
-		}
 		if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
 			nextTags.add(targetLaneKey);
 		}
@@ -126,26 +116,13 @@ export function buildKanbanWritebackPlan(options: {
 			nextDraft.tags = normalized;
 		}
 	} else if (swimlaneBy === 'contexts' || swimlaneBy === 'assignees') {
-		if (targetLaneKey === KANBAN_NO_VALUE_KEY && sourceLaneKey === null) {
-			if ((task.fieldValues[swimlaneBy] ?? '') !== '') {
-				payload[swimlaneBy] = '';
-				nextDraft.fieldValues[swimlaneBy] = '';
-			}
-			return {
-				payload,
-				changedKeys: Object.keys(payload),
-				nextDraft,
-			};
-		}
+		if (targetLaneKey === KANBAN_NO_VALUE_KEY) return { payload, changedKeys: Object.keys(payload), nextDraft };
 		const currentValues = parseListValue(task.fieldValues[swimlaneBy] ?? '');
 		const nextValues = new Set(currentValues);
-		if (sourceLaneKey && sourceLaneKey !== KANBAN_NO_VALUE_KEY) {
-			nextValues.delete(sourceLaneKey);
-		}
 		if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
 			nextValues.add(targetLaneKey);
 		}
-		const serialized = Array.from(nextValues).join('; ');
+		const serialized = Array.from(nextValues).map(value => value.replace(/;/g, '\\;')).join('; ');
 		if ((task.fieldValues[swimlaneBy] ?? '') !== serialized) {
 			payload[swimlaneBy] = serialized;
 			nextDraft.fieldValues[swimlaneBy] = serialized;
@@ -153,26 +130,8 @@ export function buildKanbanWritebackPlan(options: {
 	} else {
 		const customSwimlaneMapping = getManagedCustomFieldOptionMapping(swimlaneBy, keyMappings);
 		if (customSwimlaneMapping?.type === 'list') {
-			if (targetLaneKey === KANBAN_NO_VALUE_KEY && sourceLaneKey === null) {
-				if ((task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '') !== '') {
-					payload[customSwimlaneMapping.canonicalKey] = '';
-					nextDraft.fieldValues[customSwimlaneMapping.canonicalKey] = '';
-				}
-				return {
-					payload,
-					changedKeys: Object.keys(payload),
-					nextDraft,
-				};
-			}
-			const currentValues = parseListValue(task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '');
-			const nextValues = new Set(currentValues);
-			if (sourceLaneKey && sourceLaneKey !== KANBAN_NO_VALUE_KEY) {
-				nextValues.delete(sourceLaneKey);
-			}
-			if (targetLaneKey !== KANBAN_NO_VALUE_KEY) {
-				nextValues.add(targetLaneKey);
-			}
-			const serialized = Array.from(nextValues).join('; ');
+			if (targetLaneKey === KANBAN_NO_VALUE_KEY) return { payload, changedKeys: Object.keys(payload), nextDraft };
+			const serialized = addKanbanListLane(task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '', targetLaneKey, kanbanListIsTyped(customSwimlaneMapping, keyMappings, options.inlinePropertyDefinitions));
 			if ((task.fieldValues[customSwimlaneMapping.canonicalKey] ?? '') !== serialized) {
 				payload[customSwimlaneMapping.canonicalKey] = serialized;
 				nextDraft.fieldValues[customSwimlaneMapping.canonicalKey] = serialized;
