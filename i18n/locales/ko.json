@@ -1505,6 +1505,7 @@
 		"developerApiGrantState": "상태",
 		"developerApiGrantVersion": "버전",
 		"developerApiGrantedCapabilities": "허용된 기능",
+		"developerApiPendingCapabilities": "승인 대기 중인 기능",
 		"developerApiApproveSelected": "선택 항목 승인",
 		"developerApiDeny": "거부",
 		"developerApiRevoke": "철회",
@@ -2334,6 +2335,7 @@
 		"kanbanCellHeightDisabledDesc": "고정 셀 높이를 적용하려면 스윔레인을 활성화하세요."
 	},
 	"buttons": {
+		"open": "열기",
 		"lightboxWidthDecrease": "너비 줄이기",
 		"lightboxWidthIncrease": "너비 늘리기",
 		"lightboxHeightDecrease": "높이 줄이기",

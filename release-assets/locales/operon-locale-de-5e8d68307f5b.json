@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "Breite verringern",
       "lightboxWidthIncrease": "Breite vergrößern",
       "ok": "OK",
+      "open": "Öffnen",
       "partiallySubtract": "Teilweise abziehen",
       "pin": "Anheften",
       "remove": "Entfernen",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "Kein Obsidian-Plugin hat Developer-API-Zugriff angefordert.",
       "developerApiIntegrationsTitle": "Developer-API-Integrationen",
       "developerApiIntegrationsUnavailable": "Developer-API-Berechtigungen sind nicht verfügbar, bis die Operon Runtime vollständig gestartet ist.",
+      "developerApiPendingCapabilities": "Noch zu genehmigende Berechtigungen",
       "developerApiRevoke": "Widerrufen",
       "developerApiRevokeDesc": "Alle {{name}} erteilten Developer-API-Berechtigungen widerrufen?",
       "developerApiRevokeTitle": "Developer-API-Zugriff widerrufen",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "621d5bde8cc10b3b89e8056ec52ba5c19e445481eaee505bb069edc23ec59873"
+  "sourceVersion": "4ea1e1bb1d585ea9b9315a989b04caaedcf6a2bcf47bc5be5ea5873998392239"
 }

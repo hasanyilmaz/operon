@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "Reducir ancho",
       "lightboxWidthIncrease": "Aumentar ancho",
       "ok": "OK",
+      "open": "Abrir",
       "partiallySubtract": "Restar parcialmente",
       "pin": "Fijar",
       "remove": "Quitar",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "Ningún plugin de Obsidian ha solicitado acceso a la API.",
       "developerApiIntegrationsTitle": "Integraciones de la API para desarrolladores",
       "developerApiIntegrationsUnavailable": "Los permisos de la API no están disponibles hasta que Operon Runtime termine de iniciarse.",
+      "developerApiPendingCapabilities": "Capacidades pendientes de aprobación",
       "developerApiRevoke": "Revocar",
       "developerApiRevokeDesc": "¿Revocar todas las capacidades de la API concedidas a {{name}}?",
       "developerApiRevokeTitle": "Revocar acceso a la API",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "588c86f199d91f733287f1b2a483c8402cba521bbfc34a1671caee092e419385"
+  "sourceVersion": "4c3ab8170b085ce6fb23d56e63b011eff1e87d72fbccd6ec9ea74f5128749679"
 }

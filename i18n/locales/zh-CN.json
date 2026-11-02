@@ -1506,6 +1506,7 @@
 		"developerApiGrantState": "状态",
 		"developerApiGrantVersion": "版本",
 		"developerApiGrantedCapabilities": "已授予能力",
+		"developerApiPendingCapabilities": "等待批准的能力",
 		"developerApiApproveSelected": "批准所选项",
 		"developerApiDeny": "拒绝",
 		"developerApiRevoke": "撤销",
@@ -2334,6 +2335,7 @@
 		"kanbanCellHeightDisabledDesc": "启用泳道以应用固定单元格高度。"
 	},
 	"buttons": {
+		"open": "打开",
 		"lightboxWidthDecrease": "减小宽度",
 		"lightboxWidthIncrease": "增大宽度",
 		"lightboxHeightDecrease": "减小高度",

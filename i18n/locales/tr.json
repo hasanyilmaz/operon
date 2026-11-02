@@ -1506,6 +1506,7 @@
 		"developerApiGrantState": "Durum",
 		"developerApiGrantVersion": "Sürüm",
 		"developerApiGrantedCapabilities": "Verilen capability’ler",
+		"developerApiPendingCapabilities": "Onay bekleyen yetkiler",
 		"developerApiApproveSelected": "Seçilenleri onayla",
 		"developerApiDeny": "Reddet",
 		"developerApiRevoke": "İptal et",
@@ -2334,6 +2335,7 @@
 		"kanbanCellHeightDisabledDesc": "Sabit hücre yüksekliği uygulamak için swimlane’leri etkinleştirin."
 	},
 	"buttons": {
+		"open": "Aç",
 		"lightboxWidthDecrease": "Genişliği azalt",
 		"lightboxWidthIncrease": "Genişliği artır",
 		"lightboxHeightDecrease": "Yüksekliği azalt",

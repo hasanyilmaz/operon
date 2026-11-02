@@ -1506,6 +1506,7 @@
 		"developerApiGrantState": "状態",
 		"developerApiGrantVersion": "バージョン",
 		"developerApiGrantedCapabilities": "許可された機能",
+		"developerApiPendingCapabilities": "承認待ちの機能",
 		"developerApiApproveSelected": "選択項目を承認",
 		"developerApiDeny": "拒否",
 		"developerApiRevoke": "取り消す",
@@ -2334,6 +2335,7 @@
 		"kanbanCellHeightDisabledDesc": "固定セル高を適用するにはスイムレーンを有効にしてください。"
 	},
 	"buttons": {
+		"open": "開く",
 		"lightboxWidthDecrease": "幅を狭くする",
 		"lightboxWidthIncrease": "幅を広げる",
 		"lightboxHeightDecrease": "高さを低くする",

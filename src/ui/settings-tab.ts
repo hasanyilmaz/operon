@@ -4445,7 +4445,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					);
 					renderCapabilities(
 						approvalUiState.pendingApprovalCapabilities,
-						t('settings', 'repeatScopePending'),
+						t('settings', 'developerApiPendingCapabilities'),
 						false,
 					);
 				} else {

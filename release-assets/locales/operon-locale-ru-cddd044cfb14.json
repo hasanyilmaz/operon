@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "Уменьшить ширину",
       "lightboxWidthIncrease": "Увеличить ширину",
       "ok": "ОК",
+      "open": "Открыть",
       "partiallySubtract": "Вычесть частично",
       "pin": "Закрепить",
       "remove": "Удалить",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "Ни один плагин Obsidian не запрашивал доступ к Developer API.",
       "developerApiIntegrationsTitle": "Интеграции Developer API",
       "developerApiIntegrationsUnavailable": "Разрешения Developer API недоступны, пока Operon Runtime не завершит запуск.",
+      "developerApiPendingCapabilities": "Возможности, ожидающие одобрения",
       "developerApiRevoke": "Отозвать",
       "developerApiRevokeDesc": "Отозвать все возможности Developer API, предоставленные {{name}}?",
       "developerApiRevokeTitle": "Отозвать доступ к Developer API",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "faa2d568ef76b0dc3393422af14861437ad5a291f1dac7c1f9047aaac1a10faa"
+  "sourceVersion": "0b6b9763145e10dcb7ff6ffd17d9f11c41ca2981064fbc0c69d5bb3918bb0058"
 }

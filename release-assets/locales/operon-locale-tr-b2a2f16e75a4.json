@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "Genişliği azalt",
       "lightboxWidthIncrease": "Genişliği artır",
       "ok": "Tamam",
+      "open": "Aç",
       "partiallySubtract": "Kısmen düş",
       "pin": "Sabitle",
       "remove": "Kaldır",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "Hiçbir Obsidian eklentisi Geliştirici API erişimi istemedi.",
       "developerApiIntegrationsTitle": "Geliştirici API Entegrasyonları",
       "developerApiIntegrationsUnavailable": "Operon Runtime başlatmayı tamamlayana kadar Geliştirici API izinleri kullanılamaz.",
+      "developerApiPendingCapabilities": "Onay bekleyen yetkiler",
       "developerApiRevoke": "İptal et",
       "developerApiRevokeDesc": "{{name}} için verilen tüm Geliştirici API capability’leri iptal edilsin mi?",
       "developerApiRevokeTitle": "Geliştirici API erişimini iptal et",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "9908503b463253a4316789b12cb6aed0c37902ce2a3d4d6412ec7f473843f1b7"
+  "sourceVersion": "e9556bcd9be48191a5c3d1ba6aec0af8e8c4cbc7183c1418cde5316e477189ab"
 }

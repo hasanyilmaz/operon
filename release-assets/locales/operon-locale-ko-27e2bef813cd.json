@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "너비 줄이기",
       "lightboxWidthIncrease": "너비 늘리기",
       "ok": "확인",
+      "open": "열기",
       "partiallySubtract": "일부 차감",
       "pin": "고정",
       "remove": "제거",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "개발자 API 접근을 요청한 Obsidian 플러그인이 없습니다.",
       "developerApiIntegrationsTitle": "개발자 API 연동",
       "developerApiIntegrationsUnavailable": "Operon Runtime이 시작될 때까지 개발자 API 권한을 사용할 수 없습니다.",
+      "developerApiPendingCapabilities": "승인 대기 중인 기능",
       "developerApiRevoke": "철회",
       "developerApiRevokeDesc": "{{name}}에 허용한 모든 개발자 API 기능을 철회할까요?",
       "developerApiRevokeTitle": "개발자 API 접근 철회",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "9135ba3410c5fe9b8678cc93f9ff0e1ed35eee51b58cc703202da7c48d02cc7d"
+  "sourceVersion": "51b0dcd3037c7980b59e84002c76b96b37b6895b8b5c1b308f412113032dded6"
 }

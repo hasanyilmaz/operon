@@ -1506,6 +1506,7 @@
 		"developerApiGrantState": "Estado",
 		"developerApiGrantVersion": "Versão",
 		"developerApiGrantedCapabilities": "Capacidades concedidas",
+		"developerApiPendingCapabilities": "Capacidades aguardando aprovação",
 		"developerApiApproveSelected": "Aprovar selecionado",
 		"developerApiDeny": "Negar",
 		"developerApiRevoke": "Revogar",
@@ -2334,6 +2335,7 @@
 		"kanbanCellHeightDisabledDesc": "Ative as raias para aplicar uma altura fixa às células."
 	},
 	"buttons": {
+		"open": "Abrir",
 		"lightboxWidthDecrease": "Diminuir largura",
 		"lightboxWidthIncrease": "Aumentar largura",
 		"lightboxHeightDecrease": "Diminuir altura",

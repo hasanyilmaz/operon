@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "减小宽度",
       "lightboxWidthIncrease": "增大宽度",
       "ok": "确定",
+      "open": "打开",
       "partiallySubtract": "部分扣除",
       "pin": "置顶",
       "remove": "移除",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "尚无 Obsidian 插件请求开发者 API 访问。",
       "developerApiIntegrationsTitle": "开发者 API 集成",
       "developerApiIntegrationsUnavailable": "Operon Runtime 完成启动前，开发者 API 权限不可用。",
+      "developerApiPendingCapabilities": "等待批准的能力",
       "developerApiRevoke": "撤销",
       "developerApiRevokeDesc": "撤销授予 {{name}} 的所有开发者 API 能力？",
       "developerApiRevokeTitle": "撤销开发者 API 访问",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "1fd8b393dd71492b78700c3befe2c8b4f255f19e41478b2a1261c6dc834c2a69"
+  "sourceVersion": "17f61e30fb2c2f70e252667d2cdcfc224a8e2ebd662accfe570c310d62f17187"
 }

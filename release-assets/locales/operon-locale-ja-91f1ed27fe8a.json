@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3759,
-  "keyFingerprint": "d7c6464ef433a25d056e531ee277d93ee649b7615fadeea3420660162028c5f1",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -32,6 +32,7 @@
       "lightboxWidthDecrease": "幅を狭くする",
       "lightboxWidthIncrease": "幅を広げる",
       "ok": "OK",
+      "open": "開く",
       "partiallySubtract": "一部を差し引く",
       "pin": "ピン留め",
       "remove": "削除",
@@ -1442,6 +1443,7 @@
       "developerApiIntegrationsEmpty": "Developer API へのアクセスを要求した Obsidian プラグインはありません。",
       "developerApiIntegrationsTitle": "Developer API 連携",
       "developerApiIntegrationsUnavailable": "Operon Runtime の起動が完了するまで Developer API 権限は利用できません。",
+      "developerApiPendingCapabilities": "承認待ちの機能",
       "developerApiRevoke": "取り消す",
       "developerApiRevokeDesc": "{{name}} に許可されたすべての Developer API 機能を取り消しますか？",
       "developerApiRevokeTitle": "Developer API アクセスを取り消す",
@@ -3804,5 +3806,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "0ebf21caf93b512d413aa3e690e62499102b3dd595595bcab8478f5dea7fa053"
+  "sourceVersion": "c763c1ae19c95e0ce49ff83f0c9e405a812c70ca4cb66d7758500cb912812f70"
 }

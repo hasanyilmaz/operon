@@ -215,7 +215,7 @@ test('Developer API registry discoverability and renderer wiring remain intact',
 	assert.ok(renderer.includes('buildDeveloperApiGrantApprovalUiState(grant)'));
 	assert.ok(renderer.includes('!grant.approvalBinding || selected.size === 0'));
 	assert.ok(renderer.includes("t('settings', 'developerApiGrantedCapabilities')"));
-	assert.ok(renderer.includes("t('settings', 'repeatScopePending')"));
+	assert.ok(renderer.includes("t('settings', 'developerApiPendingCapabilities')"));
 	assert.ok(renderer.includes('if (approvalUiState.showsDeny)'));
 	assert.ok(renderer.includes('if (approvalUiState.showsRevoke)'));
 });
