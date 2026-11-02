@@ -2,7 +2,7 @@
 Notes: Build a recurrence rule with controls instead of writing it by hand
 Icon: repeat
 Color: "#db2777"
-Updated: 2026-10-19T13:40:31+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Recurrence picker
@@ -49,7 +49,11 @@ The modes behave differently in ways worth understanding before you choose one. 
 
 The picker's **Reference date** controls the anchor used by its recurrence configuration. An existing saved reference is retained when the rule is reopened; the picker can suggest an initial date when no reference is saved. A suggestion in the picker does not mean a reference already exists on the task. Done mode still follows its completion-based rule rather than becoming schedule mode.
 
-Tables expose the stored value as **Repeat reference date**, formatted with your preferred Date format and empty when no date is saved. Clicking that column opens this Repeat picker, not a standalone date editor. The same saved value is available in [[DOCS-073 Filter conditions and operators|filter conditions]].
+Tables expose the stored value as **Repeat reference date**, formatted with your preferred Date format and empty when no date is saved. Clicking that column opens this Repeat picker, not a standalone date editor. The same saved value is available in [[DOCS-073 Filter conditions and operators|filter conditions]] and as a sort option.
+
+**Task Occurrence Date** presents the valid recorded date of the current task, using the same saved field. It is available as a filter condition, sort option, and Table column; it is not a forecast of the next task. Clicking an editable cell in either date column opens this picker.
+
+The repeat chip shows the recorded occurrence date, formatted like Scheduled and Due. Its tooltip is headed **Recurrence Rule** and describes the pattern and any end date. With a valid rule but no valid recorded date, it shows **No occurrence date**.
 
 In Task Creator, **Save** and **Clear** update the current draft immediately for both Inline and File tasks. Saved reference dates and Count configuration remain available when reopened; cancelling leaves the previous draft unchanged. The task itself is written only when creation is confirmed. See [[DOCS-020 Task Creator|Task Creator]].
 

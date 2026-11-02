@@ -315,6 +315,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'taskCardImageRatio',
 	'taskCardItemOrder',
 	'kanbanExpandedColumnWidthPx',
+	'kanbanCellHeightPx',
 	'kanbanMaxVisibleTasksPerCell',
 	'kanbanShowHoverAddButton',
 	'kanbanTaskShowNotesPreview',

@@ -178,6 +178,20 @@ const MULTI_CONSUMER_GRANT: DeveloperApiGrantPackageV1 = {
 
 /** Verify additive card defaults separately, preserving the pre-card sealed fixtures. */
 function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void {
+ // Keep sealed permission fixtures unchanged; layout defaults have separate persistence tests.
+ for (const preset of data.views.kanbanPresets.kanbanPresets) {
+  if (verify && preset.columnWidthPx !== undefined) assert.equal(preset.columnWidthPx, 325);
+  if (verify && preset.cellHeightPx !== undefined) assert.equal(preset.cellHeightPx, 450);
+  Reflect.deleteProperty(preset, 'columnWidthPx'); Reflect.deleteProperty(preset, 'cellHeightPx');
+ }
+ // Verify the new width default while retaining the sealed 320 px fixture bytes.
+ if (verify) assert.equal(data.settings.kanbanExpandedColumnWidthPx, 325);
+ data.settings.kanbanExpandedColumnWidthPx = 320;
+ // Keep sealed grant fixtures byte-identical; verify the additive Kanban default separately.
+ if (Object.prototype.hasOwnProperty.call(data.settings, 'kanbanCellHeightPx')) {
+  if (verify) assert.equal(data.settings.kanbanCellHeightPx, 450);
+  Reflect.deleteProperty(data.settings, 'kanbanCellHeightPx');
+ }
  // Preserve the sealed legacy fixture while checking the additive visual preference separately.
  if (verify) assert.equal(data.ui.workspaceTweaks.workspaceTweaksBackgroundDimming, 50);
  Reflect.deleteProperty(data.ui.workspaceTweaks, 'workspaceTweaksBackgroundDimming');
@@ -192,6 +206,10 @@ function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void 
   data.ui.taskUiPreferences[key] = items.filter(item => item.key !== 'taskInfo.projectSerial' && item.key !== 'taskInfo.source');
  }
 
+ // Preserve sealed permission fixture bytes while verifying the additive Dock surface independently.
+ const statusDock = data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.statusDock;
+ if (verify && statusDock !== undefined) assert.deepEqual(statusDock, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.statusDock);
+ delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.statusDock;
  const excalidraw = data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.excalidrawTask;
  if (verify && excalidraw !== undefined) assert.deepEqual(excalidraw, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask);
  delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.excalidrawTask;

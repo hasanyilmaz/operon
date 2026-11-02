@@ -2,7 +2,7 @@
 Notes: How a custom key's type decides which picker you get to fill it
 Icon: sliders-horizontal
 Color: "#db2777"
-Updated: 2026-10-19T13:38:56+02:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Custom field pickers
@@ -29,7 +29,7 @@ Canonical fields may have dedicated controls, Custom Keys use their configured t
 
 ### Text
 
-On supported task-chip and Table editing paths, a Text picker shows its **current value above an empty search field**, with **suggestions** drawn from values already used for that field on other tasks. You can search all suggestions immediately without clearing the old value. Click the current-value control to load it into the input with the text selected for editing. So a custom `Client` key learns your client names as you go, and you reuse them with a keystroke instead of retyping. Best for short labels and free text.
+On supported editing paths, including Task Creator, Task Editor, task chips, and Tables, a Text picker shows its **current value above an empty search field**, with **suggestions** drawn from the shared values for that field. An empty field has no current-value control. You can search all suggestions immediately without clearing the old value. Click the current-value control to load it into the input with the text selected for editing. So a custom `Client` key learns your client names as you go, and you reuse them with a keystroke instead of retyping. Best for short labels and free text.
 
 A supported multiline current value opens the [[DOCS-113 Text field editor popover|shared text editor]] instead of flattening it into one input line. The same current-value pattern is used for Task Type and supported Vault Property Text editing. Long and multiline values use the existing source-save and conflict checks.
 
@@ -45,13 +45,21 @@ A `Date` custom key opens the **same date picker** the built-in dates use, natur
 
 A list field opens a **list picker** you add several values to, building a list rather than a single value. Best when a field can have more than one entry, like multiple labels. It works like the built-in list fields. See [[DOCS-069 Task link and list pickers|Task link and list pickers]].
 
+## One value pool across editing surfaces
+
+Task Creator and Task Editor use the shared Text and List suggestion pool also used by task-chip and Table pickers. It combines ready Inline Task values with compatible vault frontmatter values. For example, if two Inline Tasks use `Client` values `Acme` and `Northwind`, both names can be offered when creating another task or editing that field in Task Editor, even if no File Task uses them.
+
+Configured canonical and visible names resolve to the same field. Native property controls keep their declared type: list members containing separators or wikilinks are preserved, and numeric members are not silently changed into quoted text. Repeated suggestions are merged; empty, incompatible, or ambiguous values are not offered. A source that is not ready can contribute suggestions after indexing finishes and the picker is reopened.
+
+Opening a picker only offers choices. In Task Creator, selecting a value changes the draft; the task is written when you submit Inline or File. Task Editor keeps its normal save behavior. This shared pool does not give an unsupported field a new editing surface or change the field's source format.
+
 ## Empty-search suggestions for Text and List
 
-With no search text, custom **Text** and **List** pickers use the same [[DOCS-062 Field pickers overview|task-based suggestion order]] as the supported built-in fields: a value from the latest eligible created task, a different value from the latest eligible modified task, then values used by the most tasks. A List field contributes at most one value to each leading suggestion.
+With no search text, the general custom-key **Text** and **List** picker path uses the same [[DOCS-062 Field pickers overview|task-based suggestion order]] as the supported built-in fields: a value from the latest eligible created task, a different value from the latest eligible modified task, then values used by the most tasks. A List field contributes at most one value to each leading suggestion.
 
 Each custom field is counted independently. Values used for `Client` do not influence suggestions for a different custom field. Typing keeps the normal search behavior, and clearing the search restores the suggestions. The separate current-value control does not prefilter the search; the empty-search suggestions are available as soon as the picker opens.
 
-Number, Date, and Date & time controls are unchanged.
+Native property controls keep their own candidate ordering; sharing the pool does not require every surface to rank suggestions identically. Number, Date, and Date & time controls are unchanged.
 
 ## Existing wikilinks on chips and Tables
 

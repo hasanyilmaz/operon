@@ -410,6 +410,7 @@ function sortSubtaskIdsBySpecs(
 		priorities: callbacks.getPriorities(),
 		pipelines: callbacks.getPipelines(),
 		isTaskPinned: callbacks.isTaskPinned,
+		getRepeatSkipDates: callbacks.getRepeatSkipDates,
 	});
 	const sortedTasks = sortTasksBySpecs(childTasks, subtaskSorts, sortContext);
 	const sortedIds = sortedTasks.map(task => task.operonId);

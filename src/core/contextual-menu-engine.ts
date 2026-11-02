@@ -32,6 +32,7 @@ export type ContextualMenuSurface =
 	| 'upcomingTask'
 	| 'trackerTask'
 	| 'flowTimeTask'
+	| 'statusDock'
 	| 'filterTask'
 	| 'tableTask'
 	| 'taskCard'
@@ -55,6 +56,7 @@ export const CONTEXTUAL_MENU_SURFACES: ContextualMenuSurface[] = [
 	'upcomingTask',
 	'trackerTask',
 	'flowTimeTask',
+	'statusDock',
 	'filterTask',
 	'tableTask',
 	'taskCard',
@@ -79,7 +81,7 @@ export const CONTEXTUAL_MENU_SURFACE_GROUPS: ContextualMenuSurfaceGroup[] = [
 	{
 		id: 'taskLists',
 		labelKey: 'contextualMenuSurfaceGroupTaskLists',
-		surfaces: ['filterTask', 'calendarSidebarTaskPoolTask', 'upcomingTask'],
+		surfaces: ['filterTask', 'calendarSidebarTaskPoolTask', 'upcomingTask', 'statusDock'],
 	},
 	{
 		id: 'noteSurfaces',
@@ -130,6 +132,7 @@ export const CONTEXTUAL_MENU_SURFACE_LABEL_KEYS: Record<ContextualMenuSurface, s
 	upcomingTask: 'contextualMenuSurfaceUpcomingTask',
 	trackerTask: 'contextualMenuSurfaceTrackerTask',
 	flowTimeTask: 'contextualMenuSurfaceFlowTimeTask',
+	statusDock: 'statusDockSection',
 	filterTask: 'contextualMenuSurfaceFilterTask',
 	tableTask: 'contextualMenuSurfaceTableTask',
 	taskCard: 'contextualMenuSurfaceTaskCard',

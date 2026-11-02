@@ -2,7 +2,7 @@
 Notes: The compact field badges on tasks, their per-surface order and visibility, and how each behaves on click and hover
 Icon: tags
 Color: "#ca8a04"
-Updated: 2026-10-20T14:52:04+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Task chips: display and behavior
@@ -22,7 +22,7 @@ Chips cover the fields you most often want at a glance:
 - **Assignees** and **Contexts**.
 - Task links: **Parent**, **Blocking**, and **Blocked by**.
 - **Estimate** and **Duration**, and their rolled-up totals.
-- **Recurrence**, showing a recurring task's pattern (the `repeat` field).
+- **Recurrence**, showing the current task's recorded occurrence date, with its pattern in the tooltip.
 - **Reminders**, one chip per reminder, from either reminder field. See [[DOCS-116 Reminders|Reminders]].
 - **Location**, shown as a small map chip.
 - **Tags** and external **Links**.
@@ -167,11 +167,13 @@ The **Due** and **Scheduled** chips signal urgency by color, so a glance tells y
 - **Today** (the date is today): the chip turns **blue**.
 - Otherwise it stays neutral.
 
-Once a task is finished or cancelled, its date chips drop the color, because the deadline no longer presses. Only Due and Scheduled take these colors; the other date chips stay neutral.
+Once a task is finished or cancelled, its date chips drop the color, because the deadline no longer presses. The recurrence chip uses the same red/blue rule for its icon, based on the recorded occurrence date. Other date chips stay neutral.
 
 ## The recurrence chip
 
-A recurring task shows a **recurrence chip** (from its `repeat` field) that summarizes the pattern: the recurrence rule, or the next occurrence date, or that the next run comes after completion, along with an end if the series has one. You read the rhythm at a glance, and clicking the chip opens the recurrence picker to change it. See [[DOCS-033 Recurring tasks|Recurring tasks]].
+A recurring task's **recurrence chip** shows its own recorded occurrence date, using the same Date format as Scheduled and Due. It does not advance to the date of an uncreated successor. The tooltip is headed **Recurrence Rule** and shows the readable pattern plus its end date when set. Clicking the chip opens the [[DOCS-064 Recurrence picker|recurrence picker]].
+
+With a valid rule but no valid recorded occurrence date, the chip shows **No occurrence date** with a neutral icon. An unsupported rule keeps its raw text available with an explanatory tooltip. Neither case invents a date from Scheduled, Due, or today. The date is also available as **Task Occurrence Date** in filters, sorting, and Tables; see [[DOCS-033 Recurring tasks|Recurring tasks]].
 
 ## Reminder chips
 

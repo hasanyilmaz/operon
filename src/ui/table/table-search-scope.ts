@@ -122,6 +122,7 @@ export function resolveTableSearchScopedTasks(options: {
 	scope: TaskSearchBoxScopeState;
 	settings: Pick<OperonSettings, 'taskFinderRecentModifiedDays' | 'projectSerialScopes'>;
 	filePropertyContext?: TableFilePropertyQueryContext;
+	getRepeatSkipDates?: (seriesId: string) => readonly string[];
 }): IndexedTask[] {
 	const recentModifiedCutoff = getTaskSearchBoxRecentModifiedCutoff(options.settings);
 	return resolveTableSearchBaseScopeTasks(options)
@@ -136,6 +137,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 	projectSerialScopes?: OperonSettings['projectSerialScopes'];
 	pipelines?: OperonSettings['pipelines'];
 	filePropertyContext?: TableFilePropertyQueryContext;
+	getRepeatSkipDates?: (seriesId: string) => readonly string[];
 }): IndexedTask[] {
 	return filterTasksForCalendar(
 		options.filterSet,
@@ -148,6 +150,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 			dependencyTasks: options.tasks,
 			pipelines: options.pipelines,
 			filePropertyContext: options.filePropertyContext,
+			getRepeatSkipDates: options.getRepeatSkipDates,
 		},
 	);
 }

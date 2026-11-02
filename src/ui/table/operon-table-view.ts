@@ -323,6 +323,8 @@ import { showLocationMapPreview } from '../location-map-preview';
 import { resolveTablePresetSearchSaveFailureRecovery } from './table-preset-search-recovery';
 
 export interface OperonTableCallbacks {
+	getRepeatSkipDates?: (seriesId: string) => string[];
+	getRepeatSkipSignature?: () => string;
 	resolveTableFile?: (path: string, source: string) => {
 		preset: TablePreset | null;
 		diagnostics: OperonTableFileDiagnostic[];
@@ -1009,12 +1011,12 @@ export class OperonTableView extends FileView {
 		const locationIndexSignature = buildTableLocationCellIndexSignature(this.app, settings, columns);
 		const normalizedSearchQuery = searchContext.activeSearchQuery.trim().toLocaleLowerCase();
 		const searchCacheScopeKey = buildTableSearchCacheScopeKey(
-			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${this.callbacks.getRepeatSkipSignature?.() ?? ''}`,
 			taskColumns,
 			preset.sortRules,
 		);
 		const noSearchResultCacheKey = buildTableNoSearchResultCacheKey(
-			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}`,
+			`${searchContext.scopeKey}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${this.callbacks.getRepeatSkipSignature?.() ?? ''}`,
 			taskColumns,
 			preset,
 		);
@@ -1029,8 +1031,8 @@ export class OperonTableView extends FileView {
 				settings,
 				generation: this.indexer.getGeneration(),
 				columns: taskColumns,
-				valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
-				valueResolverSignature: `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`,
+				valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay, getRepeatSkipDates: this.callbacks.getRepeatSkipDates },
+				valueResolverSignature: `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${this.callbacks.getRepeatSkipSignature?.() ?? ''}`,
 				filePropertyContext: filePropertySnapshot,
 			})
 			: undefined;
@@ -1081,6 +1083,7 @@ export class OperonTableView extends FileView {
 			tasks,
 			priorities: settings.priorities,
 			pinnedCache: this.getPinnedCache(),
+				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				projectSerialScopes: settings.projectSerialScopes,
 				filePropertyContext: filterFilePropertyContext,
 			settings,
@@ -1838,6 +1841,7 @@ export class OperonTableView extends FileView {
 				this.getSettings().priorities,
 				this.getPinnedCache(),
 				{
+					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -3994,7 +3998,7 @@ export class OperonTableView extends FileView {
 				app: this.app,
 				settings: renderState.settings,
 				allTasks,
-				canonicalKey: key === 'repeatOccurrenceDate' ? 'repeat' : key,
+				canonicalKey: key === 'repeatOccurrenceDate' || key === 'taskOccurrenceDate' ? 'repeat' : key,
 				anchor: snapshotFloatingRectAnchor(cell),
 				currentFieldValues: task.fieldValues,
 				currentTags: task.tags,
@@ -4389,7 +4393,7 @@ export class OperonTableView extends FileView {
 		}
 		const generation = this.indexer.getGeneration();
 		const projectSerialSignature = this.callbacks.getProjectSerialSignature?.() ?? '';
-		const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}`;
+		const valueResolverSignature = `${projectSerialSignature}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${this.callbacks.getRepeatSkipSignature?.() ?? ''}`;
 		const prewarmKey = buildTableTaskSearchMatcherSignature(tasks, settings, generation, columns, valueResolverSignature);
 		if (this.completedSearchPrewarmKey === prewarmKey || this.searchPrewarmKey === prewarmKey) return;
 		this.cancelSearchPrewarm();
@@ -4425,8 +4429,8 @@ export class OperonTableView extends FileView {
 			settings,
 			generation,
 			columns,
-			valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay },
-			valueResolverSignature: `${this.callbacks.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}`,
+			valueResolverOptions: { getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay, getRepeatSkipDates: this.callbacks.getRepeatSkipDates },
+			valueResolverSignature: `${this.callbacks.getProjectSerialSignature?.() ?? ''}|fileProperties=${filePropertySnapshot.signature}|repeatSkips=${this.callbacks.getRepeatSkipSignature?.() ?? ''}`,
 			filePropertyContext: filePropertySnapshot,
 		}, {
 			startIndex: this.searchPrewarmIndex,
@@ -4502,6 +4506,7 @@ export class OperonTableView extends FileView {
 			tasks,
 			priorities: settings.priorities,
 				pinnedCache: this.getPinnedCache(),
+				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				projectSerialScopes: settings.projectSerialScopes,
 				pipelines: settings.pipelines,
 				filePropertyContext,
@@ -4546,6 +4551,7 @@ export class OperonTableView extends FileView {
 			filterSetSignature,
 			buildTableRelevantSettingsSignature(settings),
 			this.callbacks.getProjectSerialSignature?.() ?? '',
+			this.callbacks.getRepeatSkipSignature?.() ?? '',
 			filePropertySignature,
 			JSON.stringify(this.searchScope),
 			this.searchScope.showRecentModified ? `recentModifiedCutoff=${recentModifiedCutoff}` : '',
@@ -4579,6 +4585,7 @@ export class OperonTableView extends FileView {
 			tasks: input.tasks,
 			priorities: input.settings.priorities,
 			pinnedCache: this.getPinnedCache(),
+			getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 			projectSerialScopes: input.settings.projectSerialScopes,
 			filePropertyContext: input.filterFilePropertyContext,
 			settings: input.settings,

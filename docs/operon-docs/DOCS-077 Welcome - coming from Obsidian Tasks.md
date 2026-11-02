@@ -2,7 +2,7 @@
 Notes: Orientation for users moving from the Obsidian Tasks plugin, with a before and after at a glance
 Icon: move-right
 Color: "#2563eb"
-Updated: 2026-10-13T16:53:09+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Welcome: coming from Obsidian Tasks
@@ -76,7 +76,7 @@ A few differences are worth knowing up front:
 - **Fields, not emoji.** An inline task writes metadata as `{{key:: value}}`, like `{{priority:: A}}`, instead of emoji. It reads as text and carries the same meaning.
 - **Every task has an identity.** Operon gives each task a durable `operonId` so the same task stays recognizable across views and edits. Do not edit or copy it. See [[DOCS-015 Task identity and operonId|Task identity and operonId]].
 - **A second shape.** When a task grows past one line, convert it to a file task with its own note and body. See [[DOCS-072 One workflow, two task shapes|One workflow, two task shapes]].
-- **A status pipeline.** Operon tasks move through a pipeline of statuses, which is what powers the Kanban. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+- **A status pipeline.** Operon tasks move through a pipeline of statuses. Those statuses can define either Kanban axis; boards can also group by other properties. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 
 ## A note on the first day
 

@@ -157,10 +157,12 @@ export class KanbanCardOperationRegistry {
 	}
 }
 
-export function buildKanbanDropBoardSignature(preset: KanbanPreset, pipeline: Pipeline | null): string {
+export function buildKanbanDropBoardSignature(preset: KanbanPreset, pipeline: Pipeline | null, settings?: Pick<import('../types/settings').OperonSettings, 'keyMappings' | 'priorities' | 'pipelines' | 'inlinePropertyDefinitions'>): string {
 	return JSON.stringify({
+		...(settings ? { taxonomy: [settings.keyMappings, settings.priorities, settings.pipelines, settings.inlinePropertyDefinitions] } : {}),
 		preset: {
 			id: preset.id,
+			...(preset.axes === undefined ? {} : { axes: preset.axes }),
 			pipelineId: preset.pipelineId,
 			filterSetId: preset.filterSetId,
 			swimlaneBy: preset.swimlaneBy,
@@ -168,7 +170,7 @@ export function buildKanbanDropBoardSignature(preset: KanbanPreset, pipeline: Pi
 			sortRules: preset.sortRules,
 			columnSortOverrides: preset.columnSortOverrides ?? [],
 		},
-		pipeline: pipeline
+		pipeline: pipeline && !settings
 			? {
 				id: pipeline.id,
 				name: pipeline.name,

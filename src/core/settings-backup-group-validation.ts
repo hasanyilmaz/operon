@@ -1,3 +1,4 @@
+import { decodeKanbanAxes, kanbanManagedReferenceType } from './kanban-axis-model';
 import { isVaultCalendarPath } from './external-calendar-source';
 import { mergeImportedInlinePropertyDefinitions, validateInlinePropertyDefinitions, type InlinePropertyDefinitions } from './inline-property-definitions';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
@@ -176,6 +177,7 @@ const BUILT_IN_FILTER_FIELDS = new Set([
 	'description',
 	'pinned',
 	'happensOn',
+	'taskOccurrenceDate',
 	'trackedOn',
 	'folders',
 	'projectTree',
@@ -506,15 +508,16 @@ function decodeKanban(data: unknown, path: string, diagnostics: OperonSettingsBa
 	validateNamedPresets(presets, `${path}.kanbanPresets`, [
 		'id', 'name', 'pipelineId', 'filterSetId', 'swimlaneBy', 'colorSource', 'cardImageSource', 'appearanceModeLight',
 		'appearanceModeDark', 'collapseEmptyColumns', 'collapseEmptySwimlanes', 'autoCollapseFinishedColumns',
-		'sortMode', 'sortRules', 'columnSortOverrides',
+		'sortMode', 'sortRules', 'columnSortOverrides', 'axes', 'columnWidthPx', 'cellHeightPx',
 	], diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) if (isObject(raw)) validateFieldTypes(raw, `${path}.kanbanPresets[${index}]`, {
-		id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
+		columnWidthPx: 'number', cellHeightPx: 'number', id: 'string', name: 'string', pipelineId: 'nullable-string', filterSetId: 'nullable-string', swimlaneBy: 'nullable-string',
 		colorSource: 'string', cardImageSource: 'string', appearanceModeLight: 'string', appearanceModeDark: 'string', collapseEmptyColumns: 'boolean',
 		collapseEmptySwimlanes: 'boolean', autoCollapseFinishedColumns: 'boolean', sortMode: 'string', sortRules: 'array', columnSortOverrides: 'array',
 	}, diagnostics);
 	for (const [index, raw] of (presets ?? []).entries()) {
 		if (!isObject(raw)) continue;
+		if (raw.axes !== undefined && !decodeKanbanAxes(raw.axes).ok) diagnostics.push(error(`${path}.kanbanPresets[${index}].axes`, 'value', 'Unsupported or invalid Kanban axes.'));
 		const rules = inspectArray(raw.sortRules, `${path}.kanbanPresets[${index}].sortRules`, diagnostics);
 		for (const [ruleIndex, rawRule] of (rules ?? []).entries()) {
 			const rulePath = `${path}.kanbanPresets[${index}].sortRules[${ruleIndex}]`;
@@ -683,12 +686,28 @@ function validateReferences(
 	}
 	for (const [index, preset] of (payloads.kanban?.kanbanPresets ?? []).entries()) {
 		const base = `$.body.groups.kanban.data.kanbanPresets[${index}]`;
-		if (preset.pipelineId && !pipelineIds) diagnostics.push(error(`${base}.pipelineId`, 'required', 'Kanban Pipeline reference requires an imported Pipelines group or target settings context.'));
-		else if (preset.pipelineId && !pipelineIds?.has(preset.pipelineId)) diagnostics.push(error(`${base}.pipelineId`, 'value', `Kanban preset references missing Pipeline: ${preset.pipelineId}.`));
+		const axes = decodeKanbanAxes(preset.axes);
+		if (axes.ok) for (const [axisName, axis] of [['columns', axes.axes.columns], ['swimlanes', axes.axes.swimlanes], ['inactiveSwimlanes', axes.axes.inactiveSwimlanes]] as const) {
+			if (!axis) continue;
+			const axisPath = `${base}.axes.${axisName}`;
+			if (axis.kind === 'status') {
+				if (axis.pipelineId && !pipelineIds?.has(axis.pipelineId)) diagnostics.push(error(`${axisPath}.pipelineId`, 'value', 'Kanban axis references an unavailable Pipeline.'));
+			} else if (axis.property.source === 'managed') {
+				const mappings = [...baselineSystemMappings, ...(customKeys ?? [])];
+				if (kanbanManagedReferenceType(axis.property.key, mappings) !== axis.property.type)
+					diagnostics.push(error(`${axisPath}.property`, 'value', 'Kanban axis references a missing or differently typed property.'));
+				if (axis.property.key === 'priority') {
+					const ids = new Set((payloads.priorities?.priorities ?? target?.priorities ?? []).map(priority => priority.id));
+					if (axis.values.some(value => value.kind === 'priority' && !ids.has(value.id))) diagnostics.push(error(`${axisPath}.values`, 'value', 'Kanban axis references an unavailable Priority.'));
+				}
+			}
+		}
+		if (preset.axes === undefined && preset.pipelineId && !pipelineIds) diagnostics.push(error(`${base}.pipelineId`, 'required', 'Kanban Pipeline reference requires an imported Pipelines group or target settings context.'));
+		else if (preset.axes === undefined && preset.pipelineId && !pipelineIds?.has(preset.pipelineId)) diagnostics.push(error(`${base}.pipelineId`, 'value', `Kanban preset references missing Pipeline: ${preset.pipelineId}.`));
 		if (preset.filterSetId && !filterIds) diagnostics.push(error(`${base}.filterSetId`, 'required', 'Kanban Filter reference requires an imported Filters group or target settings context.'));
 		else if (preset.filterSetId && !filterIds?.has(preset.filterSetId)) diagnostics.push(error(`${base}.filterSetId`, 'value', `Kanban preset references missing Filter: ${preset.filterSetId}.`));
 		for (const [fieldPath, field] of [
-			['swimlaneBy', preset.swimlaneBy],
+			['swimlaneBy', preset.axes === undefined ? preset.swimlaneBy : null],
 			...preset.sortRules.map((rule, ruleIndex) => [`sortRules[${ruleIndex}].field`, rule.field]),
 			...(preset.columnSortOverrides ?? []).flatMap((override, overrideIndex) => override.sortRules.map((rule, ruleIndex) => [`columnSortOverrides[${overrideIndex}].sortRules[${ruleIndex}].field`, rule.field])),
 		] as Array<[string, string | null]>) {

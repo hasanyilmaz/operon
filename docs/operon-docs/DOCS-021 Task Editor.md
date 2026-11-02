@@ -2,7 +2,7 @@
 Notes: Task fields, native Markdown alongside the editor, and automatic saving
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-22T21:43:14+02:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Task Editor
@@ -73,6 +73,8 @@ This shared source-and-editor workspace is desktop-only. Phones, tablets, new-ta
 The desktop-style editor organizes work into sections, with property names and values presented as rows. Under **Interface → Task Editor → Sections and Order**, configure section names, visibility, and order. **Property Visibility & Order** controls the configured property rows. These desktop preferences also apply to tablets and to phones using the desktop-style layout.
 
 Open an editable property's name or value to use its control. On a mouse, the row's interactive styling helps show the target; on touch, action and clear controls remain accessible without hovering. Visibility settings change the presentation, not the stored task values.
+
+Text and List property controls reuse the shared suggestion pool from task chips and Tables, including values used only on Inline Tasks and compatible frontmatter values. A field does not need a current value to offer existing choices. Opening the picker again uses the current available pool; type conflicts and unavailable sources remain protected. See [[DOCS-070 Custom field pickers|Custom field pickers]].
 
 ### Additional properties
 

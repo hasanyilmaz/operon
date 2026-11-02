@@ -2,7 +2,7 @@
 Notes: Compare built-in canonical keys, Custom Keys, and Vault Properties, and understand Key Mapping
 Icon: table-properties
 Color: "#7c3aed"
-Updated: 2026-10-13T16:29:41+02:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Task properties
@@ -28,6 +28,12 @@ Here, **canonical key** means a field's stable internal identifier. Custom Keys 
 Sharing the index means task data and Vault Properties can be restored together on subsequent launches. It does not make every field editable in every view, add chips automatically, or give a custom property the behavior of a built-in field. A Checkbox property such as `Reviewed` is a boolean; it does not complete a task like its task checkbox or status does.
 
 See [[DOCS-040 Custom keys|Custom Keys]] for configured custom surfaces and [[DOCS-115 File task property columns|Vault Properties]] for native editing, types, filters, and read-only states.
+
+## Reuse values and group tasks
+
+Supported Text and List controls in Task Creator and Task Editor draw suggestions from the shared property-value pool used by task chips and Tables. Values used only on Inline Tasks can be offered alongside compatible frontmatter values. A configured field can be available before anyone has entered a value for it; field availability and value suggestions are separate. See [[DOCS-070 Custom field pickers|Custom field pickers]].
+
+Kanban can use suitable built-in fields, Custom Keys, and Vault Properties on either axis. Text, Number, Date, Date & time, Checkbox, and List are supported; internal and calculated fields are excluded. The same property can be used on both axes. This does not add a general Checkbox picker to every custom-field surface. See [[DOCS-153 Kanban presets|Kanban presets]] for selection and type limits.
 
 ## Key Mapping connects names; it is not another property type
 

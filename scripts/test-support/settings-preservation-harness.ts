@@ -50,6 +50,28 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	// Only the two additive W034 defaults may appear in old sealed chip profiles.
 	// Keep every pre-existing choice and every other package byte under comparison.
 	expected = clone(expected);
+	actual = clone(actual);
+	// The previously accepted global dropdown rounded the sealed 320px value to 325px.
+	// Verify that exact legacy transition; preset sizing does not read this field.
+	if (expected.settings.kanbanExpandedColumnWidthPx === 320 && actual.settings.kanbanExpandedColumnWidthPx !== 320) {
+		assert.equal(actual.settings.kanbanExpandedColumnWidthPx, 325);
+		expected.settings.kanbanExpandedColumnWidthPx = 325;
+	}
+	for (const preset of actual.views.kanbanPresets.kanbanPresets) {
+		const previous = expected.views.kanbanPresets.kanbanPresets.find(entry => entry.id === preset.id);
+		for (const [key, fallback] of [['columnWidthPx', 325], ['cellHeightPx', 450]] as const) {
+			if (previous && !Object.prototype.hasOwnProperty.call(previous, key) && Object.prototype.hasOwnProperty.call(preset, key)) {
+				assert.equal(preset[key], fallback);
+				Reflect.deleteProperty(preset, key);
+			}
+		}
+	}
+	if (!Object.prototype.hasOwnProperty.call(expected.settings, 'kanbanCellHeightPx')
+		&& Object.prototype.hasOwnProperty.call(actual.settings, 'kanbanCellHeightPx')) {
+		assert.equal(actual.settings.kanbanCellHeightPx, 450);
+		actual = clone(actual);
+		Reflect.deleteProperty(actual.settings, 'kanbanCellHeightPx');
+	}
  // A newly introduced preference may be persisted with its exact default during an existing settings save.
  // Old sealed fixtures stay immutable; all existing explicit values remain under exact comparison.
  if (!Object.prototype.hasOwnProperty.call(expected.ui.workspaceTweaks, 'workspaceTweaksBackgroundDimming')
@@ -88,7 +110,7 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 		views: value.views,
 		ui: {
 			...value.ui,
-			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask']) },
+			contextualMenu: { ...value.ui.contextualMenu, contextualMenuSurfaceActionMatrix: withoutNewFields(value.ui.contextualMenu.contextualMenuSurfaceActionMatrix, ['excalidrawTask', 'statusDock']) },
 			taskCreationProfile: withoutNewFields(value.ui.taskCreationProfile, ['inheritPropertiesOnParentLink']),
 			taskUiPreferences: withoutNewFields(value.ui.taskUiPreferences, ['assigneeImageProperty', 'taskEditorHighlightActiveLine', 'taskEditorSections']),
 		},
@@ -106,9 +128,11 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	}
 	assert.equal(actual.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false,
 		expected.automation.taskAutomationPolicy.keepInlineTasksWithParent ?? false, 'Existing inline placement preference must be preserved; missing defaults off');
-	const expectedExcalidraw = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
-	const actualExcalidraw = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.excalidrawTask;
-	if (expectedExcalidraw !== undefined || actualExcalidraw !== undefined) assert.deepEqual(actualExcalidraw, expectedExcalidraw ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.excalidrawTask, 'Excalidraw choices must be preserved or use standard defaults');
+	for (const surface of ['excalidrawTask', 'statusDock'] as const) {
+		const before = (expected.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.[surface];
+		const after = (actual.ui.contextualMenu.contextualMenuSurfaceActionMatrix as Record<string, unknown> | undefined)?.[surface];
+		if (before !== undefined || after !== undefined) assert.deepEqual(after, before ?? DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix[surface], `${surface} choices must be preserved or use standard defaults`);
+	}
 	assert.equal(actual.ui.taskUiPreferences.taskEditorHighlightActiveLine ?? true,
 		expected.ui.taskUiPreferences.taskEditorHighlightActiveLine ?? true, 'Active-line preference must be preserved; missing defaults on');
 	assert.deepEqual(actual.ui.taskUiPreferences.taskEditorSections ?? DEFAULT_SETTINGS.taskEditorSections, expected.ui.taskUiPreferences.taskEditorSections ?? DEFAULT_SETTINGS.taskEditorSections, 'Existing task editor section preferences must be preserved');

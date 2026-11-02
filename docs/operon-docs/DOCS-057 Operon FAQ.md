@@ -2,7 +2,7 @@
 Notes: Common questions across Operon, with links to the full answers
 Icon: circle-question-mark
 Color: "#dc2626"
-Updated: 2026-10-13T17:01:21+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # Operon FAQ
@@ -65,7 +65,7 @@ The questions that come up most, grouped, with a link to the page that answers e
 
 **A task is not showing up.** Check the source, view filters, exclusions, duplicate identities, and index readiness. Rebuild only when the index remains stale. See [[DOCS-054 Missing tasks|Missing tasks]].
 
-**A task looks wrong on the Calendar or Kanban.** Often a missing date or a status that does not match the pipeline. See [[DOCS-056 Calendar or Kanban rendering issues|Calendar or Kanban rendering issues]].
+**A task looks wrong on the Calendar or Kanban.** Check its dates and the view filter. In Kanban, also check the column and swimlane selections, including the pipeline when an axis uses Status. See [[DOCS-056 Calendar or Kanban rendering issues|Calendar or Kanban rendering issues]].
 
 **Two tasks share an id.** The Operon ID Conflict manager resolves it. See [[DOCS-055 Duplicate IDs|Duplicate IDs]].
 

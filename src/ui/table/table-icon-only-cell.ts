@@ -77,6 +77,7 @@ export function resolveTableValueCellIcon(
 	fallbackIcon: string,
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex,
 ): string {
+	if (key === 'taskOccurrenceDate') return 'repeat';
 	const normalizedFallback = normalizeTaskIconValue(fallbackIcon) || 'text';
 	const candidate = resolveTableValueCellCustomIcon(key, value, settings, workflowStatusIdentityIndex);
 	if (!candidate) return normalizedFallback;

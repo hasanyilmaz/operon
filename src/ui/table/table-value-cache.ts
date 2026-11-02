@@ -1,3 +1,4 @@
+import { getTaskOccurrenceDate, type RepeatSkipDateResolver } from '../../core/task-occurrence-date';
 import { getTimeScopeSignature } from '../../core/time-scope-values';
 import { getTaskDisplayTitle } from '../../core/task-display-title';
 import { resolveTableCountdownDate } from '../../core/table-countdown';
@@ -56,6 +57,7 @@ export interface TableValueCacheStats {
 }
 
 export interface TableValueResolverOptions {
+	getRepeatSkipDates?: RepeatSkipDateResolver;
 	countdownTarget?: TableCountdownTarget;
 	getProjectSerialDisplay?: (operonId: string, task?: IndexedTask) => ProjectSerialDisplay | null;
 	getFilePropertyValue?: (task: IndexedTask, key: string) => string | null;
@@ -164,6 +166,8 @@ export function createTableValueResolver(
 				?? null;
 			const value = filePropertyValue !== null
 				? filePropertyValue
+				: key === 'taskOccurrenceDate'
+					? getTaskOccurrenceDate(task.fieldValues)
 				: key === PROJECT_SERIAL_TABLE_FIELD_KEY
 					? resolveProjectSerialDisplay(task)?.label ?? ''
 					: (key === 'progress' || key === 'checkboxProgress' ? getProgressLookup().resolveRawValue(task, key) : null) ?? getTableTaskRawValue(

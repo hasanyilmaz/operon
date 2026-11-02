@@ -74,6 +74,9 @@ export class KanbanOrderStore {
 		return !!board && Object.keys(board).length > 0;
 	}
 
+	/** Serialize a preset/order package transaction with card reorders. */
+	withExclusiveMutation<T>(operation: () => Promise<T>): Promise<T> { return this.enqueueMutation(operation); }
+
 	async replaceBoard(presetId: string, board: KanbanManualOrderBoard): Promise<void> {
 		await this.enqueueMutation(async () => {
 			await this.replaceBoardAndPersist(presetId, board);

@@ -29,6 +29,26 @@ const saveReleaseMarker = async (storage: OperonStorage): Promise<void> => {
  await storage.saveSettings();
 };
 
+add('Status Dock defaults are additive and explicit menu choices remain protected', async () => {
+ const original = sourcePackage();
+ const defaults = DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.statusDock;
+ assert.ok(defaults);
+ const added = clone(original);
+ added.ui.contextualMenu.contextualMenuSurfaceActionMatrix.statusDock = [...defaults];
+ assertPersonalSettingsPreserved(added, original);
+ const wrongDefault = clone(added);
+ wrongDefault.ui.contextualMenu.contextualMenuSurfaceActionMatrix.statusDock = [];
+ assert.throws(() => assertPersonalSettingsPreserved(wrongDefault, original), /statusDock choices/);
+ for (const choices of [[], ['markDone']] as const) {
+  const explicit = clone(original);
+  explicit.ui.contextualMenu.contextualMenuSurfaceActionMatrix.statusDock = [...choices];
+  assertPersonalSettingsPreserved(clone(explicit), explicit);
+  const overwritten = clone(explicit);
+  overwritten.ui.contextualMenu.contextualMenuSurfaceActionMatrix.statusDock = [...defaults];
+  assert.throws(() => assertPersonalSettingsPreserved(overwritten, explicit), /statusDock choices/);
+ }
+});
+
 for (const version of ['3.8.0', '3.9.0'] as const) {
  add(`${version} sealed personalized settings survive startup save and second startup`, async () => {
   await withSettingsFixture({ version }, async fixture => {

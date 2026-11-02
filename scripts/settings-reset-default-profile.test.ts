@@ -260,12 +260,12 @@ test('explicit reset uses the agreed first-install chips without mutating the ex
  );
  const expected = {
   taskCreatorToolbar: ['taskIcon', 'taskColor', 'taskType', 'priority', 'status', 'note'],
-  inlineTaskCompactChips: ['priority', 'status', 'parentTask', 'dateScheduled', 'dateDue', 'repeat', 'tags'],
-  taskFinderCompactChips: ['taskType', 'priority', 'parentTask', 'assignees'],
-  filterTaskCompactChips: ['priority', 'status', 'parentTask', 'dateScheduled', 'dateDue', 'repeat', 'tags', 'assignees'],
-  kanbanTaskCompactChips: ['taskImage', 'priority', 'dateScheduled', 'dateDue', 'assignees'],
-  taskWikilinkOverlayCompactChips: ['priority', 'dateDue', 'assignees'],
-  taskCardCompactChips: ['taskImage', 'priority', 'status', 'dateScheduled', 'dateDue', 'assignees'],
+  inlineTaskCompactChips: ['priority', 'status', 'parentTask', 'dateScheduled', 'dateDue', 'repeat', 'tags', 'taskInfo.projectSerial'],
+  taskFinderCompactChips: ['taskType', 'priority', 'parentTask', 'assignees', 'taskInfo.projectSerial'],
+  filterTaskCompactChips: ['priority', 'status', 'parentTask', 'dateScheduled', 'dateDue', 'repeat', 'tags', 'assignees', 'taskInfo.projectSerial'],
+  kanbanTaskCompactChips: ['taskImage', 'priority', 'dateScheduled', 'dateDue', 'assignees', 'taskInfo.projectSerial'],
+  taskWikilinkOverlayCompactChips: ['priority', 'dateDue', 'assignees', 'taskInfo.projectSerial'],
+  taskCardCompactChips: ['taskImage', 'priority', 'status', 'dateScheduled', 'dateDue', 'assignees', 'taskInfo.projectSerial'],
  };
  for (const key of Object.keys(expected) as (keyof typeof expected)[]) {
   assert.deepEqual(reset[key].filter(item => item.visible).map(item => item.key).sort(), expected[key].sort(), key);

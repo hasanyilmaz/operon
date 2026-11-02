@@ -1,10 +1,11 @@
+import { getTaskOccurrenceDate, extractRepeatDatePart as extractDatePart } from '../core/task-occurrence-date';
 import { isTaskInfoChipKey, TASK_INFO_CHIPS, formatTaskInfoSource, getTaskInfoSourceIcon } from '../core/task-info-chips';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { type App, Platform, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
-import { calculateNextRepeatDate, parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
+import { parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
 import { splitTaskListValue } from '../core/task-field-patch';
 import {
@@ -330,17 +331,18 @@ export function buildInlineTaskCompactChipEntries(
 				const rawValue = fieldValues['repeat']?.trim();
 				if (!rawValue) break;
 				const rule = parseRepeatRule(rawValue);
+				const occurrenceDate = getTaskOccurrenceDate(fieldValues);
 				const entry = createEntry(
 					settings,
 					key,
-					rule ? formatRepeatRuleSummaryI18n(rule) : rawValue,
+					occurrenceDate ? formatUiDate(occurrenceDate, settings)
+						: rule ? t('taskEditor', 'repeatChipNoOccurrenceDate') : rawValue,
 					item?.iconOnly === true,
 				);
-				entry.tooltipTitle = rule
-					? t('taskEditor', 'repeatChipNextOccurrenceTitle')
-					: t('taskEditor', 'repeatChipRuleTitle');
+				entry.iconTone = resolveTaskDateTone('repeat', occurrenceDate, fieldValues);
+				entry.tooltipTitle = t('taskEditor', 'repeatChipRuleTitle');
 				entry.tooltipContent = rule
-					? buildRepeatChipTooltipContent(rule, fieldValues, options?.repeatSkipDateResolver)
+					? buildRepeatChipTooltipContent(rule, fieldValues)
 					: [
 						rawValue,
 						t('taskEditor', 'repeatChipUnsupportedByPicker'),
@@ -546,57 +548,11 @@ export function formatTaskMediaChipLabel(rawValue: string): string {
 	);
 }
 
-function buildRepeatChipTooltipContent(
-	rule: RepeatRule,
-	fieldValues: Record<string, string>,
-	repeatSkipDateResolver?: RepeatSkipDateResolver,
-): string | undefined {
-	const lines: string[] = [];
+function buildRepeatChipTooltipContent(rule: RepeatRule, fieldValues: Record<string, string>): string {
+	const lines = [formatRepeatRuleSummaryI18n(rule)];
 	const repeatEnd = extractDatePart(fieldValues['datetimeRepeatEnd']);
-
-	if (rule.mode === 'done') {
-		lines.push(t('taskEditor', 'repeatChipNextWhenDone'));
-	} else if (rule.mode === 'count' && (rule.count ?? 0) <= 1) {
-		lines.push(t('taskEditor', 'repeatChipNoNextOccurrence'));
-	} else {
-		const anchorDate = resolveRepeatChipAnchorDate(fieldValues);
-		if (anchorDate) {
-			const nextDate = calculateNextRepeatDate(rule, {
-				anchorDate,
-				repeatEnd: fieldValues['datetimeRepeatEnd'],
-				skipDates: resolveRepeatSkipDates(fieldValues, repeatSkipDateResolver),
-			});
-			lines.push(nextDate
-				? t('taskEditor', 'repeatChipNextOccurrence', { date: nextDate })
-				: t('taskEditor', 'repeatChipNoNextOccurrence'));
-		}
-	}
-
-	if (repeatEnd) {
-		lines.push(t('taskEditor', 'repeatChipEndsOn', { date: repeatEnd }));
-	}
-
-	return lines.length > 0 ? lines.join('\n') : undefined;
-}
-
-function resolveRepeatChipAnchorDate(fieldValues: Record<string, string>): string {
-	return extractDatePart(fieldValues['repeatOccurrenceDate'])
-		|| extractDatePart(fieldValues['dateScheduled'])
-		|| extractDatePart(fieldValues['dateDue'])
-		|| extractDatePart(fieldValues['dateStarted'])
-		|| extractDatePart(fieldValues['datetimeStart'])
-		|| extractDatePart(fieldValues['datetimeEnd']);
-}
-
-function resolveRepeatSkipDates(
-	fieldValues: Record<string, string>,
-	repeatSkipDateResolver?: RepeatSkipDateResolver,
-): string[] {
-	const repeatSeriesId = fieldValues['repeatSeriesId']?.trim();
-	if (!repeatSeriesId || !repeatSkipDateResolver) return [];
-	return repeatSkipDateResolver(repeatSeriesId)
-		.map(extractDatePart)
-		.filter(Boolean);
+	if (repeatEnd) lines.push(t('taskEditor', 'repeatChipEndsOn', { date: repeatEnd }));
+	return lines.join('\n');
 }
 
 function isBuiltInCompactChipKey(key: string): key is InlineTaskCompactChipKey {
@@ -907,14 +863,6 @@ function formatDuration(totalSeconds: number): string {
 	if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
 	if (hours > 0) return `${hours}h`;
 	return `${Math.max(1, minutes)}m`;
-}
-
-function extractDatePart(value: string | null | undefined): string {
-	if (!value) return '';
-	const trimmed = value.trim();
-	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-	if (/^\d{4}-\d{2}-\d{2}T/.test(trimmed)) return trimmed.slice(0, 10);
-	return '';
 }
 
 function formatCompactDatetimeTime(value: string, settings: Pick<OperonSettings, 'timeFormat'>): string {

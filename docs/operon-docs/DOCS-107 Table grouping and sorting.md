@@ -2,7 +2,7 @@
 Notes: Arrange table rows into sections and order them by any field
 Icon: arrow-up-down
 Color: "#0284c7"
-Updated: 2026-10-01T13:55:38+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Table grouping and sorting
@@ -61,6 +61,12 @@ Add one or more **Sort by** rules to order the rows:
 When the table is grouped, sorting applies **within** each section, so the sections are ordered by the group order and the rows inside each section by your sort rules.
 
 With a **Tracked time** filter, sorting by **Duration** or **Total duration** uses the selected period's time. Sorting compares the full duration, so two compact cells labelled `1h` can still have different positions. See [[DOCS-034 Time tracking|Time tracking]] for period totals.
+
+## Sort by recurrence dates
+
+Use **Task Occurrence Date** to order tasks by the recorded date of each existing occurrence. Ascending puts earlier dated occurrences first; descending reverses them. This does not calculate the date of the next task, and a missing or invalid recorded date remains empty. Display formatting does not change chronological order.
+
+**Repeat reference date** remains available for sorting by the saved reference. For valid recorded dates, both options read the same source field. Choose Task Occurrence Date when reviewing work that belonged to a particular day; combine it with an open-state and **before today** filter to review missed occurrences. See [[DOCS-073 Filter conditions and operators|Filter conditions and operators]].
 
 ## Sort by Countdown
 

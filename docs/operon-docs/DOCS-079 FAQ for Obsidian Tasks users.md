@@ -2,7 +2,7 @@
 Notes: Common questions from users moving off the Obsidian Tasks plugin
 Icon: circle-question-mark
 Color: "#2563eb"
-Updated: 2026-10-13T16:53:09+02:00
+Updated: 2026-10-29T18:48:06+01:00
 ---
 
 # FAQ for Obsidian Tasks users
@@ -41,7 +41,7 @@ The questions Obsidian Tasks users ask most when they try Operon, with the short
 
 **Why does each task have an `operonId`?** It is the durable identity that lets the same task appear in filters, the Calendar, and the Kanban without becoming a new task. Do not edit or copy it. See [[DOCS-015 Task identity and operonId|Task identity and operonId]].
 
-**How do statuses work?** Operon tasks move through a pipeline of statuses, which is what powers the Kanban. You can still complete a task in one action. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
+**How do statuses work?** Operon tasks move through a pipeline of statuses. Those statuses can define either Kanban axis; boards can also group by other properties. You can still complete a task in one action. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 
 **My priorities look different.** Tasks priority emoji map to your configured Operon priority levels by rank, so they follow your own scheme rather than a fixed set. See [[DOCS-038 Task priorities|Task priorities]].
 

@@ -2,7 +2,7 @@
 Notes: What each table cell shows and does on click, hover, and keyboard, in detailed and compact cell modes
 Icon: square-mouse-pointer
 Color: "#0284c7"
-Updated: 2026-10-20T14:52:04+02:00
+Updated: 2026-10-29T18:31:47+01:00
 ---
 
 # Table cells: display and behavior
@@ -55,15 +55,20 @@ In detailed cell mode, each field type renders its own way:
 | Description, Note | Formatted text with supported HTTP/HTTPS and existing local links |
 | Recurrence | A bordered repeat icon with a readable rule description in detailed mode |
 | Repeat reference date | The saved reference date in your Date format, or an empty cell when none is saved |
+| Task Occurrence Date | This saved task occurrence's date in your Date format, with a repeat icon; empty when the recorded date is missing or invalid |
 | Source | A button that opens the task's source |
 | Project Serial | A chip with the task's serial, where a scope covers it |
 | Countdown | A bordered, read-only remaining-time value with an hourglass icon; details below |
 | Task Tree | A hierarchy control and, in detailed mode, the occurrence number |
 | Line number, task icon helper, Task Data Type helper | The row number, a status icon, or an inline-or-file icon |
 
-In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists; Repeat reference date is empty when no date is saved. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
+In detailed cells, an empty field usually shows a plain `--`, with exceptions for calculated values that have no applicable result. **Countdown is empty when no valid target exists; Repeat reference date is empty when no date is saved; Task Occurrence Date is empty when its recorded date is missing or invalid. Project Serial also has an empty state**: a task outside any [[DOCS-097 Project serials|Project serial]] scope renders a fully empty cell instead of `--`. Empty compact cells can render blank when there is no value to turn into an icon. Once a task is finished or cancelled, its Due and Scheduled cells drop the red and blue, because the deadline no longer presses, the same rule as [[DOCS-041 Task chips display and behavior|task chips]].
 
 Built-in and custom task fields typed as **Date** follow **Settings → Operon → Core → General → Language & Formats → Date format**. **Date Time Start**, **Date Time End**, and custom task fields typed as **Date & time** combine that date choice with the existing 12- or 24-hour **Time format**, while keeping the cell's existing time precision. In compact cell mode, a date-and-time cell still shows only the time (`14:30`); its tooltip and accessible label carry the complete formatted date and time. These presentation choices do not change the canonical value used by the picker, sorting, grouping, or export. Supported [[DOCS-115 File task property columns|Vault Properties]] typed as Date or Date & time also use the configured date/time presentation; their stored values remain unchanged.
+
+**Task Occurrence Date** shows the current task's recorded date, without predicting the next task. Its header and cell use the **repeat** icon. The cell icon follows Scheduled's date colors: red before today, blue today, and neutral for future dates or a finished/cancelled task. Detailed cells show the formatted date; compact cells use the icon with the date available on hover. These rules apply in standalone and embedded Tables.
+
+For a valid date, Task Occurrence Date and **Repeat reference date** read the same saved field. Clicking either editable cell opens the **Repeat picker**, not an independent date editor. The existing **Recurrence** column continues to show the readable rule, so you can keep the rule and the task's date in separate columns.
 
 **Task Tree cells show an occurrence, not a writable property.** A task with children gets a circled chevron that expands or collapses that exact visible occurrence. A projected descendant uses a branch marker; a top-level task with no children uses a dot. Detailed mode adds hierarchy numbers such as `1`, `1.2`, and `1.2.1`, while compact mode keeps the structural icon only. The column can use Table color modes, but clicking its control never edits `parentTask`. See [[DOCS-106 Table columns|Table columns]].
 
@@ -157,7 +162,7 @@ Cells fall into a few roles. Some edit a value in place, some take you somewhere
 
 | Role | Where | Clicking it |
 |---|---|---|
-| Edit in place | The non-link area of editable status, priority, date, estimate, repeat, list, tag, parent/dependency, and other picker cells | Opens that field's picker; Repeat reference date also uses the Repeat picker |
+| Edit in place | The non-link area of editable status, priority, date, estimate, repeat, list, tag, parent/dependency, and other picker cells | Opens that field's picker; Repeat reference date and Task Occurrence Date also use the Repeat picker |
 | Edit a session | individual chips in detailed Duration or Trackers, when editable | Opens that session's time editor |
 | Add time | empty space in an editable Duration or Trackers cell | Opens the add-time window |
 | Edit text | Non-link text or a summary icon in Description/Note | Opens the existing text editor |

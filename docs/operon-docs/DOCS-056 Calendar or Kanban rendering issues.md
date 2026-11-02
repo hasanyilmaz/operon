@@ -2,7 +2,7 @@
 Notes: When a task looks wrong on the Calendar or Kanban, and why
 Icon: bug
 Color: "#dc2626"
-Updated: 2026-09-11T23:08:45+02:00
+Updated: 2026-10-29T18:22:34+01:00
 ---
 
 # Calendar or Kanban rendering issues
@@ -13,18 +13,31 @@ A task is in your vault but looks wrong in a view: missing from the Calendar, in
 
 The Calendar places a task by its dates. A task with no date has nowhere to go, so it does not appear. Give it a `dateScheduled`, a `dateDue`, or a timed block (`datetimeStart` and `datetimeEnd`) and it shows up. If you expected a recurring task's future runs, check that the preset has **Show future occurrences** on. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
 
-## A card is in the wrong Kanban column, or missing
+## A card is in the wrong Kanban cell, or missing
 
-A Kanban column is a status in the board's pipeline, and a card sits in the column matching its `status`. Two mismatches cause trouble:
+Check the preset's **Kanban filter**, **Column selection**, and **Swimlane selection**, then check any toolbar search or temporary scopes. A task must pass the filter and match at least one selected value on each active axis. **Scoped tasks** counts the filtered tasks; **Board tasks** counts those matching the axis selections as well. A smaller Board tasks count can therefore be expected.
 
-- **The status does not match any column.** If a task's `status` is not one of the pipeline's statuses (for example after renaming a status), its card has no column to sit in. Align the task's status with the pipeline. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
-- **The board filters it out.** A Kanban preset can filter which tasks it shows, and can use a different pipeline. A card you expect may be on a different board. See [[DOCS-030 Kanban overview|Kanban overview]].
+For a Status axis, the task must match the chosen pipeline's statuses. Other property axes use their own values; they do not inherit a hidden pipeline restriction. An explicitly selected subset can hide tasks that would be visible with all values. See [[DOCS-153 Kanban presets|Kanban presets]].
+
+**No value** means the property is genuinely empty. A number of `0` or a checkbox value of `false` is not empty. A field still being indexed or failing to read is also not No value.
+
+### Incomplete totals or unavailable configuration
+
+An **Incomplete totals** notice means some potentially matching tasks could not be grouped. Read its details and allow pending property data to finish loading; unreadable tasks are excluded from the displayed totals until they can be resolved. This is different from tasks deliberately excluded by the filter or axis selections.
+
+An unavailable configuration can mean a missing pipeline, deleted property, changed property type, or unsupported saved configuration. Open the preset and inspect the indicated field. Saved settings are preserved rather than silently replaced. Do not recreate the preset merely to hide the warning.
+
+If an All-value axis has no values in scope, it cannot generate headings. Review the filter or select an existing known value through Add value to keep a planning heading available.
 
 ## A Kanban drop is rejected
 
 Kanban may reject a move when the source task changed during the drag, a dependency blocks the attempted status, or the task cannot be written safely. The optimistic card placement is temporary: when the operation is cancelled or fails, Operon settles the card back into the current source cell immediately instead of leaving it in the target until a later refresh. Closing a blocker message should not cause a second delayed return several seconds later.
 
-If you see **Kanban action failed**, the card has not been confirmed at the target. Check the task's current status and swimlane fields, resolve duplicate task identities or active blockers, and try the move again. For a custom-list swimlane, also confirm that the selected custom key is still configured as a writable List field. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+If you see **Kanban action failed**, the card has not been confirmed at the target. Check the task’s current column and swimlane properties, resolve duplicate task identities or active blockers, and try the move again. For a custom-list swimlane, also confirm that the selected custom key is still configured as a writable List field. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+
+Some target cells cannot represent a valid task. The same single-valued property cannot be A and B at once; the same list cannot be empty and contain a member at once. Those intersections can be displayed, but task moves, placement, and creation are blocked. Moving a populated list to No value is also blocked: clear it through its field editor instead.
+
+If a task still appears in its source cell after a successful list move, that is expected. The target member was added and existing members were preserved.
 
 ## A card moved, but its parent or ancestor was unavailable
 
@@ -57,7 +70,7 @@ Layout and editing affordances can differ between modes, but disappearing task r
 
 **My task will not show on the Calendar.** It has no date. Add a scheduled date, due date, or timed block.
 
-**My card disappeared after I renamed a status.** Its `status` no longer matches a column. Update the task to the new status, or keep status names stable.
+**My card disappeared after a property or status change.** Check the current task values against both preset axes and their selected values. If the board reports an unavailable field, inspect the preset before changing task data.
 
 **The view looks stale.** Rebuild the index, reload settings, or reopen the view.
 

@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-10-19T22:28:59+02:00
+Updated: 2026-10-29T18:28:32+01:00
 ---
 
 # Time session history
@@ -34,6 +34,12 @@ You can also edit a session directly from a table: click its chip in detailed **
 ![MEDIA-DOCS-053-2 - Edit tracked session time range](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-053-2.png)
 
 The task description at the top of **Edit session** is a formatted, read-only context label. Default and six-color highlights appear in their display form, with the color marker hidden, just as on a Kanban card. This does not alter the source description or the session's times and save behavior. To change the description or its highlight color, use [[DOCS-021 Task Editor|Task Editor]]; see [[DOCS-113 Text field editor popover|Text field editor popover]] for highlight syntax.
+
+## Edit the latest session from Status Dock
+
+On desktop, the visible [[DOCS-152 Status Dock|Status Dock]] shows a temporary card for the latest newly saved task session. Click its **duration**, such as **34m 22s**, to open the same **Edit session** window. The card lasts ten seconds, with its countdown paused while you hover over or interact with it. If a dock task list is open, the card waits until that list closes.
+
+Clicking the card's task description follows the **Status Dock** opening preference, independently of the history panel's **Task description click action** setting. Once the card disappears, the saved session remains available in history and Task Editor.
 
 ## Edit from Task Editor
 

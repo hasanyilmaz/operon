@@ -2,7 +2,7 @@
 Notes: The dialog for creating new tasks
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-26T12:23:25+01:00
+Updated: 2026-10-29T18:42:56+01:00
 ---
 
 # Task Creator
@@ -50,11 +50,17 @@ Task Type, Task Image, and Task Gallery use the shared task-data picker. Task Ty
 
 Description and Note support default and colored highlights. In the Live Preview-style editor, the active highlight keeps Obsidian's color control where supported; the saved Markdown retains its color marker. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the six colors and plain-text syntax.
 
+### Field icons while you write
+
+On desktop, icons for fields with a value stay visible when you move back to the description. Empty fields keep their quiet-line appearance until you interact with the toolbar or a picker. Clearing a field returns it to that empty-field behavior. This makes the selected properties easy to review without keeping the pointer over the toolbar; mobile retains its visible, wrapping controls.
+
 ### Custom keys and normal properties
 
 Eligible active [[DOCS-040 Custom keys|Custom Keys]] can be offered before they have been used in a note. Supported normal Obsidian properties used in the vault remain available, and fields supplied by the selected template or already in your draft are retained. A deleted, unused custom key does not return solely because its old type declaration still exists. Surface visibility and supported-type rules still apply.
 
 Custom fields use their configured icon, including when a template exposes them through a native property control. Without a configured icon, the type icon is used. Checkbox value indicators and genuine read-only warnings keep their own meaning. See [[DOCS-115 File task property columns|Vault Properties]] for native property controls.
+
+Text and List field pickers reuse the shared property-value pool, including values used only on Inline Tasks and compatible frontmatter values. An existing value does not need to be retyped because you are creating a new task. Opening the picker again uses the current available values. Picking one updates this draft; it does not create the task until you submit **Inline** or **File**. See [[DOCS-070 Custom field pickers|Custom field pickers]].
 
 ## Review a template before creating
 

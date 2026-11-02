@@ -2,12 +2,12 @@
 Notes: Define the workflow stages a task moves through, and the status grid that configures each
 Icon: workflow
 Color: "#ca8a04"
-Updated: 2026-10-01T14:06:16+02:00
+Updated: 2026-10-29T18:22:34+01:00
 ---
 
 # Pipelines and statuses
 
-A pipeline is the workflow a task moves through, and a status is one stage in that workflow. Together they answer "how far along is this?" The same statuses become your Kanban columns, drive the checkbox state, and let Operon move tasks for you at the right moments. Set them up once to match how you actually work.
+A pipeline is the workflow a task moves through, and a status is one stage in that workflow. Together they answer "how far along is this?" The same statuses can become Kanban columns or swimlanes, drive the checkbox state, and let Operon move tasks for you at the right moments. Set them up once to match how you actually work.
 
 > **MEDIA-DOCS-037-1:** The Pipelines settings showing a pipeline and its ordered statuses with colors.
 
@@ -65,9 +65,11 @@ In the Pipelines settings, a pipeline's statuses are laid out as a grid: one row
 
 The **Scheduled** and **Tracking** columns are single-choice down the grid, since only one status can be each automation target; how they fire is covered in "Automatic status moves" below. **Finished** and **Cancelled** also set the Markdown checkbox to done or cancelled.
 
-## Statuses become Kanban columns
+## Statuses on a Kanban axis
 
-The Kanban builds its columns straight from a pipeline's statuses, in order. Moving a card to another column rewrites the task's `status`. So the pipeline you design here is the board you work on later. See [[DOCS-030 Kanban overview|Kanban overview]].
+In a [[DOCS-153 Kanban presets|Kanban preset]], choose **Status** as the column or swimlane property, then choose a pipeline. Its statuses become that axis's headings in their configured order. Moving a card to a different status heading updates the task's `status`, including the usual completion or cancellation behavior.
+
+A Kanban axis can also use other supported properties. If neither axis uses Status, a previously chosen pipeline does not silently restrict the board. Use the preset's Kanban filter when you want a pipeline restriction on a property-based board. See [[DOCS-030 Kanban overview|Kanban overview]].
 
 A task's pipeline can also group, subgroup, or sort rows on the [[DOCS-105 Table overview|Table]], as a derived **Pipeline** field, without adding it as a column. See [[DOCS-107 Table grouping and sorting|Table grouping and sorting]].
 
@@ -92,7 +94,7 @@ Task Router can map each pipeline to a working File Task folder and a separate t
 
 ## FAQ
 
-**Where do Kanban columns come from?** From the statuses of the pipeline the board shows, in their defined order.
+**Where do Kanban columns come from?** From the preset’s column property. When it is Status, columns come from the chosen pipeline in its defined order; Status can also be used for rows.
 
 **Can I have more than one pipeline?** Yes. Make a pipeline per kind of work, each with its own statuses.
 

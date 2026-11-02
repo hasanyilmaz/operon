@@ -1,10 +1,12 @@
+import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
+import type { KanbanCellTarget } from '../systems/kanban-cell-actions';
 import type { KanbanTaskColorSource } from '../core/task-color-source';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 import type { InlineRepeatCompletionMode } from '../storage/repeat-series-store';
 import type { IndexedTask } from './fields';
 import type { RelatedViewCreateTarget, RelatedViewOpenTarget } from './related-views';
-import type { FilterSet } from './settings';
+import type { FilterSet, KanbanCellHeightPx } from './settings';
 
 export type BuiltInKanbanSwimlaneBy =
 	| 'priority'
@@ -58,6 +60,10 @@ export interface KanbanEffectiveSorting {
 }
 
 export interface KanbanPreset {
+	columnWidthPx?: number;
+	cellHeightPx?: number;
+	/** Kept opaque on load to preserve unsupported/future settings; decode before use. */
+	axes?: unknown;
 	id: string;
 	name: string;
 	pipelineId: string | null;
@@ -104,6 +110,9 @@ export interface KanbanLeafStateNormalizationOptions {
 }
 
 export interface KanbanDropContext {
+	/** Typed cell constraints; the historical status/lane names below carry opaque axis keys. */
+	target?: KanbanCellTarget;
+	source?: KanbanCellTarget;
 	taskId: string;
 	/** Plugin-local ownership metadata; never serialized into Runtime V1 requests. */
 	operationId?: string;
@@ -122,6 +131,9 @@ export interface KanbanDropContext {
 export type KanbanCellActionId = 'pickTask' | 'createFileTask' | 'createInlineTask';
 
 export interface KanbanCellActionContext {
+	target?: KanbanCellTarget;
+	presetId?: string;
+	boardSignature?: string;
 	targetStatusId: string;
 	targetStatusLabel: string;
 	targetLaneKey: string;
@@ -146,6 +158,8 @@ export interface KanbanCardDropCommittedResult {
 export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
 export interface KanbanViewCallbacks {
+	onSetColumnWidth?: (preset: KanbanPreset, width: number) => Promise<void>;
+	onSetCellHeight?: (preset: KanbanPreset, height: KanbanCellHeightPx) => Promise<void>;
 	onSelectPresetFilter?: (presetId: string, expectedFilterSetId: string | null, filterSetId: string | null) => Promise<void>;
 	getManualOrder?: (presetId: string) => Record<string, string[]>;
 	onCardDrop?: (context: KanbanDropContext) => KanbanCardDropResult | Promise<KanbanCardDropResult>;
@@ -177,6 +191,8 @@ export const DEFAULT_KANBAN_PRESETS: KanbanPreset[] = [
 	{
 		id: DEFAULT_KANBAN_PRESET_ID,
 		name: DEFAULT_KANBAN_NAME,
+		columnWidthPx: 325,
+		cellHeightPx: 450,
 		pipelineId: DEFAULT_KANBAN_PIPELINE_ID,
 		filterSetId: null,
 		swimlaneBy: 'priority',
@@ -209,6 +225,7 @@ export function normalizeKanbanCardImageSource(value: unknown): KanbanCardImageS
 export function cloneDefaultKanbanPresets(): KanbanPreset[] {
 	return DEFAULT_KANBAN_PRESETS.map(preset => ({
 		...preset,
+		...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 		sortMode: preset.sortMode ?? 'automatic',
 		sortRules: preset.sortRules.map(rule => ({ ...rule })),
 		...(preset.columnSortOverrides?.length
@@ -338,6 +355,7 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 	if (!isLegacyDefaultKanbanPreset(preset)) {
 		return {
 			...preset,
+		...(preset.axes === undefined ? {} : { axes: cloneKanbanAxesPayload(preset.axes) }),
 			cardImageSource: normalizeKanbanCardImageSource(preset.cardImageSource),
 			sortMode: preset.sortMode ?? 'automatic',
 			sortRules: preset.sortRules.map(rule => ({ ...rule })),
@@ -349,6 +367,8 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 	const next = DEFAULT_KANBAN_PRESETS[0];
 	return {
 		...next,
+		...(preset.columnWidthPx === undefined ? {} : { columnWidthPx: preset.columnWidthPx }),
+		...(preset.cellHeightPx === undefined ? {} : { cellHeightPx: preset.cellHeightPx }),
 		sortRules: next.sortRules.map(rule => ({ ...rule })),
 		...(next.columnSortOverrides?.length
 			? { columnSortOverrides: cloneKanbanColumnSortOverrides(next.columnSortOverrides) }
@@ -357,7 +377,7 @@ export function normalizeBuiltInKanbanPreset(preset: KanbanPreset): KanbanPreset
 }
 
 function isLegacyDefaultKanbanPreset(preset: KanbanPreset): boolean {
-	return preset.id === DEFAULT_KANBAN_PRESET_ID
+	return preset.axes === undefined && preset.id === DEFAULT_KANBAN_PRESET_ID
 		&& preset.name === LEGACY_DEFAULT_KANBAN_NAME
 		&& preset.pipelineId === null
 		&& preset.filterSetId === null

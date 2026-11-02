@@ -24,7 +24,7 @@ function productionFunction(file, name) {
  return new Function(`${js}; return ${name};`)();
 }
 const compiled = await build({
- stdin: { contents: "export { buildKanbanTaskComparator } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
+ stdin: { contents: "export { resolveKanbanPresetLayout, normalizeKanbanCellHeightPx } from './src/types/settings'; export { projectKanbanLegacyAxes, resolveKanbanAxes } from './src/core/kanban-axis-model'; export { buildKanbanTaskComparator, parseKanbanCellKey } from './src/systems/kanban-query'; export { buildKanbanWritebackPlan } from './src/systems/kanban-writeback'; export { resolveKanbanEffectiveSorting } from './src/types/kanban'; export { buildOptimisticMovedTask, createKanbanDropOptimisticMove, KANBAN_OPTIMISTIC_MOVE_TTL_MS } from './src/systems/kanban-optimistic-move';", resolveDir: fileURLToPath(new URL('../', import.meta.url)) },
  bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent',
  alias: { obsidian: fileURLToPath(new URL('./test-support/obsidian.ts', import.meta.url)) },
 });
@@ -52,7 +52,7 @@ const dependencies = {
  KANBAN_ESTIMATED_CARD_HEIGHT_PX: 100,
  KANBAN_ESTIMATED_CARD_GAP_PX: 8,
 };
-const methodNames = ['applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
+const methodNames = ['getPresetLayout', 'getColumnSorting', 'registerOptimisticMove','restoreBoardScrollState', 'restoreBoardViewportAnchor', 'applyKanbanBoardPatchInPlace', 'createKanbanCellMaterializer', 'renderInitialCellTasks', 'renderTaskCardBatch', 'areStringArraysEqual', 'refreshKanbanTasksInPlace', 'settleKanbanDropDomInPlace', 'buildKanbanBoardTaskSignatures', 'resolveImmediateKanbanDropBeforeTaskId', 'applyImmediateCardDrop', 'completeKanbanCardDrop', 'renderCornerSummary'];
 const code = ts.transpileModule(`class Subject { ${methodNames.filter(name => viewClass.members.some(member => member.name?.getText(ast) === name)).map(method).join('\n')} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 const Subject = new Function(...Object.keys(dependencies), `${code}; return Subject;`)(...Object.values(dependencies));
 
@@ -93,7 +93,7 @@ class Node {
  removeAttribute(key) { delete this[key]; }
  querySelectorAll(selector) {
   if (selector === ':scope > .operon-kanban-card') return this.children.filter(child => child.kind === 'card');
-  if (selector === '.operon-kanban-cell') return this.children.filter(child => child.kind === 'cell');
+  if (selector === '.operon-kanban-cell') return this.children.flatMap(child => [...(child.kind === 'cell' ? [child] : []), ...child.querySelectorAll(selector)]);
   return [];
  }
  querySelector(selector) {
@@ -117,18 +117,19 @@ function fixture(sourceIds = ['a', 'b', 'c'], targetIds = ['d'], windowName = 'm
   for (const id of entries) cell.appendChild(new Node('card', { operonTaskId: id, kanbanStatusId: status, kanbanLaneKey: 'lane', kanbanPreview: 'false' }, doc));
  }
  function board(source, target) {
-  return { get relevantTasks() { return [...this.cellMap.values()].flat(); }, columns: [{ statusId: 'source' }, { statusId: 'target' }], lanes: [{ key: 'lane' }], pipeline: {}, preset: {},
+  return { snapshot: { diagnostics: [], countsComplete: true, rowAxisHidden: false }, getCellTasks(column,row) { return this.cellMap.get(`${column}::${row}`) ?? []; }, getCellCount(column,row) { return this.cellCountMap.get(`${column}::${row}`) ?? 0; }, get relevantTasks() { return [...this.cellMap.values()].flat(); }, columns: [{ statusId: 'source' }, { statusId: 'target' }], lanes: [{ key: 'lane' }], pipeline: {}, preset: {},
    cellMap: new Map([['source::lane', source.map(id => typeof id === 'string' ? task(id) : id)], ['target::lane', target.map(id => typeof id === 'string' ? task(id) : id)]]),
    cellCountMap: new Map([['source::lane', source.length], ['target::lane', target.length]]) };
  }
  const subject = new Subject(); const renders = [], measurements = [], lazy = [], scrollRestores = [];
- const settings = { kanbanMaxVisibleTasksPerCell: 5, pipelines: [] };
+ const settings = { kanbanPresets: [], kanbanMaxVisibleTasksPerCell: 5, pipelines: [] };
  Object.assign(subject, {
   ensureState: () => ({ expandedPreviewParentIds: [] }), buildDescendantSummary: () => ({ done: 0, open: 1, total: 1 }),
-  pendingCellMaterializers: new Map(), optimisticMoves: new Map(), indexer: { getAllTasks: () => [], secondary: { getChildIds: () => new Set(), getAllDescendantIds: () => new Set() } }, getSettings: () => settings,
+  pendingCellMaterializers: new Map(), virtualDropCells: new Map(), optimisticMoves: new Map(), indexer: { getAllTasks: () => [], secondary: { getChildIds: () => new Set(), getAllDescendantIds: () => new Set() } }, getSettings: () => settings,
   captureCellScrollStates() {}, resolveCollapsedStatusIds: () => new Set(), resolveCollapsedLaneKeys: () => new Set(),
   findKanbanCell: (_board, status) => cells.get(status), findKanbanRow: () => row,
   unobserveKanbanCellContent(cell) { for (const child of [...cell.children]) if (child.kind === 'sentinel') child.remove(); },
+  cleanupVirtualCardBindings() {},
   clearCellQuickAdd(cell) { for (const child of [...cell.children]) if (child.kind === 'overlay') child.remove(); },
   bindCellQuickAdd(cell) { cell.appendChild(new Node('overlay', {}, doc)); },
   renderCollapsedCellSummary(cell) { cell.empty(); cell.appendChild(new Node('summary', {}, doc)); },
@@ -166,7 +167,7 @@ for (const owner of ['main', 'pop-out']) test(`drop retains untouched source and
  assert.notEqual(cardById(target, 'a'), moved); assert.deepEqual(ids(source), ['b', 'c']); assert.deepEqual(ids(target), ['a', 'd']);
  assert.deepEqual(f.renders, ['a']); assert.equal(cleanups.includes(b), false);
  assert.equal(b.ownerDocument.windowName, owner);
- assert.deepEqual(f.measurements, ['measure:target', 'measure:source', 'commit:target', 'commit:source']);
+ assert.deepEqual(f.measurements, []);
  assert.equal(f.scrollRestores.length, 2);
 });
 
@@ -234,7 +235,7 @@ test('collapsed cells retain their summary behavior', () => {
 test('unmaterialized cells stay deferred and use the latest tasks on reveal', () => {
  const f = fixture(), source = f.cells.get('source'); source.empty(); f.subject.pendingCellMaterializers.set(source, () => {});
  f.patch(f.board(['b', 'c'], ['d'])); assert.equal(f.renders.length, 0); assert.deepEqual(ids(source), []);
- const finalizer = f.subject.pendingCellMaterializers.get(source)(); finalizer.measure(); finalizer.commit(); assert.deepEqual(ids(source), ['b', 'c']);
+ const finalizer = f.subject.pendingCellMaterializers.get(source)(); finalizer.commit(); assert.deepEqual(ids(source), ['b', 'c']);
 });
 
 test('ordinary late saves preserve unchanged cards instead of rebuilding the board', () => {
@@ -275,7 +276,7 @@ test('task-only notifications during pending desktop persistence retain the old 
  const f = pendingRefreshFixture(), b = cardById(f.cells.get('source'), 'b'); f.immediateMove();
  const baseline = f.subject.lastRenderSignature;
  for (let notification = 0; notification < 3; notification++) {
-  assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: `new-${notification}`, controls: 'same' }), {}, {}, {}, null, {}, null), true);
+  assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: `new-${notification}`, controls: 'same' }), {}, {pipelineId:null,swimlaneBy:null}, {}, null, {}, null), true);
   assert.equal(cardById(f.cells.get('source'), 'b'), b); assert.equal(f.subject.lastRenderSignature, baseline);
  }
  f.patch(f.board(['b', 'c'], [task('a', 'moved'), 'd'])); assert.equal(cardById(f.cells.get('source'), 'b'), b);
@@ -283,7 +284,7 @@ test('task-only notifications during pending desktop persistence retain the old 
 
 test('pending drops do not defer changed settings or controls', () => {
  const f = pendingRefreshFixture();
- assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'new', controls: 'changed' }), {}, {}, {}, null, {}, null), false);
+ assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'new', controls: 'changed' }), {}, {pipelineId:null,swimlaneBy:null}, {}, null, {}, null), false);
 });
 
 test('settled operations and status-click operations do not defer ordinary saves', () => {
@@ -292,7 +293,7 @@ test('settled operations and status-click operations do not defer ordinary saves
   if (state === 'settled') f.subject.cardOperations.isTaskPending = () => false;
   else f.subject.optimisticMoves.get('a').kind = 'status';
   let queries = 0; f.subject.queryKanbanBoardData = () => { queries++; return { board: { columns: [], lanes: [] } }; };
-  assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'new', controls: 'same' }), {}, {}, {}, null, {}, null), false);
+  assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'new', controls: 'same' }), {}, {pipelineId:null,swimlaneBy:null}, {}, null, {}, null), false);
   assert.equal(queries, 1);
  }
 });
@@ -343,6 +344,16 @@ function sortedFixture(field = 'alphabetical', direction = 'asc', override = nul
  f.subject.indexer.getTask = id => tasks.get(id); f.subject.indexer.getAllTasks = () => [...tasks.values()]; f.subject.callbacks = {};
  const context = { taskId: 'moved', presetId: 'preset', boardSignature: 'board-sig', sourceStatusId: 'source', targetStatusId: 'target', sourceLaneKey: 'lane', targetLaneKey: 'lane', swimlaneBy: null, targetBeforeTaskId: null };
  f.subject.lastRenderedBoard = { ...f.previous, pipeline, preset, columns: [{ statusId: 'source', statusValue: 'Work > Source' }, { statusId: 'target', statusValue: 'Work > Target' }] };
+ f.subject.scheduleOptimisticMoveExpiryRender = () => {};
+ f.subject.lastRenderedBoard.getTarget = (column,row) => ({ columns: { kind:'status', pipelineId:'pipeline', id:column }, swimlanes: context.swimlaneBy ? { kind:'value',value:row } : null });
+ f.subject.lastRenderedBoard.getSorting = column => compiledModule.exports.resolveKanbanEffectiveSorting(preset,column);
+ f.subject.lastRenderedBoard.getActionPlan = (column,row,current) => {
+  const move=compiledModule.exports.createKanbanDropOptimisticMove({...context,taskId:current.operonId,targetStatusId:column,targetLaneKey:row},{task:current});
+  const next=compiledModule.exports.buildOptimisticMovedTask(current,move,f.subject.lastRenderedBoard,[]);
+  return {state:'ready', requirements:[],nextDraft:{description:next.description,tags:next.tags,checkbox:next.checkbox,fieldValues:next.fieldValues}};
+ };
+ const resolve=f.subject.resolveImmediateKanbanDropBeforeTaskId.bind(f.subject);
+ f.subject.resolveImmediateKanbanDropBeforeTaskId=(cell,ctx,p)=>{if(!f.subject.optimisticMoves.has(ctx.taskId))f.subject.registerOptimisticMove(ctx);return resolve(cell,ctx,p);};
  return { ...f, tasks, pipeline, preset, context };
 }
 
@@ -392,7 +403,7 @@ test('drop orders the target before persistence resolves and preserves both neig
   callbacks: { onCardDrop() { callbackStarted = true; return persistence; } },
   cardOperations: { begin: () => ({ id: 'operation', boardSignature: 'board-sig' }), owns: () => true, isUiCurrent: () => true, end: () => { ended = true; return true; } },
   beginDropScrollAnchor: () => ({}), materializeKanbanCellIfPending() {}, clearManualDropIndicator() {},
-  registerOptimisticMove() {}, applyCellHeightLimit() {}, scheduleBoardViewportAnchorRestore() {},
+  applyCellHeightLimit() {}, scheduleBoardViewportAnchorRestore() {}, scheduleOptimisticMoveExpiryRender() {},
   resolveCurrentPreset: () => f.preset, resolveKanbanDropBoardSignature: () => 'board-sig',
   settleKanbanDropDomInPlace() { settled = true; return true; },
   settleDropViewportAnchor() {}, clearDropPendingCardState() {}, endKanbanDragInteraction() {},
@@ -425,7 +436,7 @@ test('late save notification after settlement is a DOM no-op when the board cont
   queryKanbanBoardData: () => ({ board: next, searchActive: false }),
   buildRenderSignature: () => JSON.stringify({ tasks: 'saved', controls: 'same' }), restoreBoardViewportAnchor() {},
  });
- assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'late-notification', controls: 'same' }), {}, {}, {}, null, f.settings, null), true);
+ assert.equal(f.subject.refreshKanbanTasksInPlace(JSON.stringify({ tasks: 'late-notification', controls: 'same' }), {}, {pipelineId:null,swimlaneBy:null}, {}, null, f.settings, null), true);
  assert.equal(f.renders.length, renders); assert.equal(f.measurements.length, measured);
 });
 
@@ -454,7 +465,7 @@ test('the board total keeps its existing DOM when a move does not change the cou
 test('a second pending drop compares against the first card projected completion date', () => {
  const f = sortedFixture('dateCompleted', 'desc'); f.pipeline.statuses.find(status => status.id === 'target').isFinished = true;
  f.tasks.get('first').description = 'Alpha'; f.tasks.get('moved').description = 'Middle'; f.tasks.get('last').fieldValues.dateCompleted = '2020-01-01';
- f.subject.optimisticMoves.set('first', compiledModule.exports.createKanbanDropOptimisticMove({ ...f.context, taskId: 'first' }, { task: f.tasks.get('first') }));
+ f.subject.registerOptimisticMove({ ...f.context, taskId: 'first' });
  assert.equal(f.subject.resolveImmediateKanbanDropBeforeTaskId(f.cells.get('target'), f.context, f.preset), 'last');
  assert.equal(f.tasks.get('first').fieldValues.dateCompleted, undefined);
 });
@@ -462,14 +473,11 @@ test('a second pending drop compares against the first card projected completion
 test('pending modified-time sorting retains the original gesture time for the earlier card', () => {
  const f = sortedFixture('datetimeModified', 'desc'); f.tasks.get('first').description = 'Alpha'; f.tasks.get('moved').description = 'Middle';
  f.tasks.get('first').datetimeModified = '2019-01-01T00:00:00'; f.tasks.get('last').datetimeModified = '2018-01-01T00:00:00';
- const before = compiledModule.exports.createKanbanDropOptimisticMove({ ...f.context, taskId: 'first' }, { task: f.tasks.get('first') });
- before.expiresAt = new Date('2026-01-01T10:00:00').getTime() + compiledModule.exports.KANBAN_OPTIMISTIC_MOVE_TTL_MS;
- const current = compiledModule.exports.createKanbanDropOptimisticMove(f.context, { task: f.tasks.get('moved') });
- current.expiresAt = new Date('2026-01-01T10:00:01').getTime() + compiledModule.exports.KANBAN_OPTIMISTIC_MOVE_TTL_MS;
- f.subject.optimisticMoves.set('first', before); f.subject.optimisticMoves.set('moved', current);
- assert.equal(f.subject.resolveImmediateKanbanDropBeforeTaskId(f.cells.get('target'), f.context, f.preset), 'first');
- const board = f.subject.lastRenderedBoard;
- const projected = compiledModule.exports.buildOptimisticMovedTask(f.tasks.get('first'), before, board, []);
+ f.subject.registerOptimisticMove({...f.context,taskId:'first'});
+ const before=f.subject.optimisticMoves.get('first');before.nextTask.datetimeModified='2026-01-01T10:00:00';
+ f.subject.registerOptimisticMove(f.context);f.subject.optimisticMoves.get('moved').nextTask.datetimeModified='2026-01-01T10:00:01';
+ assert.equal(f.subject.resolveImmediateKanbanDropBeforeTaskId(f.cells.get('target'),f.context,f.preset),'first');
+ const projected=before.nextTask;
  assert.equal(projected.datetimeModified, '2026-01-01T10:00:00');
 });
 
@@ -491,4 +499,44 @@ test('a changed descendant progress summary updates only its owning parent card'
  const before = f.signatures(f.previous); summary = { done: 1, open: 0, total: 1 };
  assert.equal(f.subject.applyKanbanBoardPatchInPlace(f.boardEl, f.previous, f.previous, before, f.signatures(f.previous), null, {}, f.settings, false), true);
  assert.notEqual(cardById(source, 'b'), parent); assert.equal(cardById(source, 'c'), neighbor); assert.deepEqual(f.renders, ['b']);
+});
+
+
+test('offscreen changed cells update the model without creating DOM or forcing a rebuild', () => {
+ const f = fixture();
+ f.cells.get('target').remove(); f.cells.delete('target');
+ let latest;
+ f.subject.updateVirtualBoard = value => { latest = value; };
+ const next = f.board(['a','b','c'], [task('d','changed-offscreen')]);
+ f.patch(next, null);
+ assert.equal(latest, next); assert.deepEqual(f.renders, []);
+});
+
+test('a hidden board cannot overwrite saved scroll while an anchor expires', () => {
+ const subject = new Subject();
+ Object.assign(subject, { lastBoardScrollState: { left: 1200, top: 4800 },
+  pendingViewportAnchor: { scope: 'same', state: { left: 1200, top: 4800 }, expiresAt: Date.now() + 1000 },
+  buildDropScrollAnchorScope: () => 'same', suppressTaskNoteScrollCloseForFrame() {},
+  clearViewportAnchor() { throw new Error('Hidden layout must not consume the pending anchor'); },
+  markProgrammaticBoardScroll(board) { this.lastBoardScrollState = { left: board.scrollLeft, top: board.scrollTop }; },
+ });
+ const board = { clientWidth: 0, clientHeight: 0, scrollLeft: 0, scrollTop: 0 };
+ subject.restoreBoardViewportAnchor(board);
+ assert.deepEqual(subject.lastBoardScrollState, { left: 1200, top: 4800 });
+ subject.pendingViewportAnchor.expiresAt = Date.now() - 1;
+ subject.restoreBoardViewportAnchor(board);
+ Object.assign(board, { clientWidth: 1000, clientHeight: 700 });
+ subject.restoreBoardScrollState(board);
+ assert.equal(board.scrollLeft, 1200); assert.equal(board.scrollTop, 4800);
+});
+
+// Exercise the production retention predicate against many appearances of one task.
+test('pending task copies do not pin every visited cell; only note origin and drop endpoints remain',()=>{
+ const js=ts.transpileModule(`class Interaction { ${method('shouldKeepVirtualCell')} }`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const Interaction=new Function('hasFloatingPanelForRoot','buildKanbanCellKey',`${js};return Interaction;`)(()=>false,(c,r)=>`${c}::${r}`);
+ const subject=Object.assign(new Interaction(),{virtualDropCells:new Map([['pending',{source:'c0::r0',target:'c1::r1'}]]),activeTaskNotePopoverTaskId:'shared',activeTaskNoteCellKey:'c2::r2',pendingTaskNoteOpen:{cellKey:'c3::r3'}});
+ const cells=Array.from({length:200},(_,i)=>({ownerDocument:{activeElement:null},dataset:{kanbanStatusId:'c'+i,kanbanLaneKey:'r'+i},matches:()=>false,querySelector:selector=>selector.includes('is-drop-pending')||selector.includes('data-operon-task-id')?{}:null}));
+ assert.deepEqual(cells.map((c,i)=>subject.shouldKeepVirtualCell(c)?i:null).filter(i=>i!==null),[0,1,2,3]);
+ subject.virtualDropCells.clear();subject.activeTaskNoteCellKey=null;subject.pendingTaskNoteOpen=null;
+ assert.ok(cells.every(c=>!subject.shouldKeepVirtualCell(c)));
 });

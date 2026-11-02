@@ -275,6 +275,8 @@ function getFilterFieldTypeIcon(type: FilterFieldType): string {
 }
 
 export interface FilterModalEvalDeps {
+	getRepeatSkipDates?: (seriesId: string) => string[];
+	getRepeatSkipSignature?: () => string;
 	indexer: OperonIndexer;
 	getFilePropertySnapshot?: (tasks: readonly IndexedTask[]) => TableFilePropertySnapshot | null;
 	getPipelines: () => Pipeline[];
@@ -937,6 +939,7 @@ export class FilterSetModal extends Modal {
 	private getFieldOptions(
 		includeConditionOnly = false,
 		includeHappensOn = false,
+		includeSortOnly = false,
 	): FilterFieldPickerOption[] {
 		const pseudoFields: FilterFieldPickerOption[] = [
 			buildFilterFieldPickerOption('checkbox', t('filterSets', 'fieldCheckbox'), 'checkbox', 'workflow', 'square-check-big'),
@@ -948,8 +951,11 @@ export class FilterSetModal extends Modal {
 		if (includeConditionOnly || includeHappensOn) {
 			pseudoFields.push(buildFilterFieldPickerOption('happensOn', t('filterSets', 'fieldHappensOn'), 'date', 'scheduling', 'calendar'));
 		}
-		if (includeConditionOnly) {
+		if (includeConditionOnly || includeSortOnly) {
 			pseudoFields.push(buildFilterFieldPickerOption('repeatOccurrenceDate', t('taskEditor', 'repeatReferenceDateField'), 'date', 'scheduling', 'calendars'));
+			pseudoFields.push(buildFilterFieldPickerOption('taskOccurrenceDate', t('filterSets', 'fieldTaskOccurrenceDate'), 'date', 'scheduling', 'calendar-clock'));
+		}
+		if (includeConditionOnly) {
 			pseudoFields.push(buildFilterFieldPickerOption('trackedOn', t('filterSets', 'fieldTrackedOn'), 'date', 'scheduling', 'timer'));
 			pseudoFields.push(buildFilterFieldPickerOption('projectTree', t('filterSets', 'fieldProjectTree'), 'projectTree', 'dependencies', 'git-branch'));
 			pseudoFields.push(buildFilterFieldPickerOption('folders', t('filterSets', 'fieldFolders'), 'folders', 'source', 'folder'));
@@ -2015,7 +2021,7 @@ export class FilterSetModal extends Modal {
 		const sep = container.createDiv('operon-filter-section operon-filter-sort-section');
 
 		const groupFieldOptions = this.getFieldOptions(false, true);
-		const sortFieldOptions = this.getFieldOptions(false, true);
+		const sortFieldOptions = this.getFieldOptions(false, true, true);
 		const groupOptions: FilterFieldPickerOption[] = [
 			{
 				field: '',
@@ -2300,6 +2306,7 @@ export class FilterSetModal extends Modal {
 							deps.pinnedCache,
 							deps.getPipelines(),
 							{
+								getRepeatSkipDates: deps.getRepeatSkipDates,
 								projectSerialScopes: deps.getSettings().projectSerialScopes,
 								projectSerialScopeTasks: deps.indexer.getAllTasks(),
 								dependencyTasks: deps.indexer.getAllTasks(),
@@ -2547,6 +2554,7 @@ class FilterPreviewModal extends Modal {
 			this.deps.pinnedCache?.getGeneration() ?? 0,
 			this.deps.getTrackingSignature?.() ?? '',
 			this.deps.getProjectSerialSignature?.() ?? '',
+			this.deps.getRepeatSkipSignature?.() ?? '',
 			filePropertySnapshot?.signature ?? '',
 			JSON.stringify(this.filterSet),
 			this.deps.getSettings().filterShowSubtasks ? '1' : '0',
@@ -2598,6 +2606,7 @@ class FilterPreviewModal extends Modal {
 			this.expandedTaskIds.clear();
 		}
 		const filterEvaluationOptions = {
+			getRepeatSkipDates: this.deps.getRepeatSkipDates,
 			projectSerialScopes: settings.projectSerialScopes,
 			projectSerialScopeTasks: allTasks,
 			dependencyTasks: allTasks,
@@ -2614,6 +2623,7 @@ class FilterPreviewModal extends Modal {
 				? null
 			: evaluateFilterSet(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions);
 		const callbacks: FilterTaskRowCallbacks = {
+			getRepeatSkipDates: this.deps.getRepeatSkipDates,
 			app: this.app,
 			getPipelines: this.deps.getPipelines,
 			getPriorities: this.deps.getPriorities,
@@ -2671,6 +2681,7 @@ class FilterPreviewModal extends Modal {
 					priorities,
 					pipelines,
 					isTaskPinned: callbacks.isTaskPinned,
+					getRepeatSkipDates: this.deps.getRepeatSkipDates,
 					projectSerialScopeResolver: createProjectSerialScopeFilterResolver(
 						settings.projectSerialScopes,
 						allTasks,

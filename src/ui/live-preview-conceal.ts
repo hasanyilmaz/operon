@@ -225,6 +225,15 @@ function snapshotLivePreviewAnchor(anchor: HTMLElement): DOMRect {
 	return new DOMRectCtor(rect.left, rect.top, Math.max(rect.width, 1), Math.max(rect.height, 1));
 }
 
+/** Keep control activation from moving the document caret into replaced metadata. */
+function bindLivePreviewControlMouseGuard(element: HTMLElement): void {
+	element.addEventListener('mousedown', event => {
+		if (event.button !== 0) return;
+		event.preventDefault();
+		event.stopPropagation();
+	});
+}
+
 function bindLivePreviewChipHoverState(element: HTMLElement): void {
 	const addHover = () => element.classList.add(LIVE_PREVIEW_CHIP_HOVER_CLASS);
 	const removeHover = () => element.classList.remove(LIVE_PREVIEW_CHIP_HOVER_CLASS);
@@ -683,6 +692,7 @@ export class MetadataTailWidget extends WidgetType {
 					});
 				},
 			});
+			bindLivePreviewControlMouseGuard(noteButton);
 			bindLivePreviewChipHoverState(noteButton);
 			identifyInlineTaskPart(noteButton, 'note', JSON.stringify([rawNoteValue, taskColor, settings.language, noteButton.outerHTML.replace(/operon-accessible-label-\d+/g, 'operon-accessible-label')]));
 			noteAction = noteButton;
@@ -1293,14 +1303,9 @@ function attachLivePreviewChipAction(
 		return;
 	}
 
+	bindLivePreviewControlMouseGuard(chip);
 	let tagPickerOpen = false;
 	let statusPickerOpen = false;
-	if (entry.key === 'status') {
-		chip.addEventListener('mousedown', event => {
-			event.preventDefault();
-			event.stopPropagation();
-		});
-	}
 	chip.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();

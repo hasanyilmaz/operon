@@ -18,6 +18,8 @@ try {
 		platform: 'node',
 		target: ['node18'],
 		logLevel: 'silent',
+		alias: { obsidian: path.join(rootDir, 'scripts/test-support/obsidian-native-yaml.ts') },
+		banner: { js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(path.join(rootDir, 'package.json'))});` },
 	});
 	const exitCode = await new Promise((resolve, reject) => {
 		const child = spawn(process.execPath, ['--test', outfile], { stdio: 'inherit' });

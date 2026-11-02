@@ -7,6 +7,8 @@ export function statusDockDocument() {
 	Object.assign(doc.defaultView, doc.win); doc.win = doc.defaultView;
 	doc.defaultView.innerWidth = 900; doc.defaultView.innerHeight = 700;
 	const Element = doc.defaultView.HTMLElement;
+	doc.defaultView.Node = Element; doc.defaultView.Element = Element;
+	doc.defaultView.document = doc;
 	const proto = Element.prototype;
 	Object.defineProperties(proto, {
 		className: { get() { return [...this.classes].join(' '); }, set(value: string) { this.classes = new Set(value.split(/\s+/u).filter(Boolean)); } },
@@ -20,10 +22,14 @@ export function statusDockDocument() {
 		if (before) { this.children.pop(); const index = this.children.indexOf(before); if (index < 0) throw new Error('Missing reference child'); this.children.splice(index, 0, node); }
 		return node;
 	};
+	proto.setCssProps = function (properties: Record<string, string>) {
+		for (const [key, value] of Object.entries(properties)) this.style.setProperty(key, value);
+	};
 	proto.clientWidth = 900;
 	proto.empty = function () { this.children = []; this.textContent = ''; };
 	proto.remove = function () { if (this.parent) this.parent.children = this.parent.children.filter((child: unknown) => child !== this); this.parent = null; this.connected = false; };
 	proto.matches = function (selector: string) {
+		if (selector.includes(',')) return selector.split(',').some((part: string) => this.matches(part.trim()));
 		if (selector === '*') return true;
 		if (selector.startsWith('.')) return this.classes.has(selector.slice(1));
 		if (selector.includes('data-operon-accessible-label')) return this.dataset.operonAccessibleLabel === 'true';

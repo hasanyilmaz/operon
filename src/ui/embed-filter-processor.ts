@@ -423,6 +423,7 @@ export function renderFilterSurface(
 	const priorities = deps.getPriorities();
     const pipelines = deps.getPipelines();
     const filterEvaluationOptions = {
+		getRepeatSkipDates: deps.getRepeatSkipDates,
 		projectSerialScopes: deps.getSettings().projectSerialScopes,
 		projectSerialScopeTasks: allTasks,
 		dependencyTasks: allTasks,
@@ -435,6 +436,7 @@ export function renderFilterSurface(
             priorities,
             pipelines,
             isTaskPinned: callbacks.isTaskPinned,
+		getRepeatSkipDates: deps.getRepeatSkipDates,
             projectSerialScopeResolver: createProjectSerialScopeFilterResolver(
                 embedSettings.projectSerialScopes,
                 allTasks,
