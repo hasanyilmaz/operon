@@ -75,7 +75,7 @@ class MemoryAdapter {
 	}
 }
 
-function buildPack(locale: 'tr' | 'de' | 'pt-BR', value: string): string {
+function buildPack(locale: 'tr' | 'de' | 'pt-BR' | 'ko', value: string): string {
 	return JSON.stringify({
 		schemaVersion: 1,
 		locale,
@@ -86,7 +86,7 @@ function buildPack(locale: 'tr' | 'de' | 'pt-BR', value: string): string {
 	});
 }
 
-function buildCatalog(locale: 'tr' | 'de' | 'pt-BR', raw: string): LocalePackCatalog {
+function buildCatalog(locale: 'tr' | 'de' | 'pt-BR' | 'ko', raw: string): LocalePackCatalog {
 	const sha256 = createHash('sha256').update(raw).digest('hex');
 	return {
 		schemaVersion: 1,
@@ -106,38 +106,40 @@ function buildCatalog(locale: 'tr' | 'de' | 'pt-BR', raw: string): LocalePackCat
 	};
 }
 
-test('downloads, validates, caches, and reuses the Brazilian Portuguese locale without network', async () => {
-	const adapter = new MemoryAdapter();
-	const raw = buildPack('pt-BR', 'Salvar');
-	const catalog = buildCatalog('pt-BR', raw);
-	let fetchCount = 0;
-	const manager = new LocalePackManager({
-		adapter,
-		configDir: '.obsidian',
-		catalog,
-		fetchPack: async () => {
-			fetchCount += 1;
-			return { status: 200, text: raw };
-		},
-	});
-	const downloaded = await manager.ensureLocale('pt-BR');
-	assert.equal(downloaded.translations.buttons?.save, 'Salvar');
-	assert.equal(manager.getStatus('pt-BR').installed, true);
-	assert.equal(manager.getStatus('pt-BR').updateAvailable, false);
-	assert.equal(fetchCount, 1);
+for (const [locale, save] of [['pt-BR', 'Salvar'], ['ko', '저장']] as const) {
+	test(`downloads, validates, caches, and reuses the ${locale} locale without network`, async () => {
+		const adapter = new MemoryAdapter();
+		const raw = buildPack(locale, save);
+		const catalog = buildCatalog(locale, raw);
+		let fetchCount = 0;
+		const manager = new LocalePackManager({
+			adapter,
+			configDir: '.obsidian',
+			catalog,
+			fetchPack: async () => {
+				fetchCount += 1;
+				return { status: 200, text: raw };
+			},
+		});
+		const downloaded = await manager.ensureLocale(locale);
+		assert.equal(downloaded.translations.buttons?.save, save);
+		assert.equal(manager.getStatus(locale).installed, true);
+		assert.equal(manager.getStatus(locale).updateAvailable, false);
+		assert.equal(fetchCount, 1);
 
-	const restarted = new LocalePackManager({
-		adapter,
-		configDir: '.obsidian',
-		catalog,
-		fetchPack: async () => {
-			fetchCount += 1;
-			throw new Error('network must not be used');
-		},
+		const restarted = new LocalePackManager({
+			adapter,
+			configDir: '.obsidian',
+			catalog,
+			fetchPack: async () => {
+				fetchCount += 1;
+				throw new Error('network must not be used');
+			},
+		});
+		assert.equal((await restarted.ensureLocale(locale)).translations.buttons?.save, save);
+		assert.equal(fetchCount, 1);
 	});
-	assert.equal((await restarted.ensureLocale('pt-BR')).translations.buttons?.save, 'Salvar');
-	assert.equal(fetchCount, 1);
-});
+}
 
 test('updates a stale cached locale by SHA and retains the prior generation', async () => {
 	const adapter = new MemoryAdapter();

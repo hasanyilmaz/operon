@@ -49,6 +49,7 @@ export const LOCALE_DEFINITIONS = Object.freeze([
 	{ code: 'ru', file: 'ru.json' },
 	{ code: 'it', file: 'it.json' },
 	{ code: 'pt-BR', file: 'pt-BR.json' },
+	{ code: 'ko', file: 'ko.json' },
 ]);
 
 const scriptRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

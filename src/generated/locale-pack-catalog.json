@@ -13,7 +13,8 @@
     "ja",
     "ru",
     "it",
-    "pt-BR"
+    "pt-BR",
+    "ko"
   ],
   "locales": {
     "tr": {
@@ -85,6 +86,13 @@
       "sourceVersion": "d1cff0f14d59dec237f8519b54c8d67d5830b555bd43b67b5bfccb98bcddc13f",
       "sha256": "6b000cbfbc8166918d63f089bb16c842a0290f95a407d15553ab7dfc346c7a83",
       "sizeBytes": 299132
+    },
+    "ko": {
+      "assetName": "operon-locale-ko-ada24cf2f1f0.json",
+      "url": "https://raw.githubusercontent.com/hasanyilmaz/operon/4.4.0/release-assets/locales/operon-locale-ko-ada24cf2f1f0.json",
+      "sourceVersion": "9135ba3410c5fe9b8678cc93f9ff0e1ed35eee51b58cc703202da7c48d02cc7d",
+      "sha256": "ada24cf2f1f06ca84f5a6bc5f94da5ee81656b173855b2adc7a33924b536e9de",
+      "sizeBytes": 299237
     }
   }
 }

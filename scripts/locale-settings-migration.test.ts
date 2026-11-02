@@ -85,6 +85,13 @@ async function run(): Promise<void> {
 		['pt-BR', 'pt-BR'],
 		['pt-BR-x-private', 'pt-BR'],
 		['pt-PT', 'en'],
+		['ko', 'ko'],
+		['ko-KR', 'ko'],
+		['KO-kr', 'ko'],
+		['ko-KP', 'ko'],
+		['ko-Hang-KR', 'ko'],
+		['kok-IN', 'en'],
+		['korean', 'en'],
 	] as const;
 	for (const [obsidianLocale, expected] of autoCases) {
 		const migrated = migrateSettings(migrateLegacyLanguageSettings({ settingsVersion: 106, language: 'auto' }, obsidianLocale));
