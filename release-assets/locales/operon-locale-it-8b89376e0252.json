@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "Impossibile annullare o ripetere: attività, origine o Canvas modificato, dati collegati presenti o registro di sessione assente.",
       "canvasConversionCreatedUnbound": "Attività creata, ma non è stato possibile collegare la scheda Canvas. L’attività è stata conservata.",
       "canvasConversionPartial": "Conversione non completata in sicurezza. L’origine potrebbe essere già cambiata. Nessun tentativo automatico; controlla attività e Canvas.",
+      "canvasCorePluginUnavailable": "Attiva il plugin principale Canvas per aprire questo canvas.",
       "canvasGroupColorFailed": "Impossibile modificare i colori dei gruppi. Seleziona solo gruppi e verifica le impostazioni attuali e il Canvas.",
       "canvasGroupColorPartial": "I colori condivisi sono stati salvati, ma non è stato possibile aggiornare o salvare il Canvas. Le impostazioni condivise sono state mantenute.",
       "canvasGroupDropBlocked": "Impossibile applicare la modifica del gruppo. La scheda è tornata alla posizione precedente.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "74432de35b23e4ade324b99cdc1a58ee8884faf5fc3b80bee3fcb6f0b63a9651"
+  "sourceVersion": "a2baf83a1556051c86f1bc2042c7cfd3380e85e8e25f9bc40e26da9568a761bd"
 }

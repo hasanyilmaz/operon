@@ -216,6 +216,7 @@
 		"linkCopied": "Ссылка скопирована в буфер обмена",
 		"markdownLinkCopied": "Ссылка Markdown скопирована в буфер обмена",
 		"webViewerUnavailable": "Включите встроенный плагин Obsidian Web Viewer, чтобы открыть эту ссылку в новой вкладке.",
+		"canvasCorePluginUnavailable": "Включите встроенный плагин Canvas, чтобы открыть этот холст.",
 		"singleLineFileTaskSelectionRequired": "Выделите фрагмент из одной строки, чтобы создать файловую задачу",
 		"fileTaskSeedRequiresNonTaskLine": "Источник файловой задачи можно создать только из строки, не являющейся задачей.",
 		"moveInlineTaskTargetRequiresBlankLine": "Перед перемещением встроенной задачи поместите курсор на пустую строку.",

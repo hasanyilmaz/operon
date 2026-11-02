@@ -216,6 +216,7 @@
 		"linkCopied": "リンクをクリップボードにコピーしました",
 		"markdownLinkCopied": "Markdown リンクをクリップボードにコピーしました",
 		"webViewerUnavailable": "このリンクを新しいタブで開くには、Obsidian のコアプラグイン「Web Viewer」を有効にしてください。",
+		"canvasCorePluginUnavailable": "このキャンバスを開くには、Canvas コアプラグインを有効にしてください。",
 		"singleLineFileTaskSelectionRequired": "ファイルタスクを作成するには1行分のテキストを選択してください",
 		"fileTaskSeedRequiresNonTaskLine": "ファイルタスクの元にできるのはタスク以外の行のみです。",
 		"moveInlineTaskTargetRequiresBlankLine": "インラインタスクを移動する前に、空の行にカーソルを置いてください。",

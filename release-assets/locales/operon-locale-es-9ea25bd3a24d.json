@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
+      "canvasCorePluginUnavailable": "Activa el complemento principal Canvas para abrir este lienzo.",
       "canvasGroupColorFailed": "No se pudieron cambiar los colores de grupo. Selecciona solo grupos y revisa la configuración actual y el Canvas.",
       "canvasGroupColorPartial": "Los colores compartidos se guardaron, pero no se pudo actualizar o guardar el Canvas. Se conservaron los ajustes compartidos.",
       "canvasGroupDropBlocked": "No se pudo aplicar el cambio del grupo. La tarjeta volvió a su posición anterior.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "4c3ab8170b085ce6fb23d56e63b011eff1e87d72fbccd6ec9ea74f5128749679"
+  "sourceVersion": "3d012a8f048cee602261b590f1e7e7c407ab31242f7c979490540dea7c3c23ae"
 }

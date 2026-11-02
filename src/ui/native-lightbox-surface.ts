@@ -37,11 +37,11 @@ export class NativeLightboxSurface {
 
 	private applyProfile(viewType: string | null): void {
 		const profile = viewType === 'markdown' ? 'markdown' : viewType === 'bases' ? 'base'
-			: viewType === OPERON_TABLE_FILE_VIEW_TYPE ? 'table' : viewType === 'webviewer' ? 'web' : null;
+			: viewType === OPERON_TABLE_FILE_VIEW_TYPE ? 'table' : viewType === 'canvas' ? 'canvas' : viewType === 'webviewer' ? 'web' : null;
 		if (!profile) return;
 		this.content.toggleClass('operon-native-lightbox-host', profile !== 'web');
 		this.content.toggleClass('operon-web-lightbox-host', profile === 'web');
-		for (const kind of ['markdown', 'base', 'table', 'web']) this.content.toggleClass(`is-${kind}`, profile === kind);
+		for (const kind of ['markdown', 'base', 'table', 'canvas', 'web']) this.content.toggleClass(`is-${kind}`, profile === kind);
 		applyLightboxSizeProfile(this.shell, profile);
 	}
 

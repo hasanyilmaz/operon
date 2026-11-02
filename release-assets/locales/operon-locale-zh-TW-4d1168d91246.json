@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "無法復原或重做：任務、來源或 Canvas 已變更、存在關聯記錄，或工作階段記錄不可用。",
       "canvasConversionCreatedUnbound": "任務已建立，但無法關聯 Canvas 卡片。來源任務已保留。",
       "canvasConversionPartial": "無法安全完成轉換。來源可能已變更。未自動重試；請先檢查任務和 Canvas。",
+      "canvasCorePluginUnavailable": "啟用 Canvas 核心外掛程式以開啟此畫布。",
       "canvasGroupColorFailed": "無法變更群組顏色。請僅選取群組，並檢查目前設定和 Canvas。",
       "canvasGroupColorPartial": "共用顏色已儲存，但無法更新或儲存 Canvas。共用設定已保留。",
       "canvasGroupDropBlocked": "無法套用群組變更。卡片已返回原來的位置。",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "68e56e02c6743fe54107aa79cbd04d69cac9826e6f79773e23d728559045351c"
+  "sourceVersion": "96d4c1e11eb3383c99cfe56074bd0cfe14d5ddaf121b224435428f0a9f5d55e7"
 }

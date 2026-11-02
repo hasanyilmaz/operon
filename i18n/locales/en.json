@@ -216,6 +216,7 @@
 		"linkCopied": "Link copied to clipboard",
 		"markdownLinkCopied": "Markdown link copied to clipboard",
 		"webViewerUnavailable": "Enable Obsidian's Web Viewer core plugin to open this link in a new tab.",
+		"canvasCorePluginUnavailable": "Enable the Canvas core plugin to open this canvas.",
 		"singleLineFileTaskSelectionRequired": "Select a single line fragment to create a file task",
 		"fileTaskSeedRequiresNonTaskLine": "You can only seed a file task source from a non-task line.",
 		"moveInlineTaskTargetRequiresBlankLine": "Place the cursor on an empty line before moving an inline task.",

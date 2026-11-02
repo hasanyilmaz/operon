@@ -385,7 +385,7 @@ test('real locale artifacts preserve English plus all supported keyed remote pac
 	const localeDirectory = path.join(repoRoot, 'i18n/locales');
 	const artifacts = buildLocaleArtifacts({ localeDirectory });
 	const pack = artifacts.embeddedPack;
-	assert.equal(pack.keyCount, 3_761);
+	assert.equal(pack.keyCount, 3_762);
 	assert.deepEqual(pack.languageOrder, ['en']);
 	assert.equal(artifacts.releaseAssets.length, LOCALE_DEFINITIONS.length - 1);
 	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), pack.keyCount * LOCALE_DEFINITIONS.length);

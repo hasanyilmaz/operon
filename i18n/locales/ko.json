@@ -216,6 +216,7 @@
 		"linkCopied": "링크를 클립보드에 복사했습니다",
 		"markdownLinkCopied": "마크다운 링크를 클립보드에 복사했습니다",
 		"webViewerUnavailable": "새 탭에서 이 링크를 열려면 Obsidian의 웹 뷰어 코어 플러그인을 활성화하세요.",
+		"canvasCorePluginUnavailable": "이 캔버스를 열려면 Canvas 코어 플러그인을 활성화하세요.",
 		"singleLineFileTaskSelectionRequired": "파일 작업을 만들려면 한 줄의 일부를 선택하세요",
 		"fileTaskSeedRequiresNonTaskLine": "작업이 아닌 줄에서만 파일 작업 원본을 만들 수 있습니다.",
 		"moveInlineTaskTargetRequiresBlankLine": "인라인 작업을 이동하기 전에 빈 줄에 커서를 놓으세요.",

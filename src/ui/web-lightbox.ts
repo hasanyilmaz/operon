@@ -13,7 +13,7 @@ import { markLightboxControlsReady, openAppLightbox, getLightboxOrigin, disposeA
 import type { ResolvedLightboxFile } from './lightbox-opening';
 
 export function nativeLightboxViewType(extension: string): string | null {
- return extension === 'md' ? 'markdown' : extension === 'base' ? 'bases' : extension === 'table' ? OPERON_TABLE_FILE_VIEW_TYPE : null;
+ return extension === 'md' ? 'markdown' : extension === 'base' ? 'bases' : extension === 'table' ? OPERON_TABLE_FILE_VIEW_TYPE : extension === 'canvas' ? 'canvas' : null;
 }
 
 export function disposeWebLightboxes(app: App): void {
@@ -514,7 +514,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       markLightboxControlsReady(lightbox);
       openingTrace?.finish('ready');
       resolveOpened(companion?.handle ?? null);
-      if (isFile && target.file.file.extension === 'base') app.workspace.setActiveLeaf(owned, { focus: false });
+      if (isFile && (target.file.file.extension === 'base' || target.file.file.extension === 'canvas')) app.workspace.setActiveLeaf(owned, { focus: false });
      } catch {
       if (closed) return;
       openingTrace?.finish('error');

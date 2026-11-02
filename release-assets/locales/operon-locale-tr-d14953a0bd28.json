@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
       "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
+      "canvasCorePluginUnavailable": "Bu Canvas dosyasını açmak için Canvas çekirdek eklentisini etkinleştirin.",
       "canvasGroupColorFailed": "Grup renkleri değiştirilemedi. Yalnız grupları seçin; mevcut ayarları ve Canvas’ı kontrol ederek yeniden deneyin.",
       "canvasGroupColorPartial": "Ortak renkler kaydedildi ancak Canvas güncellenemedi veya kaydedilemedi. Ortak ayarlar korundu.",
       "canvasGroupDropBlocked": "Grup değişikliği uygulanamadı. Kart önceki konumuna döndü.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e9556bcd9be48191a5c3d1ba6aec0af8e8c4cbc7183c1418cde5316e477189ab"
+  "sourceVersion": "6584d79999846a96f5f2dfa185e5685426df2ff7e043c9f0d73dedd39a3d4017"
 }

@@ -216,6 +216,7 @@
 		"linkCopied": "Link in die Zwischenablage kopiert",
 		"markdownLinkCopied": "Markdown-Link in die Zwischenablage kopiert",
 		"webViewerUnavailable": "Aktiviere das Obsidian-Kern-Plugin „Web Viewer“, um diesen Link in einem neuen Tab zu öffnen.",
+		"canvasCorePluginUnavailable": "Zum Öffnen dieser Canvas-Datei muss das Obsidian-Modul Canvas aktiviert sein.",
 		"singleLineFileTaskSelectionRequired": "Wähle einen einzeiligen Textabschnitt, um eine Datei-Aufgabe zu erstellen",
 		"fileTaskSeedRequiresNonTaskLine": "Eine Datei-Aufgaben-Quelle kann nur aus einer Nicht-Aufgabenzeile erzeugt werden.",
 		"moveInlineTaskTargetRequiresBlankLine": "Setze den Cursor auf eine leere Zeile, bevor du eine Inline-Aufgabe verschiebst.",

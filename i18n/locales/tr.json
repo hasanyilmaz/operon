@@ -216,6 +216,7 @@
 		"linkCopied": "Link panoya kopyalandı",
 		"markdownLinkCopied": "Markdown link panoya kopyalandı",
 		"webViewerUnavailable": "Bu bağlantıyı yeni bir sekmede açmak için Obsidian'ın Web Viewer çekirdek eklentisini etkinleştirin.",
+		"canvasCorePluginUnavailable": "Bu Canvas dosyasını açmak için Canvas çekirdek eklentisini etkinleştirin.",
 		"singleLineFileTaskSelectionRequired": "Bir dosya görevi oluşturmak için tek satırlık bir metin parçası seç",
 		"fileTaskSeedRequiresNonTaskLine": "Dosya görevi kaynağını yalnızca görev olmayan bir satırdan oluşturabilirsin.",
 		"moveInlineTaskTargetRequiresBlankLine": "Satır içi görev taşımadan önce imleci boş bir satıra yerleştir.",

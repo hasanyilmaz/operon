@@ -216,6 +216,7 @@
 		"linkCopied": "Lien copié dans le presse-papiers",
 		"markdownLinkCopied": "Lien Markdown copié dans le presse-papiers",
 		"webViewerUnavailable": "Activez le module principal Web Viewer d’Obsidian pour ouvrir ce lien dans un nouvel onglet.",
+		"canvasCorePluginUnavailable": "Activez le module principal Canvas pour ouvrir ce canevas.",
 		"singleLineFileTaskSelectionRequired": "Sélectionnez un fragment d'une seule ligne pour créer une tâche-fichier",
 		"fileTaskSeedRequiresNonTaskLine": "Vous ne pouvez créer une source de tâche-fichier qu'à partir d'une ligne qui n'est pas une tâche.",
 		"moveInlineTaskTargetRequiresBlankLine": "Placez le curseur sur une ligne vide avant de déplacer une tâche en ligne.",

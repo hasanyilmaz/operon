@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
       "canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
+      "canvasCorePluginUnavailable": "Activez le module principal Canvas pour ouvrir ce canevas.",
       "canvasGroupColorFailed": "Impossible de modifier les couleurs des groupes. Sélectionnez uniquement des groupes et vérifiez les réglages actuels et le Canvas.",
       "canvasGroupColorPartial": "Les couleurs partagées ont été enregistrées, mais le Canvas n’a pas pu être mis à jour ou enregistré. Les réglages partagés ont été conservés.",
       "canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "38bd570c33d8dccd2db3c1c5a47d7170219569e035a1c376a82340ea80fcd473"
+  "sourceVersion": "1aaa385301410037f72247b64bbbec29754c0851d6233c384ca79691d56c30a2"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
+      "canvasCorePluginUnavailable": "Zum Öffnen dieser Canvas-Datei muss das Obsidian-Modul Canvas aktiviert sein.",
       "canvasGroupColorFailed": "Gruppenfarben konnten nicht geändert werden. Wähle nur Gruppen und prüfe die aktuellen Einstellungen und das Canvas.",
       "canvasGroupColorPartial": "Gemeinsame Farben wurden gespeichert, aber das Canvas konnte nicht aktualisiert oder gespeichert werden. Die gemeinsamen Einstellungen bleiben erhalten.",
       "canvasGroupDropBlocked": "Die Gruppenänderung konnte nicht angewendet werden. Die Karte wurde an ihre vorherige Position zurückgesetzt.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "4ea1e1bb1d585ea9b9315a989b04caaedcf6a2bcf47bc5be5ea5873998392239"
+  "sourceVersion": "a3113ffc4a84868ae7313534fecc40c2e5326f96dc4eb09cf0588289a98aecf7"
 }

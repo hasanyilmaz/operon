@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3762,
+  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -829,6 +829,7 @@
       "canvasConversionBlocked": "Отмена или повтор невозможны: задача, источник или Canvas изменились, есть связанные данные либо запись сеанса недоступна.",
       "canvasConversionCreatedUnbound": "Задача создана, но связать карточку Canvas не удалось. Исходная задача сохранена.",
       "canvasConversionPartial": "Преобразование не удалось безопасно завершить. Источник уже мог измениться. Автоматического повтора не было; проверьте задачу и Canvas.",
+      "canvasCorePluginUnavailable": "Включите встроенный плагин Canvas, чтобы открыть этот холст.",
       "canvasGroupColorFailed": "Не удалось изменить цвета групп. Выберите только группы и проверьте текущие настройки и Canvas.",
       "canvasGroupColorPartial": "Общие цвета сохранены, но обновить или сохранить Canvas не удалось. Общие настройки сохранены.",
       "canvasGroupDropBlocked": "Не удалось применить изменение группы. Карточка вернулась на прежнее место.",
@@ -3806,5 +3807,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "0b6b9763145e10dcb7ff6ffd17d9f11c41ca2981064fbc0c69d5bb3918bb0058"
+  "sourceVersion": "07b611ed2c338bbe8b3aaf128dcb46f4952a66059f84ae8514c3e475df9188ee"
 }

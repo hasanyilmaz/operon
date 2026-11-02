@@ -1,5 +1,5 @@
 /** Independent desktop profiles, including types that currently share a frame. */
-export const LIGHTBOX_SIZE_PROFILES = ['markdown', 'base', 'table', 'web', 'pdf', 'image', 'video', 'youtube'] as const;
+export const LIGHTBOX_SIZE_PROFILES = ['markdown', 'base', 'table', 'canvas', 'web', 'pdf', 'image', 'video', 'youtube'] as const;
 export type LightboxSizeProfile = typeof LIGHTBOX_SIZE_PROFILES[number];
 export type LightboxSizeAxis = 'width' | 'height';
 export const LIGHTBOX_SIZE_STEPS = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90] as const;
