@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "Aumentar a altura das células",
       "kanbanCellHeightSaveFailed": "Não foi possível salvar a altura das células.",
       "kanbanCollapseEmptyColumns": "Colapsar colunas vazias",
-      "kanbanCollapseEmptyColumnsDesc": "Colapsa automaticamente as colunas do pipeline que não possuem tarefas correspondentes no momento.",
+      "kanbanCollapseEmptyColumnsDesc": "Recolhe automaticamente as colunas que não têm tarefas correspondentes no momento.",
       "kanbanCollapseEmptySwimlanes": "Colapsar raias de nado vazias",
       "kanbanCollapseEmptySwimlanesDesc": "Colapsa automaticamente as raias de nado sem tarefas correspondentes visíveis, após ignorar as colunas finalizadas auto-colapsadas.",
       "kanbanColumnSelection": "Seleção de colunas",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "Configurações da predefinição do Kanban",
       "kanbanPresetSettingsTitleForName": "Predefinição {{name}}",
       "kanbanPresets": "Predefinições do Kanban",
-      "kanbanPresetsDesc": "Cada predefinição controla o pipeline do quadro, filtro salvo, agrupamento da faixa, ordem de classificação, origem de cor e aparência.",
+      "kanbanPresetsDesc": "Cada predefinição controla o agrupamento por colunas e faixas, o filtro salvo, a ordem de classificação, a origem da cor e o layout.",
       "kanbanQuickPresetNameDesc": "Exibido na barra de ferramentas da visualização kanban.",
       "kanbanScopedTasks": "Tarefas no escopo",
-      "kanbanSettingsDesc": "Configura predefinições do Kanban priorizando faixas (swimlanes), seleção padrão do quadro e dimensionamento compartilhado das colunas.",
+      "kanbanSettingsDesc": "Configure as predefinições do Kanban, o quadro padrão e a largura das colunas e a altura das células de cada predefinição.",
       "kanbanShowHoverAddButton": "Mostrar botão adicionar ao passar o mouse sobre Kanban",
       "kanbanShowHoverAddButtonDesc": "Mostrar o botão adicionar centralizado ao passar o mouse sobre um espaço vazio em uma célula Kanban.",
       "kanbanSortAsc": "Cresc.",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "94eb78a23c7ccd5b1fa10a411b4426206c8d14283ee7c856a97caf05a99aadd4"
+  "sourceVersion": "d1cff0f14d59dec237f8519b54c8d67d5830b555bd43b67b5bfccb98bcddc13f"
 }

@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "Zellenhöhe erhöhen",
       "kanbanCellHeightSaveFailed": "Die Zellenhöhe konnte nicht gespeichert werden.",
       "kanbanCollapseEmptyColumns": "Leere Spalten einklappen",
-      "kanbanCollapseEmptyColumnsDesc": "Arbeitsablaufspalten, die derzeit keine passenden Aufgaben haben, automatisch einklappen.",
+      "kanbanCollapseEmptyColumnsDesc": "Spalten, die derzeit keine passenden Aufgaben enthalten, automatisch einklappen.",
       "kanbanCollapseEmptySwimlanes": "Leere Swimlanes einklappen",
       "kanbanCollapseEmptySwimlanesDesc": "Swimlanes ohne sichtbare passende Aufgaben automatisch einklappen, nachdem automatisch eingeklappte erledigte Spalten ignoriert wurden.",
       "kanbanColumnSelection": "Spaltenauswahl",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "Einstellungen der Kanban-Voreinstellung",
       "kanbanPresetSettingsTitleForName": "Voreinstellung „{{name}}“",
       "kanbanPresets": "Kanban-Voreinstellungen",
-      "kanbanPresetsDesc": "Jede Voreinstellung steuert den Board-Arbeitsablauf, den gespeicherten Filter, die Swimlane-Gruppierung, die Sortierreihenfolge, die Farbquelle und das Erscheinungsbild.",
+      "kanbanPresetsDesc": "Jede Voreinstellung steuert die Gruppierung nach Spalten und Swimlanes, den gespeicherten Filter, die Sortierreihenfolge, die Farbquelle und das Layout.",
       "kanbanQuickPresetNameDesc": "Wird in der Symbolleiste der Kanban-Ansicht angezeigt.",
       "kanbanScopedTasks": "Aufgaben im Filterumfang",
-      "kanbanSettingsDesc": "Konfiguriere swimlane-orientierte Kanban-Voreinstellungen, die Standard-Board-Auswahl und die gemeinsame Spaltengröße.",
+      "kanbanSettingsDesc": "Konfiguriere Kanban-Voreinstellungen, das Standard-Board sowie Spaltenbreite und Zellenhöhe für jede Voreinstellung.",
       "kanbanShowHoverAddButton": "Hover-Hinzufügen-Schaltfläche in Kanban anzeigen",
       "kanbanShowHoverAddButtonDesc": "Zeigt die zentrierte Hinzufügen-Schaltfläche, wenn du über leeren Bereich in einer Kanban-Zelle fährst.",
       "kanbanSortAsc": "Aufst.",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "669f3a109521602d5dadc1b409ee318f8793c0ea1954e5989d831346aa8f60c7"
+  "sourceVersion": "621d5bde8cc10b3b89e8056ec52ba5c19e445481eaee505bb069edc23ec59873"
 }

@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "Augmenter la hauteur des cellules",
       "kanbanCellHeightSaveFailed": "La hauteur des cellules n’a pas pu être enregistrée.",
       "kanbanCollapseEmptyColumns": "Réduire les colonnes vides",
-      "kanbanCollapseEmptyColumnsDesc": "Réduire automatiquement les colonnes de pipeline qui n'ont actuellement aucune tâche correspondante.",
+      "kanbanCollapseEmptyColumnsDesc": "Réduire automatiquement les colonnes qui ne contiennent actuellement aucune tâche correspondante.",
       "kanbanCollapseEmptySwimlanes": "Réduire les couloirs vides",
       "kanbanCollapseEmptySwimlanesDesc": "Réduire automatiquement les couloirs sans tâche correspondante visible, après avoir ignoré les colonnes terminées réduites automatiquement.",
       "kanbanColumnSelection": "Sélection des colonnes",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "Paramètres du préréglage Kanban",
       "kanbanPresetSettingsTitleForName": "Préréglage {{name}}",
       "kanbanPresets": "Préréglages Kanban",
-      "kanbanPresetsDesc": "Chaque préréglage contrôle le pipeline du tableau, le filtre enregistré, le regroupement en couloirs, l'ordre de tri, la source de couleur et l'apparence.",
+      "kanbanPresetsDesc": "Chaque préréglage contrôle le regroupement en colonnes et en couloirs, le filtre enregistré, l'ordre de tri, la source de couleur et la disposition.",
       "kanbanQuickPresetNameDesc": "Affiché dans la barre d'outils de la vue Kanban.",
       "kanbanScopedTasks": "Tâches du périmètre",
-      "kanbanSettingsDesc": "Configurez les préréglages Kanban axés sur les couloirs, la sélection du tableau par défaut et le dimensionnement partagé des colonnes.",
+      "kanbanSettingsDesc": "Configurez les préréglages Kanban, le tableau par défaut ainsi que la largeur des colonnes et la hauteur des cellules de chaque préréglage.",
       "kanbanShowHoverAddButton": "Afficher le bouton d'ajout au survol dans Kanban",
       "kanbanShowHoverAddButtonDesc": "Affiche le bouton d'ajout centré au survol d'un espace vide dans une cellule Kanban.",
       "kanbanSortAsc": "Croissant",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "cfef8d966ff5127c36d566f7319bc6357fbbf136c08f9cf01ad922f17c7ae000"
+  "sourceVersion": "ddc8d05c565f2f42d9b2fe2a77fe14d12c763d734b1fe4186ab81e1a6cede754"
 }

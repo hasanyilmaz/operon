@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "Hücre yüksekliğini artır",
       "kanbanCellHeightSaveFailed": "Hücre yüksekliği kaydedilemedi.",
       "kanbanCollapseEmptyColumns": "Boş sütunları daralt",
-      "kanbanCollapseEmptyColumnsDesc": "Şu anda eşleşen görevi olmayan akış sütunlarını otomatik daralt.",
+      "kanbanCollapseEmptyColumnsDesc": "Şu anda eşleşen görevi olmayan sütunları otomatik daralt.",
       "kanbanCollapseEmptySwimlanes": "Boş kulvarları daralt",
       "kanbanCollapseEmptySwimlanesDesc": "Tamamlanan otomatik daraltılmış sütunlar yok sayıldıktan sonra görünür eşleşen görevi kalmayan kulvarları otomatik daralt.",
       "kanbanColumnSelection": "Sütun seçimi",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "Kanban Ön ayar Ayarları",
       "kanbanPresetSettingsTitleForName": "{{name}} Ön ayar",
       "kanbanPresets": "Kanban Ön ayarları",
-      "kanbanPresetsDesc": "Her ön ayar pano akışını, kayıtlı filtreyi, kulvar gruplamasını, sıralamayı, renk kaynağını ve görünümü kontrol eder.",
+      "kanbanPresetsDesc": "Her ön ayar sütun ve kulvar gruplamasını, kayıtlı filtreyi, sıralamayı, renk kaynağını ve düzeni belirler.",
       "kanbanQuickPresetNameDesc": "Kanban görünüm araç çubuğu içinde gösterilir.",
       "kanbanScopedTasks": "Kapsamdaki görevler",
-      "kanbanSettingsDesc": "Kulvar odaklı kanban ön ayarlarını, varsayılan pano seçimini ve ortak sütun boyutlandırmayı ayarlayın.",
+      "kanbanSettingsDesc": "Kanban ön ayarlarını, varsayılan panoyu ve her ön ayarın sütun genişliği ile hücre yüksekliğini ayarlayın.",
       "kanbanShowHoverAddButton": "Kanban'da hover ekleme butonunu göster",
       "kanbanShowHoverAddButtonDesc": "Kanban hücresindeki boş alana gelindiğinde ortadaki ekleme butonunu gösterir.",
       "kanbanSortAsc": "Artan",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "285315e328dd508b996cc1b079ac4b531a686569943dffedd4acebc90e20f5a0"
+  "sourceVersion": "9908503b463253a4316789b12cb6aed0c37902ce2a3d4d6412ec7f473843f1b7"
 }

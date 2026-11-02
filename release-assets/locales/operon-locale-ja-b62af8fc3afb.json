@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "セルの高さを増やす",
       "kanbanCellHeightSaveFailed": "セルの高さを保存できませんでした。",
       "kanbanCollapseEmptyColumns": "空の列を折りたたむ",
-      "kanbanCollapseEmptyColumnsDesc": "現在一致するタスクがないワークフローの列を自動的に折りたたみます。",
+      "kanbanCollapseEmptyColumnsDesc": "現在一致するタスクがない列を自動的に折りたたみます。",
       "kanbanCollapseEmptySwimlanes": "空のスイムレーンを折りたたむ",
       "kanbanCollapseEmptySwimlanesDesc": "自動的に折りたたまれた完了列を無視した後、表示される一致するタスクがないスイムレーンを自動的に折りたたみます。",
       "kanbanColumnSelection": "列の選択",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "カンバンプリセットの設定",
       "kanbanPresetSettingsTitleForName": "{{name}} プリセット",
       "kanbanPresets": "カンバンプリセット",
-      "kanbanPresetsDesc": "各プリセットは、ボードのワークフロー、保存済みフィルター、スイムレーンのグループ化、並べ替え順、カラーソース、外観を制御します。",
+      "kanbanPresetsDesc": "各プリセットは、列とスイムレーンのグループ化、保存済みフィルター、並べ替え順、カラーソース、レイアウトを制御します。",
       "kanbanQuickPresetNameDesc": "カンバンビューのツールバーに表示されます。",
       "kanbanScopedTasks": "範囲内のタスク",
-      "kanbanSettingsDesc": "スイムレーン優先のカンバンプリセット、デフォルトのボード選択、共通の列サイズを設定します。",
+      "kanbanSettingsDesc": "カンバンのプリセット、デフォルトのボード、および各プリセットの列幅とセルの高さを設定します。",
       "kanbanShowHoverAddButton": "Kanban でホバー追加ボタンを表示",
       "kanbanShowHoverAddButtonDesc": "Kanban セルの空き領域にホバーしたとき、中央の追加ボタンを表示します。",
       "kanbanSortAsc": "昇順",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "43d57534758ac330c1289a2f8cabaa4e65f62c0afd1b4199999f87955e44e5a4"
+  "sourceVersion": "0ebf21caf93b512d413aa3e690e62499102b3dd595595bcab8478f5dea7fa053"
 }

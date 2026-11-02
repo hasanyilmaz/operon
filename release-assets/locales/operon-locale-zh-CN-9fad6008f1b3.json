@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "增加单元格高度",
       "kanbanCellHeightSaveFailed": "无法保存单元格高度。",
       "kanbanCollapseEmptyColumns": "折叠空列",
-      "kanbanCollapseEmptyColumnsDesc": "自动折叠当前没有匹配任务的工作流列。",
+      "kanbanCollapseEmptyColumnsDesc": "自动折叠当前没有匹配任务的列。",
       "kanbanCollapseEmptySwimlanes": "折叠空泳道",
       "kanbanCollapseEmptySwimlanesDesc": "在忽略已自动折叠的完成列后，自动折叠没有可见匹配任务的泳道。",
       "kanbanColumnSelection": "列选择",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "看板预设设置",
       "kanbanPresetSettingsTitleForName": "{{name}} 预设",
       "kanbanPresets": "看板预设",
-      "kanbanPresetsDesc": "每个预设控制看板工作流、已保存筛选器、泳道分组、排序顺序、颜色来源和外观。",
+      "kanbanPresetsDesc": "每个预设控制列和泳道分组、已保存筛选器、排序顺序、颜色来源和布局。",
       "kanbanQuickPresetNameDesc": "显示在看板视图工具栏中。",
       "kanbanScopedTasks": "范围内任务",
-      "kanbanSettingsDesc": "配置泳道优先的看板预设、默认看板选择和共享列尺寸。",
+      "kanbanSettingsDesc": "配置看板预设、默认看板，以及每个预设的列宽和单元格高度。",
       "kanbanShowHoverAddButton": "在看板中显示悬停添加按钮",
       "kanbanShowHoverAddButtonDesc": "当悬停在看板单元格的空白区域时，显示居中的添加按钮。",
       "kanbanSortAsc": "升序",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e3f6c082d4df175d7356bb3360bcf950c2157989ec59dea73ef32f958a71d7e9"
+  "sourceVersion": "1fd8b393dd71492b78700c3befe2c8b4f255f19e41478b2a1261c6dc834c2a69"
 }

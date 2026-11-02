@@ -1817,7 +1817,7 @@
       "kanbanCellHeightIncrease": "Aumenta l’altezza delle celle",
       "kanbanCellHeightSaveFailed": "Impossibile salvare l’altezza delle celle.",
       "kanbanCollapseEmptyColumns": "Comprimi colonne vuote",
-      "kanbanCollapseEmptyColumnsDesc": "Comprimi automaticamente le colonne pipeline che attualmente non hanno attività corrispondenti.",
+      "kanbanCollapseEmptyColumnsDesc": "Comprimi automaticamente le colonne che al momento non contengono attività corrispondenti.",
       "kanbanCollapseEmptySwimlanes": "Comprimi corsie vuote",
       "kanbanCollapseEmptySwimlanesDesc": "Comprimi automaticamente le corsie senza attività corrispondenti visibili dopo aver ignorato le colonne completate compresse automaticamente.",
       "kanbanColumnSelection": "Selezione colonne",
@@ -1871,10 +1871,10 @@
       "kanbanPresetSettingsTitle": "Impostazioni preimpostazione Kanban",
       "kanbanPresetSettingsTitleForName": "Preimpostazione {{name}}",
       "kanbanPresets": "Preimpostazioni Kanban",
-      "kanbanPresetsDesc": "Ogni preimpostazione controlla la pipeline della bacheca, il filtro salvato, il raggruppamento per corsia, l'ordine, l'origine colore e l'aspetto.",
+      "kanbanPresetsDesc": "Ogni preimpostazione controlla il raggruppamento per colonne e corsie, il filtro salvato, l'ordine, l'origine del colore e il layout.",
       "kanbanQuickPresetNameDesc": "Mostrato nella barra degli strumenti della vista kanban.",
       "kanbanScopedTasks": "Attività nell’ambito",
-      "kanbanSettingsDesc": "Configura preimpostazioni kanban basate su corsie, selezione bacheca predefinita e dimensionamento colonne condiviso.",
+      "kanbanSettingsDesc": "Configura le preimpostazioni Kanban, la bacheca predefinita e la larghezza delle colonne e l'altezza delle celle per ogni preimpostazione.",
       "kanbanShowHoverAddButton": "Mostra pulsante di aggiunta al passaggio del mouse in Kanban",
       "kanbanShowHoverAddButtonDesc": "Mostra il pulsante di aggiunta centrato al passaggio del mouse su uno spazio vuoto in una cella Kanban.",
       "kanbanSortAsc": "Cresc.",
@@ -3804,5 +3804,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f08dc3fd2325f1232364d0d8f96d6ed8ae153053aea3483ccd9cf83a0f416df0"
+  "sourceVersion": "24ed80338d78dbb71d2d19e1a4186f76ee1f3f91fa1c53fb9b7bc896c1f1c9d8"
 }
