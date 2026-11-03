@@ -1,4 +1,3 @@
-import { getCanvasWorkspaceLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -249,7 +248,7 @@ async function mainHarness(names: string[]) {
  const methods = cls!.members.filter(member => ts.isMethodDeclaration(member) && names.includes(member.name.getText(ast)));
  assert.equal(methods.length, names.length);
  const script = ts.transpileModule('class Harness { '+methods.map(method => method.getText(ast)).join('\n')+' }; return Harness;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
- const Harness = new Function('TFile', 'readExcalidrawTaskView', 'getCanvasWorkspaceLeaves', script)(TFile, (_app: unknown, view: unknown) => view, getCanvasWorkspaceLeaves);
+ const Harness = new Function('TFile', 'readExcalidrawTaskView', script)(TFile, (_app: unknown, view: unknown) => view);
  const h = new Harness();
  h.tasksConversionOwnedSources = new Map(); h.tasksConversionSettledSources = new Map(); h.tasksConversionNativePaths = new Set(); h.tasksConversionDrawingScenes = new Map();
  return { h, ast, cls: cls! };

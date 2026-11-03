@@ -20,32 +20,6 @@ const appLeaves = new WeakMap<App, Set<WorkspaceLeaf>>();
 export function getNativeLightboxLeaves(app: App): WorkspaceLeaf[] {
  return [...(appLeaves.get(app) ?? [])];
 }
-/** Canvas discovery includes owned views without changing workspace enumeration. */
-export function getCanvasWorkspaceLeaves(app: App): WorkspaceLeaf[] {
- return [...new Set([...app.workspace.getLeavesOfType('canvas'), ...getNativeLightboxLeaves(app).filter(leaf => leaf.view.getViewType() === 'canvas')])];
-}
-const viewListeners = new WeakMap<App, Set<() => void>>();
-export function subscribeNativeLightboxViews(app: App, listener: () => void): () => void {
- let listeners = viewListeners.get(app);
- if (!listeners) { listeners = new Set(); viewListeners.set(app, listeners); }
- listeners.add(listener);
- return () => { listeners.delete(listener); if (!listeners.size) viewListeners.delete(app); };
-}
-export function notifyNativeLightboxView(app: App): void {
- for (const listener of viewListeners.get(app) ?? []) listener();
-}
-export interface NativeCanvasLightboxHooks {
- ready(leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean>;
- prepare(leaf: WorkspaceLeaf): Promise<boolean>;
-}
-const canvasHooks = new WeakMap<App, NativeCanvasLightboxHooks>();
-export function bindNativeCanvasLightboxHooks(app: App, hooks: NativeCanvasLightboxHooks): () => void {
- canvasHooks.set(app, hooks);
- return () => { if (canvasHooks.get(app) === hooks) canvasHooks.delete(app); };
-}
-export async function prepareNativeCanvasLightbox(app: App, leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean> {
- return leaf.view.getViewType() !== 'canvas' || await canvasHooks.get(app)?.ready(leaf, allowed) !== false;
-}
 type NativeTextView = TextFileView & { saving?: boolean; dirty?: boolean; lastSavedData?: string | null };
 type NativeMethod = (...args: unknown[]) => unknown;
 interface BasesController {
@@ -66,7 +40,6 @@ export class NativeLightboxLifecycle {
   let leaves = appLeaves.get(app);
   if (!leaves) { leaves = new Set(); appLeaves.set(app, leaves); }
   leaves.add(leaf);
-  notifyNativeLightboxView(app);
  }
 
  track<T>(key: string | (() => string), operation: () => T): T {
@@ -212,7 +185,6 @@ export class NativeLightboxLifecycle {
  }
 
  async prepare(): Promise<boolean> {
-  if (this.leaf.view.getViewType() === 'canvas' && await canvasHooks.get(this.app)?.prepare(this.leaf) === false) return false;
   await this.settle();
   // A verified native save may have completed outside a close attempt. Verify
   // recovery without retrying a failed mutation merely because Close was used.
@@ -241,7 +213,6 @@ export class NativeLightboxLifecycle {
   leaves?.delete(this.leaf);
   if (!leaves?.size) appLeaves.delete(this.app);
   for (const dispose of this.cleanup.splice(0)) dispose();
-  notifyNativeLightboxView(this.app);
   // Owned native save wrappers remain until native unload finishes. They do not
   // affect other leaves and prevent an unchanged Base from being rewritten.
  }

@@ -151,7 +151,7 @@ test('pagehide drains all nested shells for that document',async()=>{
 test('modal preview owns a keyboard scope through pending/failed saves and nested cleanup', async () => {
  const f=desktopFixture(), modal=f.doc.body.createDiv(), scopes:unknown[]=[], appScope={};
  (f.anchor as any).closest=()=>modal;
- f.doc.defaultView.app={scope:appScope,workspace:{scope:appScope},keymap:{pushScope:(s:unknown)=>scopes.push(s),popScope:(s:unknown)=>scopes.splice(scopes.indexOf(s),1)}};
+ f.doc.defaultView.app={scope:appScope,keymap:{pushScope:(s:unknown)=>scopes.push(s),popScope:(s:unknown)=>scopes.splice(scopes.indexOf(s),1)}};
  let root:any,resolveSave!:(ok:boolean)=>void;
  try {
   const close=openLightbox(f.anchor,{title:'Parent',nativeView:true,beforeClose:()=>new Promise<boolean>(r=>resolveSave=r),render:el=>{root=el;return null;}});
@@ -166,7 +166,7 @@ test('modal preview render failure releases only its owner window keyboard scope
  const a=desktopFixture(),b=fixture(),scopesA:unknown[]=[],scopesB:unknown[]=[];
  for(const [f,scopes]of [[a,scopesA],[b,scopesB]] as const){
   (f.anchor as any).closest=()=>f.doc.body;
-  f.doc.defaultView.app={scope:{},workspace:{scope:{}},keymap:{pushScope:(s:unknown)=>scopes.push(s),popScope:(s:unknown)=>scopes.splice(scopes.indexOf(s),1)}};
+  f.doc.defaultView.app={scope:{},keymap:{pushScope:(s:unknown)=>scopes.push(s),popScope:(s:unknown)=>scopes.splice(scopes.indexOf(s),1)}};
  }
  try{
   const closeB=openLightbox(b.anchor,{title:'B',render:()=>null});
@@ -262,7 +262,7 @@ test('mobile installs no control-hover listeners and retains the existing openin
 function scopedFixture() {
  const f = fixture();
  const scopes: Array<{ handlers: Array<{ key: string; callback: (event: KeyboardEvent) => boolean | void }> }> = [];
- f.doc.defaultView.app = { scope: {}, workspace: {scope:{}}, keymap: {
+ f.doc.defaultView.app = { scope: {}, keymap: {
   pushScope(scope: (typeof scopes)[number]) { scopes.push(scope); },
   popScope(scope: (typeof scopes)[number]) { scopes.splice(scopes.indexOf(scope), 1); },
  } };
@@ -325,9 +325,4 @@ test('media Escape leaves visible menus first, including a previously hidden men
  menu.removeAttribute('hidden');
  assert.equal(f.escape(), true); assert.equal(f.scopes.length, 1);
  menu.setAttribute('hidden', ''); assert.equal(f.escape(), false); assert.equal(f.scopes.length, 0); close();
-});
-
-test('owned modal scope falls back safely when a partial window App has no workspace',()=>{
- const f=desktopFixture(),scopes:unknown[]=[];f.doc.defaultView.app={scope:{},keymap:{pushScope:(scope:unknown)=>scopes.push(scope),popScope:()=>scopes.pop()}};
- try{const close=openLightbox(f.anchor,{title:'Partial app',render:()=>null});assert.equal(scopes.length,1);close();assert.equal(scopes.length,0);}finally{f.cleanup();}
 });

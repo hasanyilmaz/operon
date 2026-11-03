@@ -1,5 +1,4 @@
 import type { App } from 'obsidian';
-import { getCanvasWorkspaceLeaves } from './native-lightbox-lifecycle';
 import { getOwnerWindow } from '../core/dom-compat';
 import { parseTaskCardEmbed } from './task-card-embed-model';
 import type { TaskCardLayoutOptions } from './task-card-layout-model';
@@ -20,7 +19,7 @@ export function resolveTaskCardCanvasBinding(app: App, root: HTMLElement, taskId
  const element = root.closest<HTMLElement>('.canvas-node');
  if (!element || element.classList.contains('is-editing')) return null;
  try {
-  for (const leaf of getCanvasWorkspaceLeaves(app)) {
+  for (const leaf of app.workspace.getLeavesOfType('canvas')) {
    const view = leaf.view as unknown as CanvasViewReader;
    if (!(view.canvas?.nodes instanceof Map)) continue;
    for (const node of view.canvas.nodes.values()) {
@@ -97,7 +96,7 @@ export class TaskCardCanvasHost {
 export function isTaskCardCanvasReadOnly(app: App, root: HTMLElement): boolean {
  const element = root.closest<HTMLElement>('.canvas-node');
  if (!element) return false;
- for (const leaf of getCanvasWorkspaceLeaves(app)) {
+ for (const leaf of app.workspace.getLeavesOfType('canvas')) {
   const view = leaf.view as unknown as { canvas?: { readonly?: boolean; nodes?: Map<unknown, CanvasNodeReader> } };
   if (!(view.canvas?.nodes instanceof Map)) continue;
   for (const node of view.canvas.nodes.values()) if (node.nodeEl === element) return view.canvas.readonly !== false;

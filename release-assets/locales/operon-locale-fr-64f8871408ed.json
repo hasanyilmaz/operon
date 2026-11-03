@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3764,
-  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -829,7 +829,6 @@
       "canvasConversionBlocked": "Impossible d’annuler ou rétablir : tâche, source ou Canvas modifié, données liées présentes ou enregistrement de session absent.",
       "canvasConversionCreatedUnbound": "La tâche a été créée, mais la carte Canvas n’a pas pu être liée. La tâche est conservée.",
       "canvasConversionPartial": "La conversion n’a pas pu se terminer en sécurité. La source a peut-être été modifiée. Aucun nouvel essai automatique ; vérifiez la tâche et Canvas.",
-      "canvasCorePluginUnavailable": "Activez le module principal Canvas pour ouvrir ce canevas.",
       "canvasGroupColorFailed": "Impossible de modifier les couleurs des groupes. Sélectionnez uniquement des groupes et vérifiez les réglages actuels et le Canvas.",
       "canvasGroupColorPartial": "Les couleurs partagées ont été enregistrées, mais le Canvas n’a pas pu être mis à jour ou enregistré. Les réglages partagés ont été conservés.",
       "canvasGroupDropBlocked": "La modification du groupe n’a pas pu être appliquée. La carte est revenue à sa position précédente.",
@@ -837,8 +836,6 @@
       "canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
       "canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
       "canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
-      "canvasLightboxConflict": "Plusieurs vues Canvas contiennent des modifications non enregistrées différentes. Gardez-les ouvertes et résolvez les différences en modifiant ou en annulant avant d’enregistrer, de fermer ou de déplacer cette vue.",
-      "canvasLightboxWaiting": "En attente de la fin des enregistrements Canvas. Vous pouvez continuer dans l’onglet existant ou annuler.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
       "canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
       "canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
@@ -3809,5 +3806,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d9dc01f7ce3322bbcc4ac9437f5bbce61a313d4d480e279ad0d478efd852f857"
+  "sourceVersion": "38bd570c33d8dccd2db3c1c5a47d7170219569e035a1c376a82340ea80fcd473"
 }

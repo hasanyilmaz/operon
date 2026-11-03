@@ -19,9 +19,8 @@ const mouse = (extra:any = {}) => ({button:0, detail:1, metaKey:false, ctrlKey:f
 const entry = (key:string, rawValue?:string):any => ({key,rawValue,label:'Short label',icon:'link',iconOnly:false,interactive:true,colorRole:'default',linkTarget:null});
 function fixture() {
  const f=lightboxFixture(), desktop=Platform.isDesktopApp, mac=Platform.isMacOS;
- const observer=globalThis.ResizeObserver;globalThis.ResizeObserver=class {observe(){} disconnect(){}} as any;
  Platform.isDesktopApp=true; Platform.isMacOS=true; pickerCalls.length=0;
- const files=new Map<string,any>(); for(const name of ['A.md','B.md','P.md','a.base','a.table','a.canvas','a.custom','a.png','a.pdf']) files.set(name,new (TFile as any)(name));
+ const files=new Map<string,any>(); for(const name of ['A.md','B.md','P.md','a.base','a.table','a.canvas','a.png','a.pdf']) files.set(name,new (TFile as any)(name));
  let task:any={operonId:'abcdefg', primary:{filePath:'A.md',format:'yaml',lineNumber:0},fieldValues:{},tags:[]};
  const parent:any={operonId:'hijklmn',primary:{filePath:'P.md',format:'yaml',lineNumber:0},fieldValues:{},tags:[]};
  let allowed=true, editable=true, writes=0, content='';
@@ -32,11 +31,11 @@ function fixture() {
  const root=f.doc.body.createDiv();
  let viewType='empty';
  const group:any=new (WorkspaceTabs as any)({containerEl:f.doc.body} as any);
- const leaf:any={getViewState:()=>({pinned:false}),containerEl:root,view:{containerEl:root.createDiv(),getViewType:()=> viewType,onResize(){}},async openFile(file:any,state:any){calls.push({file:file.path,state});viewType=file.extension==='base'?'bases':file.extension==='table'?'operon-table-file-view':file.extension==='md'?'markdown':file.extension;},async setViewState(state:any){viewType=state.type;calls.push(state.state.url);},async loadIfDeferred(){},detach(){calls.push('detach');}};
- const app:any={viewRegistry:{getTypeByExtension:(ext:string)=>['canvas','custom'].includes(ext)?ext:null,getViewCreatorByType:()=>function(){}},vault:{getAbstractFileByPath:(path:string)=>files.get(path),read:async()=>content,getResourcePath:(file:any)=>'app:///'+file.path},
+ const leaf:any={getViewState:()=>({pinned:false}),containerEl:root,view:{containerEl:root.createDiv(),getViewType:()=> viewType},async openFile(file:any,state:any){calls.push({file:file.path,state});viewType=file.extension==='base'?'bases':file.extension==='table'?'operon-table-file-view':file.extension==='md'?'markdown':file.extension;},async setViewState(state:any){viewType=state.type;calls.push(state.state.url);},async loadIfDeferred(){},detach(){calls.push('detach');}};
+ const app:any={viewRegistry:{getTypeByExtension:(ext:string)=>ext==='canvas'?'canvas':null,getViewCreatorByType:()=>function(){}},vault:{getAbstractFileByPath:(path:string)=>files.get(path),read:async()=>content,getResourcePath:(file:any)=>'app:///'+file.path},
  metadataCache:{getFirstLinkpathDest:(path:string,source:string)=>files.get(path||source)},
- internalPlugins:{plugins:{canvas:{enabled:true},bases:{enabled:true},'page-preview':{enabled:true},webviewer:{enabled:true,instance:{openUrl(url:string){calls.push(url);}}}},getEnabledPluginById:()=>({openUrl(url:string){calls.push(url);}})},
- workspace:{containerEl:f.doc.body,getLayout:()=>({}),getLeafById:()=>null,getLeavesOfType:()=>[],getMostRecentLeaf:()=>({...leaf,parent:group,getRoot:()=>({}),getContainer:()=>({}),view:{containerEl:f.anchor,getViewType:()=> 'empty'}}),createLeafInParent:(parent:any=group)=>{parent.insertChild?.(-1,leaf);return leaf;},setActiveLeaf(){},getLeaf:()=>leaf,async openLinkText(...args:any[]){calls.push(args);},trigger(name:string,payload:any){previews.push(payload);}}};
+ internalPlugins:{plugins:{bases:{enabled:true},'page-preview':{enabled:true},webviewer:{enabled:true,instance:{openUrl(url:string){calls.push(url);}}}},getEnabledPluginById:()=>({openUrl(url:string){calls.push(url);}})},
+ workspace:{getMostRecentLeaf:()=>({...leaf,parent:group,view:{containerEl:f.anchor}}),createLeafInParent:(parent:any=group)=>{parent.insertChild?.(-1,leaf);return leaf;},setActiveLeaf(){},getLeaf:()=>leaf,async openLinkText(...args:any[]){calls.push(args);},trigger(name:string,payload:any){previews.push(payload);}}};
  const context:any={app,getSettings:()=>settings,getTask:()=>task,getTaskById:(id:string)=>id===parent.operonId?parent:id===task?.operonId?task:null,getAllTasks:()=>[task,parent].filter(Boolean),canActivate:()=>allowed,
  picker:()=>editable?{onCommit:()=>writes++}:null};
  const fire=(kind:string,event:any=mouse())=>(f.anchor as any).events.get(kind)?.(event);
@@ -44,7 +43,7 @@ function fixture() {
  return {...f,app,files,context,parent,settings,calls,notices,previews,external,fire,
   task:()=>task,removeTask(){task=null;},allowed(value:boolean){allowed=value;},editable(value:boolean){editable=value;},content(value:string){content=value;},writes:()=>writes,
   bind:(chipEntry:any)=>bindDesktopChipOpening(f.anchor,chipEntry,context),
-  cleanup(){cleanupTaskMediaChipPreviews(f.anchor);disposeWebLightboxes(app);Platform.isDesktopApp=desktop;Platform.isMacOS=mac;globalThis.ResizeObserver=observer;(Notice as any).onNotice=null;}};
+  cleanup(){cleanupTaskMediaChipPreviews(f.anchor);disposeWebLightboxes(app);Platform.isDesktopApp=desktop;Platform.isMacOS=mac;(Notice as any).onNotice=null;}};
 }
 for(const key of ['taskType','customText','assignees','contexts','customList']) test(`${key}: full existing wiki only, original alias/subpath; plain/HTTP/missing use picker`,()=>{
  const f=fixture();try {
@@ -101,8 +100,8 @@ for(const extension of ['md','base','table','pdf','canvas'])test(`${extension}: 
   assert.equal(f.calls.length,1);assert.equal(f.calls[0].file,path);assert.equal(f.writes(),0);
  }finally{f.cleanup();}
 });
-test('canvas normal click uses the owned lightbox without creating files',async()=>{
- const f=fixture();try{f.task().fieldValues.customText='[[a.canvas]]';f.bind(entry('customText'));f.fire('click');await tick();assert.equal(f.calls[0]?.file,'a.canvas');assert.ok(f.doc.body.querySelectorAll().some((node:any)=>node.classes.has('is-canvas')));assert.equal(f.writes(),0);}finally{f.cleanup();}
+test('canvas normal fallback uses native opening without creating files',async()=>{
+ const f=fixture();try{f.task().fieldValues.customText='[[a.canvas]]';f.bind(entry('customText'));f.fire('click');await tick();assert.equal(f.calls[0]?.file,'a.canvas');}finally{f.cleanup();}
 });
 test('Icon Only keyboard, platform modifier, caret shield and double click produce one activation',async()=>{
  const f=fixture();try{
@@ -200,7 +199,7 @@ test('pinned native fallback creates a separate owner tab and keeps the pinned v
   let replaced=0,created=0;
   f.app.workspace.getMostRecentLeaf=()=>({parent:{},getViewState:()=>({pinned:true}),view:{containerEl:f.anchor},openFile(){replaced++;}});
   const make=f.app.workspace.createLeafInParent;f.app.workspace.createLeafInParent=()=>{created++;return make();};
-  f.task().fieldValues.customText='[[a.custom]]';f.bind(entry('customText'));f.fire('click');await tick();assert.equal(replaced,0);assert.equal(created,1);assert.equal(f.calls[0]?.file,'a.custom');
+  f.task().fieldValues.customText='[[a.canvas]]';f.bind(entry('customText'));f.fire('click');await tick();assert.equal(replaced,0);assert.equal(created,1);assert.equal(f.calls[0]?.file,'a.canvas');
  }finally{f.cleanup();}
 });
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3764,
-  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -829,7 +829,6 @@
       "canvasConversionBlocked": "No se puede deshacer o rehacer: cambió la tarea, su origen o Canvas, hay registros relacionados o falta el registro de sesión.",
       "canvasConversionCreatedUnbound": "La tarea se creó, pero no se pudo vincular la tarjeta de Canvas. La tarea se conservó.",
       "canvasConversionPartial": "La conversión no terminó de forma segura. El origen puede haber cambiado. No se reintentó automáticamente; revisa la tarea y Canvas.",
-      "canvasCorePluginUnavailable": "Activa el complemento principal Canvas para abrir este lienzo.",
       "canvasGroupColorFailed": "No se pudieron cambiar los colores de grupo. Selecciona solo grupos y revisa la configuración actual y el Canvas.",
       "canvasGroupColorPartial": "Los colores compartidos se guardaron, pero no se pudo actualizar o guardar el Canvas. Se conservaron los ajustes compartidos.",
       "canvasGroupDropBlocked": "No se pudo aplicar el cambio del grupo. La tarjeta volvió a su posición anterior.",
@@ -837,8 +836,6 @@
       "canvasGroupOverlap": "Los grupos Operon con la misma propiedad de valor único no pueden superponerse. No se aplicó el cambio.",
       "canvasGroupSaveFailed": "El grupo está en el historial de Canvas, pero no se pudo guardar. Revisa el Canvas antes de reintentarlo.",
       "canvasGroupUnavailable": "El grupo Canvas cambió o no está disponible.",
-      "canvasLightboxConflict": "Varias vistas de Canvas tienen cambios distintos sin guardar. Mantenga ambas abiertas y resuelva las diferencias editando o deshaciendo antes de guardar, cerrar o mover esta vista.",
-      "canvasLightboxWaiting": "Esperando a que terminen los guardados de Canvas. Puede seguir trabajando en la pestaña existente o cancelar.",
       "canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
       "canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",
       "canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
@@ -3809,5 +3806,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "96c8b983c371bcc383838aed87484252498e592e96f1dce1d3aae20e346bebf4"
+  "sourceVersion": "4c3ab8170b085ce6fb23d56e63b011eff1e87d72fbccd6ec9ea74f5128749679"
 }

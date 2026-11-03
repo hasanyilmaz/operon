@@ -50,13 +50,9 @@ export async function openLightboxTarget(app: App, anchor: HTMLElement, target: 
  if (!resolved) return 'missing';
  const { file, subpath } = resolved;
  const mediaKind = classifyLocalTaskMediaPreview(file.extension);
- if (!['md', 'base', 'table', 'canvas'].includes(file.extension) && mediaKind === 'unknown') return 'unsupported';
+ if (!['md', 'base', 'table'].includes(file.extension) && mediaKind === 'unknown') return 'unsupported';
  if (file.extension === 'base' && !isPluginEnabled(getInternalPlugin(app, 'bases'))) {
   new Notice('Enable the bases core plugin to open this base.');
-  return 'unavailable';
- }
- if (file.extension === 'canvas' && !isPluginEnabled(getInternalPlugin(app, 'canvas'))) {
-  new Notice(t('notifications', 'canvasCorePluginUnavailable'));
   return 'unavailable';
  }
  if (mode === 'tab') return await transferLightboxOpening(anchor, mediaTabOpening(app, anchor, target)) ? 'opened' : 'unavailable';

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3764,
-  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -829,7 +829,6 @@
       "canvasConversionBlocked": "Dönüşüm geri alınamıyor veya yinelenemiyor: task, kaynak veya Canvas değişti; ilişkili kayıtlar var ya da oturum kaydı bulunamıyor.",
       "canvasConversionCreatedUnbound": "Task oluşturuldu ancak Canvas kartına bağlanamadı. Kaynak task korundu.",
       "canvasConversionPartial": "Dönüşüm güvenle tamamlanamadı. Kaynak değişikliği gerçekleşmiş olabilir. Otomatik tekrar yapılmadı; devam etmeden task ve Canvas’ı kontrol edin.",
-      "canvasCorePluginUnavailable": "Bu Canvas dosyasını açmak için Canvas çekirdek eklentisini etkinleştirin.",
       "canvasGroupColorFailed": "Grup renkleri değiştirilemedi. Yalnız grupları seçin; mevcut ayarları ve Canvas’ı kontrol ederek yeniden deneyin.",
       "canvasGroupColorPartial": "Ortak renkler kaydedildi ancak Canvas güncellenemedi veya kaydedilemedi. Ortak ayarlar korundu.",
       "canvasGroupDropBlocked": "Grup değişikliği uygulanamadı. Kart önceki konumuna döndü.",
@@ -837,8 +836,6 @@
       "canvasGroupOverlap": "Aynı tek değerli property’ye ait Operon grupları kesişemez. Değişiklik uygulanmadı.",
       "canvasGroupSaveFailed": "Grup Canvas geçmişinde, ancak kayıt başarısız. Tekrar denemeden önce Canvas’ı kontrol edin.",
       "canvasGroupUnavailable": "Canvas grubu değişti veya kullanılamıyor.",
-      "canvasLightboxConflict": "Canvas’ın birden fazla görünümünde farklı kaydedilmemiş değişiklikler var. İkisini de açık tutup kaydetmeden, kapatmadan veya taşımadan önce düzenleme ya da Geri Al ile farklılıkları giderin.",
-      "canvasLightboxWaiting": "Bekleyen Canvas kayıtları tamamlanıyor. Mevcut sekmede çalışabilir veya iptal edebilirsiniz.",
       "canvasTaskAddFailed": "Task kartı Canvas’a eklenemedi.",
       "canvasTaskColorFailed": "Bazı task renkleri değiştirilemedi. Task başka bir yerde değişmiş, kullanılamaz olmuş veya Canvas kilitlenmiş olabilir. Güncel kaynak renkleri korundu.",
       "canvasTaskColorSaveFailed": "Canvas kaydedilemedi. Task renk değişiklikleri korundu; Canvas’ta kaydedilmemiş değişiklikler var.",
@@ -3809,5 +3806,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "2b9986d61cb4ef7860b21aa2617134aaddd2d8ba79be709369d6059ff1102efb"
+  "sourceVersion": "e9556bcd9be48191a5c3d1ba6aec0af8e8c4cbc7183c1418cde5316e477189ab"
 }

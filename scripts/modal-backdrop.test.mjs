@@ -303,10 +303,3 @@ test('lightbox control side reads the existing preference without saving and cle
  old();assert.equal(getLightboxControlSide(),'left');current();assert.equal(getLightboxControlSide(),'right');
  assert.equal(writes,0);
 });
-
-test('Canvas keeps its own sparse size preference with the existing Base/Table controls', () => {
- assert.ok(LIGHTBOX_SIZE_PROFILES.includes('canvas'));
- const input={canvas:{width:75,height:85},table:{width:65},base:{height:70}};
- assert.deepEqual(normalizeLightboxSizes(input),input);
- assert.deepEqual(migrateSettings({}).workspaceTweaksLightboxSizes,{});
-});

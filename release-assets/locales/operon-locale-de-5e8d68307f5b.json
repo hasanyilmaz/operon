@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3764,
-  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -829,7 +829,6 @@
       "canvasConversionBlocked": "Umwandlung nicht rückgängig oder erneut ausführbar: Aufgabe, Quelle oder Canvas geändert, verknüpfte Daten vorhanden oder Sitzungseintrag fehlt.",
       "canvasConversionCreatedUnbound": "Aufgabe erstellt, aber die Canvas-Karte konnte nicht verknüpft werden. Die Aufgabe bleibt erhalten.",
       "canvasConversionPartial": "Umwandlung nicht sicher abgeschlossen. Die Quelle wurde möglicherweise geändert. Keine automatische Wiederholung; Aufgabe und Canvas prüfen.",
-      "canvasCorePluginUnavailable": "Zum Öffnen dieser Canvas-Datei muss das Obsidian-Modul Canvas aktiviert sein.",
       "canvasGroupColorFailed": "Gruppenfarben konnten nicht geändert werden. Wähle nur Gruppen und prüfe die aktuellen Einstellungen und das Canvas.",
       "canvasGroupColorPartial": "Gemeinsame Farben wurden gespeichert, aber das Canvas konnte nicht aktualisiert oder gespeichert werden. Die gemeinsamen Einstellungen bleiben erhalten.",
       "canvasGroupDropBlocked": "Die Gruppenänderung konnte nicht angewendet werden. Die Karte wurde an ihre vorherige Position zurückgesetzt.",
@@ -837,8 +836,6 @@
       "canvasGroupOverlap": "Operon-Gruppen mit derselben einwertigen Eigenschaft dürfen sich nicht überschneiden. Die Änderung wurde nicht angewendet.",
       "canvasGroupSaveFailed": "Die Gruppe ist im Canvas-Verlauf, aber das Speichern ist fehlgeschlagen. Canvas vor einem weiteren Versuch prüfen.",
       "canvasGroupUnavailable": "Die Canvas-Gruppe wurde geändert oder ist nicht verfügbar.",
-      "canvasLightboxConflict": "Canvas enthält in mehreren Ansichten unterschiedliche ungespeicherte Änderungen. Lassen Sie beide geöffnet und gleichen Sie die Unterschiede durch Bearbeiten oder Rückgängig ab, bevor Sie speichern, schließen oder diese Ansicht verschieben.",
-      "canvasLightboxWaiting": "Ausstehende Canvas-Speichervorgänge werden abgeschlossen. Sie können im vorhandenen Tab weiterarbeiten oder abbrechen.",
       "canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
       "canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",
       "canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
@@ -3809,5 +3806,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "37a524648439a156de234344965d9058dfcf5672f37c26958c5ebad2b7d96cd4"
+  "sourceVersion": "4ea1e1bb1d585ea9b9315a989b04caaedcf6a2bcf47bc5be5ea5873998392239"
 }

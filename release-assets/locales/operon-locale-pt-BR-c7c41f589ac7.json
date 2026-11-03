@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3764,
-  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
+  "keyCount": 3761,
+  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -829,7 +829,6 @@
       "canvasConversionBlocked": "Não é possível desfazer ou refazer: tarefa, origem ou Canvas mudou, há dados relacionados ou o registro da sessão não está disponível.",
       "canvasConversionCreatedUnbound": "A tarefa foi criada, mas o cartão Canvas não pôde ser vinculado. A tarefa foi mantida.",
       "canvasConversionPartial": "A conversão não terminou com segurança. A origem pode ter sido alterada. Não houve nova tentativa automática; confira a tarefa e o Canvas.",
-      "canvasCorePluginUnavailable": "Ative o plugin nativo Canvas para abrir este canvas.",
       "canvasGroupColorFailed": "Não foi possível alterar as cores dos grupos. Selecione apenas grupos e verifique as configurações atuais e o Canvas.",
       "canvasGroupColorPartial": "As cores compartilhadas foram salvas, mas não foi possível atualizar ou salvar o Canvas. As configurações compartilhadas foram mantidas.",
       "canvasGroupDropBlocked": "Não foi possível aplicar a alteração do grupo. O cartão voltou à posição anterior.",
@@ -837,8 +836,6 @@
       "canvasGroupOverlap": "Grupos Operon com a mesma propriedade de valor único não podem se sobrepor. A alteração não foi aplicada.",
       "canvasGroupSaveFailed": "O grupo está no histórico do Canvas, mas não foi salvo. Verifique o Canvas antes de tentar novamente.",
       "canvasGroupUnavailable": "O grupo Canvas mudou ou está indisponível.",
-      "canvasLightboxConflict": "Há alterações diferentes não salvas em várias visualizações do Canvas. Mantenha ambas abertas e resolva as diferenças editando ou desfazendo antes de salvar, fechar ou mover esta visualização.",
-      "canvasLightboxWaiting": "Aguardando a conclusão dos salvamentos do Canvas. Você pode continuar na aba existente ou cancelar.",
       "canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
       "canvasTaskColorFailed": "Não foi possível alterar algumas cores de tarefas. A tarefa pode ter mudado, estar indisponível ou o Canvas estar bloqueado. As cores atuais foram mantidas.",
       "canvasTaskColorSaveFailed": "Não foi possível salvar o Canvas. As cores das tarefas foram mantidas; o Canvas contém alterações não salvas.",
@@ -3809,5 +3806,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "4ea4979234197d413ff9a9a6f2f2de352ef97f9668bc7c16e15a5d5935c8e256"
+  "sourceVersion": "5bac22ec0fe2dc965a8ac571fe127dc1c2340d787560e3a8419360f8a958c18a"
 }

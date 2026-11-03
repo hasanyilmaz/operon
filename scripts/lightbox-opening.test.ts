@@ -8,10 +8,7 @@ import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { openLightbox } from '../src/ui/lightbox';
 import { openLightboxTarget, resolveLightboxFile } from '../src/ui/lightbox-opening';
 import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
-import { bindTablePropertyOpening } from '../src/ui/table/table-link-opening';
-import { bindDesktopChipOpening } from '../src/ui/links-chip-action';
-import { bindLightboxSizePreference } from '../src/core/lightbox-size';
-import { getNativeLightboxLeaves, bindNativeCanvasLightboxHooks } from '../src/ui/native-lightbox-lifecycle';
+import { getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { bindTaskMediaChipPreview, cleanupTaskMediaChipPreviews } from '../src/ui/compact-chip-link-preview';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -24,14 +21,14 @@ function fixture(extension = 'md') {
  let stored = 'original', text = stored, saves = 0, detached = 0, created = 0, fail = false;
  let release: (() => void) | null = null, delay = false, hover = 0, tabUrls: string[] = [];
  const root = f.doc.body.createDiv();
- const view: any = { file, data: stored, containerEl: root.createDiv(), getViewType: () => extension === 'web' ? 'webviewer' : extension === 'base' ? 'bases' : extension === 'table' ? 'operon-table-file-view' : extension === 'canvas' ? 'canvas' : 'markdown', onResize() {},
+ const view: any = { file, data: stored, containerEl: root.createDiv(), getViewType: () => extension === 'web' ? 'webviewer' : extension === 'base' ? 'bases' : extension === 'table' ? 'operon-table-file-view' : 'markdown', onResize() {},
   getEphemeralState:()=>({line:36,scroll:120}), setEphemeralState(){}, getViewData: () => text, setViewData(value:string){text=value;}, clear(){}, async save() { saves++; if (delay) await new Promise<void>(r => release = r); if (fail) throw Error('disk'); stored = text; view.data = text; } };
  const opens: any[] = [];
  const leaf: any = { getViewState:()=>({type:view.getViewType()}), view, containerEl:root, async openFile(file: TFile,state: any) { view.file = file; opens.push(state); }, async setViewState(state:any) { if(state.type==='webviewer')tabUrls.push(state.state.url);else view.file=new (TFile as any)(state.state.file); }, async loadIfDeferred() {}, detach() { detached++; } };
  const group = new (WorkspaceTabs as any)({containerEl:f.doc.body} as any) as any;
  const app: any = { vault: { read: async () => stored, getResourcePath: (file:TFile) => `app:///${file.path}` },
   metadataCache: { getFirstLinkpathDest: (path:string, from:string) => path === 'missing' ? null : path === '' ? new (TFile as any)(from) : path.endsWith('.png') || path.endsWith('.pdf') || path.endsWith('.base') || path.endsWith('.table') ? new (TFile as any)(path) : file },
-  internalPlugins: { getEnabledPluginById:()=>({openUrl(url:string){tabUrls.push(url);}}), plugins: { canvas: {enabled:true}, bases: {enabled:true}, 'page-preview': { enabled:true }, webviewer: {enabled:true,instance:{ openUrl(url:string) { tabUrls.push(url); }}}}},
+  internalPlugins: { getEnabledPluginById:()=>({openUrl(url:string){tabUrls.push(url);}}), plugins: { bases: {enabled:true}, 'page-preview': { enabled:true }, webviewer: {enabled:true,instance:{ openUrl(url:string) { tabUrls.push(url); }}}}},
   workspace: { containerEl: f.doc.body, getLayout:()=>({}), getLeafById:()=>null, getLeaf() {created++;return leaf;}, getMostRecentLeaf:()=>({parent:group,getRoot:()=>({}),getContainer:()=>({}),view:{containerEl:f.anchor,getViewType:()=> 'empty'}}), createLeafInParent(parent:any){created++;parent.insertChild?.(-1,leaf);return leaf;}, getLeavesOfType:()=>[], setActiveLeaf(){}, trigger() {hover++;} } };
  return { ...f, app, file, view, leaf, opens, root, stats:()=>({saves,detached,created,hover,tabUrls}),
   edit(value:string){text=value;}, stored(value:string){stored=value;}, fail(){fail=true;}, recover(){fail=false;}, delay(){delay=true;}, release(){release?.();},
@@ -200,7 +197,7 @@ test('native host interaction activates only its owned leaf after background foc
  }finally{f.cleanup();}
 });
 
-for(const extension of ['base','table','canvas']) test(`native ${extension} uses owned view and same target in new tab`,async()=>{
+for(const extension of ['base','table']) test(`native ${extension} uses owned view and same target in new tab`,async()=>{
  const f=fixture(extension);try{
   const target={...local,linktext:`[[Folder/Note.${extension}#My view|Alias]]`};
   assert.equal(await openLightboxTarget(f.app,f.anchor,target),'opened');await tick();
@@ -266,7 +263,7 @@ function isolatedTabFixture(extension = 'md', stacked = false) {
  const host = ()=>f.root.parent!.parent!.parent!;
  return {...f,workspace,owner,userTabs,history,layout,getLayout,open,host,removeOwner(){owner.parent=null;registered=[other];userTabs.children=[other];},removeAll(){owner.parent=null;other.parent=null;registered=[];userTabs.children=[];}};
 }
-for (const extension of ['md','base','table','canvas','web']) for (const stacked of [false,true]) {
+for (const extension of ['md','base','table','web']) for (const stacked of [false,true]) {
  test(`${extension} isolated native view preserves normal/stacked tabs, layout and full closed-tab history (${stacked})`,async()=>{
   const f=isolatedTabFixture(extension,stacked), history=JSON.stringify(f.history);
   try {
@@ -394,7 +391,7 @@ function clickTab(f: ReturnType<typeof isolatedTabFixture>, name = 'tab') {
  shell.children.find((el:any)=>el.classes.has(`operon-task-media-lightbox-${name}`)).events.get('click')();
  return shell;
 }
-for(const extension of ['md','base','table','canvas','web']) test(`${extension} new-tab control transfers current state after saving and focuses only after closing`,async()=>{
+for(const extension of ['md','base','table','web']) test(`${extension} new-tab control transfers current state after saving and focuses only after closing`,async()=>{
  const f=isolatedTabFixture(extension);
  try {
   await f.open();f.host().events.get('focusin')();
@@ -447,7 +444,7 @@ function installSplitDestination(f: ReturnType<typeof isolatedTabFixture>, rejec
  };
  return {...d,split,origin:()=>received};
 }
-for(const extension of ['md','base','table','canvas','web'])for(const below of [false,true])test(`${extension} ${below?'below':'right'} split uses captured origin, current state and focus after successful cleanup`,async()=>{
+for(const extension of ['md','base','table','web'])for(const below of [false,true])test(`${extension} ${below?'below':'right'} split uses captured origin, current state and focus after successful cleanup`,async()=>{
  const f=isolatedTabFixture(extension);
  try{
   await f.open();const d=installSplitDestination(f),other=f.userTabs.children[1];
@@ -602,7 +599,7 @@ test('late native Source load never steals focus after its lightbox was closed',
   assert.equal(focused,0);assert.equal(f.stats().detached,1);assert.equal(f.stats().saves,0);
  }finally{f.cleanup();await tick();}
 });
-for (const extension of ['md', 'base', 'table', 'canvas', 'web']) test(`native host width: ${extension} keeps its approved frame without :has`, async () => {
+for (const extension of ['md', 'base', 'table', 'web']) test(`native host width: ${extension} keeps its approved frame without :has`, async () => {
  const f=fixture(extension);try {
   if(extension==='web') await openWebLightbox(f.app,f.anchor,'https://example.com');
   else await openLightboxTarget(f.app,f.anchor,{...local,linktext:`Folder/Note.${extension}`});
@@ -622,10 +619,10 @@ test('native host width follows successful view replacement and preserves its cl
   await openLightboxTarget(f.app,f.anchor,local);await tick();
   const host=f.doc.body.querySelectorAll().find((node:any)=>node.classes.has('operon-native-lightbox-host'));
   assert.equal(host.classes.has('is-markdown'),true);
-  for(const next of ['bases','operon-table-file-view','canvas','webviewer','markdown']){
+  for(const next of ['bases','operon-table-file-view','webviewer','markdown']){
    await f.leaf.setViewState({type:next});
    assert.equal(host.classes.has('is-markdown'),next==='markdown');
-   assert.equal(host.classes.has('is-base'),next==='bases');assert.equal(host.classes.has('is-table'),next==='operon-table-file-view');assert.equal(host.classes.has('is-canvas'),next==='canvas');
+   assert.equal(host.classes.has('is-base'),next==='bases');assert.equal(host.classes.has('is-table'),next==='operon-table-file-view');
    assert.equal(host.classes.has('operon-web-lightbox-host'),next==='webviewer');
   }
   await assert.rejects(f.leaf.setViewState({type:'bases',fail:true}),/load/);
@@ -648,7 +645,7 @@ test('CSS compatibility guard rejects :has while the scoped Markdown frame keeps
  assert.match(css,/\.operon-native-lightbox-host\.is-markdown\s*\{\s*width: min\(1050px, 90vw\);\s*max-width: 90vw;\s*height: 90vh;/);
 });
 
-for(const extension of ['md','base','table','canvas']) for(const phase of ['openFile','loadIfDeferred'] as const) test(`${extension} uses its resolved profile before ${phase} completes`,async()=>{
+for(const extension of ['md','base','table']) for(const phase of ['openFile','loadIfDeferred'] as const) test(`${extension} uses its resolved profile before ${phase} completes`,async()=>{
  const f=fixture(extension);let release!:()=>void;
  const original=f.leaf[phase].bind(f.leaf);
  f.leaf[phase]=async(...args:any[])=>{await new Promise<void>(resolve=>{release=resolve;});return original(...args);};
@@ -672,71 +669,4 @@ test('vetoed native navigation retains its profile and unsaved content',async()=
   assert.equal(navigated,0);assert.equal(host.classes.has('is-markdown'),true);assert.equal(host.inert,false);
   assert.equal(f.view.getViewData(),'unsaved');
  }finally{f.cleanup();await tick();}
-});
-
-test('Canvas disabled or missing core plugin does not create a view or write the file', async () => {
- const f=fixture('canvas');try {
-  for(const unavailable of [{enabled:false},undefined]) {
-   f.app.internalPlugins.plugins.canvas=unavailable;
-   assert.equal(await openLightboxTarget(f.app,f.anchor,{kind:'local',linktext:'Folder/Note.canvas',sourcePath:'Origin.md'}),'unavailable');
-  }
-  assert.equal(f.stats().created,0);assert.equal(f.stats().saves,0);
-  assert.deepEqual(getNativeLightboxLeaves(f.app),[]);
- }finally{f.cleanup();await tick();}
-});
-
-test('Canvas retains native save scheduling and uses the wide independent profile without writes', async () => {
- const f=fixture('canvas');let preferenceWrites=0;
- const requestSave=()=>{};f.view.requestSave=requestSave;const save=f.view.save;
- const unbind=bindLightboxSizePreference({get:()=>({canvas:{width:75,height:80},table:{width:65}}),save:async()=>{preferenceWrites++;}});
- try {
-  await openLightboxTarget(f.app,f.anchor,{kind:'local',linktext:'[[Folder/Note.canvas|Diagram]]',sourcePath:'Origin.md'});await tick();
-  const host=f.doc.body.querySelectorAll().find((node:any)=>node.classes.has('operon-native-lightbox-host'));
-  assert.ok(host);assert.equal(host.classes.has('is-canvas'),true);assert.equal(host.classes.has('is-markdown'),false);
-  assert.equal(host.style.getPropertyValue('width'),'min(75vw, calc(100vw - 96px))');
-  assert.equal(host.style.getPropertyValue('height'),'min(80vh, calc(100vh - 96px))');
-  assert.equal(f.view.save,save);assert.equal(f.view.requestSave,requestSave);
-  disposeWebLightboxes(f.app);await tick();
-  assert.equal(f.stats().saves,0);assert.equal(preferenceWrites,0);assert.equal(f.stats().detached,1);
- }finally{unbind();f.cleanup();await tick();}
-});
-
-test('Canvas cannot silently mount a Markdown fallback when its native view is unavailable', async () => {
- const f=fixture('canvas');f.view.getViewType=()=> 'markdown';try {
-  await openLightboxTarget(f.app,f.anchor,{kind:'local',linktext:'Folder/Note.canvas',sourcePath:'Origin.md'});await tick();
-  assert.equal(f.stats().detached,1);assert.equal(f.stats().saves,0);assert.deepEqual(getNativeLightboxLeaves(f.app),[]);
- }finally{f.cleanup();await tick();}
-});
-
-for(const surface of ['chip','table-property'] as const) test(`Canvas wiki link from ${surface} opens the same native lightbox without picker writes`,async()=>{
- const f=fixture('canvas');let pickerCalls=0;
- const task:any={operonId:'abcdefg',primary:{filePath:'Origin.md',format:'yaml',lineNumber:0},fieldValues:{taskType:'[[Folder/Note.canvas|Diagram]]'},tags:[]};
- const context:any={app:f.app,getSettings:()=>DEFAULT_SETTINGS,getTask:()=>task,getAllTasks:()=>[task],getTaskById:()=>null,onPicker:()=>{pickerCalls++;},picker:()=>{pickerCalls++;return null;}};
- try {
-  if(surface==='chip')assert.equal(bindDesktopChipOpening(f.anchor,{key:'taskType',rawValue:task.fieldValues.taskType,label:'Diagram',icon:'link',iconOnly:false,interactive:true,colorRole:'default',linkTarget:null} as any,context),true);
-  else assert.equal(bindTablePropertyOpening(f.anchor,context,()=>task.fieldValues.taskType),true);
-  (f.anchor as any).events.get('click')(mouse());await tick();
-  assert.equal(f.view.getViewType(),'canvas');assert.equal(f.opens.length,1);assert.equal(f.opens[0].active,false);
-  assert.deepEqual(getNativeLightboxLeaves(f.app),[f.leaf]);assert.equal(pickerCalls,0);assert.equal(f.stats().saves,0);
- }finally{f.cleanup();await tick();}
-});
-
-test('Canvas transfer waits for destination admission before disposing the source container',async()=>{
- const f=isolatedTabFixture('canvas');let release!:()=>void;let remove=()=>{};const gate=new Promise<void>(resolve=>{release=resolve;});
- try {
-  await f.open();const destination=installDestination(f);let admitted=false;
-  remove=bindNativeCanvasLightboxHooks(f.app,{ready:async leaf=>{if(leaf===destination.destination){await gate;admitted=true;}return true;},prepare:async()=>true});
-  const shell=clickTab(f);await tick();assert.equal(shell.isConnected,true);assert.equal(admitted,false);assert.notEqual(f.workspace.activeLeaf,destination.destination);
-  release();await tick();assert.equal(admitted,true);assert.equal(shell.isConnected,false);assert.equal(f.workspace.activeLeaf,destination.destination);
- }finally{release();remove();f.cleanup();await tick();}
-});
-
-test('Canvas failed destination admission unlocks transfer controls and retains the source for retry',async()=>{
- const f=isolatedTabFixture('canvas');let remove=()=>{};
- try {
-  await f.open();f.host().events.get('focusin')();const failed=installDestination(f),history=JSON.stringify(f.history);remove=bindNativeCanvasLightboxHooks(f.app,{ready:async leaf=>leaf!==failed.destination,prepare:async()=>true});
-  const shell=clickTab(f);await tick();assert.equal(shell.isConnected,true);assert.equal(shell.inert,false);assert.equal(f.host().inert,false);assert.equal(failed.destination.parent,null);assert.equal(f.workspace.activeLeaf,f.leaf);assert.equal(JSON.stringify(f.history),history);
-  const tabControl=shell.children.find((el:any)=>el.classes.has('operon-task-media-lightbox-tab'));assert.equal(tabControl.disabled,false);
-  remove();remove=()=>{};const retried=installDestination(f);clickTab(f);await tick();assert.equal(shell.isConnected,false);assert.equal(f.workspace.activeLeaf,retried.destination);
- }finally{remove();f.cleanup();await tick();}
 });

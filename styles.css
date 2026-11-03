@@ -37330,27 +37330,3 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-scope-card:is(:hover, :focus-within) > button.operon-status-dock-name { padding-right: 40px; }
 
 .operon-status-dock .operon-status-dock-scope-timer:is(:hover, :focus-visible):not(:disabled) { border-color: var(--background-modifier-border); }
-
-/* Canvas admission leaves existing tabs usable while native saves settle. */
-.operon-task-media-lightbox.is-canvas-waiting {
- background: transparent;
- pointer-events: none;
-}
-.operon-task-media-lightbox.is-canvas-waiting > .operon-task-media-lightbox-content,
-.operon-task-media-lightbox.is-canvas-waiting > .operon-task-media-lightbox-control {
- visibility: hidden;
-}
-.operon-canvas-lightbox-wait {
- position: absolute;
- top: 12px;
- display: flex;
- align-items: center;
- gap: var(--size-4-2);
- padding: var(--size-4-2) var(--size-4-3);
- border: 1px solid var(--background-modifier-border);
- border-radius: 8px;
- background: var(--background-primary);
- color: var(--text-normal);
- box-shadow: var(--shadow-s);
- pointer-events: auto;
-}
