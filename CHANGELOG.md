@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
 
+### Fixed
+
+- Fixed **Task Creator** sometimes showing a discard confirmation instead of opening the next property picker when switching from a custom field.
+
 ### Validation
 
 - Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.
+- Task Creator picker switching passed full local Plugin checks, **80/80** focused tests, **1/1** targeted local regression check, isolated browser verification, and manual UI acceptance.
 
 ## [4.4.0] - 2026-10-30
 
