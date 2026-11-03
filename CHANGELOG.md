@@ -13,10 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values, while preserving existing tasks and file-property mappings.
 - Fixed **Task Creator** sometimes showing a discard confirmation instead of opening the next property picker when switching from a custom field.
 
 ### Validation
 
+- Inline task key serialization passed local Plugin checks, **179/179** creation tests, **1/1** targeted local regression check, code review, and manual UI acceptance.
 - Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.
 - Task Creator picker switching passed full local Plugin checks, **80/80** focused tests, **1/1** targeted local regression check, isolated browser verification, and manual UI acceptance.
 
