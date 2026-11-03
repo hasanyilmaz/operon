@@ -49,7 +49,7 @@ function fixture(quietMs=0,normalize=false) {
  const lifetimes:NativeLightboxLifecycle[]=[];
  function add(owned=false){const view=new View();const leaf:any={view,detach(){void view.onClose();leaf.detached=true;},async setViewState(state:any){if(state.state?.file && state.state.file!==file.path){await view.onUnloadFile(view.file);view.file=objects.get(state.state.file);await view.loadFileInternal(view.file,true);}},getViewState:()=>({type:'canvas',state:{file:view.file?.path}})};all.push(leaf);if(owned)lifetimes.push(new NativeLightboxLifecycle(app,leaf));else normal.push(leaf);return leaf;}
  let tail=Promise.resolve();const sessions=new CanvasLightboxSessions(app,{key,native:v=>(...args)=>Reflect.apply(View.prototype.save,v,args),write:async(_v,action)=>{const prev=tail;let release!:()=>void;tail=new Promise<void>(r=>{release=r;});await prev;try{await action();}finally{release();}}},quietMs);
- function edit(leaf:any,text:string,request=false){leaf.view.state=scene(text);leaf.view.canvas.data=leaf.view.state;leaf.view.dirty=true;if(request)leaf.view.requestSave();}
+ function edit(leaf:any,text:string,request=false){leaf.view.state=scene(text);if(normalize)Object.assign(leaf.view.state,{metadata:{version:'1.0-1.0'}});leaf.view.canvas.data=leaf.view.state;leaf.view.dirty=true;if(request)leaf.view.requestSave();}
  return {...dom,app,file,files,normal,all,sessions,add,edit,addFile(path:string,text:string){const obj={path};objects.set(path,obj);files.set(path,JSON.stringify(scene(text)));return obj;},stats:()=>({writes,imports}),pause(){pause=deferred();return pause;},pauseRead(){readPause=deferred();return readPause;},fail(value=true){fail=value;},uncertain(value=true){uncertain=value;},async ready(leaf:any){assert.equal(await sessions.ready(leaf,()=>true),true);},dispose(){sessions.dispose();for(const x of lifetimes)x.dispose();for(const l of all)if(l.view.nativeTimer)clearTimeout(l.view.nativeTimer);},removeOwner(){for(const l of lifetimes)l.dispose();sessions.reconcile();}};
 }
 
@@ -219,4 +219,8 @@ test('Canvas unresolved ambiguous save remains unavailable for group operations 
  t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),coordinator=new CanvasGroupSyncCoordinator(),sessions=coordinator.lightboxSessions(f.app);t.after(()=>sessions.dispose());const opening=sessions.ready(box,()=>true);t.mock.timers.tick(2000);await tick();assert.equal(await opening,true);
  const member=new CanvasGroupSync(box.view,{isCurrent:()=>true} as any,{isBusy:false,reserve:()=>()=>{}} as any,coordinator);Reflect.set(member,'active',true);member.schedule=()=>{};coordinator.add(member);coordinator.acceptBaseline(member,box.view.lastSavedData);
  f.edit(box,'ambiguous');f.uncertain();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await sessions.prepare(box),false);assert.equal(sessions.clean(box.view),false);assert.equal(coordinator.acquire(member),null);assert.equal(coordinator.acquire(member,true),null);
+});
+
+test('Canvas failed save can verify Undo to the original normalized clean scene without rewriting disk',async t=>{
+ const f=fixture(0,true);t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);const original=f.files.get(f.file.path);f.edit(box,'failed edit');f.fail();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await f.sessions.prepare(box),true);assert.equal(f.stats().writes,0);assert.equal(f.files.get(f.file.path),original);await box.view.onClose();assert.equal(f.stats().writes,0);
 });

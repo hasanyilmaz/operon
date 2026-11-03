@@ -25,6 +25,7 @@ interface SavePort {
 }
 interface Member {
  leaf: WorkspaceLeaf; view: NativeCanvasView; file: TFile; path: string;
+ // Disk identity guards writes; clean tracks the native loaded scene, including plugin normalization.
  baseline: string; clean: string; raw: string; ready: boolean; failed: boolean; incoming: boolean;
  closing: boolean; renaming: boolean; active: boolean; applying: number; generation: number; schedule: () => void; failure: string | null; pending: Set<Promise<unknown>>; restore: (() => void)[];
  cancelTimer: () => void; nativeSave: (...args: unknown[]) => unknown;
@@ -242,6 +243,7 @@ export class CanvasLightboxSessions {
     }
     if(storedKey!==m.baseline)throw new Error('Canvas baseline changed');
     if (!this.valid(m) || !this.canSave(v)) throw new Error('Canvas changed while waiting');
+    // Native save serializes canvas.data, which can lag live geometry during a drag.
     candidate=this.port.key(JSON.parse(v.getViewData()));v.dirty=true;attempted=true;
     await m.nativeSave(false);
     const deadline=Date.now()+5000;
@@ -295,8 +297,9 @@ export class CanvasLightboxSessions {
   if(m.failed) {
    try {
     const stored=await this.app.vault.read(m.file),key=this.port.key(JSON.parse(stored));
-    if((key!==m.failure && key!==m.baseline) || this.scene(m.view)!==key)return false;
-    m.raw=stored;m.baseline=key;m.clean=key;m.view.lastSavedData=stored;m.view.data=stored;m.failed=false;m.failure=null;this.port.confirmed?.(m.view,stored);
+    const original=key===m.baseline && this.scene(m.view)===m.clean;
+    if(!original && (key!==m.failure || this.scene(m.view)!==key))return false;
+    m.raw=stored;m.baseline=key;if(!original)m.clean=key;m.view.lastSavedData=stored;m.view.data=stored;m.failed=false;m.failure=null;this.port.confirmed?.(m.view,stored);
    }catch{return false;}
   }
   try {
