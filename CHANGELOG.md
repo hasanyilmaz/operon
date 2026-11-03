@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open, while preserving checks for existing values and unsaved changes.
 - Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values, while preserving existing tasks and file-property mappings.
 - Fixed **Task Creator** sometimes showing a discard confirmation instead of opening the next property picker when switching from a custom field.
 
 ### Validation
 
+- Custom key reuse passed full local Plugin checks, **71/71** focused tests, **1/1** targeted local regression check, and code review.
 - Inline task key serialization passed local Plugin checks, **179/179** creation tests, **1/1** targeted local regression check, code review, and manual UI acceptance.
 - Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.
 - Task Creator picker switching passed full local Plugin checks, **80/80** focused tests, **1/1** targeted local regression check, isolated browser verification, and manual UI acceptance.

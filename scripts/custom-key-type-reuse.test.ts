@@ -244,3 +244,72 @@ test('imported unindented quoted value remains a value, while later keys are che
 test('unfinished quoted continuation stays unverifiable',()=>{
  assert.throws(()=>customKeySourceUses('---\nAuthor: "First,\nSecond\nother: value\n---\n',new Set(['test123'])));
 });
+
+
+async function outlineFixture(content = '') {
+ const f = await fixture();
+ const file = Object.assign(Object.create(TFile.prototype), { path: 'Documentation.md', extension: 'md', content, stat: { mtime: 1, size: content.length } });
+ f.files.set(file.path, file);
+ const markdown = { file, getViewType: () => 'markdown', editor: { getValue: () => content } };
+ const outline: any = { file, getViewType: () => 'outline' };
+ f.views.push(markdown, outline);
+ return { ...f, file, markdown, outline };
+}
+for (const content of ['', '# Documentation\nNo custom fields.']) for (const type of ['list', 'number'] as const) test(`Outline permits unused key reuse with an open note: ${type}, empty=${!content}`, async () => {
+ const f = await outlineFixture(content);
+ try {
+  await f.add(type);
+  assert.equal(f.types.test123, type === 'list' ? 'multitext' : type);
+  assert.equal(f.storage.getSettings().keyMappings.find(mapping => mapping.canonicalKey === 'test123')?.type, type);
+  assert.equal(f.file.content, content);
+  assert.equal(f.views.length, 2);
+  assert.equal(f.events.size, 0);
+ } finally { await f.close(); }
+});
+for (const content of ['---\ntest123: old\n---\n', '- [ ] Task {{test123:: old}}']) test(`Outline does not hide persisted usage: ${content.slice(0, 12)}`, async () => {
+ const f = await outlineFixture(content);
+ try {
+  const before = f.disk.raw();
+  await assert.rejects(f.add(), /still used in a note/);
+  assert.equal(f.writes(), 0); assert.equal(f.disk.raw(), before); assert.equal(f.file.content, content);
+ } finally { await f.close(); }
+});
+test('Outline does not hide unsaved Markdown usage', async () => {
+ const f = await outlineFixture();
+ try {
+  f.markdown.editor.getValue = () => '{{test123:: unsaved}}';
+  const before = f.disk.raw();
+  await assert.rejects(f.add(), /still used in an open editor/);
+  assert.equal(f.writes(), 0); assert.equal(f.disk.raw(), before); assert.equal(f.file.content, '');
+ } finally { await f.close(); }
+});
+for (const reader of ['editor', 'getViewData', 'getPropertySourceSnapshot'] as const) test(`Outline with a source reader stays protected: ${reader}`, async () => {
+ const f = await outlineFixture();
+ try {
+  const read = () => '{{test123:: unsaved}}';
+  f.outline[reader] = reader === 'editor' ? { getValue: read } : read;
+  await assert.rejects(f.add(), reader === 'getPropertySourceSnapshot' ? /Cannot verify/ : /still used in an open editor/);
+  assert.equal(f.writes(), 0); assert.equal(f.types.test123, 'text');
+ } finally { await f.close(); }
+});
+test('Outline exemption does not hide unknown Markdown-backed views', async () => {
+ const f = await outlineFixture();
+ try {
+  f.views.push({ file: f.file, getViewType: () => 'unknown-editor' });
+  await assert.rejects(f.add(), /Documentation\.md \[unknown-editor\]/);
+  assert.equal(f.writes(), 0);
+ } finally { await f.close(); }
+});
+for (const timing of ['during-scan', 'after-type-write'] as const) test(`Outline gaining a source reader invalidates reuse: ${timing}`, async () => {
+ const f = await outlineFixture();
+ try {
+  const change = () => { f.outline.editor = { getValue: () => '{{test123:: unsaved}}' }; };
+  if (timing === 'during-scan') f.afterRead(change); else f.afterTypeWrite(change);
+  await assert.rejects(f.add(), timing === 'during-scan' ? /changed/ : /Settings operation cancelled/);
+  assert.equal(f.types.test123, 'text');
+  assert.equal(f.storage.getSettings().keyMappings.some(mapping => mapping.canonicalKey === 'test123'), false);
+  assert.equal(f.storage.getCommittedInlinePropertyDefinitions()!.entries.find(entry => entry.sourceName === 'test123')!.type, 'text');
+  assert.equal(f.events.size, 0);
+  if (timing === 'during-scan') assert.equal(f.writes(), 0); else assert.ok(f.writes() >= 2);
+ } finally { await f.close(); }
+});
