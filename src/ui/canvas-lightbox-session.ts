@@ -111,6 +111,8 @@ export class CanvasLightboxSessions {
    && this.scene(view)===this.port.key(JSON.parse(view.lastSavedData!))};
  }
  async ready(leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean> {
+  const pending=leaf.view as unknown as NativeCanvasView;
+  if(getNativeLightboxLeaves(this.app).includes(leaf) && !this.has(pending) && typeof pending.getViewData==='function' && typeof pending.onClose==='function' && typeof pending.lastSavedData==='string')this.protectPending(pending);
   const view = this.readView(leaf); if (!view?.file) return false;
   let g = this.groups.get(view.file);
   if (!g) {g={file:view.file,members:new Map(),owners:new Set(),opening:null,warned:false};this.groups.set(view.file,g);}
@@ -189,7 +191,7 @@ export class CanvasLightboxSessions {
    if(!clear && (this.dirty(m) || !this.idle(m))) {m.incoming=true;return;}
    const generation=m.generation;
    m.incoming=true;m.refreshing++;const pending=load(file,clear);m.pending.add(pending);
-   try{await pending;if(generation!==m.generation)throw new Error('Canvas load owner changed');}finally{m.pending.delete(pending);m.refreshing--;}
+   try{await pending;if(generation!==m.generation)throw new Error('Canvas load owner changed');if(this.valid(m) && !this.dirty(m) && this.idle(m) && typeof v.lastSavedData==='string' && this.port.key(JSON.parse(v.lastSavedData))===m.baseline)m.incoming=false;}finally{m.pending.delete(pending);m.refreshing--;}
   };
   this.wrap(v,'loadFileInternal',reload,m);
   this.wrap(v,'setData',(text:string,clear:boolean)=>{
@@ -281,7 +283,7 @@ export class CanvasLightboxSessions {
   try {
    if(this.dirty(m))await m.view.save();
    if(m.incoming && !this.dirty(m))await m.view.loadFileInternal(m.file,false);
-   return this.valid(m) && !m.failed && !this.dirty(m) && !this.conflict(g);
+   return this.valid(m) && !m.failed && !m.incoming && this.idle(m) && !this.dirty(m) && !this.conflict(g);
   }catch{return false;}
  }
  reconcile():void {

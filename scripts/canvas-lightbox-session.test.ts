@@ -184,3 +184,11 @@ test('Canvas cancelling pending admission cannot rewrite a newer peer save with 
  const pending=f.sessions.ready(box,()=>allowed);f.files.set(f.file.path,JSON.stringify(scene('newer peer write')));allowed=false;t.mock.timers.tick(25);await tick();assert.equal(await pending,false);
  await box.view.onClose();assert.equal(f.stats().writes,0);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].text,'newer peer write');assert.equal(tab.view.contentEl.inert,undefined);
 });
+
+test('Canvas failed admission protects pending owned close before inspecting unsupported peer save wrappers',async t=>{
+ const f=fixture();t.after(()=>f.dispose());const tab=f.add(),box=f.add(true);tab.view.save=async()=>{};f.files.set(f.file.path,JSON.stringify(scene('newer peer write')));
+ const sessions=new CanvasGroupSyncCoordinator().lightboxSessions(f.app);t.after(()=>sessions.dispose());assert.equal(await sessions.ready(box,()=>true),false);await box.view.onClose();assert.equal(f.stats().writes,0);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].text,'newer peer write');
+});
+test('Canvas duplicate clean native reload settles before native close without formatting writes',async t=>{
+ const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);await box.view.loadFileInternal(f.file,false);assert.equal(await f.sessions.prepare(box),true);await box.view.onClose();assert.equal(f.stats().writes,0);
+});
