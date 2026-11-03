@@ -218,5 +218,5 @@ test('Canvas admission rechecks old callback quiet time after refreshing an init
 test('Canvas unresolved ambiguous save remains unavailable for group operations after Undo',async t=>{
  t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),coordinator=new CanvasGroupSyncCoordinator(),sessions=coordinator.lightboxSessions(f.app);t.after(()=>sessions.dispose());const opening=sessions.ready(box,()=>true);t.mock.timers.tick(2000);await tick();assert.equal(await opening,true);
  const member=new CanvasGroupSync(box.view,{isCurrent:()=>true} as any,{isBusy:false,reserve:()=>()=>{}} as any,coordinator);Reflect.set(member,'active',true);member.schedule=()=>{};coordinator.add(member);coordinator.acceptBaseline(member,box.view.lastSavedData);
- f.edit(box,'ambiguous');f.uncertain();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await sessions.prepare(box),false);assert.equal(sessions.clean(box.view),false);assert.equal(coordinator.acquire(member),null);
+ f.edit(box,'ambiguous');f.uncertain();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await sessions.prepare(box),false);assert.equal(sessions.clean(box.view),false);assert.equal(coordinator.acquire(member),null);assert.equal(coordinator.acquire(member,true),null);
 });

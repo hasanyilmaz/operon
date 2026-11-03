@@ -60,9 +60,9 @@ export class CanvasLightboxSessions {
  private warn(g: Group): void {
   if (!g.warned) { g.warned = true; new Notice(t('notifications', 'canvasLightboxConflict')); }
  }
- canSave(view: TaskCanvasView): boolean {
+ canSave(view: TaskCanvasView, verifyOwnFailure=false): boolean {
   const g = this.group(view); if (!g) return true;
-  if (g.opening || [...g.members.values()].some(m => !m.ready || !this.valid(m)) || this.conflict(g)) {
+  if (g.opening || [...g.members.values()].some(m => !m.ready || !this.valid(m) || m.failed && (!verifyOwnFailure || m.view!==view)) || this.conflict(g)) {
    if (this.conflict(g)) this.warn(g);
    return false;
   }
@@ -289,7 +289,7 @@ export class CanvasLightboxSessions {
  async prepare(leaf: WorkspaceLeaf):Promise<boolean> {
   const v=leaf.view as unknown as TaskCanvasView,g=this.group(v),m=g?.members.get(v);
   if(!g || !m || !m.ready)return true;
-  if(!this.canSave(v)) {this.warn(g);return false;}
+  if(!this.canSave(v,true)) {this.warn(g);return false;}
   await Promise.all([...g.members.values()].flatMap(p=>[...p.pending]).map(p=>p.catch(()=>undefined)));
   if(!this.valid(m))return false;
   if(m.failed) {
