@@ -26,8 +26,8 @@ function fixture(quietMs=0,normalize=false) {
  const app:any={workspace:{getLeavesOfType:(type:string)=>type==='canvas'?normal:[]},vault:{getAbstractFileByPath:(path:string)=>files.has(path)?(objects.get(path) ?? file):null,read:async(f:any)=>{const value=files.get(f.path);if(readPause){const gate=readPause;readPause=null;await gate.promise;}return value;}}};
  class View {
   file=file;contentEl:any=dom.doc.body.createDiv();containerEl=this.contentEl;lastSavedData=files.get(file.path)!;data:string|null=this.lastSavedData;dirty=false;saving=false;saveAgain=false;
-  state=scene();viewport={x:55,y:89,zoom:1.5};selection=new Set(['n']);closed=false;nativeTimer:ReturnType<typeof setTimeout>|null=null;
-  canvas:any={getData:()=>this.state,nodes:new Map([['n',{isEditing:false,nodeEl:dom.doc.body.createDiv()}]]),data:this.state,readonly:false,isDragging:false,selection:this.selection};
+  snapshotRequests:boolean[]=[];state=scene();viewport={x:55,y:89,zoom:1.5};selection=new Set(['n']);closed=false;nativeTimer:ReturnType<typeof setTimeout>|null=null;
+  canvas:any={getData:()=>this.state,requestSave:(history=true)=>{this.snapshotRequests.push(history);this.canvas.data=this.canvas.getData();this.requestSave();},nodes:new Map([['n',{isEditing:false,nodeEl:dom.doc.body.createDiv()}]]),data:this.state,readonly:false,isDragging:false,selection:this.selection};
   requestSave:()=>void;
   constructor(){if(normalize)Object.assign(this.state,{metadata:{version:'1.0-1.0'}});const captured=View.prototype.save.bind(this);this.requestSave=()=>{this.dirty=true;if(!this.nativeTimer)this.nativeTimer=setTimeout(()=>{this.nativeTimer=null;void captured().catch(()=>{});},2000);};}
   getViewType(){return 'canvas';}
@@ -223,4 +223,23 @@ test('Canvas unresolved ambiguous save remains unavailable for group operations 
 
 test('Canvas failed save can verify Undo to the original normalized clean scene without rewriting disk',async t=>{
  const f=fixture(0,true);t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);const original=f.files.get(f.file.path);f.edit(box,'failed edit');f.fail();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await f.sessions.prepare(box),true);assert.equal(f.stats().writes,0);assert.equal(f.files.get(f.file.path),original);await box.view.onClose();assert.equal(f.stats().writes,0);
+});
+
+test('Canvas close flushes idle live geometry through native requestSave before saving or transferring',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);
+ box.view.state=structuredClone(box.view.state);Object.assign(box.view.state.nodes[0],{x:1020,y:380,styleAttributes:{}});box.view.dirty=true;
+ assert.notEqual(key(box.view.canvas.getData()),key(JSON.parse(box.view.getViewData())));
+ assert.equal(await f.sessions.prepare(box),true);assert.deepEqual(box.view.snapshotRequests,[false]);assert.equal(f.stats().writes,1);
+ const stored=JSON.parse(f.files.get(f.file.path)!);assert.equal(stored.nodes[0].x,1020);assert.equal(stored.nodes[0].y,380);assert.deepEqual(stored.nodes[0].styleAttributes,{});
+ assert.equal(await f.sessions.prepare(box),true);await box.view.onClose();t.mock.timers.tick(4000);await tick();assert.equal(f.stats().writes,1);assert.equal(box.view.closed,true);
+});
+test('Canvas close never flushes a live snapshot during a gesture or divergent peer edits',async t=>{
+ const f=fixture();t.after(()=>f.dispose());const tab=f.add(),box=f.add(true);await f.ready(box);box.view.state=structuredClone(box.view.state);box.view.state.nodes[0].x=100;box.view.dirty=true;box.view.canvas.isDragging=true;
+ assert.equal(await f.sessions.prepare(box),false);assert.deepEqual(box.view.snapshotRequests,[]);assert.equal(f.stats().writes,0);
+ box.view.canvas.isDragging=false;f.edit(tab,'peer edit');assert.equal(await f.sessions.prepare(box),false);assert.deepEqual(box.view.snapshotRequests,[]);assert.equal(f.stats().writes,0);
+});
+test('Canvas close keeps an idle live snapshot when its native write fails and does not replay it',async t=>{
+ const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);box.view.state=structuredClone(box.view.state);box.view.state.nodes[0].x=100;box.view.dirty=true;f.fail();
+ assert.equal(await f.sessions.prepare(box),false);assert.equal(box.view.state.nodes[0].x,100);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].x,0);assert.deepEqual(box.view.snapshotRequests,[false]);
+ f.fail(false);assert.equal(await f.sessions.prepare(box),false);assert.deepEqual(box.view.snapshotRequests,[false]);assert.equal(f.stats().writes,0);assert.equal(box.view.closed,false);
 });

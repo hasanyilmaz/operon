@@ -303,7 +303,13 @@ export class CanvasLightboxSessions {
    }catch{return false;}
   }
   try {
-   if(this.dirty(m))await m.view.save();
+   if(!this.idle(m))return false;
+   if(this.dirty(m)) {
+    // Native save reads canvas.data, not live nodes. After interaction settles,
+    // flush through the native/plugin request path without adding a history step.
+    m.view.canvas.requestSave(false);
+    await m.view.save();
+   }
    if(m.incoming && !this.dirty(m))await m.view.loadFileInternal(m.file,false);
    return this.valid(m) && !m.failed && !m.incoming && this.idle(m) && !this.dirty(m) && !this.conflict(g);
   }catch{return false;}
