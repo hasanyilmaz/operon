@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
+
 ### Validation
+
+- Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.
 
 ## [4.4.0] - 2026-10-30
 

@@ -16143,6 +16143,11 @@ body :is(
    Embedded Filter View (code block processor)
    ============================================================ */
 
+/* The filter owns its border; suppress Live Preview's extra code-block hover ring. */
+.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-operon {
+	--embed-block-shadow-hover: none;
+}
+
 .operon-embed {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
