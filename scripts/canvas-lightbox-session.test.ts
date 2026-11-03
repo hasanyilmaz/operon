@@ -243,3 +243,35 @@ test('Canvas close keeps an idle live snapshot when its native write fails and d
  assert.equal(await f.sessions.prepare(box),false);assert.equal(box.view.state.nodes[0].x,100);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].x,0);assert.deepEqual(box.view.snapshotRequests,[false]);
  f.fail(false);assert.equal(await f.sessions.prepare(box),false);assert.deepEqual(box.view.snapshotRequests,[false]);assert.equal(f.stats().writes,0);assert.equal(box.view.closed,false);
 });
+
+test('Canvas synchronous late-peer admission failure releases opening state without an event-loop retry',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),coordinator=new CanvasGroupSyncCoordinator(),sessions=coordinator.lightboxSessions(f.app);t.after(()=>sessions.dispose());
+ const initial=sessions.ready(box,()=>true);t.mock.timers.tick(2000);await tick();assert.equal(await initial,true);const tab=f.add();tab.view.save=async()=>{};
+ assert.equal(await sessions.ready(box,()=>true),false);
+ const groups=Reflect.get(sessions,'groups') as Map<unknown,{opening:Promise<boolean>|null}>;assert.equal(groups.get(f.file)!.opening,null);assert.equal(sessions.canSave(box.view),true);
+});
+test('Canvas concurrent admission callers propagate a synchronous failure without recursive microtasks',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),coordinator=new CanvasGroupSyncCoordinator(),sessions=coordinator.lightboxSessions(f.app);t.after(()=>sessions.dispose());
+ const initial=sessions.ready(box,()=>true);t.mock.timers.tick(2000);await tick();assert.equal(await initial,true);const tab=f.add();tab.view.save=async()=>{};let checks=0,attempts=0;const port=Reflect.get(sessions,'port'),native=port.native;port.native=(view:unknown)=>{if(view===tab.view)attempts++;return native(view);};
+ const first=sessions.ready(box,()=>true),second=sessions.ready(tab,()=>++checks<10);assert.deepEqual(await Promise.all([first,second]),[false,false]);assert.ok(checks<4,'failed admission must not retry in a microtask loop');assert.equal(attempts,1,'failed waiters must not launch another background attempt');
+});
+
+test('Canvas late native peer waits for its first loaded data before admission',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);f.edit(box,'typed text');assert.equal(await f.sessions.prepare(box),true);
+ const tab=f.add();tab.view.lastSavedData=null;tab.view.data=null;let settled=false;const pending=f.sessions.ready(box,()=>true).then(ok=>{settled=true;return ok;});await tick();assert.equal(settled,false);
+ const stored=f.files.get(f.file.path)!;tab.view.setData(stored,true);tab.view.lastSavedData=stored;t.mock.timers.tick(25);await tick();assert.equal(await pending,true);assert.equal(f.sessions.has(tab.view),true);assert.equal(tab.view.state.nodes[0].text,'typed text');assert.equal(f.stats().writes,1);
+});
+test('Canvas cancelling a concurrent preparation retains protection for its still-open source owner',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture(50);t.after(()=>f.dispose());const box=f.add(true);const first=f.sessions.ready(box,()=>true);t.mock.timers.tick(50);await tick();assert.equal(await first,true);
+ const tab=f.add(),loading=f.sessions.ready(tab,()=>true),cancelled=f.sessions.ready(box,()=>false);t.mock.timers.tick(50);await tick();assert.equal(await loading,true);assert.equal(await cancelled,false);
+ const groups=Reflect.get(f.sessions,'groups') as Map<unknown,{owners:Set<unknown>}>;assert.equal(groups.get(f.file)!.owners.has(box),true);assert.equal(f.sessions.has(box.view),true);
+});
+
+test('Canvas cancelling an initial same-view waiter keeps ownership acquired while it waited',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture(50);t.after(()=>f.dispose());const box=f.add(true),admission=f.sessions.ready(box,()=>true),cancelled=f.sessions.ready(box,()=>false);
+ t.mock.timers.tick(50);await tick();assert.deepEqual(await Promise.all([admission,cancelled]),[true,false]);const groups=Reflect.get(f.sessions,'groups') as Map<unknown,{owners:Set<unknown>}>;assert.equal(groups.get(f.file)!.owners.has(box),true);assert.equal(f.sessions.has(box.view),true);
+});
+test('Canvas a loading native peer arriving during disk verification cannot bypass admission',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),read=f.pauseRead(),admission=f.sessions.ready(box,()=>true);let settled=false;void admission.then(()=>{settled=true;});
+ const tab=f.add();tab.view.lastSavedData=null;tab.view.data=null;read.resolve();await tick();assert.equal(settled,false);const stored=f.files.get(f.file.path)!;tab.view.setData(stored,true);tab.view.lastSavedData=stored;t.mock.timers.tick(25);await tick();assert.equal(await admission,true);assert.equal(f.sessions.has(tab.view),true);assert.equal(f.stats().writes,0);
+});

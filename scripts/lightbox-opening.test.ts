@@ -730,3 +730,13 @@ test('Canvas transfer waits for destination admission before disposing the sourc
   release();await tick();assert.equal(admitted,true);assert.equal(shell.isConnected,false);assert.equal(f.workspace.activeLeaf,destination.destination);
  }finally{release();remove();f.cleanup();await tick();}
 });
+
+test('Canvas failed destination admission unlocks transfer controls and retains the source for retry',async()=>{
+ const f=isolatedTabFixture('canvas');let remove=()=>{};
+ try {
+  await f.open();f.host().events.get('focusin')();const failed=installDestination(f),history=JSON.stringify(f.history);remove=bindNativeCanvasLightboxHooks(f.app,{ready:async leaf=>leaf!==failed.destination,prepare:async()=>true});
+  const shell=clickTab(f);await tick();assert.equal(shell.isConnected,true);assert.equal(shell.inert,false);assert.equal(f.host().inert,false);assert.equal(failed.destination.parent,null);assert.equal(f.workspace.activeLeaf,f.leaf);assert.equal(JSON.stringify(f.history),history);
+  const tabControl=shell.children.find((el:any)=>el.classes.has('operon-task-media-lightbox-tab'));assert.equal(tabControl.disabled,false);
+  remove();remove=()=>{};const retried=installDestination(f);clickTab(f);await tick();assert.equal(shell.isConnected,false);assert.equal(f.workspace.activeLeaf,retried.destination);
+ }finally{remove();f.cleanup();await tick();}
+});

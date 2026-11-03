@@ -122,8 +122,14 @@ export class CanvasLightboxSessions {
   if (getNativeLightboxLeaves(this.app).includes(leaf)) g.owners.add(leaf);
   const group=g,retained=this.has(view);
   if (g.opening) {
-   await g.opening;
-   if (!allowed()) { group.owners.delete(leaf);this.reconcile();return false; }
+   const result=await g.opening;
+   if(!allowed() || !result) {
+    // The view may have been admitted while this caller waited. Cancellation
+    // must not remove that live owner's protection or retry a failed operation.
+    if(!this.has(view))group.owners.delete(leaf);
+    if(result || !group.owners.size)this.reconcile();
+    return false;
+   }
    return this.ready(leaf,allowed);
   }
   if (g.members.has(view) && this.admitted.has(view) && getCanvasWorkspaceLeaves(this.app).filter(l=>(l.view as unknown as TaskCanvasView).file===group.file).every(l=>group.members.has(l.view as unknown as TaskCanvasView))) return allowed();
@@ -132,24 +138,28 @@ export class CanvasLightboxSessions {
    let admitted=false;
    const fence=[...group.members.values()].some(m=>m.ready);
    const loaded=new Map([...group.members.values()].filter(m=>m.ready).map(m=>[m.baseline,m.clean]));
-   if(!this.has(view))loaded.set(this.port.key(JSON.parse(view.lastSavedData!)),this.scene(view));
    let stored='';
    try {
-    for(const peer of getCanvasWorkspaceLeaves(this.app).filter(l=>(l.view as unknown as TaskCanvasView).file===group.file)) {
-     if(group.members.has(peer.view as unknown as TaskCanvasView))continue;
-     const observation=this.observe(group,peer,fence);if(!observation)throw new Error('Canvas native lifecycle unavailable');
-     observations.push(observation);
-    }
+    if(!this.has(view))loaded.set(this.port.key(JSON.parse(view.lastSavedData!)),this.scene(view));
     while(this.active && allowed()) {
+     let loading=false;
      const current=new Set(getCanvasWorkspaceLeaves(this.app));
+     for(const peer of current) {
+      const native=peer.view as unknown as NativeCanvasView;
+      if(native.file!==group.file || group.members.has(native))continue;
+      // Workspace events can expose a native view before its first file read.
+      if(native.lastSavedData===null && native.canvas && typeof native.loadFileInternal==='function') {loading=true;continue;}
+      const observation=this.observe(group,peer,fence);if(!observation)throw new Error('Canvas native lifecycle unavailable');
+      observations.push(observation);
+     }
      for(let i=observations.length-1;i>=0;i--) {
       const m=observations[i].member;
       if(!current.has(m.leaf) || (m.leaf.view as unknown)!==m.view || m.view.file!==m.file) {this.removeMember(group,m);observations.splice(i,1);if(m.leaf===leaf)return false;}
       else if(m.path!==m.file.path && this.app.vault.getAbstractFileByPath(m.file.path)===m.file)m.path=m.file.path;
      }
-     if(observations.every(o=>o.quiet())) {
+     if(!loading && observations.every(o=>o.quiet())) {
       stored=await this.app.vault.read(group.file);
-      if(observations.every(o=>o.quiet())) {
+      if(observations.every(o=>o.quiet()) && getCanvasWorkspaceLeaves(this.app).every(peer=>(peer.view as unknown as TaskCanvasView).file!==group.file || group.members.has(peer.view as unknown as TaskCanvasView))) {
        const disk=this.port.key(JSON.parse(stored));
        if(!this.has(view) && this.port.key(JSON.parse(view.lastSavedData!))!==disk) {
         view.dirty=false;await view.loadFileInternal(group.file,false);
@@ -175,11 +185,14 @@ export class CanvasLightboxSessions {
      if (!getNativeLightboxLeaves(this.app).includes(m.leaf)) m.view.contentEl.inert=false;
     }
     admitted=true;return true;
-   } catch {new Notice(t('notifications','canvasTaskUnavailable'));return false;}
-   finally {if(!admitted)for(const {member} of observations){member.ready=false;this.removeMember(group,member);}group.opening=null;}
+   } catch(error) {console.error('Operon: Canvas lightbox admission failed',error);new Notice(t('notifications','canvasTaskUnavailable'));return false;}
+   finally {if(!admitted)for(const {member} of observations){member.ready=false;this.removeMember(group,member);}}
   };
-  group.opening=run();
-  const result=await group.opening;
+  // run() may fail before its first await. Clear only the published promise,
+  // after assignment, so a resolved failure cannot become a permanent barrier.
+  const opening=group.opening=run();
+  let result:boolean;
+  try{result=await opening;}finally{if(group.opening===opening)group.opening=null;}
   if(!result) {if(!retained)group.owners.delete(leaf);if(!group.owners.size)this.release(group);}
   else {
    notifyNativeLightboxView(this.app);
