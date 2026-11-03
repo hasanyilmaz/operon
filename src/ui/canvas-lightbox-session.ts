@@ -25,8 +25,8 @@ interface SavePort {
 }
 interface Member {
  leaf: WorkspaceLeaf; view: NativeCanvasView; file: TFile; path: string;
- baseline: string; raw: string; ready: boolean; failed: boolean; incoming: boolean;
- closing: boolean; renaming: boolean; active: boolean; refreshing: number; generation: number; schedule: () => void; failure: string | null; pending: Set<Promise<unknown>>; restore: (() => void)[];
+ baseline: string; clean: string; raw: string; ready: boolean; failed: boolean; incoming: boolean;
+ closing: boolean; renaming: boolean; active: boolean; applying: number; generation: number; schedule: () => void; failure: string | null; pending: Set<Promise<unknown>>; restore: (() => void)[];
  cancelTimer: () => void; nativeSave: (...args: unknown[]) => unknown;
 }
 interface Group { file: TFile; members: Map<TaskCanvasView, Member>; owners: Set<WorkspaceLeaf>; opening: Promise<boolean> | null; warned: boolean }
@@ -39,6 +39,9 @@ export class CanvasLightboxSessions {
  private active = true;
  constructor(private readonly app: App, private readonly port: SavePort, private readonly quietMs = 2000) {}
 
+ clean(view:TaskCanvasView):boolean|undefined {
+  const m=this.group(view)?.members.get(view);return m?.ready?this.valid(m)&&!this.group(view)?.opening&&!m.failed&&!m.incoming&&!this.dirty(m):undefined;
+ }
  has(view: TaskCanvasView): boolean { return this.admitted.has(view); }
  private scene(view: TaskCanvasView): string { return this.port.key(view.canvas.getData()); }
  private valid(m: Member): boolean {
@@ -48,7 +51,7 @@ export class CanvasLightboxSessions {
  private idle(m: Member): boolean {
   return !Reflect.get(m.view.canvas, 'isDragging') && ![...m.view.canvas.nodes.values()].some(n => n.isEditing) && (this.port.idle?.(m.view) ?? true);
  }
- private dirty(m: Member): boolean { return this.scene(m.view) !== m.baseline; }
+ private dirty(m: Member): boolean { return this.scene(m.view) !== m.clean; }
  private group(view: TaskCanvasView): Group | undefined { return view.file ? this.groups.get(view.file) : undefined; }
  private conflict(g: Group): boolean {
   const dirty = [...g.members.values()].filter(m => this.valid(m) && this.dirty(m));
@@ -99,7 +102,7 @@ export class CanvasLightboxSessions {
   const view = this.readView(leaf); if (!view || !view.file) return null;
   let lastRequest = Date.now();
   const m: Member = {leaf,view,file:view.file,path:view.file.path,baseline:this.port.key(JSON.parse(view.lastSavedData!)),
-   raw:view.lastSavedData!,ready:false,failed:false,incoming:false,closing:false,renaming:false,active:true,refreshing:0,generation:0,schedule:()=>{},failure:null,pending:new Set(),restore:[],cancelTimer:()=>{},nativeSave:this.port.native(view)};
+   clean:this.port.key(JSON.parse(view.lastSavedData!)),raw:view.lastSavedData!,ready:false,failed:false,incoming:false,closing:false,renaming:false,active:true,applying:0,generation:0,schedule:()=>{},failure:null,pending:new Set(),restore:[],cancelTimer:()=>{},nativeSave:this.port.native(view)};
   g.members.set(view,m);
   if(getNativeLightboxLeaves(this.app).includes(leaf))this.protectPending(view);
   const request = bindNativeLightboxMethod(view,'requestSave');
@@ -107,8 +110,7 @@ export class CanvasLightboxSessions {
   if (fence && !getNativeLightboxLeaves(this.app).includes(leaf)) {
    const inert=view.contentEl.inert;view.contentEl.inert=true;m.restore.push(()=>{view.contentEl.inert=inert;});
   }
-  return {member:m,quiet:()=>Date.now()-lastRequest>=this.quietMs && !view.saving && this.valid(m)
-   && this.scene(view)===this.port.key(JSON.parse(view.lastSavedData!))};
+  return {member:m,quiet:()=>Date.now()-lastRequest>=this.quietMs && !view.saving && this.valid(m)};
  }
  async ready(leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean> {
   const pending=leaf.view as unknown as NativeCanvasView;
@@ -128,6 +130,9 @@ export class CanvasLightboxSessions {
    const observations: {member:Member;quiet:()=>boolean}[]=[];
    let admitted=false;
    const fence=[...group.members.values()].some(m=>m.ready);
+   const loaded=new Map([...group.members.values()].filter(m=>m.ready).map(m=>[m.baseline,m.clean]));
+   if(!this.has(view))loaded.set(this.port.key(JSON.parse(view.lastSavedData!)),this.scene(view));
+   let stored='';
    try {
     for(const peer of getCanvasWorkspaceLeaves(this.app).filter(l=>(l.view as unknown as TaskCanvasView).file===group.file)) {
      if(group.members.has(peer.view as unknown as TaskCanvasView))continue;
@@ -141,16 +146,30 @@ export class CanvasLightboxSessions {
       if(!current.has(m.leaf) || (m.leaf.view as unknown)!==m.view || m.view.file!==m.file) {this.removeMember(group,m);observations.splice(i,1);if(m.leaf===leaf)return false;}
       else if(m.path!==m.file.path && this.app.vault.getAbstractFileByPath(m.file.path)===m.file)m.path=m.file.path;
      }
-     if(observations.every(o=>o.quiet()))break;
+     if(observations.every(o=>o.quiet())) {
+      stored=await this.app.vault.read(group.file);
+      if(observations.every(o=>o.quiet())) {
+       const disk=this.port.key(JSON.parse(stored));
+       if(!this.has(view) && this.port.key(JSON.parse(view.lastSavedData!))!==disk) {
+        view.dirty=false;await view.loadFileInternal(group.file,false);
+        continue;
+       }
+       break;
+      }
+     }
      await new Promise<void>(resolve=>getOwnerWindow(view.contentEl).setTimeout(resolve,25));
     }
     if(!this.active || !allowed())return false;
-    const stored=await this.app.vault.read(group.file);
     if(!allowed())return false;
     const key=this.port.key(JSON.parse(stored));
+    if(!this.has(view)) {
+     loaded.set(key,this.scene(view));
+    }
     for(const {member:m} of observations) {
-     if(!this.valid(m) || this.scene(m.view)!==key)return false;
-     m.raw=stored;m.baseline=key;
+     if(!this.valid(m))return false;
+     m.raw=m.view.lastSavedData!;m.baseline=this.port.key(JSON.parse(m.raw));
+     m.clean=loaded.get(m.baseline)??m.baseline;m.incoming=m.baseline!==key;
+     if(this.scene(m.view)===key){m.raw=stored;m.baseline=key;m.clean=key;m.incoming=false;}
      this.install(group,m);m.ready=true;this.admitted.add(m.view);
      if (!getNativeLightboxLeaves(this.app).includes(m.leaf)) m.view.contentEl.inert=false;
     }
@@ -190,8 +209,8 @@ export class CanvasLightboxSessions {
    if(!this.valid(m) || file!==m.file)return;
    if(!clear && (this.dirty(m) || !this.idle(m))) {m.incoming=true;return;}
    const generation=m.generation;
-   m.incoming=true;m.refreshing++;const pending=load(file,clear);m.pending.add(pending);
-   try{await pending;if(generation!==m.generation)throw new Error('Canvas load owner changed');if(this.valid(m) && !this.dirty(m) && this.idle(m) && typeof v.lastSavedData==='string' && this.port.key(JSON.parse(v.lastSavedData))===m.baseline)m.incoming=false;}finally{m.pending.delete(pending);m.refreshing--;}
+   m.incoming=true;const pending=load(file,clear);m.pending.add(pending);
+   try{await pending;if(generation!==m.generation)throw new Error('Canvas load owner changed');if(this.valid(m) && !this.dirty(m) && this.idle(m) && typeof v.lastSavedData==='string' && this.port.key(JSON.parse(v.lastSavedData))===m.baseline)m.incoming=false;}finally{m.pending.delete(pending);}
   };
   this.wrap(v,'loadFileInternal',reload,m);
   this.wrap(v,'setData',(text:string,clear:boolean)=>{
@@ -200,7 +219,7 @@ export class CanvasLightboxSessions {
    if(!clear && (this.dirty(m) || !this.idle(m)) && this.scene(v)!==this.port.key(JSON.parse(text))) {
     v.lastSavedData=m.raw;m.incoming=true;this.warn(g);return;
    }
-   set(text,clear);m.raw=text;m.baseline=this.port.key(JSON.parse(text));m.incoming=false;v.dirty=false;
+   m.applying++;try{set(text,clear);}finally{m.applying--;}m.raw=text;m.baseline=this.port.key(JSON.parse(text));m.clean=this.scene(v);m.incoming=false;v.dirty=false;
   },m);
   const save=async(clear=false):Promise<void>=>{
    if(!m.active){await previousSave(clear);return;}
@@ -210,7 +229,7 @@ export class CanvasLightboxSessions {
    if(!this.valid(m) || !this.canSave(v))throw new Error('Canvas save preflight blocked');
    if(v.canvas.readonly && this.dirty(m))throw new Error('Canvas is read-only');
    let candidate=this.scene(v);
-   if(candidate===m.baseline) {if(m.incoming)await v.loadFileInternal(m.file,false);if(clear){if(!this.valid(m) || this.dirty(m) || m.incoming)throw new Error('Canvas changed before clear');v.clear();}return;}
+   if(!this.dirty(m)) {if(m.incoming)await v.loadFileInternal(m.file,false);if(clear){if(!this.valid(m) || this.dirty(m) || m.incoming)throw new Error('Canvas changed before clear');v.clear();}return;}
    let attempted=false;
    const work=this.port.write(v,async()=>{
     if(!this.valid(m) || generation!==m.generation || !this.canSave(v))throw new Error('Canvas save owner changed');
@@ -218,20 +237,20 @@ export class CanvasLightboxSessions {
     if(!this.valid(m))throw new Error('Canvas file changed');
     const storedKey=this.port.key(JSON.parse(stored));
     if(storedKey!==m.baseline && storedKey===this.scene(v)) {
-     m.raw=stored;m.baseline=storedKey;v.lastSavedData=stored;v.data=stored;v.dirty=false;m.incoming=false;this.port.confirmed?.(v,stored);
+     m.raw=stored;m.baseline=storedKey;m.clean=storedKey;v.lastSavedData=stored;v.data=stored;v.dirty=false;m.incoming=false;this.port.confirmed?.(v,stored);
      if(clear)v.clear();return;
     }
     if(storedKey!==m.baseline)throw new Error('Canvas baseline changed');
     if (!this.valid(m) || !this.canSave(v)) throw new Error('Canvas changed while waiting');
-    candidate=this.scene(v);v.dirty=true;attempted=true;
+    candidate=this.port.key(JSON.parse(v.getViewData()));v.dirty=true;attempted=true;
     await m.nativeSave(false);
     const deadline=Date.now()+5000;
     while(v.saving){if(Date.now()>=deadline)throw new Error('Canvas save is still pending');await new Promise<void>(resolve=>getOwnerWindow(v.contentEl).setTimeout(resolve,25));}
     const written=await this.app.vault.read(m.file);
     if(!this.valid(m) || generation!==m.generation || this.port.key(JSON.parse(written))!==candidate)throw new Error('Canvas save not confirmed');
-    m.raw=written;m.baseline=candidate;m.failed=false;m.failure=null;
+    m.raw=written;m.baseline=candidate;m.clean=candidate;v.dirty=this.dirty(m);m.failed=false;m.failure=null;
     for(const peer of g.members.values())if(peer!==m && this.valid(peer)) {
-     if(this.scene(peer.view)===candidate) {peer.raw=written;peer.baseline=candidate;peer.view.lastSavedData=written;peer.view.data=written;peer.incoming=false;}
+     if(this.scene(peer.view)===candidate) {peer.raw=written;peer.baseline=candidate;peer.clean=candidate;peer.view.lastSavedData=written;peer.view.data=written;peer.incoming=false;}
      else if(!this.dirty(peer) && this.idle(peer))await peer.view.loadFileInternal(peer.file,false);
      else peer.incoming=true;
     }
@@ -244,7 +263,7 @@ export class CanvasLightboxSessions {
   const schedule=debounce(()=>{void v.save().catch(()=>{new Notice(t('notifications','canvasTaskSaveFailed'));});},2000);
   m.cancelTimer=()=>schedule.cancel();
   m.schedule=()=>schedule();
-  this.wrap(v,'requestSave',()=>{if(!m.active){previousRequest();return;}if(m.refreshing)return;v.dirty=true;this.queue(g);},m);
+  this.wrap(v,'requestSave',()=>{if(!m.active){previousRequest();return;}if(m.applying)return;v.dirty=true;this.queue(g);},m);
   const settle=():void=>{queueMicrotask(()=>{if(m.active && m.incoming && this.valid(m) && !this.dirty(m) && this.idle(m))void reload(m.file,false).catch(()=>{});});};
   for(const event of ['pointerup','pointercancel','focusout','keyup']){v.contentEl.addEventListener(event,settle);m.restore.push(()=>v.contentEl.removeEventListener(event,settle));}
   m.restore.push(()=>schedule.cancel());
@@ -263,7 +282,7 @@ export class CanvasLightboxSessions {
   const first=[...g.members.keys()][0];if(!first)return;
   if (!this.canSave(first)) {for(const m of g.members.values())m.cancelTimer();return;}
   for(const m of g.members.values()) {
-   if(this.valid(m) && this.dirty(m) && !m.failed)m.schedule();
+   if(this.valid(m) && this.dirty(m) && m.view.dirty && !m.failed)m.schedule();
    else m.cancelTimer();
   }
  }
@@ -277,7 +296,7 @@ export class CanvasLightboxSessions {
    try {
     const stored=await this.app.vault.read(m.file),key=this.port.key(JSON.parse(stored));
     if((key!==m.failure && key!==m.baseline) || this.scene(m.view)!==key)return false;
-    m.raw=stored;m.baseline=key;m.view.lastSavedData=stored;m.view.data=stored;m.failed=false;m.failure=null;this.port.confirmed?.(m.view,stored);
+    m.raw=stored;m.baseline=key;m.clean=key;m.view.lastSavedData=stored;m.view.data=stored;m.failed=false;m.failure=null;this.port.confirmed?.(m.view,stored);
    }catch{return false;}
   }
   try {
@@ -306,7 +325,7 @@ export class CanvasLightboxSessions {
    const path=m.file.path,stored=await this.app.vault.read(m.file),key=this.port.key(JSON.parse(stored));
    if(path!==m.file.path || key!==m.baseline && key!==this.scene(m.view))return;
    m.path=path;m.generation++;
-   if(key===this.scene(m.view)){m.baseline=key;m.raw=stored;m.view.lastSavedData=stored;m.view.data=stored;this.port.confirmed?.(m.view,stored);}
+   if(key===this.scene(m.view)){m.baseline=key;m.clean=key;m.raw=stored;m.view.lastSavedData=stored;m.view.data=stored;this.port.confirmed?.(m.view,stored);}
   }catch{this.warn(g);}finally{m.renaming=false;this.queue(g);}
  }
  private removeMember(g:Group,m:Member):void {

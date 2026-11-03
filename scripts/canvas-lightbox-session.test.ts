@@ -19,7 +19,7 @@ const key=(value:unknown):string=>JSON.stringify(value,(_k,v)=>v && typeof v==='
 const scene=(text='initial')=>({nodes:[{id:'n',type:'text',text,x:0,y:0,width:100,height:100}],edges:[]});
 const tick=()=>new Promise<void>(r=>setImmediate(r));
 function deferred(){let resolve!:()=>void;const promise=new Promise<void>(r=>{resolve=r;});return {promise,resolve};}
-function fixture(quietMs=0) {
+function fixture(quietMs=0,normalize=false) {
  const dom=lightboxFixture(),file:any={path:'A.canvas'}, files=new Map([[file.path,JSON.stringify(scene())]]),normal:any[]=[],all:any[]=[];
  let writes=0,imports=0,fail=false,uncertain=false,pause:ReturnType<typeof deferred>|null=null,readPause:ReturnType<typeof deferred>|null=null;
  const objects=new Map<string,any>([[file.path,file]]);
@@ -29,10 +29,10 @@ function fixture(quietMs=0) {
   state=scene();viewport={x:55,y:89,zoom:1.5};selection=new Set(['n']);closed=false;nativeTimer:ReturnType<typeof setTimeout>|null=null;
   canvas:any={getData:()=>this.state,nodes:new Map([['n',{isEditing:false,nodeEl:dom.doc.body.createDiv()}]]),data:this.state,readonly:false,isDragging:false,selection:this.selection};
   requestSave:()=>void;
-  constructor(){const captured=View.prototype.save.bind(this);this.requestSave=()=>{this.dirty=true;if(!this.nativeTimer)this.nativeTimer=setTimeout(()=>{this.nativeTimer=null;void captured().catch(()=>{});},2000);};}
+  constructor(){if(normalize)Object.assign(this.state,{metadata:{version:'1.0-1.0'}});const captured=View.prototype.save.bind(this);this.requestSave=()=>{this.dirty=true;if(!this.nativeTimer)this.nativeTimer=setTimeout(()=>{this.nativeTimer=null;void captured().catch(()=>{});},2000);};}
   getViewType(){return 'canvas';}
   getViewData(){return JSON.stringify(this.canvas.data,null,'\t');}
-  setData(text:string,_clear:boolean){imports++;this.data=text;this.state=JSON.parse(text);this.canvas.data=this.state;}
+  setData(text:string,_clear:boolean){imports++;this.data=text;this.state=JSON.parse(text);if(normalize)Object.assign(this.state,{metadata:{version:'1.0-1.0'}});this.canvas.data=this.state;}
   async loadFileInternal(f:any,clear:boolean){const text=await app.vault.read(f);this.lastSavedData=text;if(text!==this.data||clear)this.setData(text,clear);}
   clear(){this.closed=true;}
   async onUnloadFile(f:any){await this.save(true);if(this.file===f)this.file=null as any;}
@@ -191,4 +191,32 @@ test('Canvas failed admission protects pending owned close before inspecting uns
 });
 test('Canvas duplicate clean native reload settles before native close without formatting writes',async t=>{
  const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);await box.view.loadFileInternal(f.file,false);assert.equal(await f.sessions.prepare(box),true);await box.view.onClose();assert.equal(f.stats().writes,0);
+});
+
+test('Canvas load normalization admits clean peers without persisting metadata or inventing a conflict',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture(0,true);t.after(()=>f.dispose());const tab=f.add(),box=f.add(true);let allowed=true;const opening=f.sessions.ready(box,()=>allowed);await tick();allowed=false;t.mock.timers.tick(25);await tick();assert.equal(await opening,true);
+ t.mock.timers.tick(4000);await tick();assert.equal(f.stats().writes,0);assert.equal(await f.sessions.prepare(box),true);
+ f.edit(tab,'real edit',true);t.mock.timers.tick(2000);await tick();await tick();assert.equal(f.stats().writes,1);assert.equal(box.view.state.nodes[0].text,'real edit');assert.equal(await f.sessions.prepare(box),true);
+});
+test('Canvas a real edit during asynchronous reload retains its native autosave request',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);const read=f.pauseRead(),loading=box.view.loadFileInternal(f.file,false);f.edit(box,'typed during read',true);read.resolve();await loading;t.mock.timers.tick(2000);await tick();assert.equal(f.stats().writes,1);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].text,'typed during read');
+});
+test('Canvas verifies the native queued snapshot when live geometry changes during a later drag',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true);await f.ready(box);f.edit(box,'queued text',true);
+ box.view.state=structuredClone(box.view.state);box.view.state.nodes[0].x=200;box.view.canvas.isDragging=true;t.mock.timers.tick(2000);await tick();assert.equal(f.stats().writes,1);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].x,0);
+ box.view.canvas.isDragging=false;box.view.canvas.data=box.view.state;box.view.requestSave();t.mock.timers.tick(2000);await tick();assert.equal(f.stats().writes,2);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].x,200);assert.equal(await f.sessions.prepare(box),true);
+});
+
+test('Canvas admission rechecks old callback quiet time after refreshing an initially stale owned view',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture(50);t.after(()=>f.dispose());const box=f.add(true);f.files.set(f.file.path,JSON.stringify(scene('disk new')));const tab=f.add();f.edit(tab,'disk new');tab.view.dirty=false;
+ const gate=deferred(),original=f.app.vault.read;let reads=0;f.app.vault.read=async(file:any)=>{const text=await original(file);if(++reads===2)await gate.promise;return text;};let admitted=false;const opening=f.sessions.ready(box,()=>true).then(ok=>{admitted=ok;return ok;});
+ t.mock.timers.tick(50);await tick();f.edit(tab,'edit during owned read',true);gate.resolve();await tick();assert.equal(admitted,false);
+ t.mock.timers.tick(2000);await tick();t.mock.timers.tick(50);await tick();assert.equal(await opening,true);assert.equal(f.stats().writes,1);
+ f.edit(tab,'tab conflict',true);f.edit(box,'box conflict',true);t.mock.timers.tick(2000);await tick();assert.equal(f.stats().writes,1);
+});
+
+test('Canvas unresolved ambiguous save remains unavailable for group operations after Undo',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture();t.after(()=>f.dispose());const box=f.add(true),coordinator=new CanvasGroupSyncCoordinator(),sessions=coordinator.lightboxSessions(f.app);t.after(()=>sessions.dispose());const opening=sessions.ready(box,()=>true);t.mock.timers.tick(2000);await tick();assert.equal(await opening,true);
+ const member=new CanvasGroupSync(box.view,{isCurrent:()=>true} as any,{isBusy:false,reserve:()=>()=>{}} as any,coordinator);Reflect.set(member,'active',true);member.schedule=()=>{};coordinator.add(member);coordinator.acceptBaseline(member,box.view.lastSavedData);
+ f.edit(box,'ambiguous');f.uncertain();await assert.rejects(box.view.save());f.edit(box,'initial');assert.equal(await sessions.prepare(box),false);assert.equal(sessions.clean(box.view),false);assert.equal(coordinator.acquire(member),null);
 });

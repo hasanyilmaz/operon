@@ -73,6 +73,7 @@ export class CanvasGroupSyncCoordinator {
    },
   });
  }
+ isSaved(view:TaskCanvasView):boolean {return this.lightboxes?.clean(view)??saved(view);}
  managesLightboxSave(view: TaskCanvasView): boolean { return this.lightboxes?.has(view) ?? false; }
  async prepareLightbox(app: App, leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean> {
   return this.lightboxSessions(app).ready(leaf, allowed);
@@ -177,14 +178,14 @@ export class CanvasGroupSyncCoordinator {
   if (member.view.file && content !== null) {
    try { this.acceptBaseline(member, content); if (member.current() && this.members.has(member)) this.lastWriters.set(member.view.file, member); } catch { this.saveFailed(member); }
   }
-  if (pending && content !== null && this.accepted.get(member) === pending && member.current() && !member.view.saving && saved(member.view)) {
+  if (pending && content !== null && this.accepted.get(member) === pending && member.current() && !member.view.saving && this.isSaved(member.view)) {
    pending.saved = content;
   }
  }
  acknowledgeLoaded(member: CanvasGroupSync): boolean {
   const path = member.view.file?.path, pending = path ? this.handoffs.get(path) : undefined;
   if (!pending || !path || this.uncertain.has(member) || this.peerWrites.has(member) || this.isLocked(path)
-   || !member.current() || member.view.saving || member.view.lastSavedData === null || !saved(member.view)) return false;
+   || !member.current() || member.view.saving || member.view.lastSavedData === null || !this.isSaved(member.view)) return false;
   const baseline = dataKey(JSON.parse(member.view.lastSavedData));
   if (baseline !== dataKey(JSON.parse(pending.after)) && (!pending.saved || baseline !== dataKey(JSON.parse(pending.saved)))) return false;
   this.acceptBaseline(member, member.view.lastSavedData);
@@ -207,11 +208,12 @@ export class CanvasGroupSyncCoordinator {
   this.accepted.set(member, pending); return true;
  }
  acquire(member: CanvasGroupSync, historyTravel = false): OpenSyncLease | null {
+  if(this.lightboxes && !this.lightboxes.canSave(member.view))return null;
   const path = member.view.file?.path;
   if (!path || this.isLocked(path) || this.saving(path)) return null;
   const peers = [...this.members].filter(peer => peer.view.file?.path === path);
   const shape = dataKey(member.view.canvas.getData());
-  if (peers.some(peer => peers.length > 1 && typeof peer.view.canvas.importData !== 'function' || !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !saved(peer.view))
+  if (peers.some(peer => peers.length > 1 && typeof peer.view.canvas.importData !== 'function' || !peer.current() || peer.interacting || peer.view.saving || (!(historyTravel && peer === member) && !this.isSaved(peer.view))
    || (peer !== member || !historyTravel) && peer.history.isBusy || dataKey(peer.view.canvas.getData()) !== shape)) return null;
   this.locked.add(path);
   this.openOwners.set(path, member);
@@ -471,7 +473,7 @@ export class CanvasGroupSync extends Component {
  acceptPeer(before: string, after: string, history?: SyncHistory, cleanup?: [string, string][]): boolean {
   const canvas = this.canvas, current = dataKey(canvas.getData());
   if (current === after) return true;
-  if (!this.current() || this.interacting || this.history.isBusy || this.view.saving || !saved(this.view)
+  if (!this.current() || this.interacting || this.history.isBusy || this.view.saving || !this.coordinator.isSaved(this.view)
    || current !== before || typeof canvas.importData !== 'function') return false;
   this.applying = true;
   try {
@@ -499,7 +501,7 @@ export class CanvasGroupSync extends Component {
   try {
    if (this.current() && dataKey(JSON.parse(this.view.lastSavedData)) === dataKey(next)) return true;
   } catch { /* An unreadable baseline must still fail the guarded import below. */ }
-  if (!this.current() || this.interacting || this.history.isBusy || !saved(this.view) || current !== dataKey(previous)
+  if (!this.current() || this.interacting || this.history.isBusy || !this.coordinator.isSaved(this.view) || current !== dataKey(previous)
    || typeof canvas.importData !== 'function' || canvas.history.data.length > 1) { this.faulted = true; this.notice('canvasChangedSaveFailed'); return false; }
   this.applying = true;
   try {
