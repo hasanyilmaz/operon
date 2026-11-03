@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "Целевые статусы планирования или отслеживания не могут быть статусами отмены.",
       "cancelledStatusTooltip": "Отметить этот статус как состояние отмены конвейера.",
       "canvasPropertyPoolRows": "Видимые строки",
-      "canvasPropertyPoolRowsDesc": "Количество строк свойств и значений, видимых до прокрутки в Property Pool для Canvas и Excalidraw.",
+      "canvasPropertyPoolRowsDesc": "Количество строк свойств и значений, видимых до прокрутки в Property Pool для Canvas, Excalidraw и Kanban.",
       "canvasPropertyPoolWidth": "Ширина панели",
-      "canvasPropertyPoolWidthDesc": "Общая ширина панелей Property Pool в Canvas и Excalidraw в пикселях, ограниченная доступным пространством.",
+      "canvasPropertyPoolWidthDesc": "Общая ширина панелей Property Pool в Canvas, Excalidraw и Kanban в пикселях, ограниченная доступным пространством.",
       "canvasTaskCardWidth": "Ширина карточек Canvas по умолчанию",
       "canvasTaskCardWidthDesc": "Начальная ширина новых карточек задач Canvas. Существующие карточки сохраняют свой размер.",
       "canvasTaskPool": "Пул задач Canvas",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "Заметка",
       "canvasTaskPoolPin": "Закрепить Task Pool",
       "canvasTaskPoolRows": "Видимые строки",
-      "canvasTaskPoolRowsDesc": "Количество строк задач до прокрутки. (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "Количество строк задач до прокрутки. (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} задач",
       "canvasTaskPoolUnpin": "Открепить и закрыть",
       "canvasTaskPoolWidth": "Ширина панели",
-      "canvasTaskPoolWidthDesc": "Ширина пула задач в пределах доступного пространства. (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "Ширина пула задач в пределах доступного пространства. (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "Проверять новые версии при запуске",
       "checkForUpdatesOnStartupDesc": "Проверять наличие новых совместимых версий Operon при запуске.",
       "checkboxConversion": "Преобразование чекбоксов",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "Пресет «{{name}}»",
       "kanbanPresets": "Пресеты канбана",
       "kanbanPresetsDesc": "Каждый пресет управляет группировкой по столбцам и дорожкам, сохранённым фильтром, порядком сортировки, источником цвета и макетом.",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "Перетащите значение на одну карточку задачи.",
       "kanbanQuickPresetNameDesc": "Отображается на панели инструментов представления канбана.",
       "kanbanScopedTasks": "Задачи в области фильтра",
       "kanbanSettingsDesc": "Настройте пресеты канбана, доску по умолчанию, а также ширину столбцов и высоту ячеек для каждого пресета.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Показывать обычный чип действия чекбокса на карточках канбана, чтобы чекбоксы задачи можно было открывать или создавать с карточки.",
       "kanbanTaskPinActionDesc": "Показывать чип действия закрепления на карточках канбана.",
       "kanbanTaskPlayActionDesc": "Показывать чип действия таймера на карточках канбана, если задачу можно отслеживать по времени.",
+      "kanbanTaskPool": "Пул задач Kanban",
+      "kanbanTaskPoolManualPosition": "Ручной порядок: используется позиция перетаскивания.",
+      "kanbanTaskPoolNoFieldChanges": "Поля не изменятся.",
       "kanbanTaskShowNotesPreview": "Показывать предпросмотр заметок на карточках канбана",
       "kanbanTaskShowNotesPreviewDesc": "Показывает компактный предпросмотр заметки в две строки прямо под описанием задачи, если у карточки канбана есть заметки.",
       "kanbanTaskShowPlainCheckboxProgress": "Показывать прогресс чекбоксов на карточках канбана",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "Со временем",
       "useLastTemplateAsDefault": "Использовать последний шаблон по умолчанию",
       "useLastTemplateAsDefaultDesc": "После успешного создания задачи в Task Creator сохранить использованный шаблон по умолчанию для этого типа задач. Команды и преобразования также используют этот шаблон.",
-      "visualPropertyPool": "Property Pool для Canvas и Excalidraw",
-      "visualTaskPool": "Пул задач Canvas и Excalidraw",
+      "visualPropertyPool": "Property Pool для Canvas, Excalidraw и Kanban",
+      "visualTaskPool": "Пул задач Canvas, Excalidraw и Kanban",
       "weeklyNoteFolder": "Папка еженедельных заметок",
       "weeklyNoteFolderDesc": "Папка еженедельных заметок. Оставьте пустой для корня хранилища.",
       "weeklyNoteFolderPlaceholder": "напр. 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "0b6b9763145e10dcb7ff6ffd17d9f11c41ca2981064fbc0c69d5bb3918bb0058"
+  "sourceVersion": "0bd0623cac86bd6cc9d771e1ffe07a3f62821256b5b058b4716cd752e41e56d7"
 }

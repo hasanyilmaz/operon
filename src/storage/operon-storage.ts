@@ -642,8 +642,16 @@ export class OperonStorage {
 				throw error;
 			}
 		});
-		this.kanbanOrderStore.setPackagePersistence(async () => {
-			await this.saveSettings();
+		this.kanbanOrderStore.setPackagePersistence(async (order, canCommit) => {
+   if (!canCommit) { await this.saveSettings(); return; }
+   const expected = JSON.stringify(this.dataPackageStore.getDataPackage().views.kanbanOrder);
+   await this.enqueueSettingsTransaction(async () => {
+    await this.dataPackageStore.updateDataPackageCas(current => {
+     if (JSON.stringify(current.views.kanbanOrder) !== expected) throw new Error('Kanban order changed');
+     return { ...current, views: { ...current.views, kanbanOrder: order } };
+    }, canCommit);
+    this.kanbanOrderStore.loadFromPackage(this.dataPackageStore.getDataPackage().views.kanbanOrder);
+   });
 		});
 		this.priorityStore.setPackagePersistence(async (settings) => {
 			Object.assign(this.settings, settings);
@@ -993,17 +1001,18 @@ export class OperonStorage {
  }
 
 	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
-	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown): Promise<void> {
+	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown, canCommit: () => boolean = () => true): Promise<void> {
 		const pending = JSON.parse(JSON.stringify(edit)) as PropertyPoolEdit;
 		const expectedSource = JSON.stringify(expected);
 		await this.enqueueSettingsTransaction(async () => {
+   if (!canCommit()) return;
 			if (pending.kind === 'favorite' && pending.saved && !resolvePropertyPoolFavorite(this.settings, pending.favorite)) throw new Error('Property value is unavailable');
 			let committed: unknown;
 			await this.dataPackageStore.updateDataPackageCas(current => {
 				if (JSON.stringify(current.ui.propertyValuePool) !== expectedSource) throw new Error('Property Value Pool settings changed; refresh before saving');
 				committed = editPropertyPoolPreferences(current.ui.propertyValuePool, pending);
 				return { ...current, ui: { ...current.ui, propertyValuePool: committed } };
-			});
+			}, canCommit);
 			this.settings.propertyValuePool = committed;
 		});
 	}

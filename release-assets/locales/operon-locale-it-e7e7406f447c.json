@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "Le destinazioni pianificate o di monitoraggio non possono essere stati annullati.",
       "cancelledStatusTooltip": "Contrassegna questo stato come lo stato annullato della pipeline.",
       "canvasPropertyPoolRows": "Righe visibili",
-      "canvasPropertyPoolRowsDesc": "Righe di proprietà e valori visibili prima dello scorrimento nei Property Pool di Canvas ed Excalidraw.",
+      "canvasPropertyPoolRowsDesc": "Righe di proprietà e valori visibili prima dello scorrimento nei Property Pool di Canvas, Excalidraw e Kanban.",
       "canvasPropertyPoolWidth": "Larghezza pannello",
-      "canvasPropertyPoolWidthDesc": "Larghezza condivisa dei pannelli Property Pool di Canvas ed Excalidraw in pixel, limitata allo spazio disponibile.",
+      "canvasPropertyPoolWidthDesc": "Larghezza condivisa dei pannelli Property Pool di Canvas, Excalidraw e Kanban in pixel, limitata allo spazio disponibile.",
       "canvasTaskCardWidth": "Larghezza predefinita delle schede Canvas",
       "canvasTaskCardWidthDesc": "Larghezza iniziale delle nuove schede attività Canvas. Le schede esistenti mantengono le dimensioni.",
       "canvasTaskPool": "Raccolta attività Canvas",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "Nota",
       "canvasTaskPoolPin": "Fissa Task Pool",
       "canvasTaskPoolRows": "Righe visibili",
-      "canvasTaskPoolRowsDesc": "Righe di attività visibili prima dello scorrimento. (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "Righe di attività visibili prima dello scorrimento. (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} attività",
       "canvasTaskPoolUnpin": "Sblocca e chiudi",
       "canvasTaskPoolWidth": "Larghezza pannello",
-      "canvasTaskPoolWidthDesc": "Larghezza della raccolta attività, limitata allo spazio disponibile. (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "Larghezza della raccolta attività, limitata allo spazio disponibile. (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "Controlla nuove versioni all'avvio",
       "checkForUpdatesOnStartupDesc": "Controlla le versioni compatibili più recenti all'avvio di Operon.",
       "checkboxConversion": "Conversione caselle di controllo",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "Preimpostazione {{name}}",
       "kanbanPresets": "Preimpostazioni Kanban",
       "kanbanPresetsDesc": "Ogni preimpostazione controlla il raggruppamento per colonne e corsie, il filtro salvato, l'ordine, l'origine del colore e il layout.",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "Trascina il valore su una singola scheda attività.",
       "kanbanQuickPresetNameDesc": "Mostrato nella barra degli strumenti della vista kanban.",
       "kanbanScopedTasks": "Attività nell’ambito",
       "kanbanSettingsDesc": "Configura le preimpostazioni Kanban, la bacheca predefinita e la larghezza delle colonne e l'altezza delle celle per ogni preimpostazione.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Mostra il chip azione casella di controllo normale sulle schede Kanban in modo che le caselle di controllo dell'attività possano essere aperte o create dalla scheda.",
       "kanbanTaskPinActionDesc": "Mostra il chip azione fissaggio sulle schede Kanban.",
       "kanbanTaskPlayActionDesc": "Mostra il chip azione timer sulle schede Kanban quando l'attività può essere cronometrata.",
+      "kanbanTaskPool": "Pool attività Kanban",
+      "kanbanTaskPoolManualPosition": "Ordine manuale: viene usata la posizione di rilascio.",
+      "kanbanTaskPoolNoFieldChanges": "Nessuna modifica ai campi.",
       "kanbanTaskShowNotesPreview": "Mostra anteprima note sulle schede Kanban",
       "kanbanTaskShowNotesPreviewDesc": "Mostra un'anteprima nota compatta di due righe direttamente sotto la descrizione dell'attività quando una scheda Kanban ha note.",
       "kanbanTaskShowPlainCheckboxProgress": "Mostra avanzamento caselle di controllo sulle schede Kanban",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "Con orario",
       "useLastTemplateAsDefault": "Usa l’ultimo modello utilizzato come predefinito",
       "useLastTemplateAsDefaultDesc": "Dopo la creazione riuscita in Task Creator, salva il modello utilizzato come predefinito per questo tipo di attività. Anche i comandi e le conversioni usano questo modello.",
-      "visualPropertyPool": "Property Pool di Canvas ed Excalidraw",
-      "visualTaskPool": "Pool attività Canvas ed Excalidraw",
+      "visualPropertyPool": "Property Pool di Canvas, Excalidraw e Kanban",
+      "visualTaskPool": "Pool attività Canvas, Excalidraw e Kanban",
       "weeklyNoteFolder": "Cartella delle note settimanali",
       "weeklyNoteFolderDesc": "Cartella delle note settimanali. Lascia vuoto per la radice del vault.",
       "weeklyNoteFolderPlaceholder": "es. 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "74432de35b23e4ade324b99cdc1a58ee8884faf5fc3b80bee3fcb6f0b63a9651"
+  "sourceVersion": "34957f521a26cc412df818aeb37816b8e25509407005cd3d51c1b5c0183ffa75"
 }

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Task Pool and Property Value Pool to Kanban**, sharing search, favorites, pinning, and settings with Canvas and Excalidraw. Both support mouse and long-press touch dragging.
+- Drag existing tasks from **Task Pool** into a Kanban cell to apply its column and swimlane values, preserving existing list memberships and respecting the drop position when using manual sorting.
+- Drag **Property Value Pool** values onto an individual task card to update its fields, including board grouping fields. The pool stays open so more values can be applied without losing its search or selection.
+- **Task Pool drop tooltips** show which fields will change, which list values will be added, whether only the manual position will change, and why a cell cannot accept the task. Both pools show filter warnings only when the updated task no longer matches the board filter.
+
 ### Improved
 
 - **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
@@ -19,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Kanban pools passed full local Plugin checks, **155/155** pool tests, **85/85** cell-action tests, **8/8** targeted local regression groups, isolated browser checks, code review, and manual UI acceptance.
 - Custom key reuse passed full local Plugin checks, **71/71** focused tests, **1/1** targeted local regression check, and code review.
 - Inline task key serialization passed local Plugin checks, **179/179** creation tests, **1/1** targeted local regression check, code review, and manual UI acceptance.
 - Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.

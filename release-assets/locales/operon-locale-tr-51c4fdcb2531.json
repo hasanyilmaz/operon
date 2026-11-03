@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "Planlandı veya takip hedefleri iptal durumu olamaz.",
       "cancelledStatusTooltip": "Bu durumu akış iptal durumu olarak işaretle.",
       "canvasPropertyPoolRows": "Görünür satırlar",
-      "canvasPropertyPoolRowsDesc": "Canvas ve Excalidraw Property Pool panellerinde kaydırmadan önce görünen özellik ve değer satırı sayısı.",
+      "canvasPropertyPoolRowsDesc": "Canvas, Excalidraw ve Kanban Property Pool panellerinde kaydırmadan önce görünen özellik ve değer satırı sayısı.",
       "canvasPropertyPoolWidth": "Panel genişliği",
-      "canvasPropertyPoolWidthDesc": "Canvas ve Excalidraw Property Pool panellerinin kullanılabilir alanla sınırlanan ortak piksel genişliği.",
+      "canvasPropertyPoolWidthDesc": "Canvas, Excalidraw ve Kanban Property Pool panellerinin kullanılabilir alanla sınırlanan ortak piksel genişliği.",
       "canvasTaskCardWidth": "Varsayılan Canvas kart genişliği",
       "canvasTaskCardWidthDesc": "Yeni Canvas görev kartlarının başlangıç genişliği. Mevcut kartlar boyutlarını korur.",
       "canvasTaskPool": "Canvas Task Pool",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "Not",
       "canvasTaskPoolPin": "Task Pool’u sabitle",
       "canvasTaskPoolRows": "Görünür satırlar",
-      "canvasTaskPoolRowsDesc": "Kaydırmadan önce görünen task satırı sayısı. (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "Kaydırmadan önce görünen task satırı sayısı. (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} task",
       "canvasTaskPoolUnpin": "Sabitlemeyi kaldır ve kapat",
       "canvasTaskPoolWidth": "Panel genişliği",
-      "canvasTaskPoolWidthDesc": "Canvas / Excalidraw Task Pool genişliği; kullanılabilir alanı aşmaz.",
+      "canvasTaskPoolWidthDesc": "Canvas / Excalidraw / Kanban Task Pool genişliği; kullanılabilir alanı aşmaz.",
       "checkForUpdatesOnStartup": "Başlangıçta yeni sürümleri kontrol et",
       "checkForUpdatesOnStartupDesc": "Operon başladığında daha yeni uyumlu Operon sürümlerini kontrol eder.",
       "checkboxConversion": "Onay Kutusu Dönüşümü",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "{{name}} Ön ayar",
       "kanbanPresets": "Kanban Ön ayarları",
       "kanbanPresetsDesc": "Her ön ayar sütun ve kulvar gruplamasını, kayıtlı filtreyi, sıralamayı, renk kaynağını ve düzeni belirler.",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "Değeri tek bir görev kartına bırakın.",
       "kanbanQuickPresetNameDesc": "Kanban görünüm araç çubuğu içinde gösterilir.",
       "kanbanScopedTasks": "Kapsamdaki görevler",
       "kanbanSettingsDesc": "Kanban ön ayarlarını, varsayılan panoyu ve her ön ayarın sütun genişliği ile hücre yüksekliğini ayarlayın.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Görev onay kutuları karttan açılabilsin veya oluşturulabilsin diye Kanban kartlarında normal onay kutusu eylem simgesini gösterir.",
       "kanbanTaskPinActionDesc": "Kanban kartlarında sabitleme eylem simgesini gösterir.",
       "kanbanTaskPlayActionDesc": "Görev zamanlanabiliyorsa Kanban kartlarında zamanlayıcı eylem simgesini gösterir.",
+      "kanbanTaskPool": "Kanban Görev Havuzu",
+      "kanbanTaskPoolManualPosition": "Manuel sıralama: bırakma konumu kullanılır.",
+      "kanbanTaskPoolNoFieldChanges": "Alan değişikliği yok.",
       "kanbanTaskShowNotesPreview": "Kanban kartlarında not önizlemesini göster",
       "kanbanTaskShowNotesPreviewDesc": "Kanban kartında not varsa görev açıklamasının hemen altında kompakt iki satırlık not önizlemesi gösterir.",
       "kanbanTaskShowPlainCheckboxProgress": "Kanban kartlarında onay kutusu ilerlemesini göster",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "Saatli",
       "useLastTemplateAsDefault": "Son kullanılan şablonu varsayılan yap",
       "useLastTemplateAsDefaultDesc": "Task Creator ile görev başarıyla oluşturulduğunda kullanılan şablonu bu görev türünün varsayılanı olarak kaydeder. Komutlar ve dönüştürme de bu varsayılanı kullanır.",
-      "visualPropertyPool": "Canvas ve Excalidraw Property Pool",
-      "visualTaskPool": "Canvas ve Excalidraw Görev Havuzu",
+      "visualPropertyPool": "Canvas, Excalidraw ve Kanban Property Pool",
+      "visualTaskPool": "Canvas, Excalidraw ve Kanban Görev Havuzu",
       "weeklyNoteFolder": "Haftalık not klasörü",
       "weeklyNoteFolderDesc": "Operon'un haftalık notları oluşturacağı klasör. Kasa kökü için boş bırakın.",
       "weeklyNoteFolderPlaceholder": "örn. 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "e9556bcd9be48191a5c3d1ba6aec0af8e8c4cbc7183c1418cde5316e477189ab"
+  "sourceVersion": "5f8d5f7e950ba0a36fa504be032d4c9cbce3e24ca1b014387480c30afc8f8b71"
 }

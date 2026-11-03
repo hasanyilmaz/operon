@@ -91,9 +91,11 @@ for (const [name, body] of [
 
 equal(
 	(mainSource.match(/updatePluginUiTaskStatusAndRefresh\(/gu) ?? []).length,
-	10,
-	'The helper has nine UI call sites including Kanban placement and Excalidraw chips plus its declaration.',
+	9,
+	'The helper has eight UI call sites; Kanban pool and cell placement share the guarded drop executor.',
 );
+includes(extractFunctionBlock(mainSource, 'private async assignTaskToKanbanCell('), 'this.placeExistingTaskInKanbanCell(', 'Cell selection shares the pool placement path.');
+includes(extractFunctionBlock(mainSource, 'private async placeExistingTaskInKanbanCell('), 'this.handleKanbanCardDrop(', 'Pool placement shares status, recurrence and timer guards.');
 includes(helperBody, 'this.timeTracker.stopActiveWithExternalTaskMutation(', 'Terminal status writes finalize active timers transactionally.');
 includes(helperBody, '{ ...payload, ...timerPayload }', 'Authoritative timer fields override stale UI payload fields.');
 includes(helperBody, "timerResult === 'task-committed-tracker-clear-failed'", 'A committed task write survives active-tracker cleanup failure.');

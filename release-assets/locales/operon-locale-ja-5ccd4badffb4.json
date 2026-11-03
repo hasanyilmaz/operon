@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "予定または記録ターゲットはキャンセルステータスにできません。",
       "cancelledStatusTooltip": "このステータスをワークフローのキャンセル状態としてマークします。",
       "canvasPropertyPoolRows": "表示行数",
-      "canvasPropertyPoolRowsDesc": "CanvasとExcalidrawのProperty Poolでスクロール前に表示するプロパティと値の行数。",
+      "canvasPropertyPoolRowsDesc": "Canvas、Excalidraw、KanbanのProperty Poolでスクロール前に表示するプロパティと値の行数。",
       "canvasPropertyPoolWidth": "パネルの幅",
-      "canvasPropertyPoolWidthDesc": "CanvasとExcalidrawのProperty Poolで共有するパネル幅（ピクセル）。利用可能な領域に制限されます。",
+      "canvasPropertyPoolWidthDesc": "Canvas、Excalidraw、KanbanのProperty Poolで共有するパネル幅（ピクセル）。利用可能な領域に制限されます。",
       "canvasTaskCardWidth": "Canvasカードの既定の幅",
       "canvasTaskCardWidthDesc": "新しいCanvasタスクカードの初期幅。既存のカードのサイズは変わりません。",
       "canvasTaskPool": "Canvas タスクプール",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "ノート",
       "canvasTaskPoolPin": "Task Pool を固定",
       "canvasTaskPoolRows": "表示行数",
-      "canvasTaskPoolRowsDesc": "スクロールせずに表示するタスクの行数。 (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "スクロールせずに表示するタスクの行数。 (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} タスク",
       "canvasTaskPoolUnpin": "固定を解除して閉じる",
       "canvasTaskPoolWidth": "パネルの幅",
-      "canvasTaskPoolWidthDesc": "利用可能な領域に収まるタスクプールの幅。 (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "利用可能な領域に収まるタスクプールの幅。 (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "起動時に新しいバージョンを確認",
       "checkForUpdatesOnStartupDesc": "Operon の起動時に、より新しい互換バージョンを確認します。",
       "checkboxConversion": "チェックボックスの変換",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "{{name}} プリセット",
       "kanbanPresets": "カンバンプリセット",
       "kanbanPresetsDesc": "各プリセットは、列とスイムレーンのグループ化、保存済みフィルター、並べ替え順、カラーソース、レイアウトを制御します。",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "値を1枚のタスクカードにドロップしてください。",
       "kanbanQuickPresetNameDesc": "カンバンビューのツールバーに表示されます。",
       "kanbanScopedTasks": "範囲内のタスク",
       "kanbanSettingsDesc": "カンバンのプリセット、デフォルトのボード、および各プリセットの列幅とセルの高さを設定します。",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Kanban カードに通常のチェックボックスアクションチップを表示し、カードからタスクのチェックボックスを開いたり作成したりできるようにします。",
       "kanbanTaskPinActionDesc": "Kanban カードにピン留めアクションチップを表示します。",
       "kanbanTaskPlayActionDesc": "タスクを計測できる場合に、Kanban カードにタイマーアクションチップを表示します。",
+      "kanbanTaskPool": "Kanbanタスクプール",
+      "kanbanTaskPoolManualPosition": "手動並べ替え：ドロップした位置を使用します。",
+      "kanbanTaskPoolNoFieldChanges": "フィールドの変更はありません。",
       "kanbanTaskShowNotesPreview": "Kanban カードにノートプレビューを表示",
       "kanbanTaskShowNotesPreviewDesc": "Kanban カードにノートがある場合、タスク説明の直下にコンパクトな 2 行のノートプレビューを表示します。",
       "kanbanTaskShowPlainCheckboxProgress": "Kanban カードにチェックボックス進捗を表示",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "時刻指定",
       "useLastTemplateAsDefault": "最後に使用したテンプレートを既定にする",
       "useLastTemplateAsDefaultDesc": "Task Creatorでタスクを正常に作成した後、使用したテンプレートをこのタスクの種類の既定として保存します。コマンドや変換でもこの既定が使用されます。",
-      "visualPropertyPool": "CanvasとExcalidrawのProperty Pool",
-      "visualTaskPool": "CanvasとExcalidrawのタスクプール",
+      "visualPropertyPool": "Canvas、Excalidraw、KanbanのProperty Pool",
+      "visualTaskPool": "Canvas、Excalidraw、Kanbanのタスクプール",
       "weeklyNoteFolder": "ウィークリーノートのフォルダー",
       "weeklyNoteFolderDesc": "ウィークリーノートのフォルダー。保管庫ルートには空欄にします。",
       "weeklyNoteFolderPlaceholder": "例 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c763c1ae19c95e0ce49ff83f0c9e405a812c70ca4cb66d7758500cb912812f70"
+  "sourceVersion": "07de74723a11ae82fe7b7dcdd9e246e1ead523416edfbb75eabd6d5746c5b885"
 }

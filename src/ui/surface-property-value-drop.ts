@@ -32,6 +32,9 @@ export interface PropertyDropSurface {
  supported(): boolean;
  unavailable?(): string;
  busy(): boolean;
+ /** Optional view-owned lease; held through persistence, never through another gesture. */
+ interaction?: { begin(): () => void; update(x: number, y: number): void; invalidDrop(): void };
+ scopedClickSuppression?: boolean;
  targetAt(x: number, y: number): PropertyDropTarget | null;
  apply(plan: PropertyPoolTaskPlan, allowed: () => boolean, notice: (result: PropertyPoolTaskResult) => void): Promise<PropertyPoolTaskResult>;
  bindTheme?(element: HTMLElement, lifetime: Component): void;
@@ -95,10 +98,14 @@ export class SurfacePropertyValueDrop extends Component {
 		doc.addEventListener('keydown', key, true); doc.addEventListener('pointerdown', additional, true);
 		win.addEventListener('resize', cancel); viewport?.addEventListener('resize', cancel); viewport?.addEventListener('scroll', cancel);
 	}
-	private suppressTouchClick(doc: Document): void {
+	private suppressTouchClick(doc: Document, targets?: readonly (Element | null)[]): void {
 		this.clearTouchSuppression?.();
 		const win = doc.defaultView!;
-		const stop = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); };
+		const stop = (event: Event) => {
+   if (targets && !targets.some(target => target && event.target instanceof win.Node && target.contains(event.target))) return;
+   event.preventDefault(); event.stopImmediatePropagation();
+   if (targets && event.type === 'click') clear();
+  };
 		const clear = () => { win.clearTimeout(timer); doc.removeEventListener('click', stop, true); doc.removeEventListener('contextmenu', stop, true); doc.removeEventListener('pointerdown', clear, true); this.clearTouchSuppression = null; };
 		const timer = win.setTimeout(clear, 400);
 		doc.addEventListener('click', stop, true); doc.addEventListener('contextmenu', stop, true); doc.addEventListener('pointerdown', clear, true);
@@ -109,6 +116,12 @@ export class SurfacePropertyValueDrop extends Component {
 		const file = this.surface.file(), path = file?.path, canvas = this.surface.identity();
 		const { width, height, icon } = appearance;
 		const readonly = this.surface.readOnly();
+  const releaseInteraction = this.surface.interaction?.begin();
+  let interactionReleased = false;
+  const release = () => { if (!interactionReleased) { interactionReleased = true; releaseInteraction?.(); } };
+  let frame: number | null = null;
+  let latest = { clientX: event.clientX, clientY: event.clientY };
+  let releaseHit: Element | null = null;
   const groupCanvas = this.surface.groups?.canvas();
   const theme = new Component(); theme.load();
 		const valid = () => this.active && alive() && this.surface.isCurrent() && this.surface.file() === file && file?.path === path && this.surface.identity() === canvas && this.surface.readOnly() === readonly;
@@ -125,7 +138,7 @@ export class SurfacePropertyValueDrop extends Component {
     || groupCanvas.canvasControlsEl?.contains(hit) || groupCanvas.cardMenuEl?.contains(hit)) return false;
    return ![...groupCanvas.nodes.values()].some(node => (node as { labelEl?: HTMLElement }).labelEl?.contains(hit) || node.nodeEl.contains(hit) && node.getData().type !== 'group');
   };
-  const updateGroup = (next: PointerEvent) => {
+  const updateGroup = (next: { clientX: number; clientY: number }) => {
    highlighted?.nodeEl.classList.remove('operon-canvas-group-drop-target'); highlighted = null;
    group = null; lastClient = null;
    if (!groupCanvas || !this.surface.groups?.prepare || !backgroundAt(next.clientX, next.clientY)) { clearGroup(); return; }
@@ -152,7 +165,7 @@ export class SurfacePropertyValueDrop extends Component {
 		const clearTarget = () => { preparation++; tooltip?.close(); tooltip = null; target = null; plan = null; };
   const targetAt = (x: number, y: number) => this.surface.targetAt(x, y);
   const sameTarget = (a: PropertyDropTarget | null, b: PropertyDropTarget | null) => !!a && !!b && a.id === b.id && a.taskId === b.taskId && a.nodeEl === b.nodeEl && a.current() && b.current();
-		const update = (next: PointerEvent) => {
+		const update = (next: { clientX: number; clientY: number }) => {
 			if (!valid() || group?.current && !group.current()) { cancel(); return; }
 			const node = targetAt(next.clientX, next.clientY);
 			if (!node) {
@@ -190,7 +203,7 @@ export class SurfacePropertyValueDrop extends Component {
 			if (next.pointerId !== event.pointerId) return;
 			if (!touch && (next.buttons & 1) === 0) { cancel(); return; }
 			if (!moved && Math.hypot(next.clientX - event.clientX, next.clientY - event.clientY) < 5) return;
-			moved = true; next.preventDefault(); next.stopImmediatePropagation();
+			moved = true; latest = { clientX: next.clientX, clientY: next.clientY }; next.preventDefault(); next.stopImmediatePropagation();
 			showGhost(next.clientX, next.clientY);
 			update(next);
 		};
@@ -208,27 +221,39 @@ export class SurfacePropertyValueDrop extends Component {
 			ghost.style.left = `${Math.max(left + 8, Math.min(x + 14, left + (viewport?.width ?? win.innerWidth) - ghost.offsetWidth - 8))}px`;
 			ghost.style.top = `${Math.max(top + 8, Math.min(y + 14, top + (viewport?.height ?? win.innerHeight) - ghost.offsetHeight - 8))}px`;
 		};
-		const cancel = () => {
+  const tick = () => {
+   frame = null;
+   if (!valid()) { cancel(); return; }
+   if (moved) { this.surface.interaction?.update(latest.clientX, latest.clientY); update(latest); }
+   frame = win.requestAnimationFrame(tick);
+  };
+		const cancel = (retainInteraction: boolean | Event = false) => {
+   if (frame !== null) win.cancelAnimationFrame(frame); frame = null;
 			doc.removeEventListener('pointermove', move, true); doc.removeEventListener('pointerup', up, true);
 			doc.removeEventListener('pointercancel', pointerCancel, true); doc.removeEventListener('pointerdown', additional, true);
 			doc.removeEventListener('keydown', key, true); win.removeEventListener('blur', cancel); win.removeEventListener('resize', cancel);
 			win.visualViewport?.removeEventListener('resize', cancel); win.visualViewport?.removeEventListener('scroll', cancel);
 			doc.removeEventListener('visibilitychange', visibility); doc.removeEventListener('contextmenu', context, true);
-			if (touch) this.suppressTouchClick(doc);
+			if (this.surface.scopedClickSuppression && moved) this.suppressTouchClick(doc, [event.target as Element, releaseHit]);
+   else if (touch && !this.surface.scopedClickSuppression) this.suppressTouchClick(doc);
 			theme.unload(); ghost?.remove(); clearTarget(); clearGroup(); this.cancelDrag = null;
+   if (retainInteraction !== true) release();
 		};
 		const up = (next: PointerEvent) => {
 			if (next.pointerId !== event.pointerId) return;
 			if (moved) { next.preventDefault(); next.stopImmediatePropagation(); }
 			// Never prepare a new, unseen mutation at release time.
 			const captured = plan, node = target, candidate = group;
+   releaseHit = doc.elementFromPoint(next.clientX, next.clientY);
    const point = groupCanvas?.posFromClient?.({ x: next.clientX, y: next.clientY });
    const create = moved && valid() && !node && candidate && !this.groupBlocked && !this.busy && this.writable()
     && lastClient?.x === next.clientX && lastClient.y === next.clientY && backgroundAt(next.clientX, next.clientY)
     && point?.x === candidate.point.x && point.y === candidate.point.y && !candidate.reason();
 			const apply = moved && valid() && node && sameTarget(node, targetAt(next.clientX, next.clientY)) && captured && !captured.reason && !node.readOnly?.() && this.writable();
-			cancel();
-			if (apply && node && captured) void this.commit(captured, node, valid);
+   const invalid = moved && valid() && !targetAt(next.clientX, next.clientY);
+			cancel(!!apply);
+			if (apply && node && captured) void this.commit(captured, node, valid).finally(release);
+   else if (invalid && this.surface.interaction) this.surface.interaction.invalidDrop();
    else if (create && candidate) {
     this.busy = true;
     const sessionRevision = this.groupSession;
@@ -254,6 +279,7 @@ export class SurfacePropertyValueDrop extends Component {
 		win.visualViewport?.addEventListener('resize', cancel); win.visualViewport?.addEventListener('scroll', cancel);
 		doc.addEventListener('visibilitychange', visibility); doc.addEventListener('contextmenu', context, true);
 		if (touch) showGhost(event.clientX, event.clientY);
+  if (this.surface.interaction) frame = win.requestAnimationFrame(tick);
 	}
  private async commit(plan: PropertyPoolTaskPlan, node: PropertyDropTarget, alive: () => boolean): Promise<void> {
   if (this.busy || this.surface.busy()) return;

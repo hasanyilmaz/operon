@@ -24534,6 +24534,17 @@ button.operon-kanban-toolbar-settings-button {
 	position: relative;
 }
 
+.operon-kanban-pool-controls {
+ position: absolute;
+ top: 50%;
+ right: 15px;
+ transform: translateY(-50%);
+ z-index: 10;
+ display: flex;
+ flex-direction: column;
+ gap: 8px;
+}
+
 .operon-kanban-cell-height-controls {
 	position: absolute;
 	bottom: 83px;
@@ -24542,6 +24553,18 @@ button.operon-kanban-toolbar-settings-button {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+}
+
+.operon-kanban-board.has-separated-pool-size-controls .operon-kanban-cell-height-controls {
+ top: 50%;
+ bottom: auto;
+ transform: translateY(-50%);
+ gap: var(--operon-kanban-pool-clearance);
+ pointer-events: none;
+}
+
+.operon-kanban-board.has-separated-pool-size-controls .operon-kanban-cell-height-button {
+ pointer-events: auto;
 }
 
 .operon-kanban-cell-width-controls {
@@ -37335,3 +37358,11 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-scope-card:is(:hover, :focus-within) > button.operon-status-dock-name { padding-right: 40px; }
 
 .operon-status-dock .operon-status-dock-scope-timer:is(:hover, :focus-visible):not(:disabled) { border-color: var(--background-modifier-border); }
+
+/* Only Kanban pool task bodies use the shared long-press gesture; controls keep taps. */
+.operon-kanban-pool-draggable,
+.operon-kanban-pool-draggable .operon-canvas-task-pool-title { touch-action: none; -webkit-touch-callout: none; }
+.operon-kanban-pool-draggable .operon-canvas-task-pool-meta,
+.operon-kanban-pool-draggable .operon-canvas-task-pool-status { touch-action: pan-y; }
+
+.operon-kanban-card.is-property-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }

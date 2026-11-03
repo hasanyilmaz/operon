@@ -2,6 +2,12 @@ import type { KanbanPreset } from '../types/kanban';
 import type { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
 
+/** Source snapshot captured when a pool gesture starts, independent of index object identity. */
+export function kanbanPoolSourceSignature(task: IndexedTask): string {
+ return JSON.stringify([task.operonId, task.primary, task.description, task.checkbox,
+  Object.entries(task.fieldValues).sort(([a], [b]) => a.localeCompare(b)), task.tags, task.datetimeModified]);
+}
+
 export type KanbanDropSettlement =
 	| 'target'
 	| 'recurrence-replacement'

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "Los destinos programados o de registro no pueden ser estados cancelados.",
       "cancelledStatusTooltip": "Marcar este estado como el estado cancelado del flujo de trabajo.",
       "canvasPropertyPoolRows": "Filas visibles",
-      "canvasPropertyPoolRowsDesc": "Filas de propiedades y valores visibles antes de desplazarse en los Property Pool de Canvas y Excalidraw.",
+      "canvasPropertyPoolRowsDesc": "Filas de propiedades y valores visibles antes de desplazarse en los Property Pool de Canvas, Excalidraw y Kanban.",
       "canvasPropertyPoolWidth": "Ancho del panel",
-      "canvasPropertyPoolWidthDesc": "Ancho compartido de los paneles Property Pool de Canvas y Excalidraw en píxeles, limitado al espacio disponible.",
+      "canvasPropertyPoolWidthDesc": "Ancho compartido de los paneles Property Pool de Canvas, Excalidraw y Kanban en píxeles, limitado al espacio disponible.",
       "canvasTaskCardWidth": "Ancho predeterminado de tarjetas Canvas",
       "canvasTaskCardWidthDesc": "Ancho inicial de las nuevas tarjetas de tareas de Canvas. Las tarjetas existentes conservan su tamaño.",
       "canvasTaskPool": "Grupo de tareas de Canvas",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "Nota",
       "canvasTaskPoolPin": "Fijar Task Pool",
       "canvasTaskPoolRows": "Filas visibles",
-      "canvasTaskPoolRowsDesc": "Filas de tareas visibles antes de desplazarse. (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "Filas de tareas visibles antes de desplazarse. (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} tareas",
       "canvasTaskPoolUnpin": "Desfijar y cerrar",
       "canvasTaskPoolWidth": "Ancho del panel",
-      "canvasTaskPoolWidthDesc": "Ancho del grupo de tareas, limitado por el espacio disponible. (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "Ancho del grupo de tareas, limitado por el espacio disponible. (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "Buscar nuevas versiones al iniciar",
       "checkForUpdatesOnStartupDesc": "Buscar versiones compatibles más recientes cuando se inicia Operon.",
       "checkboxConversion": "Conversión de casillas",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "Preajuste {{name}}",
       "kanbanPresets": "Preajustes de Kanban",
       "kanbanPresetsDesc": "Cada preajuste controla la agrupación por columnas y carriles, el filtro guardado, el orden, el origen del color y la disposición.",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "Suelta el valor sobre una sola tarjeta de tarea.",
       "kanbanQuickPresetNameDesc": "Se muestra en la barra de herramientas de la vista de kanban.",
       "kanbanScopedTasks": "Tareas en el ámbito",
       "kanbanSettingsDesc": "Configura los preajustes de Kanban, el tablero predeterminado y el ancho de columna y la altura de celda de cada preajuste.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Mostrar el chip de acción de casilla normal en las tarjetas Kanban para que las casillas de la tarea se puedan abrir o crear desde la tarjeta.",
       "kanbanTaskPinActionDesc": "Mostrar el chip de acción de fijar en las tarjetas Kanban.",
       "kanbanTaskPlayActionDesc": "Mostrar el chip de acción de temporizador en las tarjetas Kanban cuando la tarea se puede cronometrar.",
+      "kanbanTaskPool": "Grupo de tareas de Kanban",
+      "kanbanTaskPoolManualPosition": "Orden manual: se usa la posición donde se suelta.",
+      "kanbanTaskPoolNoFieldChanges": "No hay cambios en los campos.",
       "kanbanTaskShowNotesPreview": "Mostrar vista previa de notas en tarjetas Kanban",
       "kanbanTaskShowNotesPreviewDesc": "Muestra una vista previa compacta de dos líneas bajo la descripción de la tarea cuando una tarjeta Kanban tiene notas.",
       "kanbanTaskShowPlainCheckboxProgress": "Mostrar progreso de casillas en tarjetas Kanban",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "Con hora",
       "useLastTemplateAsDefault": "Usar la última plantilla utilizada como predeterminada",
       "useLastTemplateAsDefaultDesc": "Tras crear una tarea correctamente en Task Creator, guardar la plantilla utilizada como predeterminada para este tipo de tarea. Los comandos y las conversiones también usan esta plantilla.",
-      "visualPropertyPool": "Property Pool de Canvas y Excalidraw",
-      "visualTaskPool": "Grupo de tareas de Canvas y Excalidraw",
+      "visualPropertyPool": "Property Pool de Canvas, Excalidraw y Kanban",
+      "visualTaskPool": "Grupo de tareas de Canvas, Excalidraw y Kanban",
       "weeklyNoteFolder": "Carpeta de notas semanales",
       "weeklyNoteFolderDesc": "Carpeta de notas semanales. Déjala vacía para la raíz de la bóveda.",
       "weeklyNoteFolderPlaceholder": "p. ej. 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "4c3ab8170b085ce6fb23d56e63b011eff1e87d72fbccd6ec9ea74f5128749679"
+  "sourceVersion": "4ba317b49fdf46e8d81f7faa97073527edff49949b635be0122342deaf3d25e6"
 }

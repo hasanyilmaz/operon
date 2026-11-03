@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "Les cibles planifiées ou de suivi ne peuvent pas être des statuts annulés.",
       "cancelledStatusTooltip": "Marquer ce statut comme l'état annulé du pipeline.",
       "canvasPropertyPoolRows": "Lignes visibles",
-      "canvasPropertyPoolRowsDesc": "Nombre de lignes de propriétés et de valeurs visibles avant défilement dans les Property Pool de Canvas et Excalidraw.",
+      "canvasPropertyPoolRowsDesc": "Nombre de lignes de propriétés et de valeurs visibles avant défilement dans les Property Pool de Canvas, Excalidraw et Kanban.",
       "canvasPropertyPoolWidth": "Largeur du panneau",
-      "canvasPropertyPoolWidthDesc": "Largeur commune des panneaux Property Pool de Canvas et Excalidraw en pixels, limitée à l’espace disponible.",
+      "canvasPropertyPoolWidthDesc": "Largeur commune des panneaux Property Pool de Canvas, Excalidraw et Kanban en pixels, limitée à l’espace disponible.",
       "canvasTaskCardWidth": "Largeur par défaut des cartes Canvas",
       "canvasTaskCardWidthDesc": "Largeur initiale des nouvelles cartes de tâche Canvas. Les cartes existantes conservent leur taille.",
       "canvasTaskPool": "Réserve de tâches Canvas",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "Note",
       "canvasTaskPoolPin": "Épingler Task Pool",
       "canvasTaskPoolRows": "Lignes visibles",
-      "canvasTaskPoolRowsDesc": "Nombre de lignes de tâches visibles avant le défilement. (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "Nombre de lignes de tâches visibles avant le défilement. (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} tâches",
       "canvasTaskPoolUnpin": "Détacher et fermer",
       "canvasTaskPoolWidth": "Largeur du panneau",
-      "canvasTaskPoolWidthDesc": "Largeur de la réserve de tâches, limitée par l’espace disponible. (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "Largeur de la réserve de tâches, limitée par l’espace disponible. (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "Rechercher de nouvelles versions au démarrage",
       "checkForUpdatesOnStartupDesc": "Rechercher des versions compatibles plus récentes au démarrage d'Operon.",
       "checkboxConversion": "Conversion des cases à cocher",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "Préréglage {{name}}",
       "kanbanPresets": "Préréglages Kanban",
       "kanbanPresetsDesc": "Chaque préréglage contrôle le regroupement en colonnes et en couloirs, le filtre enregistré, l'ordre de tri, la source de couleur et la disposition.",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "Déposez la valeur sur une seule carte de tâche.",
       "kanbanQuickPresetNameDesc": "Affiché dans la barre d'outils de la vue Kanban.",
       "kanbanScopedTasks": "Tâches du périmètre",
       "kanbanSettingsDesc": "Configurez les préréglages Kanban, le tableau par défaut ainsi que la largeur des colonnes et la hauteur des cellules de chaque préréglage.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "Affiche la puce d'action de case à cocher normale sur les cartes Kanban afin que les cases de la tâche puissent être ouvertes ou créées depuis la carte.",
       "kanbanTaskPinActionDesc": "Affiche la puce d'action d'épinglage sur les cartes Kanban.",
       "kanbanTaskPlayActionDesc": "Affiche la puce d'action de minuterie sur les cartes Kanban lorsque la tâche peut être chronométrée.",
+      "kanbanTaskPool": "Réservoir de tâches Kanban",
+      "kanbanTaskPoolManualPosition": "Ordre manuel : la position de dépôt est utilisée.",
+      "kanbanTaskPoolNoFieldChanges": "Aucune modification des champs.",
       "kanbanTaskShowNotesPreview": "Afficher l'aperçu des notes sur les cartes Kanban",
       "kanbanTaskShowNotesPreviewDesc": "Affiche un aperçu compact de note sur deux lignes directement sous la description de la tâche lorsqu'une carte Kanban contient des notes.",
       "kanbanTaskShowPlainCheckboxProgress": "Afficher la progression des cases à cocher sur les cartes Kanban",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "Avec horaire",
       "useLastTemplateAsDefault": "Utiliser le dernier modèle utilisé par défaut",
       "useLastTemplateAsDefaultDesc": "Après une création réussie dans Task Creator, enregistrer le modèle utilisé comme modèle par défaut pour ce type de tâche. Les commandes et conversions utilisent aussi ce modèle.",
-      "visualPropertyPool": "Property Pool de Canvas et Excalidraw",
-      "visualTaskPool": "Réservoir de tâches Canvas et Excalidraw",
+      "visualPropertyPool": "Property Pool de Canvas, Excalidraw et Kanban",
+      "visualTaskPool": "Réservoir de tâches Canvas, Excalidraw et Kanban",
       "weeklyNoteFolder": "Dossier des notes hebdomadaires",
       "weeklyNoteFolderDesc": "Dossier des notes hebdomadaires. Laisser vide pour la racine du coffre.",
       "weeklyNoteFolderPlaceholder": "ex. 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "38bd570c33d8dccd2db3c1c5a47d7170219569e035a1c376a82340ea80fcd473"
+  "sourceVersion": "9436cdeaad9dccdb814204bc29035c6a336f862a1be048108917c49a70b1d5a3"
 }

@@ -18,7 +18,7 @@ export class KanbanOrderStore {
 	private app: App;
 	private writeQueue: WriteQueue;
 	private boards: Record<string, KanbanManualOrderBoard> = {};
-	private packagePersist: ((kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>) | null = null;
+	private packagePersist: ((kanbanOrder: OperonKanbanOrderPackageV1, canCommit?: () => boolean) => Promise<void>) | null = null;
 	private mutationQueue: Promise<void> = Promise.resolve();
 
 	constructor(app: App, writeQueue: WriteQueue) {
@@ -30,7 +30,7 @@ export class KanbanOrderStore {
 		return buildOperonPluginStoragePath(this.app.vault.configDir, 'data', KANBAN_ORDER_FILE_NAME);
 	}
 
-	setPackagePersistence(persist: (kanbanOrder: OperonKanbanOrderPackageV1) => Promise<void>): void {
+	setPackagePersistence(persist: (kanbanOrder: OperonKanbanOrderPackageV1, canCommit?: () => boolean) => Promise<void>): void {
 		this.packagePersist = persist;
 	}
 
@@ -93,11 +93,12 @@ export class KanbanOrderStore {
 		presetId: string,
 		expectedCells: KanbanManualOrderBoard,
 		cells: KanbanManualOrderBoard,
+  canCommit?: () => boolean,
 	): Promise<boolean> {
 		return await this.enqueueMutation(async () => {
 			const current = this.boards[presetId] ?? {};
-			if (!boardCellsMatch(current, expectedCells)) return false;
-			await this.replaceCellsAndPersist(presetId, cells);
+			if (canCommit && !canCommit() || !boardCellsMatch(current, expectedCells)) return false;
+			await this.replaceCellsAndPersist(presetId, cells, canCommit);
 			return true;
 		});
 	}
@@ -118,12 +119,22 @@ export class KanbanOrderStore {
 	private async replaceBoardAndPersist(
 		presetId: string,
 		board: KanbanManualOrderBoard,
+  canCommit?: () => boolean,
 	): Promise<void> {
 		const previous = cloneBoard(this.boards[presetId] ?? {});
 		const normalized = cloneBoard(board);
+  if (canCommit && this.packagePersist) {
+   const next = this.toPackage();
+   if (Object.keys(normalized).length) next.boards[presetId] = normalized;
+   else delete next.boards[presetId];
+   // Do not expose speculative order to unrelated settings saves while queued.
+   await this.packagePersist(next, () => canCommit() && boardsEqual(this.boards[presetId] ?? {}, previous));
+   if (boardsEqual(this.boards[presetId] ?? {}, previous)) this.setBoard(presetId, normalized);
+   return;
+  }
 		this.setBoard(presetId, normalized);
 		try {
-			await this.persist();
+			await this.persist(canCommit);
 		} catch (error) {
 			if (boardsEqual(this.boards[presetId] ?? {}, normalized)) {
 				this.setBoard(presetId, previous);
@@ -135,6 +146,7 @@ export class KanbanOrderStore {
 	private async replaceCellsAndPersist(
 		presetId: string,
 		cells: KanbanManualOrderBoard,
+  canCommit?: () => boolean,
 	): Promise<void> {
 		const board = cloneBoard(this.boards[presetId] ?? {});
 		for (const [cellKey, taskIds] of Object.entries(cells)) {
@@ -142,7 +154,7 @@ export class KanbanOrderStore {
 			if (normalized.length > 0) board[cellKey] = normalized;
 			else delete board[cellKey];
 		}
-		await this.replaceBoardAndPersist(presetId, board);
+		await this.replaceBoardAndPersist(presetId, board, canCommit);
 	}
 
 	private setBoard(presetId: string, board: KanbanManualOrderBoard): void {
@@ -150,9 +162,9 @@ export class KanbanOrderStore {
 		else delete this.boards[presetId];
 	}
 
-	private async persist(): Promise<void> {
+	private async persist(canCommit?: () => boolean): Promise<void> {
 		if (this.packagePersist) {
-			await this.packagePersist(this.toPackage());
+			await this.packagePersist(this.toPackage(), canCommit);
 			return;
 		}
 		const adapter = this.app.vault.adapter;
@@ -162,6 +174,7 @@ export class KanbanOrderStore {
 		};
 		const filePath = this.getFilePath();
 		await this.writeQueue.enqueue(`${filePath}::__store__`, async () => {
+			if (canCommit && !canCommit()) throw new Error('Kanban order context changed');
 			await writeJsonSafely(adapter, filePath, data);
 		});
 	}

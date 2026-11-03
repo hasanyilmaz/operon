@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "일정 지정 또는 추적 대상은 취소 상태가 될 수 없습니다.",
       "cancelledStatusTooltip": "이 상태를 파이프라인의 취소 상태로 지정합니다.",
       "canvasPropertyPoolRows": "표시할 행 수",
-      "canvasPropertyPoolRowsDesc": "Canvas 및 Excalidraw 속성 풀에서 스크롤 전에 표시할 속성 및 값의 행 수입니다.",
+      "canvasPropertyPoolRowsDesc": "Canvas, Excalidraw 및 Kanban 속성 풀에서 스크롤 전에 표시할 속성 및 값의 행 수입니다.",
       "canvasPropertyPoolWidth": "패널 너비",
-      "canvasPropertyPoolWidthDesc": "Canvas 및 Excalidraw 속성 풀의 공통 패널 너비(픽셀)입니다. 사용 가능한 공간으로 제한됩니다.",
+      "canvasPropertyPoolWidthDesc": "Canvas, Excalidraw 및 Kanban 속성 풀의 공통 패널 너비(픽셀)입니다. 사용 가능한 공간으로 제한됩니다.",
       "canvasTaskCardWidth": "기본 Canvas 카드 너비",
       "canvasTaskCardWidthDesc": "새 Canvas 작업 카드의 초기 너비입니다. 기존 카드는 크기를 유지합니다.",
       "canvasTaskPool": "Canvas 작업 풀",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "노트",
       "canvasTaskPoolPin": "작업 풀 고정",
       "canvasTaskPoolRows": "표시할 행 수",
-      "canvasTaskPoolRowsDesc": "Canvas/Excalidraw 작업 풀에서 스크롤 전에 표시할 작업 행 수입니다.",
+      "canvasTaskPoolRowsDesc": "Canvas/Excalidraw/Kanban 작업 풀에서 스크롤 전에 표시할 작업 행 수입니다.",
       "canvasTaskPoolSummary": "작업 {{total}}개 중 {{visible}}개",
       "canvasTaskPoolUnpin": "고정 해제 후 닫기",
       "canvasTaskPoolWidth": "패널 너비",
-      "canvasTaskPoolWidthDesc": "Canvas/Excalidraw 작업 풀 너비(픽셀)입니다. 사용 가능한 공간으로 제한됩니다.",
+      "canvasTaskPoolWidthDesc": "Canvas/Excalidraw/Kanban 작업 풀 너비(픽셀)입니다. 사용 가능한 공간으로 제한됩니다.",
       "checkForUpdatesOnStartup": "시작 시 새 릴리스 확인",
       "checkForUpdatesOnStartupDesc": "Operon 시작 시 GitHub를 한 번 확인하고 호환되는 새 릴리스가 있으면 알립니다.",
       "checkboxConversion": "체크박스 변환",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "{{name}} 프리셋",
       "kanbanPresets": "칸반 프리셋",
       "kanbanPresetsDesc": "각 프리셋은 열과 스윔레인 그룹화, 저장된 필터, 정렬 순서, 색상 소스 및 레이아웃을 제어합니다.",
+      "kanbanPropertyPool": "Kanban 속성 풀",
+      "kanbanPropertyPoolCardOnly": "값을 하나의 작업 카드에 놓으세요.",
       "kanbanQuickPresetNameDesc": "칸반 보기 도구 모음에 표시됩니다.",
       "kanbanScopedTasks": "범위 내 작업",
       "kanbanSettingsDesc": "칸반 프리셋, 기본 보드, 프리셋별 열 너비와 셀 높이를 설정합니다.",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "카드에서 작업 체크박스를 열거나 만들 수 있도록 칸반 카드에 일반 체크박스 동작 칩을 표시합니다.",
       "kanbanTaskPinActionDesc": "칸반 카드에 고정 동작 칩을 표시합니다.",
       "kanbanTaskPlayActionDesc": "시간을 측정할 수 있는 작업의 칸반 카드에 타이머 동작 칩을 표시합니다.",
+      "kanbanTaskPool": "Kanban 작업 풀",
+      "kanbanTaskPoolManualPosition": "수동 정렬: 놓은 위치를 사용합니다.",
+      "kanbanTaskPoolNoFieldChanges": "필드 변경 사항이 없습니다.",
       "kanbanTaskShowNotesPreview": "칸반 카드에 노트 미리보기 표시",
       "kanbanTaskShowNotesPreviewDesc": "칸반 카드에 노트가 있으면 작업 설명 바로 아래에 두 줄의 간결한 미리보기를 표시합니다.",
       "kanbanTaskShowPlainCheckboxProgress": "칸반 카드에 체크박스 진행률 표시",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "시간 지정",
       "useLastTemplateAsDefault": "마지막 사용 템플릿을 기본값으로 사용",
       "useLastTemplateAsDefaultDesc": "작업 생성기에서 생성에 성공하면 사용한 템플릿을 해당 작업 유형의 기본값으로 저장합니다. 명령어와 변환에서도 이 기본값을 사용합니다.",
-      "visualPropertyPool": "Canvas 및 Excalidraw 속성 풀",
-      "visualTaskPool": "Canvas 및 Excalidraw 작업 풀",
+      "visualPropertyPool": "Canvas, Excalidraw 및 Kanban 속성 풀",
+      "visualTaskPool": "Canvas, Excalidraw 및 Kanban 작업 풀",
       "weeklyNoteFolder": "주간 노트 폴더",
       "weeklyNoteFolderDesc": "Operon이 주간 노트를 만들 폴더입니다. 비워 두면 보관함 루트를 사용합니다.",
       "weeklyNoteFolderPlaceholder": "예: 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "51b0dcd3037c7980b59e84002c76b96b37b6895b8b5c1b308f412113032dded6"
+  "sourceVersion": "1b8d5de59ffa5b832f0b4ab5eb10193a9a46347428fde0e298958bb1a05724a2"
 }

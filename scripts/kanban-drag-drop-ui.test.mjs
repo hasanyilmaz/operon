@@ -132,11 +132,11 @@ test('manual drag behavior resolves source and target column sorting independent
 	assert.match(viewSource, /this\.getColumnSorting\(preset, targetStatusId\)\.sortMode === 'manual'/u);
 	assert.match(mainSource, /const sourceIsManual = context\.sourceStatusId[\s\S]*?orderingBoard\?\.getSorting\(context\.sourceStatusId\)/u);
 	assert.match(mainSource, /const targetIsManual = orderingBoard\?\.getSorting\(context\.targetStatusId\)/u);
-	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual, this\.isKanbanTaskAtDropSource\(/u);
+	assert.match(mainSource, /buildKanbanManualDropOrderCells\(preset, context, sourceIsManual, targetIsManual, !placement && this\.isKanbanTaskAtDropSource\(/u);
 });
 
 test('a stale board source is rejected before manual-order or Plugin-native writes', () => {
-	const sourceFence = mainSource.indexOf('if (!this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context))');
+	const sourceFence = mainSource.indexOf('if (!placement && !this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context))');
 	const manualOrderBuild = mainSource.indexOf('const sourceIsManual', sourceFence);
 	const manualOrderApply = mainSource.indexOf('await persistManualOrderIfCurrent()', sourceFence);
 	const pluginWrite = mainSource.indexOf('updatePluginUiTaskStatusAndRefresh', sourceFence);

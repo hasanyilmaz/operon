@@ -1,3 +1,7 @@
+import { kanbanCellPlanPreview } from '../src/ui/kanban/kanban-axis-labels';
+import { kanbanPoolSourceSignature, KanbanCardOperationRegistry, classifyKanbanDropSettlement } from '../src/systems/kanban-drop-transaction';
+import { KanbanOrderStore } from '../src/storage/kanban-order-store';
+import { applyPropertyPoolTask, preparePropertyPoolTask, propertyPoolTaskSignature } from '../src/core/property-pool-task-operation';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { PreparedTaskCreatorDraft } from '../src/ui/task-creator-prepared-draft';
@@ -217,7 +221,12 @@ for(const mode of ['native-only','rename-native','rename-recurring','recurrence-
  const p=planned(buildKanbanCellPlan({axes:{version:1,columns:axis('Value','number','native'),swimlanes:mode==='native-only'?null:axis('description')},
   target:{columns:value(0),swimlanes:mode==='native-only'?null:value('Renamed')},task:original,settings:f.s,access:createKanbanPropertyAccess(f.s,f.native)}));
  const payload={...p.payload,...(mode==='rename-recurring'||mode==='recurrence-conflict'?{status:`${f.s.pipelines[0].name}.${f.s.pipelines[0].statuses.find(st=>st.isFinished)!.label}`,_checkbox:'done',dateCompleted:'2026-10-27'}:{})};
- const result=await probe.updateTaskFieldsAndRefresh(original.operonId,payload,{filePropertyDraft:p.filePropertyDraft,expectedFieldValues:p.expectedFieldValues,canCommit:()=>true});
+ let ownedRename: string | null = null, renameSignals = 0;
+ const result=await probe.updateTaskFieldsAndRefresh(original.operonId,payload,{filePropertyDraft:p.filePropertyDraft,expectedFieldValues:p.expectedFieldValues,
+  canCommit:()=>f.file.path==='Notes.md'||f.file.path===ownedRename,
+  onFileSourceRenamed:(path:string)=>{assert.equal(path,f.file.path);assert.equal(path,'Renamed.md');ownedRename=path;renameSignals++;},
+ });
+ assert.equal(renameSignals,mode==='native-only'||mode==='recurrence-conflict'?0:1);
  assert.equal(result,mode!=='recurrence-conflict');
  if(mode==='recurrence-conflict'){assert.equal(f.writes(),0);assert.equal(renames,0);}
  else {assert.equal(f.writes(),1);assert.equal(renames,mode==='native-only'?0:1);assert.equal(aggregates,1);assert.equal(relations,1);assert.equal(f.current().fieldValues.datetimeModified,'2026-10-27T12:00:00');assert.ok(f.content().includes('Value: 0'));}
@@ -322,5 +331,109 @@ for(const key of ['contexts','assignees'] as const){
   assert.throws(()=>applyKanbanOptimisticMovesToBoard(board,s.priorities,[move],s.keyMappings),/cannot be represented losslessly/);
   assert.deepEqual({cells:board.cellMap,counts:board.cellCountMap,columns:board.columns,lanes:board.lanes},boardBefore);
   assert.deepEqual(original,before);
+ });
+}
+
+for (const format of ['inline','yaml'] as const) for (const rows of [false,true]) for (const manual of [false,true]) test(`joint real writer ${format} rows=${rows} manual=${manual}: Task Pool → Property Pool → native card`, async () => {
+ const f = await fixture(format, 'text');
+ try {
+  let orderWrites = 0, feedback = 0;
+  const order = new KanbanOrderStore(f.app, {} as any); order.setPackagePersistence(async (_data, allowed) => { assert.notEqual(allowed?.(), false); orderWrites++; });
+  const preset = { id: 'joint', pipelineId: '', swimlaneBy: rows ? 'contexts' : null, filterSetId: 'filter' };
+  const deps = { kanbanPoolSourceSignature, classifyKanbanDropSettlement, createKanbanPropertyAccess, kanbanPayloadMatchesPlan,
+   buildKanbanDropBoardSignature: (p: unknown) => JSON.stringify(p), getNativePropertyIndex: () => f.native,
+   attachKanbanDropFailureCause: (e: Error) => e, isPluginUiMutationCommitted: (v: string) => v === 'committed',
+   buildKanbanCellKey, isSpecialDynamicFilterSet: () => false, Notice: class {}, t: (_g: string,k: string) => k };
+  const host = integration(['handleKanbanCardDrop','placeExistingTaskInKanbanCell','applyKanbanPropertyValue','getKanbanFilterSetForPool','kanbanCellWriteOptions','buildKanbanManualDropOrderCells','insertKanbanTaskIdBefore'],deps);
+  const axes = { version: 1 as const, columns: axis('taskType'), swimlanes: rows ? axis('contexts','list') : null };
+  Object.assign(host, { app:f.app, settings:{...f.s,filterSets:[{id:'filter'}]}, indexer:f.indexer, writer:f.writer, storage:{kanbanOrder:order}, kanbanCellOperations:new KanbanCardOperationRegistry(),
+   getKanbanPresetForLeaf:()=>preset, resolveKanbanTargetStatus:()=>null, resolveKanbanRecurrenceReplacement:()=>null, guardTaskStatusChangeOrShow:async()=>true,
+   isKanbanTaskAtDropSource:(task:IndexedTask,_lane:unknown,c:any)=>task.fieldValues.taskType===c.sourceStatusValue,
+   isKanbanTaskAtDropTarget:(task:IndexedTask,_p:unknown,_lane:unknown,c:any)=>task.fieldValues.taskType===c.targetStatusId,
+   prepareLegacyKanbanCellPlan:async(task:IndexedTask,_p:unknown,column:string)=>planned(buildKanbanCellPlan({axes,target:{columns:value(column),swimlanes:rows?value('Home'):null},task,settings:f.s,access:createKanbanPropertyAccess(f.s,f.native)})),
+   queryKanbanBoardForOrder:()=>({getSorting:()=>({sortMode:manual?'manual':'auto'}),getCellTasks:(column:string)=>f.current().fieldValues.taskType===column?[f.current()]:[]}),
+   updatePluginUiTaskStatusAndRefresh:async(id:string,payload:Record<string,string>,options:any)=>{
+    const wrote=await f.writer.writeTaskFields(id,payload,{...options,reindex:'none'});await f.refresh();return wrote?'committed':'cancelled';
+   },
+   refreshViews:()=>{},maybeOpenKanbanEditorForFilterMismatch:async()=>{feedback++;},openEditorForId:()=>{},showPluginUiMutationOutcome:()=>{},
+  });
+  const prepare=(favorite:any)=>preparePropertyPoolTask(f.s,f.current(),favorite,p=>p,()=>false);
+  host.applyCanvasPropertyValue=(plan:any,_direction:string,allowed:()=>boolean)=>applyPropertyPoolTask(plan,'drop',allowed,{
+   read:()=>f.current(),signature:favorite=>propertyPoolTaskSignature(f.s,favorite),prepare:(_id,favorite)=>prepare(favorite),blocked:()=>false,
+   write:(id,next,expected,canCommit)=>f.writer.writeTaskFields(id,next,{expectedFieldValues:expected,canCommit,reindex:'none'}),
+   matches:(id,expected)=>f.writer.taskFieldsMatchCurrentSource(id,expected),refresh:async()=>{await f.refresh();return true;},
+  });
+  const context:any={taskId:'abc1234',presetId:preset.id,boardSignature:JSON.stringify(preset),sourceStatusId:null,sourceLaneKey:'',targetStatusId:'Pool',targetLaneKey:'lane',targetBeforeTaskId:null};
+  assert.equal(await host.placeExistingTaskInKanbanCell({}, {context,sourceSignature:kanbanPoolSourceSignature(f.current()),isCurrent:()=>true}),true);
+  assert.equal(f.current().fieldValues.taskType,'Pool');const orderBefore=order.toPackage(), orderCount=orderWrites;
+  for (const favorite of [{key:'contexts',type:'list',value:'Office',label:'Office'},{key:'taskType',type:'text',value:'Other',label:'Other'}]) {
+   assert.equal((await host.applyKanbanPropertyValue({},prepare(favorite),()=>true)).status,'committed');
+  }
+  const writes=f.writes();assert.equal((await host.applyKanbanPropertyValue({},prepare({key:'contexts',type:'list',value:'Office',label:'Office'}),()=>true)).status,'unchanged');assert.equal(f.writes(),writes);
+  assert.deepEqual(order.toPackage(),orderBefore);assert.equal(orderWrites,orderCount);
+  assert.equal(f.current().fieldValues.taskType,'Other');assert.deepEqual(parseListValue(f.current().fieldValues.contexts),rows?['Home','Office']:['Office']);
+  const native=await host.handleKanbanCardDrop({}, {...context,sourceStatusId:'Other',sourceStatusValue:'Other',sourceLaneKey:'lane',targetStatusId:'Native'});
+  assert.equal(native.status,'committed');assert.equal(f.current().fieldValues.taskType,'Native');assert.equal(f.current().operonId,'abc1234');
+  assert.deepEqual(parseListValue(f.current().fieldValues.contexts),rows?['Home','Office']:['Office']);
+  assert.equal(f.writes(),4);assert.equal(feedback,3);assert.ok(f.content().includes(format==='inline'?'Neighbor':'Unrelated: keep'));
+  assert.equal(host.kanbanCellOperations.isTaskPending('abc1234'),false);
+ } finally { f.native.dispose(); }
+});
+
+
+test('Task Pool preview shows both scalar axes and preserves the plan', () => {
+ const current = task({ note: 'before', location: 'old' });
+ const f = setup(axis('note'), axis('location'), value('after'), value('new'), current);
+ const p = planned(buildKanbanCellPlan(f.input)), before = JSON.stringify([p,current]);
+ const preview = kanbanCellPlanPreview(p, f.s, false, current);
+ assert.match(preview, /before → after/); assert.match(preview, /old → new/);
+ assert.equal(JSON.stringify([p,current]), before);
+});
+test('Task Pool preview lists only new members once and distinguishes no-op manual ordering', () => {
+ const f = setup(axis('tags','list'), axis('tags','list'), value('book'), value('action'), task({},['book']));
+ const preview = kanbanCellPlanPreview(planned(buildKanbanCellPlan(f.input)),f.s,false,f.input.task!);
+ assert.match(preview,/\+action/); assert.doesNotMatch(preview,/\+book/); assert.equal(preview.split('+action').length,2);
+ f.input.target.swimlanes = value('book');
+ const noop=planned(buildKanbanCellPlan(f.input)); assert.equal(noop.state,'noop');
+ assert.equal(kanbanCellPlanPreview(noop,f.s,false,f.input.task!),'No field changes.');
+ assert.match(kanbanCellPlanPreview(noop,f.s,true,f.input.task!),/Manual order: use the drop position/);
+});
+test('Task Pool preview includes status dates and checkbox without duplicating an explicit date axis', () => {
+ const current=task({dateCancelled:'2026-10-01'}),f=setup(axis('note'),null,value('unused'),null,current);
+ const pipeline=f.s.pipelines[0],done=pipeline.statuses.find(s=>s.isFinished)!;
+ f.input.axes.columns={kind:'status',pipelineId:pipeline.id};f.input.target.columns={kind:'status',pipelineId:pipeline.id,id:done.id};
+ f.input.axes.swimlanes=axis('dateCompleted','date');f.input.target.swimlanes=value('2026-10-26');
+ const preview=kanbanCellPlanPreview(planned(buildKanbanCellPlan(f.input)),f.s,false,f.input.task!);
+ assert.match(preview,/\[ \] → \[x\]/); assert.match(preview,/2026-10-01 → —/);
+ assert.equal(preview.split('2026-10-26').length,2);
+});
+for(const format of ['inline','yaml'] as const)for(const [type,target] of samples)test(`Task Pool preview ${format} native ${type} matches the persisted plan`,async()=>{
+ const f=await fixture(format,type),current=f.current(),access=createKanbanPropertyAccess(f.s,f.native);
+ const p=planned(buildKanbanCellPlan({axes:{version:1,columns:axis('Value',type,'native'),swimlanes:axis('note')},target:{columns:value(target),swimlanes:value('joined')},task:current,access,settings:f.s}));
+ const preview=kanbanCellPlanPreview(p,f.s,false,current);
+ assert.ok(preview.includes('Value:'));assert.ok(preview.includes(String(target)));assert.equal(f.writes(),0);
+ assert.equal(await f.writer.writeTaskFields(current.operonId,p.payload,{mode:'merge',reindex:'none',touchAncestors:false,expectedFieldValues:p.expectedFieldValues,...(format==='inline'?{inlinePropertyDraft:p.inlinePropertyDraft}:{filePropertyDraft:p.filePropertyDraft})}),true);
+ assert.equal(f.writes(),1);
+});
+test('Task Pool preview explains blocked targets and explicit clearing',()=>{
+ const f=setup(axis('estimate','number'),null,empty,null,task({estimate:'0'}));
+ assert.match(kanbanCellPlanPreview(planned(buildKanbanCellPlan(f.input)),f.s,false,f.input.task!),/0 → —/);
+ const blocked=buildKanbanCellPlan(setup(axis('tags','list'),null,empty,null,task({},['book'])).input);
+ assert.equal(blocked.state,'blocked');assert.doesNotMatch(kanbanCellPlanPreview(blocked,f.s,false,f.input.task!),/No field changes/);
+});
+
+for (const before of ['open','done','cancelled'] as const) for (const after of ['open','done','cancelled'] as const) {
+ if (before === after) continue;
+ test(`Task Pool preview YAML checkbox ${before} to ${after} uses real source state`, () => {
+  const current=task(), f=setup(axis('note'),null,value('unused'),null,current);
+  current.primary.format='yaml';current.checkbox=before;
+  const pipeline=f.s.pipelines[0];const state=(status:any)=>status.isFinished?'done':status.isCancelled?'cancelled':'open';
+  const initial=pipeline.statuses.find(status=>state(status)===before)!;
+  const target=pipeline.statuses.find(status=>state(status)===after)!;assert.ok(initial&&target);
+  current.fieldValues.status=`${pipeline.name}.${initial.label}`;
+  f.input.axes.columns={kind:'status',pipelineId:pipeline.id};f.input.target.columns={kind:'status',pipelineId:pipeline.id,id:target.id};
+  const plan=planned(buildKanbanCellPlan(f.input));assert.equal(plan.expectedFieldValues._checkbox,undefined);
+  const box=(value:string)=>value==='done'?'[x]':value==='cancelled'?'[-]':'[ ]';
+  assert.ok(kanbanCellPlanPreview(plan,f.s,false,current).includes(`${box(before)} → ${box(after)}`));
  });
 }

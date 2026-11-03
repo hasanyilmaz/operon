@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3761,
-  "keyFingerprint": "b1e7400ce518e8bd8b732e1a7388d8a567114f6d12b5c1e7e0ec7be8c731bd30",
+  "keyCount": 3766,
+  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1235,9 +1235,9 @@
       "cancelledStatusAutomationTooltip": "计划目标或追踪目标不能作为已取消状态。",
       "cancelledStatusTooltip": "将此状态标记为工作流的已取消状态。",
       "canvasPropertyPoolRows": "可见行数",
-      "canvasPropertyPoolRowsDesc": "Canvas 和 Excalidraw Property Pool 在滚动前显示的属性和值行数。",
+      "canvasPropertyPoolRowsDesc": "Canvas、Excalidraw 和 Kanban Property Pool 在滚动前显示的属性和值行数。",
       "canvasPropertyPoolWidth": "面板宽度",
-      "canvasPropertyPoolWidthDesc": "Canvas 和 Excalidraw Property Pool 共享的面板宽度（像素），受可用空间限制。",
+      "canvasPropertyPoolWidthDesc": "Canvas、Excalidraw 和 Kanban Property Pool 共享的面板宽度（像素），受可用空间限制。",
       "canvasTaskCardWidth": "Canvas 卡片默认宽度",
       "canvasTaskCardWidthDesc": "新建 Canvas 任务卡片的初始宽度。现有卡片将保留其大小。",
       "canvasTaskPool": "Canvas 任务池",
@@ -1247,11 +1247,11 @@
       "canvasTaskPoolNote": "笔记",
       "canvasTaskPoolPin": "固定 Task Pool",
       "canvasTaskPoolRows": "可见行数",
-      "canvasTaskPoolRowsDesc": "滚动前可见的任务行数。 (Canvas / Excalidraw)",
+      "canvasTaskPoolRowsDesc": "滚动前可见的任务行数。 (Canvas / Excalidraw / Kanban)",
       "canvasTaskPoolSummary": "{{visible}} / {{total}} 个任务",
       "canvasTaskPoolUnpin": "取消固定并关闭",
       "canvasTaskPoolWidth": "面板宽度",
-      "canvasTaskPoolWidthDesc": "任务池的宽度，不超过可用空间。 (Canvas / Excalidraw)",
+      "canvasTaskPoolWidthDesc": "任务池的宽度，不超过可用空间。 (Canvas / Excalidraw / Kanban)",
       "checkForUpdatesOnStartup": "启动时检查新版本",
       "checkForUpdatesOnStartupDesc": "Operon 启动时检查更新且兼容的版本。",
       "checkboxConversion": "复选框转换",
@@ -1874,6 +1874,8 @@
       "kanbanPresetSettingsTitleForName": "{{name}} 预设",
       "kanbanPresets": "看板预设",
       "kanbanPresetsDesc": "每个预设控制列和泳道分组、已保存筛选器、排序顺序、颜色来源和布局。",
+      "kanbanPropertyPool": "Kanban Property Pool",
+      "kanbanPropertyPoolCardOnly": "请将值拖放到单个任务卡片上。",
       "kanbanQuickPresetNameDesc": "显示在看板视图工具栏中。",
       "kanbanScopedTasks": "范围内任务",
       "kanbanSettingsDesc": "配置看板预设、默认看板，以及每个预设的列宽和单元格高度。",
@@ -1936,6 +1938,9 @@
       "kanbanTaskOpenCheckboxActionDesc": "在看板卡片上显示普通复选框操作标签，以便可以从卡片打开或创建任务复选框。",
       "kanbanTaskPinActionDesc": "在看板卡片上显示固定操作标签。",
       "kanbanTaskPlayActionDesc": "当任务可计时时，在看板卡片上显示计时器操作标签。",
+      "kanbanTaskPool": "Kanban 任务池",
+      "kanbanTaskPoolManualPosition": "手动排序：使用放置位置。",
+      "kanbanTaskPoolNoFieldChanges": "字段无更改。",
       "kanbanTaskShowNotesPreview": "在看板卡片上显示备注预览",
       "kanbanTaskShowNotesPreviewDesc": "当看板卡片有备注时，在任务描述正下方显示紧凑的两行备注预览。",
       "kanbanTaskShowPlainCheckboxProgress": "在看板卡片上显示复选框进度",
@@ -2986,8 +2991,8 @@
       "upcomingTimedGroup": "定时",
       "useLastTemplateAsDefault": "将上次使用的模板设为默认模板",
       "useLastTemplateAsDefaultDesc": "在 Task Creator 中成功创建任务后，将所用模板保存为此任务类型的默认模板。命令和转换也会使用此默认模板。",
-      "visualPropertyPool": "Canvas 和 Excalidraw Property Pool",
-      "visualTaskPool": "Canvas 和 Excalidraw 任务池",
+      "visualPropertyPool": "Canvas、Excalidraw 和 Kanban Property Pool",
+      "visualTaskPool": "Canvas、Excalidraw 和 Kanban 任务池",
       "weeklyNoteFolder": "周记文件夹",
       "weeklyNoteFolderDesc": "周记所在文件夹。留空则使用仓库根目录。",
       "weeklyNoteFolderPlaceholder": "例如 40 Areas/Periodic Notes",
@@ -3806,5 +3811,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "17f61e30fb2c2f70e252667d2cdcfc224a8e2ebd662accfe570c310d62f17187"
+  "sourceVersion": "9fcca02d6bc219cdd3fa7f4f9eb43d530878f1a94f39f9b0ab0cdca1aac90afa"
 }
