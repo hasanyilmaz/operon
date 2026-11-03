@@ -11,7 +11,7 @@ import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openWeb
 import { bindTablePropertyOpening } from '../src/ui/table/table-link-opening';
 import { bindDesktopChipOpening } from '../src/ui/links-chip-action';
 import { bindLightboxSizePreference } from '../src/core/lightbox-size';
-import { getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
+import { getNativeLightboxLeaves, bindNativeCanvasLightboxHooks } from '../src/ui/native-lightbox-lifecycle';
 import { bindTaskMediaChipPreview, cleanupTaskMediaChipPreviews } from '../src/ui/compact-chip-link-preview';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -719,4 +719,14 @@ for(const surface of ['chip','table-property'] as const) test(`Canvas wiki link 
   assert.equal(f.view.getViewType(),'canvas');assert.equal(f.opens.length,1);assert.equal(f.opens[0].active,false);
   assert.deepEqual(getNativeLightboxLeaves(f.app),[f.leaf]);assert.equal(pickerCalls,0);assert.equal(f.stats().saves,0);
  }finally{f.cleanup();await tick();}
+});
+
+test('Canvas transfer waits for destination admission before disposing the source container',async()=>{
+ const f=isolatedTabFixture('canvas');let release!:()=>void;let remove=()=>{};const gate=new Promise<void>(resolve=>{release=resolve;});
+ try {
+  await f.open();const destination=installDestination(f);let admitted=false;
+  remove=bindNativeCanvasLightboxHooks(f.app,{ready:async leaf=>{if(leaf===destination.destination){await gate;admitted=true;}return true;},prepare:async()=>true});
+  const shell=clickTab(f);await tick();assert.equal(shell.isConnected,true);assert.equal(admitted,false);assert.notEqual(f.workspace.activeLeaf,destination.destination);
+  release();await tick();assert.equal(admitted,true);assert.equal(shell.isConnected,false);assert.equal(f.workspace.activeLeaf,destination.destination);
+ }finally{release();remove();f.cleanup();await tick();}
 });

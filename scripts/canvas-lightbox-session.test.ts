@@ -31,6 +31,7 @@ function fixture(quietMs=0) {
   requestSave:()=>void;
   constructor(){const captured=View.prototype.save.bind(this);this.requestSave=()=>{this.dirty=true;if(!this.nativeTimer)this.nativeTimer=setTimeout(()=>{this.nativeTimer=null;void captured().catch(()=>{});},2000);};}
   getViewType(){return 'canvas';}
+  getViewData(){return JSON.stringify(this.canvas.data,null,'\t');}
   setData(text:string,_clear:boolean){imports++;this.data=text;this.state=JSON.parse(text);this.canvas.data=this.state;}
   async loadFileInternal(f:any,clear:boolean){const text=await app.vault.read(f);this.lastSavedData=text;if(text!==this.data||clear)this.setData(text,clear);}
   clear(){this.closed=true;}
@@ -39,7 +40,7 @@ function fixture(quietMs=0) {
   async save(clear=false){
    this.dirty=false;const f=this.file;if(!f)return;
    if(this.saving){if(!clear)this.saveAgain=true;return;}
-   this.saveAgain=false;const text=JSON.stringify(this.canvas.data,null,'\t');if(text===this.lastSavedData)return;
+   this.saveAgain=false;const text=this.getViewData();if(text===this.lastSavedData)return;
    const previous=this.lastSavedData;this.lastSavedData=text;this.data=text;this.saving=true;
    try{if(pause)await pause.promise;if(fail)throw Error('write');files.set(f.path,text);writes++;if(uncertain)throw Error('lost acknowledgement');for(const leaf of all)if(leaf.view!==this && leaf.view.file===f && !leaf.view.saving)void leaf.view.loadFileInternal(f,false);if(clear)this.clear();}
    catch(e){this.lastSavedData=previous;throw e;}finally{this.saving=false;if(this.saveAgain)void this.save();}
@@ -176,4 +177,10 @@ test('Canvas task conversion preflight sees unsaved owned buffers without trigge
  const code=ts.transpile(`class Probe {${method}}`,{target:ts.ScriptTarget.ES2020});const Probe=new Function('getCanvasWorkspaceLeaves',`${code};return Probe;`)(getCanvasWorkspaceLeaves);
  const probe=new Probe();probe.app=f.app;probe.taskEditorDeleteOpenViewsMatch=()=>true;const raw=f.files.get(f.file.path)!;
  assert.equal(probe.tasksConversionBuffersMatch(f.file.path,raw),true);f.edit(box,'unsaved reference');assert.equal(probe.tasksConversionBuffersMatch(f.file.path,raw),false);box.view.saving=true;assert.equal(probe.tasksConversionBuffersMatch(f.file.path,raw),false);assert.equal(f.stats().writes,0);
+});
+
+test('Canvas cancelling pending admission cannot rewrite a newer peer save with stale formatted JSON',async t=>{
+ t.mock.timers.enable({apis:['setTimeout','Date']});const f=fixture(2000);t.after(()=>f.dispose());const tab=f.add(),box=f.add(true);let allowed=true;
+ const pending=f.sessions.ready(box,()=>allowed);f.files.set(f.file.path,JSON.stringify(scene('newer peer write')));allowed=false;t.mock.timers.tick(25);await tick();assert.equal(await pending,false);
+ await box.view.onClose();assert.equal(f.stats().writes,0);assert.equal(JSON.parse(f.files.get(f.file.path)!).nodes[0].text,'newer peer write');assert.equal(tab.view.contentEl.inert,undefined);
 });

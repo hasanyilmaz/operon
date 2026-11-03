@@ -324,6 +324,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
      await destination.loadIfDeferred();
      if (destination.view.containerEl.ownerDocument !== doc || destination.view.getViewType() !== state.type) throw new Error('Unavailable target view');
      destination.view.setEphemeralState(ephemeral);
+     if(!await prepareNativeCanvasLightbox(app,destination,()=>!closed))throw new Error('Canvas destination preparation unavailable');
      }, placement, origin);
     } catch {
      new Notice(placement === 'below' ? 'Could not open below the original tab. The lightbox is still open.' : placement === 'split' ? 'Could not open to the right of the original tab. The lightbox is still open.' : 'Could not open a new tab. The lightbox is still open.');

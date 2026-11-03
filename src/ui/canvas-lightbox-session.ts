@@ -8,6 +8,7 @@ interface NativeCanvasView extends TaskCanvasView {
  dirty: boolean;
  data: string | null;
  save(clear?:boolean):Promise<void>;
+ getViewData():string;
  requestSave(): void;
  loadFileInternal(file: TFile, clear: boolean): Promise<void>;
  setData(text: string, clear: boolean): void;
@@ -33,6 +34,7 @@ interface Group { file: TFile; members: Map<TaskCanvasView, Member>; owners: Set
 /** Per-view admission/lifecycle adapter. All writes delegate to the existing coordinator and native save. */
 export class CanvasLightboxSessions {
  private readonly groups = new Map<TFile, Group>();
+ private readonly warming = new WeakMap<NativeCanvasView,()=>void>();
  private readonly admitted = new WeakSet<TaskCanvasView>();
  private active = true;
  constructor(private readonly app: App, private readonly port: SavePort, private readonly quietMs = 2000) {}
@@ -75,7 +77,23 @@ export class CanvasLightboxSessions {
   const v = leaf.view as unknown as NativeCanvasView;
   return v.file && v.canvas && typeof v.save === 'function' && typeof v.requestSave === 'function'
    && typeof v.loadFileInternal === 'function' && typeof v.setData === 'function' && typeof v.clear === 'function'
-   && typeof v.onClose === 'function' && typeof v.onUnloadFile === 'function' && typeof v.lastSavedData === 'string' ? v : null;
+   && typeof v.getViewData === 'function' && typeof v.onClose === 'function' && typeof v.onUnloadFile === 'function' && typeof v.lastSavedData === 'string' ? v : null;
+ }
+ /** Pending owned views are inert: native close/old timers must not serialize a
+  * stale loaded scene merely because its JSON formatting differs from disk. */
+ private protectPending(view:NativeCanvasView):void {
+  if(this.warming.has(view))return;
+  const read=bindNativeLightboxMethod(view,'getViewData'),close=bindNativeLightboxMethod(view,'onClose');
+  const readDescriptor=Object.getOwnPropertyDescriptor(view,'getViewData'),closeDescriptor=Object.getOwnPropertyDescriptor(view,'onClose');
+  let active=true;
+  const restore=():void=>{
+   if(!active)return;active=false;this.warming.delete(view);
+   if(view.getViewData===safeRead){if(readDescriptor)Object.defineProperty(view,'getViewData',readDescriptor);else Reflect.deleteProperty(view,'getViewData');}
+   if(view.onClose===safeClose){if(closeDescriptor)Object.defineProperty(view,'onClose',closeDescriptor);else Reflect.deleteProperty(view,'onClose');}
+  };
+  const safeRead=():string=>active?view.lastSavedData ?? '':read();
+  const safeClose=async():Promise<void>=>{try{await close();}finally{restore();}};
+  view.getViewData=safeRead;view.onClose=safeClose;this.warming.set(view,restore);
  }
  private observe(g: Group, leaf: WorkspaceLeaf, fence: boolean): { member: Member; quiet: () => boolean } | null {
   const view = this.readView(leaf); if (!view || !view.file) return null;
@@ -83,6 +101,7 @@ export class CanvasLightboxSessions {
   const m: Member = {leaf,view,file:view.file,path:view.file.path,baseline:this.port.key(JSON.parse(view.lastSavedData!)),
    raw:view.lastSavedData!,ready:false,failed:false,incoming:false,closing:false,renaming:false,active:true,refreshing:0,generation:0,schedule:()=>{},failure:null,pending:new Set(),restore:[],cancelTimer:()=>{},nativeSave:this.port.native(view)};
   g.members.set(view,m);
+  if(getNativeLightboxLeaves(this.app).includes(leaf))this.protectPending(view);
   const request = bindNativeLightboxMethod(view,'requestSave');
   this.wrap(view,'requestSave',()=>{lastRequest=Date.now();request();},m);
   if (fence && !getNativeLightboxLeaves(this.app).includes(leaf)) {
@@ -135,7 +154,7 @@ export class CanvasLightboxSessions {
     }
     admitted=true;return true;
    } catch {new Notice(t('notifications','canvasTaskUnavailable'));return false;}
-   finally {if(!admitted)for(const {member} of observations)this.removeMember(group,member);group.opening=null;}
+   finally {if(!admitted)for(const {member} of observations){member.ready=false;this.removeMember(group,member);}group.opening=null;}
   };
   group.opening=run();
   const result=await group.opening;
@@ -148,6 +167,7 @@ export class CanvasLightboxSessions {
  }
  private install(g: Group,m: Member): void {
   const v=m.view;
+  this.warming.get(v)?.();
   const close=bindNativeLightboxMethod(v,'onClose');
   this.wrap(v,'onClose',async()=>{
    if(!m.active){await close();return;}
@@ -289,6 +309,7 @@ export class CanvasLightboxSessions {
  }
  private removeMember(g:Group,m:Member):void {
   m.active=false;m.generation++;m.cancelTimer();for(const undo of m.restore.splice(0).reverse())undo();this.admitted.delete(m.view);g.members.delete(m.view);
+  if(!m.ready && getNativeLightboxLeaves(this.app).includes(m.leaf))this.protectPending(m.view);
  }
  private release(g:Group):void {
   if(this.groups.get(g.file)!==g)return;
