@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "具有相同單值屬性的 Operon 群組不能重疊。變更未套用。",
       "canvasGroupSaveFailed": "群組已記錄於 Canvas 歷程中，但儲存失敗。請檢查 Canvas 後再重試。",
       "canvasGroupUnavailable": "Canvas 群組已變更或無法使用。",
+      "canvasLightboxConflict": "多個 Canvas 檢視中存在不同的未儲存變更。請保持兩個檢視開啟，透過編輯或復原解決差異後，再儲存、關閉或移動此檢視。",
+      "canvasLightboxWaiting": "正在等待 Canvas 儲存完成。你可以繼續在現有分頁中工作或取消。",
       "canvasTaskAddFailed": "無法將任務卡片新增至 Canvas。",
       "canvasTaskColorFailed": "無法變更部分任務的顏色。任務可能已在其他位置變更、無法使用，或 Canvas 已鎖定。目前的來源顏色已保留。",
       "canvasTaskColorSaveFailed": "無法儲存 Canvas。任務顏色變更已保留；Canvas 中仍有未儲存的變更。",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "96d4c1e11eb3383c99cfe56074bd0cfe14d5ddaf121b224435428f0a9f5d55e7"
+  "sourceVersion": "139e867070686ff22bf0ae847fe750501db1f3f782f0840c2b42f9ff81668c84"
 }

@@ -1,3 +1,5 @@
+import { CanvasLightboxSessions } from './canvas-lightbox-session';
+import type { App, WorkspaceLeaf } from 'obsidian';
 import { Component, Notice, getIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -38,6 +40,44 @@ function geometryOnly(before: unknown, after: unknown): boolean {
 
 /** One writer per file; peer views are never overwritten to force agreement. */
 export class CanvasGroupSyncCoordinator {
+ private lightboxes: CanvasLightboxSessions | null = null;
+ lightboxSessions(app: App): CanvasLightboxSessions {
+  return this.lightboxes ??= new CanvasLightboxSessions(app, {
+   key: dataKey,
+   confirmed: (view,raw) => {
+    const member=[...this.members].find(m=>m.view===view);
+    if(member){this.uncertain.delete(member);this.acceptBaseline(member,raw);}
+   },
+   idle: view => ![...this.members].some(m => m.view === view && m.interacting),
+   native: view => {
+    const save: unknown = Reflect.get(view, 'save');
+    if (typeof save !== 'function') throw new Error('Canvas save unavailable');
+    const known = nativeSaves.get(save as TaskCanvasView['save']);
+    if (!known && Object.prototype.hasOwnProperty.call(view, 'save')) throw new Error('Unsupported Canvas save wrapper');
+    const native = known?.native ?? save;
+    return (...args: unknown[]) => Reflect.apply(native, view, args) as unknown;
+   },
+   write: async (view, action) => {
+    const file = view.file;if (!file) throw new Error('Canvas file unavailable');
+    const member = [...this.members].find(m => m.view === view);
+    const finish = this.beginSave(file.path);
+    let release: (() => void) | undefined;
+    try {
+     if (member) await this.waitForClosed(file.path, member);
+     release = await this.serializeSave(file);
+     if (member && (!this.handoff(member) || !this.prepareSave(member))) throw new Error('Canvas preflight blocked');
+     await action();
+     if (member) { this.uncertain.delete(member); this.didSave(member); }
+    } finally { release?.(); finish(); }
+
+   },
+  });
+ }
+ managesLightboxSave(view: TaskCanvasView): boolean { return this.lightboxes?.has(view) ?? false; }
+ async prepareLightbox(app: App, leaf: WorkspaceLeaf, allowed: () => boolean): Promise<boolean> {
+  return this.lightboxSessions(app).ready(leaf, allowed);
+ }
+
  private members = new Set<CanvasGroupSync>();
  private locked = new Set<string>();
  private saves = new Map<string, number>();
@@ -114,6 +154,7 @@ export class CanvasGroupSyncCoordinator {
   for (const peer of this.members) if (peer.view.file === member.view.file) this.freshBaselines.delete(peer);
  }
  prepareSave(member: CanvasGroupSync): boolean {
+  if (this.lightboxes && !this.lightboxes.canSave(member.view)) return false;
   if (this.uncertain.has(member)) return false;
   if (this.freshBaselines.has(member) && member.view.lastSavedData !== null) this.acceptBaseline(member, member.view.lastSavedData);
   const file = member.view.file, baseline = file && this.savedBaselines.get(file);
@@ -259,9 +300,11 @@ export class CanvasGroupSync extends Component {
    this.register(() => { if (Reflect.get(target, key) !== wrapper) return; if (descriptor) Object.defineProperty(target, key, descriptor); else Reflect.deleteProperty(target, key); });
   };
   wrap(canvas, 'requestSave'); wrap(canvas, 'importData');
+  if (!this.coordinator.managesLightboxSave(view)) {
   const original = Reflect.get(view, 'save'), descriptor = Object.getOwnPropertyDescriptor(view, 'save');
   const nativeSave = nativeSaves.get(original)?.native ?? original;
   const save = async (...args: unknown[]) => {
+   if (!binding.active) { await Reflect.apply(nativeSave, view, args); return; }
    const file = view.file, path = this.path;
    const release = this.coordinator.beginSave(path);
    let releaseWriter: (() => void) | undefined;
@@ -289,6 +332,7 @@ export class CanvasGroupSync extends Component {
    for (let prior = nativeSaves.get(previous); prior && !prior.active; prior = nativeSaves.get(previous)) { previous = prior.previous; restore = prior.descriptor; }
    if (restore) Object.defineProperty(view, 'save', restore); else Reflect.deleteProperty(view, 'save');
   });
+  }
   const unload: unknown = Reflect.get(view, 'onUnloadFile'), unloadDescriptor = Object.getOwnPropertyDescriptor(view, 'onUnloadFile');
   if (typeof unload === 'function') {
    const wrapper = async (...args: unknown[]) => { const release = this.coordinator.beginSave(this.path); try { const result: unknown = await Reflect.apply(unload, view, args); return result; } finally { release(); } };

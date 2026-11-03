@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "Los grupos Operon con la misma propiedad de valor único no pueden superponerse. No se aplicó el cambio.",
       "canvasGroupSaveFailed": "El grupo está en el historial de Canvas, pero no se pudo guardar. Revisa el Canvas antes de reintentarlo.",
       "canvasGroupUnavailable": "El grupo Canvas cambió o no está disponible.",
+      "canvasLightboxConflict": "Varias vistas de Canvas tienen cambios distintos sin guardar. Mantenga ambas abiertas y resuelva las diferencias editando o deshaciendo antes de guardar, cerrar o mover esta vista.",
+      "canvasLightboxWaiting": "Esperando a que terminen los guardados de Canvas. Puede seguir trabajando en la pestaña existente o cancelar.",
       "canvasTaskAddFailed": "No se pudo añadir la tarjeta a Canvas.",
       "canvasTaskColorFailed": "No se pudieron cambiar algunos colores de tareas. La tarea puede haber cambiado, no estar disponible o el Canvas estar bloqueado. Se conservaron los colores actuales.",
       "canvasTaskColorSaveFailed": "No se pudo guardar Canvas. Se conservaron los cambios de color de las tareas; Canvas tiene cambios sin guardar.",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3d012a8f048cee602261b590f1e7e7c407ab31242f7c979490540dea7c3c23ae"
+  "sourceVersion": "96c8b983c371bcc383838aed87484252498e592e96f1dce1d3aae20e346bebf4"
 }

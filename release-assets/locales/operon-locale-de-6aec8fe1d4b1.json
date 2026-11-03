@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "Operon-Gruppen mit derselben einwertigen Eigenschaft dürfen sich nicht überschneiden. Die Änderung wurde nicht angewendet.",
       "canvasGroupSaveFailed": "Die Gruppe ist im Canvas-Verlauf, aber das Speichern ist fehlgeschlagen. Canvas vor einem weiteren Versuch prüfen.",
       "canvasGroupUnavailable": "Die Canvas-Gruppe wurde geändert oder ist nicht verfügbar.",
+      "canvasLightboxConflict": "Canvas enthält in mehreren Ansichten unterschiedliche ungespeicherte Änderungen. Lassen Sie beide geöffnet und gleichen Sie die Unterschiede durch Bearbeiten oder Rückgängig ab, bevor Sie speichern, schließen oder diese Ansicht verschieben.",
+      "canvasLightboxWaiting": "Ausstehende Canvas-Speichervorgänge werden abgeschlossen. Sie können im vorhandenen Tab weiterarbeiten oder abbrechen.",
       "canvasTaskAddFailed": "Die Task-Karte konnte nicht zu Canvas hinzugefügt werden.",
       "canvasTaskColorFailed": "Einige Aufgabenfarben konnten nicht geändert werden. Die Aufgabe wurde möglicherweise andernorts geändert, ist nicht verfügbar oder das Canvas ist gesperrt. Aktuelle Quellfarben wurden beibehalten.",
       "canvasTaskColorSaveFailed": "Canvas konnte nicht gespeichert werden. Aufgabenfarben wurden beibehalten; das Canvas enthält ungespeicherte Änderungen.",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "a3113ffc4a84868ae7313534fecc40c2e5326f96dc4eb09cf0588289a98aecf7"
+  "sourceVersion": "37a524648439a156de234344965d9058dfcf5672f37c26958c5ebad2b7d96cd4"
 }

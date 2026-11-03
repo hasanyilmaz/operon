@@ -22,7 +22,7 @@ export type KeymapEventHandler = (...args: any[]) => any;
 
 export class Scope {
  readonly handlers: Array<{ key: string; callback: (event: KeyboardEvent) => boolean | void }> = [];
-	constructor(_parent?: Scope) {}
+	constructor(readonly parent?: Scope) {}
 	register(_modifiers?: unknown, key = '', callback: (event: KeyboardEvent) => boolean | void = () => {}) {
   const handler = {key, callback}; this.handlers.push(handler); return handler;
  }
@@ -627,4 +627,13 @@ export function prepareFuzzySearch(query: string): (value: string) => { score: n
 			matches,
 		};
 	};
+}
+
+export function debounce(callback: () => void, delay: number) {
+ let timer: ReturnType<typeof setTimeout> | null = null;
+ const run = () => { timer=null;callback(); };
+ const result = () => { if(timer===null)timer=setTimeout(run,delay); };
+ result.cancel = () => { if(timer!==null)clearTimeout(timer);timer=null; };
+ result.run = () => { result.cancel();callback(); };
+ return result;
 }

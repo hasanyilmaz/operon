@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "Группы Operon с одним и тем же однозначным свойством не могут пересекаться. Изменение не применено.",
       "canvasGroupSaveFailed": "Группа есть в истории Canvas, но сохранить её не удалось. Проверьте Canvas перед повторной попыткой.",
       "canvasGroupUnavailable": "Группа Canvas изменилась или недоступна.",
+      "canvasLightboxConflict": "В нескольких представлениях Canvas есть разные несохранённые изменения. Оставьте оба открытыми и устраните различия редактированием или отменой действий перед сохранением, закрытием или перемещением.",
+      "canvasLightboxWaiting": "Ожидание завершения сохранений Canvas. Можно продолжить работу в открытой вкладке или отменить.",
       "canvasTaskAddFailed": "Не удалось добавить карточку на Canvas.",
       "canvasTaskColorFailed": "Не удалось изменить некоторые цвета задач. Задача могла измениться, стать недоступной или Canvas заблокирован. Текущие цвета источника сохранены.",
       "canvasTaskColorSaveFailed": "Не удалось сохранить Canvas. Цвета задач сохранены; в Canvas остались несохранённые изменения.",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "07b611ed2c338bbe8b3aaf128dcb46f4952a66059f84ae8514c3e475df9188ee"
+  "sourceVersion": "c337eb3bbdcf2191fadf0823b5ab95924c07d053e396a8b9781f406e2860c411"
 }

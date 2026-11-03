@@ -1,3 +1,4 @@
+import { getCanvasWorkspaceLeaves, getNativeLightboxLeaves, subscribeNativeLightboxViews, bindNativeCanvasLightboxHooks } from './native-lightbox-lifecycle';
 import type { WorkflowColorChange } from '../core/workflow-color';
 import { CanvasGroupDrop } from './canvas-group-drop';
 import { CanvasGroupSync, CanvasGroupSyncCoordinator } from './canvas-group-sync';
@@ -135,8 +136,9 @@ class CanvasTaskSurface extends Component {
  private mountStates = new WeakMap<HTMLElement, string>();
 	readonly canvas: TaskCanvas;
 	readonly file: TFile | null;
+ readonly managedSave: boolean;
  readonly path: string | undefined;
-	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; this.file = view.file; this.path = view.file?.path; }
+	constructor(readonly view: TaskCanvasView, private owner: CanvasTaskIntegration) { super(); this.canvas = view.canvas; this.file = view.file; this.path = view.file?.path; this.managedSave=owner.groupSyncCoordinator.managesLightboxSave(view); }
 	onload(): void {
 		this.active = true;
   this.history = new CanvasTaskHistory(this.view); this.addChild(this.history);
@@ -336,6 +338,13 @@ export class CanvasTaskIntegration extends Component {
    this.addChild(this.background);
    this.register(this.deps.cards.onRefresh(() => this.background?.refresh()));
   }
+  const sessions = this.groupSyncCoordinator.lightboxSessions(this.deps.app);
+  this.register(bindNativeCanvasLightboxHooks(this.deps.app, {
+   ready: (leaf, allowed) => this.groupSyncCoordinator.prepareLightbox(this.deps.app, leaf, allowed),
+   prepare: leaf => sessions.prepare(leaf),
+  }));
+  this.register(subscribeNativeLightboxViews(this.deps.app, () => this.sync()));
+  this.register(() => sessions.dispose());
 		this.registerEvent(this.deps.app.workspace.on('layout-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('active-leaf-change', () => this.sync()));
 		this.registerEvent(this.deps.app.workspace.on('file-open', () => this.sync()));
@@ -345,13 +354,14 @@ export class CanvasTaskIntegration extends Component {
 		this.sync();
 	}
 	private views(): TaskCanvasView[] {
-		return this.deps.app.workspace.getLeavesOfType('canvas').map(leaf => asTaskCanvasView(leaf.view)).filter((view): view is TaskCanvasView => view !== null);
+		return getCanvasWorkspaceLeaves(this.deps.app).filter(leaf => !getNativeLightboxLeaves(this.deps.app).includes(leaf) || this.groupSyncCoordinator.managesLightboxSave(leaf.view as unknown as TaskCanvasView)).map(leaf => asTaskCanvasView(leaf.view)).filter((view): view is TaskCanvasView => view !== null);
 	}
 	private sync(): void {
 		if (!this.active) return;
+  this.groupSyncCoordinator.lightboxSessions(this.deps.app).reconcile();
   if (this.background) this.bindLeafTransitions();
 		const views = new Set(this.views());
-		for (const [view, surface] of this.surfaces) if (!views.has(view) || surface.canvas !== view.canvas || surface.file !== view.file || surface.path !== view.file?.path) { this.removeChild(surface); this.surfaces.delete(view); }
+		for (const [view, surface] of this.surfaces) if (!views.has(view) || surface.canvas !== view.canvas || surface.file !== view.file || surface.path !== view.file?.path || surface.managedSave !== this.groupSyncCoordinator.managesLightboxSave(view)) { this.removeChild(surface); this.surfaces.delete(view); }
 		for (const view of views) {
 			if (!this.surfaces.has(view)) { const surface = new CanvasTaskSurface(view, this); this.surfaces.set(view, surface); this.addChild(surface); }
 			else this.surfaces.get(view)?.sync();
@@ -367,10 +377,14 @@ export class CanvasTaskIntegration extends Component {
    const state = leaf.getViewState().state;
    if (typeof state?.file === 'string' && state.file.endsWith('.canvas')) paths.add(state.file);
   });
+  for (const leaf of getNativeLightboxLeaves(this.deps.app)) {
+   const file: unknown = Reflect.get(leaf.view, 'file');
+   if (file && typeof file === 'object' && typeof Reflect.get(file, 'path') === 'string') paths.add(String(Reflect.get(file, 'path')));
+  }
   return paths;
  }
  private bindLeafTransitions(): void {
-  const leaves = new Set<WorkspaceLeaf>(); this.deps.app.workspace.iterateAllLeaves(leaf => leaves.add(leaf));
+  const leaves = new Set<WorkspaceLeaf>(getNativeLightboxLeaves(this.deps.app)); this.deps.app.workspace.iterateAllLeaves(leaf => leaves.add(leaf));
   for (const [leaf, restore] of this.leafRestores) if (!leaves.has(leaf)) { restore(); this.leafRestores.delete(leaf); }
   for (const leaf of leaves) {
    if (this.leafRestores.has(leaf)) continue;

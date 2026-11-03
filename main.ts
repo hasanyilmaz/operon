@@ -61,7 +61,7 @@ import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
 import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, lightboxFileState } from './src/ui/web-lightbox';
-import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
+import { getNativeLightboxLeaves, getCanvasWorkspaceLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
 import { iterateMarkdownFencedBlocks, type MarkdownFencedBlock } from './src/core/markdown-fenced-lines';
@@ -27034,7 +27034,7 @@ export default class OperonPlugin extends Plugin {
  /** Strict read-only checks: never flush dirty Markdown or native views. */
  private tasksConversionBuffersMatch(path: string, content: string): boolean {
   if (!this.taskEditorDeleteOpenViewsMatch(path, content)) return false;
-  for (const leaf of this.app.workspace.getLeavesOfType('canvas')) {
+  for (const leaf of getCanvasWorkspaceLeaves(this.app)) {
    const view = leaf.view as unknown as { file?: TFile; saving?: boolean; lastSavedData?: string; canvas?: { getData?(): unknown } };
    if (view.file?.path !== path) continue;
    try {
@@ -27131,7 +27131,7 @@ export default class OperonPlugin extends Plugin {
    return { references, series, revision: [pinned.getGeneration(), this.storage.activeTrackers.getGeneration(), this.storage.repeatSeries.getRevision()] };
   };
   const nativeState = (ids?: readonly string[]) => {
-   const views = [...this.app.workspace.getLeavesOfType('canvas'), ...this.app.workspace.getLeavesOfType('excalidraw')];
+   const views = [...getCanvasWorkspaceLeaves(this.app), ...this.app.workspace.getLeavesOfType('excalidraw')];
    const references: string[] = [];
    const snapshots = views.map(leaf => {
     const view = leaf.view as unknown as { file?: TFile; canvas?: { getData?(): unknown }; excalidrawAPI?: { getSceneElements(): readonly { type: string; link?: string | null; isDeleted?: boolean }[] } };

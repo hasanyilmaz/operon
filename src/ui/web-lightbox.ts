@@ -1,3 +1,4 @@
+import { prepareNativeCanvasLightbox, notifyNativeLightboxView } from './native-lightbox-lifecycle';
 import { clearNativeLightboxPool, nativeLightboxDefaults, parkNativeLightboxView, takeNativeLightboxView } from './native-lightbox-pool';
 import { beginLightboxOpeningTrace, LIGHTBOX_PERF_ENABLED } from './lightbox-opening-perf';
 import { Notice, Platform, WorkspaceTabs, type App, type TextFileView, type WorkspaceLeaf } from 'obsidian';
@@ -376,6 +377,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
     // The resolved target supplies its frame before native loading can yield a paint.
     surface = new NativeLightboxSurface(lightbox, isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer');
     host = surface.content;
+    if(isFile && target.file.file.extension==='canvas')surface.setWaiting(true,close);
     const provider = getNativeTaskWorkspaceProvider(app);
     if (provider && isFile && target.file.file.extension === 'md') {
      companion = new NativeTaskWorkspace(lightbox, host, provider, close, initial,
@@ -480,7 +482,17 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
         try {
          if (nativeReady && !await prepare()) return;
          if (closed) return;
+         const navigating=nativeReady;
+         if(navigating){ready=false;nativeReady=false;}
          await originalSetViewState(...args);
+         if(navigating) {
+          surface?.setWaiting(owned.view.getViewType()==='canvas',close);
+          if(cancelled())return;
+          if(!await prepareNativeCanvasLightbox(app,owned,()=>!cancelled())){if(!cancelled())close();return;}
+          if(cancelled())return;
+          nativeReady=true;ready=true;surface?.setWaiting(false);
+         }
+         notifyNativeLightboxView(app);
          await mount();
         } finally {
          companion?.setLocked(false);
@@ -502,11 +514,14 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       if (cancelled()) return;
       assertLightboxLeafMounted(owned, ownedTabs, doc);
       if (owned.view.getViewType() !== (isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer')) throw new Error('Unavailable native view');
+      if (!await prepareNativeCanvasLightbox(app, owned, () => !cancelled())) { if (!cancelled()) throw new Error('Canvas preparation unavailable'); return; }
+      notifyNativeLightboxView(app);
       // Keep the complete native view tree inside the isolated tab group.
       initialMode = owned.getViewState().state?.mode;
       nativeReady = true;
       ready = true;
       host.inert = false;
+      surface?.setWaiting(false);
       await mount(!initial || initial.markdown);
       if (cancelled()) return;
       if (initial) companion?.handle?.content.applyInitialDescriptionFocus(canOpen);
@@ -569,7 +584,6 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
         workspace.activeTabGroup = null;
        }
       }
-      surface?.dispose();
       if (leaf) {
        const owned = leaf, detach = detachOwned;
        const destroy = () => { try { detach?.(); } finally { releaseOwnedLightboxLeaf(owned); } };
@@ -581,6 +595,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
         isolated.tabs.containerEl.remove();
        } else destroy();
       }
+      surface?.dispose();
       leaf = null;
      };
      // A native open may replace its view after an await. Do not destroy the

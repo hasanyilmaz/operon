@@ -184,3 +184,25 @@ test('isolated Table Gantt toggles use the real registry refresh and save chain,
  } finally { unsubscribe();registry.dispose();owner.dispose();otherOwner.dispose(); }
  assert.deepEqual(getNativeLightboxLeaves(app),[]);assert.deepEqual(getNativeLightboxLeaves(otherApp),[]);
 });
+
+
+test('owned Canvas discovery includes normal and isolated leaves exactly once', async () => {
+ const {getCanvasWorkspaceLeaves}=await import('../src/ui/native-lightbox-lifecycle');
+ const normal:any={view:{getViewType:()=> 'canvas'}};
+ const isolated:any={view:{getViewType:()=> 'canvas'}};
+ const markdown:any={view:{getViewType:()=> 'markdown'}};
+ const app:any={workspace:{getLeavesOfType:()=>[normal,normal]}};
+ const owner=new NativeLightboxLifecycle(app,isolated), other=new NativeLightboxLifecycle(app,markdown);
+ try{assert.deepEqual(getCanvasWorkspaceLeaves(app),[normal,isolated]);}
+ finally{owner.dispose();other.dispose();}
+ assert.deepEqual(getCanvasWorkspaceLeaves(app),[normal]);
+});
+
+test('owned-view subscription releases its callbacks and does not write files', async () => {
+ const {subscribeNativeLightboxViews,notifyNativeLightboxView}=await import('../src/ui/native-lightbox-lifecycle');
+ const app:any={};let changes=0;
+ const release=subscribeNativeLightboxViews(app,()=>{changes++;});
+ const owner=new NativeLightboxLifecycle(app,{view:{getViewType:()=> 'canvas'}} as any);
+ assert.equal(changes,1);notifyNativeLightboxView(app);assert.equal(changes,2);
+ owner.dispose();assert.equal(changes,3);release();notifyNativeLightboxView(app);assert.equal(changes,3);
+});

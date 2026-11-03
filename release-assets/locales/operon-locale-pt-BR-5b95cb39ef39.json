@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "Grupos Operon com a mesma propriedade de valor único não podem se sobrepor. A alteração não foi aplicada.",
       "canvasGroupSaveFailed": "O grupo está no histórico do Canvas, mas não foi salvo. Verifique o Canvas antes de tentar novamente.",
       "canvasGroupUnavailable": "O grupo Canvas mudou ou está indisponível.",
+      "canvasLightboxConflict": "Há alterações diferentes não salvas em várias visualizações do Canvas. Mantenha ambas abertas e resolva as diferenças editando ou desfazendo antes de salvar, fechar ou mover esta visualização.",
+      "canvasLightboxWaiting": "Aguardando a conclusão dos salvamentos do Canvas. Você pode continuar na aba existente ou cancelar.",
       "canvasTaskAddFailed": "Não foi possível adicionar o cartão ao Canvas.",
       "canvasTaskColorFailed": "Não foi possível alterar algumas cores de tarefas. A tarefa pode ter mudado, estar indisponível ou o Canvas estar bloqueado. As cores atuais foram mantidas.",
       "canvasTaskColorSaveFailed": "Não foi possível salvar o Canvas. As cores das tarefas foram mantidas; o Canvas contém alterações não salvas.",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "37daa35ee972d325df3551050bc3b5c8c13140fd2d443461240a8b18a4b56ea5"
+  "sourceVersion": "4ea4979234197d413ff9a9a6f2f2de352ef97f9668bc7c16e15a5d5935c8e256"
 }

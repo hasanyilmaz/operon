@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "同じ単一値プロパティを持つ Operon グループは重ねられません。変更は適用されませんでした。",
       "canvasGroupSaveFailed": "グループは Canvas の履歴にありますが、保存に失敗しました。再試行前に Canvas を確認してください。",
       "canvasGroupUnavailable": "Canvas グループが変更されたか、利用できません。",
+      "canvasLightboxConflict": "複数のCanvasビューに異なる未保存の変更があります。両方を開いたまま、編集または元に戻す操作で差異を解消してから、保存・終了・移動してください。",
+      "canvasLightboxWaiting": "保留中のCanvas保存の完了を待っています。既存のタブで作業を続けるか、キャンセルできます。",
       "canvasTaskAddFailed": "Canvas にタスクカードを追加できませんでした。",
       "canvasTaskColorFailed": "一部のタスクの色を変更できませんでした。タスクが別の場所で変更されたか、利用できないか、Canvas がロックされています。現在の色は保持されました。",
       "canvasTaskColorSaveFailed": "Canvas を保存できませんでした。タスクの色の変更は保持されました。Canvas に未保存の変更があります。",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "804bc87b240e36aab1ece38317e5ce35498bf48b6bdfb115bbf966dfd590104a"
+  "sourceVersion": "184998b620e98f1c44191f08b3e3d67df544d89d3808042c4bc58d52666bc9f3"
 }

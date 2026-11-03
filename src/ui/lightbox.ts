@@ -201,6 +201,10 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
  // Child previews must also avoid the underlying modal's Escape or Tab trap.
  const modalApp = getWindowApp(getOwnerWindow(anchor));
  const modalScope = modalApp?.keymap ? new Scope(modalApp.scope) : null;
+ if(modalScope && modalApp) {
+  const canvas:unknown=Reflect.get(modalApp.workspace,'scope');
+  nativeScopeParents.set(lightbox,{scope:modalScope,base:modalApp.scope,canvas:canvas instanceof Scope?canvas:modalApp.scope});
+ }
  let modalScopeActive = false;
 
 
@@ -210,6 +214,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
 	const finishClose = (restoreFocus = true): boolean => {
 		if (isClosed) return true;
 		isClosed = true;
+  nativeScopeParents.delete(lightbox);
   disposePosition?.();
   disposeControlHover?.();
   disposeDimmingControls?.();
@@ -308,7 +313,12 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
    for (let current: LightboxRecord | undefined = record; current; current = current.parent) if (!await current.close()) break;
   })();
  };
+ const nativeEscapeEvents = new WeakSet<KeyboardEvent>();
+ const backgroundInteractive = (): boolean => contentTargets.get(lightbox)?.backgroundInteractive?.() ?? false;
  const handleEscape = (event: KeyboardEvent): boolean => {
+  if (backgroundInteractive() && !lightbox.contains(asHTMLElement(event.target, lightbox))) return false;
+  if (nativeEscapeEvents.has(event)) return false;
+  if (contentTargets.get(lightbox)?.ownsEscape?.(event)) { nativeEscapeEvents.add(event); return false; }
   if (activeLightboxes.get(ownerDocument) !== close || event.isComposing
    || Reflect.get(event, 'keyCode') === 229 || event.defaultPrevented || hasNativeOverlay()) return false;
   event.preventDefault();
@@ -330,7 +340,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
   (Platform.isDesktopApp ? lightbox : closeButton).focus({ preventScroll: true });
  };
 	const keepFocusInside = (event: FocusEvent): void => {
-		if (activeLightboxes.get(ownerDocument) !== close || !isHTMLElement(event.target, lightbox) || lightbox.contains(event.target) || hasNativeOverlay()) return;
+		if (backgroundInteractive() || activeLightboxes.get(ownerDocument) !== close || !isHTMLElement(event.target, lightbox) || lightbox.contains(event.target) || hasNativeOverlay()) return;
   focusShell();
 	};
 	lightbox.addEventListener('click', (event) => {
@@ -361,7 +371,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
   disposeControlHover = bindLightboxControlHover(lightbox, !!options.nativeView);
   disposePosition = positionLightboxControls(lightbox, controlSide);
  }
- if (!isClosed && (!Platform.isDesktopApp || !lightbox.contains(ownerDocument.activeElement) && !hasNativeOverlay())) focusShell();
+ if (!isClosed && !backgroundInteractive() && (!Platform.isDesktopApp || !lightbox.contains(ownerDocument.activeElement) && !hasNativeOverlay())) focusShell();
 	return close;
 }
 
@@ -434,11 +444,19 @@ export function disposeAppLightboxes(app: App): void {
 
 export interface LightboxContentTarget {
  content: HTMLElement;
+ /** A pending native Canvas permits continued work in existing tabs. */
+ backgroundInteractive?: () => boolean;
+ ownsEscape?: (event: KeyboardEvent) => boolean;
  /** Optional inner rail rectangle for a companion layout, in viewport coordinates. */
  controls?: () => { left: number; top: number; height: number } | undefined;
  afterPosition?: () => void;
  size?: { measure: () => DOMRect; step: (axis: 'width' | 'height', direction: -1 | 1) => number | null; apply: (axis: 'width' | 'height', value: number) => void; enabled: () => boolean };
  refresh?: () => void;
+}
+const nativeScopeParents = new WeakMap<HTMLElement,{scope:Scope;base:Scope;canvas:Scope}>();
+/** Retarget only the container-owned scope when its resolved native view changes. */
+export function setLightboxCanvasScope(shell:HTMLElement,canvas:boolean):void {
+ const entry=nativeScopeParents.get(shell);if(entry)Reflect.set(entry.scope,'parent',canvas?entry.canvas:entry.base);
 }
 const contentTargets = new WeakMap<HTMLElement, LightboxContentTarget>();
 

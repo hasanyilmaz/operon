@@ -217,6 +217,8 @@
 		"markdownLinkCopied": "Enlace markdown copiado al portapapeles",
 		"webViewerUnavailable": "Activa el complemento principal Web Viewer de Obsidian para abrir este enlace en una pestaña nueva.",
 		"canvasCorePluginUnavailable": "Activa el complemento principal Canvas para abrir este lienzo.",
+    "canvasLightboxConflict": "Varias vistas de Canvas tienen cambios distintos sin guardar. Mantenga ambas abiertas y resuelva las diferencias editando o deshaciendo antes de guardar, cerrar o mover esta vista.",
+    "canvasLightboxWaiting": "Esperando a que terminen los guardados de Canvas. Puede seguir trabajando en la pestaña existente o cancelar.",
 		"singleLineFileTaskSelectionRequired": "Seleccionar un fragmento de una sola línea para crear una tarea de archivo",
 		"fileTaskSeedRequiresNonTaskLine": "Solo se puede generar el origen de una tarea de archivo desde una línea que no sea una tarea.",
 		"moveInlineTaskTargetRequiresBlankLine": "Colocar el cursor en una línea vacía antes de mover una tarea en línea.",

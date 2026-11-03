@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "Les groupes Operon ayant la même propriété à valeur unique ne peuvent pas se chevaucher. La modification n’a pas été appliquée.",
       "canvasGroupSaveFailed": "Le groupe est dans l’historique Canvas, mais l’enregistrement a échoué. Vérifiez le Canvas avant de réessayer.",
       "canvasGroupUnavailable": "Le groupe Canvas a changé ou est indisponible.",
+      "canvasLightboxConflict": "Plusieurs vues Canvas contiennent des modifications non enregistrées différentes. Gardez-les ouvertes et résolvez les différences en modifiant ou en annulant avant d’enregistrer, de fermer ou de déplacer cette vue.",
+      "canvasLightboxWaiting": "En attente de la fin des enregistrements Canvas. Vous pouvez continuer dans l’onglet existant ou annuler.",
       "canvasTaskAddFailed": "Impossible d’ajouter la carte au Canvas.",
       "canvasTaskColorFailed": "Certaines couleurs de tâches n’ont pas pu être modifiées. La tâche a peut-être changé ailleurs, est indisponible ou le Canvas est verrouillé. Les couleurs actuelles ont été conservées.",
       "canvasTaskColorSaveFailed": "Impossible d’enregistrer Canvas. Les couleurs des tâches ont été conservées ; Canvas contient des modifications non enregistrées.",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "1aaa385301410037f72247b64bbbec29754c0851d6233c384ca79691d56c30a2"
+  "sourceVersion": "d9dc01f7ce3322bbcc4ac9437f5bbce61a313d4d480e279ad0d478efd852f857"
 }

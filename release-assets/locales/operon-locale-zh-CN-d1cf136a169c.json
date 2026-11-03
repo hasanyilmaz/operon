@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3762,
-  "keyFingerprint": "6b997af72a50b4ad662d0e43de7e0d54324f757fa209f171dd069886980e8e1b",
+  "keyCount": 3764,
+  "keyFingerprint": "ae6bd678cc89969d6f69aba23b07b06be8c62697e5d96a74e8371e5d966c81f5",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -837,6 +837,8 @@
       "canvasGroupOverlap": "具有相同单值属性的 Operon 分组不能重叠。更改未应用。",
       "canvasGroupSaveFailed": "分组已记录在 Canvas 历史中，但保存失败。请检查 Canvas 后再重试。",
       "canvasGroupUnavailable": "Canvas 分组已更改或不可用。",
+      "canvasLightboxConflict": "多个 Canvas 视图中存在不同的未保存更改。请保持两个视图打开，通过编辑或撤销解决差异后，再保存、关闭或移动此视图。",
+      "canvasLightboxWaiting": "正在等待 Canvas 保存完成。你可以继续在现有标签页中工作或取消。",
       "canvasTaskAddFailed": "无法将任务卡片添加到 Canvas。",
       "canvasTaskColorFailed": "无法更改部分任务的颜色。任务可能已在其他位置更改、不可用，或 Canvas 已锁定。当前源颜色已保留。",
       "canvasTaskColorSaveFailed": "无法保存 Canvas。任务颜色更改已保留；Canvas 中仍有未保存的更改。",
@@ -3807,5 +3809,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "0de6d4a0d967e8414ec512ea03ba484951639f0486369b08574c015072ee7abc"
+  "sourceVersion": "c559ff76255f1a442e4d6180829fb93fc0d784c93a4786808e138d37ae14543b"
 }
