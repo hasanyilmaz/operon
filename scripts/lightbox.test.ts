@@ -326,3 +326,8 @@ test('media Escape leaves visible menus first, including a previously hidden men
  assert.equal(f.escape(), true); assert.equal(f.scopes.length, 1);
  menu.setAttribute('hidden', ''); assert.equal(f.escape(), false); assert.equal(f.scopes.length, 0); close();
 });
+
+test('owned modal scope falls back safely when a partial window App has no workspace',()=>{
+ const f=desktopFixture(),scopes:unknown[]=[];f.doc.defaultView.app={scope:{},keymap:{pushScope:(scope:unknown)=>scopes.push(scope),popScope:()=>scopes.pop()}};
+ try{const close=openLightbox(f.anchor,{title:'Partial app',render:()=>null});assert.equal(scopes.length,1);close();assert.equal(scopes.length,0);}finally{f.cleanup();}
+});

@@ -202,7 +202,7 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
  const modalApp = getWindowApp(getOwnerWindow(anchor));
  const modalScope = modalApp?.keymap ? new Scope(modalApp.scope) : null;
  if(modalScope && modalApp) {
-  const canvas:unknown=Reflect.get(modalApp.workspace,'scope');
+  const canvas:unknown=modalApp.workspace && Reflect.get(modalApp.workspace,'scope');
   nativeScopeParents.set(lightbox,{scope:modalScope,base:modalApp.scope,canvas:canvas instanceof Scope?canvas:modalApp.scope});
  }
  let modalScopeActive = false;
