@@ -13702,7 +13702,7 @@ body .operon-task-editor .operon-editor-description-actions .operon-editor-proje
 .operon-mobile-global-task-fab {
 	position: fixed;
 	right: max(18px, env(safe-area-inset-right, 0px));
-	bottom: max(18px, calc(18px + env(safe-area-inset-bottom, 0px)));
+	bottom: max(20dvh, calc(18px + env(safe-area-inset-bottom, 0px)));
 	z-index: 998;
 	display: inline-flex;
 	align-items: center;

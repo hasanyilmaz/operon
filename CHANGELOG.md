@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Raised the **mobile Task Creator button’s default position** to leave 20% of the viewport height below it, reducing overlap with Obsidian’s bottom navigation controls while preserving saved user positions. Resetting its position uses the new default. ([#311](https://github.com/hasanyilmaz/operon/issues/311))
 - Fixed **Filter Editor** Group by, Subgroup by, and Sort by pickers shifting or being clipped in themes that transform modal windows, keeping long option lists accessible within the visible area. ([#312](https://github.com/hasanyilmaz/operon/issues/312))
 - Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open, while preserving checks for existing values and unsaved changes.
 - Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values, while preserving existing tasks and file-property mappings.
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Mobile Task Creator button placement passed **9/9** isolated layout checks, **2/2** targeted local regression groups, strict lint, the Plugin release guard, and manual UI verification.
 - Filter Editor picker placement passed full local Plugin checks, **24/24** isolated layout scenarios, **7/7** shared-panel regression checks, code review, and manual UI verification.
 - Kanban control alignment passed **155/155** pool tests, **28/28** isolated layout checks, strict lint, the Plugin release guard, and manual UI verification.
 - Kanban pools passed full local Plugin checks, **155/155** pool tests, **85/85** cell-action tests, **8/8** targeted local regression groups, isolated browser checks, code review, and manual UI acceptance.
