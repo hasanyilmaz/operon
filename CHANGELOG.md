@@ -9,43 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added **Status Dock Sections and Order** in Workspace Tweaks, with seven independently enabled sections that can be reordered from left to right. Ongoing and Upcoming Tasks now have separate controls; all sections start enabled and task-list icons hide when empty.
+- Added **Status Dock Sections and Order** at the top of Workspace Tweaks, alongside click behavior and a documentation link. Seven sections can be independently enabled and reordered, including separate Ongoing and Upcoming Tasks controls. All sections start enabled; empty task lists hide their icons.
 - Added **Pinned Tasks and Modified Tasks** to the Status Dock, following your active pinned group's sorting and Task Finder's recent-modification rules, with the first task closest to the Dock.
-- Added **Session History** to the Status Dock, showing each session's duration and task using the existing History Days setting. Click a duration to edit the session or use Start Timer to track the task again.
-- Added **Task Pool and Property Value Pool to Kanban**, sharing search, favorites, pinning, and settings with Canvas and Excalidraw. Both support mouse and long-press touch dragging.
-- Drag existing tasks from **Task Pool** into a Kanban cell to apply its column and swimlane values, preserving existing list memberships and respecting the drop position when using manual sorting.
-- Drag **Property Value Pool** values onto an individual task card to update its fields, including board grouping fields. The pool stays open so more values can be applied without losing its search or selection.
-- **Task Pool drop tooltips** show which fields will change, which list values will be added, whether only the manual position will change, and why a cell cannot accept the task. Both pools show filter warnings only when the updated task no longer matches the board filter.
+- Added **Session History** to the Status Dock using the existing History Days setting. Each session appears separately with its duration and task; click the duration to edit it or use Start Timer to track the task again.
+- Added **Task Pool to Kanban** with shared search, favorites, pinning, and settings from Canvas and Excalidraw. Drag tasks into cells with a mouse or long-press touch to apply column and swimlane values, add list memberships, and choose their position in manual sorting. Drop tooltips preview changes and explain blocked targets.
+- Added **Property Value Pool to Kanban** with the same shared pool controls and mouse/touch support. Drop values onto one task card to update its fields, including board grouping fields; the panel stays open with its search and selection intact. Both pools warn only when an updated task no longer matches the board filter.
 
 ### Improved
 
-- **Status Dock** sections wrap onto a second row in narrow windows, and open task lists stay open when the Dock is dragged. Pressing Escape cancels the move without dismissing the list.
-- Simplified **Status Dock task cards** by removing task-name hover tooltips and the last-session card's shadow, while making clickable controls easier to recognize with a pointer cursor. The ten-second notification and other control tooltips are preserved.
-- Grouped **Status Dock settings** first in Workspace Tweaks, alongside its click behavior and a direct documentation link.
-- Aligned **Kanban’s floating controls** with the toolbar Settings button for a cleaner right edge, preserving the four size buttons’ relative positions.
-- **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
+- **Status Dock** wraps onto a second row in narrow windows and keeps task lists open while being moved, including when Escape cancels the move. Task-name hover tooltips are removed, clickable controls use a pointer cursor, and the ten-second session card has no outer shadow.
+- Aligned **Kanban's floating controls** with the toolbar Settings button for a cleaner right edge.
+- **Embedded filters** no longer show an extra outline on hover in Live Preview.
 
 ### Fixed
 
-- Fixed **active tracker indicators**, including FlowTime and Status Dock, staying out of date after changes arrive from another device. File-change events and returning to the app now refresh the timer without periodic file polling or restarting Obsidian, while preserving recording safeguards.
-- Raised the **mobile Task Creator button’s default position** to leave 20% of the viewport height below it, reducing overlap with Obsidian’s bottom navigation controls while preserving saved user positions. Resetting its position uses the new default. ([#311](https://github.com/hasanyilmaz/operon/issues/311))
-- Fixed **Filter Editor** Group by, Subgroup by, and Sort by pickers shifting or being clipped in themes that transform modal windows, keeping long option lists accessible within the visible area. ([#312](https://github.com/hasanyilmaz/operon/issues/312))
-- Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open, while preserving checks for existing values and unsaved changes.
-- Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values, while preserving existing tasks and file-property mappings.
+- Fixed **active tracker indicators**, including FlowTime and Status Dock, staying out of date after changes arrive from another device; they now refresh without restarting Obsidian.
+- Raised the **mobile Task Creator button's default position** to leave 20% of the viewport height below it, reducing overlap with bottom navigation. Saved positions stay unchanged; resetting uses the new default. ([#311](https://github.com/hasanyilmaz/operon/issues/311))
+- Fixed **Filter Editor** Group by, Subgroup by, and Sort by pickers shifting or being clipped in some themes, keeping long option lists accessible. ([#312](https://github.com/hasanyilmaz/operon/issues/312))
+- Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open.
+- Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values.
 - Fixed **Task Creator** sometimes showing a discard confirmation instead of opening the next property picker when switching from a custom field.
 
 ### Validation
 
-- Status Dock passed **170/170** focused tests, **9/9** section/settings tests, **5,292/5,292** local regression checks, **87** browser layout scenarios, mouse/touch interaction checks, full local Plugin checks, the Plugin release guard, code review, and user verification.
-- Tracker synchronization passed **34/34** focused tests, **5,290/5,290** local regression checks, full local Plugin checks, the Plugin release guard, code review, and user verification.
-- Mobile Task Creator button placement passed **9/9** isolated layout checks, **2/2** targeted local regression groups, strict lint, the Plugin release guard, and manual UI verification.
-- Filter Editor picker placement passed full local Plugin checks, **24/24** isolated layout scenarios, **7/7** shared-panel regression checks, code review, and manual UI verification.
-- Kanban control alignment passed **155/155** pool tests, **28/28** isolated layout checks, strict lint, the Plugin release guard, and manual UI verification.
-- Kanban pools passed full local Plugin checks, **155/155** pool tests, **85/85** cell-action tests, **8/8** targeted local regression groups, isolated browser checks, code review, and manual UI acceptance.
-- Custom key reuse passed full local Plugin checks, **71/71** focused tests, **1/1** targeted local regression check, and code review.
-- Inline task key serialization passed local Plugin checks, **179/179** creation tests, **1/1** targeted local regression check, code review, and manual UI acceptance.
-- Embedded-filter styling passed strict lint, the Plugin release guard, and manual UI verification.
-- Task Creator picker switching passed full local Plugin checks, **80/80** focused tests, **1/1** targeted local regression check, isolated browser verification, and manual UI acceptance.
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **5,292/5,292** local regression tests.
 
 ## [4.4.0] - 2026-10-30
 
