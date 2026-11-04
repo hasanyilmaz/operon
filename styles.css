@@ -15142,6 +15142,10 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	overflow: hidden;
 }
 
+.operon-filter-set-modal-shell > .operon-filter-field-picker-panel {
+	min-width: 0;
+}
+
 .operon-filter-name-input {
 	width: 100%;
 	max-width: none;
