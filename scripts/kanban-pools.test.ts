@@ -233,8 +233,8 @@ test('valid empty and single-axis boards mount controls outside the scrolling gr
  assert.ok(render.indexOf('this.mountPools(boardEl') < render.indexOf('if (hasSwimlanes)'));
  assert.ok(render.indexOf('this.mountPools(boardEl') < render.indexOf("createDiv('operon-kanban-grid-viewport')"));
  const css = readFileSync('styles.css', 'utf8'); const rule = css.split('.operon-kanban-pool-controls {')[1].split('}')[0];
- for (const value of ['position: absolute', 'top: 50%', 'right: 15px', 'translateY(-50%)', 'flex-direction: column']) assert.ok(rule.includes(value));
- assert.match(css.split('.operon-kanban-cell-height-controls {')[1].split('}')[0], /right: 15px/);
+ for (const value of ['position: absolute', 'top: 50%', 'right: 0', 'translateY(-50%)', 'flex-direction: column']) assert.ok(rule.includes(value));
+ assert.match(css.split('.operon-kanban-cell-height-controls {')[1].split('}')[0], /right: 0/);
 });
 test('Kanban closes pools for preset changes, full renders, search DOM rebuilds and close; retains in-place refresh', () => {
  const view = readFileSync('src/ui/kanban/kanban-view.ts', 'utf8');

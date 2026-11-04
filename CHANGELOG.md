@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- Aligned **Kanban’s floating controls** with the toolbar Settings button for a cleaner right edge, preserving the four size buttons’ relative positions.
 - **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
 
 ### Fixed
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Kanban control alignment passed **155/155** pool tests, **28/28** isolated layout checks, strict lint, the Plugin release guard, and manual UI verification.
 - Kanban pools passed full local Plugin checks, **155/155** pool tests, **85/85** cell-action tests, **8/8** targeted local regression groups, isolated browser checks, code review, and manual UI acceptance.
 - Custom key reuse passed full local Plugin checks, **71/71** focused tests, **1/1** targeted local regression check, and code review.
 - Inline task key serialization passed local Plugin checks, **179/179** creation tests, **1/1** targeted local regression check, code review, and manual UI acceptance.

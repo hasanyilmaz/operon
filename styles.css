@@ -24537,7 +24537,7 @@ button.operon-kanban-toolbar-settings-button {
 .operon-kanban-pool-controls {
  position: absolute;
  top: 50%;
- right: 15px;
+ right: 0;
  transform: translateY(-50%);
  z-index: 10;
  display: flex;
@@ -24548,7 +24548,7 @@ button.operon-kanban-toolbar-settings-button {
 .operon-kanban-cell-height-controls {
 	position: absolute;
 	bottom: 83px;
-	right: 15px;
+	right: 0;
 	z-index: 10;
 	display: flex;
 	flex-direction: column;
@@ -24570,7 +24570,7 @@ button.operon-kanban-toolbar-settings-button {
 .operon-kanban-cell-width-controls {
 	position: absolute;
 	bottom: 23px;
-	right: 68px;
+	right: 53px;
 	z-index: 10;
 	display: flex;
 	gap: 8px;
