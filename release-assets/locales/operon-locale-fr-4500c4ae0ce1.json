@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1060,6 +1060,7 @@
       "timerStarted": "Minuteur démarré pour {{operonId}}",
       "timerStopped": "Minuteur arrêté pour {{operonId}}",
       "trackedTimeRange": "Suivi : {{range}}",
+      "trackerStateChanged": "Le minuteur a changé ou son état n’a pas pu être vérifié. Vérifiez son état actuel et réessayez.",
       "webViewerUnavailable": "Activez le module principal Web Viewer d’Obsidian pour ouvrir ce lien dans un nouvel onglet.",
       "weeklyNotesConversionRequiresCursor": "Pour convertir une tâche-fichier vers les notes hebdomadaires, placez le curseur sur une ligne vide d'une note ouverte.",
       "weeklyNotesManagementDisabled": "La gestion des notes hebdomadaires est désactivée. Activez-la sous Task Router → Notes quotidiennes et hebdomadaires avant d'y créer des tâches en ligne.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "9436cdeaad9dccdb814204bc29035c6a336f862a1be048108917c49a70b1d5a3"
+  "sourceVersion": "183f1ef9e093c604623a74f1152bbd4b1d9f65a2084720f86dec7287646a9511"
 }

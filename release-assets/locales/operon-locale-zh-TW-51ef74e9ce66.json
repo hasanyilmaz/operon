@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1060,6 +1060,7 @@
       "timerStarted": "已為 {{operonId}} 啟動計時器",
       "timerStopped": "已為 {{operonId}} 停止計時器",
       "trackedTimeRange": "已追蹤：{{range}}",
+      "trackerStateChanged": "計時器已變更或無法驗證。請檢查其目前狀態後再試一次。",
       "webViewerUnavailable": "請啟用 Obsidian 的核心外掛「Web Viewer」，以在新分頁中開啟此連結。",
       "weeklyNotesConversionRequiresCursor": "若要將檔案任務轉換至週記，請將游標放在已開啟筆記的空白行上。",
       "weeklyNotesManagementDisabled": "週記管理已停用。請先在Task Router → 每日與每週筆記中啟用，再在其中建立行內任務。",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1f895cfcf7a12401e8507250229887c5fd66bfd3800a2b059f6b5eb8bd69bc35"
+  "sourceVersion": "d459b9aea1334903f9877697c1ca08022afb5d97d2511e5afde5089fa21581ca"
 }

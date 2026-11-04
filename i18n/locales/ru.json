@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
+		"trackerStateChanged": "Таймер изменился или его состояние не удалось проверить. Проверьте текущее состояние и повторите попытку.",
 		"createdInlineTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
 		"createdFileTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
 		"excalidrawPoolUnavailable": "API управления пулом задач Excalidraw недоступен.",

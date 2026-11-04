@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} attività modificate {{period}}"
 	},
 	"notifications": {
+		"trackerStateChanged": "Il timer è cambiato o non è stato possibile verificarlo. Controlla il suo stato attuale e riprova.",
 		"createdInlineTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la sua vista.",
 		"createdFileTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la relativa vista.",
 		"excalidrawPoolUnavailable": "L’API di controllo del pool attività Excalidraw non è disponibile.",

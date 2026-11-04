@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1060,6 +1060,7 @@
       "timerStarted": "{{operonId}} için zamanlayıcı başlatıldı",
       "timerStopped": "{{operonId}} için zamanlayıcı durduruldu",
       "trackedTimeRange": "Takibe eklendi: {{range}}",
+      "trackerStateChanged": "Zamanlayıcı değişti veya durumu doğrulanamadı. Güncel durumunu kontrol edip yeniden deneyin.",
       "webViewerUnavailable": "Bu bağlantıyı yeni bir sekmede açmak için Obsidian'ın Web Viewer çekirdek eklentisini etkinleştirin.",
       "weeklyNotesConversionRequiresCursor": "Bir dosya görevini Haftalık Notlara dönüştürmek için açık bir notta imleci boş bir satıra yerleştirin.",
       "weeklyNotesManagementDisabled": "Haftalık Notlar yönetimi kapalı. Satır içi görevleri buraya oluşturmadan önce Task Router → Günlük ve Haftalık Notlar bölümünden etkinleştirin.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "5f8d5f7e950ba0a36fa504be032d4c9cbce3e24ca1b014387480c30afc8f8b71"
+  "sourceVersion": "77731c68b6b03395a73e0cc6768b58ceeb6a06693f03a4d51e8cf55de7500b3c"
 }

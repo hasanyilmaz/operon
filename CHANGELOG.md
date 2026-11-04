@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed **active tracker indicators**, including FlowTime and Status Dock, staying out of date after changes arrive from another device. File-change events and returning to the app now refresh the timer without periodic file polling or restarting Obsidian, while preserving recording safeguards.
 - Raised the **mobile Task Creator button’s default position** to leave 20% of the viewport height below it, reducing overlap with Obsidian’s bottom navigation controls while preserving saved user positions. Resetting its position uses the new default. ([#311](https://github.com/hasanyilmaz/operon/issues/311))
 - Fixed **Filter Editor** Group by, Subgroup by, and Sort by pickers shifting or being clipped in themes that transform modal windows, keeping long option lists accessible within the visible area. ([#312](https://github.com/hasanyilmaz/operon/issues/312))
 - Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open, while preserving checks for existing values and unsaved changes.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Tracker synchronization passed **34/34** focused tests, **5,290/5,290** local regression checks, full local Plugin checks, the Plugin release guard, code review, and user verification.
 - Mobile Task Creator button placement passed **9/9** isolated layout checks, **2/2** targeted local regression groups, strict lint, the Plugin release guard, and manual UI verification.
 - Filter Editor picker placement passed full local Plugin checks, **24/24** isolated layout scenarios, **7/7** shared-panel regression checks, code review, and manual UI verification.
 - Kanban control alignment passed **155/155** pool tests, **28/28** isolated layout checks, strict lint, the Plugin release guard, and manual UI verification.

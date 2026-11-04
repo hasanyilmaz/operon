@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1060,6 +1060,7 @@
       "timerStarted": "{{operonId}} 타이머를 시작했습니다",
       "timerStopped": "{{operonId}} 타이머를 중지했습니다",
       "trackedTimeRange": "추적 시간: {{range}}",
+      "trackerStateChanged": "타이머가 변경되었거나 상태를 확인할 수 없습니다. 현재 상태를 확인한 후 다시 시도하세요.",
       "webViewerUnavailable": "새 탭에서 이 링크를 열려면 Obsidian의 웹 뷰어 코어 플러그인을 활성화하세요.",
       "weeklyNotesConversionRequiresCursor": "파일 작업을 주간 노트로 변환하려면 열려 있는 노트의 빈 줄에 커서를 놓으세요.",
       "weeklyNotesManagementDisabled": "주간 노트 관리가 비활성화되어 있습니다. 주간 노트에 인라인 작업을 만들려면 작업 라우터 → 일일 및 주간 노트에서 활성화하세요.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "1b8d5de59ffa5b832f0b4ab5eb10193a9a46347428fde0e298958bb1a05724a2"
+  "sourceVersion": "26a82255b5241cda0044043aad0e8d714f0261e0d3e3f8fac69f19108c3884f8"
 }

@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tasks modified in the {{period}}"
 	},
 	"notifications": {
+		"trackerStateChanged": "The timer changed or could not be verified. Check its current state and try again.",
 		"createdInlineTaskOpenFailed": "The task was created, but its view could not be opened.",
 		"createdFileTaskOpenFailed": "The task was created, but its view could not be opened.",
 		"excalidrawPoolUnavailable": "Excalidraw’s Task Pool control API is unavailable.",

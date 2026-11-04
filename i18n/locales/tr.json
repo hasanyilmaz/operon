@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"trackerStateChanged": "Zamanlayıcı değişti veya durumu doğrulanamadı. Güncel durumunu kontrol edip yeniden deneyin.",
 		"createdInlineTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
 		"createdFileTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
 		"excalidrawPoolUnavailable": "Excalidraw Görev Havuzu kontrol API’si kullanılamıyor.",

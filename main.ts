@@ -193,6 +193,7 @@ import {
 	type CreationAggregateProjectionTask,
 } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
+import { startActiveTrackerMonitor } from './src/systems/active-tracker-monitor';
 import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/time-tracker';
 import {
 	TaskSourceModifyReconciler,
@@ -4134,10 +4135,11 @@ export default class OperonPlugin extends Plugin {
 		return await this.timeTracker.stop(reason);
 	}
 
-	private reconcileFileTaskArchiveAfterTimerStateChange(): void {
+	private reconcileFileTaskArchiveAfterTimerStateChange(source: 'local' | 'external' = 'local'): void {
 		const currentOperonId = this.timeTracker.getActiveOperonId();
 		const previousOperonId = this.lastActiveTimerTaskId;
 		this.lastActiveTimerTaskId = currentOperonId;
+		if (source === 'external') return;
 		if (!previousOperonId || previousOperonId === currentOperonId) return;
 		this.fileTaskArchiver?.scheduleAfterTimerFinalized(previousOperonId);
 	}
@@ -9539,6 +9541,9 @@ export default class OperonPlugin extends Plugin {
 				});
 			}
 			if (request.spec.operation === 'start' || request.spec.operation === 'stop') {
+			if (await this.timeTracker.refreshExternalState() === 'unavailable' || this.timeTracker.hasUnresolvedActiveTask()) {
+				return { ok: false, code: 'stale-source', reason: 'The active timer source is unavailable.' };
+			}
 			const active = this.timeTracker.getActiveState();
 			const requestedOperonId = request.target?.operonId ?? null;
 			const provisionalTargetOperonId = request.spec.operation === 'start'
@@ -10868,6 +10873,9 @@ export default class OperonPlugin extends Plugin {
 			&& (preparedMutation.token as { kind?: unknown }).kind === 'timer'
 		) {
 			const prepared = preparedMutation.token as RuntimeTimerMutationPreparationV1;
+			if (await this.timeTracker.refreshExternalState() === 'unavailable' || this.timeTracker.hasUnresolvedActiveTask()) {
+				return { status: 'failed', groupResults: [], affectedFilePaths: [], reason: 'The active timer source is unavailable.' };
+			}
 			const active = this.timeTracker.getActiveState();
 			const activeMaterial = active
 				? {
@@ -14468,7 +14476,7 @@ export default class OperonPlugin extends Plugin {
    if (activeId) ids.push(activeId);
    for (const id of ids) if (id) sessionPreimages.set(id, this.indexer.getTask(id)?.fieldValues['trackers'] ?? '');
   }
-  const target = this.excalidrawTaskIntegration && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
+  const target = (this.excalidrawTaskIntegration || this.timeTracker?.getActiveOperonId()) && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
   const deletedTasks = target ? target.primary.format === 'yaml'
    ? this.indexer.getAllTasks().filter(task => task.primary.filePath === target.primary.filePath) : [target] : [];
   const releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
@@ -14494,7 +14502,10 @@ export default class OperonPlugin extends Plugin {
    for (const [id, previousTrackers] of sessionPreimages) this.timeTracker.notifyCreatedSessions(id, previousTrackers);
   }
   releaseDeletion?.(result.status === 'applied');
-  if (result.status === 'applied' && deletedTasks.length) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+  if (result.status === 'applied' && deletedTasks.length) {
+   this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+   void this.timeTracker?.confirmTaskRemoval(deletedTasks.map(task => task.operonId)).catch(error => console.warn('Operon: committed deletion tracker cleanup deferred', error));
+  }
   return result;
   } finally { releaseDeletion?.(); }
 	}
@@ -16775,17 +16786,17 @@ export default class OperonPlugin extends Plugin {
   });
 
 		this.register(
-			this.timeTracker.subscribe((event) => {
+			this.timeTracker.subscribe((event, context) => {
 				if (event !== 'state') return;
-				this.reconcileFileTaskArchiveAfterTimerStateChange();
+				this.reconcileFileTaskArchiveAfterTimerStateChange(context?.source);
 				this.refreshTimerStateSurfaces();
 			}),
 		);
 
 		// Auto-pin on timer start
 		this.register(
-			this.timeTracker.subscribe(asyncHandler('auto-pin active timer failed', async (event) => {
-				if (event !== 'state') return;
+			this.timeTracker.subscribe(asyncHandler('auto-pin active timer failed', async (event, context) => {
+				if (event !== 'state' || context?.source === 'external') return;
 				if (!this.settings.pinnedDockAutoPin) return;
 				if (!this.pinnedCache) return;
 				const operonId = this.timeTracker.getActiveOperonId();
@@ -17196,6 +17207,7 @@ export default class OperonPlugin extends Plugin {
 					this.scheduleProjectSerialIndexReconcile();
 				}
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
+				this.initializeActiveTrackerMonitor();
 				this.agentRuntimeLifecycle.markReady();
 				this.taskCardIndexState = 'ready';
 				this.agentRuntimeStartupSettlementRelease?.();
@@ -17230,6 +17242,13 @@ export default class OperonPlugin extends Plugin {
 			});
 			});
 		}
+
+	private initializeActiveTrackerMonitor(): void {
+		this.register(startActiveTrackerMonitor(
+			this.timeTracker, getOwnerWindow(this.app.workspace.containerEl), this.app.workspace.containerEl.ownerDocument, () => this.startupReady,
+            { vault: this.app.vault, path: this.storage.activeTrackers.sourcePath },
+		));
+	}
 
 	private initializeIndexV8ManifestMonitor(): void {
 		const win = getActiveWindow();
@@ -17300,6 +17319,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.timeTracker?.cancelExternalRefresh();
 		this.tasksConversionController?.dispose();
 		disposeAssigneeChipImages(this.app);
 		this.agentRuntimeCliTransportAvailable = false;
@@ -25242,7 +25262,7 @@ export default class OperonPlugin extends Plugin {
 				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
-			const deletedTasks = this.excalidrawTaskIntegration && prepared.target.action === 'trash'
+			const deletedTasks = (this.excalidrawTaskIntegration || this.timeTracker?.getActiveOperonId()) && prepared.target.action === 'trash'
     ? this.indexer.getAllTasks().filter(task => task.primary.filePath === prepared.target.filePath) : [indexedTarget];
    releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
    const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
@@ -25320,7 +25340,10 @@ export default class OperonPlugin extends Plugin {
 				this.showPluginUiMutationOutcome('committed-repair-scheduled');
 			}
    releaseDeletion?.(!conversion);
-   if (!conversion) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+   if (!conversion) {
+    this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+    void this.timeTracker?.confirmTaskRemoval(deletedTasks.map(task => task.operonId)).catch(error => console.warn('Operon: committed deletion tracker cleanup deferred', error));
+   }
 			return true;
 		} catch (error) {
 			if (mutationStarted) conversion?.uncertain();

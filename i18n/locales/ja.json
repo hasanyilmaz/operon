@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
+		"trackerStateChanged": "タイマーが変更されたか、状態を確認できませんでした。現在の状態を確認して、もう一度お試しください。",
 		"createdInlineTaskOpenFailed": "タスクは作成されましたが、表示を開けませんでした。",
 		"createdFileTaskOpenFailed": "タスクは作成されましたが、そのビューを開けませんでした。",
 		"excalidrawPoolUnavailable": "ExcalidrawタスクプールのコントロールAPIを利用できません。",

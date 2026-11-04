@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1060,6 +1060,7 @@
       "timerStarted": "已为 {{operonId}} 启动计时器",
       "timerStopped": "已为 {{operonId}} 停止计时器",
       "trackedTimeRange": "已追踪：{{range}}",
+      "trackerStateChanged": "计时器已更改或无法验证。请检查其当前状态后重试。",
       "webViewerUnavailable": "请启用 Obsidian 的核心插件“Web Viewer”，以在新标签页中打开此链接。",
       "weeklyNotesConversionRequiresCursor": "要将文件任务转换到周记，请将光标放在已打开笔记的空行上。",
       "weeklyNotesManagementDisabled": "周记管理已禁用。请先在Task Router → 每日和每周笔记中启用它，再在其中创建内联任务。",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "9fcca02d6bc219cdd3fa7f4f9eb43d530878f1a94f39f9b0ab0cdca1aac90afa"
+  "sourceVersion": "a1c31ab8d6b8003b5970b0f6778e55395ea626e4ea23a8e072c4a44cb42a6077"
 }

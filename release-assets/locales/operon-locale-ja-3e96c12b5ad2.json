@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1060,6 +1060,7 @@
       "timerStarted": "{{operonId}} のタイマーを開始しました",
       "timerStopped": "{{operonId}} のタイマーを停止しました",
       "trackedTimeRange": "記録: {{range}}",
+      "trackerStateChanged": "タイマーが変更されたか、状態を確認できませんでした。現在の状態を確認して、もう一度お試しください。",
       "webViewerUnavailable": "このリンクを新しいタブで開くには、Obsidian のコアプラグイン「Web Viewer」を有効にしてください。",
       "weeklyNotesConversionRequiresCursor": "ファイルタスクをウィークリーノートに変換するには、開いているノートの空行にカーソルを置いてください。",
       "weeklyNotesManagementDisabled": "ウィークリーノート管理は無効です。ここにインラインタスクを作成する前に、Task Router → デイリーノートとウィークリーノートで有効にしてください。",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "07de74723a11ae82fe7b7dcdd9e246e1ead523416edfbb75eabd6d5746c5b885"
+  "sourceVersion": "7d83b4d57226b9616869d669326d08bcf9999c5d21c851598d0ac1ae574cfaba"
 }

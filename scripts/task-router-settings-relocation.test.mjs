@@ -284,7 +284,7 @@ test('successful timer finalization requeues only the previous assigned task for
 	assert.match(reconciliation, /this\.fileTaskArchiver\?\.scheduleAfterTimerFinalized\(previousOperonId\);/u);
 	assert.match(
 		mainSource,
-		/this\.timeTracker\.subscribe\(\(event\) => \{\s*if \(event !== 'state'\) return;\s*this\.reconcileFileTaskArchiveAfterTimerStateChange\(\);\s*this\.refreshTimerStateSurfaces\(\);/u,
+		/this\.timeTracker\.subscribe\(\(event, context\) => \{\s*if \(event !== 'state'\) return;\s*this\.reconcileFileTaskArchiveAfterTimerStateChange\(context\?\.source\);\s*this\.refreshTimerStateSurfaces\(\);/u,
 	);
 	assert.match(
 		archiverSource,

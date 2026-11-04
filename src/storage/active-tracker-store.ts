@@ -9,7 +9,15 @@ const ACTIVE_TRACKERS_VERSION = 1;
 const CURRENT_USER_ID = '';
 const CURRENT_USER_NAME = '';
 
+export type ActiveTrackerRefreshResult = 'changed' | 'unchanged' | 'unavailable';
+export type ActiveTrackerChangeSource = 'local' | 'external';
+
 export interface ActiveTrackerStoreLike {
+	/** Optional for in-memory stores without an external persistence source. */
+	refreshFromDisk?(canApply?: () => boolean): Promise<ActiveTrackerRefreshResult>;
+	assertSourceCurrent?(): Promise<void>;
+	getChangeSource?(): ActiveTrackerChangeSource;
+	getExternalRevision?(): number;
 	load(): Promise<void>;
 	getActiveForUser(userId?: string): ActiveTrackerRecord | null;
 	getAll(): ActiveTrackerRecord[];
@@ -34,6 +42,11 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private listeners: Set<() => void> = new Set();
 	private mutationQueue: Promise<void> = Promise.resolve();
 	private writesSuspended = false;
+	private observedFile = false;
+	private recoveredSource: string | null = null;
+	private sourceRead: object | null = null;
+	private changeSource: ActiveTrackerChangeSource = 'local';
+	private externalRevision = 0;
 	private readonly filePath: string;
 
 	constructor(app: App, writeQueue: WriteQueue, filePath?: string) {
@@ -41,6 +54,8 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		this.writeQueue = writeQueue;
 		this.filePath = filePath ?? buildOperonPluginStoragePath(app.vault.configDir, 'state', ACTIVE_TRACKERS_FILE_NAME);
 	}
+
+	get sourcePath(): string { return this.filePath; }
 
 	async load(): Promise<void> {
 		const adapter = this.app.vault.adapter;
@@ -54,8 +69,11 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 		let raw = '';
 		try {
 			raw = await adapter.read(loadPath);
+			this.observedFile = true;
 			const data = JSON.parse(raw) as Partial<ActiveTrackersData>;
 			this.active = this.normalizeRecords(Array.isArray(data.active) ? data.active : []);
+			// Preserve startup's existing normalization contract only for this exact source.
+			this.recoveredSource = (data.version === 1 || data.version === undefined) && !parseExternalRecords(raw) ? raw : null;
 			this.generation = 0;
 			this.writesSuspended = false;
 			if (loadPath !== this.filePath) {
@@ -71,12 +89,82 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 			}
 			try {
 				await preserveInvalidJsonFile(adapter, this.filePath, raw);
+				this.recoveredSource = raw;
 				this.writesSuspended = false;
 			} catch {
 				console.warn('Operon: Failed to preserve invalid active-trackers.json backup; active tracker writes suspended');
 				this.writesSuspended = true;
 			}
 		}
+	}
+
+	/** Read-only reconciliation. Never run startup recovery on a sync probe. */
+	async refreshFromDisk(canApply: () => boolean = () => true): Promise<ActiveTrackerRefreshResult> {
+		let result: ActiveTrackerRefreshResult = 'unavailable';
+		const run = this.mutationQueue.then(async () => {
+			if (!canApply()) return;
+			try {
+				const raw = await this.readSource();
+				if (!canApply()) return;
+				if (raw === null) {
+					if (!this.observedFile && this.active.length === 0) result = 'unchanged';
+					return;
+				}
+				if (raw === this.recoveredSource && !this.writesSuspended) { result = 'unchanged'; return; }
+				const next = parseExternalRecords(raw);
+				if (!next) return;
+				this.recoveredSource = null;
+				this.observedFile = true;
+				if (this.sameRecords(next)) { result = 'unchanged'; return; }
+				this.active = next;
+				this.changeSource = 'external';
+				this.externalRevision += 1;
+				result = 'changed';
+				this.bumpGeneration();
+			} catch {
+				// A sync provider may temporarily replace or hydrate this small file.
+				// Keep the last valid state; the next visible probe can retry the read.
+			}
+		});
+		this.mutationQueue = run.catch(() => {});
+		await run;
+		return result;
+	}
+
+	getChangeSource(): ActiveTrackerChangeSource { return this.changeSource; }
+	getExternalRevision(): number { return this.externalRevision; }
+
+	async assertSourceCurrent(): Promise<void> {
+		this.assertExpectedSource(await this.readSource());
+	}
+
+	private async readSource(): Promise<string | null> {
+		// Do not accumulate I/O requests if a provider never settles its last read.
+		if (this.sourceRead) throw new Error('Active tracker source read is still pending');
+		const owner = {};
+		this.sourceRead = owner;
+		const adapter = this.app.vault.adapter;
+		const read = (async () => await adapter.exists(this.filePath) ? await adapter.read(this.filePath) : null)();
+		const release = (): void => { if (this.sourceRead === owner) this.sourceRead = null; };
+		void read.then(release, release);
+		let timeout: number | undefined;
+		try {
+			return await Promise.race([
+				read,
+				new Promise<never>((_resolve, reject) => {
+					timeout = window.setTimeout(() => reject(new Error('Active tracker source read timed out')), 3_000);
+				}),
+			]);
+		} finally {
+			window.clearTimeout(timeout);
+		}
+	}
+
+	private assertExpectedSource(raw: string | null): void {
+		if (raw !== null && raw === this.recoveredSource && !this.writesSuspended) return;
+		if (raw === null && !this.observedFile && this.active.length === 0) return;
+		const records = raw === null ? null : parseExternalRecords(raw);
+		if (!records || !this.sameRecords(records)) throw new Error('Active tracker source changed or is unavailable');
 	}
 
 	getActiveForUser(userId = CURRENT_USER_ID): ActiveTrackerRecord | null {
@@ -144,6 +232,7 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private async mutateActive(transform: (current: ActiveTrackerRecord[]) => ActiveTrackerRecord[], canCommit?: () => boolean): Promise<void> {
 		const run = this.mutationQueue.then(async () => {
 			if (canCommit && !canCommit()) throw new Error('Active tracker write is no longer allowed');
+			await this.assertSourceCurrent();
 			const next = this.normalizeRecords(transform(this.active.map(record => ({ ...record }))));
 			if (this.sameRecords(next)) return;
 			await this.commit(next, canCommit);
@@ -155,6 +244,9 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 	private async commit(next: ActiveTrackerRecord[], canCommit?: () => boolean): Promise<void> {
 		await this.flush(next, canCommit);
 		this.active = next;
+		this.observedFile = true;
+		this.changeSource = 'local';
+		this.recoveredSource = null;
 		this.bumpGeneration();
 	}
 
@@ -167,7 +259,12 @@ export class ActiveTrackerStore implements ActiveTrackerStoreLike {
 			active,
 		};
 		await this.writeQueue.enqueue(this.filePath, async () => {
-			await writeJsonSafely(this.app.vault.adapter, this.filePath, data, { canCommit });
+			await this.assertSourceCurrent();
+			await writeJsonSafely(this.app.vault.adapter, this.filePath, data, {
+				canCommit,
+				assertCurrentText: raw => this.assertExpectedSource(raw),
+				beforeAtomicReplace: () => this.assertSourceCurrent(),
+			});
 		});
 	}
 
@@ -256,4 +353,30 @@ function compareRecordFreshness(a: ActiveTrackerRecord, b: ActiveTrackerRecord):
 	const updated = a.updatedAt.localeCompare(b.updatedAt);
 	if (updated !== 0) return updated;
 	return a.start.localeCompare(b.start);
+}
+
+/** Strict external snapshots must not silently drop records or manufacture IDs. */
+function parseExternalRecords(raw: string): ActiveTrackerRecord[] | null {
+	try {
+		const data: unknown = JSON.parse(raw);
+		if (!data || typeof data !== 'object') return null;
+		const input = data as Partial<ActiveTrackersData>;
+		if (input.version !== ACTIVE_TRACKERS_VERSION || !Array.isArray(input.active)) return null;
+		const users = new Set<string>();
+		const ids = new Set<string>();
+		const records: ActiveTrackerRecord[] = [];
+		for (const entry of input.active) {
+			if (!entry || typeof entry !== 'object'
+				|| typeof entry.id !== 'string' || !entry.id.trim()
+				|| typeof entry.userId !== 'string' || typeof entry.userName !== 'string'
+				|| !(entry.taskId === null || (typeof entry.taskId === 'string' && !!entry.taskId.trim()))
+				|| typeof entry.source !== 'string' || normalizeTrackerSource(entry.source) !== entry.source
+				|| ![entry.start, entry.createdAt, entry.updatedAt].every(value => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+			) return null;
+			const record = { ...entry, id: entry.id.trim(), userId: entry.userId.trim(), userName: entry.userName.trim(), taskId: entry.taskId?.trim() ?? null };
+			if (users.has(record.userId) || ids.has(record.id)) return null;
+			users.add(record.userId); ids.add(record.id); records.push(record);
+		}
+		return records.sort((a, b) => a.userId.localeCompare(b.userId));
+	} catch { return null; }
 }

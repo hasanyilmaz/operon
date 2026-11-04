@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"trackerStateChanged": "Le minuteur a changé ou son état n’a pas pu être vérifié. Vérifiez son état actuel et réessayez.",
 		"createdInlineTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
 		"createdFileTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
 		"excalidrawPoolUnavailable": "L’API de contrôle du réservoir de tâches Excalidraw est indisponible.",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1060,6 +1060,7 @@
       "timerStarted": "Таймер запущен для {{operonId}}",
       "timerStopped": "Таймер остановлен для {{operonId}}",
       "trackedTimeRange": "Отслежено: {{range}}",
+      "trackerStateChanged": "Таймер изменился или его состояние не удалось проверить. Проверьте текущее состояние и повторите попытку.",
       "webViewerUnavailable": "Включите встроенный плагин Obsidian Web Viewer, чтобы открыть эту ссылку в новой вкладке.",
       "weeklyNotesConversionRequiresCursor": "Чтобы преобразовать файловую задачу в еженедельные заметки, поместите курсор на пустую строку в открытой заметке.",
       "weeklyNotesManagementDisabled": "Управление еженедельными заметками отключено. Включите его в Task Router → Ежедневные и еженедельные заметки, прежде чем создавать там встроенные задачи.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "0bd0623cac86bd6cc9d771e1ffe07a3f62821256b5b058b4716cd752e41e56d7"
+  "sourceVersion": "b5df0c942af68e14f31a71d77b42aedd460291dd59150c94da454a820f3625b7"
 }

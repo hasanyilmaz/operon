@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tarefas modificadas: {{period}}"
 	},
 	"notifications": {
+		"trackerStateChanged": "O temporizador mudou ou não pôde ser verificado. Confira o estado atual e tente novamente.",
 		"createdInlineTaskOpenFailed": "A tarefa foi criada, mas não foi possível abrir sua visualização.",
 		"createdFileTaskOpenFailed": "A tarefa foi criada, mas não foi possível abrir sua visualização.",
 		"excalidrawPoolUnavailable": "A API de controle do conjunto de tarefas do Excalidraw está indisponível.",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1060,6 +1060,7 @@
       "timerStarted": "Timer für {{operonId}} gestartet",
       "timerStopped": "Timer für {{operonId}} gestoppt",
       "trackedTimeRange": "Erfasst: {{range}}",
+      "trackerStateChanged": "Der Timer wurde geändert oder konnte nicht überprüft werden. Prüfe seinen aktuellen Zustand und versuche es erneut.",
       "webViewerUnavailable": "Aktiviere das Obsidian-Kern-Plugin „Web Viewer“, um diesen Link in einem neuen Tab zu öffnen.",
       "weeklyNotesConversionRequiresCursor": "Setze den Cursor in einer geöffneten Notiz auf eine leere Zeile, um eine Datei-Aufgabe in Wochennotizen umzuwandeln.",
       "weeklyNotesManagementDisabled": "Die Verwaltung der Wochennotizen ist deaktiviert. Aktiviere sie unter Task Router → Tägliche und wöchentliche Notizen, bevor du dort Inline-Aufgaben erstellst.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "2e48d4683d920fd8545e56bc867af9bfcbb94437378366da2249e9154aed8ab5"
+  "sourceVersion": "422aa678eb52fd2ea69db96c01a01237daebcd9e7d1bcac5f26bbe10144f2847"
 }

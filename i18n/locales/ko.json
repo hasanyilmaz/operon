@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{period}} 동안 수정된 작업 {{total}}개 중 {{shown}}개"
 	},
 	"notifications": {
+		"trackerStateChanged": "타이머가 변경되었거나 상태를 확인할 수 없습니다. 현재 상태를 확인한 후 다시 시도하세요.",
 		"createdInlineTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
 		"createdFileTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
 		"excalidrawPoolUnavailable": "Excalidraw 작업 풀 제어 API를 사용할 수 없습니다.",

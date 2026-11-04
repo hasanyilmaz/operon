@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3766,
-  "keyFingerprint": "6deb9b0b3ae81ea0a790e2498dbfa54bec0eb1efe54fff5de91e3254eacfe038",
+  "keyCount": 3767,
+  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1060,6 +1060,7 @@
       "timerStarted": "Temporizador iniciado para {{operonId}}",
       "timerStopped": "Temporizador detenido para {{operonId}}",
       "trackedTimeRange": "Registrado: {{range}}",
+      "trackerStateChanged": "El temporizador cambió o no se pudo verificar. Comprueba su estado actual e inténtalo de nuevo.",
       "webViewerUnavailable": "Activa el complemento principal Web Viewer de Obsidian para abrir este enlace en una pestaña nueva.",
       "weeklyNotesConversionRequiresCursor": "Para convertir una tarea de archivo en notas semanales, coloca el cursor en una línea vacía de una nota abierta.",
       "weeklyNotesManagementDisabled": "La gestión de notas semanales está desactivada. Actívala en Task Router → Notas diarias y semanales antes de crear tareas en línea allí.",
@@ -3811,5 +3812,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "4ba317b49fdf46e8d81f7faa97073527edff49949b635be0122342deaf3d25e6"
+  "sourceVersion": "ebbff39ae28402fd98c67f9ef21f705def31f99315b06a1de251f3942a353f98"
 }

@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} in den {{period}} geänderte Aufgaben"
 	},
 	"notifications": {
+		"trackerStateChanged": "Der Timer wurde geändert oder konnte nicht überprüft werden. Prüfe seinen aktuellen Zustand und versuche es erneut.",
 		"createdInlineTaskOpenFailed": "Die Aufgabe wurde erstellt, aber ihre Ansicht konnte nicht geöffnet werden.",
 		"createdFileTaskOpenFailed": "Die Aufgabe wurde erstellt, ihre Ansicht konnte jedoch nicht geöffnet werden.",
 		"excalidrawPoolUnavailable": "Die Steuerungs-API für den Excalidraw-Aufgabenpool ist nicht verfügbar.",

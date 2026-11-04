@@ -149,6 +149,7 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}内修改了 {{shown}} / {{total}} 个任务"
 	},
 	"notifications": {
+		"trackerStateChanged": "计时器已更改或无法验证。请检查其当前状态后重试。",
 		"createdInlineTaskOpenFailed": "任务已创建，但无法打开其视图。",
 		"createdFileTaskOpenFailed": "任务已创建，但无法打开其视图。",
 		"excalidrawPoolUnavailable": "Excalidraw 任务池控件 API 不可用。",
