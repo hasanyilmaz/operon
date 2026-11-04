@@ -335,6 +335,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('ui', 'interfaceLocationMap', 'locationPreviewDefaultZoom', 'settings', 'locationPreviewDefaultZoom', 'locationPreviewDefaultZoomDesc', 'number', ['location', 'map preview', 'preview zoom']),
 	e('ui', 'interfaceLocationMap', 'locationPreviewMinZoom', 'settings', 'locationPreviewMinZoom', 'locationPreviewMinZoomDesc', 'number', ['location', 'map preview', 'minimum zoom']),
 	e('ui', 'interfaceLocationMap', 'locationPreviewMaxZoom', 'settings', 'locationPreviewMaxZoom', 'locationPreviewMaxZoomDesc', 'number', ['location', 'map preview', 'maximum zoom']),
+	e('ui', 'interfaceTweaks', 'statusDockSections', 'settings', 'statusDockSections', 'statusDockSectionsDesc', 'render', ['status dock', 'sections', 'order', 'ongoing', 'upcoming', 'overdue', 'today', 'tracker']),
 	e('ui', 'interfaceTweaks', 'statusDockClickAction', 'settings', 'statusDockClickAction', 'statusDockClickActionDesc', 'dropdown', ['status bar', 'dock', 'click', 'source', 'task editor', 'opening']),
 	e('ui', 'interfaceTweaks', 'workspaceTweaksBackgroundDimming', 'settings', 'workspaceTweaksBackgroundDimming', 'workspaceTweaksBackgroundDimmingDesc', 'dropdown', ['tweaks', 'background dimming', 'lightbox', 'opacity', 'backdrop', 'modal']),
 	e('ui', 'interfaceTweaks', 'workspaceTweaksHideScrollbars', 'settings', 'workspaceTweaksHideScrollbars', 'workspaceTweaksHideScrollbarsDesc', 'toggle', ['tweaks', 'workspace tweaks', 'hide scrollbars', 'scrollbars', 'hider']),

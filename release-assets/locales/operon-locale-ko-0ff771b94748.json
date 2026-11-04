@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "클릭 동작",
       "statusDockClickActionDesc": "상태 dock에서 추적 중이거나 예정된 작업을 클릭할 때 열 항목을 선택합니다.",
       "statusDockMove": "dock 이동",
-      "statusDockSection": "Operon 상태 dock",
+      "statusDockSection": "상태 Dock",
+      "statusDockSection_history": "세션 기록",
+      "statusDockSection_modified": "수정된 작업",
+      "statusDockSection_ongoing": "진행 중인 작업",
+      "statusDockSection_overdueToday": "기한 초과 및 오늘",
+      "statusDockSection_pinned": "고정된 작업",
+      "statusDockSection_tracker": "시간 추적",
+      "statusDockSection_upcoming": "다가오는 작업",
+      "statusDockSections": "섹션 및 순서",
+      "statusDockSectionsDesc": "섹션을 활성화하고 상태 Dock에서 왼쪽부터 오른쪽으로 정렬합니다. 빈 목록은 표시되지 않습니다.",
+      "statusDockSectionsSaveFailed": "상태 Dock 섹션을 저장하지 못했습니다.",
       "statusIconAria": "{{pipeline}}의 상태 아이콘: {{status}}",
       "statusIconTooltip": "상태 아이콘 선택",
       "statusNameAria": "{{pipeline}}의 상태 이름: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "26a82255b5241cda0044043aad0e8d714f0261e0d3e3f8fac69f19108c3884f8"
+  "sourceVersion": "623c4c4b79e92607158a7efd665d1ec77c276803388a377c3e52707bc412608a"
 }

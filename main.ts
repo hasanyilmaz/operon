@@ -1,3 +1,4 @@
+import { getPinnedTasksForDisplay } from './src/core/pinned-task-query';
 import type { KanbanPoolDropRequest } from './src/types/kanban';
 import { kanbanPoolSourceSignature } from './src/systems/kanban-drop-transaction';
 import type { KanbanPoolServices } from './src/ui/kanban/kanban-pools';
@@ -17067,12 +17068,16 @@ export default class OperonPlugin extends Plugin {
 		};
 		if (Platform.isDesktopApp) {
 			this.statusDock = this.addChild(new OperonStatusDock(this.app, {
+    startHistoryTimer: (id, guard) => this.startTimerForTask(id, 'history-play', undefined, guard),
+    getPinnedTasks: () => getPinnedTasksForDisplay(this.indexer, this.storage.pinned, this.settings.priorities, this.settings.pinnedTaskSortMode),
+    getPinnedGeneration: () => this.storage.pinned.getGeneration(),
+    subscribePinned: listener => this.storage.pinned.subscribe(listener),
 				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
 				getSettings: () => this.settings,
 				sessionActions: {
-					openSession: session => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve)),
+					openSession: (session, guard) => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve, guard)),
 					clickIcon: id => this.handleTaskIconClick(id),
 					contextualAction: (id, action, context, invocation) => this.handleContextualMenuAction(id, action, context, invocation),
 					isPinned: id => this.storage.pinned.isPinned(id),
@@ -19316,8 +19321,8 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void): void {
-		if (!session.operonId) { onClosed?.(); return; }
+	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void, canCommit?: () => boolean): void {
+		if (!session.operonId || canCommit?.() === false) { onClosed?.(); return; }
 		const currentSession = this.resolveTrackedSessionByRange(session);
 		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
 		if (!currentSession || !task) {
@@ -19337,7 +19342,9 @@ export default class OperonPlugin extends Plugin {
 				taskDescription: task.description,
 				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
 				icon: getConfiguredKeyMappingIcon('note', this.settings.keyMappings) || 'notebook-pen',
-				onCommit: value => this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
+				onCommit: value => canCommit
+					? this.updateDirectTaskFieldsAndRefresh(session.operonId, { note: value }, { canCommit, changedKeys: ['note'], tableCommittedSource: true })
+					: this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
 			},
 			...buildTrackerSessionEditContext({
 				taskLabel,
@@ -19354,6 +19361,7 @@ export default class OperonPlugin extends Plugin {
 					start,
 					end,
 					session.sessionIndex,
+					canCommit,
 				);
 				if (!updated) {
 					this.handleCalendarTrackedSessionStale();
@@ -19373,6 +19381,7 @@ export default class OperonPlugin extends Plugin {
 					session.start,
 					session.end,
 					session.sessionIndex,
+					canCommit,
 				);
 				if (!deleted) {
 					this.handleCalendarTrackedSessionStale();

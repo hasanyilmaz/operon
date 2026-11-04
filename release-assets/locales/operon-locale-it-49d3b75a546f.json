@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Comportamento al clic",
       "statusDockClickActionDesc": "Scegli cosa aprire facendo clic su un’attività monitorata o successiva nel dock.",
       "statusDockMove": "Sposta dock",
-      "statusDockSection": "Dock di stato Operon",
+      "statusDockSection": "Dock di stato",
+      "statusDockSection_history": "Cronologia delle sessioni",
+      "statusDockSection_modified": "Attività modificate",
+      "statusDockSection_ongoing": "Attività in corso",
+      "statusDockSection_overdueToday": "Scadute e Oggi",
+      "statusDockSection_pinned": "Attività fissate",
+      "statusDockSection_tracker": "Monitoraggio del tempo",
+      "statusDockSection_upcoming": "Attività imminenti",
+      "statusDockSections": "Sezioni e ordine",
+      "statusDockSectionsDesc": "Attiva le sezioni e disponile da sinistra a destra nel dock di stato. Gli elenchi vuoti rimangono nascosti.",
+      "statusDockSectionsSaveFailed": "Impossibile salvare le sezioni del dock di stato.",
       "statusIconAria": "Icona stato in {{pipeline}}: {{status}}",
       "statusIconTooltip": "Scegli icona stato",
       "statusNameAria": "Nome stato in {{pipeline}}: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "9a640723003dc99272201f1be4ca05c8125d1072b08564e932319e6b7ba863e5"
+  "sourceVersion": "7b2f95ce5da7632edf48d135585c7518a7c0038df5b2112acdbf4da5455deae7"
 }

@@ -1,7 +1,7 @@
 import { App, Notice } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { TaskWriter } from '../core/task-writer';
-import { localNow } from '../core/local-time';
+import { localNow, localToday } from '../core/local-time';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings } from '../types/settings';
 import { t } from '../core/i18n';
@@ -63,6 +63,7 @@ export type TimeTrackerStatusChangeGuard = (
 ) => Promise<boolean> | boolean;
 
 interface HistoryCacheEntry {
+	day: string;
 	rangeDays: number;
 	generation: number;
 	locale: string;
@@ -1079,8 +1080,10 @@ export class TimeTracker {
 		nextStart: string,
 		nextEnd: string,
 		originalSessionIndex?: number,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		return await this.runSessionWrite('update tracker session by range', async () => {
+			if (canCommit?.() === false) return false;
 			const task = this.indexer.getTask(operonId);
 			if (!task) return false;
 
@@ -1099,6 +1102,7 @@ export class TimeTracker {
 				task,
 				serializeTrackerList(nextSessionRanges),
 				localNow(),
+				{}, canCommit,
 			);
 			this.emit('history');
 			this.emit('state');
@@ -1131,8 +1135,10 @@ export class TimeTracker {
 		originalStart: string,
 		originalEnd: string,
 		originalSessionIndex?: number,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		return await this.runSessionWrite('delete tracker session by range', async () => {
+			if (canCommit?.() === false) return false;
 			const task = this.indexer.getTask(operonId);
 			if (!task) return false;
 
@@ -1150,6 +1156,7 @@ export class TimeTracker {
 				task,
 				serializeTrackerList(sessions.map(session => session.raw)),
 				localNow(),
+				{}, canCommit,
 			);
 			this.emit('history');
 			this.emit('state');
@@ -1214,8 +1221,10 @@ export class TimeTracker {
 	getHistory(rangeDays: number): TrackerHistoryDayGroup[] {
 		const generation = this.getIndexerGeneration();
 		const locale = getAppLocale(this.app) ?? '';
+		const day = localToday();
 		if (
 			this.historyCache
+			&& this.historyCache.day === day
 			&& this.historyCache.rangeDays === rangeDays
 			&& this.historyCache.generation === generation
 			&& this.historyCache.locale === locale
@@ -1263,6 +1272,7 @@ export class TimeTracker {
 				sessions: group.sessions.sort((a, b) => b.start.localeCompare(a.start)),
 			}));
 		this.historyCache = {
+			day,
 			rangeDays,
 			generation,
 			locale,

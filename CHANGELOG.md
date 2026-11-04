@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **Status Dock Sections and Order** in Workspace Tweaks, with seven independently enabled sections that can be reordered from left to right. Ongoing and Upcoming Tasks now have separate controls; all sections start enabled and task-list icons hide when empty.
+- Added **Pinned Tasks and Modified Tasks** to the Status Dock, following your active pinned group's sorting and Task Finder's recent-modification rules, with the first task closest to the Dock.
+- Added **Session History** to the Status Dock, showing each session's duration and task using the existing History Days setting. Click a duration to edit the session or use Start Timer to track the task again.
 - Added **Task Pool and Property Value Pool to Kanban**, sharing search, favorites, pinning, and settings with Canvas and Excalidraw. Both support mouse and long-press touch dragging.
 - Drag existing tasks from **Task Pool** into a Kanban cell to apply its column and swimlane values, preserving existing list memberships and respecting the drop position when using manual sorting.
 - Drag **Property Value Pool** values onto an individual task card to update its fields, including board grouping fields. The pool stays open so more values can be applied without losing its search or selection.
@@ -16,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Status Dock** sections wrap onto a second row in narrow windows, and open task lists stay open when the Dock is dragged. Pressing Escape cancels the move without dismissing the list.
+- Simplified **Status Dock task cards** by removing task-name hover tooltips and the last-session card's shadow, while making clickable controls easier to recognize with a pointer cursor. The ten-second notification and other control tooltips are preserved.
+- Grouped **Status Dock settings** first in Workspace Tweaks, alongside its click behavior and a direct documentation link.
 - Aligned **Kanban’s floating controls** with the toolbar Settings button for a cleaner right edge, preserving the four size buttons’ relative positions.
 - **Embedded filters** no longer show an extra outline on hover in Live Preview, keeping their existing border visually consistent.
 
@@ -30,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Status Dock passed **170/170** focused tests, **9/9** section/settings tests, **5,292/5,292** local regression checks, **87** browser layout scenarios, mouse/touch interaction checks, full local Plugin checks, the Plugin release guard, code review, and user verification.
 - Tracker synchronization passed **34/34** focused tests, **5,290/5,290** local regression checks, full local Plugin checks, the Plugin release guard, code review, and user verification.
 - Mobile Task Creator button placement passed **9/9** isolated layout checks, **2/2** targeted local regression groups, strict lint, the Plugin release guard, and manual UI verification.
 - Filter Editor picker placement passed full local Plugin checks, **24/24** isolated layout scenarios, **7/7** shared-panel regression checks, code review, and manual UI verification.

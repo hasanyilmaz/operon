@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Действие при нажатии",
       "statusDockClickActionDesc": "Выберите, что открывать при нажатии на отслеживаемую или следующую задачу в доке.",
       "statusDockMove": "Переместить док",
-      "statusDockSection": "Панель состояния Operon",
+      "statusDockSection": "Панель состояния",
+      "statusDockSection_history": "История сеансов",
+      "statusDockSection_modified": "Изменённые задачи",
+      "statusDockSection_ongoing": "Текущие задачи",
+      "statusDockSection_overdueToday": "Просроченные и Сегодня",
+      "statusDockSection_pinned": "Закреплённые задачи",
+      "statusDockSection_tracker": "Учёт времени",
+      "statusDockSection_upcoming": "Предстоящие задачи",
+      "statusDockSections": "Разделы и порядок",
+      "statusDockSectionsDesc": "Включайте разделы и располагайте их слева направо на панели состояния. Пустые списки остаются скрытыми.",
+      "statusDockSectionsSaveFailed": "Не удалось сохранить разделы панели состояния.",
       "statusIconAria": "Значок статуса в {{pipeline}}: {{status}}",
       "statusIconTooltip": "Выбрать значок статуса",
       "statusNameAria": "Название статуса в {{pipeline}}: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b5df0c942af68e14f31a71d77b42aedd460291dd59150c94da454a820f3625b7"
+  "sourceVersion": "d8fe65cacda4c4a895e2f50a577b88e16e3524e0733528ae67de1f523a28ae33"
 }

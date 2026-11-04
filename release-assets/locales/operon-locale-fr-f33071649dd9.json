@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Comportement au clic",
       "statusDockClickActionDesc": "Choisissez ce qui s’ouvre lorsque vous cliquez sur une tâche suivie ou à venir dans le dock.",
       "statusDockMove": "Déplacer le dock",
-      "statusDockSection": "Dock de statut Operon",
+      "statusDockSection": "Dock de statut",
+      "statusDockSection_history": "Historique des sessions",
+      "statusDockSection_modified": "Tâches modifiées",
+      "statusDockSection_ongoing": "Tâches en cours",
+      "statusDockSection_overdueToday": "En retard et Aujourd’hui",
+      "statusDockSection_pinned": "Tâches épinglées",
+      "statusDockSection_tracker": "Suivi du temps",
+      "statusDockSection_upcoming": "Tâches à venir",
+      "statusDockSections": "Sections et ordre",
+      "statusDockSectionsDesc": "Activez les sections et classez-les de gauche à droite dans le dock de statut. Les listes vides restent masquées.",
+      "statusDockSectionsSaveFailed": "Impossible d’enregistrer les sections du dock de statut.",
       "statusIconAria": "Icône du statut dans {{pipeline}} : {{status}}",
       "statusIconTooltip": "Choisir l'icône de statut",
       "statusNameAria": "Nom du statut dans {{pipeline}} : {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "183f1ef9e093c604623a74f1152bbd4b1d9f65a2084720f86dec7287646a9511"
+  "sourceVersion": "13b7d2e49ad68fdffd25cdbf3240e8ed83882656ce3c424b843df3260d798cc9"
 }

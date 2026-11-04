@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Tıklama davranışı",
       "statusDockClickActionDesc": "Status dock’ta takip edilen veya sıradaki göreve tıkladığınızda neyin açılacağını seçin.",
       "statusDockMove": "Dock’u taşı",
-      "statusDockSection": "Operon durum dock’u",
+      "statusDockSection": "Durum Dock’u",
+      "statusDockSection_history": "Oturum Geçmişi",
+      "statusDockSection_modified": "Değiştirilen Görevler",
+      "statusDockSection_ongoing": "Devam Eden Görevler",
+      "statusDockSection_overdueToday": "Geciken ve Bugünkü Görevler",
+      "statusDockSection_pinned": "Sabitlenmiş Görevler",
+      "statusDockSection_tracker": "Zaman Takibi",
+      "statusDockSection_upcoming": "Yaklaşan Görevler",
+      "statusDockSections": "Bölümler ve Sıralama",
+      "statusDockSectionsDesc": "Bölümleri etkinleştirin ve Status Dock içinde soldan sağa sıralayın. Boş listeler gizli kalır.",
+      "statusDockSectionsSaveFailed": "Status Dock bölümleri kaydedilemedi.",
       "statusIconAria": "{{pipeline}} içindeki durum simgesi: {{status}}",
       "statusIconTooltip": "Durum simgesi seç",
       "statusNameAria": "{{pipeline}} içindeki durum adı: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "77731c68b6b03395a73e0cc6768b58ceeb6a06693f03a4d51e8cf55de7500b3c"
+  "sourceVersion": "daa3989ffdadb362f8c668dfeac16c6d51ac8157089387324b1f63e947980a68"
 }

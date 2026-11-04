@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Klickverhalten",
       "statusDockClickActionDesc": "Wähle, was beim Klicken auf eine erfasste oder nächste Aufgabe im Status-Dock geöffnet wird.",
       "statusDockMove": "Dock verschieben",
-      "statusDockSection": "Operon-Statusdock",
+      "statusDockSection": "Statusdock",
+      "statusDockSection_history": "Sitzungsverlauf",
+      "statusDockSection_modified": "Geänderte Aufgaben",
+      "statusDockSection_ongoing": "Laufende Aufgaben",
+      "statusDockSection_overdueToday": "Überfällig und Heute",
+      "statusDockSection_pinned": "Angeheftete Aufgaben",
+      "statusDockSection_tracker": "Zeiterfassung",
+      "statusDockSection_upcoming": "Anstehende Aufgaben",
+      "statusDockSections": "Abschnitte und Reihenfolge",
+      "statusDockSectionsDesc": "Aktiviere Abschnitte und ordne sie im Statusdock von links nach rechts an. Leere Listen bleiben ausgeblendet.",
+      "statusDockSectionsSaveFailed": "Statusdock-Abschnitte konnten nicht gespeichert werden.",
       "statusIconAria": "Statussymbol in {{pipeline}}: {{status}}",
       "statusIconTooltip": "Statussymbol auswählen",
       "statusNameAria": "Statusname in {{pipeline}}: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "422aa678eb52fd2ea69db96c01a01237daebcd9e7d1bcac5f26bbe10144f2847"
+  "sourceVersion": "680dbe35a9154be0756d0ce6d80adba55590a769074dc0d38f805b0ee24b73e8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Comportamento ao clicar",
       "statusDockClickActionDesc": "Escolha o que abre ao clicar em uma tarefa em acompanhamento ou próxima no dock.",
       "statusDockMove": "Mover dock",
-      "statusDockSection": "Dock de status do Operon",
+      "statusDockSection": "Dock de status",
+      "statusDockSection_history": "Histórico de sessões",
+      "statusDockSection_modified": "Tarefas modificadas",
+      "statusDockSection_ongoing": "Tarefas em andamento",
+      "statusDockSection_overdueToday": "Atrasadas e Hoje",
+      "statusDockSection_pinned": "Tarefas fixadas",
+      "statusDockSection_tracker": "Controle de tempo",
+      "statusDockSection_upcoming": "Próximas tarefas",
+      "statusDockSections": "Seções e ordem",
+      "statusDockSectionsDesc": "Ative as seções e organize-as da esquerda para a direita no dock de status. Listas vazias permanecem ocultas.",
+      "statusDockSectionsSaveFailed": "Não foi possível salvar as seções do dock de status.",
       "statusIconAria": "Ícone do status em {{pipeline}}: {{status}}",
       "statusIconTooltip": "Escolher ícone de status",
       "statusNameAria": "Nome do status em {{pipeline}}: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "aca6b9f5a7d3d5e98bd18398d2086165d40873d69700836a671488e8133662d1"
+  "sourceVersion": "31fc0ddaa840f8f326068f43cfe02ea862d71d91071d34816bcf8aaf0d2d170d"
 }

@@ -2,13 +2,13 @@ import type { IndexedTask } from '../types/fields';
 import { localToday } from '../core/local-time';
 import { getTaskHappensTodayPriority, getTaskOverdueDate } from './task-search-box-integration';
 
-export type StatusDockTaskScope = 'overdue' | 'today';
-export type StatusDockTaskScopes = Record<StatusDockTaskScope, readonly IndexedTask[]>;
+export type StatusDockTaskScope = 'overdue' | 'today' | 'pinned' | 'modified';
+export type StatusDockTaskScopes = Record<'overdue' | 'today', readonly IndexedTask[]> & Partial<Record<'pinned' | 'modified', readonly IndexedTask[]>>;
 
 /** Task Finder membership, ordered nearest first (the UI places this end next to the dock). */
 export function buildStatusDockTaskScopes(tasks: Iterable<IndexedTask>, now = new Date()): StatusDockTaskScopes {
  const today = localToday();
- const groups: Record<StatusDockTaskScope, { task: IndexedTask; distance: number }[]> = { overdue: [], today: [] };
+ const groups: Record<'overdue' | 'today', { task: IndexedTask; distance: number }[]> = { overdue: [], today: [] };
  const seen = new Set<string>();
  for (const task of tasks) {
   if (task.checkbox !== 'open' || seen.has(task.operonId)) continue;
@@ -27,7 +27,7 @@ export function buildStatusDockTaskScopes(tasks: Iterable<IndexedTask>, now = ne
    groups[scope].push({ task, distance: Math.min(...distances) });
   }
  }
- const sorted = (scope: StatusDockTaskScope) => groups[scope]
+ const sorted = (scope: 'overdue' | 'today') => groups[scope]
   .sort((a, b) => a.distance - b.distance || a.task.operonId.localeCompare(b.task.operonId))
   .map(entry => entry.task);
  return { overdue: sorted('overdue'), today: sorted('today') };

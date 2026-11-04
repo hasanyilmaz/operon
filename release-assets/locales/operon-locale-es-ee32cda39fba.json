@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "Comportamiento al hacer clic",
       "statusDockClickActionDesc": "Elige qué se abre al hacer clic en una tarea en seguimiento o próxima en el dock.",
       "statusDockMove": "Mover dock",
-      "statusDockSection": "Dock de estado de Operon",
+      "statusDockSection": "Dock de estado",
+      "statusDockSection_history": "Historial de sesiones",
+      "statusDockSection_modified": "Tareas modificadas",
+      "statusDockSection_ongoing": "Tareas en curso",
+      "statusDockSection_overdueToday": "Vencidas y Hoy",
+      "statusDockSection_pinned": "Tareas fijadas",
+      "statusDockSection_tracker": "Registro de tiempo",
+      "statusDockSection_upcoming": "Próximas tareas",
+      "statusDockSections": "Secciones y orden",
+      "statusDockSectionsDesc": "Activa las secciones y ordénalas de izquierda a derecha en el dock de estado. Las listas vacías permanecen ocultas.",
+      "statusDockSectionsSaveFailed": "No se pudieron guardar las secciones del dock de estado.",
       "statusIconAria": "Icono del estado en {{pipeline}}: {{status}}",
       "statusIconTooltip": "Elegir icono de estado",
       "statusNameAria": "Nombre del estado en {{pipeline}}: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ebbff39ae28402fd98c67f9ef21f705def31f99315b06a1de251f3942a353f98"
+  "sourceVersion": "8b76f0017b4b32f64ff913ecbf1552aa6c54211a3fd0ed224769b135751851d7"
 }

@@ -1,3 +1,4 @@
+import { normalizeStatusDockSections, type StatusDockSection } from '../types/status-dock-sections';
 import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
 import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
@@ -821,7 +822,22 @@ export class OperonStorage {
 		});
 	}
 
-	/** Explicit dock/settings actions only; serialized, narrow CAS with no optimistic mutation. */
+	async saveStatusDockSections(change: (current: StatusDockSection[]) => StatusDockSection[]): Promise<void> {
+  await this.enqueueSettingsTransaction(async () => {
+   const current = normalizeStatusDockSections(this.settings.statusDockSections);
+   const expected = JSON.stringify(current);
+   const next = normalizeStatusDockSections(change(current));
+   if (JSON.stringify(next) === expected) return;
+   const matches = () => JSON.stringify(normalizeStatusDockSections(this.settings.statusDockSections)) === expected;
+   await this.dataPackageStore.updateDataPackageCas(pkg => {
+    if (JSON.stringify(normalizeStatusDockSections(pkg.ui.statusDock?.sections)) !== expected) throw new Error('Status dock sections changed on disk');
+    return { ...pkg, ui: { ...pkg.ui, statusDock: { ...pkg.ui.statusDock, sections: next } } };
+   }, matches);
+   this.settings.statusDockSections = next;
+  });
+ }
+
+ /** Explicit dock/settings actions only; serialized, narrow CAS with no optimistic mutation. */
 	async saveStatusDockPreference(key: 'statusDockMode' | 'statusDockAlignment' | 'statusDockClickAction', value: string): Promise<void> {
 		const field = key === 'statusDockClickAction' ? 'clickAction' : key === 'statusDockMode' ? 'mode' : 'alignment';
 		const allowed = key === 'statusDockClickAction' ? ['source', 'source-and-editor', 'editor'] : key === 'statusDockMode' ? ['compact', 'detailed'] : ['left', 'center', 'right'];
@@ -1639,6 +1655,7 @@ export class OperonStorage {
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
 				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
@@ -1738,6 +1755,7 @@ export class OperonStorage {
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockClickAction')) delete this.settings.statusDockClickAction;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockSections')) delete this.settings.statusDockSections;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockAlignment')) delete this.settings.statusDockAlignment;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'contextualMenuActionOrder')) delete this.settings.contextualMenuActionOrder;

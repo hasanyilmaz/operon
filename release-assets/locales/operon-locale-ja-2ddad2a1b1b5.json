@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "クリック時の動作",
       "statusDockClickActionDesc": "ドック内の計測中または次のタスクをクリックしたときに開く内容を選択します。",
       "statusDockMove": "ドックを移動",
-      "statusDockSection": "Operon ステータスドック",
+      "statusDockSection": "ステータスドック",
+      "statusDockSection_history": "セッション履歴",
+      "statusDockSection_modified": "変更されたタスク",
+      "statusDockSection_ongoing": "進行中のタスク",
+      "statusDockSection_overdueToday": "期限超過と今日",
+      "statusDockSection_pinned": "ピン留めしたタスク",
+      "statusDockSection_tracker": "時間計測",
+      "statusDockSection_upcoming": "今後のタスク",
+      "statusDockSections": "セクションと順序",
+      "statusDockSectionsDesc": "セクションを有効にし、ステータスドック内で左から右に並べます。空のリストは表示されません。",
+      "statusDockSectionsSaveFailed": "ステータスドックのセクションを保存できませんでした。",
       "statusIconAria": "{{pipeline}} のステータスのアイコン: {{status}}",
       "statusIconTooltip": "ステータスのアイコンを選択",
       "statusNameAria": "{{pipeline}} のステータス名: {{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "7d83b4d57226b9616869d669326d08bcf9999c5d21c851598d0ac1ae574cfaba"
+  "sourceVersion": "b2e21c4df252a67ab40682e3ee8e9baaa8f077422671eb80913f74e912d652d4"
 }

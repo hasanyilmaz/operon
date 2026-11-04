@@ -1,20 +1,18 @@
+import { renderStatusDockTaskTitle, renderStatusDockSessionDuration } from './status-dock-card-content';
 import { setIcon } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { TrackerSession } from '../types/tracker';
-import { resolveStatusDockClickAction, resolveTaskDisplayIcon, type OperonSettings } from '../types/settings';
-import { normalizeTaskFieldColor, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { resolveTaskDisplayIcon, type OperonSettings } from '../types/settings';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
-import { formatDurationHuman } from '../systems/tracker-utils';
 import { getOwnerWindow } from '../core/dom-compat';
-import { t } from '../core/i18n';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
-import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
-import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
+import { cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskContextualHoverMenu, isTaskContextualHoverMenuActive } from './contextual-hover-menu';
 
 export interface StatusDockSessionActions {
- openSession: (session: TrackerSession) => Promise<void>;
+ openSession: (session: TrackerSession, canCommit?: () => boolean) => Promise<void>;
  openTask: (taskId: string, anchor: HTMLElement) => Promise<void>;
  clickIcon: (taskId: string) => Promise<void>;
  contextualAction: ContextualMenuActionHandler;
@@ -65,6 +63,7 @@ export class StatusDockSessionCard {
  show(session: TrackerSession): void {
   this.clear(); if (this.disposed) return;
   this.session = session; this.lifetime = new StatusDockSessionLifetime(this.owner.performance.now());
+  this.host.classList.add('has-session-feedback');
   this.el.hidden = false; this.refresh(); this.position(); this.tick();
  }
  refresh(): void {
@@ -94,21 +93,12 @@ export class StatusDockSessionCard {
   setIcon(icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox));
   icon.style.color = resolveTaskStatusIconColorForTask(task, settings) ?? '';
   setAccessibleLabelWithoutTooltip(icon, getTaskIconActionLabel(settings, task.checkbox));
-  const taskColor = normalizeTaskFieldColor(task.fieldValues['taskColor']);
   const tooltipVerticalPreference = (): 'above' | 'auto' =>
    this.el.getBoundingClientRect().top >= this.host.getBoundingClientRect().bottom ? 'auto' : 'above';
   const duration = this.el.querySelector<HTMLElement>('.operon-status-dock-time')!;
-  duration.setText(formatDurationHuman(current.durationSeconds, 'seconds'));
-  setAccessibleLabelWithoutTooltip(duration, `${t('taskEditor', 'editSession')}: ${formatDurationHuman(current.durationSeconds, 'seconds')}`);
-  cleanupOperonHoverTooltips(duration);
-  bindOperonHoverTooltip(duration, { get preferredVertical() { return tooltipVerticalPreference(); }, title: t('taskEditor', 'editSession'), content: task.description, taskColor });
+  renderStatusDockSessionDuration(duration, this.session, tooltipVerticalPreference);
   const name = this.el.querySelector<HTMLElement>('.operon-status-dock-name')!;
-  name.empty(); renderCompactTaskMarkdown(name, { value: task.description || task.operonId, mode: 'visual-only' });
-  const behavior = resolveStatusDockClickAction(settings.statusDockClickAction);
-  const openLabel = t('settings', behavior === 'source' ? 'taskFinderResultSourceOnly' : behavior === 'editor' ? 'taskFinderResultEditorOnly' : 'taskFinderResultSourceAndEditor');
-  setAccessibleLabelWithoutTooltip(name, `${openLabel}: ${task.description}`);
-  cleanupOperonHoverTooltips(name);
-  bindOperonHoverTooltip(name, { get preferredVertical() { return tooltipVerticalPreference(); }, title: openLabel, content: task.description, taskColor });
+  renderStatusDockTaskTitle(name, task, settings);
   bindTaskContextualHoverMenu(icon, {
    followAnchor: true, surface: 'statusDock', menuKey: `status-dock-session:${task.operonId}:${current.start}:${current.end}`,
    captureWriteGuard: () => { const revision = this.revision; return () => !this.disposed && revision === this.revision && !!this.session; },
@@ -149,6 +139,7 @@ export class StatusDockSessionCard {
  }
  takeSession(): TrackerSession | null { const session = this.session; this.clear(); return session; }
  clear(): void {
+  this.host.classList.remove('has-session-feedback');
   this.revision++; this.session = null; this.lifetime = null; this.signature = ''; this.busy = 0; this.hover = false;
   if (this.timer !== null) this.owner.clearTimeout(this.timer); this.timer = null;
   hideTaskContextualHoverMenu(true, this.el); cleanupTaskContextualHoverMenus(this.el);

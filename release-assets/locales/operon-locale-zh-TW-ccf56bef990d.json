@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "點擊行為",
       "statusDockClickActionDesc": "選擇點擊停靠列中正在計時或即將開始的任務時開啟的內容。",
       "statusDockMove": "移動停靠列",
-      "statusDockSection": "Operon 狀態列",
+      "statusDockSection": "狀態列",
+      "statusDockSection_history": "工作階段歷史",
+      "statusDockSection_modified": "已修改的任務",
+      "statusDockSection_ongoing": "進行中的任務",
+      "statusDockSection_overdueToday": "逾期和今天",
+      "statusDockSection_pinned": "已釘選的任務",
+      "statusDockSection_tracker": "時間追蹤",
+      "statusDockSection_upcoming": "即將到來的任務",
+      "statusDockSections": "區段與順序",
+      "statusDockSectionsDesc": "啟用區段並在狀態列中由左至右排列。空清單保持隱藏。",
+      "statusDockSectionsSaveFailed": "無法儲存狀態列區段。",
       "statusIconAria": "{{pipeline}} 中的狀態圖示：{{status}}",
       "statusIconTooltip": "選擇狀態圖示",
       "statusNameAria": "{{pipeline}} 中的狀態名稱：{{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d459b9aea1334903f9877697c1ca08022afb5d97d2511e5afde5089fa21581ca"
+  "sourceVersion": "ad817be564003021fe40808cfacb79e0a3bef61689bd2dcf0130e6ce6a092568"
 }

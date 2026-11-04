@@ -1,9 +1,11 @@
+import { normalizeStatusDockSections, isStatusDockSectionEnabled } from '../types/status-dock-sections';
 import type { IndexedTask } from '../types/fields';
 import { normalizeTaskFieldColor } from '../core/task-color-source';
 import { normalizeTaskIconValue } from '../core/task-icon-value';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { setIcon } from 'obsidian';
 import { t } from '../core/i18n';
+import { asHTMLElement } from '../core/dom-compat';
 import { humanizeUpcomingCountdown, type UpcomingTaskStatusSnapshot } from '../core/upcoming-task-status';
 import { canSelectFlowTimeTask, type FlowTimeBreakSnapshot } from '../systems/flow-time-break';
 import { formatDurationHuman } from '../systems/tracker-utils';
@@ -38,6 +40,17 @@ export interface StatusDockActions {
 	createTask: (anchor: HTMLElement) => void | Promise<void>;
 }
 
+export function resolveStatusDockCalendar(snapshot: UpcomingTaskStatusSnapshot): {
+ retained: IndexedTask | null;
+ future: { task: IndexedTask; countdown: string | null } | null;
+} {
+ const current = snapshot.current ?? snapshot.due;
+ return {
+  retained: current && !snapshot.ongoing?.length ? snapshot.task : null,
+  future: !current && snapshot.task ? { task: snapshot.task, countdown: snapshot.countdown } : snapshot.next ?? null,
+ };
+}
+
 type CalendarTaskControl = { shell: HTMLElement; play: HTMLButtonElement; taskId: string | null };
 
 function sourceLabelForSettings(settings: OperonSettings): string {
@@ -70,8 +83,9 @@ export class StatusDockWidget {
 	private readonly nextUpcoming: HTMLElement;
 	private readonly nextTime: HTMLElement;
 	private readonly nextName: HTMLElement;
-	private readonly nextDivider: HTMLElement;
-	private readonly firstDivider: HTMLElement;
+	private readonly futureArea: HTMLElement;
+	private layoutOrder = '';
+	private readonly sectionDividers = new Map<string, HTMLElement>();
 	private readonly alertDivider: HTMLElement;
 	private readonly alert: HTMLButtonElement;
 	private readonly alertIcon: HTMLElement;
@@ -86,6 +100,8 @@ export class StatusDockWidget {
 	private viewport = { width: 0, height: 0, left: 0, top: 0 };
 	private position: { x: number; y: number } | null = null;
 	private stopDrag: (() => void) | null = null;
+ private clearDragClick: (() => void) | null = null;
+ onPositionChanged?: () => void;
 	private readonly resizeObserver: ResizeObserver;
 
 	constructor(doc: Document, actions: StatusDockActions, onError: (error: unknown) => void) {
@@ -134,12 +150,13 @@ export class StatusDockWidget {
 			const directions: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 			const direction = directions[event.key];
 			if (event.key !== 'Home' && !direction) return;
-			event.preventDefault(); event.stopPropagation(); this.stopDrag?.(); this.closeTooltips();
-			if (event.key === 'Home') { this.position = null; this.root.style.removeProperty('transform'); return; }
+			event.preventDefault(); event.stopPropagation(); this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips();
+			if (event.key === 'Home') { this.position = null; this.root.style.removeProperty('transform'); this.onPositionChanged?.(); return; }
 			const start = this.currentPosition(), step = event.shiftKey ? 1 : 10;
 			this.position = { x: start.x + direction[0] * step, y: start.y + direction[1] * step }; this.place();
 		});
 		this.tracker = this.root.createDiv('operon-status-dock-tracker');
+		this.tracker.dataset.statusDockSection = 'tracker';
 		this.timerAction = button(this.tracker, 'operon-status-dock-action operon-status-dock-timer-action', actions.toggleTimer);
 		const tracker = reading(this.tracker, 'operon-status-dock-tracker-reading', null, actions.openTracker, true);
 		this.trackerTime = tracker.duration; this.trackerName = tracker.name;
@@ -148,16 +165,9 @@ export class StatusDockWidget {
 		this.selectionDivider = controls.createSpan('operon-status-dock-divider operon-status-dock-selection-divider'); this.selectionDivider.setAttribute('aria-hidden', 'true');
 		this.breakFinder = button(controls, 'operon-status-dock-action operon-status-dock-break-finder', actions.findTask); this.icon(this.breakFinder, 'scan-search');
 		this.creator = button(controls, 'operon-status-dock-action operon-status-dock-creator', actions.createTask); this.icon(this.creator, 'list-plus');
-		this.firstDivider = this.root.createSpan('operon-status-dock-divider'); this.firstDivider.setAttribute('aria-hidden', 'true');
 		this.taskArea = this.root.createDiv('operon-status-dock-task-area');
-		this.taskArea.tabIndex = 0; this.taskArea.setAttribute('role', 'group');
-		setAccessibleLabelWithoutTooltip(this.taskArea, t('settings', 'tabUpcoming'));
-		this.taskArea.addEventListener('scroll', () => this.closeTooltips(), { passive: true });
-		this.taskArea.addEventListener('wheel', event => {
-			if (event.ctrlKey || event.metaKey || event.shiftKey || event.deltaX || this.taskArea.scrollWidth <= this.taskArea.clientWidth) return;
-			const before = this.taskArea.scrollLeft; this.taskArea.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.taskArea.clientWidth : 1);
-			if (this.taskArea.scrollLeft !== before) event.preventDefault();
-		}, { passive: false });
+		this.taskArea.dataset.statusDockSection = 'ongoing';
+		this.configureCalendarArea(this.taskArea, 'statusDockSection_ongoing');
 		const upcoming = reading(this.taskArea, 'operon-status-dock-upcoming', 'calendar-clock', actions.openUpcoming);
 		this.upcoming = upcoming.el; this.upcomingTime = upcoming.duration; this.upcomingName = upcoming.name;
 		this.currentHost = this.taskArea.createDiv('operon-status-dock-current-items');
@@ -167,8 +177,10 @@ export class StatusDockWidget {
 			const item = reading(host, 'operon-status-dock-upcoming operon-status-dock-current is-current', 'calendar-clock', anchor => actions.openCurrentTask(id, anchor));
 			return { host, button: item.el, icon: item.el.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, time: item.duration, name: item.name, divider };
 		};
-		this.nextDivider = this.taskArea.createSpan('operon-status-dock-divider operon-status-dock-next-divider'); this.nextDivider.setAttribute('aria-hidden', 'true');
-		const next = reading(this.taskArea, 'operon-status-dock-next', 'calendar', actions.openNextUpcoming);
+		this.futureArea = this.root.createDiv('operon-status-dock-task-area');
+		this.futureArea.dataset.statusDockSection = 'upcoming';
+		this.configureCalendarArea(this.futureArea, 'statusDockSection_upcoming');
+		const next = reading(this.futureArea, 'operon-status-dock-next', 'calendar', actions.openNextUpcoming);
 		this.nextUpcoming = next.el; this.nextTime = next.duration; this.nextName = next.name;
 		this.alertDivider = this.root.createSpan('operon-status-dock-divider'); this.alertDivider.setAttribute('aria-hidden', 'true');
 		this.alert = button(this.root, 'operon-status-dock-alert', actions.openConflicts);
@@ -180,12 +192,23 @@ export class StatusDockWidget {
 
 	setVisible(visible: boolean): void {
 		this.visible = visible; this.slot.hidden = !visible;
-		if (!visible) { this.stopDrag?.(); this.closeTooltips(); }
+		if (!visible) { this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips(); }
 		else this.place();
 	}
 
 	setViewport(width: number, height: number, left: number, top: number): void {
 		this.viewport = { width, height, left, top }; this.setWidth(width); this.place();
+	}
+
+	private configureCalendarArea(area: HTMLElement, label: string): void {
+		area.tabIndex = 0; area.setAttribute('role', 'group');
+		setAccessibleLabelWithoutTooltip(area, t('settings', label));
+		area.addEventListener('scroll', () => this.closeTooltips(), { passive: true });
+		area.addEventListener('wheel', event => {
+			if (event.ctrlKey || event.metaKey || event.shiftKey || event.deltaX || area.scrollWidth <= area.clientWidth) return;
+			const before = area.scrollLeft; area.scrollLeft += event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? area.clientWidth : 1);
+			if (area.scrollLeft !== before) event.preventDefault();
+		}, { passive: false });
 	}
 
 	setWidth(width: number): void {
@@ -198,15 +221,20 @@ export class StatusDockWidget {
 		this.lastSnapshot = snapshot;
 		const { settings, active, breakSnapshot, upcoming, alert } = snapshot;
 		const ongoing = upcoming.ongoing ?? [];
-		const upcomingVisible = settings.upcomingShowStatusBar && (upcoming.task !== null || ongoing.length > 0);
-		this.taskArea.hidden = !upcomingVisible; this.root.classList.toggle('has-calendar-tasks', upcomingVisible);
-		this.updateCurrentTasks(settings.upcomingShowStatusBar ? ongoing : [], settings, sourceLabelForSettings(settings));
-		const nextVisible = upcomingVisible && !!upcoming.next;
-		this.nextUpcoming.hidden = !nextVisible; this.nextDivider.hidden = !nextVisible;
+  const sections = settings.statusDockSections;
+  const ongoingEnabled = isStatusDockSectionEnabled(sections, 'ongoing');
+  const { retained, future } = resolveStatusDockCalendar(upcoming);
+  const upcomingVisible = ongoingEnabled && (!!retained || ongoing.length > 0);
+  const nextVisible = isStatusDockSectionEnabled(sections, 'upcoming') && !!future;
+  this.taskArea.hidden = !upcomingVisible;
+  this.futureArea.hidden = !nextVisible;
+  this.root.classList.toggle('has-calendar-tasks', upcomingVisible || nextVisible);
+  this.root.classList.toggle('has-two-calendar-sections', upcomingVisible && nextVisible);
+  this.updateCurrentTasks(ongoingEnabled ? ongoing : [], settings, sourceLabelForSettings(settings));
+  this.nextUpcoming.hidden = !nextVisible;
 		const alertVisible = alert.state !== 'hidden';
 		this.slot.hidden = !this.visible;
-		this.tracker.hidden = false; this.upcoming.hidden = !upcomingVisible || ongoing.length > 0; this.alert.hidden = !alertVisible;
-		this.firstDivider.hidden = !upcomingVisible;
+		this.tracker.hidden = !isStatusDockSectionEnabled(sections, 'tracker'); this.upcoming.hidden = !ongoingEnabled || !retained; this.alert.hidden = !alertVisible;
 		this.alertDivider.hidden = !alertVisible;
 		setAccessibleLabelWithoutTooltip(this.grip, t('settings', 'statusDockMove'));
 		this.timerAction.classList.toggle('is-running', !!active);
@@ -253,12 +281,12 @@ export class StatusDockWidget {
 		const current = upcoming.current ?? upcoming.due;
 		this.upcoming.classList.toggle('is-current', current);
 		this.upcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!.style.color = normalizeTaskFieldColor(upcoming.task?.fieldValues.taskColor) ?? '';
-		this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!.style.color = normalizeTaskFieldColor(upcoming.next?.task.fieldValues.taskColor) ?? '';
+		this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!.style.color = normalizeTaskFieldColor(future?.task.fieldValues.taskColor) ?? '';
 		this.icon(this.upcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(upcoming.task?.fieldValues.taskIcon) || getConfiguredKeyMappingIcon(current ? 'dateScheduled' : 'dateDue', settings.keyMappings) || (current ? 'calendar-clock' : 'calendar'));
-		this.icon(this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(upcoming.next?.task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateDue', settings.keyMappings) || 'calendar');
-		const nextRemaining = humanizeUpcomingCountdown(upcoming.next?.countdown ?? null, upcoming.next?.countdown?.startsWith('00:00:') === true);
+		this.icon(this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(future?.task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateDue', settings.keyMappings) || 'calendar');
+		const nextRemaining = humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true);
 		text(this.nextTime, nextRemaining ?? ''); this.nextTime.hidden = nextRemaining === null;
-		const nextTitle = upcoming.next?.task.description || t('pinnedTasks', 'untitledTask');
+		const nextTitle = future?.task.description || t('pinnedTasks', 'untitledTask');
 		this.name(this.nextName, nextTitle, settings.language);
 		this.label(this.nextName, t('taskEditor', 'dockNextTask'), nextTitle,
 			`${t('taskEditor', 'dockNextTask')}: ${nextTitle}${nextRemaining ? `, ${nextRemaining}` : ''}`);
@@ -272,7 +300,7 @@ export class StatusDockWidget {
 		this.upcoming.classList.toggle('is-due', upcoming.due);
 		this.label(this.upcomingName, sourceLabel, current ? `${t('taskEditor', 'trackerNow')}: ${nextDescription}` : nextDescription, `${sourceLabel}: ${current ? t('taskEditor', 'trackerNow') + ': ' : ''}${nextDescription}${remaining ? `, ${remaining}` : ''}`);
 		this.updateCalendarControl(this.upcoming, upcoming.task, snapshot);
-		this.updateCalendarControl(this.nextUpcoming, upcoming.next?.task ?? null, snapshot);
+		this.updateCalendarControl(this.nextUpcoming, future?.task ?? null, snapshot);
 		for (const task of ongoing) {
 			const item = this.currentReadings.get(task.operonId);
 			if (item) this.updateCalendarControl(item.button, task, snapshot);
@@ -286,7 +314,45 @@ export class StatusDockWidget {
 		if (this.creator.hidden) closeBoundOperonHoverTooltip(this.creator);
 		if (this.upcoming.hidden) closeBoundOperonHoverTooltip(this.upcomingName);
 		if (!alertVisible) closeBoundOperonHoverTooltip(this.alert);
+		if (this.tracker.hidden) this.closeTrackerTooltips();
+		this.refreshSectionLayout();
 	}
+
+ /** Keep DOM and keyboard order identical; a tick never reattaches unchanged controls. */
+ refreshSectionLayout(): void {
+  if (!this.lastSnapshot) return;
+  const sections = normalizeStatusDockSections(this.lastSnapshot.settings.statusDockSections);
+  const elements = new Map(Array.from(this.root.children)
+   .filter((element): element is HTMLElement => !!asHTMLElement(element)?.dataset.statusDockSection)
+   .map(element => [element.dataset.statusDockSection!, element]));
+  const order = sections.filter(section => elements.has(section.id));
+  const orderKey = order.map(section => section.id).join(',');
+  for (const section of order) {
+   let divider = this.sectionDividers.get(section.id);
+   if (!divider) {
+    divider = this.root.createSpan('operon-status-dock-divider');
+    divider.setAttribute('aria-hidden', 'true');
+    this.sectionDividers.set(section.id, divider);
+   }
+  }
+  if (this.layoutOrder !== orderKey) {
+   this.closeTooltips();
+   for (const section of order) {
+    this.root.insertBefore(this.sectionDividers.get(section.id)!, this.alertDivider);
+    this.root.insertBefore(elements.get(section.id)!, this.alertDivider);
+   }
+   this.layoutOrder = orderKey;
+  }
+  let visible = false;
+  for (const section of order) {
+   const element = elements.get(section.id)!;
+   this.sectionDividers.get(section.id)!.hidden = element.hidden || !visible;
+   if (!element.hidden) visible = true;
+  }
+  this.alertDivider.hidden = this.alert.hidden || !visible;
+  this.root.classList.toggle('is-empty', !visible && this.alert.hidden);
+  this.root.classList.toggle('has-extra-task-lists', ['pinned', 'modified', 'history'].some(id => { const element = elements.get(id); return element && !element.hidden; }));
+ }
 
 	closeTooltips(): void {
 		this.closeTrackerTooltips();
@@ -338,7 +404,7 @@ export class StatusDockWidget {
 	}
 
 	private place(): void {
-		if (!this.position || this.slot.hidden || !this.viewport.width) return;
+		if (!this.position || this.slot.hidden || !this.viewport.width) { this.onPositionChanged?.(); return; }
 		const { width, height } = this.root.getBoundingClientRect();
 		// Retain a small edge inset whenever the window has room for it.
 		const insetX = Math.min(12, Math.max(0, (this.viewport.width - width) / 2));
@@ -347,22 +413,38 @@ export class StatusDockWidget {
 		const y = Math.max(insetY, Math.min(this.position.y, this.viewport.height - height - insetY));
 		this.position = { x, y };
 		this.root.style.transform = `translate(${x - (this.viewport.width - width) / 2}px, ${y - (this.viewport.height - 12 - height)}px)`;
+  this.onPositionChanged?.();
 	}
 
 	private startDrag(event: PointerEvent, owner: Window): void {
 		if (event.button !== 0 || event.isPrimary === false || this.stopDrag) return;
 		event.preventDefault(); event.stopPropagation(); this.closeTooltips();
-		const start = this.currentPosition(), previous = this.position, pointerId = event.pointerId;
+		this.clearDragClick?.();
+  const start = this.currentPosition(), previous = this.position, pointerId = event.pointerId;
+  let moved = false, cancelled = false;
+  const clearClick = () => {
+   owner.removeEventListener('click', click, true); owner.removeEventListener('pointerdown', clearClick, true);
+   owner.removeEventListener('blur', clearClick); this.clearDragClick = null;
+  };
+  const click = (next: MouseEvent) => {
+   if (next.detail === 0 || ('pointerId' in next && next.pointerId !== pointerId)) return;
+   clearClick();
+   if (moved || cancelled) { next.preventDefault(); next.stopImmediatePropagation(); }
+  };
+  this.clearDragClick = clearClick;
+  owner.addEventListener('click', click, true); owner.addEventListener('pointerdown', clearClick, true);
+  owner.addEventListener('blur', clearClick);
 		this.root.classList.add('is-dragging'); this.grip.setPointerCapture?.(pointerId);
 		const move = (next: PointerEvent) => {
 			if (next.pointerId !== pointerId) return;
+   moved ||= Math.hypot(next.clientX - event.clientX, next.clientY - event.clientY) >= 4;
 			this.position = { x: start.x + next.clientX - event.clientX, y: start.y + next.clientY - event.clientY }; this.place();
 		};
-		const finish = (next: PointerEvent) => { if (next.pointerId === pointerId) this.stopDrag?.(); };
+		const finish = (next: PointerEvent) => { if (next.pointerId === pointerId) { this.stopDrag?.(); if (next.type === 'pointercancel' || !moved) clearClick(); } };
 		const cancel = () => this.stopDrag?.();
 		const key = (next: KeyboardEvent) => {
 			if (next.key !== 'Escape') return;
-			next.preventDefault(); next.stopPropagation(); cancel(); this.position = previous;
+			next.preventDefault(); next.stopPropagation(); cancelled = true; cancel(); this.position = previous;
 			this.root.style.removeProperty('transform'); this.place();
 		};
 		this.stopDrag = () => {
@@ -377,7 +459,7 @@ export class StatusDockWidget {
 		owner.addEventListener('keydown', key, true);
 	}
 
-	destroy(): void { this.stopDrag?.(); this.resizeObserver.disconnect(); cleanupOperonHoverTooltips(this.slot); cleanupDescendantFocusVisible(this.slot); this.slot.remove(); }
+	destroy(): void { this.stopDrag?.(); this.clearDragClick?.(); this.onPositionChanged = undefined; this.resizeObserver.disconnect(); cleanupOperonHoverTooltips(this.slot); cleanupDescendantFocusVisible(this.slot); this.slot.remove(); }
 	private closeTrackerTooltips(): void {
 		for (const el of [this.trackerName, this.coffee, this.breakFinder, this.creator, this.timerAction]) closeBoundOperonHoverTooltip(el);
 	}
@@ -394,7 +476,11 @@ export class StatusDockWidget {
 		this.nameKeys.set(el, key); el.empty(); renderCompactTaskMarkdown(el, { value, mode: 'visual-only', maxCharacters: 24 });
 	}
 	private label(el: HTMLElement, title: string, content?: string, accessible?: string): void {
-		setAccessibleLabelWithoutTooltip(el, accessible ?? title, el.classList.contains('operon-status-dock-name') ? el.parentElement ?? undefined : undefined);
+  if (el.classList.contains('operon-status-dock-name')) {
+   cleanupOperonHoverTooltips(el); this.tooltipKeys.delete(el);
+   setAccessibleLabelWithoutTooltip(el, accessible ?? [title, content].filter(Boolean).join(': '), el.parentElement ?? undefined); return;
+  }
+		setAccessibleLabelWithoutTooltip(el, accessible ?? title);
 		const key = JSON.stringify([title, content]);
 		if (this.tooltipKeys.get(el) === key) return;
 		this.tooltipKeys.set(el, key); bindOperonHoverTooltip(el, { title, content, taskColor: null });

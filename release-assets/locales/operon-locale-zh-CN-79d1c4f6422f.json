@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3767,
-  "keyFingerprint": "21b403e2aea4a50b00ab6db8f869846eb9377a12cbb85ac39579675e03fb85cf",
+  "keyCount": 3777,
+  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2575,7 +2575,17 @@
       "statusDockClickAction": "点击行为",
       "statusDockClickActionDesc": "选择点击停靠栏中正在计时或即将开始的任务时打开的内容。",
       "statusDockMove": "移动停靠栏",
-      "statusDockSection": "Operon 状态栏",
+      "statusDockSection": "状态栏",
+      "statusDockSection_history": "会话历史",
+      "statusDockSection_modified": "已修改的任务",
+      "statusDockSection_ongoing": "进行中的任务",
+      "statusDockSection_overdueToday": "逾期和今天",
+      "statusDockSection_pinned": "已固定的任务",
+      "statusDockSection_tracker": "时间追踪",
+      "statusDockSection_upcoming": "即将到来的任务",
+      "statusDockSections": "分区与顺序",
+      "statusDockSectionsDesc": "启用分区并在状态栏中从左到右排列。空列表保持隐藏。",
+      "statusDockSectionsSaveFailed": "无法保存状态栏分区。",
       "statusIconAria": "{{pipeline}} 中的状态图标：{{status}}",
       "statusIconTooltip": "选择状态图标",
       "statusNameAria": "{{pipeline}} 中的状态名称：{{status}}",
@@ -3812,5 +3822,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "a1c31ab8d6b8003b5970b0f6778e55395ea626e4ea23a8e072c4a44cb42a6077"
+  "sourceVersion": "266411c8882c0ee5eea5aae220d82e77d50afabb22179fc0a206e270429449c2"
 }

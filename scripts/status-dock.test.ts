@@ -1,3 +1,4 @@
+import { normalizeStatusDockSections } from '../src/types/status-dock-sections';
 import { StatusDockTaskList } from '../src/ui/status-dock-task-list';
 import { buildStatusDockTaskScopes } from '../src/ui/status-dock-task-scope';
 import { localToday } from '../src/core/local-time';
@@ -220,12 +221,18 @@ test('one compact mode ignores legacy mode and alignment without exposing a mode
 	assert.equal(f.dock.root.classList.contains('is-detailed'), false); f.dock.destroy();
 });
 
-test('optional modules control dividers while the tracker always keeps the dock visible', () => {
-	const f = widget(); const dividers = Array.from(f.dock.root.querySelectorAll<HTMLElement>('.operon-status-dock-divider')).filter((el: HTMLElement) => !el.classList.contains('operon-status-dock-selection-divider') && !el.classList.contains('operon-status-dock-next-divider'));
-	assert.equal(dividers[0].hidden, false); assert.equal(dividers[1].hidden, false);
-	f.state.upcoming.task = null; f.dock.update(f.state); assert.equal(dividers[0].hidden, true); assert.equal(dividers[1].hidden, false);
-	f.state.settings.trackerShowStatusBarTimer = false; f.dock.update(f.state); assert.equal(dividers[1].hidden, false); assert.equal(f.dock.slot.hidden, false);
-	f.state.alert.state = 'hidden'; f.dock.update(f.state); assert.equal(f.dock.slot.hidden, false); assert.equal(dividers[1].hidden, true); f.dock.destroy();
+test('optional modules have separators only between visible sections and alert', () => {
+ const f = widget(), dividers = (f.dock as any).sectionDividers;
+ assert.equal(dividers.get('tracker').hidden, true);
+ assert.equal(dividers.get('ongoing').hidden, true);
+ assert.equal(dividers.get('upcoming').hidden, false);
+ assert.equal((f.dock as any).alertDivider.hidden, false);
+ f.state.upcoming.task = null; f.dock.update(f.state);
+ assert.equal(dividers.get('upcoming').hidden, true);
+ f.state.alert.state = 'hidden'; f.dock.update(f.state);
+ assert.equal((f.dock as any).alertDivider.hidden, true);
+ assert.equal(f.dock.root.classList.contains('is-empty'), false);
+ f.dock.destroy();
 });
 
 test('mola controls, action locks and all click routes remain distinct', () => {
@@ -796,10 +803,10 @@ test('taskless reading is plain, while assigned tasks retain keyboard and source
 test('dual upcoming fields use configured Scheduled/Due icons, separate actions and hide empty separators', () => {
  const f=widget(); f.state.settings.keyMappings=f.state.settings.keyMappings.map(m=>({...m,icon:m.canonicalKey==='dateScheduled'?'alarm-clock':m.canonicalKey==='dateDue'?'flag':m.icon}));
  f.state.upcoming={...f.state.upcoming,due:true,countdown:'00:00:00',next:{task:task('future','2026-10-24T12:00:00'),countdown:'01:00:00'}}; f.dock.update(f.state);
- const next=f.find('operon-status-dock-next'),divider=f.find('operon-status-dock-next-divider'),current=f.find('operon-status-dock-upcoming');
+ const next=f.find('operon-status-dock-next'),divider=(f.dock as any).sectionDividers.get('upcoming'),current=f.find('operon-status-dock-upcoming');
  assert.equal(divider.hidden,false); assert.equal(next.hidden,false); assert.equal((f.dock as any).icons.get(current.querySelector('.operon-status-dock-leading-icon')),'alarm-clock'); assert.equal((f.dock as any).icons.get(next.querySelector('.operon-status-dock-leading-icon')),'flag');
  next.querySelector('.operon-status-dock-name').click(); current.querySelector('.operon-status-dock-name').click(); assert.deepEqual(f.calls,['next','upcoming']); let closed=0; next.querySelector('.operon-status-dock-name')._operonHoverClose=()=>{closed++;}; f.dock.closeTooltips(); assert.equal(closed,1);
- f.state.settings.upcomingShowStatusBar=false; f.dock.update(f.state); assert.equal(next.hidden,true); assert.equal(divider.hidden,true); assert.equal(closed,2); f.state.settings.upcomingShowStatusBar=true; f.state.upcoming.next=null; f.dock.update(f.state); assert.equal(divider.hidden,true); f.dock.destroy();
+ f.state.settings.statusDockSections=normalizeStatusDockSections(undefined).map(section => section.id === 'upcoming' ? {...section,enabled:false} : section); f.dock.update(f.state); assert.equal(next.hidden,true); assert.equal(divider.hidden,true); assert.equal(closed,2); f.state.settings.statusDockSections=undefined; f.state.upcoming.next=null; f.dock.update(f.state); assert.equal(divider.hidden,true); f.dock.destroy();
 });
 
 for(const behavior of ['source','editor','source-and-editor'] as const)test(`retained and next task open their own task using ${behavior}`,async()=>{
@@ -813,7 +820,7 @@ for(const behavior of ['source','editor','source-and-editor'] as const)test(`ret
 });
 
 test('dual upcoming second ticks retain both task and clock nodes',()=>{
- const f=widget();f.state.upcoming.next={task:task('future','2026-10-24T12:00:00'),countdown:'00:00:25'};f.state.upcoming.due=true;f.dock.update(f.state);
+ const f=widget();f.state.upcoming.current=true;f.state.upcoming.next={task:task('future','2026-10-24T12:00:00'),countdown:'00:00:25'};f.state.upcoming.due=true;f.dock.update(f.state);
  const next=f.find('operon-status-dock-next'),current=f.find('operon-status-dock-upcoming'),name=next.querySelector('.operon-status-dock-name'),clock=next.querySelector('.operon-status-dock-time');
  f.state.upcoming.next.countdown='00:00:24';f.dock.update(f.state);assert.equal(f.find('operon-status-dock-next'),next);assert.equal(f.find('operon-status-dock-upcoming'),current);assert.equal(next.querySelector('.operon-status-dock-name'),name);assert.equal(next.querySelector('.operon-status-dock-time'),clock);assert.equal(clock.textContent,'24s');f.dock.destroy();
 });
@@ -853,7 +860,7 @@ test('current task moves Now into its name tooltip while future countdowns remai
  f.state.upcoming.current=false;f.state.upcoming.due=false;f.state.upcoming.countdown='00:00:25';f.dock.update(f.state);assert.equal(current.classList.contains('is-current'),false);assert.equal(current.querySelector('.operon-status-dock-time').textContent,'25s');f.dock.destroy();
 });
 test('both task icons use normalized task color and clear it when color is absent or invalid',()=>{
- const f=widget();f.state.upcoming.next={task:task('future','2026-10-25T12:00:00'),countdown:'01:00:00'};f.state.upcoming.task!.fieldValues.taskColor='AABBCC';f.state.upcoming.next!.task.fieldValues.taskColor='#123456';f.dock.update(f.state);
+ const f=widget();f.state.upcoming.current=true;f.state.upcoming.next={task:task('future','2026-10-25T12:00:00'),countdown:'01:00:00'};f.state.upcoming.task!.fieldValues.taskColor='AABBCC';f.state.upcoming.next!.task.fieldValues.taskColor='#123456';f.dock.update(f.state);
  const current=f.find('operon-status-dock-upcoming').querySelector('.operon-status-dock-leading-icon'),next=f.find('operon-status-dock-next').querySelector('.operon-status-dock-leading-icon');assert.equal(current.style.color,'#AABBCC');assert.equal(next.style.color,'#123456');
  f.state.upcoming.task!.fieldValues.taskColor='';f.state.upcoming.next!.task.fieldValues.taskColor='invalid';f.dock.update(f.state);assert.equal(current.style.color,'');assert.equal(next.style.color,'');f.dock.destroy();
 });
@@ -883,7 +890,7 @@ test('multi-current rows keep nodes, colors, actions and scroll position across 
  f.state.active!.elapsedSeconds++;f.state.upcoming.next!.countdown='00:59:59';f.dock.update(f.state);assert.equal(rows.get('b').button,second.button);assert.equal(area.scrollLeft,50);
  f.state.upcoming={...f.state.upcoming,task:b,ongoing:[b]};f.dock.update(f.state);assert.equal(rows.size,1);assert.equal(rows.get('b').button,second.button);assert.equal(second.divider.hidden,true);assert.equal(f.doc.activeElement,second.name);assert.equal(first.name._operonHoverCleanup,undefined);assert.equal((f.dock as any).tooltipKeys.has(first.name),false);
  let closes=0;second.name._operonHoverClose=()=>{closes++;};f.dock.closeTooltips();assert.equal(closes,1);
- f.state.settings.upcomingShowStatusBar=false;f.dock.update(f.state);assert.equal(rows.size,0);assert.equal(area.hidden,true);f.dock.destroy();
+ f.state.settings.statusDockSections=normalizeStatusDockSections([{id:'ongoing',enabled:false}]);f.dock.update(f.state);assert.equal(rows.size,0);assert.equal(area.hidden,true);f.dock.destroy();
 });
 for(const behavior of ['source','editor','source-and-editor']as const)test(`each concurrent task opens its own current task with ${behavior}`,async()=>{
  const h=feedbackHarness();try{h.settings.statusDockClickAction=behavior;const opened:string[]=[];const a=task('a','2026-10-25T09:00:00'),b=task('b','2026-10-25T10:00:00');
@@ -958,7 +965,7 @@ for (const stale of ['removed', 'detached', 'closed', 'disabled', 'already-runni
 		if (stale === 'removed') shown = false;
 		if (stale === 'detached') control.play.remove();
 		if (stale === 'closed') control.play.ownerDocument.defaultView.closed = true;
-		if (stale === 'disabled') h.settings.upcomingShowStatusBar = false;
+		if (stale === 'disabled') h.settings.statusDockSections = normalizeStatusDockSections([{id:'ongoing',enabled:false},{id:'upcoming',enabled:false}]);
 		if (stale === 'already-running') h.state.active = { ...h.state.active!, operonId: selected.operonId };
 		if (stale === 'disposed') h.dock.onunload();
 		await action; assert.equal(starts, 0);
@@ -994,7 +1001,7 @@ for (const success of [false, true]) test(`calendar Play uses shared break selec
 });
 
 test('hover Play retains task color and clears it to the accent fallback', () => {
-	const f = widget(), button = f.find('operon-status-dock-upcoming'), control = (f.dock as any).calendarControls.get(button);
+	const f = widget(), button = f.find('operon-status-dock-next'), control = (f.dock as any).calendarControls.get(button);
 	f.state.upcoming.task!.fieldValues.taskColor = '#123456'; f.dock.update(f.state);
 	assert.equal(control.play.style.color, '#123456'); assert.equal(control.shell.classList.contains('has-task-play'), true);
 	assert.equal(button.querySelector('.operon-status-dock-leading-icon').style.color, '#123456');
@@ -1012,7 +1019,7 @@ test('dock Task Creator tooltip explains creation plus tracking without changing
 });
 
 
-test('durations and reading wrappers are passive; only bordered names open tasks and own tooltips', () => {
+test('durations and reading wrappers are passive; names open tasks without hover tooltips', () => {
 	const f = widget();
 	for (const cls of ['operon-status-dock-tracker-reading', 'operon-status-dock-upcoming']) {
 		const reading = f.find(cls), time = reading.querySelector('.operon-status-dock-time'), name = reading.querySelector('.operon-status-dock-name');
@@ -1023,24 +1030,24 @@ test('durations and reading wrappers are passive; only bordered names open tasks
 			assert.equal(plain.handlers?.get('keydown')?.size ?? 0, 0);
 		}
 		assert.equal(name.getAttribute('role'), 'button'); assert.equal(name.tabIndex, 0);
-		assert.equal((f.dock as any).tooltipKeys.has(name), true);
+		assert.equal((f.dock as any).tooltipKeys.has(name), false); assert.ok(name.getAttribute('aria-labelledby'));
 		name.click(); assert.equal(f.calls.length, 1); f.calls.length = 0;
 	}
 	f.dock.destroy();
 });
 
-test('every ongoing task puts localized Now before the full tooltip description and never in the visible dock', () => {
+test('ongoing tasks keep Now in accessible labels without visible text or hover tooltips', () => {
 	const f = widget(), a = task('a', '2026-10-25T09:00:00'), b = task('b', '2026-10-25T10:00:00');
 	f.state.upcoming = { task: a, ongoing: [a, b], current: true, due: true, countdown: '00:00:00' }; f.dock.update(f.state);
 	for (const item of (f.dock as any).currentReadings.values()) {
 		assert.equal(item.time.hidden, true); assert.equal(item.time.textContent, '');
-		const [title, content] = JSON.parse((f.dock as any).tooltipKeys.get(item.name));
-		assert.ok(title); assert.equal(content, `Now: ${a.description}`);
+		assert.equal((f.dock as any).tooltipKeys.has(item.name), false);
+		assert.ok(f.doc.getElementById(item.name.getAttribute('aria-labelledby')).textContent.includes(`Now: ${a.description}`));
 	}
 	f.state.upcoming = { task: b, current: true, due: true, countdown: '00:00:00' }; f.dock.update(f.state);
 	const reading = f.find('operon-status-dock-upcoming'), name = reading.querySelector('.operon-status-dock-name');
 	assert.equal(reading.querySelector('.operon-status-dock-time').hidden, true);
-	assert.equal(JSON.parse((f.dock as any).tooltipKeys.get(name))[1], `Now: ${b.description}`); f.dock.destroy();
+	assert.equal((f.dock as any).tooltipKeys.has(name), false); assert.ok(f.doc.getElementById(name.getAttribute('aria-labelledby')).textContent.includes(`Now: ${b.description}`)); f.dock.destroy();
 });
 
 test('calendar keyboard-focus scopes distinguish mouse focus and clean up when rows and dock close', () => {
@@ -1075,7 +1082,8 @@ function sessionTrackerHarness() {
  let active: any = null;
  const indexer = { getTask: (id: string) => id === currentTask.operonId ? currentTask : null,
   getAllTasks: () => [currentTask], reindexFilePath: async () => {}, getGeneration: () => 1 };
- const writer = { writeTaskFields: async (_id: string, fields: Record<string, string>) => {
+ const writer = { writeTaskFields: async (_id: string, fields: Record<string, string>, options?: {canCommit?:()=>boolean}) => {
+  if (options?.canCommit?.() === false) return false;
   if (fails) return false;
   // Intentionally mutate the same indexed object: notifications must use a sealed preimage.
   Object.assign(currentTask.fieldValues, fields); return true;
@@ -1146,9 +1154,12 @@ test('recent session card aligns left and routes duration, description, and icon
    clickIcon: async id => { icons++; assert.equal(id, 'recorded'); }, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false } });
  try {
   card.show(h.created[0]); const el = host.querySelector('.operon-status-dock-session-card');
+  assert.equal(host.classList.contains('has-session-feedback'), true);
   assert.equal(el.style.left, '-1px');
   const rect = (top: number, height = 44) => ({ left: 100, right: 500, top, bottom: top + height, width: 400, height });
-  for (const selector of ['.operon-status-dock-time', '.operon-status-dock-name']) {
+  assert.equal(el.querySelector('.operon-status-dock-name').handlers.get('mouseenter')?.size ?? 0, 0);
+  assert.ok(el.querySelector('.operon-status-dock-name').getAttribute('aria-labelledby'));
+  for (const selector of ['.operon-status-dock-time']) {
    const target = el.querySelector(selector);
    for (const [dockTop, cardTop, targetTop, above] of [
     [500, 440, 448, true], // Card above Dock: use free space above.
@@ -1177,6 +1188,7 @@ test('recent session card aligns left and routes duration, description, and icon
   for (const fn of el.handlers.get('pointerleave')) fn({});
   now = 65999; f.flush(); assert.equal(el.hidden, false);
   now = 66000; f.flush(); assert.equal(el.hidden, true);
+  assert.equal(host.classList.contains('has-session-feedback'), false);
   card.show(h.created[0]); await h.tracker.deleteSession('recorded', 0); card.refresh(); assert.equal(el.hidden, true);
  } finally { card.destroy(); h.tracker.destroy(); assert.equal(f.timers.size, 0); }
 });
@@ -1225,7 +1237,7 @@ test('session card stays while its task menu is open, then resumes the remaining
 function scopedTask(id: string, values: Record<string, string>, checkbox: 'open' | 'done' | 'cancelled' = 'open'): IndexedTask {
  return { ...task(id, ''), description: id, checkbox, fieldValues: values };
 }
-function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Promise<unknown>, isTracking?: (id: string) => boolean) {
+function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Promise<unknown>, isTracking?: (id: string) => boolean, historyAction?: (id: string, guard: () => boolean) => Promise<unknown>) {
  const f = statusDockDocument(); const host = f.doc.body.createDiv('operon-status-dock');
  host.createDiv('operon-status-dock-tracker');
  host.getBoundingClientRect = () => ({ left: 100, top: 500, right: 600, bottom: 544, width: 500, height: 44 });
@@ -1235,9 +1247,10 @@ function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Pr
  const sessionCard = { show(session: TrackerSession) { calls.push(`session:${session.operonId}`); }, takeSession() { const value = held; held = null; return value; } } as StatusDockSessionCard;
  const settings = structuredClone(DEFAULT_SETTINGS);
  const list = new StatusDockTaskList(host, { getSettings: () => settings, getTask: id => tasks.find(t => t.operonId === id),
+ startHistoryTimer: historyAction ?? (async (id, guard) => {if (guard()) calls.push(`replay:${id}`);}),
  isTracking: isTracking ?? (id => tracking.has(id)), toggleTimer: timerAction ?? (async (id, guard) => { if (guard()) { calls.push(`timer:${id}`); if (tracking.has(id)) tracking.delete(id); else tracking.add(id); } }), sessionCard, actions: {
   openTask: async id => { calls.push(`open:${id}`); }, clickIcon: async id => { calls.push(`icon:${id}`); },
-  openSession: async () => {}, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false,
+  openSession: async session => { calls.push(`edit:${session.operonId}:${session.sessionIndex}`); }, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false,
  } });
  const panel = host.querySelector('.operon-status-dock-task-list');
  const controls = host.querySelector('.operon-status-dock-scopes');
@@ -1436,4 +1449,323 @@ test('scope Play/Stop and task refresh replace append-only SVG glyphs without lo
    assert.equal(timer.children.find((child: HTMLElement) => child.tagName === 'SVG')?.dataset.icon, cycle % 2 === 0 ? 'square' : 'play');
   }
  } finally { f.list.destroy(); globals.__operonTestSetIcon = previous; }
+});
+
+for (const ongoing of [false,true]) for(const upcoming of [false,true]) test('independent calendar sections: ongoing='+ongoing+', upcoming='+upcoming,()=>{
+ const f=widget(), now=task('current','2026-10-25T09:00:00'), future=task('future','2026-10-25T12:00:00');
+ f.state.settings.upcomingShowStatusBar=false; // Desktop ignores the legacy mobile preference.
+ f.state.settings.statusDockSections=normalizeStatusDockSections(undefined).map(s=>s.id==='ongoing'?{...s,enabled:ongoing}:s.id==='upcoming'?{...s,enabled:upcoming}:s);
+ f.state.upcoming={task:now,due:true,current:true,ongoing:[now],countdown:null,next:{task:future,countdown:'01:00:00'}};
+ const before=JSON.stringify(f.state);f.dock.update(f.state);
+ assert.equal((f.dock as any).taskArea.hidden,!ongoing);
+ assert.equal((f.dock as any).futureArea.hidden,!upcoming);
+ assert.equal((f.dock as any).currentReadings.size,ongoing?1:0);
+ assert.equal(JSON.stringify(f.state),before);
+ // Retained elapsed task is still controlled only by Ongoing.
+ f.state.upcoming.ongoing=[];f.dock.update(f.state);
+ assert.equal((f.dock as any).upcoming.hidden,!ongoing);
+ assert.equal((f.dock as any).nextUpcoming.hidden,!upcoming);
+ f.dock.destroy();
+});
+
+test('sections follow physical DOM order without rebuilding on ticks, and all-disabled hides only UI',()=>{
+ const f=widget();f.state.alert.state='hidden';
+ f.state.settings.statusDockSections=normalizeStatusDockSections([{id:'upcoming',enabled:true},{id:'tracker',enabled:false}]);
+ const before=JSON.stringify(f.state.active);f.dock.update(f.state);
+ const roots=()=>Array.from(f.dock.root.children).filter((e:any)=>e.dataset.statusDockSection);
+ assert.deepEqual(roots().map((e:any)=>e.dataset.statusDockSection),['upcoming','tracker','ongoing']);
+ const elements=roots();f.dock.update(f.state);assert.deepEqual(roots(),elements);
+ assert.equal((f.dock as any).tracker.hidden,true);
+ assert.equal(JSON.stringify(f.state.active),before);
+ f.state.settings.statusDockSections=normalizeStatusDockSections(undefined).map(s=>({...s,enabled:false}));
+ f.dock.update(f.state);assert.equal(f.dock.root.classList.contains('is-empty'),true);
+ f.state.alert.state='conflict';f.dock.update(f.state);
+ assert.equal(f.dock.root.classList.contains('is-empty'),false);
+ assert.equal(JSON.stringify(f.state.active),before);f.dock.destroy();
+});
+
+test('disabling or reordering a section closes its list and invalidates pending timer guards',async()=>{
+ let guard:(()=>boolean)|undefined, finish:()=>void=()=>{};
+ const f=scopeListFixture(async(_id,canCommit)=>{guard=canCommit;await new Promise<void>(resolve=>{finish=resolve;});});
+ try{
+  f.list.update({overdue:[],today:f.tasks});f.list.toggle('today');
+  f.panel.querySelector('.operon-status-dock-scope-timer').click();
+  await Promise.resolve();assert.equal(guard?.(),true);
+  f.settings.statusDockSections=normalizeStatusDockSections([{id:'overdueToday',enabled:false}]);
+  assert.equal(guard?.(),false,'settings invalidate the write before rendering');
+  f.list.update({overdue:[],today:f.tasks});
+  assert.equal(f.panel.hidden,true);assert.equal(f.controls.hidden,true);assert.equal(guard?.(),false);
+  finish();await Promise.resolve();await Promise.resolve();
+  f.settings.statusDockSections=undefined;f.list.update({overdue:[],today:f.tasks});f.list.toggle('today');
+  assert.equal(f.panel.hidden,false);
+  f.settings.statusDockSections=normalizeStatusDockSections([{id:'tracker',enabled:true}]);
+  f.list.update({overdue:[],today:f.tasks});assert.equal(f.panel.hidden,true);
+ }finally{finish();f.list.destroy();}
+});
+
+test('both calendar sections retain keyboard, wheel scrolling and tooltip dismissal',()=>{
+ const f=widget();
+ try {
+  for(const area of [(f.dock as any).taskArea,(f.dock as any).futureArea]){
+   assert.equal(area.tabIndex,0);assert.equal(area.getAttribute('role'),'group');
+   assert.ok(area.getAttribute('aria-labelledby'));
+   area.scrollWidth=1000;area.clientWidth=100;area.scrollLeft=0;
+   let prevented=false;
+   const event={ctrlKey:false,metaKey:false,shiftKey:false,deltaX:0,deltaY:20,deltaMode:0,preventDefault(){prevented=true;}};
+   for(const handler of area.handlers.get('wheel'))handler(event);
+   assert.equal(area.scrollLeft,20);assert.equal(prevented,true);
+   assert.equal(area.handlers.get('scroll').size,1);
+  }
+ }finally{f.dock.destroy();}
+});
+
+ test('Pinned and Modified share one list, preserve source order and hide independently', () => {
+ const f=scopeListFixture();
+ try {
+  const scopes={overdue:[],today:[],pinned:f.tasks,modified:[...f.tasks].reverse()};
+  f.list.update(scopes);
+  const groups=Array.from(f.host.children).filter((el:any)=>['pinned','modified'].includes(el.dataset.statusDockSection)) as any[];
+  assert.equal(groups.length,2);assert.ok(groups.every(el=>!el.hidden));
+  f.list.toggle('pinned');assert.equal(f.panel.children.length,2);
+  assert.equal(f.panel.children[0].querySelector('.operon-status-dock-name').textContent,'first');
+  f.list.toggle('modified');assert.equal(f.panel.children.length,2);
+  assert.equal(f.panel.children[0].querySelector('.operon-status-dock-name').textContent,'second');
+  f.settings.statusDockSections=normalizeStatusDockSections(undefined).map(s=>s.id==='pinned'?{...s,enabled:false}:s);f.list.update(scopes);
+  assert.equal(f.panel.hidden,false);assert.equal(groups[0].hidden,true);assert.equal(groups[1].hidden,false);
+  f.list.update({...scopes,modified:[]});assert.equal(f.panel.hidden,true);assert.equal(groups[1].hidden,true);
+ } finally {f.list.destroy();}
+});
+
+test('removed Pinned membership invalidates a pending timer even while another member remains',async()=>{
+ let guard:(()=>boolean)|undefined,finish=()=>{};
+ const f=scopeListFixture(async(_id,canCommit)=>{guard=canCommit;await new Promise<void>(resolve=>{finish=resolve;});});
+ try {
+  f.list.update({overdue:[],today:[],pinned:f.tasks});f.list.toggle('pinned');
+  f.panel.querySelector('.operon-status-dock-scope-timer').click();await Promise.resolve();assert.equal(guard?.(),true);
+  f.list.update({overdue:[],today:[],pinned:[f.tasks[1]]});assert.equal(guard?.(),false);assert.equal(f.panel.children.length,1);
+ }finally{finish();await Promise.resolve();f.list.destroy();}
+});
+
+import {getRecentModifiedTasks,getTaskSearchBoxRecentModifiedCutoff} from '../src/ui/task-search-box-integration';
+import {getPinnedTasksForDisplay} from '../src/core/pinned-task-query';
+
+test('Modified includes terminal and both formats, uses canonical time fallback and deterministic ties',()=>{
+ const date='2026-11-04T12:00:00Z',now=Date.parse(date),cutoff=getTaskSearchBoxRecentModifiedCutoff({...DEFAULT_SETTINGS,taskFinderRecentModifiedDays:3},now);
+ const a=scopedTask('a',{datetimeModified:date},'done'),b=scopedTask('b',{datetimeModified:date},'cancelled');
+ b.primary={...b.primary,format:'yaml'};a.description='same';b.description='same';
+ const boundary={...task('boundary',''),datetimeModified:new Date(cutoff).toISOString()};
+ const old={...task('old',''),datetimeModified:new Date(cutoff-1).toISOString()};
+ assert.deepEqual(getRecentModifiedTasks([b,old,a,task('missing',''),boundary],cutoff).map(t=>t.operonId),['a','b','boundary']);
+ assert.equal(getRecentModifiedTasks([boundary],cutoff+1).length,0);
+});
+
+test('Dock uses the real pinned query and invalidates only on relevant source changes',async()=>{
+ const h=new SettingsPreservationHarness();const f=statusDockDocument();
+ const storage=h.createStorage();await storage.initialize();
+ const tasks=[scopedTask('a',{priority:'A'}),scopedTask('b',{priority:'B'})];
+ let generation=1,reads=0;
+ const indexer={getAllTasks:()=>{reads++;return tasks;},getTask:(id:string)=>tasks.find(t=>t.operonId===id),getGeneration:()=>generation};
+ const settings=storage.getSettings();
+ const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
+ indexer,getSettings:()=>settings,getPinnedTasks:()=>getPinnedTasksForDisplay(indexer as never,storage.pinned,settings.priorities,settings.pinnedTaskSortMode),getPinnedGeneration:()=>storage.pinned.getGeneration(),
+ timeTracker:{} as never,breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
+ const scopes=()=> (dock as any).getTaskScopes();
+ try {
+  await storage.pinned.pin('a');await storage.pinned.pin('b');
+  for(const mode of ['priority','lastModified','manual'] as const){settings.pinnedTaskSortMode=mode;assert.deepEqual(scopes().pinned,getPinnedTasksForDisplay(indexer as never,storage.pinned,settings.priorities,mode));}
+  scopes();const before=reads;scopes();scopes();assert.equal(reads,before);
+  await storage.pinned.unpin('a');assert.deepEqual(scopes().pinned.map((t:IndexedTask)=>t.operonId),['b']);
+  await storage.pinned.replacePinnedIds(['a']);assert.deepEqual(scopes().pinned.map((t:IndexedTask)=>t.operonId),['a']);
+  generation++;scopes();assert.ok(reads>before);
+ }finally {dock.onunload();await h.dispose();}
+});
+
+
+function historySessions(task: IndexedTask): TrackerSession[] {
+ return [1, 0, 2].map((sessionIndex, i) => ({task, operonId:task.operonId, sessionIndex,
+ start:`${localToday()}T${i === 2 ? '09' : '10'}:00:00`, end:`${localToday()}T${i === 2 ? '09' : '10'}:01:00`, durationSeconds:60}));
+}
+
+test('History keeps repeated and equal-time sessions distinct, routes exact edits and replays without stopping',async()=>{
+ const f=scopeListFixture(); const sessions=historySessions(f.tasks[0]);
+ try {
+  f.tracking.add('first'); f.list.update({overdue:[],today:[]},sessions); f.list.toggle('history');
+  assert.equal(f.panel.children.length,3);
+  const rows=Array.from(f.panel.children) as any[];
+  assert.deepEqual(rows.map(row=>row.querySelector('.operon-status-dock-time').textContent),['1m 0s','1m 0s','1m 0s']);
+  for(const row of rows){
+   assert.ok(row.querySelector('.operon-status-dock-time').handlers.get('mouseenter')?.size);
+   assert.equal(row.querySelector('.operon-status-dock-name').handlers.get('mouseenter')?.size ?? 0,0);
+   assert.ok(row.querySelector('.operon-status-dock-name').getAttribute('aria-labelledby'));
+   row.querySelector('.operon-status-dock-time').click();await new Promise(resolve=>setImmediate(resolve));
+  }
+  assert.deepEqual(f.calls,['edit:first:1','edit:first:0','edit:first:2']);f.calls.length=0;
+  rows[0].querySelector('.operon-status-dock-scope-timer').click();await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(f.calls,['replay:first']);assert.equal(f.tracking.has('first'),true);
+  f.panel.scrollTop=42;f.list.update({overdue:[],today:[]},sessions.map(s=>({...s})));
+  assert.equal(f.panel.children[0],rows[0]);assert.equal(f.panel.scrollTop,42);
+  f.list.update({overdue:[],today:[]},[sessions[2],sessions[0],sessions[1]]);
+  assert.equal(f.panel.children[0],rows[2]);
+ }finally{f.list.destroy();}
+});
+
+for(const change of ['remove','index','disable','reorder','close','window','destroy','source'] as const) test(`History pending replay cancels on ${change}`,async()=>{
+ let guard:(()=>boolean)|undefined,finish=()=>{};
+ const f=scopeListFixture(undefined,undefined,async(_id,canCommit)=>{guard=canCommit;await new Promise<void>(resolve=>{finish=resolve;});if(canCommit())f.calls.push('written');});
+ const sessions=historySessions(f.tasks[0]);
+ try{
+  f.list.update({overdue:[],today:[]},sessions);f.list.toggle('history');
+  const old=f.panel.children[0];old.querySelector('.operon-status-dock-scope-timer').click();await Promise.resolve();assert.equal(guard?.(),true);
+  if(change==='remove')f.list.update({overdue:[],today:[]},sessions.slice(1));
+  if(change==='index')f.list.update({overdue:[],today:[]},sessions.map(s=>({...s,sessionIndex:s.sessionIndex+10})));
+  if(change==='disable')f.settings.statusDockSections=normalizeStatusDockSections([{id:'history',enabled:false}]);
+  if(change==='reorder')f.settings.statusDockSections=normalizeStatusDockSections([{id:'history',enabled:true}]);
+  if(change==='close')f.list.close();
+  if(change==='window')f.doc.defaultView.closed=true;
+  if(change==='destroy')f.list.destroy();
+  if(change==='source')f.tasks[0].fieldValues.trackers='changed session source';
+  assert.equal(guard?.(),false);finish();await new Promise(resolve=>setImmediate(resolve));assert.equal(f.calls.includes('written'),false);
+ }finally{finish();f.list.destroy();}
+});
+
+test('History empty or disabled closes its list but preserves queued ten-second feedback',()=>{
+ const f=scopeListFixture();const sessions=historySessions(f.tasks[0]);
+ try{
+  const group=Array.from(f.host.children).find((el:any)=>el.dataset.statusDockSection==='history') as any;
+  assert.equal(group.hidden,true);f.list.update({overdue:[],today:[]},sessions);assert.equal(group.hidden,false);
+  f.list.toggle('history');f.list.showSession(sessions[0]);assert.deepEqual(f.calls,[]);
+  f.settings.statusDockSections=normalizeStatusDockSections([{id:'history',enabled:false}]);
+  f.list.update({overdue:[],today:[]},sessions);assert.equal(group.hidden,true);assert.equal(f.panel.hidden,true);
+  assert.deepEqual(f.calls,['session:first']);f.list.showSession(sessions[1]);assert.equal(f.calls.length,2);
+ }finally{f.list.destroy();}
+});
+
+test('History cache expires at the local day boundary and preserves canonical source ordering',async(context)=>{
+ const timers = (context as unknown as {mock:{timers:{enable(options:unknown):void;setTime(time:number):void;tick(time:number):void;reset():void}}}).mock.timers;
+ timers.enable({apis:['Date'],now:new Date('2026-11-04T12:00:00').getTime()});
+ const h=sessionTrackerHarness();try{
+  await h.tracker.addSession('recorded','2026-11-04T10:00:00','2026-11-04T10:02:00');
+  await h.tracker.addSession('recorded','2026-11-03T10:00:00','2026-11-03T10:01:00');
+  const first=h.tracker.getHistory(2);assert.deepEqual(first.map(g=>g.date),['2026-11-04','2026-11-03']);
+  assert.equal(h.tracker.getHistory(2),first);assert.equal(h.tracker.getHistory(1).length,1);
+  timers.setTime(new Date('2026-11-05T12:00:00').getTime());
+  assert.equal(h.tracker.getHistory(1).length,0);assert.deepEqual(h.tracker.getHistory(2).map(g=>g.date),['2026-11-04']);
+ }finally{h.tracker.destroy();timers.reset();}
+});
+
+test('Dock History shares tracker order and caches across second ticks while invalidating source/settings/day',context=>{
+ const timers = (context as unknown as {mock:{timers:{enable(options:unknown):void;setTime(time:number):void;tick(time:number):void;reset():void}}}).mock.timers;
+ timers.enable({apis:['Date'],now:new Date('2026-11-04T12:00:00').getTime()});
+ const f=statusDockDocument(),settings=structuredClone(DEFAULT_SETTINGS);let generation=1,reads=0;
+ const sessions=historySessions(scopedTask('same',{}));
+ const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
+ indexer:{getAllTasks:()=>[],getTask:()=>undefined,getGeneration:()=>generation},getSettings:()=>settings,
+ timeTracker:{getHistory:()=>{reads++;return [{sessions:sessions.slice(0,2)},{sessions:sessions.slice(2)}];}} as never,
+ breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
+ try{
+  const read=()=> (dock as any).getHistorySnapshot();assert.deepEqual(read(),sessions);
+  for(let i=0;i<60;i++){timers.tick(1000);read();}assert.equal(reads,1);
+  generation++;read();assert.equal(reads,2);settings.trackerHistoryDays=365;read();assert.equal(reads,3);
+  (dock as any).historyRevision++;read();assert.equal(reads,4);
+  timers.setTime(new Date('2026-11-05T12:00:00').getTime());read();assert.equal(reads,5);
+ }finally{dock.onunload();timers.reset();}
+});
+
+
+for(const format of ['inline','yaml'] as const) test(`History session edit/delete guard reaches the queued writer for ${format}`,async()=>{
+ const h=sessionTrackerHarness();h.task().primary.format=format;
+ let release=()=>{};
+ try{
+  await h.tracker.addSession('recorded','2026-11-04T10:00:00','2026-11-04T10:01:00');
+  const session=h.tracker.getTaskSessions('recorded')[0],before=h.task().fieldValues.trackers;
+  let valid=true;
+  const blocked=h.tracker.runSerializedSessionMutation(()=>new Promise<void>(resolve=>{release=resolve;}));
+  await Promise.resolve();
+  const edit=h.tracker.updateSessionByRange('recorded',session.start,session.end,session.start,'2026-11-04T10:02:00',0,()=>valid);
+  const deletion=h.tracker.deleteSessionByRange('recorded',session.start,session.end,0,()=>valid);
+  valid=false;release();await blocked;assert.equal(await edit,false);assert.equal(await deletion,false);assert.equal(h.task().fieldValues.trackers,before);
+  let checks=0;
+  const denied=await h.tracker.updateSessionByRange('recorded',session.start,session.end,session.start,'2026-11-04T10:03:00',0,()=>++checks===1);
+  assert.equal(denied,false);assert.equal(checks,2);assert.equal(h.task().fieldValues.trackers,before);
+  assert.equal(await h.tracker.updateSessionByRange('recorded',session.start,session.end,session.start,'2026-11-04T10:02:00',0,()=>true),true);
+  const changed=h.tracker.getTaskSessions('recorded')[0];assert.equal(changed.durationSeconds,120);
+  assert.equal(await h.tracker.deleteSessionByRange('recorded',session.start,session.end,0,()=>true),false);
+  assert.equal(h.tracker.getTaskSessions('recorded').length,1);
+  assert.equal(await h.tracker.deleteSessionByRange('recorded',changed.start,changed.end,0,()=>true),true);assert.equal(h.tracker.getTaskSessions('recorded').length,0);
+ }finally{release();h.tracker.destroy();}
+});
+
+test('History stale detached duration/name/icon callbacks cannot act after session removal',async()=>{
+ const f=scopeListFixture();const sessions=historySessions(f.tasks[0]);
+ try{
+  f.list.update({overdue:[],today:[]},sessions);f.list.toggle('history');const row=f.panel.children[0];
+  f.list.update({overdue:[],today:[]},sessions.slice(1));
+  for(const selector of ['.operon-status-dock-time','.operon-status-dock-name','.operon-status-dock-session-icon'])row.querySelector(selector).click();
+  await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(f.calls,[]);
+ }finally{f.list.destroy();}
+});
+
+test('History editor keeps a source/lifecycle guard even if another identical range survives',async()=>{
+ const f=scopeListFixture();const sessions=historySessions(f.tasks[0]);let guard:(()=>boolean)|undefined;
+ (f.list as any).options.actions.openSession=async(_session:TrackerSession,canCommit:()=>boolean)=>{guard=canCommit;};
+ try{
+  f.tasks[0].fieldValues.trackers='two identical stored ranges';
+  f.list.update({overdue:[],today:[]},sessions);f.list.toggle('history');f.panel.querySelector('.operon-status-dock-time').click();
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(guard?.(),true);
+  f.tasks[0].fieldValues.trackers='one identical stored range';assert.equal(guard?.(),false);
+  f.list.close();assert.equal(guard?.(),false);
+ }finally{f.list.destroy();}
+});
+
+
+for (const distance of [0,3,4,20]) test(`Dock drag click classification at ${distance}px preserves subsequent clicks`,()=>{
+ const f=widget(),grip=f.find('operon-status-dock-grip');
+ const pointer={pointerId:7,button:0,isPrimary:true,clientX:30,clientY:30,preventDefault(){},stopPropagation(){}};
+ let blocked=0;
+ const click={pointerId:7,detail:1,preventDefault(){blocked++;},stopImmediatePropagation(){}};
+ try{
+  for(const handler of grip.handlers.get('pointerdown'))handler(pointer);
+  f.emitWindow('pointermove',{...pointer,clientX:30+distance});
+  f.emitWindow('pointerup',{...pointer,type:'pointerup'});
+  f.emitWindow('click',click);assert.equal(blocked,distance>=4?1:0);
+  f.emitWindow('pointerdown',pointer);f.emitWindow('click',click);assert.equal(blocked,distance>=4?1:0);
+ }finally{f.dock.destroy();}
+ for(const event of ['click','pointerdown','pointermove','pointerup','pointercancel','blur','keydown'])assert.equal(f.windowListeners.get(event)?.size??0,0);
+});
+
+for(const end of ['pointercancel','blur','hide','destroy','escape','new-pointer'] as const) test(`Dock drag suppression cleanup: ${end}`,()=>{
+ const f=widget(),other=widget(),grip=f.find('operon-status-dock-grip');let blocked=0;
+ const pointer={pointerId:7,button:0,isPrimary:true,clientX:30,clientY:30,preventDefault(){},stopPropagation(){}};
+ try{
+  for(const handler of grip.handlers.get('pointerdown'))handler(pointer);
+  f.emitWindow('pointermove',{...pointer,clientX:40});
+  const click={pointerId:7,detail:1,preventDefault(){blocked++;},stopImmediatePropagation(){}};
+  other.emitWindow('click',click);assert.equal(blocked,0);
+  if(end==='escape'){
+   f.emitWindow('keydown',{key:'Escape',preventDefault(){},stopPropagation(){}});
+   assert.equal((f.dock as any).position,null);f.emitWindow('click',click);assert.equal(blocked,1);
+  }else{
+   if(end==='pointercancel')f.emitWindow('pointercancel',{...pointer,type:'pointercancel'});
+   if(end==='blur')f.emitWindow('blur',{});
+   if(end==='hide')f.dock.setVisible(false);
+   if(end==='destroy')f.dock.destroy();
+   if(end==='new-pointer'){f.emitWindow('pointerup',{...pointer,type:'pointerup'});f.emitWindow('pointerdown',{...pointer,pointerId:8});}
+   f.emitWindow('click',click);assert.equal(blocked,0);
+  }
+ }finally{f.dock.destroy();other.dock.destroy();}
+});
+
+
+for(const distance of [0,3]) test(`Escape at ${distance}px preserves the list instead of generating a normal click`,()=>{
+ const f=widget(),grip=f.find('operon-status-dock-grip');let blocked=0;
+ const pointer={pointerId:9,button:0,isPrimary:true,clientX:20,clientY:20,preventDefault(){},stopPropagation(){}};
+ try{
+  for(const handler of grip.handlers.get('pointerdown'))handler(pointer);
+  f.emitWindow('pointermove',{...pointer,clientX:20+distance});
+  f.emitWindow('keydown',{key:'Escape',preventDefault(){},stopPropagation(){}});
+  f.emitWindow('pointerup',{...pointer,type:'pointerup'});
+  f.emitWindow('click',{pointerId:9,detail:1,preventDefault(){blocked++;},stopImmediatePropagation(){}});
+  assert.equal(blocked,1);assert.equal((f.dock as any).position,null);
+  f.emitWindow('pointerdown',pointer);f.emitWindow('click',{pointerId:9,detail:1,preventDefault(){blocked++;},stopImmediatePropagation(){}});assert.equal(blocked,1);
+ }finally{f.dock.destroy();}
 });
