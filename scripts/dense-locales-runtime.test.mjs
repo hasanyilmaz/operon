@@ -75,7 +75,7 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 
 	assert.deepEqual(densePack.languageOrder, ['en']);
 	assert.deepEqual(Object.keys(densePack.locales), ['en']);
-	assert.equal(densePack.keyCount, 3_759);
+	assert.equal(densePack.keyCount, 3_777);
 	const indexes = Object.values(densePack.keyIndex)
 		.flatMap(category => Object.values(category))
 		.sort((left, right) => left - right);
@@ -92,6 +92,11 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		'Red',
 		'legacy localized color defaults must normalize before remote packs load',
 	);
+
+	const preinstallKoreanPalette = runtime.normalizeColorPalette([
+		{ id: 'red', name: locales.ko.taskEditor.colorNameRed, hex: '#DC2626' },
+	]);
+	assert.equal(preinstallKoreanPalette.find(entry => entry.id === 'red')?.name, 'Red');
 
 	for (const definition of LOCALE_DEFINITIONS.filter(definition => definition.code !== 'en')) {
 		runtime.installI18nLocale(definition.code, locales[definition.code]);
@@ -184,12 +189,37 @@ test('English-only runtime installs keyed language packs and preserves i18n beha
 		assert.equal(runtime.getCurrentLang(), 'pt-BR', locale);
 	}
 	assert.equal(runtime.resolveSupportedLocale('pt-PT'), null);
+	runtime.initI18n(undefined, 'ko');
+	assert.equal(runtime.t('notifications', 'indexRebuilt', { count: '3' }), '인덱스를 다시 구축했습니다 — 작업 3개');
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'year', interval: 1, month: 8, monthdays: [1] }),
+		'매년 8월 1일',
+	);
+	assert.equal(
+		runtime.formatRepeatRuleSummaryI18n({ mode: 'schedule', freq: 'week', interval: 1, days: ['mo', 'tu', 'su'] }),
+		'매주 월요일, 화요일 및 일요일',
+	);
+	assert.equal(
+		runtime.t('notifications', 'kanbanPartialResults', { count: '3' }),
+		'집계가 완전하지 않습니다. 작업 3개를 그룹화하지 못했습니다.',
+	);
+	for (const locale of ['ko', 'ko-KR', 'KO-kr', ' ko-KR ', 'ko-KP', 'ko-Hang-KR']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), 'ko', locale);
+		runtime.initI18n(locale, undefined);
+		assert.equal(runtime.getCurrentLang(), 'ko', locale);
+		assert.equal(runtime.t('buttons', 'save'), '저장');
+	}
+	for (const locale of ['kok-IN', 'korean']) {
+		assert.equal(runtime.resolveSupportedLocale(locale), null, locale);
+		runtime.initI18n(locale, undefined);
+		assert.equal(runtime.getCurrentLang(), 'en', locale);
+	}
 	runtime.initI18n('zh-HK', 'zh-CN');
 	assert.equal(runtime.getCurrentLang(), 'zh-CN');
 	runtime.initI18n('xx-XX', 'unsupported');
 	assert.equal(runtime.getCurrentLang(), 'en');
 	assert.equal(runtime.resolveSupportedLocale('xx-XX'), null);
-	for (const language of ['en', 'tr', 'zh-TW', 'pt-BR', 'en']) {
+	for (const language of ['en', 'tr', 'zh-TW', 'pt-BR', 'ko', 'en']) {
 		runtime.initI18n(undefined, language);
 		assert.equal(runtime.getCurrentLang(), language);
 	}

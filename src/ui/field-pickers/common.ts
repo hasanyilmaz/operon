@@ -29,6 +29,8 @@ interface FloatingPanelRecord {
 }
 
 export interface FloatingHostOptions {
+	/** Opt-in for Filter Editor grouping/sorting: local coordinates clipped to the viewport. */
+	fitToHostViewport?: boolean;
 	floatingHost?: HTMLElement;
 	floatingScrollHost?: HTMLElement | Window;
 	constrainToFloatingHost?: boolean;
@@ -367,20 +369,30 @@ export function positionFloatingElement(
 	const hostRect = useHostBounds
 		? host.getBoundingClientRect()
 		: new DOMRectCtor(0, 0, hostWindow.innerWidth, hostWindow.innerHeight);
-	const hostScrollLeft = useHostBounds ? host.scrollLeft : 0;
-	const hostScrollTop = useHostBounds ? host.scrollTop : 0;
-	const anchorLeft = useHostBounds ? rect.left - hostRect.left + hostScrollLeft : rect.left;
-	const anchorTop = useHostBounds ? rect.top - hostRect.top + hostScrollTop : rect.top;
-	const anchorBottom = useHostBounds ? rect.bottom - hostRect.top + hostScrollTop : rect.bottom;
-	const availableWidth = useHostBounds ? host.clientWidth : hostWindow.innerWidth;
-	const availableHeight = useHostBounds ? host.clientHeight : hostWindow.innerHeight;
+	const fit = useHostBounds && options.fitToHostViewport === true;
+	const scaleX = fit && host.offsetWidth ? hostRect.width / host.offsetWidth || 1 : 1;
+	const scaleY = fit && host.offsetHeight ? hostRect.height / host.offsetHeight || 1 : 1;
+	const originLeft = hostRect.left + (fit ? host.clientLeft * scaleX : 0);
+	const originTop = hostRect.top + (fit ? host.clientTop * scaleY : 0);
+	const clipLeft = fit ? Math.max(0, -originLeft / scaleX) : 0;
+	const clipTop = fit ? Math.max(0, -originTop / scaleY) : 0;
+	const hostScrollLeft = useHostBounds ? host.scrollLeft + clipLeft : 0;
+	const hostScrollTop = useHostBounds ? host.scrollTop + clipTop : 0;
+	const anchorLeft = useHostBounds ? (rect.left - originLeft) / scaleX - clipLeft + (fit ? 0 : hostScrollLeft) : rect.left;
+	const anchorTop = useHostBounds ? (rect.top - originTop) / scaleY - clipTop + (fit ? 0 : hostScrollTop) : rect.top;
+	const anchorBottom = useHostBounds ? (rect.bottom - originTop) / scaleY - clipTop + (fit ? 0 : hostScrollTop) : rect.bottom;
+	const availableWidth = fit ? Math.max(0, Math.min(host.clientWidth, (hostWindow.innerWidth - originLeft) / scaleX) - clipLeft) : useHostBounds ? host.clientWidth : hostWindow.innerWidth;
+	const availableHeight = fit ? Math.max(0, Math.min(host.clientHeight, (hostWindow.innerHeight - originTop) / scaleY) - clipTop) : useHostBounds ? host.clientHeight : hostWindow.innerHeight;
 	if (typeof options.matchWidth === 'number' && options.matchWidth > 0) {
-		panel.style.width = `${Math.round(options.matchWidth)}px`;
+		panel.style.width = `${Math.round(options.matchWidth / scaleX)}px`;
+	}
+	if (fit) {
+		panel.style.maxWidth = `${Math.max(0, availableWidth - margin * 2)}px`;
 	}
 	const panelWidth = panel.offsetWidth;
 	const panelHeight = panel.offsetHeight;
 
-	const maxHeight = Math.max(160, availableHeight - margin * 2);
+	const maxHeight = Math.max(fit ? 0 : 160, availableHeight - margin * 2);
 	panel.style.maxHeight = `${maxHeight}px`;
 	panel.style.overflowY = panelHeight > maxHeight ? 'auto' : '';
 
@@ -400,6 +412,7 @@ export function positionFloatingElement(
 	}
 	left = Math.max(margin, left);
 
+	if (fit) { left += hostScrollLeft; top += hostScrollTop; }
 	if (useHostBounds) {
 		const minLeft = hostScrollLeft + margin;
 		const maxLeft = hostScrollLeft + availableWidth - panelWidth - margin;
@@ -577,6 +590,7 @@ export function createFloatingPanel(
 		floatingHost: options.floatingHost,
 		floatingScrollHost: options.floatingScrollHost,
 		constrainToFloatingHost: options.constrainToFloatingHost,
+		fitToHostViewport: options.fitToHostViewport,
 		matchWidth: options.matchWidth,
 	};
 	const restoreKeyboardFocus = mobileSurfaceContext?.root.matches('.operon-task-editor-touch-desktop') && mobileSurfaceContext.root.dataset.editorInput === 'keyboard';

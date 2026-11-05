@@ -1,3 +1,4 @@
+import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
 import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
@@ -1184,6 +1185,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	getControlValue(key: string): unknown {
+  if (key === 'statusDockSections') return normalizeStatusDockSections(this.settings.statusDockSections);
 		if (key.startsWith('calendarPresetRangeMode:')) return this.settings.calendarPresets.find(p => p.id === key.slice('calendarPresetRangeMode:'.length))?.rangeMode ?? 'rolling';
 		if (key === 'propertyValuePool') return readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const entry = this.findSettingsSearchEntryByKey(key);
@@ -1209,6 +1211,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.updateNativeSettingsDefinitions();
 			return;
 		}
+		if (key === 'statusDockSections') { await this.saveStatusDockSections(() => normalizeStatusDockSections(value)); return; }
 		if (key === 'taskEditorSections') {
 			await this.saveTaskEditorSections(() => normalizeTaskEditorSections(value));
 			return;
@@ -1324,6 +1327,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private getSettingsSearchEntriesByTab(): Map<OperonSettingsTabId, OperonSettingsSearchEntry[]> {
 		const entriesByTab = new Map<OperonSettingsTabId, OperonSettingsSearchEntry[]>();
 		for (const entry of OPERON_SETTINGS_SEARCH_REGISTRY) {
+   if (Platform.isDesktopApp && entry.key === 'upcomingShowStatusBar') continue;
+   if (!Platform.isDesktopApp && entry.key === 'statusDockSections') continue;
 			if (!this.isSettingsTabId(entry.tabId)) continue;
 			const tabEntries = entriesByTab.get(entry.tabId) ?? [];
 			tabEntries.push(entry);
@@ -2075,10 +2080,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 					? this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksPropertiesScope') : null,
 			]),
 		}];
-		if (Platform.isDesktopApp) groups.splice(1, 0, {
+		if (Platform.isDesktopApp) groups.splice(0, 0, {
 			type: 'group', heading: t('settings', 'statusDockSection'),
+			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'statusDockSection'),
+				'DOCS-152 Status Dock', 'operon-native-settings-declarative-docs-action--inline-heading')],
 			items: this.compactSettingsSearchDefinitions([
 				this.buildSettingsSearchSettingDefinition(entries, 'statusDockClickAction'),
+				this.buildStatusDockSectionsDefinition(),
 			]),
 		});
 		const folders = entries.find(entry => entry.id === 'ui.workspaceTweaksPropertiesExcludedFolders');
@@ -2400,15 +2408,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 				groupOrder,
 				this.buildSettingsSearchSettingDefinition(entries, 'upcomingTaskColorSource'),
 			]),
-		}, {
-			type: 'group',
-			heading: t('settings', Platform.isDesktopApp ? 'statusDockSection' : 'upcomingStatusBarSection'),
+		}, ...(Platform.isDesktopApp ? [] : [{
+			type: 'group' as const,
+			heading: t('settings', 'upcomingStatusBarSection'),
 			items: this.compactSettingsSearchDefinitions([
 				this.buildSettingsSearchSettingDefinition(entries, 'upcomingShowStatusBar'),
 				clickAction,
 				expiryAction,
 			]),
-		}];
+		}])];
 	}
 
 	private buildTrackerSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
@@ -3538,6 +3546,72 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 
+private statusDockSectionLabel(id: StatusDockSectionId): string {
+  return t('settings', 'statusDockSection_' + id);
+ }
+
+ private async saveStatusDockSections(change: (current: StatusDockSection[]) => StatusDockSection[]): Promise<void> {
+  try {
+   await this.storage.saveStatusDockSections(change);
+   this.notifySettingsChanged();
+   this.applyPendingSettingsChange();
+  } catch (error) {
+   new Notice(t('settings', 'statusDockSectionsSaveFailed'));
+   throw error;
+  } finally { this.updateNativeSettingsDefinitions(); }
+ }
+
+ private buildStatusDockSectionsDefinition(): SettingDefinition {
+  return {
+   aliases: ['Status Dock', 'Overdue', 'Happens Today', 'Time Tracker', 'Ongoing Tasks', 'Upcoming Tasks', 'Pinned Tasks', 'Modified Tasks', 'Session History'],
+   name: t('settings', 'statusDockSections'),
+   desc: t('settings', 'statusDockSectionsDesc'),
+   render: setting => {
+    setting.settingEl.empty();
+    setting.settingEl.removeClass('setting-item');
+    this.renderStatusDockSectionRows(setting.settingEl);
+   },
+  };
+ }
+
+ private renderStatusDockSectionRows(container: HTMLElement): void {
+  const refresh = (): void => {
+   container.empty();
+   new Setting(container).setName(t('settings', 'statusDockSections')).setDesc(t('settings', 'statusDockSectionsDesc')).setHeading();
+   const sections = normalizeStatusDockSections(this.settings.statusDockSections)
+    .filter(section => STATUS_DOCK_AVAILABLE_SECTION_IDS.includes(section.id));
+   for (const [index, section] of sections.entries()) {
+    const row = new Setting(container).setName(this.statusDockSectionLabel(section.id));
+    row.addToggle(toggle => {
+     toggle.setValue(section.enabled).onChange(async enabled => {
+      try { await this.saveStatusDockSections(current => current.map(item => item.id === section.id ? { ...item, enabled } : item)); }
+      catch { /* The persisted value is restored by refresh below. */ }
+      finally { refresh(); }
+     });
+    });
+    for (const delta of [-1, 1]) row.addExtraButton(button => {
+     const disabled = index + delta < 0 || index + delta >= sections.length;
+     button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down')
+      .setTooltip(t('settings', delta < 0 ? 'taskCardMoveUp' : 'taskCardMoveDown')).setDisabled(disabled)
+      .onClick(() => {
+       if (disabled) return;
+       void this.saveStatusDockSections(current => {
+        const visible = current.filter(item => STATUS_DOCK_AVAILABLE_SECTION_IDS.includes(item.id));
+        const from = visible.findIndex(item => item.id === section.id);
+        const other = visible[from + delta];
+        if (!other) return current;
+        const a = current.findIndex(item => item.id === section.id), b = current.findIndex(item => item.id === other.id);
+        [current[a], current[b]] = [current[b], current[a]];
+        return current;
+       }).catch(() => undefined).finally(refresh);
+      });
+    });
+   }
+  };
+  refresh();
+  this.markSettingsSearchSectionTarget(container, 'ui.statusDockSections');
+ }
+
 	private taskEditorSectionsSaveQueue: Promise<void> = Promise.resolve();
 	private saveTaskEditorSections(change: (current: TaskEditorSection[]) => TaskEditorSection[], refreshDefinitions = true): Promise<void> {
 		const run = this.taskEditorSectionsSaveQueue.then(async () => {
@@ -3990,6 +4064,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			{ value: 'ru', label: t('settings', 'languageRussian') },
 			{ value: 'it', label: t('settings', 'languageItalian') },
 			{ value: 'pt-BR', label: t('settings', 'languagePortugueseBrazilian') },
+			{ value: 'ko', label: '한국어' },
 		];
 		return buildLanguagePackDropdownOptions<OperonLanguage>({
 			english: { value: 'en', label: t('settings', 'languageEnglish') },
@@ -4444,7 +4519,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					);
 					renderCapabilities(
 						approvalUiState.pendingApprovalCapabilities,
-						t('settings', 'repeatScopePending'),
+						t('settings', 'developerApiPendingCapabilities'),
 						false,
 					);
 				} else {
@@ -4727,13 +4802,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private renderInterfaceTweaksTab(containerEl: HTMLElement): void {
 		if (Platform.isDesktopApp) {
-			const dock = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSection'));
+			const dock = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSection'), undefined,
+				this.buildNativeSettingsDocsAction(t('settings', 'statusDockSection'), 'DOCS-152 Status Dock'));
 			for (const key of ['statusDockClickAction'] as const) this.markSettingsSearchTarget(renderDropdownSetting({
 				containerEl: dock, name: t('settings', key), desc: t('settings', key + 'Desc'),
 				value: String(this.getControlValue(key)),
 				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
 				onChange: settingsAsyncHandler('status dock preference save failed', value => this.setControlValue(key, value)),
 			}), key);
+			this.renderStatusDockSectionRows(dock.createDiv());
 		}
 
 		const workspaceSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'workspaceTweaksWorkspaceSection'));

@@ -22,6 +22,7 @@ type SearchableFieldPickerFloatingOptions = Pick<
 	| 'floatingHost'
 	| 'floatingScrollHost'
 	| 'constrainToFloatingHost'
+	| 'fitToHostViewport'
 	| 'matchWidth'
 	| 'closeOnWindowResize'
 	| 'repositionOnWindowResize'
@@ -81,6 +82,7 @@ export function showSearchableFieldPicker<TField extends SearchableFieldPickerOp
 		floatingHost: options.floatingHost,
 		floatingScrollHost: options.floatingScrollHost,
 		constrainToFloatingHost: options.constrainToFloatingHost,
+		fitToHostViewport: options.fitToHostViewport,
 		matchWidth: options.matchWidth,
 		closeOnWindowResize: options.closeOnWindowResize,
 		repositionOnWindowResize: options.repositionOnWindowResize,

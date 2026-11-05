@@ -138,7 +138,11 @@ export async function prepareCustomKeyTypeReuse(app: App, settings: OperonSettin
  const isTable = (view: SourceView) => view.getViewType() === OPERON_TABLE_VIEW_TYPE || view.getViewType() === OPERON_TABLE_FILE_VIEW_TYPE;
  const views = (): SourceView[] => {
   const all = new Set<SourceView>();
-  const add = (view: SourceView) => { if (view.getViewType() === 'markdown' || isTable(view) || view.file && supported(view.file)) all.add(view); };
+  const add = (view: SourceView) => {
+   // Outline references a file but owns no editable source. Keep unexpected readers guarded.
+   if (view.getViewType() === 'outline' && !view.editor && typeof view.getViewData !== 'function' && typeof view.getPropertySourceSnapshot !== 'function') return;
+   if (view.getViewType() === 'markdown' || isTable(view) || view.file && supported(view.file)) all.add(view);
+  };
   if (app.workspace.iterateAllLeaves) app.workspace.iterateAllLeaves(leaf => add(leaf.view));
   else app.workspace.getLeavesOfType('markdown').forEach(leaf => add(leaf.view));
   getNativeLightboxLeaves(app).forEach(leaf => add(leaf.view));

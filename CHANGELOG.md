@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added **Korean (한국어)** as a downloadable interface language. Natural-language date input uses English phrases when Korean is selected. ([#295](https://github.com/hasanyilmaz/operon/pull/295))
+- Added **Status Dock Sections and Order** at the top of Workspace Tweaks, alongside click behavior and a documentation link. Seven sections can be independently enabled and reordered, including separate Ongoing and Upcoming Tasks controls. All sections start enabled; empty task lists hide their icons.
+- Added **Pinned Tasks and Modified Tasks** to the Status Dock, following your active pinned group's sorting and Task Finder's recent-modification rules, with the first task closest to the Dock.
+- Added **Session History** to the Status Dock using the existing History Days setting. Each session appears separately with its duration and task; click the duration to edit it or use Start Timer to track the task again.
+- Added **Task Pool to Kanban** with shared search, favorites, pinning, and settings from Canvas and Excalidraw. Drag tasks into cells with a mouse or long-press touch to apply column and swimlane values, add list memberships, and choose their position in manual sorting. Drop tooltips preview changes and explain blocked targets.
+- Added **Property Value Pool to Kanban** with the same shared pool controls and mouse/touch support. Drop values onto one task card to update its fields, including board grouping fields; the panel stays open with its search and selection intact. Both pools warn only when an updated task no longer matches the board filter.
+
+### Improved
+
+- **Status Dock** wraps onto a second row in narrow windows and keeps task lists open while being moved, including when Escape cancels the move. Task-name hover tooltips are removed, clickable controls use a pointer cursor, and the ten-second session card has no outer shadow.
+- Aligned **Kanban's floating controls** with the toolbar Settings button for a cleaner right edge.
+- **Embedded filters** no longer show an extra outline on hover in Live Preview.
+
+### Fixed
+
+- Fixed **active tracker indicators**, including FlowTime and Status Dock, staying out of date after changes arrive from another device; they now refresh without restarting Obsidian.
+- Raised the **mobile Task Creator button's default position** to leave 20% of the viewport height below it, reducing overlap with bottom navigation. Saved positions stay unchanged; resetting uses the new default. ([#311](https://github.com/hasanyilmaz/operon/issues/311))
+- Fixed **Filter Editor** Group by, Subgroup by, and Sort by pickers shifting or being clipped in some themes, keeping long option lists accessible. ([#312](https://github.com/hasanyilmaz/operon/issues/312))
+- Fixed the **Outline panel** blocking reuse of a deleted, unused custom key with a different type while a note is open.
+- Fixed **Task Creator** writing file-property aliases instead of canonical keys in new inline tasks, including inherited and template values.
+- Fixed **Task Creator** sometimes showing a discard confirmation instead of opening the next property picker when switching from a custom field.
+
 ### Validation
+
+- Full local Plugin checks, production build, release guard, code review, and manual UI checks passed, along with **5,292/5,292** local regression tests.
 
 ## [4.4.0] - 2026-10-30
 

@@ -1,4 +1,8 @@
-import { kanbanAxisReason } from './kanban-axis-labels';
+import { SurfacePropertyValueDrop } from '../surface-property-value-drop';
+import type { PropertyPoolPanelState } from '../surface-property-value-pool';
+import { startKanbanPoolDrag, type KanbanPoolTarget } from './kanban-pool-drag';
+import { KanbanPools, type KanbanPoolServices } from './kanban-pools';
+import { kanbanAxisReason, kanbanCellPlanPreview } from './kanban-axis-labels';
 import { queryKanbanAxisBoard, getKanbanAutoCollapse, kanbanTaskMatchesCell, projectKanbanStatusIcon, type KanbanBoardData, type KanbanColumn, type KanbanLane, type KanbanBoardOverlay } from '../../systems/kanban-board';
 import { createKanbanPropertyAccess } from '../../core/kanban-axis-properties';
 import { getNativePropertyIndex } from '../../indexer/native-property-index';
@@ -74,6 +78,7 @@ import {
 } from '../../systems/kanban-drag-interaction';
 import {
 	buildKanbanDropBoardSignature,
+ kanbanPoolSourceSignature,
 	buildKanbanDropFailureDiagnostic,
 	KanbanCardOperationRegistry,
 	resolveKanbanDropNoticeKey,
@@ -95,7 +100,7 @@ import {
 } from '../../systems/task-search';
 import { asHTMLElement, createOwnerElement, getOwnerBody, getOwnerDocument, getOwnerWindow } from '../../core/dom-compat';
 import { localNow } from '../../core/local-time';
-import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, showOperonPointerTooltip } from '../operon-hover-tooltip';
 import { renderRelatedViewsLauncher } from '../related-views';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import { bindTaskTitleLinkPreview } from '../compact-chip-link-preview';
@@ -534,12 +539,165 @@ export class KanbanView extends ItemView {
 	} | null = null;
 	private taskNoteScrollSuppressionFrame: { win: Window; id: number } | null = null;
 
+ private propertyPoolRefreshMount: object | null = null;
+ private propertyPoolRestore: PropertyPoolPanelState | null = null;
+ private propertyDropCell: HTMLElement | null = null;
+ private poolDragActive = false;
+ private poolDragScroll: ((point: { x: number; y: number } | null) => void) | null = null;
+ private pools: KanbanPools | null = null;
+ private poolMount: { board: HTMLElement; presetId: string } | null = null;
+
+ /** Called once shared card services become available, and for each new board DOM. */
+ syncPools(): void {
+  const mount = this.poolMount, services = this.getPoolServices?.();
+  if (!services) { if (this.pools) this.clearPools(); return; }
+  if (!mount) return;
+  const isCurrent = () => this.poolMount === mount && this.ensureState().presetId === mount.presetId
+   && this.getSettings().kanbanPresets.some(preset => preset.id === mount.presetId);
+  if (!isCurrent()) { this.clearPools(); return; }
+  if (!this.pools) this.pools = this.addChild(new KanbanPools(this.app, mount.board, services, isCurrent, {
+   startPlacementDrag: (event, task, row, place, finish) => {
+    if (this.hasActiveKanbanDragInteraction()) { finish(); return () => {}; }
+    const preset = this.resolveCurrentPreset();
+    const signature = this.resolveKanbanDropBoardSignature(preset);
+    const sourceSignature = kanbanPoolSourceSignature(task);
+    const properties = () => JSON.stringify([this.getSettings().keyMappings, this.getSettings().priorities, this.getSettings().pipelines, getNativePropertyIndex(this.app).getTypes()]);
+    const propertySignature = properties();
+    let preview: ReturnType<typeof showOperonPointerTooltip> | null = null;
+    let previewAnchor: HTMLElement | null = null, previewText = '';
+    const clearPreview = () => { preview?.close(); preview = null; previewAnchor = null; previewText = ''; };
+    const showPreview = (anchor: HTMLElement, content: string) => {
+     if (anchor !== previewAnchor || content !== previewText) {
+      clearPreview(); previewAnchor = anchor; previewText = content;
+      preview = showOperonPointerTooltip(anchor, { title: task.description || task.operonId, content, taskColor: null,
+       preferredVertical: 'above', floatingHorizontalBoundary: mount.board, constrainToVisualViewport: true });
+     } else preview?.position();
+    };
+    const current = () => isCurrent() && properties() === propertySignature && this.resolveKanbanDropBoardSignature(this.resolveCurrentPreset()) === signature
+     && services.cards.resolve(task.operonId).state === 'ready';
+    return startKanbanPoolDrag(event, task, row, {
+     isCurrent: () => current() && !!this.indexer.getTask(task.operonId)
+      && kanbanPoolSourceSignature(this.indexer.getTask(task.operonId)!) === sourceSignature,
+     begin: () => { if (this.hasActiveKanbanDragInteraction()) return false; this.poolDragActive = true; this.beginKanbanDragInteraction(); this.requestActiveTaskNotePopoverClose(false); return true; },
+     end: () => { this.poolDragActive = false; this.poolDragScroll?.(null); this.clearManualDropIndicators(mount.board); this.endKanbanDragInteraction(); },
+     update: point => this.poolDragScroll?.(point),
+     target: (point, notify, anchor) => {
+      this.clearManualDropIndicators(mount.board);
+      const hit = mount.board.ownerDocument.elementFromPoint(point.x, point.y);
+      const cell = hit?.closest<HTMLElement>('.operon-kanban-cell');
+      if (!cell || !mount.board.contains(cell) || cell.closest('.operon-kanban-board') !== mount.board
+       || cell.classList.contains('is-collapsed') || hit?.closest('.operon-kanban-pool-controls, .operon-kanban-cell-header, .operon-kanban-cell-actions, .operon-kanban-cell-add-overlay')) { clearPreview(); return null; }
+      const column = cell.dataset.kanbanStatusId, lane = cell.dataset.kanbanLaneKey;
+      if (!column || !lane) { clearPreview(); return null; }
+      this.materializeKanbanCellIfPending(cell);
+      const target = this.lastRenderedBoard?.getTarget(column, lane);
+      const plan = this.lastRenderedBoard?.getActionPlan(column, lane, task);
+      if (!target || !plan || plan.state === 'blocked') {
+       showPreview(anchor ?? cell, kanbanAxisReason(plan?.state === 'blocked' ? plan.reason : 'unavailable'));
+       if (notify) new Notice(t('notifications', 'kanbanCellActionBlocked', { reason: kanbanAxisReason(plan?.state === 'blocked' ? plan.reason : 'unavailable') }));
+       return null;
+      }
+      cell.addClass('is-drop-target'); this.hideCellQuickAdd(cell);
+      const manual = this.getColumnSorting(preset, column).sortMode === 'manual';
+      showPreview(anchor ?? cell, kanbanCellPlanPreview(plan, this.getSettings(), manual, task));
+      const before = manual
+       ? this.resolveManualDropBeforeTaskIdAt(cell, point.y, preset, task.operonId) : null;
+      return { point, sourceSignature, isCurrent: current, context: {
+       taskId: task.operonId, presetId: preset.id, boardSignature: signature,
+       sourceStatusId: null, sourceLaneKey: '', targetStatusId: column, targetLaneKey: lane,
+       targetBeforeTaskId: before, swimlaneBy: preset.swimlaneBy, target,
+      } };
+     },
+     place, finish: () => { clearPreview(); finish(); },
+    });
+   },
+   add: async target => {
+    const request = target as KanbanPoolTarget;
+    if (!request.isCurrent() || !this.callbacks.onPoolDrop) return false;
+    this.mobileDropPersistenceGate.begin();
+    // Hold the board generation through postflight, including pool pin/search state.
+    this.beginKanbanDragInteraction();
+    try { return await this.callbacks.onPoolDrop(request); }
+    catch (error) { new Notice(t('notifications', resolveKanbanDropNoticeKey(error))); return false; }
+    finally {
+     if (this.mobileDropPersistenceGate.end()) this.callbacks.onDragInteractionEnd?.();
+     this.endKanbanDragInteraction(); this.markDirty();
+    }
+   },
+  }, services.preferences.tasks ? (alive) => {
+   let owned = false;
+   let hovered: HTMLElement | null = null;
+   let signature: string | null = null;
+   const current = () => isCurrent() && mount.board.isConnected && alive()
+    && (signature === null || signature === this.resolveKanbanDropBoardSignature(this.resolveCurrentPreset()));
+   const clearTarget = () => { hovered?.removeClass('is-property-drop-target'); hovered = null; this.propertyDropCell = null; };
+   return new SurfacePropertyValueDrop({
+    contentEl: mount.board, file: () => null, identity: () => mount, isCurrent: current,
+    readOnly: () => false, supported: () => !!this.callbacks.onPropertyPoolApply,
+    busy: () => !owned && this.hasActiveKanbanDragInteraction(), scopedClickSuppression: true,
+    unavailable: () => t('settings', 'kanbanPropertyPoolCardOnly'),
+    interaction: {
+     begin: () => {
+      owned = true; signature = this.resolveKanbanDropBoardSignature(this.resolveCurrentPreset());
+      this.poolDragActive = true; this.beginKanbanDragInteraction(); this.requestActiveTaskNotePopoverClose(false);
+      return () => {
+       owned = false; signature = null; clearTarget(); this.poolDragActive = false;
+       this.poolDragScroll?.(null); this.endKanbanDragInteraction();
+      };
+     },
+     update: (x, y) => this.poolDragScroll?.({ x, y }),
+     invalidDrop: () => new Notice(t('settings', 'kanbanPropertyPoolCardOnly')),
+    },
+    targetAt: (x, y) => {
+     const hit = mount.board.ownerDocument.elementFromPoint(x, y);
+     const card = hit?.closest<HTMLElement>('.operon-kanban-card');
+     const cell = card?.closest<HTMLElement>('.operon-kanban-cell');
+     const id = card?.dataset.operonTaskId;
+     if (!current() || !card || !cell || !id || card.dataset.kanbanPreview === 'true'
+      || !mount.board.contains(card) || card.closest('.operon-kanban-board') !== mount.board
+      || cell.classList.contains('is-collapsed') || services.cards.resolve(id).state !== 'ready' || this.cardOperations.isTaskPending(id)) { clearTarget(); return null; }
+     if (hovered !== card) { clearTarget(); hovered = card; card.addClass('is-property-drop-target'); }
+     this.propertyDropCell = cell;
+     return { id, taskId: id, nodeEl: card, current: () => current() && card.isConnected
+      && mount.board.contains(card) && card.dataset.operonTaskId === id && services.cards.resolve(id).state === 'ready' };
+    },
+    apply: async (plan, allowed) => {
+     const operation = this.cardOperations.begin(plan.id, mount.presetId, 'drop', signature ?? '');
+     if (!operation || !allowed() || !this.callbacks.onPropertyPoolApply) {
+      if (operation) this.cardOperations.end(operation);
+      return { status: 'blocked' };
+     }
+     this.mobileDropPersistenceGate.begin();
+     try { return await this.callbacks.onPropertyPoolApply(plan, allowed); }
+     finally {
+      if (current()) this.propertyPoolRefreshMount = mount;
+      this.cardOperations.end(operation);
+      if (this.mobileDropPersistenceGate.end()) this.callbacks.onDragInteractionEnd?.();
+      this.markDirty();
+     }
+    },
+   }, services.preferences.tasks!);
+  } : undefined));
+ }
+ private clearPools(): void {
+  this.propertyPoolRefreshMount = null; this.propertyPoolRestore = null;
+  this.poolMount = null;
+  if (this.pools) this.removeChild(this.pools);
+  this.pools = null;
+ }
+ private mountPools(board: HTMLElement, presetId: string): void {
+  const restore = this.propertyPoolRestore;
+  this.clearPools(); this.poolMount = { board, presetId }; this.syncPools();
+  if (restore) this.pools?.restorePropertyState(restore);
+ }
+
 	constructor(
 		leaf: WorkspaceLeaf,
 		indexer: OperonIndexer,
 		getSettings: () => OperonSettings,
 		getPinnedCache: () => PinnedCache | null,
 		callbacks: KanbanViewCallbacks = {},
+  private getPoolServices?: () => KanbanPoolServices | null,
 	) {
 		super(leaf);
 		this.indexer = indexer;
@@ -588,7 +746,7 @@ export class KanbanView extends ItemView {
 		const prunedCollapseScopes = this.didPruneCollapseScopeState(rawState, nextState);
 		const changed = !this.areLeafStatesEqual(this.state, nextState);
 		const presetChanged = this.state?.presetId !== nextState.presetId;
-		if (presetChanged) this.invalidateDropUiGeneration();
+		if (presetChanged) { this.clearPools(); this.invalidateDropUiGeneration(); }
 		if (changed) this.resetBoardViewportRetention();
 		this.state = nextState;
 		this.syncLeafTitle();
@@ -619,6 +777,7 @@ export class KanbanView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+  this.clearPools();
 		this.nativeLifetime++;
 		this.nativePreparation = null;
 		this.collapseCache = null;
@@ -722,12 +881,14 @@ export class KanbanView extends ItemView {
 			: null;
 		const nextSignature = this.buildRenderSignature(container, state, preset, pipeline, filterSet, settings, parentSearchUi);
 		if (this.lastRenderSignature === nextSignature && container.classList.contains('operon-kanban-view')) {
+   this.propertyPoolRefreshMount = null;
 			return;
 		}
 		if (preset && this.refreshKanbanTasksInPlace(
 			nextSignature, state, preset, pipeline, filterSet, settings, parentSearchUi,
 		)) {
 			this.preserveViewportOnNextRender = false;
+   this.propertyPoolRefreshMount = null;
 			return;
 		}
 		this.preserveViewportOnNextRender = false;
@@ -747,6 +908,9 @@ export class KanbanView extends ItemView {
 		this.clearKanbanMobileLayout();
 		this.clearKanbanLazyObservers();
 		cleanupOperonHoverTooltips(container);
+  const restorePropertyPool = this.propertyPoolRefreshMount === this.poolMount ? this.pools?.capturePropertyState() ?? null : null;
+		this.clearPools();
+  this.propertyPoolRestore = restorePropertyPool;
 		container.empty();
 		container.addClass('operon-kanban-view');
 
@@ -996,14 +1160,11 @@ export class KanbanView extends ItemView {
 		this.lastRenderedBoard = board;
 		this.lastRenderedBoardScope = this.buildDropScrollAnchorScope();
 		this.lastRenderedBoardTaskSignatures = this.buildKanbanBoardTaskSignatures(board);
-		if (board.columns.length === 0) {
-			this.renderEmptyState(container, t('notifications', 'kanbanAxisEmpty'));
-			container.createEl('button', { text: t('buttons', 'edit') }).onclick = () => { void this.callbacks.onOpenPresetSettings?.(preset.id); };
-			return;
-		}
-		if (board.lanes.length === 0) {
-			this.renderEmptyState(container, t('notifications', 'kanbanAxisEmpty'));
-			container.createEl('button', { text: t('buttons', 'edit') }).onclick = () => { void this.callbacks.onOpenPresetSettings?.(preset.id); };
+		if (board.columns.length === 0 || board.lanes.length === 0) {
+   const emptyBoard = container.createDiv('operon-kanban-board');
+   this.mountPools(emptyBoard, board.preset.id);
+			this.renderEmptyState(emptyBoard, t('notifications', 'kanbanAxisEmpty'));
+			emptyBoard.createEl('button', { text: t('buttons', 'edit') }).onclick = () => { void this.callbacks.onOpenPresetSettings?.(preset.id); };
 			return;
 		}
 
@@ -1628,6 +1789,7 @@ export class KanbanView extends ItemView {
 			this.clearBoardLayoutRefresh();
 			this.clearKanbanLazyObservers();
 			cleanupOperonHoverTooltips(content);
+			this.clearPools();
 			content.empty();
 			this.renderBoardContent(content, state, preset, pipeline, filterSet, settings, parentSearchUi);
 		}
@@ -1824,6 +1986,7 @@ export class KanbanView extends ItemView {
 
 	private renderBoard(container: HTMLElement, board: KanbanBoardData, searchActive: boolean): void {
 		const boardEl = container.createDiv('operon-kanban-board');
+  this.mountPools(boardEl, board.preset.id);
 		boardEl.dataset.kanbanDropBoardSignature = buildKanbanDropBoardSignature(board.preset, board.pipeline, this.getSettings());
 		this.bindBoardDelegatedCardEvents(boardEl);
 		const hasSwimlanes = !board.snapshot.rowAxisHidden;
@@ -2147,6 +2310,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private shouldKeepVirtualCell(cell: HTMLElement): boolean {
+  if (cell === this.propertyDropCell) return true;
 		const active = cell.ownerDocument.activeElement;
 		if ((active && cell.contains(active)) || hasFloatingPanelForRoot(cell)) return true;
 		const key = buildKanbanCellKey(cell.dataset.kanbanStatusId ?? '', cell.dataset.kanbanLaneKey ?? '');
@@ -2406,6 +2570,7 @@ export class KanbanView extends ItemView {
 		});
 
 		boardEl.addEventListener('dragstart', event => {
+   if (this.poolDragActive) { event.preventDefault(); return; }
 			const target = asHTMLElement(event.target, boardEl);
 			if (target && isKanbanCardInteractionTarget(target)) {
 				event.preventDefault();
@@ -3293,13 +3458,13 @@ export class KanbanView extends ItemView {
 		this.manualDropIndicatorFrame = null;
 	}
 
-	private updateManualDropIndicatorAt(cell: HTMLElement, pointerY: number, preset: KanbanPreset): void {
+	private updateManualDropIndicatorAt(cell: HTMLElement, pointerY: number, preset: KanbanPreset, excludeTaskId?: string): void {
 		const statusId = cell.dataset.kanbanStatusId ?? null;
 		if (this.getColumnSorting(preset, statusId).sortMode !== 'manual' || cell.classList.contains('is-collapsed')) {
 			this.clearManualDropIndicator(cell);
 			return;
 		}
-		const beforeCard = this.findManualDropBeforeCard(cell, pointerY);
+		const beforeCard = this.findManualDropBeforeCard(cell, pointerY, excludeTaskId);
 		const indicator = this.ensureManualDropIndicator(cell);
 		let beforeTaskId = beforeCard?.dataset.operonTaskId ?? '';
 		if (beforeCard) {
@@ -3320,8 +3485,8 @@ export class KanbanView extends ItemView {
 		return this.resolveManualDropBeforeTaskIdAt(cell, event.clientY, preset);
 	}
 
-	private resolveManualDropBeforeTaskIdAt(cell: HTMLElement, pointerY: number, preset: KanbanPreset): string | null {
-		this.updateManualDropIndicatorAt(cell, pointerY, preset);
+	private resolveManualDropBeforeTaskIdAt(cell: HTMLElement, pointerY: number, preset: KanbanPreset, excludeTaskId?: string): string | null {
+		this.updateManualDropIndicatorAt(cell, pointerY, preset, excludeTaskId);
 		const beforeTaskId = cell.dataset.kanbanDropBeforeTaskId ?? '';
 		return beforeTaskId || null;
 	}
@@ -3840,9 +4005,9 @@ export class KanbanView extends ItemView {
 		return indicator;
 	}
 
-	private findManualDropBeforeCard(cell: HTMLElement, pointerY: number): HTMLElement | null {
+	private findManualDropBeforeCard(cell: HTMLElement, pointerY: number, excludeTaskId?: string): HTMLElement | null {
 		const cards = Array.from(cell.querySelectorAll<HTMLElement>(':scope > .operon-kanban-card'))
-			.filter(card => card.dataset.kanbanPreview !== 'true')
+			.filter(card => card.dataset.kanbanPreview !== 'true' && card.dataset.operonTaskId !== excludeTaskId)
 			.filter(card => !card.classList.contains('is-dragging'));
 		return cards.find(card => {
 			const rect = card.getBoundingClientRect();
@@ -4568,7 +4733,7 @@ export class KanbanView extends ItemView {
 		const maybeSnapDragToAdjacentStatus = (clientX: number): void => {
 			const settings = this.getSettings();
 			if (
-					!this.draggedCardContext
+					(!this.draggedCardContext && !this.poolDragActive)
 					|| settings.kanbanMobileHorizontalStatusSnapEnabled !== true
 					|| !this.isKanbanMobileLayoutEligible(gridViewport)
 				) {
@@ -4661,7 +4826,7 @@ export class KanbanView extends ItemView {
 		};
 		const runVerticalDragAutoScroll = (): void => {
 			verticalDragScrollFrame = null;
-			if (!verticalDragScrollActive || !this.draggedCardContext) {
+			if (!verticalDragScrollActive || (!this.draggedCardContext && !this.poolDragActive)) {
 				stopVerticalDragAutoScroll();
 				return;
 			}
@@ -4681,7 +4846,7 @@ export class KanbanView extends ItemView {
 			verticalDragScrollFrame = ownerWindow.requestAnimationFrame(runVerticalDragAutoScroll);
 		};
 		const maybeAutoScrollDragVertically = (clientX: number, clientY: number): void => {
-			if (!this.draggedCardContext) {
+			if (!this.draggedCardContext && !this.poolDragActive) {
 				stopVerticalDragAutoScroll();
 				return;
 			}
@@ -4772,6 +4937,16 @@ export class KanbanView extends ItemView {
 			scrollViewportHorizontally(direction * KANBAN_MOBILE_DRAG_VERTICAL_SCROLL_MAX_STEP_PX);
 			scheduleApplyState();
 		};
+  const poolScroll = (point: { x: number; y: number } | null): void => {
+   if (!point) { stopVerticalDragAutoScroll(); boardEl.removeClass('is-mobile-card-scroll-active'); return; }
+   const rect = gridViewport.getBoundingClientRect();
+   if (point.x < rect.left || point.x > rect.right || point.y < rect.top || point.y > rect.bottom
+    || !gridViewport.contains(getOwnerDocument(gridViewport).elementFromPoint(point.x, point.y))) { stopVerticalDragAutoScroll(); return; }
+   if (this.isKanbanMobileLayoutEligible(gridViewport)) maybeSnapDragToAdjacentStatus(point.x);
+   else maybeAutoScrollDesktopTouchDragHorizontally(point.x);
+   maybeAutoScrollDragVertically(point.x, point.y);
+  };
+  this.poolDragScroll = poolScroll;
 		const settleMobileCardHorizontalScroll = (gesture: KanbanMobileCardGestureState): void => {
 			const settings = this.getSettings();
 			if (
@@ -4944,7 +5119,7 @@ export class KanbanView extends ItemView {
 			if (!keepHorizontalScrollSettle) {
 				clearMobileCardHorizontalSettle();
 			}
-			if (clearDraggedContext) {
+			if (clearDraggedContext && gesture.mode === 'dragging') {
 				this.draggedCardContext = null;
 				this.clearManualDropIndicators(boardEl);
 				this.endKanbanDragInteraction();
@@ -4953,6 +5128,7 @@ export class KanbanView extends ItemView {
 			return gesture;
 		};
 		const startMobileCardDrag = (gesture: KanbanMobileCardGestureState): void => {
+   if (this.hasActiveKanbanDragInteraction()) { cleanupMobileCardGesture(true); return; }
 			const taskId = gesture.cardEl.dataset.operonTaskId;
 			const sourceLaneKey = gesture.cardEl.dataset.kanbanLaneKey;
 			const boardSignature = boardEl.dataset.kanbanDropBoardSignature;
@@ -5097,6 +5273,7 @@ export class KanbanView extends ItemView {
 			cleanupMobileCardGesture(true);
 		};
 		const handleMobileCardPointerDown = (event: PointerEvent): void => {
+   if (this.poolDragActive) { event.preventDefault(); return; }
 			if (isTouchLikePointer(event) && mobileGesture && event.pointerId !== mobileGesture.pointerId) {
 				cleanupMobileCardGesture(true);
 				return;
@@ -5168,6 +5345,7 @@ export class KanbanView extends ItemView {
 		resizeObserver.observe(gridViewport);
 
 		this.kanbanMobileLayoutCleanup = () => {
+   if (this.poolDragScroll === poolScroll) this.poolDragScroll = null;
 			cleanupMobileCardGesture(true);
 			clearMobileCardHorizontalSettle();
 			mobileClickSuppressionCleanup?.();
@@ -5750,7 +5928,7 @@ export class KanbanView extends ItemView {
 		const normalized = this.normalizeState(this.withCurrentPresetCollapseState(nextState));
 		const changed = !this.areLeafStatesEqual(this.state, normalized);
 		const presetChanged = this.state?.presetId !== normalized.presetId;
-		if (presetChanged) this.invalidateDropUiGeneration();
+		if (presetChanged) { this.clearPools(); this.invalidateDropUiGeneration(); }
 		if (!changed) return;
 		this.resetBoardViewportRetention();
 		this.state = normalized;

@@ -122,7 +122,7 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
  if (!parsed) throw new Error('Could not initialize task');
  parsed.checkbox = identity.checkbox ?? 'open';
  parsed.description = input.description.replace(/\r?\n+/g, ' ').trim(); parsed.tags = tags;
- parsed.fields = Object.entries(fieldValues).map(([key,value]) => ({ key, sourceKey: getVisiblePropertyName(key,mappings), value, rawValue: value,
+ parsed.fields = Object.entries(fieldValues).map(([key,value]) => ({ key, sourceKey: key, value, rawValue: value,
   type: CANONICAL_KEY_MAP.get(key)?.type ?? mappings.find(mapping => mapping.canonicalKey === key)?.type ?? 'text', isCanonical: CANONICAL_KEY_MAP.has(key),
   containerRange: { from:0,to:0 }, valueRange: {from:0,to:0} }));
  let inlineLine = serializeTask(parsed, mappings);

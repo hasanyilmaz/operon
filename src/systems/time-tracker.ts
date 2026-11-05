@@ -1,7 +1,7 @@
 import { App, Notice } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { TaskWriter } from '../core/task-writer';
-import { localNow } from '../core/local-time';
+import { localNow, localToday } from '../core/local-time';
 import { IndexedTask } from '../types/fields';
 import { OperonSettings } from '../types/settings';
 import { t } from '../core/i18n';
@@ -26,13 +26,14 @@ import {
 	TrackerSource,
 	TrackerStopReason,
 } from '../types/tracker';
-import { ActiveTrackerStoreLike } from '../storage/active-tracker-store';
+import { ActiveTrackerStoreLike, type ActiveTrackerRefreshResult, type ActiveTrackerChangeSource } from '../storage/active-tracker-store';
 import { WindowIntervalHandle, clearWindowInterval, setWindowInterval } from '../core/dom-compat';
 import { getAppLocale } from '../core/obsidian-app';
 import { enginePerfLog } from '../core/engine-perf';
 
 export type TimeTrackerEvent = 'tick' | 'state' | 'history' | 'transition';
-type TimeTrackerListener = (event: TimeTrackerEvent) => void;
+export interface TimeTrackerEventContext { source: ActiveTrackerChangeSource; }
+type TimeTrackerListener = (event: TimeTrackerEvent, context?: TimeTrackerEventContext) => void;
 
 interface InternalActiveTracker {
 	id: string;
@@ -62,6 +63,7 @@ export type TimeTrackerStatusChangeGuard = (
 ) => Promise<boolean> | boolean;
 
 interface HistoryCacheEntry {
+	day: string;
 	rangeDays: number;
 	generation: number;
 	locale: string;
@@ -91,6 +93,8 @@ export class TimeTracker {
 	private activeTracker: InternalActiveTracker | null = null;
 	private tickerInterval: WindowIntervalHandle | null = null;
 	private stopPromise: Promise<boolean> | null = null;
+	private disposed = false;
+	private externalRefresh: Promise<ActiveTrackerRefreshResult> | null = null;
 	private transitionQueue: Promise<unknown> = Promise.resolve();
 	private transitionState: TimeTrackerTransitionState | null = null;
 	private finalizedActiveRecordIds: Set<string> = new Set();
@@ -168,7 +172,7 @@ export class TimeTracker {
 
 	private emit(event: TimeTrackerEvent): void {
 		for (const listener of this.listeners) {
-			listener(event);
+			listener(event, { source: this.activeTrackerStore.getChangeSource?.() ?? 'local' });
 		}
 	}
 
@@ -213,10 +217,16 @@ export class TimeTracker {
 	}
 
 	async resumeFromIndex(options: ResumeFromIndexOptions = {}): Promise<void> {
+		await this.enqueueTransition(() => this.resumeFromIndexInternal(options));
+	}
+
+	private async resumeFromIndexInternal(options: ResumeFromIndexOptions): Promise<void> {
+		if (this.disposed) return;
 		const storedActive = this.activeTrackerStore.getActiveForUser();
 		if (storedActive) {
 			this.activeTracker = this.activeRecordToInternal(storedActive);
-			if (this.activeTracker.operonId && !this.indexer.getTask(this.activeTracker.operonId)) {
+			if (this.activeTracker.operonId && !this.indexer.getTask(this.activeTracker.operonId)
+				&& !this.activeTrackerStore.refreshFromDisk) {
 				await this.clearActiveTracker();
 				this.stopTicker();
 				this.emit('state');
@@ -298,13 +308,63 @@ export class TimeTracker {
 		statusChangeGuardOverride?: TimeTrackerStatusChangeGuard,
 		canCommit?: () => boolean,
 	): Promise<boolean> {
-		return this.enqueueTransition(() => this.startInternal(
+		return this.enqueueFreshTransition(() => this.startInternal(
 			operonId,
 			source,
 			startOverride,
 			statusChangeGuardOverride,
 			canCommit,
-		));
+		), false);
+	}
+
+	/** Coalesced disk-to-memory refresh, serialized with local tracker transitions. */
+	refreshExternalState(): Promise<ActiveTrackerRefreshResult> {
+		if (this.externalRefresh) return this.externalRefresh;
+		const run = this.enqueueTransition(() => this.refreshExternalStateInternal());
+		this.externalRefresh = run;
+		const clear = (): void => { if (this.externalRefresh === run) this.externalRefresh = null; };
+		void run.then(clear, clear);
+		return run;
+	}
+
+	private async refreshExternalStateInternal(): Promise<ActiveTrackerRefreshResult> {
+		if (this.disposed) return 'unavailable';
+		const result = await this.activeTrackerStore.refreshFromDisk?.(() => !this.disposed) ?? 'unchanged';
+		if (result === 'changed' && !this.disposed) {
+			this.syncActiveFromStore();
+			if (this.activeTracker) this.startTicker(); else this.stopTicker();
+			this.emit('state');
+		}
+		return result;
+	}
+
+	private enqueueFreshTransition<T>(operation: () => Promise<T>, blocked: T): Promise<T> {
+		const revision = this.activeTrackerStore.getExternalRevision?.() ?? 0;
+		return this.enqueueTransition(async () => {
+			const result = await this.refreshExternalStateInternal();
+			if (this.disposed) return blocked;
+			if (result === 'unavailable' || revision !== (this.activeTrackerStore.getExternalRevision?.() ?? 0)) {
+				new Notice(t('notifications', 'trackerStateChanged'));
+				return blocked;
+			}
+			try { return await operation(); }
+			finally { await this.refreshExternalStateInternal(); }
+		});
+	}
+
+	/** Called only after an Operon-owned delete commits, never from sync/index absence. */
+	async confirmTaskRemoval(operonIds: readonly string[]): Promise<void> {
+		const expected = this.activeTrackerStore.getActiveForUser();
+		if (!expected?.taskId || !operonIds.includes(expected.taskId)) return;
+		await this.enqueueTransition(async () => {
+			if (await this.refreshExternalStateInternal() === 'unavailable') return;
+			const active = this.activeTrackerStore.getActiveForUser();
+			if (!active?.taskId || active.id !== expected.id || active.start !== expected.start
+				|| active.taskId !== expected.taskId) return;
+			await this.clearActiveTracker();
+			this.stopTicker();
+			this.emit('state');
+		});
 	}
 
 	async canStartWithStatusGuard(
@@ -463,6 +523,7 @@ export class TimeTracker {
 				const modifiedTimestamp = startOverride?.trim() || localNow();
 				startPayload['datetimeModified'] = modifiedTimestamp;
 				const controlledAggregateChain = this.refreshStartMutation !== null;
+				await this.activeTrackerStore.assertSourceCurrent?.();
 				const wrote = await this.writer.writeTaskFields(operonId, startPayload, controlledAggregateChain
 					? { reindex: 'none', touchAncestors: false, canCommit }
 					: { reindex: 'none', canCommit });
@@ -602,7 +663,7 @@ export class TimeTracker {
 		source: TrackerSource = 'command',
 		startOverride?: string | null,
 	): Promise<boolean> {
-		return this.enqueueTransition(() => this.startUnassignedInternal(source, startOverride));
+		return this.enqueueFreshTransition(() => this.startUnassignedInternal(source, startOverride), false);
 	}
 
 	private async startUnassignedInternal(
@@ -635,8 +696,8 @@ export class TimeTracker {
 	): Promise<boolean> {
 		if (canCommit && !canCommit()) return false;
 		if (this.stopPromise) return this.stopPromise;
-		this.stopPromise = this.enqueueTransition(
-			() => this.stopActive(_reason, endOverride, canCommit),
+		this.stopPromise = this.enqueueFreshTransition(
+			() => this.stopActive(_reason, endOverride, canCommit), false,
 		).finally(() => {
 			this.stopPromise = null;
 		});
@@ -649,18 +710,18 @@ export class TimeTracker {
 		persistPayload: ExternalTaskMutationPersist,
 	): Promise<ExternalTaskMutationStopResult> {
 		if (this.stopPromise) return 'not-started';
-		return await this.enqueueTransition(() => this.stopActiveWithExternalTaskMutationInternal(
+		return await this.enqueueFreshTransition(() => this.stopActiveWithExternalTaskMutationInternal(
 			operonId,
 			end,
 			persistPayload,
-		));
+		), 'not-started');
 	}
 
 	async clearActiveTrackerAfterVerifiedSession(
 		operonId: string,
 		start: string,
 	): Promise<boolean> {
-		return await this.enqueueTransition(async () => {
+		return await this.enqueueFreshTransition(async () => {
 			this.syncActiveFromStore();
 			if (
 				!this.activeTracker
@@ -679,7 +740,7 @@ export class TimeTracker {
 			this.emit('history');
 			this.emit('state');
 			return true;
-		});
+		}, false);
 	}
 
 	async switchActiveTrackerAfterVerifiedSession(
@@ -689,7 +750,7 @@ export class TimeTracker {
 		targetStart: string,
 		source: TrackerSource = 'command',
 	): Promise<boolean> {
-		return await this.enqueueTransition(async () => {
+		return await this.enqueueFreshTransition(async () => {
 			this.syncActiveFromStore();
 			if (
 				!this.activeTracker
@@ -709,7 +770,7 @@ export class TimeTracker {
 			this.emit('history');
 			this.emit('state');
 			return true;
-		});
+		}, false);
 	}
 
 	/**
@@ -775,6 +836,11 @@ export class TimeTracker {
 
 		const task = this.indexer.getTask(current.operonId);
 		if (!task) {
+			if (this.activeTrackerStore.refreshFromDisk) {
+				this.clearTransitionState();
+				new Notice(t('notifications', 'trackerStateChanged'));
+				return false;
+			}
 			try {
 				await this.clearActiveTracker(canCommit);
 			} catch (error) {
@@ -797,6 +863,7 @@ export class TimeTracker {
 			|| existingSessions.some(session => session.start === current.start);
 		if (!alreadyPersisted) {
 			try {
+				await this.activeTrackerStore.assertSourceCurrent?.();
 				await this.persistTaskSessions(
 					task,
 					serializeTrackerList([
@@ -878,6 +945,7 @@ export class TimeTracker {
 		const previousTrackers = task.fieldValues['trackers'] ?? '';
 		let persisted = false;
 		try {
+			await this.activeTrackerStore.assertSourceCurrent?.();
 			persisted = await persistPayload(timerPayload);
 		} catch (error) {
 			console.error('Operon: Failed to stop time tracker with external task mutation', error);
@@ -1012,8 +1080,10 @@ export class TimeTracker {
 		nextStart: string,
 		nextEnd: string,
 		originalSessionIndex?: number,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		return await this.runSessionWrite('update tracker session by range', async () => {
+			if (canCommit?.() === false) return false;
 			const task = this.indexer.getTask(operonId);
 			if (!task) return false;
 
@@ -1032,6 +1102,7 @@ export class TimeTracker {
 				task,
 				serializeTrackerList(nextSessionRanges),
 				localNow(),
+				{}, canCommit,
 			);
 			this.emit('history');
 			this.emit('state');
@@ -1064,8 +1135,10 @@ export class TimeTracker {
 		originalStart: string,
 		originalEnd: string,
 		originalSessionIndex?: number,
+		canCommit?: () => boolean,
 	): Promise<boolean> {
 		return await this.runSessionWrite('delete tracker session by range', async () => {
+			if (canCommit?.() === false) return false;
 			const task = this.indexer.getTask(operonId);
 			if (!task) return false;
 
@@ -1083,6 +1156,7 @@ export class TimeTracker {
 				task,
 				serializeTrackerList(sessions.map(session => session.raw)),
 				localNow(),
+				{}, canCommit,
 			);
 			this.emit('history');
 			this.emit('state');
@@ -1122,6 +1196,11 @@ export class TimeTracker {
 		return matchingIndexes.length === 1 ? matchingIndexes[0] : -1;
 	}
 
+	hasUnresolvedActiveTask(): boolean {
+		const record = this.activeTrackerStore.getActiveForUser();
+		return !!record?.taskId && !this.indexer.getTask(record.taskId);
+	}
+
 	getActiveState(): ActiveTrackerState | null {
 		this.syncActiveFromStore();
 		if (!this.activeTracker) return null;
@@ -1142,8 +1221,10 @@ export class TimeTracker {
 	getHistory(rangeDays: number): TrackerHistoryDayGroup[] {
 		const generation = this.getIndexerGeneration();
 		const locale = getAppLocale(this.app) ?? '';
+		const day = localToday();
 		if (
 			this.historyCache
+			&& this.historyCache.day === day
 			&& this.historyCache.rangeDays === rangeDays
 			&& this.historyCache.generation === generation
 			&& this.historyCache.locale === locale
@@ -1191,6 +1272,7 @@ export class TimeTracker {
 				sessions: group.sessions.sort((a, b) => b.start.localeCompare(a.start)),
 			}));
 		this.historyCache = {
+			day,
 			rangeDays,
 			generation,
 			locale,
@@ -1244,7 +1326,10 @@ export class TimeTracker {
 		return this.enqueueTransition(operation);
 	}
 
+	cancelExternalRefresh(): void { this.disposed = true; }
+
 	destroy(): void {
+		this.disposed = true;
 		this.stopTicker();
 		this.listeners.clear();
 		this.sessionCreatedListeners.clear();

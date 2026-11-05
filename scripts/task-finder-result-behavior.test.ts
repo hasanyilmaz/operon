@@ -219,7 +219,8 @@ for (const desktop of [false,true]) test(`dock settings labels and expiry visibi
  const host=Object.assign(new Host(),{settings:{...DEFAULT_SETTINGS,upcomingShowStatusBar:true},buildSettingsSearchSettingDefinition:(_entries:unknown,key:string)=>({key}),compactSettingsSearchDefinitions:(items:any[])=>items.filter(Boolean),buildDeclarativeSettingsDocsButton:()=>({})});
  assert.equal(host.getSettingsSearchText({namespace:'settings',key:'upcomingShowStatusBar'}),desktop?'upcomingShowStatusDock':'upcomingShowStatusBar');
  assert.equal(host.getSettingsSearchText({namespace:'settings',key:'trackerShowStatusBarTimer'}),desktop?'trackerShowStatusDockTimer':'trackerShowStatusBarTimer');
- const group=host.buildUpcomingSettingsItems([]).at(-1); assert.equal(group.heading,desktop?'statusDockSection':'upcomingStatusBarSection');
+ const groups=host.buildUpcomingSettingsItems([]);if(desktop){assert.ok(!groups.flatMap((g:any)=>g.items).some((i:any)=>i.key==='upcomingShowStatusBar'));return;}
+ const group=groups.at(-1); assert.equal(group.heading,'upcomingStatusBarSection');
  for(const key of ['upcomingStatusBarExpiryAction','upcomingStatusBarClickAction'])assert.equal(group.items.find((item:any)=>item.key===key).visible(),!desktop);
 });
 
@@ -237,4 +238,35 @@ for(const desktop of [false,true])for(const available of [false,true])test(`sing
  let command:any,toggles=0;const host={statusDock:available?{toggleVisibility(){toggles++;}}:null,addCommand(value:unknown){command=value;}};
  new Function('Platform','t',code).call(host,{isDesktopApp:desktop},(_ns:string,key:string)=>key);
  assert.equal(command.id,'toggle-status-dock');assert.equal(command.name,'toggleStatusDock');assert.equal(command.checkCallback(true),desktop&&available);assert.equal(toggles,0);assert.equal(command.checkCallback(false),desktop&&available);assert.equal(toggles,desktop&&available?1:0);
+});
+
+for (const desktop of [false, true]) test(`dock settings relocation preserves search identity and stored preferences: desktop=${desktop}`, () => {
+ const Host = methods('src/ui/settings-tab.ts', ['getSettingsSearchEntriesByTab', 'buildWorkspaceTweaksSettingsItems'], {
+  Platform: { isDesktopApp: desktop }, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
+ });
+ const host = Object.assign(new Host(), {
+  settings: { ...DEFAULT_SETTINGS, upcomingShowStatusBar: false },
+  isSettingsTabId: () => true,
+  buildStatusDockSectionsDefinition: () => ({ key: 'statusDockSections' }),
+  buildDeclarativeSettingsDocsButton: (_title: string, target: string) => ({ target }),
+  buildSettingsSearchSettingDefinition: (entries: any[], key: string) => { const entry = entries.find(entry => entry.key === key); return entry ? { ...entry } : undefined; },
+  compactSettingsSearchDefinitions: (items: any[]) => items.filter(Boolean),
+ });
+ const before = JSON.stringify(host.settings);
+ const registryBefore = JSON.stringify(OPERON_SETTINGS_SEARCH_REGISTRY);
+ const entries = host.getSettingsSearchEntriesByTab();
+ const tabId = desktop ? 'interfaceTweaks' : 'tasksUpcoming';
+ const settingKey = desktop ? 'statusDockSections' : 'upcomingShowStatusBar';
+ const toggle = entries.get(tabId).find((entry: any) => entry.key === settingKey);
+ assert.equal(toggle.id, desktop ? 'ui.statusDockSections' : 'settings.upcomingShowStatusBar');
+ assert.equal([...entries.values()].flat().filter((entry: any) => entry.key === 'upcomingShowStatusBar').length, desktop ? 0 : 1);
+ const groups = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'));
+ assert.equal(groups[0].heading, desktop ? 'statusDockSection' : 'workspaceTweaksWorkspaceSection');
+ if (desktop) {
+  assert.equal(groups[1].heading, 'workspaceTweaksWorkspaceSection');
+  assert.equal(groups[0].extraButtons[0].target, 'DOCS-152 Status Dock');
+  assert.deepEqual(groups[0].items.map((item: any) => item.key), ['statusDockClickAction', 'statusDockSections']);
+ }
+ assert.equal(JSON.stringify(host.settings), before);
+ assert.equal(JSON.stringify(OPERON_SETTINGS_SEARCH_REGISTRY), registryBefore);
 });

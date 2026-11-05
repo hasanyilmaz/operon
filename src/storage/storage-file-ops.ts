@@ -8,6 +8,7 @@ export interface RecoveredStoreWriteOptions {
 }
 
 export interface SafeTextWriteOptions {
+	assertCurrentText?: (text: string) => void;
 	forceAtomicReplacement?: boolean;
  canCommit?: () => boolean;
 	verifyAtomicReplacement?: boolean;
@@ -31,7 +32,7 @@ export async function writeTextSafely(
  const check = () => { if (options.canCommit?.() === false) throw new Error('Write permission expired'); };
  check();
 	if (!options.forceAtomicReplacement && typeof adapter.process === 'function' && await adapter.exists(path)) {
-		await adapter.process(path, () => { check(); return data; });
+		await adapter.process(path, current => { check(); options.assertCurrentText?.(current); return data; });
 		return;
 	}
 

@@ -76,6 +76,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 			floatingHost: options.floatingHost,
 			floatingScrollHost: options.floatingScrollHost,
 			constrainToFloatingHost: options.constrainToFloatingHost,
+		fitToHostViewport: options.fitToHostViewport,
 			matchWidth: options.matchWidth,
 			closeOnWindowResize: options.closeOnWindowResize,
 			repositionOnWindowResize: options.repositionOnWindowResize,

@@ -1,5 +1,10 @@
+import { getPinnedTasksForDisplay } from './src/core/pinned-task-query';
+import type { KanbanPoolDropRequest } from './src/types/kanban';
+import { kanbanPoolSourceSignature } from './src/systems/kanban-drop-transaction';
+import type { KanbanPoolServices } from './src/ui/kanban/kanban-pools';
 import { normalizeKanbanAxisLeafState } from './src/systems/kanban-axis-state';
 import { queryKanbanAxisBoard, kanbanTaskMatchesCell, type KanbanBoardData } from './src/systems/kanban-board';
+import { collectKanbanScope } from './src/systems/kanban-grouping';
 import { executeTaskSourceRenameTransaction, TaskSourceRenameUncertainError } from './src/storage/task-source-rename-transaction';
 import { KanbanCardOperationRegistry } from './src/systems/kanban-drop-transaction';
 import { buildKanbanCellPlan, splitKanbanCreatorSeeds, resolveLegacyKanbanCellTarget, kanbanPayloadMatchesPlan, type KanbanCellPlan, type KanbanCellTarget } from './src/systems/kanban-cell-actions';
@@ -189,6 +194,7 @@ import {
 	type CreationAggregateProjectionTask,
 } from './src/systems/aggregate-coordinator';
 import { TaskStatsBackfillRunner } from './src/systems/task-stats-backfill';
+import { startActiveTrackerMonitor } from './src/systems/active-tracker-monitor';
 import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/time-tracker';
 import {
 	TaskSourceModifyReconciler,
@@ -1361,6 +1367,7 @@ interface TaskFieldsUpdateOptions {
  ownedMutationPermit?: TaskWriterExclusiveMutationPermit;
  fileRenameSourcePath?: string;
  beforeFileCommit?: () => Promise<boolean>;
+ onFileSourceRenamed?: (path: string) => void;
  filePropertyDraft?: import('./src/core/task-writer').TaskWriteOptions['filePropertyDraft'];
  validateFieldPayload?: (payload: Record<string, string>) => boolean;
  inlinePropertyDraft?: readonly InlinePropertyChange[];
@@ -1729,6 +1736,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakBodyDocuments = new Set<Document>();
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private taskCardEmbeds: TaskCardEmbeds | null = null;
+ private kanbanPoolServices: KanbanPoolServices | null = null;
 	private canvasTaskIntegration: CanvasTaskIntegration | null = null;
  private excalidrawTaskIntegration: ExcalidrawTaskIntegration | null = null;
  private excalidrawCreatorSubmissions = new Set<TFile>();
@@ -4128,10 +4136,11 @@ export default class OperonPlugin extends Plugin {
 		return await this.timeTracker.stop(reason);
 	}
 
-	private reconcileFileTaskArchiveAfterTimerStateChange(): void {
+	private reconcileFileTaskArchiveAfterTimerStateChange(source: 'local' | 'external' = 'local'): void {
 		const currentOperonId = this.timeTracker.getActiveOperonId();
 		const previousOperonId = this.lastActiveTimerTaskId;
 		this.lastActiveTimerTaskId = currentOperonId;
+		if (source === 'external') return;
 		if (!previousOperonId || previousOperonId === currentOperonId) return;
 		this.fileTaskArchiver?.scheduleAfterTimerFinalized(previousOperonId);
 	}
@@ -9533,6 +9542,9 @@ export default class OperonPlugin extends Plugin {
 				});
 			}
 			if (request.spec.operation === 'start' || request.spec.operation === 'stop') {
+			if (await this.timeTracker.refreshExternalState() === 'unavailable' || this.timeTracker.hasUnresolvedActiveTask()) {
+				return { ok: false, code: 'stale-source', reason: 'The active timer source is unavailable.' };
+			}
 			const active = this.timeTracker.getActiveState();
 			const requestedOperonId = request.target?.operonId ?? null;
 			const provisionalTargetOperonId = request.spec.operation === 'start'
@@ -10862,6 +10874,9 @@ export default class OperonPlugin extends Plugin {
 			&& (preparedMutation.token as { kind?: unknown }).kind === 'timer'
 		) {
 			const prepared = preparedMutation.token as RuntimeTimerMutationPreparationV1;
+			if (await this.timeTracker.refreshExternalState() === 'unavailable' || this.timeTracker.hasUnresolvedActiveTask()) {
+				return { status: 'failed', groupResults: [], affectedFilePaths: [], reason: 'The active timer source is unavailable.' };
+			}
 			const active = this.timeTracker.getActiveState();
 			const activeMaterial = active
 				? {
@@ -14462,7 +14477,7 @@ export default class OperonPlugin extends Plugin {
    if (activeId) ids.push(activeId);
    for (const id of ids) if (id) sessionPreimages.set(id, this.indexer.getTask(id)?.fieldValues['trackers'] ?? '');
   }
-  const target = this.excalidrawTaskIntegration && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
+  const target = (this.excalidrawTaskIntegration || this.timeTracker?.getActiveOperonId()) && request.plan.spec.operation === 'delete' ? this.indexer.getTask(request.plan.targets[0]?.operonId ?? '') : null;
   const deletedTasks = target ? target.primary.format === 'yaml'
    ? this.indexer.getAllTasks().filter(task => task.primary.filePath === target.primary.filePath) : [target] : [];
   const releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
@@ -14488,7 +14503,10 @@ export default class OperonPlugin extends Plugin {
    for (const [id, previousTrackers] of sessionPreimages) this.timeTracker.notifyCreatedSessions(id, previousTrackers);
   }
   releaseDeletion?.(result.status === 'applied');
-  if (result.status === 'applied' && deletedTasks.length) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+  if (result.status === 'applied' && deletedTasks.length) {
+   this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+   void this.timeTracker?.confirmTaskRemoval(deletedTasks.map(task => task.operonId)).catch(error => console.warn('Operon: committed deletion tracker cleanup deferred', error));
+  }
   return result;
   } finally { releaseDeletion?.(); }
 	}
@@ -16769,17 +16787,17 @@ export default class OperonPlugin extends Plugin {
   });
 
 		this.register(
-			this.timeTracker.subscribe((event) => {
+			this.timeTracker.subscribe((event, context) => {
 				if (event !== 'state') return;
-				this.reconcileFileTaskArchiveAfterTimerStateChange();
+				this.reconcileFileTaskArchiveAfterTimerStateChange(context?.source);
 				this.refreshTimerStateSurfaces();
 			}),
 		);
 
 		// Auto-pin on timer start
 		this.register(
-			this.timeTracker.subscribe(asyncHandler('auto-pin active timer failed', async (event) => {
-				if (event !== 'state') return;
+			this.timeTracker.subscribe(asyncHandler('auto-pin active timer failed', async (event, context) => {
+				if (event !== 'state' || context?.source === 'external') return;
 				if (!this.settings.pinnedDockAutoPin) return;
 				if (!this.pinnedCache) return;
 				const operonId = this.timeTracker.getActiveOperonId();
@@ -16866,9 +16884,13 @@ export default class OperonPlugin extends Plugin {
   }));
   const propertyValuePool: import('./src/ui/canvas-property-value-pool').CanvasPropertyValuePoolPreferences = {
 				tasks: { prepare: (id, value) => this.prepareCanvasPropertyValueWithPeriodicParent(id, value), apply: (plan, direction, allowed) => this.applyCanvasPropertyValue(plan, direction, allowed) },
-				edit: (edit, expected) => this.storage.editPropertyValuePool(edit, expected),
+				edit: (edit, expected, canCommit) => this.storage.editPropertyValuePool(edit, expected, canCommit),
 				subscribe: listener => this.storage.onPropertyValuePoolChange(listener),
 			};
+  this.kanbanPoolServices = { cards: this.taskCardEmbeds, preferences: propertyValuePool };
+  for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
+   if (leaf.view instanceof KanbanView) leaf.view.syncPools();
+  }
 		this.canvasTaskIntegration = new CanvasTaskIntegration({
 			app: this.app,
    groupSyncReady: async () => {
@@ -16966,6 +16988,10 @@ export default class OperonPlugin extends Plugin {
 			this.canvasTaskIntegration = null;
    if (this.excalidrawTaskIntegration) this.removeChild(this.excalidrawTaskIntegration);
    this.excalidrawTaskIntegration = null;
+   this.kanbanPoolServices = null;
+   for (const leaf of this.app.workspace.getLeavesOfType(KANBAN_VIEW_TYPE)) {
+    if (leaf.view instanceof KanbanView) leaf.view.syncPools();
+   }
 			this.taskCardEmbeds?.destroy();
 			this.taskCardEmbeds = null;
 			taskCardLayout.destroy();
@@ -17042,12 +17068,16 @@ export default class OperonPlugin extends Plugin {
 		};
 		if (Platform.isDesktopApp) {
 			this.statusDock = this.addChild(new OperonStatusDock(this.app, {
+    startHistoryTimer: (id, guard) => this.startTimerForTask(id, 'history-play', undefined, guard),
+    getPinnedTasks: () => getPinnedTasksForDisplay(this.indexer, this.storage.pinned, this.settings.priorities, this.settings.pinnedTaskSortMode),
+    getPinnedGeneration: () => this.storage.pinned.getGeneration(),
+    subscribePinned: listener => this.storage.pinned.subscribe(listener),
 				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
 				getSettings: () => this.settings,
 				sessionActions: {
-					openSession: session => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve)),
+					openSession: (session, guard) => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve, guard)),
 					clickIcon: id => this.handleTaskIconClick(id),
 					contextualAction: (id, action, context, invocation) => this.handleContextualMenuAction(id, action, context, invocation),
 					isPinned: id => this.storage.pinned.isPinned(id),
@@ -17182,6 +17212,7 @@ export default class OperonPlugin extends Plugin {
 					this.scheduleProjectSerialIndexReconcile();
 				}
 				await this.timeTracker.resumeFromIndex({ migrateLegacy: true });
+				this.initializeActiveTrackerMonitor();
 				this.agentRuntimeLifecycle.markReady();
 				this.taskCardIndexState = 'ready';
 				this.agentRuntimeStartupSettlementRelease?.();
@@ -17216,6 +17247,13 @@ export default class OperonPlugin extends Plugin {
 			});
 			});
 		}
+
+	private initializeActiveTrackerMonitor(): void {
+		this.register(startActiveTrackerMonitor(
+			this.timeTracker, getOwnerWindow(this.app.workspace.containerEl), this.app.workspace.containerEl.ownerDocument, () => this.startupReady,
+            { vault: this.app.vault, path: this.storage.activeTrackers.sourcePath },
+		));
+	}
 
 	private initializeIndexV8ManifestMonitor(): void {
 		const win = getActiveWindow();
@@ -17286,6 +17324,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.timeTracker?.cancelExternalRefresh();
 		this.tasksConversionController?.dispose();
 		disposeAssigneeChipImages(this.app);
 		this.agentRuntimeCliTransportAvailable = false;
@@ -17800,6 +17839,8 @@ export default class OperonPlugin extends Plugin {
 						this.refreshKanbanLeaves(true);
 					},
 					onCardDrop: (context) => this.handleKanbanCardDrop(leaf, context),
+      onPoolDrop: request => this.placeExistingTaskInKanbanCell(leaf, request),
+      onPropertyPoolApply: (plan, allowed) => this.applyKanbanPropertyValue(leaf, plan, allowed),
 					onDragInteractionEnd: () => this.flushPendingKanbanRefresh(),
 					onCellAction: (context) => this.handleKanbanCellAction(leaf, context),
 					onItemAction: (taskId, actionId, context, invocation) => this.handleContextualMenuAction(taskId, actionId, context, invocation),
@@ -17859,6 +17900,7 @@ export default class OperonPlugin extends Plugin {
 					onOpenRelatedView: (target) => this.openRelatedViewTarget(target),
 					onCreateRelatedView: (target) => this.createRelatedViewPresetAndOpen(target),
 				},
+    () => this.kanbanPoolServices,
 			)
 		);
 		this.registerView(OPERON_TABLE_VIEW_TYPE, (leaf) =>
@@ -19279,8 +19321,8 @@ export default class OperonPlugin extends Plugin {
 		}));
 	}
 
-	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void): void {
-		if (!session.operonId) { onClosed?.(); return; }
+	private openCalendarTrackedSessionEditor(session: CalendarTrackedSessionRef, onClosed?: () => void, canCommit?: () => boolean): void {
+		if (!session.operonId || canCommit?.() === false) { onClosed?.(); return; }
 		const currentSession = this.resolveTrackedSessionByRange(session);
 		const task = currentSession?.task ?? this.indexer.getTask(session.operonId) ?? null;
 		if (!currentSession || !task) {
@@ -19300,7 +19342,9 @@ export default class OperonPlugin extends Plugin {
 				taskDescription: task.description,
 				taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']),
 				icon: getConfiguredKeyMappingIcon('note', this.settings.keyMappings) || 'notebook-pen',
-				onCommit: value => this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
+				onCommit: value => canCommit
+					? this.updateDirectTaskFieldsAndRefresh(session.operonId, { note: value }, { canCommit, changedKeys: ['note'], tableCommittedSource: true })
+					: this.updateTableTaskFieldsAndRefresh(session.operonId, { note: value }),
 			},
 			...buildTrackerSessionEditContext({
 				taskLabel,
@@ -19317,6 +19361,7 @@ export default class OperonPlugin extends Plugin {
 					start,
 					end,
 					session.sessionIndex,
+					canCommit,
 				);
 				if (!updated) {
 					this.handleCalendarTrackedSessionStale();
@@ -19336,6 +19381,7 @@ export default class OperonPlugin extends Plugin {
 					session.start,
 					session.end,
 					session.sessionIndex,
+					canCommit,
 				);
 				if (!deleted) {
 					this.handleCalendarTrackedSessionStale();
@@ -20172,6 +20218,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private insertKanbanTaskIdBefore(taskIds: string[], taskId: string, beforeTaskId: string | null): string[] {
+  if (beforeTaskId === taskId && taskIds.includes(taskId)) return [...taskIds];
 		const next = taskIds.filter(entry => entry !== taskId);
 		const beforeIndex = beforeTaskId ? next.indexOf(beforeTaskId) : -1;
 		if (beforeIndex >= 0) {
@@ -20220,6 +20267,7 @@ export default class OperonPlugin extends Plugin {
 	private async handleKanbanCardDrop(
 		leaf: import('obsidian').WorkspaceLeaf,
 		context: KanbanDropContext,
+  placement?: KanbanPoolDropRequest,
 	): Promise<KanbanCardDropCommittedResult | 'cancelled' | 'failed'> {
   const operation = this.kanbanCellOperations.begin(context.taskId, context.presetId ?? '', 'drop', context.boardSignature ?? '');
   if (!operation) return 'cancelled';
@@ -20257,32 +20305,50 @@ export default class OperonPlugin extends Plugin {
 				},
 			);
 		}
-		if (!this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context)) throw attachKanbanDropFailureCause(
+  let ownedRenamePath: string | null = null;
+  let ownedRenameDescription: string | null = null;
+  const sourceCurrent = () => {
+   const current = this.indexer.getTask(context.taskId);
+   const source = current && ownedRenamePath && current.primary.filePath === ownedRenamePath
+    ? { ...current, primary: { ...current.primary, filePath: task.primary.filePath },
+     description: current.description === ownedRenameDescription ? task.description : current.description } : current;
+   return !placement || placement.isCurrent() && !!source && !this.indexer.hasDuplicateOperonIdConflict(context.taskId) && kanbanPoolSourceSignature(source) === placement.sourceSignature;
+  };
+  if (!sourceCurrent()) return 'cancelled';
+		if (!placement && !this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context)) throw attachKanbanDropFailureCause(
 			new Error('Kanban source cell changed before apply'), { phase: 'preflight', stage: 'prepare', code: 'stale-source' });
 		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
   const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
 		const kanbanAxesCanCommit = (): boolean => {
 			const current = this.getKanbanPresetForLeaf(leaf);
-			return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+			return (!placement || placement.isCurrent()) && !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
 		};
 		const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
+  if (!sourceCurrent() || !kanbanAxesCanCommit()) return 'cancelled';
 		const orderingBoard = this.queryKanbanBoardForOrder(preset);
 		const sourceIsManual = context.sourceStatusId
 			? orderingBoard?.getSorting(context.sourceStatusId).sortMode === 'manual'
 			: false;
 		const targetIsManual = orderingBoard?.getSorting(context.targetStatusId).sortMode === 'manual';
 		const manualOrderChange = sourceIsManual || targetIsManual
-			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual, this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context, plan))
+			? this.buildKanbanManualDropOrderCells(preset, context, sourceIsManual, targetIsManual, !placement && this.isKanbanTaskAtDropSource(task, preset.swimlaneBy, context, plan))
 			: null;
 		const manualOrderCells = manualOrderChange?.nextCells ?? null;
 		const previousManualOrderCells = manualOrderChange?.currentCells ?? null;
+  let orderSourceSignature = placement?.sourceSignature;
+  const orderSourceCurrent = () => {
+   const current = this.indexer.getTask(context.taskId);
+   return !placement || !!current && !this.indexer.hasDuplicateOperonIdConflict(context.taskId)
+    && kanbanPoolSourceSignature(current) === orderSourceSignature;
+  };
 		const persistManualOrderIfCurrent = async (): Promise<void> => {
-			if (!manualOrderCells || !previousManualOrderCells) return;
+			if (!manualOrderCells || !previousManualOrderCells || JSON.stringify(manualOrderCells) === JSON.stringify(previousManualOrderCells)) return;
 			if (!kanbanAxesCanCommit()) throw new Error('Kanban axes changed before manual order commit');
 			const applied = await this.storage.kanbanOrder.replaceCellsIfCurrent(
 				preset.id,
 				previousManualOrderCells,
 				manualOrderCells,
+    placement ? () => kanbanAxesCanCommit() && orderSourceCurrent() : undefined,
 			);
 			if (!applied) {
 				throw attachKanbanDropFailureCause(
@@ -20310,7 +20376,15 @@ export default class OperonPlugin extends Plugin {
 		}
 		let settledByRecurrenceReplacement = false;
 		const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, {
-			...this.kanbanCellWriteOptions(plan, task, kanbanAxesCanCommit),
+			...this.kanbanCellWriteOptions(plan, task, () => kanbanAxesCanCommit() && sourceCurrent()),
+   onFileSourceRenamed: path => {
+    // Only the existing transaction's successful ensureRenamed boundary advances this lease.
+    const name = plan.payload._description;
+    const expectedPath = `${task.primary.filePath.slice(0, task.primary.filePath.lastIndexOf('/') + 1)}${name}.md`;
+    if (placement && task.primary.format === 'yaml' && name && path === expectedPath) {
+     ownedRenamePath = path; ownedRenameDescription = name;
+    }
+   },
 			refreshReason: 'status-cycle',
 		});
 		if (outcome === 'cancelled' || outcome === 'duplicate-task') return 'cancelled';
@@ -20329,6 +20403,7 @@ export default class OperonPlugin extends Plugin {
 		}
 		let committedRepairRequired = outcome === 'committed-repair-scheduled';
 		const freshTask = this.indexer.getTask(context.taskId);
+  if (placement) orderSourceSignature = freshTask ? kanbanPoolSourceSignature(freshTask) : undefined;
 		const recurrenceReplacementTask = targetStatus?.isFinished
 			? this.resolveKanbanRecurrenceReplacement(task)
 			: null;
@@ -20337,7 +20412,7 @@ export default class OperonPlugin extends Plugin {
 				&& this.isKanbanTaskAtDropTarget(freshTask, pipeline, preset.swimlaneBy, context),
 			recurrenceReplacementVerified: settledByRecurrenceReplacement
 				|| recurrenceReplacementTask !== null,
-			sourceVerified: !!freshTask
+			sourceVerified: !placement && !!freshTask
 				&& this.isKanbanTaskAtDropSource(freshTask, preset.swimlaneBy, context),
 		});
 		if (postflightSettlement === 'source' || postflightSettlement === 'uncertain') {
@@ -20925,15 +21000,22 @@ export default class OperonPlugin extends Plugin {
 
 	private maybeOpenKanbanEditorForFilterMismatch(
 		filterSet: FilterSet | null,
-		draft: {
-			description: string;
-			checkbox: IndexedTask['checkbox'];
-			fieldValues: Record<string, string>;
-			tags: string[];
-		},
+		task: IndexedTask,
 		openEditor: () => void | Promise<void>,
 	): void | Promise<void> {
-		if (this.doesCalendarDraftMatchFilter(filterSet, draft)) return;
+		if (!filterSet) return;
+		// Post-save feedback must use the same graph and real sources as the board.
+		// A single synthetic draft loses project ancestry, file type/path and identity.
+		const tasks = this.indexer.getAllTasks();
+		const scope = collectKanbanScope({
+			tasks, settings: this.settings, filterSet, pinnedCache: this.pinnedCache,
+			filterEvaluationOptions: {
+				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+				filePropertyContext: this.getTableFilePropertySnapshot(tasks) ?? undefined,
+				projectSerialScopes: this.settings.projectSerialScopes,
+			},
+		});
+		if (scope.scoped.some(candidate => candidate.operonId === task.operonId)) return;
 		new Notice(t('notifications', 'kanbanFilterMismatch'));
 		return openEditor();
 	}
@@ -20969,46 +21051,67 @@ export default class OperonPlugin extends Plugin {
 		new Notice(t('notifications', 'kanbanCreatedTaskFilterMismatch'));
 	}
 
-	private async assignTaskToKanbanCell(
-		leaf: import('obsidian').WorkspaceLeaf,
-		context: KanbanCellActionContext,
-	): Promise<void> {
-		const preset = this.getKanbanPresetForLeaf(leaf);
-		if (!preset) return;
-		const pipeline = this.settings.pipelines.find(entry => entry.id === preset.pipelineId) ?? null;
-		if (context.presetId && context.presetId !== preset.id) return;
-		if (context.boardSignature && context.boardSignature !== buildKanbanDropBoardSignature(preset, pipeline, this.settings)) return;
-		const filterSet = preset.filterSetId
-			? this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null
-			: null;
-		const axisSignature = buildKanbanDropBoardSignature(preset, pipeline, this.settings);
-  const propertySignature = JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
-		const kanbanAxesCanCommit = () => { const current = this.getKanbanPresetForLeaf(leaf); return !!current && current.id === preset.id && buildKanbanDropBoardSignature(current, this.settings.pipelines.find(p => p.id === current.pipelineId) ?? null, this.settings) === axisSignature && propertySignature === JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]); };
-		const effectiveFilterSet = filterSet && !isSpecialDynamicFilterSet(filterSet) ? filterSet : null;
+ private async placeExistingTaskInKanbanCell(leaf: import('obsidian').WorkspaceLeaf, request: KanbanPoolDropRequest): Promise<boolean> {
+  const preset = this.getKanbanPresetForLeaf(leaf);
+  if (!preset || !request.isCurrent()) return false;
+  const result = await this.handleKanbanCardDrop(leaf, request.context, request);
+  if (typeof result !== 'object' || result.status !== 'committed') return false;
+  // The write is already committed. A closed view must not reopen an editor or undo it.
+  if (request.isCurrent()) {
+   const task = this.indexer.getTask(result.settledTaskId ?? request.context.taskId);
+   if (task) {
+    try {
+     await this.maybeOpenKanbanEditorForFilterMismatch(this.getKanbanFilterSetForPool(preset), task, () => this.openEditorForId(task.operonId));
+     new Notice(t('notifications', 'kanbanPlaced', { label: task.description || task.operonId }));
+    } catch (error) {
+     console.warn('Operon: task placed; filter feedback failed', error);
+     new Notice(t('settings', 'propertyPoolRefreshWarning'));
+    }
+   }
+  }
+  return true;
+ }
 
-		while (true) {
-			const task = await this.promptKanbanTaskSelection();
-			if (!task || !kanbanAxesCanCommit()) return;
+ private async applyKanbanPropertyValue(leaf: import('obsidian').WorkspaceLeaf, plan: PropertyPoolTaskPlan, allowed: () => boolean): Promise<PropertyPoolTaskResult> {
+  const preset = this.getKanbanPresetForLeaf(leaf);
+  if (!preset || !allowed()) return { status: 'blocked' };
+  const signature = buildKanbanDropBoardSignature(preset, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null, this.settings);
+  const current = () => allowed() && this.getKanbanPresetForLeaf(leaf)?.id === preset.id
+   && buildKanbanDropBoardSignature(this.getKanbanPresetForLeaf(leaf)!, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null, this.settings) === signature;
+  const operation = this.kanbanCellOperations.begin(plan.id, preset.id, 'drop', signature);
+  if (!operation) return { status: 'blocked' };
+  try {
+   const result = await this.applyCanvasPropertyValue(plan, 'drop', current);
+   if (result.status === 'committed' && current()) {
+    const task = this.indexer.getTask(plan.id);
+    try { if (task) await this.maybeOpenKanbanEditorForFilterMismatch(this.getKanbanFilterSetForPool(preset), task, () => this.openEditorForId(plan.id)); }
+    catch (error) { console.warn('Operon: property applied; filter feedback failed', error); return { ...result, warning: true }; }
+   }
+   return result;
+  } finally { this.kanbanCellOperations.end(operation); }
+ }
 
-   const operation = this.kanbanCellOperations.begin(task.operonId, preset.id, 'drop', axisSignature ?? '');
-   if (!operation) return;
-   try {
-   const plan = await this.prepareLegacyKanbanCellPlan(task, preset, context.targetStatusId, context.targetLaneKey, context.target);
-   if (plan.state === 'noop') return;
-   const outcome = await this.updatePluginUiTaskStatusAndRefresh(task.operonId, plan.payload, this.kanbanCellWriteOptions(plan, task, kanbanAxesCanCommit));
-   const committed = isPluginUiMutationCommitted(outcome);
-			if (!committed) return;
-			this.refreshViews();
-			await this.maybeOpenKanbanEditorForFilterMismatch(effectiveFilterSet, plan.nextDraft, () => {
-				this.openEditorForId(task.operonId);
-			});
-			new Notice(t('notifications', 'kanbanPlaced', {
-				label: task.description || task.operonId,
-			}));
-   } finally { this.kanbanCellOperations.end(operation); }
-			return;
-		}
-	}
+ private getKanbanFilterSetForPool(preset: KanbanPreset): FilterSet | null {
+  const filter = this.settings.filterSets.find(entry => entry.id === preset.filterSetId) ?? null;
+  return filter && !isSpecialDynamicFilterSet(filter) ? filter : null;
+ }
+
+ private async assignTaskToKanbanCell(leaf: import('obsidian').WorkspaceLeaf, context: KanbanCellActionContext): Promise<void> {
+  const preset = this.getKanbanPresetForLeaf(leaf);
+  if (!preset || context.presetId && context.presetId !== preset.id) return;
+  const signature = buildKanbanDropBoardSignature(preset, this.settings.pipelines.find(p => p.id === preset.pipelineId) ?? null, this.settings);
+  if (context.boardSignature && context.boardSignature !== signature) return;
+  const properties = () => JSON.stringify([this.settings.keyMappings, this.settings.priorities, this.settings.pipelines, getNativePropertyIndex(this.app).getTypes()]);
+  const propertySignature = properties();
+  const task = await this.promptKanbanTaskSelection();
+  if (!task) return;
+  await this.placeExistingTaskInKanbanCell(leaf, {
+   sourceSignature: kanbanPoolSourceSignature(task),
+   isCurrent: () => this.getKanbanPresetForLeaf(leaf)?.id === preset.id && properties() === propertySignature,
+   context: { ...context, taskId: task.operonId, presetId: preset.id, boardSignature: signature,
+    sourceStatusId: null, sourceLaneKey: '', targetBeforeTaskId: task.operonId },
+  });
+ }
 
 	private async openKanbanTaskCreator(
 		leaf: import('obsidian').WorkspaceLeaf,
@@ -25168,7 +25271,7 @@ export default class OperonPlugin extends Plugin {
 				this.showPluginUiMutationOutcome('source-changed');
 				return false;
 			}
-			const deletedTasks = this.excalidrawTaskIntegration && prepared.target.action === 'trash'
+			const deletedTasks = (this.excalidrawTaskIntegration || this.timeTracker?.getActiveOperonId()) && prepared.target.action === 'trash'
     ? this.indexer.getAllTasks().filter(task => task.primary.filePath === prepared.target.filePath) : [indexedTarget];
    releaseDeletion = this.excalidrawTaskIntegration?.beginDeletion(deletedTasks);
    const transaction = await executeTaskEditorDeleteTransaction<TaskWriterExclusiveMutationPermit>({
@@ -25246,7 +25349,10 @@ export default class OperonPlugin extends Plugin {
 				this.showPluginUiMutationOutcome('committed-repair-scheduled');
 			}
    releaseDeletion?.(!conversion);
-   if (!conversion) this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+   if (!conversion) {
+    this.excalidrawTaskIntegration?.confirmDeleted(deletedTasks, 'committed');
+    void this.timeTracker?.confirmTaskRemoval(deletedTasks.map(task => task.operonId)).catch(error => console.warn('Operon: committed deletion tracker cleanup deferred', error));
+   }
 			return true;
 		} catch (error) {
 			if (mutationStarted) conversion?.uncertain();
@@ -35254,7 +35360,11 @@ export default class OperonPlugin extends Plugin {
                 validateCommitted: content => parseFrontmatterDocument(content, this.settings.keyMappings).managedFieldValues.operonId === operonId,
                 commit: async ensureRenamed => {
                     task = { ...original, description, primary: { ...original.primary, filePath: candidatePath } };
-                    options = { ...options, ownedMutationPermit: permit, fileRenameSourcePath: previousPath, beforeFileCommit: ensureRenamed,
+                    options = { ...options, ownedMutationPermit: permit, fileRenameSourcePath: previousPath, beforeFileCommit: async () => {
+                        const renamed = await ensureRenamed();
+                        if (renamed) options.onFileSourceRenamed?.(candidatePath);
+                        return renamed;
+                    },
                         expectedFieldValues: { ...options.expectedFieldValues, _description: description } };
                     return commitPrimary();
                 },

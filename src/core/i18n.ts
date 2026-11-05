@@ -11,7 +11,7 @@ import generatedCompatibilityAliases from '../generated/locale-compatibility-ali
 import { compileLocalePack, type LocaleTranslations } from './locale-pack';
 
 /** Supported language codes. */
-export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it' | 'pt-BR';
+export type LangCode = 'en' | 'tr' | 'de' | 'fr' | 'es' | 'zh-CN' | 'zh-TW' | 'ja' | 'ru' | 'it' | 'pt-BR' | 'ko';
 export type NonEnglishLangCode = Exclude<LangCode, 'en'>;
 
 export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
@@ -26,6 +26,7 @@ export const SUPPORTED_LANGUAGES: readonly LangCode[] = [
 	'ru',
 	'it',
 	'pt-BR',
+	'ko',
 ];
 
 const SUPPORTED_LANGUAGE_SET: ReadonlySet<string> = new Set(SUPPORTED_LANGUAGES);
@@ -92,6 +93,7 @@ export function resolveSupportedLocale(rawLocale: string): LangCode | null {
 	}
 
 	const short = lower.substring(0, 2);
+	if (short === 'ko' && lower !== 'ko' && !lower.startsWith('ko-')) return null;
 	return SUPPORTED_LANGUAGE_SET.has(short) ? short as LangCode : null;
 }
 
