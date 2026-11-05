@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **Korean (한국어)** as a downloadable interface language. Natural-language date input uses English phrases when Korean is selected. ([#295](https://github.com/hasanyilmaz/operon/pull/295))
 - Added **Status Dock Sections and Order** at the top of Workspace Tweaks, alongside click behavior and a documentation link. Seven sections can be independently enabled and reordered, including separate Ongoing and Upcoming Tasks controls. All sections start enabled; empty task lists hide their icons.
 - Added **Pinned Tasks and Modified Tasks** to the Status Dock, following your active pinned group's sorting and Task Finder's recent-modification rules, with the first task closest to the Dock.
 - Added **Session History** to the Status Dock using the existing History Days setting. Each session appears separately with its duration and task; click the duration to edit it or use Start Timer to track the task again.
