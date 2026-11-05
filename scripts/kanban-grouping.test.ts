@@ -137,6 +137,12 @@ test('readable axis exclusions and active searches do not create false partial t
  f.options.searchQuery='good';const searched=ready(f.options);assert.equal(searched.state,'ready');assert.equal(searched.total,1);
  f.options.searchQuery='';f.options.taskIdFilter=['good'];assert.equal(ready(f.options).state,'ready');
 });
+test('search matches File Task display titles only when the setting is enabled',()=>{
+ const titled: IndexedTask={...task('alpha',{fileTaskDisplayTitle:'Readable title'},['keep']),primary:{filePath:'alpha.md',format:'yaml',lineNumber:0}};
+ const f=setup(axis('tags','list'),null,[titled,task('beta',{},['keep'])]);
+ f.options.searchQuery='readable';assert.equal(ready(f.options).total,0);
+ f.s.fileTaskDisplayTitleEnabled=true;assert.equal(ready(f.options).total,1);
+});
 test('pending native values outside a readable Status axis do not make that board incomplete',()=>{
  for(const side of ['columns','swimlanes'] as const){
   const f=setup();const selected=f.s.pipelines[0],other={...structuredClone(selected),id:'other-pipeline',name:'Other'};f.s.pipelines.push(other);

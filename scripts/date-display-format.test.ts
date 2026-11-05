@@ -251,7 +251,7 @@ test('Task Editor and Task Creator format labels without changing picker values'
 
 
 test('settings default and normalization preserve the additive no-migration contract', () => {
-	assert.equal(CURRENT_SETTINGS_VERSION, 115);
+	assert.equal(CURRENT_SETTINGS_VERSION, 116);
 	assert.equal(DEFAULT_SETTINGS.dateDisplayFormat, 'YYYY-MM-DD');
 	assert.equal(migrateSettings({}).dateDisplayFormat, 'YYYY-MM-DD');
 	assert.equal(migrateSettings({ timeFormat: '12h' }).dateDisplayFormat, 'YYYY-MM-DD');

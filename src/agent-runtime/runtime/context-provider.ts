@@ -465,13 +465,14 @@ export class LiveIndexContextProviderV1 {
 					visibilityMode: projectMode,
 					candidateFilter: task => matchesFinderRepresentation(task, request.representations),
 					keyMappings: settings.keyMappings,
+					displayTitleEnabled: settings.fileTaskDisplayTitleEnabled,
 					session,
 				},
 			);
 			allRows = candidates.map(candidate => ({
 				kind: 'project',
 				task: candidate.task,
-				score: finderScore(candidate.task, query, settings.keyMappings, session),
+				score: finderScore(candidate.task, query, settings.keyMappings, settings.fileTaskDisplayTitleEnabled, session),
 				directTaskCount: candidate.directChildCount,
 				treeTaskCount: candidate.descendantCount,
 				visibleDirectTaskCount: candidate.directVisibleCount,
@@ -494,6 +495,7 @@ export class LiveIndexContextProviderV1 {
 					query,
 					includeAllTasks: true,
 					keyMappings: settings.keyMappings,
+					displayTitleEnabled: settings.fileTaskDisplayTitleEnabled,
 					session,
 				}).map(result => ({ kind: 'task', task: result.task, score: result.score }));
 			} else {
@@ -507,6 +509,7 @@ export class LiveIndexContextProviderV1 {
 						query: '',
 						includeAllTasks: true,
 						keyMappings: settings.keyMappings,
+						displayTitleEnabled: settings.fileTaskDisplayTitleEnabled,
 						session,
 					}).map(result => result.task)
 					: sortFinderScopeTasks(tasks, scope, settings, asOf);
@@ -857,6 +860,7 @@ export class LiveIndexContextProviderV1 {
 			includeAllTasks: true,
 			limit: boundedLimit,
 			keyMappings: this.getSettings().keyMappings,
+			displayTitleEnabled: this.getSettings().fileTaskDisplayTitleEnabled,
 			session: createTaskSearchSession(),
 		});
 		if (ranked.length === 0) return notFound();
@@ -1073,6 +1077,15 @@ export class LiveIndexContextProviderV1 {
 		sourceMarkdown: string | undefined,
 		diagnostics: ContextProjectionDiagnosticsV1,
 	): void {
+		if (task.primary.format === 'yaml' && task.fieldValues['fileTaskDisplayTitle']) {
+			dto.displayTitle = boundedString(
+				task.fieldValues['fileTaskDisplayTitle'],
+				CONTEXT_HYDRATION_CAPS_V1.noteBytesPerTask,
+				'displayTitle',
+				task.operonId,
+				diagnostics,
+			);
+		}
 		if (include.has('notes')) {
 			dto.note = boundedString(task.fieldValues['note'] ?? '', CONTEXT_HYDRATION_CAPS_V1.noteBytesPerTask, 'note', task.operonId, diagnostics);
 		}
@@ -1498,6 +1511,7 @@ function finderScore(
 	task: IndexedTask,
 	query: string,
 	keyMappings: Readonly<OperonSettings>['keyMappings'],
+	displayTitleEnabled: boolean,
 	session: TaskSearchSession,
 ): number {
 	if (!query) return finderScopeScore(task, 'normal');
@@ -1506,6 +1520,7 @@ function finderScore(
 		query,
 		includeAllTasks: true,
 		keyMappings,
+		displayTitleEnabled,
 		session,
 	})[0]?.score ?? 0;
 }

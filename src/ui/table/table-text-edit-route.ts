@@ -1,4 +1,5 @@
 import type { RawYamlPropertyMutation } from '../../core/raw-yaml-property';
+import type { IndexedTask } from '../../types/fields';
 
 export type TableTextEditRoute = 'picker' | 'popover';
 export type TableParentTaskActivation = 'picker' | 'editor' | 'source';
@@ -57,6 +58,19 @@ export function resolveTableTaskTextEditRoute(
 			&& field.group !== 'custom'
 			&& !TASK_TEXT_POPOVER_EXCLUDED_KEYS.has(field.key),
 	);
+}
+
+export function resolveTableTaskTextEditTarget(
+	task: Pick<IndexedTask, 'description' | 'fieldValues' | 'primary'>,
+	key: string,
+	value: string,
+	displayTitleEnabled: boolean,
+): { payloadKey: string; editValue: string } {
+	if (key !== 'description') return { payloadKey: key, editValue: value };
+	if (task.primary.format === 'yaml' && displayTitleEnabled) {
+		return { payloadKey: 'fileTaskDisplayTitle', editValue: task.fieldValues['fileTaskDisplayTitle'] ?? task.description };
+	}
+	return { payloadKey: '_description', editValue: task.description };
 }
 
 export function resolveTableParentTaskActivation(

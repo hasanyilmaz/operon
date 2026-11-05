@@ -1619,9 +1619,26 @@ function checkCatalogPolicies(value: unknown, path: string, issues: DecodeIssueV
 		'sourceTransitionRecoveryVersion', 'sourceTransitionRecoveryFeatures',
 		'creation', 'inheritance', 'exclusions', 'filters', 'automation', 'reminders',
 		'conversion', 'taskUpdate', 'relationships', 'transitions', 'timer', 'inlineRelocation',
-		'deletion', 'projectSerialScopes',
+		'deletion', 'projectSerialScopes', 'fileTaskFilenameRule',
 	], issues);
 	if (!object) return;
+	if (object.fileTaskFilenameRule !== undefined) {
+		const rulePath = `${path}/fileTaskFilenameRule`;
+		const rule = inspectObject(object.fileTaskFilenameRule, rulePath, ['preset', 'lowercase', 'rules'], issues);
+		if (rule) {
+			checkEnum(rule.preset, ['same', 'kebab', 'snake', 'custom'], `${rulePath}/preset`, issues);
+			checkBoolean(rule.lowercase, `${rulePath}/lowercase`, issues);
+			if (!Array.isArray(rule.rules)) issues.push(issue(`${rulePath}/rules`, 'type', 'Expected regex rules.'));
+			else rule.rules.forEach((value, index) => {
+				const itemPath = `${rulePath}/rules/${index}`;
+				const item = inspectObject(value, itemPath, ['pattern', 'replacement'], issues);
+				if (item) {
+					if (typeof item.pattern !== 'string') issues.push(issue(`${itemPath}/pattern`, 'type', 'Expected a string.'));
+					if (typeof item.replacement !== 'string') issues.push(issue(`${itemPath}/replacement`, 'type', 'Expected a string.'));
+				}
+			});
+		}
+	}
 	const hasSourceTransitionRecoveryVersion =
 		object.sourceTransitionRecoveryVersion !== undefined;
 	const hasSourceTransitionRecoveryFeatures =
@@ -3703,7 +3720,7 @@ function checkTaskContext(value: unknown, path: string, issues: DecodeIssueV1[])
 		'identity', 'description', 'representation', 'locator', 'checkbox', 'workflow',
 		'priority', 'dates', 'datetimes', 'relationships', 'recurrence', 'tracker',
 		'pinned', 'sourceRevision', 'contextRevision', 'note', 'links', 'customFields',
-		'sourceMarkdown', 'trackerHistory', 'reminderItems', 'writableFields',
+		'sourceMarkdown', 'trackerHistory', 'reminderItems', 'writableFields', 'displayTitle',
 	], issues);
 	if (!object) return;
 	checkTaskIdentity(object.identity, `${path}/identity`, issues);
@@ -3743,6 +3760,9 @@ function checkTaskContext(value: unknown, path: string, issues: DecodeIssueV1[])
 	checkBoolean(object.pinned, `${path}/pinned`, issues);
 	checkSourceRevision(object.sourceRevision, `${path}/sourceRevision`, issues);
 	checkContextRevision(object.contextRevision, `${path}/contextRevision`, issues);
+	if (object.displayTitle !== undefined) {
+		checkStringByteCap(object.displayTitle, `${path}/displayTitle`, CONTEXT_HYDRATION_CAPS_V1.noteBytesPerTask, issues);
+	}
 	if (object.note !== undefined) {
 		checkStringByteCap(object.note, `${path}/note`, CONTEXT_HYDRATION_CAPS_V1.noteBytesPerTask, issues);
 	}

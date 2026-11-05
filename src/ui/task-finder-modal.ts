@@ -21,6 +21,7 @@ import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
 import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { resolveTaskDateToneColor } from '../core/task-date-tone';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, OperonSettings, resolveTaskDisplayIcon, TaskFinderDefaultScopeItem } from '../types/settings';
 import {
 	buildInlineTaskCompactChipEntries,
@@ -664,6 +665,7 @@ export class TaskFinderModal extends Modal {
 				visibilityMode: this.projectMode,
 				candidateFilter: task => this.matchesCurrentFormatScope(task),
 				keyMappings,
+				displayTitleEnabled: this.getSettings().fileTaskDisplayTitleEnabled,
 				session,
 			})
 				.map(candidate => ({ kind: 'project', candidate }));
@@ -687,6 +689,7 @@ export class TaskFinderModal extends Modal {
 				query,
 				includeAllTasks: true,
 				keyMappings,
+				displayTitleEnabled: this.getSettings().fileTaskDisplayTitleEnabled,
 				session,
 			}).map(result => ({ kind: 'task', task: result.task, score: result.score }));
 		}
@@ -698,6 +701,7 @@ export class TaskFinderModal extends Modal {
 			query,
 			includeAllTasks: true,
 			keyMappings,
+			displayTitleEnabled: this.getSettings().fileTaskDisplayTitleEnabled,
 			session,
 		}).map(result => ({ kind: 'task', task: result.task, score: result.score }));
 	}
@@ -758,6 +762,7 @@ export class TaskFinderModal extends Modal {
 			this.includeFileTasks ? 'file' : '',
 			this.includeCancelledTasks ? 'cancelled' : '',
 			this.includeFinishedTasks ? 'finished' : '',
+			this.getSettings().fileTaskDisplayTitleEnabled ? 'display-title' : '',
 		].join('|');
 	}
 
@@ -1175,7 +1180,7 @@ export class TaskFinderModal extends Modal {
 		const body = row.createDiv('operon-task-finder-result-body');
 		const title = body.createDiv('operon-task-finder-result-title');
 		renderCompactTaskMarkdown(title, {
-			value: candidate.task.description || candidate.task.operonId,
+			value: getTaskDisplayTitle(candidate.task, this.getSettings().fileTaskDisplayTitleEnabled) || candidate.task.operonId,
 			mode: 'visual-only',
 		});
 		this.renderTaskChipLine(body, candidate.task);
@@ -1194,7 +1199,7 @@ export class TaskFinderModal extends Modal {
 		const body = row.createDiv('operon-task-finder-result-body');
 		const title = body.createDiv('operon-task-finder-result-title');
 		renderCompactTaskMarkdown(title, {
-			value: task.description || task.operonId,
+			value: getTaskDisplayTitle(task, this.getSettings().fileTaskDisplayTitleEnabled) || task.operonId,
 			mode: 'visual-only',
 		});
 		this.renderTaskChipLine(body, task);

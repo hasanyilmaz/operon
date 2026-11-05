@@ -13,6 +13,7 @@ import { StatusDockSessionCard, type StatusDockSessionActions } from './status-d
 import { StatusDockTaskList } from './status-dock-task-list';
 import { buildStatusDockTaskScopes, type StatusDockTaskScopes } from './status-dock-task-scope';
 import { StatusDockWidget, type StatusDockAlert, type StatusDockSnapshot } from './status-dock-widget';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 
 interface StatusDockDependencies {
 	toggleTaskTimer: (taskId: string, canCommit: () => boolean) => Promise<boolean>;
@@ -265,9 +266,11 @@ export class OperonStatusDock extends Component {
 	private snapshot(): StatusDockSnapshot {
 		const { dependencies } = this;
 		const breakSnapshot = dependencies.breakController.getSnapshot();
-		const state = { settings: dependencies.getSettings(), active: dependencies.timeTracker.getActiveState(), breakSnapshot,
+		const settings = dependencies.getSettings();
+		const pendingTask = breakSnapshot.pendingTaskId ? dependencies.indexer.getTask(breakSnapshot.pendingTaskId) : null;
+		const state = { settings, active: dependencies.timeTracker.getActiveState(), breakSnapshot,
 			breakSeconds: dependencies.breakController.getElapsedSeconds(),
-			pendingDescription: breakSnapshot.pendingTaskId ? dependencies.indexer.getTask(breakSnapshot.pendingTaskId)?.description ?? null : null,
+			pendingDescription: pendingTask ? getTaskDisplayTitle(pendingTask, settings.fileTaskDisplayTitleEnabled) : null,
 			upcoming: this.upcoming.getSnapshot(), alert: this.alert, actionPending: this.action !== null };
 		return this.presentation?.(state) ?? state;
 	}
@@ -352,7 +355,7 @@ export class OperonStatusDock extends Component {
 				? { taskId, startMs: now, targetSeconds: Math.max(60, state.settings.flowTimePauseMinutes * 60) } : null;
 			const pendingTaskId = kind === 'break' ? taskId ?? null : kind === 'end-break' ? before.pendingTaskId : null;
 			return { ...state, active: rendered.active, breakSnapshot: { ...next, breakState, pendingTaskId }, breakSeconds: 0,
-				pendingDescription: pendingTaskId ? task?.description ?? null : null };
+				pendingDescription: pendingTaskId && task ? getTaskDisplayTitle(task, state.settings.fileTaskDisplayTitleEnabled) : null };
 		};
 	}
 

@@ -27,6 +27,7 @@ export interface TextFieldPopoverOptions {
 	sessionKey?: string;
 	allowEmptyCommit?: boolean;
 	onCommit: (value: string) => Promise<boolean | void> | boolean | void;
+	onAfterCommit?: (value: string, container: HTMLElement, close: () => void) => Promise<boolean>;
 	onClose?: () => void;
 	lifecycleOwner?: Node;
 	onFocusReturn?: () => void;
@@ -126,6 +127,7 @@ export function showTextFieldPopover(
 	let saving = false;
 	let closed = false;
 	let editorHost: HTMLElement | null = null;
+	let committedValue: string | undefined;
  let previewSource: ReturnType<typeof registerLightboxSource> | null = null;
 	const closeAttemptWaiters = new Set<(closed: boolean) => void>();
 	const requestClose = (): void => {
@@ -219,6 +221,7 @@ export function showTextFieldPopover(
 		}
 	}
 	editorHost = body.createDiv('operon-text-field-popover-editor-host');
+	const afterCommitHost = options.onAfterCommit ? body.createDiv('operon-text-field-popover-after-commit') : null;
 	editorSurface = options.editor
 		? createCompactTextFieldEditorSurface(
 			editorHost,
@@ -264,6 +267,7 @@ export function showTextFieldPopover(
 	}
 
 	function shouldCommitValue(commit: ReturnType<TextFieldEditorSurface['getCommit']>): boolean {
+		if (committedValue !== undefined && commit.value === committedValue) return false;
 		if (!commit.shouldCommit) return false;
 		return options.allowEmptyCommit === true || commit.value.length > 0;
 	}
@@ -283,6 +287,12 @@ export function showTextFieldPopover(
 			if (result === false) {
 				new Notice(t('notifications', 'taskSaveFailed'));
 				refocusEditor();
+				settleCloseAttempt(false);
+				return;
+			}
+			committedValue = nextValue;
+			if (afterCommitHost && options.onAfterCommit
+				&& !await options.onAfterCommit(nextValue, afterCommitHost, forceClose)) {
 				settleCloseAttempt(false);
 				return;
 			}

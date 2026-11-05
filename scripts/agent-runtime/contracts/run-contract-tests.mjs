@@ -941,6 +941,39 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		assertPair('field-catalog', candidate, expected, label);
 	}
 
+	const filenameRuleCatalog = fixture(fixtures, 'valid-live-property-catalog-with-filename-rule').value;
+	const assertFilenameRuleCatalog = (candidate, expected, label) => {
+		candidate.catalogRevision = createHash('sha256').update(canonicalJsonForSchema({
+			settingsFingerprint: candidate.settingsFingerprint,
+			taxonomy: candidate.taxonomy,
+			fields: candidate.fields,
+			policies: candidate.policies,
+		}), 'utf8').digest('hex');
+		assertPair('operon-catalog', candidate, expected, label);
+	};
+	const invalidFilenameRule = structuredClone(filenameRuleCatalog);
+	invalidFilenameRule.policies.fileTaskFilenameRule.lowercase = 'yes';
+	assertFilenameRuleCatalog(invalidFilenameRule, false, 'filename rule lowercase must be boolean');
+	const filenameRulesAtCap = structuredClone(filenameRuleCatalog);
+	filenameRulesAtCap.policies.fileTaskFilenameRule.rules = Array.from(
+		{ length: 512 },
+		() => ({ pattern: 'a', replacement: 'b' }),
+	);
+	assertFilenameRuleCatalog(filenameRulesAtCap, true, 'filename rules at 512 items');
+	const filenameRulesAboveCap = structuredClone(filenameRulesAtCap);
+	filenameRulesAboveCap.policies.fileTaskFilenameRule.rules.push({ pattern: 'c', replacement: 'd' });
+	assertFilenameRuleCatalog(filenameRulesAboveCap, false, 'filename rules above 512 items');
+	for (const [label, property, length, expected] of [
+		['filename rule pattern at 4096 characters', 'pattern', 4096, true],
+		['filename rule pattern above 4096 characters', 'pattern', 4097, false],
+		['filename rule replacement at 4096 characters', 'replacement', 4096, true],
+		['filename rule replacement above 4096 characters', 'replacement', 4097, false],
+	]) {
+		const candidate = structuredClone(filenameRuleCatalog);
+		candidate.policies.fileTaskFilenameRule.rules[0][property] = 'x'.repeat(length);
+		assertFilenameRuleCatalog(candidate, expected, label);
+	}
+
 	const context = fixture(fixtures, 'valid-legacy-invalid-task-context').value;
 	for (const [label, mutate, expected] of [
 		['task context valid leap date', candidate => { candidate.dates.due = '2024-02-29'; }, true],

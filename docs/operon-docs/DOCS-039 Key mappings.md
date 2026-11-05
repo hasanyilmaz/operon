@@ -73,6 +73,8 @@ Since visible names must be unique, Operon has to handle the case where one of t
 
 **A custom key already owns the canonical key itself**, because you had created your own `reminderDatetimes` or `reminderRules` field before Operon reserved those names. Here Operon does not take the name over. Your custom field stays authoritative and keeps behaving exactly as it did, and the built-in reminder feature simply does not activate for it: no reminder picker, and nothing you stored in it is ever read as a reminder or scheduled as a notification. Reading arbitrary existing values as reminder data would be the unsafe move, so Operon declines to guess. To use built-in reminders, rename or remove that custom key first, and Operon adds the system field on the next load. See [[DOCS-040 Custom keys|Custom keys]] and [[DOCS-116 Reminders|Reminders]].
 
+The special `fileTaskDisplayTitle` key is a read-only frontmatter value whose visible property name defaults to `title` (and can be remapped here). When File Task display titles are enabled, a non-empty mapped value supplies the visible label and can be edited through the task name; it does not rename the file by itself. The Runtime keeps this property read-only. The configured `policies.fileTaskFilenameRule` is readable through the Property Catalog only; it does not add a Runtime mutation route.
+
 ## Field icon
 
 Each field can carry an optional **icon**, chosen from Lucide. Surfaces that use the field’s key mapping share this icon, so you can configure it centrally rather than surface by surface. Leaving it blank does not guarantee an iconless field: some surfaces, including Task Creator and Task Editor controls, use a fallback icon when no mapping icon is set.

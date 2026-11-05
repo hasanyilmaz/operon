@@ -186,6 +186,11 @@ export interface FileTaskTemplateCandidateV1 {
 }
 
 export interface CatalogPoliciesV1 {
+	fileTaskFilenameRule?: {
+		preset: 'same' | 'kebab' | 'snake' | 'custom';
+		lowercase: boolean;
+		rules: Array<{ pattern: string; replacement: string }>;
+	};
 	/** Optional so V1 clients can still decode Catalogs from older Runtime builds. */
 	sourceTransitionRecoveryVersion?: 1;
 	sourceTransitionRecoveryFeatures?: SourceTransitionRecoveryFeatureV1[];
@@ -415,6 +420,7 @@ export const RUNTIME_OWNED_KEYS_V1 = [
 	'timezone',
 	'datetimeCreated',
 	'datetimeModified',
+	'fileTaskDisplayTitle',
 ] as const;
 
 export type GeneralUpdateValidationCodeV1 =

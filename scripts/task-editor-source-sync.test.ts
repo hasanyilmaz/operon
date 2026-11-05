@@ -17,6 +17,9 @@ import { EditorState } from '@codemirror/state';
 import { editorInfoField } from 'obsidian';
 import { NativeLightboxLifecycle } from '../src/ui/native-lightbox-lifecycle';
 import { lightboxBodyStart, nativeLightboxBodyExtension } from '../src/ui/native-lightbox-body';
+import { DEFAULT_SETTINGS } from '../src/types/settings';
+import { DEFAULT_FILENAME_RULE, filenameSuggestionAfterTitleEdit } from '../src/core/filename-rule';
+import { t } from '../src/core/i18n';
 
 const state = (fields: Record<string, string> = {}): TaskEditorSourceState => ({ description: 'before', checkbox: 'open', tags: ['one'], fieldValues: { operonId: 'task1', priority: 'A', note: 'old note', ...fields } });
 const baseline = state();
@@ -243,7 +246,7 @@ function contentFixture() {
   checkbox: baseline.checkbox, persistedCheckbox: baseline.checkbox, tags: [...baseline.tags], persistedTags: [...baseline.tags],
   fieldValues: { ...baseline.fieldValues }, persistedFieldValues: { ...baseline.fieldValues }, existingTask: { filePath: 'old.md', lineNumber: 4 },
   readSource: async () => ({ state: { ...state({ priority: 'B', note: 'new note' }), description: 'remote' }, filePath: 'new.md', lineNumber: 17 }),
-  getCompactTextSourcePath: () => 'old.md', syncExistingTaskCanonicalState() {}, refreshDesktopPropertyRows: () => refreshes++, refreshSchedulingDraftControls() {}, refreshMobileCoreButtons() {},
+  getCompactTextSourcePath: () => 'old.md', syncExistingTaskCanonicalState() {}, refreshDesktopPropertyRows: () => refreshes++, refreshSchedulingDraftControls() {}, refreshMobileCoreButtons() {}, refreshFileTaskName() {},
  });
  return { editor, refreshes: () => refreshes };
 }
@@ -404,4 +407,130 @@ test('initial presentation joins existing source and latest property work withou
  editor.loadDesktopFileProperties = () => { reads++; return new Promise<void>(resolve => newerDone = resolve); };
  editor.refreshDesktopFileProperties(); propertiesDone(); await Promise.resolve(); await Promise.resolve();
  assert.equal(ready, false); newerDone(); await opening; assert.equal(reads, 2);
+});
+
+const NameEditor = methods('src/ui/task-editor-content.ts', ['editsFileTaskTitle', 'editableName', 'setEditableName', 'renderFileTaskNameRow']);
+const TitleIntent = methods('main.ts', ['applyTaskEditorSaveIntentToPayload']);
+test('enabled editor name edits and clears the canonical mapped property, never the filename', () => {
+ const editor = new NameEditor(), intent = new TitleIntent();
+ Object.assign(editor, { settings: { fileTaskDisplayTitleEnabled: true }, onRenameFileTask() {}, description: 'slug', fieldValues: { fileTaskDisplayTitle: 'Before' } });
+ for (const title of ['After', '']) {
+  editor.setEditableName(title);
+  assert.equal(editor.description, 'slug');
+  assert.equal(editor.editableName, title);
+  const payload: Record<string, string> = { operonId: 'task001' };
+  intent.applyTaskEditorSaveIntentToPayload(payload, { fileTaskDisplayTitleChange: editor.fieldValues.fileTaskDisplayTitle });
+  assert.deepEqual(payload, { operonId: 'task001', fileTaskDisplayTitle: title });
+ }
+});
+test('disabled title setting and inline tasks retain description editing', () => {
+ for (const file of [true, false]) {
+  const editor = new NameEditor();
+  Object.assign(editor, { settings: { fileTaskDisplayTitleEnabled: !file }, ...(file ? { onRenameFileTask() {} } : {}), description: 'slug', fieldValues: { fileTaskDisplayTitle: 'Before' } });
+  editor.setEditableName('New filename');
+  assert.equal(editor.description, 'New filename'); assert.equal(editor.fieldValues.fileTaskDisplayTitle, 'Before');
+ }
+});
+test('external title refresh changes the field without invoking title-edit policy', async () => {
+ const { editor } = contentFixture(); let suggestions = 0;
+ editor.editsFileTaskTitle = true;
+ editor.onFileTaskTitleChanged = () => { suggestions++; };
+ editor.readSource = async () => ({ state: state({ fileTaskDisplayTitle: 'External title' }), filePath: 'old.md', lineNumber: 0 });
+ await editor.refreshTaskSource();
+ assert.equal(editor.fieldValues.fileTaskDisplayTitle, 'External title'); assert.equal(suggestions, 0);
+});
+
+const SavedTitleEditor = methods('src/ui/task-editor-content.ts', ['persistEditorState', 'editsFileTaskTitle', 'editableName', 'setEditableName', 'renameFileTask'], {
+ t,
+ localNow: () => '2026-10-25T02:00:00', parseRepeatRule: () => null,
+ isManagedTaskFieldCanonicalKey: () => true,
+ buildTaskEditorOperonField: (key: string, value: string) => ({ key, value, rawValue: value, sourceKey: key, type: 'text', isCanonical: true }),
+ serializeTask, isTaskEditorSaveCommit: (value: object) => 'canonicalState' in value,
+});
+function savedTitleEditor() {
+ const editor = new SavedTitleEditor(), events: string[] = [], policyTitles: string[] = [];
+ const suggestion: { rendered: number; current: { filename: string; canCommit: () => boolean } | null } = { rendered: 0, current: null };
+ const values = { operonId: 'task001', fileTaskDisplayTitle: 'Pre-existing drift' };
+ Object.assign(editor, { settings: { ...DEFAULT_SETTINGS, fileTaskDisplayTitleEnabled: true }, onRenameFileTask() {},
+  description: 'slug', persistedDescription: 'slug', fieldValues: { ...values }, persistedFieldValues: { ...values },
+  checkbox: 'open', tags: [], inlineCompletionMode: 'keep-completed', checkboxBodyRevision: 0, fileBodyDraft: '',
+  existingTask: { filePath: 'slug.md', fields: [] }, submittedFileProperties: new Set(), editVersion: 1, fileTaskTitleRevision: 0,
+  syncDerivedRepeatFieldsFromDraft() {}, maybeApplyScheduledAutomationToEditorState() {},
+  syncCheckboxWithWorkflowStatus: () => ({ ok: true }), hasSemanticDraftChanges: () => true,
+  syncTrackingFieldsFromIndex() {}, getFilePropertyChanges: () => [], getInlinePropertyChanges: () => [],
+  applyCanonicalSaveCommit: (canonical: { fieldValues: Record<string, string> }) => { editor.persistedFieldValues = { ...canonical.fieldValues }; },
+  onSave: async (request: { fileTaskDisplayTitleChange?: string }) => {
+   events.push('saved');
+   return { canonicalState: { fieldValues: { ...editor.fieldValues } } };
+  },
+  onFileTaskTitleChanged: async (title: string) => {
+   policyTitles.push(title);
+   assert.equal(events.at(-1), 'saved', 'title must be committed before asking or renaming');
+   events.push('policy');
+   return filenameSuggestionAfterTitleEdit(title, 'slug', 'ask', DEFAULT_FILENAME_RULE);
+  },
+  getCurrentIndexedTask: () => ({ description: 'slug', primary: { filePath: 'slug.md' } }),
+  getCompactTextSourcePath: () => 'slug.md',
+  refreshFileTaskName() {},
+  fileTaskNameRow: suggestion,
+  renderFileTaskNameRow() { suggestion.current = null; },
+  renderFileTaskRenameRow(value: { filename: string }, canCommit: () => boolean) { suggestion.rendered++; suggestion.current = { filename: value.filename, canCommit }; },
+ });
+ return { editor, events, policyTitles, suggestion };
+}
+test('suggestion follows a committed Operon edit, never pre-existing drift', async () => {
+ const { editor, events, policyTitles, suggestion } = savedTitleEditor();
+ await editor.persistEditorState();
+ assert.equal(suggestion.rendered, 0); assert.deepEqual(events, ['saved']);
+ editor.fieldValues.fileTaskDisplayTitle = 'Changed title';
+ await editor.persistEditorState();
+ assert.deepEqual(events, ['saved', 'saved', 'policy']); assert.equal(suggestion.rendered, 1);
+ editor.fieldValues.fileTaskDisplayTitle = 'slug';
+ await editor.persistEditorState();
+ assert.equal(suggestion.rendered, 1, 'matching derived filename never creates a suggestion');
+ editor.fieldValues.fileTaskDisplayTitle = '  Mobile saved title  ';
+ await editor.persistEditorState();
+ assert.equal(policyTitles.at(-1), 'Mobile saved title', 'mobile policy must receive the trimmed saved title');
+ editor.settings.fileTaskDisplayTitleEnabled = false;
+ editor.fieldValues.fileTaskDisplayTitle = 'Other title';
+ await editor.persistEditorState();
+ assert.equal(events.filter(event => event === 'policy').length, 3, 'disabled setting never runs title policy');
+});
+
+// These are the surviving UI revision guarantees, before rename dispatch.
+test('a newer title invalidates an old Ask action and keeps the current derived or edited name', async () => {
+ for (const filename of ['title-b', '02-custom-for-b']) {
+  const { editor, suggestion } = savedTitleEditor(); const renamed: string[] = [];
+  editor.onRenameFileTask = async (value: string) => { renamed.push(value); };
+  editor.setEditableName('Title A'); await editor.persistEditorState();
+  const old = suggestion.current!;
+  editor.setEditableName('Title B');
+  assert.equal(suggestion.current, null);
+  await assert.rejects(editor.renameFileTask('title-a', old.canCommit), { message: t('taskEditor', 'fileTaskRenameFailed') });
+  assert.deepEqual(renamed, []);
+  await editor.persistEditorState();
+  assert.equal(suggestion.current!.filename, 'title-b');
+  await editor.renameFileTask(filename, suggestion.current!.canCommit);
+  assert.deepEqual(renamed, [filename]);
+ }
+});
+test('delayed save or suggestion for A cannot restore a prompt after B is entered', async () => {
+ for (const boundary of ['save', 'suggestion']) {
+  const { editor, suggestion } = savedTitleEditor();
+  let release!: () => void, entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const ready = new Promise<void>(resolve => { entered = resolve; });
+  const method = boundary === 'save' ? 'onSave' : 'onFileTaskTitleChanged';
+  const original = editor[method]; let first = true;
+  editor[method] = async (...args: unknown[]) => {
+   const result = await original(...args);
+   if (first) { first = false; entered(); await gate; }
+   return result;
+  };
+  editor.setEditableName('Title A'); const saving = editor.persistEditorState();
+  await ready; editor.setEditableName('Title B'); release(); await saving;
+  assert.equal(suggestion.current, null);
+  await editor.persistEditorState();
+  assert.equal(suggestion.current!.filename, 'title-b');
+ }
 });
