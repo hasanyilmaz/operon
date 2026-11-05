@@ -1,33 +1,37 @@
+import { renderStatusDockTaskTitle, renderStatusDockSessionDuration, statusDockSessionKey } from './status-dock-card-content';
+import { normalizeStatusDockSections, isStatusDockSectionEnabled } from '../types/status-dock-sections';
 import { Notice, setIcon } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { TrackerSession } from '../types/tracker';
-import { resolveStatusDockClickAction, resolveTaskDisplayIcon, type OperonSettings } from '../types/settings';
+import { resolveTaskDisplayIcon, type OperonSettings } from '../types/settings';
 import { asHTMLElement, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
-import { normalizeTaskFieldColor, resolveTaskStatusIconColorForTask } from '../core/task-color-source';
+import { resolveTaskStatusIconColorForTask } from '../core/task-color-source';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
-import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, closeBoundOperonHoverTooltips } from './operon-hover-tooltip';
 import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskContextualHoverMenu, isTaskContextualHoverMenuActive } from './contextual-hover-menu';
 import { isFloatingPanelTargetForRoot, closeFloatingPanelsForRoot, hasFloatingPanelForRoot } from './field-pickers/common';
-import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import type { StatusDockSessionActions, StatusDockSessionCard } from './status-dock-session-card';
 import type { StatusDockTaskScope, StatusDockTaskScopes } from './status-dock-task-scope';
 
 type DockOwnerWindow = Window & { Node: typeof Node; ResizeObserver: typeof ResizeObserver };
 
-type Row = { el: HTMLElement; icon: HTMLButtonElement; name: HTMLButtonElement; timer: HTMLButtonElement; signature: string };
+type DockListScope = StatusDockTaskScope | 'history';
+type Row = { duration?: HTMLButtonElement; session?: TrackerSession; el: HTMLElement; icon: HTMLButtonElement; name: HTMLButtonElement; timer: HTMLButtonElement; signature: string };
 
 /** One owner-window list, with no expiry or persisted UI state. */
 export class StatusDockTaskList {
  private readonly owner: DockOwnerWindow;
  private readonly panel: HTMLElement;
  private readonly controls: HTMLElement;
- private readonly divider: HTMLElement;
- private readonly buttons = new Map<StatusDockTaskScope, HTMLButtonElement>();
+ private readonly extraControls = new Map<'pinned' | 'modified' | 'history', HTMLElement>();
+ private sectionOrder = '';
+ private readonly buttons = new Map<DockListScope, HTMLButtonElement>();
  private readonly rows = new Map<string, Row>();
- private scopes: StatusDockTaskScopes = { overdue: [], today: [] };
- private active: StatusDockTaskScope | null = null;
+ private scopes: Record<StatusDockTaskScope, readonly IndexedTask[]> = { overdue: [], today: [], pinned: [], modified: [] };
+ private history: readonly TrackerSession[] = [];
+ private active: DockListScope | null = null;
  private queuedSession: TrackerSession | null = null;
  private disposed = false;
  private busy = 0;
@@ -38,6 +42,9 @@ export class StatusDockTaskList {
  constructor(private readonly host: HTMLElement, private readonly options: {
   getSettings: () => OperonSettings;
   getTask: (id: string) => IndexedTask | null | undefined;
+  isTaskInScope?: (scope: StatusDockTaskScope, id: string) => boolean;
+  isSessionCurrent?: (session: TrackerSession) => boolean;
+  startHistoryTimer?: (id: string, canCommit: () => boolean) => Promise<unknown>;
   isTracking: (id: string) => boolean;
   toggleTimer: (id: string, canCommit: () => boolean) => Promise<unknown>;
   actions: StatusDockSessionActions;
@@ -45,15 +52,20 @@ export class StatusDockTaskList {
  }) {
   this.owner = getOwnerWindow(host) as DockOwnerWindow;
   this.controls = host.createDiv('operon-status-dock-scopes');
+  this.controls.dataset.statusDockSection = 'overdueToday';
   host.insertBefore(this.controls, host.querySelector('.operon-status-dock-tracker'));
-  for (const [scope, icon] of [['overdue', 'calendar-search'], ['today', 'zap']] as const) {
-   const button = this.controls.createEl('button', { cls: 'operon-status-dock-action', attr: { type: 'button', 'aria-expanded': 'false' } });
+  for (const [scope, icon] of [['overdue', 'calendar-search'], ['today', 'zap'], ['pinned', 'pin'], ['modified', 'monitor-cog'], ['history', 'file-clock']] as const) {
+   let controls = this.controls;
+   if (scope === 'pinned' || scope === 'modified' || scope === 'history') {
+    controls = host.createDiv('operon-status-dock-scopes'); controls.dataset.statusDockSection = scope;
+    this.extraControls.set(scope, controls);
+   }
+   const button = controls.createEl('button', { cls: 'operon-status-dock-action', attr: { type: 'button', 'aria-expanded': 'false' } });
    setIcon(button, icon);
    button.addEventListener('click', event => { event.stopPropagation(); this.toggle(scope); });
    this.buttons.set(scope, button);
   }
-  this.divider = this.controls.createSpan('operon-status-dock-divider');
-  this.divider.setAttribute('aria-hidden', 'true');
+
   this.panel = host.createDiv('operon-status-dock-task-list'); this.panel.hidden = true;
   this.panel.setAttribute('role', 'group');
   this.owner.document.addEventListener('click', this.onClick, true);
@@ -66,14 +78,25 @@ export class StatusDockTaskList {
   this.observer.observe(host); this.observer.observe(this.panel);
   this.update(this.scopes);
  }
- private label(scope: StatusDockTaskScope): string {
+ private label(scope: DockListScope): string {
+  if (scope === 'pinned' || scope === 'modified' || scope === 'history') return t('settings', 'statusDockSection_' + scope);
   return t('modals', scope === 'overdue' ? 'taskFinderOverdue' : 'taskFinderHappensToday');
  }
- update(scopes: StatusDockTaskScopes): void {
+ update(scopes: StatusDockTaskScopes, history: readonly TrackerSession[] = this.history): void {
   if (this.disposed) return;
-  this.scopes = scopes;
+  const sections = this.options.getSettings().statusDockSections;
+  const order = normalizeStatusDockSections(sections).map(section => section.id).join(',');
+  const section = (scope: DockListScope) => scope === 'overdue' || scope === 'today' ? 'overdueToday' : scope;
+  const enabled = (scope: DockListScope) => isStatusDockSectionEnabled(sections, section(scope));
+  if (this.sectionOrder !== order) for (const controls of [this.controls, ...this.extraControls.values()]) closeBoundOperonHoverTooltips(controls);
+  if (this.active && (!enabled(this.active) || (this.sectionOrder && this.sectionOrder !== order))) this.close();
+  this.sectionOrder = order;
+  for (const scope of this.buttons.keys()) if (scope !== 'history') this.scopes[scope] = enabled(scope) ? scopes[scope] ?? [] : [];
+  this.history = enabled('history') ? history : [];
+  const current = { ...this.scopes, history: this.history };
   for (const [scope, button] of this.buttons) {
-   button.hidden = scopes[scope].length === 0;
+   if (!current[scope].length) closeBoundOperonHoverTooltips(button);
+   button.hidden = current[scope].length === 0;
    button.setAttribute('aria-expanded', String(this.active === scope));
    button.classList.toggle('is-active', this.active === scope);
    const label = this.label(scope);
@@ -83,22 +106,25 @@ export class StatusDockTaskList {
     bindOperonHoverTooltip(button, { title: label, taskColor: null });
    }
   }
-  this.controls.hidden = this.divider.hidden = !scopes.overdue.length && !scopes.today.length;
-  if (!this.active || this.busy) return;
-  if (!scopes[this.active].length) { this.close(); return; }
+  this.controls.hidden = !current.overdue.length && !current.today.length;
+  for (const [scope, controls] of this.extraControls) controls.hidden = !current[scope].length;
+  if (!this.active) return;
+  if (!current[this.active].length) { this.close(); return; }
   this.panel.setAttribute('aria-labelledby', this.buttons.get(this.active)?.getAttribute('aria-labelledby') ?? '');
-  const tasks = scopes[this.active];
-  const ids = new Set(tasks.map(task => task.operonId));
+  const entries: {key: string; task: IndexedTask; session?: TrackerSession}[] = this.active === 'history'
+   ? this.history.map(session => ({key: statusDockSessionKey(session), task: session.task, session}))
+   : this.scopes[this.active].map(task => ({key: task.operonId, task}));
+  const ids = new Set(entries.map(entry => entry.key));
   for (const [id, row] of this.rows) if (!ids.has(id)) { this.disposeRow(row); this.rows.delete(id); }
   const settings = this.options.getSettings();
   const settingsKey = JSON.stringify([settings.language, settings.statusDockClickAction, settings.taskIconClickAction,
    settings.fallbackTaskIconSource, settings.taskStatusIconColorSource, settings.fallbackStateIcons,
    settings.pipelines, settings.priorities, settings.contextualMenuActionAllowlist, settings.contextualMenuSurfaceActionMatrix]);
-  tasks.forEach((task, index) => {
-   let row = this.rows.get(task.operonId);
-   if (!row) { row = this.createRow(task.operonId); this.rows.set(task.operonId, row); }
+  entries.forEach(({key, task, session}, index) => {
+   let row = this.rows.get(key);
+   if (!row) { row = this.createRow(task.operonId, session); this.rows.set(key, row); }
    this.renderTimer(row, task.operonId);
-   const signature = JSON.stringify([task.description, task.checkbox, task.fieldValues, settingsKey]);
+   const signature = JSON.stringify([task.description, task.checkbox, task.fieldValues, session?.durationSeconds, settingsKey]);
    if (row.signature !== signature) { row.signature = signature; this.renderRow(row, task, settings); }
    // Move only when order actually changed; retain focus, hover menu anchors and popup ownership.
    const child = this.panel.children[index] ?? null;
@@ -110,10 +136,10 @@ export class StatusDockTaskList {
   });
   this.schedulePosition();
  }
- toggle(scope: StatusDockTaskScope): void {
+ toggle(scope: DockListScope): void {
   if (this.disposed) return;
   if (this.active === scope) { this.close(); return; }
-  if (!this.scopes[scope].length) return;
+  if (!(scope === 'history' ? this.history : this.scopes[scope]).length) return;
   if (!this.active) this.queuedSession = this.options.sessionCard.takeSession() ?? this.queuedSession;
   this.revision++; this.clearRows(); this.active = scope; this.panel.hidden = false;
   this.panel.scrollTop = 0; this.update(this.scopes); this.position();
@@ -132,7 +158,7 @@ export class StatusDockTaskList {
  private readonly onClick = (event: MouseEvent): void => {
   if (!this.active || !(event.target instanceof this.owner.Node)) return;
   const target = event.target;
-  if (this.panel.contains(target) || this.controls.contains(target)) return;
+  if (this.panel.contains(target) || this.controls.contains(target) || [...this.extraControls.values()].some(controls => controls.contains(target))) return;
   if (this.host.contains(target)) { this.close(); return; }
   // Menus/pickers and editors live in window-owned portals outside their originating card.
   const element = asHTMLElement(target) ?? target.parentElement;
@@ -147,6 +173,7 @@ export class StatusDockTaskList {
   event.preventDefault(); event.stopPropagation();
   const button = this.buttons.get(this.active); this.close(); button?.focus();
  };
+ refreshPosition(): void { this.schedulePosition(); }
  private readonly onMove = (): void => { if (this.host.classList.contains('is-dragging')) this.schedulePosition(); };
  private readonly schedulePosition = (): void => {
   if (!this.active || this.disposed || this.frame !== null) return;
@@ -184,26 +211,49 @@ export class StatusDockTaskList {
   this.panel.style.left = `${Math.max(left + 12 - rect.left - border, Math.min(-border, left + width - 12 - panel.width - rect.left - border))}px`;
   this.panel.style.top = this.below ? `${rect.height + 8}px` : `${-panel.height - 8}px`;
  }
- private createRow(id: string): Row {
+ private captureSectionGuard(id: string, session?: TrackerSession): () => boolean {
+  const scope = this.active;
+  const source = session ? this.options.getTask(id)?.fieldValues['trackers'] ?? '' : null;
+  const order = normalizeStatusDockSections(this.options.getSettings().statusDockSections).map(section => section.id).join(',');
+  return () => {
+   const sections = this.options.getSettings().statusDockSections;
+   return !this.disposed && !this.owner.closed && !!scope && this.active === scope
+    && (!session || !!this.options.getTask(id) && (this.options.getTask(id)?.fieldValues['trackers'] ?? '') === source)
+    && (scope === 'history' ? !!session && (this.options.isSessionCurrent?.(session) ?? this.history.some(current => statusDockSessionKey(current) === statusDockSessionKey(session))) : (this.options.isTaskInScope?.(scope, id) ?? this.scopes[scope].some(task => task.operonId === id)))
+    && isStatusDockSectionEnabled(sections, scope === 'overdue' || scope === 'today' ? 'overdueToday' : scope)
+    && normalizeStatusDockSections(sections).map(section => section.id).join(',') === order;
+  };
+ }
+ private createRow(id: string, session?: TrackerSession): Row {
   const el = this.panel.createDiv('operon-status-dock-session-card operon-status-dock-scope-card');
   const icon = el.createEl('button', { cls: 'operon-status-dock-session-icon', attr: { type: 'button' } });
+  const duration = session ? el.createEl('button', {cls: 'operon-status-dock-time', attr: {type: 'button'}}) : undefined;
+  const captureGuard = () => {
+   const revision = this.revision, sectionGuard = this.captureSectionGuard(id, session);
+   return () => sectionGuard() && revision === this.revision && el.isConnected;
+  };
+  duration?.addEventListener('click', event => { event.stopPropagation();
+   const guard = captureGuard();
+   if (!this.busy && session && guard()) void this.run(() => this.options.actions.openSession(session, guard)); });
   const name = el.createEl('button', { cls: 'operon-status-dock-name', attr: { type: 'button' } });
-  icon.addEventListener('click', event => { event.stopPropagation(); void this.run(() => this.options.actions.clickIcon(id)); });
-  name.addEventListener('click', event => { event.stopPropagation(); void this.run(() => this.options.actions.openTask(id, name)); });
+  icon.addEventListener('click', event => { event.stopPropagation(); if (captureGuard()()) void this.run(() => this.options.actions.clickIcon(id)); });
+  name.addEventListener('click', event => { event.stopPropagation(); if (captureGuard()()) void this.run(() => this.options.actions.openTask(id, name)); });
   const timer = el.createEl('button', { cls: 'operon-status-dock-scope-timer', attr: { type: 'button' } });
   timer.addEventListener('click', event => {
    event.stopPropagation();
    if (timer.disabled || this.busy) return;
    const revision = this.revision, wasTracking = this.options.isTracking(id);
-   const canCommit = () => !this.disposed && revision === this.revision && el.isConnected
+   const sectionGuard = this.captureSectionGuard(id, session);
+   const canCommit = () => sectionGuard() && !this.disposed && revision === this.revision && el.isConnected
     && !!this.options.getTask(id);
    timer.disabled = true;
    void this.run(async () => {
-    try { if (this.options.isTracking(id) === wasTracking) await this.options.toggleTimer(id, canCommit); }
+    try { if (session) { if (canCommit()) await this.options.startHistoryTimer?.(id, canCommit); }
+     else if (this.options.isTracking(id) === wasTracking) await this.options.toggleTimer(id, canCommit); }
     finally { timer.disabled = false; }
    });
   });
-  return { el, icon, name, timer, signature: '' };
+  return { el, icon, name, timer, duration, session, signature: '' };
  }
  private replaceIcon(element: HTMLElement, icon: string): void {
   // Obsidian appends SVGs; retain accessible labels while replacing the old glyph.
@@ -211,7 +261,7 @@ export class StatusDockTaskList {
   setIcon(element, icon);
  }
  private renderTimer(row: Row, id: string): void {
-  const tracking = this.options.isTracking(id);
+  const tracking = !row.session && this.options.isTracking(id);
   const label = t('tooltips', tracking ? 'stopTimer' : 'startTimer');
   if (row.timer.dataset.timerLabel === label) return;
   row.timer.dataset.timerLabel = label;
@@ -225,16 +275,11 @@ export class StatusDockTaskList {
   this.replaceIcon(row.icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox));
   row.icon.style.color = resolveTaskStatusIconColorForTask(task, settings) ?? '';
   setAccessibleLabelWithoutTooltip(row.icon, getTaskIconActionLabel(settings, task.checkbox));
-  row.name.empty(); renderCompactTaskMarkdown(row.name, { value: task.description || task.operonId, mode: 'visual-only' });
-  const behavior = resolveStatusDockClickAction(settings.statusDockClickAction);
-  const openLabel = t('settings', behavior === 'source' ? 'taskFinderResultSourceOnly' : behavior === 'editor' ? 'taskFinderResultEditorOnly' : 'taskFinderResultSourceAndEditor');
-  setAccessibleLabelWithoutTooltip(row.name, `${openLabel}: ${task.description}`);
-  cleanupOperonHoverTooltips(row.name);
-  const preference = (): 'auto' | 'above' => this.below ? 'auto' : 'above';
-  bindOperonHoverTooltip(row.name, { get preferredVertical() { return preference(); }, title: openLabel, content: task.description, taskColor: normalizeTaskFieldColor(task.fieldValues['taskColor']) });
+  renderStatusDockTaskTitle(row.name, task, settings);
+  if (row.duration && row.session) renderStatusDockSessionDuration(row.duration, {...row.session, task}, () => this.below ? 'auto' : 'above');
   bindTaskContextualHoverMenu(row.icon, {
-   followAnchor: true, surface: 'statusDock', menuKey: `status-dock-scope:${task.operonId}`,
-   captureWriteGuard: () => { const revision = this.revision; return () => !this.disposed && revision === this.revision && row.el.isConnected; },
+   followAnchor: true, surface: 'statusDock', menuKey: `status-dock-scope:${row.session ? statusDockSessionKey(row.session) : task.operonId}`,
+   captureWriteGuard: () => { const revision = this.revision, sectionGuard = this.captureSectionGuard(task.operonId, row.session); return () => sectionGuard() && !this.disposed && revision === this.revision && row.el.isConnected; },
    taskId: task.operonId, getTask: () => this.options.getTask(task.operonId) ?? null, getSettings: this.options.getSettings,
    onAction: async (...args) => { await this.run(async () => { await this.options.actions.contextualAction(...args); }); },
    isPinned: () => this.options.actions.isPinned(task.operonId), hasSubtasks: () => this.options.actions.hasSubtasks(task.operonId),
@@ -258,6 +303,7 @@ export class StatusDockTaskList {
   this.owner.removeEventListener('resize', this.schedulePosition);
   this.owner.visualViewport?.removeEventListener('resize', this.schedulePosition);
   this.owner.visualViewport?.removeEventListener('scroll', this.schedulePosition);
+  for (const controls of this.extraControls.values()) { cleanupOperonHoverTooltips(controls); controls.remove(); }
   cleanupOperonHoverTooltips(this.controls); this.controls.remove(); this.panel.remove();
  }
 }

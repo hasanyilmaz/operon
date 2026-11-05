@@ -741,6 +741,10 @@ export class FilterSetModal extends Modal {
 					if (button.isConnected) button.setAttribute('aria-expanded', 'false');
 				},
 				variantClassName: 'operon-filter-field-picker',
+				...(button.closest('.operon-filter-set-modal-shell') === this.modalEl ? {
+					floatingHost: this.modalEl, floatingScrollHost: this.contentEl,
+					constrainToFloatingHost: true, fitToHostViewport: true,
+				} : {}),
 				matchWidth: Math.max(button.getBoundingClientRect().width, 280),
 				repositionOnScroll: true,
 				repositionOnWindowResize: true,

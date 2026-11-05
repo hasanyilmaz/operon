@@ -26,8 +26,14 @@ export interface PoolGroupSelection {
 
 export interface CanvasPropertyValuePoolPreferences {
 	tasks?: PropertyPoolTaskBridge;
-	edit(edit: PropertyPoolEdit, expected: unknown): Promise<void>;
+	edit(edit: PropertyPoolEdit, expected: unknown, canCommit?: () => boolean): Promise<void>;
 	subscribe(listener: () => void): () => void;
+}
+
+export interface PropertyPoolPanelState {
+ query: string; scope: string | null; allValues: boolean; limit: number; selection: number;
+ selectedValue: PropertyPoolFavorite | null; selectedProperty: string | null;
+ scroll: number; pinned: boolean; point: { x: number; y: number } | null;
 }
 
 export interface PropertyPoolSurface {
@@ -79,6 +85,22 @@ export class SurfacePropertyValuePool extends Component {
  private groupSelection: PoolGroupSelection | null = null;
  private restorePool: (() => void) | null = null;
  private selectionBusy = false;
+
+ capturePanelState(): PropertyPoolPanelState | null {
+  if (!this.panel || !this.current() || this.groupSelection) return null;
+  return { query: this.search?.value ?? this.query, scope: this.scope, allValues: this.allValues, limit: this.limit,
+   selection: this.selection, selectedValue: this.selectedValue, selectedProperty: this.selectedProperty,
+   scroll: this.list?.scrollTop ?? 0, pinned: this.pinned, point: this.panelPoint };
+ }
+ restorePanelState(state: PropertyPoolPanelState): void {
+  if (!this.active || !this.surface.isCurrent() || this.groupSelection) return;
+  if (!this.panel) this.open(false);
+  if (!this.search || !this.list) return;
+  this.query = this.search.value = state.query; this.scope = state.scope; this.allValues = state.allValues;
+  this.limit = state.limit; this.selection = state.selection; this.selectedValue = state.selectedValue;
+  this.selectedProperty = state.selectedProperty; this.pinned = state.pinned; this.panelPoint = state.point;
+  this.updatePin(); this.refresh(); this.list.scrollTop = state.scroll; this.position();
+ }
 
  openForGroup(context: PoolGroupSelection): boolean {
   if (!this.active || this.busy || this.groupSelection || !this.button || !context.current()) return false;
@@ -175,7 +197,7 @@ export class SurfacePropertyValuePool extends Component {
   if (!this.panel) this.open();
   this.panel?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
  }
-	private open(): void {
+	private open(focus = true): void {
 		if (!this.active || !this.surface.isCurrent() || !this.button || this.panel) return;
 		this.panelFile = this.surface.file(); this.panelPath = this.panelFile?.path; this.panelIdentity = this.surface.identity(); this.scope = null; this.allValues = false; this.query = ''; this.limit = 25; this.selection = 0; this.selectedValue = null; this.selectedProperty = null;
 		this.pinned = false; this.panelPoint = null; this.values = null; this.busy = false; this.generation++;
@@ -255,7 +277,7 @@ export class SurfacePropertyValuePool extends Component {
 		session.register(() => { if (timer !== null) this.win.clearTimeout(timer); });
 		scheduleDateCheck();
 		if (this.groupSelection) { this.selectScope(null, true, true); search.focus({ preventScroll: true }); }
-  else { this.selectDefaultScope(false); (this.touchInput ? panel : search).focus({ preventScroll: true }); }
+  else { this.selectDefaultScope(false); if (focus) (this.touchInput ? panel : search).focus({ preventScroll: true }); }
 	}
 
 	private invalidateSources(): void {
@@ -457,12 +479,13 @@ export class SurfacePropertyValuePool extends Component {
 		const raw = this.settings.propertyValuePool;
 		if (!readPropertyPoolPreferences(raw).writable || (saved && !this.values?.resolveFavorite(favorite))) return;
 		const generation = this.generation;
+  const canCommit = () => generation === this.generation && !!this.panel && this.current();
 		const { key, type, value, label, priorityId, pipelineId, statusId } = favorite;
 		const storedFavorite: PropertyPoolFavorite = { key, type, value, label,
 			...(priorityId ? { priorityId } : {}), ...(pipelineId ? { pipelineId } : {}), ...(statusId ? { statusId } : {}) };
 		this.busy = true; this.refresh();
-		try { await this.preferences.edit({ kind: 'favorite', favorite: storedFavorite, saved }, raw); }
-		catch (error) { new Notice(t('settings', 'propertyPoolSaveFailed')); console.error('Operon: Property Value Pool save failed', error); }
+		try { await this.preferences.edit({ kind: 'favorite', favorite: storedFavorite, saved }, raw, canCommit); }
+		catch (error) { if (!canCommit()) return; new Notice(t('settings', 'propertyPoolSaveFailed')); console.error('Operon: Property Value Pool save failed', error); }
 		finally { if (generation === this.generation) { this.busy = false; this.refresh(); } }
 	}
 

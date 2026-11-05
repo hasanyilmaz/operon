@@ -40,6 +40,7 @@ import {
 	getTaskFinderPriorityRank,
 	getTaskHappensTodayPriority,
 	getTaskModifiedTime,
+ getRecentModifiedTasks,
 	getTaskOverdueDate,
 	getTaskSearchBoxRecentModifiedCutoff,
 	getTaskSearchBoxRecentModifiedDays,
@@ -1102,17 +1103,8 @@ export class TaskFinderModal extends Modal {
 	}
 
 	private computeRecentModifiedResults(scopedTasks: IndexedTask[]): TaskFinderResult[] {
-		const cutoff = this.getRecentModifiedCutoff();
-		return scopedTasks
-			.map(task => ({ task, modifiedTime: getTaskModifiedTime(task) }))
-			.filter(entry => entry.modifiedTime >= cutoff)
-			.sort((left, right) => {
-				const modifiedDiff = right.modifiedTime - left.modifiedTime;
-				if (modifiedDiff !== 0) return modifiedDiff;
-				return left.task.description.localeCompare(right.task.description, undefined, { sensitivity: 'base' })
-					|| left.task.operonId.localeCompare(right.task.operonId, undefined, { sensitivity: 'base' });
-			})
-			.map(entry => ({ kind: 'task', task: entry.task, score: entry.modifiedTime }));
+  return getRecentModifiedTasks(scopedTasks, this.getRecentModifiedCutoff())
+   .map(task => ({ kind: 'task', task, score: getTaskModifiedTime(task) }));
 	}
 
 	private computeOverdueResults(scopedTasks: IndexedTask[]): TaskFinderResult[] {

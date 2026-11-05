@@ -905,7 +905,8 @@ export class TaskCreatorModal extends Modal {
 			this.suppressOutsidePointerBriefly();
 			return;
 		}
-		if (this.modalEl.contains(target)) return;
+		// Picker dismissal may replace a descendant during document capture.
+		if (this.modalEl.contains(target) || event.composedPath().includes(this.modalEl)) return;
 
 		event.preventDefault();
 		event.stopPropagation();
@@ -1812,7 +1813,6 @@ export class TaskCreatorModal extends Modal {
 		for (const key of this.getVisibleToolbarFieldOrder()) {
 			const button = this.fieldButtonMap.get(key);
 			if (!button) continue;
-			button.empty();
 			this.syncFieldButtonActiveState(key);
    const warning = this.prepared?.field(key).readOnlyReason;
    button.toggleClass('is-property-warning', warning === 'automatic');
@@ -1823,16 +1823,18 @@ export class TaskCreatorModal extends Modal {
 			button.disabled = ruleAddDisabled;
 			button.setAttribute('aria-disabled', String(ruleAddDisabled));
 
-			const iconWrap = button.createSpan('operon-task-creator-tool-icon');
-			if (key === 'taskIcon' && this.draft.taskIcon.trim()) {
-				const icon = getIcon(this.draft.taskIcon.trim());
-				if (icon) {
-					iconWrap.appendChild(icon);
-				} else {
-					setIcon(iconWrap, this.resolveFieldIcon(key));
-				}
-			} else {
-				setIcon(iconWrap, this.resolveFieldIcon(key));
+			const taskIcon = key === 'taskIcon' ? this.draft.taskIcon.trim() : '';
+			const fallbackIcon = this.resolveFieldIcon(key);
+			const iconKey = JSON.stringify([taskIcon, fallbackIcon]);
+			const iconWrap = button.querySelector<HTMLElement>('.operon-task-creator-tool-icon')
+				?? button.createSpan('operon-task-creator-tool-icon');
+			// Closing a picker must not detach the SVG targeted by the next click.
+			if (iconWrap.dataset.creatorIcon !== iconKey) {
+				iconWrap.empty();
+				const icon = taskIcon ? getIcon(taskIcon) : null;
+				if (icon) iconWrap.appendChild(icon);
+				else setIcon(iconWrap, fallbackIcon);
+				iconWrap.dataset.creatorIcon = iconKey;
 			}
 			if (key === 'blockedBy') this.applyBlockedByAggregateState(button);
 			if (warning) bindPropertyReadOnlyWarning(button, this.getFieldLabel(key), warning, () => this.getThemeColor());

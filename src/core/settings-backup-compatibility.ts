@@ -176,6 +176,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'workspaceTweaksHideScrollbars',
 	'workspaceTweaksBackgroundDimming',
 	'workspaceTweaksLightboxSizes',
+	'statusDockSections',
 	'statusDockClickAction',
 	'statusDockMode',
 	'statusDockAlignment',
@@ -617,7 +618,7 @@ export function assertSettingsBackupCompatibilityRegistryExhaustive(settings: Op
 		if (declared.has(key)) throw new Error(`Duplicate settings backup compatibility key: ${key}`);
 		declared.add(key);
 		// Optional UI preferences are deliberately absent until the first explicit edit.
-		if (key !== 'statusDockClickAction' && key !== 'statusDockMode' && key !== 'statusDockAlignment' && key !== 'inlinePropertyDefinitions' && key !== 'propertyValuePool' && key !== 'contextualMenuActionOrder' && !(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
+		if (key !== 'statusDockSections' && key !== 'statusDockClickAction' && key !== 'statusDockMode' && key !== 'statusDockAlignment' && key !== 'inlinePropertyDefinitions' && key !== 'propertyValuePool' && key !== 'contextualMenuActionOrder' && !(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
 		const compatibility = SETTINGS_BACKUP_COMPATIBILITY_BY_KEY[key];
 		if (!compatibility || compatibility.groups.length === 0) {
 			throw new Error(`Unclassified settings backup compatibility key: ${key}`);

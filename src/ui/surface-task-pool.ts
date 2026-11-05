@@ -20,10 +20,14 @@ export interface TaskPoolPoint { x: number; y: number }
 export interface TaskPoolTarget { point: TaskPoolPoint; isCurrent(): boolean }
 export interface TaskPoolSurface<T extends TaskPoolTarget> {
  app: App; cards: TaskCardEmbeds; contentEl: HTMLElement;
- title(): string; addLabel(): string; unavailable(): string;
+ title(): string; addLabel?(): string; unavailable?(): string;
+ /** Fileless surfaces must provide a stable, view-owned session identity. */
+ identity?(): object;
+ capabilities?: { editTasks: boolean; directPlacement: boolean; dragPlacement: boolean };
  file(): TFile | null; isCurrent(): boolean; readOnly(): boolean;
- capture(): T | null; add(target: T, id: string): Promise<boolean>;
- dropPoint(hit: Element, point: TaskPoolPoint): TaskPoolPoint | null;
+ startPlacementDrag?(event: PointerEvent, task: IndexedTask, row: HTMLElement, place: (target: T) => Promise<void>, finish: () => void): () => void;
+ capture?(): T | null; add?(target: T, id: string): Promise<boolean>;
+ dropPoint?(hit: Element, point: TaskPoolPoint): TaskPoolPoint | null;
  menuSurface?: 'excalidrawTask';
  bindPanelTheme?(panel: HTMLElement, lifetime: Component): void;
 }
@@ -49,7 +53,8 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
  private busy = false;
  private signature = '';
  private panelFile: TFile | null = null;
- private panelPath = '';
+ private panelPath: string | undefined;
+ private panelIdentity: object | undefined;
  private sessionNumber = 0;
  private source: IndexedTask[] | null = null;
  private matches: IndexedTask[] = [];
@@ -62,15 +67,24 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
  constructor(private surface: TaskPoolSurface<T>) { super(); }
  private get cards() { return this.surface.cards; }
  private get win() { return getOwnerWindow(this.surface.contentEl); }
- private readonly canMutate = (): boolean => this.active && !!this.panel?.isConnected && this.surface.isCurrent() && !this.surface.readOnly()
-  && this.surface.file() === this.panelFile && this.panelFile?.path === this.panelPath;
+ private readonly isSessionCurrent = (): boolean => this.active && !!this.panel?.isConnected && this.surface.isCurrent()
+  && (!!this.panelFile || !!this.panelIdentity) && this.surface.file() === this.panelFile
+  && this.panelFile?.path === this.panelPath && this.surface.identity?.() === this.panelIdentity;
+ private readonly canMutate = (): boolean => this.isSessionCurrent() && !this.surface.readOnly() && this.surface.capabilities?.editTasks !== false;
+ private supportsPlacement(kind: 'directPlacement' | 'dragPlacement'): boolean {
+  return this.surface.capabilities?.[kind] !== false && !!this.surface.add
+   && (kind === 'dragPlacement' && !!this.surface.startPlacementDrag || !!this.surface.capture && (kind !== 'dragPlacement' || !!this.surface.dropPoint));
+ }
+ private canPlace(kind: 'directPlacement' | 'dragPlacement'): boolean {
+  return this.supportsPlacement(kind) && this.isSessionCurrent() && !this.surface.readOnly();
+ }
  onload(): void {
   this.active = true;
   this.register(this.cards.onRefresh(() => { this.settingsSnapshot = null; this.queryKey = ''; this.refresh(); }));
   this.sync();
  }
  protected get hasButton(): boolean { return !!this.button; }
- protected setButton(button: HTMLButtonElement | null): void {
+ setButton(button: HTMLButtonElement | null): void {
   if (this.button === button) return;
   if (this.button) { cleanupOperonHoverTooltips(this.button); this.button.onclick = null; }
   this.button = button;
@@ -81,10 +95,10 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   button.onclick = event => { event.stopPropagation(); if (this.panel) this.close(); else this.open(); };
  }
  sync(): void { if (this.active) this.refresh(); }
- private captureLease(): () => boolean {
+ private captureLease(allowed: () => boolean = this.canMutate): () => boolean {
   const session = this.sessionNumber, file = this.panelFile, path = this.panelPath;
   return () => session === this.sessionNumber && this.panelFile === file && this.surface.file() === file
-   && file?.path === path && this.canMutate();
+   && file?.path === path && this.isSessionCurrent() && allowed();
  }
  show(): void {
   if (!this.active || !this.surface.isCurrent()) return;
@@ -93,7 +107,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
  }
  private open(): void {
   if (!this.surface.isCurrent() || !this.button) return;
-  this.panelFile = this.surface.file(); this.panelPath = this.panelFile?.path ?? ''; this.pinned = false; this.panelPoint = null;
+  this.panelFile = this.surface.file(); this.panelPath = this.panelFile?.path; this.panelIdentity = this.surface.identity?.(); this.pinned = false; this.panelPoint = null;
   this.mode = 'all'; this.query = ''; this.selectedId = null; this.limit = 25; this.signature = ''; this.sessionNumber++;
   const session = this.session = new Component(); this.addChild(session);
   const panel = this.panel = this.surface.contentEl.ownerDocument.body.createDiv('operon-canvas-task-pool');
@@ -164,12 +178,12 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   else this.refresh();
   if (!this.panel || !this.matches.length) return;
   if (event.key === 'Enter') {
-   if (event.repeat || !this.canMutate()) return;
+   if (event.repeat || !this.canPlace('directPlacement')) return;
    const task = this.matches.find(task => task.operonId === this.selectedId);
    if (!task || this.cards.resolve(task.operonId).state !== 'ready') return;
-   const target = this.surface.capture();
+   const target = this.surface.capture?.();
    if (target) void this.add(target, task.operonId);
-   else new Notice(this.surface.unavailable());
+   else new Notice(this.surface.unavailable?.() ?? '');
    return;
   }
   const current = Math.max(0, this.matches.findIndex(task => task.operonId === this.selectedId));
@@ -204,7 +218,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
  }
  private refresh(): void {
   if (!this.panel || !this.list || !this.summary) return;
-  if (!this.surface.isCurrent() || this.surface.file() !== this.panelFile || this.panelFile?.path !== this.panelPath) { this.close(); return; }
+  if (!this.isSessionCurrent()) { this.close(); return; }
   this.position();
   if (this.cancelDrag || this.timer !== null) return;
   const state = this.cards.deps.getIndexState();
@@ -244,7 +258,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   setAccessibleLabelWithoutTooltip(icon, t('tooltips', 'cycleTaskStatus'));
   const lease = this.captureLease();
   const allowed = (): boolean => lease() && row.isConnected && this.cards.resolve(id).state === 'ready';
-  const access: TaskCardSurfaceAccess = { menuSurface: this.surface.menuSurface, canInteract: () => true,
+  const access: TaskCardSurfaceAccess = { menuSurface: this.surface.menuSurface, canInteract: () => this.isSessionCurrent() && row.isConnected,
    canChangeStatus: allowed, canEditFields: allowed, captureWriteGuard: () => allowed };
   if (deps) lifetime.addChild(new TaskCardControls(row, row, row, icon, id, { ...deps, app: this.surface.app, getSettings: this.cards.deps.getSettings,
    canMutate: allowed, surface: () => access, run: (taskId, allowed, action) => this.cards.run(taskId, allowed, action),
@@ -252,7 +266,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   }));
   const title = row.createEl('button', { cls: 'operon-canvas-task-pool-title', attr: { type: 'button' } });
   renderCompactTaskMarkdown(title, { app: this.surface.app, value: task.description || id, mode: 'visual-only' });
-  lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); if (row.dataset.dragged === 'true') { event.preventDefault(); delete row.dataset.dragged; return; } this.cards.activate(id, event.metaKey || event.ctrlKey); });
+  lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); if (row.dataset.dragged === 'true') { event.preventDefault(); delete row.dataset.dragged; return; } if (this.isSessionCurrent() && row.isConnected) this.cards.activate(id, event.metaKey || event.ctrlKey); });
   const meta = row.createDiv('operon-canvas-task-pool-meta');
   const indicators = this.mode === 'finished' ? ['duration', 'totalDuration'] : [];
   for (const key of indicators) {
@@ -274,23 +288,39 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
     },
    }); note.disabled = !this.canMutate(); meta.appendChild(note);
   }
-  const add = meta.createEl('button', { attr: { type: 'button' } }); setIcon(add, 'plus'); setAccessibleLabelWithoutTooltip(add, this.surface.addLabel()); add.disabled = !this.canMutate();
-  bindOperonHoverTooltip(add, { title: this.surface.addLabel(), taskColor: color });
-  lifetime.registerDomEvent(add, 'click', () => { const target = this.surface.capture(); if (target) void this.add(target, id); else new Notice(this.surface.unavailable()); });
-  lifetime.registerDomEvent(row, 'pointerdown', event => this.startDrag(event, task, row));
+  if (this.supportsPlacement('directPlacement')) {
+   const label = this.surface.addLabel?.() ?? '';
+   const add = meta.createEl('button', { attr: { type: 'button' } }); setIcon(add, 'plus'); setAccessibleLabelWithoutTooltip(add, label); add.disabled = !this.canPlace('directPlacement');
+   bindOperonHoverTooltip(add, { title: label, taskColor: color });
+   lifetime.registerDomEvent(add, 'click', () => {
+    if (!this.canPlace('directPlacement')) return;
+    const target = this.surface.capture?.(); if (target) void this.add(target, id); else new Notice(this.surface.unavailable?.() ?? '');
+   });
+  }
+  if (this.surface.startPlacementDrag) row.addClass('operon-kanban-pool-draggable');
+  if (this.supportsPlacement('dragPlacement')) lifetime.registerDomEvent(row, 'pointerdown', event => this.startDrag(event, task, row));
  }
- private async add(target: T, id: string): Promise<void> {
-  if (this.busy || !this.canMutate() || this.cards.resolve(id).state !== 'ready') return;
-  const lease = this.captureLease(), original = target;
+ private async add(target: T, id: string, kind: 'directPlacement' | 'dragPlacement' = 'directPlacement'): Promise<void> {
+  if (this.busy || !this.canPlace(kind) || this.cards.resolve(id).state !== 'ready') return;
+  const lease = this.captureLease(() => this.canPlace(kind)), original = target;
   target = { ...target, isCurrent: () => original.isCurrent() && lease() && this.cards.resolve(id).state === 'ready' };
   this.busy = true; const session = this.sessionNumber;
-  try { if (await this.surface.add(target, id)) { if (session === this.sessionNumber && !this.pinned) this.close(); } }
+  try { if (await this.surface.add?.(target, id)) { if (session === this.sessionNumber && !this.pinned) this.close(); } }
   finally { this.busy = false; }
  }
  private startDrag(event: PointerEvent, task: IndexedTask, row: HTMLElement): void {
   delete row.dataset.dragged;
-  if (event.pointerType === 'touch' || event.button !== 0 || !this.canMutate() || this.busy || (event.target as HTMLElement).closest('button:not(.operon-canvas-task-pool-title), a, input')) return;
-  const target = this.surface.capture(); if (!target) return;
+  if (this.surface.startPlacementDrag) {
+   if (!this.canPlace('dragPlacement') || this.busy || event.button !== 0 || event.isPrimary === false
+    || (event.target as HTMLElement).closest('button:not(.operon-canvas-task-pool-title), a, input')) return;
+   this.cancelDrag?.();
+   let ended = false;
+   const cleanup = this.surface.startPlacementDrag(event, task, row, target => this.add(target, task.operonId, 'dragPlacement'), () => { ended = true; this.cancelDrag = null; this.refresh(); });
+   this.cancelDrag = ended ? null : cleanup;
+   return;
+  }
+  if (event.pointerType === 'touch' || event.button !== 0 || !this.canPlace('dragPlacement') || this.busy || (event.target as HTMLElement).closest('button:not(.operon-canvas-task-pool-title), a, input')) return;
+  const target = this.surface.capture?.(); if (!target) return;
   event.preventDefault(); event.stopPropagation();
   const doc = row.ownerDocument, x = event.clientX, y = event.clientY;
   const lifetime = new Component(); lifetime.load();
@@ -311,10 +341,10 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
    if (next.pointerId !== event.pointerId) return;
    const moved = !!ghost; const hit = doc.elementFromPoint(next.clientX, next.clientY);
    cancel();
-   if (!moved || !hit || this.panel?.contains(hit) || !target.isCurrent() || !this.canMutate()) { this.refresh(); return; }
-   const point = this.surface.dropPoint(hit, { x: next.clientX, y: next.clientY });
+   if (!moved || !hit || this.panel?.contains(hit) || !target.isCurrent() || !this.canPlace('dragPlacement')) { this.refresh(); return; }
+   const point = this.surface.dropPoint?.(hit, { x: next.clientX, y: next.clientY });
    if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
-   target.point = { ...point }; void this.add(target, task.operonId);
+   target.point = { ...point }; void this.add(target, task.operonId, 'dragPlacement');
   };
   this.cancelDrag?.(); this.cancelDrag = cancel;
   doc.addEventListener('pointermove', move); doc.addEventListener('pointerup', up); doc.addEventListener('pointercancel', cancel); doc.addEventListener('pointerdown', cancel, true); this.win.addEventListener('blur', cancel);

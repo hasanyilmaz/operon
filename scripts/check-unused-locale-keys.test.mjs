@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
 	analyzeLocaleUsage,
@@ -179,4 +180,10 @@ test('locale audit reports locale I/O and JSON failures with exit code 2', t => 
 	});
 	assert.equal(exitCode, 2);
 	assert.match(errors.join('\n'), /Could not read English locale/u);
+});
+
+test('production translation calls resolve to existing source keys', () => {
+	const rootDir = fileURLToPath(new URL('..', import.meta.url));
+	const report = analyzeLocaleUsage({ rootDir });
+	assert.deepEqual(report.referencedMissing, []);
 });

@@ -13702,7 +13702,7 @@ body .operon-task-editor .operon-editor-description-actions .operon-editor-proje
 .operon-mobile-global-task-fab {
 	position: fixed;
 	right: max(18px, env(safe-area-inset-right, 0px));
-	bottom: max(18px, calc(18px + env(safe-area-inset-bottom, 0px)));
+	bottom: max(20dvh, calc(18px + env(safe-area-inset-bottom, 0px)));
 	z-index: 998;
 	display: inline-flex;
 	align-items: center;
@@ -15142,6 +15142,10 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	overflow: hidden;
 }
 
+.operon-filter-set-modal-shell > .operon-filter-field-picker-panel {
+	min-width: 0;
+}
+
 .operon-filter-name-input {
 	width: 100%;
 	max-width: none;
@@ -16142,6 +16146,11 @@ body :is(
 /* ============================================================
    Embedded Filter View (code block processor)
    ============================================================ */
+
+/* The filter owns its border; suppress Live Preview's extra code-block hover ring. */
+.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-operon {
+	--embed-block-shadow-hover: none;
+}
 
 .operon-embed {
 	border: 1px solid var(--background-modifier-border);
@@ -24529,20 +24538,43 @@ button.operon-kanban-toolbar-settings-button {
 	position: relative;
 }
 
+.operon-kanban-pool-controls {
+ position: absolute;
+ top: 50%;
+ right: 0;
+ transform: translateY(-50%);
+ z-index: 10;
+ display: flex;
+ flex-direction: column;
+ gap: 8px;
+}
+
 .operon-kanban-cell-height-controls {
 	position: absolute;
 	bottom: 83px;
-	right: 15px;
+	right: 0;
 	z-index: 10;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
+.operon-kanban-board.has-separated-pool-size-controls .operon-kanban-cell-height-controls {
+ top: 50%;
+ bottom: auto;
+ transform: translateY(-50%);
+ gap: var(--operon-kanban-pool-clearance);
+ pointer-events: none;
+}
+
+.operon-kanban-board.has-separated-pool-size-controls .operon-kanban-cell-height-button {
+ pointer-events: auto;
+}
+
 .operon-kanban-cell-width-controls {
 	position: absolute;
 	bottom: 23px;
-	right: 68px;
+	right: 53px;
 	z-index: 10;
 	display: flex;
 	gap: 8px;
@@ -37146,6 +37178,8 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	font-size: var(--font-ui-small); font-weight: 500; line-height: 1.35;
 	pointer-events: auto; box-sizing: border-box;
 }
+/* Empty optional sections leave no toolbar shell; transient session feedback remains independent. */
+.operon-status-dock.is-empty:not(.has-session-feedback) { display: none; }
 .operon-status-dock button {
 	border: 0; border-radius: 6px; box-shadow: none; background: transparent; color: inherit;
 	font: inherit; height: 28px; min-height: 28px; padding: 2px;
@@ -37153,12 +37187,18 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-status-dock button:hover:not(:disabled) { background: transparent; box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover, var(--background-modifier-border)); }
 .operon-status-dock button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
-.operon-status-dock button:disabled { opacity: .45; }
+.operon-status-dock button:disabled { opacity: .45; cursor: default; }
+.operon-status-dock button:not(:disabled):not(.operon-status-dock-grip) { cursor: pointer; }
 .operon-status-dock-task-area { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 0 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 2px; margin-block: -2px; }
 .operon-status-dock-task-area:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; border-radius: 6px; }
 .operon-status-dock-current-items, .operon-status-dock-current-item { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
 .operon-status-dock .operon-status-dock-task-area .operon-status-dock-reading { flex: 0 0 auto; }
 .operon-status-dock.has-calendar-tasks .operon-status-dock-tracker { max-width: calc(100% - 115px); flex-shrink: 0; }
+.operon-status-dock.has-two-calendar-sections .operon-status-dock-tracker { max-width: calc(100% - 149px); }
+/* Additional list sections wrap as units instead of squeezing calendar controls away. */
+.operon-status-dock.has-extra-task-lists { flex-wrap: wrap; height: auto; gap: 6px 5px; }
+.operon-status-dock.has-extra-task-lists .operon-status-dock-task-area { flex: 1 1 64px; min-width: min(64px, 100%); max-width: 100%; }
+.operon-status-dock.has-extra-task-lists .operon-status-dock-tracker { flex: 1 1 120px; max-width: calc(100% - 100px); }
 .operon-status-dock-tracker { display: flex; align-items: center; gap: 3px; min-width: 0; flex: 1 1 auto; }
 .operon-status-dock .operon-status-dock-reading { display: inline-flex; height: 28px; padding: 2px; gap: 5px; border-radius: 6px; align-items: center; justify-content: flex-start; text-align: left; min-width: 0; flex: 1 1 auto; }
 .operon-status-dock .operon-status-dock-reading[hidden] { display: none; }
@@ -37195,6 +37235,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	.operon-status-dock { min-height: 46px; height: 46px; padding: 8px 10px; font-size: 13px; }
 }
 @media (max-width: 480px) {
+ .operon-status-dock.has-extra-task-lists { gap: 6px 2px; }
 	.operon-status-dock-slot { padding-inline: 5px; }
 	.operon-status-dock { gap: 2px; padding-inline: 3px; }
 	.operon-status-dock-copy { gap: 3px; }
@@ -37228,7 +37269,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
  display: inline-flex; align-items: center; gap: 7px; width: min(var(--operon-status-dock-card-width), calc(100vw - 24px - var(--operon-status-dock-card-gutter, 0px)));
  max-width: calc(100vw - 24px); min-height: 44px; padding: 7px 9px;
  border: 1px solid var(--background-modifier-border); border-radius: 8px;
- background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s);
+ background: var(--background-secondary); color: var(--text-normal); box-shadow: none;
  box-sizing: border-box; pointer-events: auto;
 }
 .operon-status-dock-session-card[hidden] { display: none; }
@@ -37330,3 +37371,11 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-scope-card:is(:hover, :focus-within) > button.operon-status-dock-name { padding-right: 40px; }
 
 .operon-status-dock .operon-status-dock-scope-timer:is(:hover, :focus-visible):not(:disabled) { border-color: var(--background-modifier-border); }
+
+/* Only Kanban pool task bodies use the shared long-press gesture; controls keep taps. */
+.operon-kanban-pool-draggable,
+.operon-kanban-pool-draggable .operon-canvas-task-pool-title { touch-action: none; -webkit-touch-callout: none; }
+.operon-kanban-pool-draggable .operon-canvas-task-pool-meta,
+.operon-kanban-pool-draggable .operon-canvas-task-pool-status { touch-action: pan-y; }
+
+.operon-kanban-card.is-property-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }

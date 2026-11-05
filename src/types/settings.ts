@@ -3,6 +3,7 @@ import { normalizeLightboxSizes, type LightboxSizes } from '../core/lightbox-siz
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
 import { cloneInlinePropertyDefinitions, validateInlinePropertyDefinitions } from '../core/inline-property-definitions';
+import { normalizeStatusDockSections, type StatusDockSection } from './status-dock-sections';
 import { normalizeTaskEditorSections, type TaskEditorSection } from './task-editor-sections';
 import { DEFAULT_TASK_CARD_SETTINGS, normalizeTaskCardSettings, type TaskCardSettings } from './task-card';
 /**
@@ -129,9 +130,9 @@ const TASK_DATA_TYPE_SETTINGS_VERSION = 115;
 export const FILE_TASK_ARCHIVE_DELAY_SECONDS = 5;
 const DOWNLOADABLE_LOCALE_SETTINGS_VERSION = 107;
 export const CURRENT_TASK_STATS_BACKFILL_VERSION = 2;
-export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
+export const SUPPORTED_LANGUAGE_OPTIONS = ['en', 'tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR', 'ko'] as const;
 export type OperonLanguage = typeof SUPPORTED_LANGUAGE_OPTIONS[number];
-export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR'] as const;
+export const NON_ENGLISH_LANGUAGE_OPTIONS = ['tr', 'de', 'fr', 'es', 'zh-CN', 'zh-TW', 'ja', 'ru', 'it', 'pt-BR', 'ko'] as const;
 export type NonEnglishOperonLanguage = typeof NON_ENGLISH_LANGUAGE_OPTIONS[number];
 export const DATE_DISPLAY_FORMATS = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY'] as const;
 export type DateDisplayFormat = typeof DATE_DISPLAY_FORMATS[number];
@@ -179,6 +180,7 @@ export function resolveSupportedLanguageFromLocale(rawLocale: string | null | un
 		return 'pt-BR';
 	}
 	const short = lower.slice(0, 2);
+	if (short === 'ko' && lower !== 'ko' && !lower.startsWith('ko-')) return null;
 	return isSupportedLanguage(short) ? short : null;
 }
 
@@ -1623,6 +1625,7 @@ export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBe
 
 export interface OperonSettings extends TaskCardSettings {
 	/** Optional user choices: absence uses in-memory defaults without startup writes. */
+	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
 	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
 	statusDockMode?: StatusDockMode;
@@ -4468,6 +4471,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStatusDockSections(src.statusDockSections);
+	else delete out.statusDockSections;
 	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;
 	else delete out.statusDockClickAction;
 	if (src.statusDockMode === 'compact' || src.statusDockMode === 'detailed') out.statusDockMode = src.statusDockMode;

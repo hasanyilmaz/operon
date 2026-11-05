@@ -1,3 +1,4 @@
+import type { PropertyPoolTaskPlan, PropertyPoolTaskResult } from '../core/property-pool-task-operation';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
 import type { KanbanCellTarget } from '../systems/kanban-cell-actions';
 import type { KanbanTaskColorSource } from '../core/task-color-source';
@@ -157,7 +158,15 @@ export interface KanbanCardDropCommittedResult {
 
 export type KanbanCardDropResult = 'cancelled' | 'failed' | KanbanCardDropCommittedResult | void;
 
+export interface KanbanPoolDropRequest {
+ context: KanbanDropContext;
+ sourceSignature: string;
+ isCurrent(): boolean;
+}
+
 export interface KanbanViewCallbacks {
+ onPropertyPoolApply?: (plan: PropertyPoolTaskPlan, allowed: () => boolean) => Promise<PropertyPoolTaskResult>;
+ onPoolDrop?: (request: KanbanPoolDropRequest) => Promise<boolean>;
 	onSetColumnWidth?: (preset: KanbanPreset, width: number) => Promise<void>;
 	onSetCellHeight?: (preset: KanbanPreset, height: KanbanCellHeightPx) => Promise<void>;
 	onSelectPresetFilter?: (presetId: string, expectedFilterSetId: string | null, filterSetId: string | null) => Promise<void>;

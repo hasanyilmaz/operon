@@ -307,6 +307,16 @@ export function matchesTaskSearchBoxScope(
 	return false;
 }
 
+/** Shared Recent Modified membership and stable ordering for Finder and Dock. */
+export function getRecentModifiedTasks(tasks: Iterable<IndexedTask>, cutoff: number): IndexedTask[] {
+ return Array.from(tasks).map(task => ({ task, modifiedTime: getTaskModifiedTime(task) }))
+  .filter(entry => entry.modifiedTime >= cutoff)
+  .sort((left, right) => right.modifiedTime - left.modifiedTime
+   || left.task.description.localeCompare(right.task.description, undefined, { sensitivity: 'base' })
+   || left.task.operonId.localeCompare(right.task.operonId, undefined, { sensitivity: 'base' }))
+  .map(entry => entry.task);
+}
+
 export function getTaskModifiedTime(task: IndexedTask): number {
 	return Date.parse(task.datetimeModified || task.fieldValues['datetimeModified'] || '') || 0;
 }

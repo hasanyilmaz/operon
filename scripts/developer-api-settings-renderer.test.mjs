@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { transformSync } from 'esbuild';
+import { LOCALE_DEFINITIONS } from './generate-dense-locales.mjs';
 
 // Execute the production renderer with UI ports; do not copy its control flow.
 const source = readFileSync(new URL('../src/ui/settings-tab.ts', import.meta.url), 'utf8');
@@ -10,7 +11,7 @@ const end = source.indexOf('\n\tprivate ', start + 1);
 assert.ok(start >= 0 && end > start);
 const code = transformSync(`class Harness { ${source.slice(start, end)} }`, { loader: 'ts', target: 'es2022' }).code;
 
-function fixture(grants = [], rejectApprove = false) {
+function fixture(grants = [], rejectApprove = false, translate = (_namespace, key) => key) {
  const buttons = [], inputs = [], confirmations = [], calls = [], pending = [], nodes = [];
  const node = (kind = '') => {
   const value = { kind, dataset: {}, isConnected: true, checked: false, text: '',
@@ -40,7 +41,7 @@ function fixture(grants = [], rejectApprove = false) {
   open() { confirmations.push(this.answer); }
  }
  const Harness = new Function('Setting', 'renderNativeSettingsGroupedSection', 't', 'buildDeveloperApiGrantApprovalUiState', 'settingsAsyncHandler', 'runSettingsAsync', 'ConfirmActionModal', 'scopeSettingsModal', `${code}; return Harness;`)(
-  Setting, () => node(), (_namespace, key) => key, grant => grant.ui,
+  Setting, () => node(), translate, grant => grant.ui,
   (label, callback) => () => run(label, callback), run, ConfirmActionModal, (modal, enabled) => { assert.equal(enabled, true); return modal; },
  );
  const harness = new Harness();
@@ -101,4 +102,25 @@ test('an audit response does not redraw a detached settings host', async () => {
  const f = fixture(); f.render();
  const host = f.nodes.find(node => node.kind === 'operon-developer-api-audit-list'); assert.ok(host);
  host.isConnected = false; await f.flush(); assert.equal(host.emptied, undefined); assert.deepEqual(f.calls, []);
+});
+
+test('suspended grant headings localize pending approval without changing selection or grants', async () => {
+ for (const { code, file } of LOCALE_DEFINITIONS) {
+  const locale = JSON.parse(readFileSync(new URL(`../i18n/locales/${file}`, import.meta.url), 'utf8'));
+  const translate = (namespace, key) => locale[namespace]?.[key] ?? key;
+  const grant = {
+   ...pendingGrant(), state: 'suspended', grantedCapabilities: ['tasks.read'],
+   ui: { initialSelectedCapabilities: ['tasks.read'], reactivationCapabilities: ['tasks.read'], pendingApprovalCapabilities: ['tasks.query'], showsApprovalControls: true, showsDeny: false, showsRevoke: true },
+  };
+  const before = structuredClone(grant);
+  const f = fixture([grant], false, translate);
+  f.render(); await f.flush();
+  assert.equal(typeof locale.settings.developerApiPendingCapabilities, 'string', code);
+  const headings = f.nodes.filter(node => node.kind === 'p').map(node => node.text);
+  assert.ok(headings.includes(locale.settings.developerApiGrantedCapabilities), code);
+  assert.ok(headings.includes(locale.settings.developerApiPendingCapabilities), code);
+  assert.deepEqual(f.inputs.map(input => input.checked), [true, false], code);
+  assert.deepEqual(grant, before, code);
+  assert.deepEqual(f.calls, [], code);
+ }
 });

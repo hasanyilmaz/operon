@@ -257,7 +257,7 @@ test('Escape, outside click and close share the corrected discard decision',asyn
  for(const route of ['escape','outside','close']) {
   const modal=closeProbe();await modal.selectPreparedTemplateId('A');let closed=0,prompted=0;
   modal.forceClose=()=>{closed++;};modal.promptDiscardDraft=()=>{prompted++;};modal.modalEl.contains=()=>false;
-  const invoke=()=>route==='escape'?modal.handleEscapeIntent():route==='close'?modal.close():modal.handleContainerPointerDown({target:{nodeType:1,closest:()=>null},preventDefault(){},stopPropagation(){}});
+  const invoke=()=>route==='escape'?modal.handleEscapeIntent():route==='close'?modal.close():modal.handleContainerPointerDown({target:{nodeType:1,closest:()=>null},composedPath:()=>[],preventDefault(){},stopPropagation(){}});
   invoke();assert.equal(closed,1,route);assert.equal(prompted,0,route);
   modal.draft.description='User task';invoke();assert.equal(closed,1,route);assert.equal(prompted,1,route);
  }
@@ -364,4 +364,63 @@ for (const mode of ['inline', 'file'] as const) test(`mobile ${mode} Creator pre
   modal.prepared.close();
   assert.equal(commits, 0, 'preview, template replacement, clear and cancellation never create a task');
  } finally { Object.assign(Platform, previous); }
+});
+
+
+test('Creator picker switching keeps an inside pointer inside after its SVG detaches', () => {
+ for (const dirty of [false, true]) {
+  const modal = closeProbe();
+  let closed = 0, prompted = 0, prevented = 0;
+  modal.hasUnsavedDraft = () => dirty;
+  modal.forceClose = () => { closed++; };
+  modal.promptDiscardDraft = () => { prompted++; };
+  modal.modalEl.contains = () => false;
+  const target = { nodeType: 1, closest: () => null };
+  modal.handleContainerPointerDown({ target, composedPath: () => [target, modal.modalEl, modal.containerEl], preventDefault() { prevented++; }, stopPropagation() {} });
+  assert.equal(closed, 0);
+  assert.equal(prompted, 0);
+  assert.equal(prevented, 0, 'the next property click is allowed to finish');
+  modal.handleContainerPointerDown({ target, composedPath: () => [target, modal.containerEl], preventDefault() {}, stopPropagation() {} });
+  assert.equal(closed, dirty ? 0 : 1, 'a real backdrop click still closes a clean draft');
+  assert.equal(prompted, dirty ? 1 : 0, 'a real backdrop click still protects a changed draft');
+ }
+});
+
+test('Creator toolbar refresh preserves unchanged picker targets but updates changed icons', () => {
+ const modal = closeProbe(false);
+ // A minimal DOM tree records the identity of nested icon targets across real renders.
+ const makeElement = () => {
+  const el: any = { dataset: {}, children: [], classList: { toggle() {} },
+   empty() { for (const child of this.children) child.parent = null; this.children = []; },
+   appendChild(child: any) { child.parent = this; this.children.push(child); },
+   createSpan() { const child = makeElement(); this.appendChild(child); return child; },
+   querySelector() { return this.children[0] ?? null; }, toggleClass() {}, setAttribute() {},
+  };
+  return el;
+ };
+ const button = makeElement();
+ let iconName = 'square-dashed';
+ modal.fieldButtonMap = new Map([['Client', button]]);
+ modal.getVisibleToolbarFieldOrder = () => ['Client'];
+ modal.renderReminderDraftStrip = () => {};
+ modal.syncFieldButtonActiveState = () => {};
+ modal.resolveFieldIcon = () => iconName;
+ modal.bindFieldButtonTooltip = () => {};
+ const globals = globalThis as any;
+ const previous = globals.__operonTestSetIcon;
+ globals.__operonTestSetIcon = (el: any, name: string) => { el.appendChild({ name, parent: el }); };
+ try {
+  const render = (TaskCreatorModal.prototype as any).renderFieldButtons;
+  render.call(modal);
+  const wrap = button.children[0], svg = wrap.children[0];
+  render.call(modal);
+  assert.equal(button.children[0], wrap);
+  assert.equal(wrap.children[0], svg, 'picker close must retain the pending SVG target');
+  assert.equal(svg.parent, wrap);
+  iconName = 'check-square';
+  render.call(modal);
+  assert.equal(button.children[0], wrap);
+  assert.equal(wrap.children[0].name, 'check-square', 'checkbox/property icon changes remain visible');
+  assert.equal(svg.parent, null);
+ } finally { globals.__operonTestSetIcon = previous; }
 });

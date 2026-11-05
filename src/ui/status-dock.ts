@@ -1,3 +1,9 @@
+import { localToday } from '../core/local-time';
+import { statusDockSessionKey } from './status-dock-card-content';
+import type { TrackerSession } from '../types/tracker';
+import { getRecentModifiedTasks, getTaskSearchBoxRecentModifiedCutoff } from './task-search-box-integration';
+import type { IndexedTask } from '../types/fields';
+import { isStatusDockSectionEnabled } from '../types/status-dock-sections';
 import { Component, Notice, type App, type WorkspaceContainer, type WorkspaceLeaf } from 'obsidian';
 import type { OperonIndexer } from '../indexer/indexer';
 import type { TimeTracker } from '../systems/time-tracker';
@@ -12,13 +18,17 @@ import { t } from '../core/i18n';
 import { StatusDockSessionCard, type StatusDockSessionActions } from './status-dock-session-card';
 import { StatusDockTaskList } from './status-dock-task-list';
 import { buildStatusDockTaskScopes, type StatusDockTaskScopes } from './status-dock-task-scope';
-import { StatusDockWidget, type StatusDockAlert, type StatusDockSnapshot } from './status-dock-widget';
+import { resolveStatusDockCalendar, StatusDockWidget, type StatusDockAlert, type StatusDockSnapshot } from './status-dock-widget';
 
 interface StatusDockDependencies {
 	toggleTaskTimer: (taskId: string, canCommit: () => boolean) => Promise<boolean>;
 	indexer: Pick<OperonIndexer, 'getTask' | 'getAllTasks' | 'getGeneration'>;
 	timeTracker: TimeTracker;
 	breakController: FlowTimeBreakController;
+ startHistoryTimer?: (id: string, canCommit: () => boolean) => Promise<boolean>;
+ getPinnedTasks?: () => IndexedTask[];
+ getPinnedGeneration?: () => number;
+ subscribePinned?: (listener: () => void) => () => void;
 	getSettings: () => OperonSettings;
 	sessionActions?: Omit<StatusDockSessionActions, 'openTask'>;
 	openTask: (taskId: string, anchor: HTMLElement, behavior: TaskFinderResultBehavior) => Promise<void>;
@@ -55,6 +65,9 @@ export class OperonStatusDock extends Component {
 	private visible = true;
 	private scopeCacheKey = '';
 	private scopeCache: StatusDockTaskScopes = { overdue: [], today: [] };
+ private historyCacheKey = '';
+ private historyRevision = 0;
+ private historyCache: TrackerSession[] = [];
 	private scopeTimer: number | null = null;
 	private action: Promise<void> | null = null;
 	private presentation: ((state: StatusDockSnapshot) => StatusDockSnapshot) | null = null;
@@ -62,14 +75,19 @@ export class OperonStatusDock extends Component {
 	constructor(private readonly app: App, private readonly dependencies: StatusDockDependencies) {
 		super();
 		this.owner = getOwnerWindow(app.workspace.containerEl);
-		this.upcoming = new UpcomingTaskStatusModel(dependencies.indexer, () => ({ ...dependencies.getSettings(), upcomingCountdownDisplay: 'seconds' }), () => {},
+		this.upcoming = new UpcomingTaskStatusModel(dependencies.indexer, () => {
+   const settings = dependencies.getSettings();
+   return { ...settings, upcomingShowStatusBar: isStatusDockSectionEnabled(settings.statusDockSections, 'ongoing') || isStatusDockSectionEnabled(settings.statusDockSections, 'upcoming'), upcomingCountdownDisplay: 'seconds' };
+  }, () => {},
 			(callback, delay) => { const id = this.owner.setTimeout(callback, delay); return () => this.owner.clearTimeout(id); }, undefined, true);
 	}
 
 	onload(): void {
+  const unsubscribePinned = this.dependencies.subscribePinned?.(() => this.renderWidgets());
+  if (unsubscribePinned) this.register(unsubscribePinned);
 		const { workspace } = this.app;
 		this.register(this.upcoming.subscribe(() => this.renderWidgets()));
-		this.register(this.dependencies.timeTracker.subscribe(() => this.renderWidgets()));
+		this.register(this.dependencies.timeTracker.subscribe(event => { if (event === 'history') this.historyRevision++; this.renderWidgets(); }));
 		const unsubscribeSessions = this.dependencies.timeTracker.subscribeSessionCreated?.(session => {
 			if (this.disposed || !this.visible) return;
 			for (const context of this.windows.values()) if (!context.widget.slot.hidden) { if (context.taskList) context.taskList.showSession(session); else context.sessionCard?.show(session); }
@@ -184,7 +202,7 @@ export class OperonStatusDock extends Component {
 				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
 			}),
 			openNextUpcoming: anchor => this.runAction(async () => {
-				const task = this.upcoming.getSnapshot().next?.task;
+				const task = resolveStatusDockCalendar(this.upcoming.getSnapshot()).future?.task;
 				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
 			}),
 			openConflicts: this.dependencies.openConflicts,
@@ -201,12 +219,16 @@ export class OperonStatusDock extends Component {
 		});
 		if (this.dependencies.sessionActions && context.sessionCard) context.taskList = new StatusDockTaskList(widget.root, {
 			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
+			isSessionCurrent: session => this.getHistorySnapshot().some(current => statusDockSessionKey(current) === statusDockSessionKey(session)),
+   startHistoryTimer: (id, guard) => this.runAction(async () => { await this.dependencies.startHistoryTimer?.(id, guard); }),
+   isTaskInScope: (scope, id) => this.getTaskScopes()[scope]?.some(task => task.operonId === id) === true,
 			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), sessionCard: context.sessionCard,
 			toggleTimer: (id, canCommit) => this.runAction(async () => { await this.dependencies.toggleTaskTimer(id, canCommit); }),
 			actions: { ...this.dependencies.sessionActions,
 				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
 			},
 		});
+		widget.onPositionChanged = () => context.taskList?.refreshPosition();
 		const resize = () => this.updateViewport(container, widget);
 		const refresh = () => { if (!this.disposed) { this.upcoming.refresh(); this.scheduleReconcile(); } };
 		container.win.addEventListener('resize', resize);
@@ -236,9 +258,10 @@ export class OperonStatusDock extends Component {
 		const canStart = () => {
 			const upcoming = this.upcoming.getSnapshot();
 			return !this.disposed && anchor.isConnected && !getOwnerWindow(anchor).closed
-				&& this.dependencies.getSettings().upcomingShowStatusBar
-				&& (upcoming.task?.operonId === taskId || upcoming.next?.task.operonId === taskId
-					|| upcoming.ongoing?.some(task => task.operonId === taskId) === true);
+				&& ((isStatusDockSectionEnabled(this.dependencies.getSettings().statusDockSections, 'ongoing')
+      && (resolveStatusDockCalendar(upcoming).retained?.operonId === taskId || upcoming.ongoing?.some(task => task.operonId === taskId)))
+     || (isStatusDockSectionEnabled(this.dependencies.getSettings().statusDockSections, 'upcoming')
+      && resolveStatusDockCalendar(upcoming).future?.task.operonId === taskId));
 		};
 		await this.runAction(async () => {
 			if (!canStart() || this.dependencies.timeTracker.getActiveState()?.operonId === taskId) return;
@@ -275,15 +298,35 @@ export class OperonStatusDock extends Component {
 	private renderWidgets(): void {
 		if (this.disposed) return;
 		const snapshot = this.snapshot();
-		const scopeKey = `${this.dependencies.indexer.getGeneration()}:${Math.floor(Date.now() / 60_000)}`;
-		if (scopeKey !== this.scopeCacheKey) {
-			this.scopeCacheKey = scopeKey;
-			this.scopeCache = buildStatusDockTaskScopes(this.dependencies.indexer.getAllTasks());
-		}
+  this.getTaskScopes();
 		for (const { widget, sessionCard, taskList } of this.windows.values()) {
-			widget.update(snapshot); sessionCard?.refresh(); taskList?.update(this.scopeCache);
+			widget.update(snapshot); sessionCard?.refresh(); taskList?.update(this.scopeCache, this.getHistorySnapshot()); widget.refreshSectionLayout();
 		}
 	}
+
+ private getHistorySnapshot(): TrackerSession[] {
+  const settings = this.dependencies.getSettings();
+  const key = JSON.stringify([this.dependencies.indexer.getGeneration(), this.historyRevision, localToday(), settings.trackerHistoryDays, settings.language]);
+  if (key !== this.historyCacheKey) {
+   this.historyCacheKey = key;
+   this.historyCache = this.dependencies.timeTracker.getHistory?.(settings.trackerHistoryDays).flatMap(group => group.sessions) ?? [];
+  }
+  return this.historyCache;
+ }
+
+ private getTaskScopes(): StatusDockTaskScopes {
+  const settings = this.dependencies.getSettings();
+  const now = Date.now();
+  const scopeKey = JSON.stringify([this.dependencies.indexer.getGeneration(), Math.floor(now / 60_000),
+   this.dependencies.getPinnedGeneration?.(), settings.pinnedTaskSortMode, settings.priorities, settings.taskFinderRecentModifiedDays]);
+  if (scopeKey !== this.scopeCacheKey) {
+   this.scopeCacheKey = scopeKey;
+   const tasks = this.dependencies.indexer.getAllTasks();
+   this.scopeCache = { ...buildStatusDockTaskScopes(tasks), pinned: this.dependencies.getPinnedTasks?.() ?? [],
+    modified: getRecentModifiedTasks(tasks, getTaskSearchBoxRecentModifiedCutoff(settings, now)) };
+  }
+  return this.scopeCache;
+ }
 
 	private async createTaskForTimer(anchor: HTMLElement): Promise<void> {
 		const canUse = () => !this.disposed && anchor.isConnected && !getOwnerWindow(anchor).closed;

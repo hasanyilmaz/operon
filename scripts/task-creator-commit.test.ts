@@ -172,3 +172,50 @@ test('default inline authoring preserves source Automatic tokens and excludes un
  assert.ok(result.inlineLine.includes('{{Unknown:: literal}}'));assert.ok(!result.inlineLine.includes('{{Nested::'));assert.ok(!result.inlineLine.includes('{{aliases::'));assert.ok(!result.inlineLine.includes('{{Client::'));
  assert.ok(result.skipped.some(field=>field.sourceName==='Client'));
 });
+
+// New inline tasks use canonical names; mapped YAML names remain file-only.
+import { serializeTask } from '../src/core/serializer';
+for (const source of ['manual', 'parent', 'template'] as const) test(`new inline canonical keys preserve file mappings (${source})`, async () => {
+ const settings = structuredClone(DEFAULT_SETTINGS);
+ const names: Record<string, string> = { status: 'Status', taskType: 'Type', priority: 'Tier', parentTask: 'ParentId', contexts: 'Up', taskIcon: 'Icon', taskColor: 'Color', datetimeCreated: 'Created', datetimeModified: 'Updated' };
+ settings.keyMappings = settings.keyMappings.map(mapping => ({ ...mapping, visiblePropertyName: names[mapping.canonicalKey] ?? mapping.visiblePropertyName }));
+ settings.keyMappings.push({ canonicalKey: 'impact', visiblePropertyName: 'Impact Label', type: 'text', enabled: true, sync: 'no', isSystem: false });
+ settings.childTaskInheritanceFields = ['priority', 'contexts', 'taskIcon', 'taskColor'];
+ const properties: CreationDraftPropertyContext = { keyMappings: settings.keyMappings, propertyTypes: { Client: 'text' } };
+ const inherited = { priority: 'B', contexts: '[[Projects]]', taskIcon: 'bug', taskColor: 'cc2900' };
+ const ui = new PreparedTaskCreatorDraft({ properties, readTemplate: async () => '---\nTier: B\nUp: ["[[Projects]]"]\nIcon: bug\nColor: cc2900\n---\n', clock: () => ({ now: '2026-11-03T12:00:00' }), parent: () => ({ fields: inherited, tags: [], nativeValues: new Map() }), candidates: () => [], onSubmit: () => true }, settings);
+ if (source === 'template') await ui.select({ id: 'mapped', name: 'Mapped', path: 'mapped.md', kind: 'folder' }, 'Task');
+ else if (source === 'parent') ui.applyPayload({ parentTask: 'parent1' });
+ else ui.applyPayload(inherited);
+ ui.applyPayload({ status: 'Project.Planned', taskType: 'Project', impact: 'High' });
+ ui.draft.setValue('Client', 'Acme');
+ const before = structuredClone(properties);
+ const request = ui.submission('inline', 'Task', 'keep-completed');
+ const snapshot = structuredClone(request);
+ const output = prepareCreationCommit(request, properties, { operonId: 'newtask', now: '2026-11-03T12:00:00' });
+ for (const [key, value] of Object.entries(output.fieldValues)) {
+  assert.ok(output.inlineLine.includes(`{{${key}:: ${value}}}`), key);
+  if (names[key] && names[key] !== key) assert.ok(!output.inlineLine.includes(`{{${names[key]}::`), names[key]);
+ }
+ assert.equal(output.fieldValues.priority, 'B');
+ assert.equal(output.fieldValues.taskIcon, 'bug');
+ assert.equal(output.fieldValues.contexts, '[[Projects]]');
+ assert.equal(output.fieldValues.impact, 'High');
+ assert.ok(output.inlineLine.includes('{{impact:: High}}'));
+ assert.ok(!output.inlineLine.includes('{{Impact Label::'));
+ assert.ok(output.inlineLine.includes('{{Client:: Acme}}'));
+ if (source === 'parent') assert.equal(output.fieldValues.parentTask, 'parent1');
+ const fileOutput = prepareCreationCommit({ ...request, createType: 'file' }, properties, { operonId: 'newtask', now: '2026-11-03T12:00:00' });
+ assert.equal(fileOutput.fileContent(), output.fileContent());
+ const yaml = parseYaml(splitFrontmatterDocument(fileOutput.fileContent()).frontmatter!);
+ assert.equal(yaml.Tier, 'B'); assert.equal(yaml.Icon, 'bug');
+ assert.deepEqual(yaml.Up, ['[[Projects]]']);
+ assert.equal(yaml['Impact Label'], 'High'); assert.equal(yaml.Client, 'Acme');
+ assert.equal(yaml.Created, '2026-11-03T12:00:00');
+ assert.equal(yaml.priority, undefined); assert.equal(yaml.taskIcon, undefined);
+ assert.deepEqual(request, snapshot); assert.deepEqual(properties, before);
+ // Existing alias spelling stays intact when parsed and serialized.
+ const existing = '- [ ] Existing {{operonId:: oldtask}} {{Tier:: A}} {{ParentId:: parent1}} {{Up:: [[Projects]]}} {{Icon:: bug}} {{Created:: 2026-10-01T12:00:00}} {{Updated:: 2026-10-01T12:00:00}}';
+ const parsed = parseTaskLine(existing, 0, 'Host.md', settings.keyMappings)!;
+ assert.equal(serializeTask(parsed, settings.keyMappings), existing);
+});
