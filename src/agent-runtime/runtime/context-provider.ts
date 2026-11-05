@@ -708,6 +708,7 @@ export class LiveIndexContextProviderV1 {
 			const hydrated = await this.sourceHydrator.hydrate({
 				task,
 				keyMappings: this.getSettings().keyMappings,
+				pipelines: this.getSettings().pipelines,
 				ramGeneration: options.contextRevision.index.ramGeneration,
 				includeSourceMarkdown: include.has('source-markdown'),
 				sourceSnapshot: preparedSource?.snapshot ?? null,
