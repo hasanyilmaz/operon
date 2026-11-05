@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.5.0] - 2026-11-05
+
 ### New
 
 - Added **Korean (한국어)** as a downloadable interface language. Natural-language date input uses English phrases when Korean is selected. ([#295](https://github.com/hasanyilmaz/operon/pull/295))
