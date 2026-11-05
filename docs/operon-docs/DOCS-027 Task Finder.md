@@ -2,7 +2,7 @@
 Notes: Fast search to jump straight to one task, with its matching and ranking explained
 Icon: search
 Color: "#0284c7"
-Updated: 2026-10-22T21:53:13+02:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # Task Finder
@@ -52,9 +52,9 @@ Normal results follow the saved chip order. In **Overdue** and **Happens Today**
 
 On desktop, the modal uses the shared [[DOCS-098 Workspace Tweaks|Background dimming]] preference. It does not gain the Lightbox side controls.
 
-## Choose a task for Canvas or Excalidraw
+## Find tasks for a board or drawing
 
-Use [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]] when gathering tasks for a visual plan. It stays beside the board while you search and add cards.
+Use [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]] to gather existing tasks for Canvas, Excalidraw, or Kanban. Keep it beside your work while you search and place tasks.
 
 Task Finder is an alternative for choosing one task. With an editable Canvas active, run **Add task to Canvas**. With an editable Excalidraw drawing active, run **Add existing task to Excalidraw**. In these picker contexts, selecting a result adds its card regardless of Result Behavior. The task stays in its original Markdown location.
 
@@ -133,6 +133,8 @@ Narrows to tasks dated **today**, taken in order of due date first, then schedul
 ### Recently modified (.5)
 
 Narrows to tasks **changed recently**, within a window you set in settings, newest first. Use it to jump back to something you were just editing.
+
+The desktop [[DOCS-152 Status Dock|Status Dock]] also uses the **Recently modified window** for its **Modified Tasks** list. The newest change appears closest to the Dock. This list has its own scope and can include inline and file tasks in any status. Changes you make to Finder search terms and scope toggles leave the Dock list unchanged.
 
 ### Choosing which tasks are included (.6 to .9)
 

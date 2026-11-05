@@ -1,24 +1,24 @@
 ---
-Notes: Find, favorite, and apply shared property values to task cards on Canvas and Excalidraw
+Notes: Find, favorite, and apply property values on Canvas, Excalidraw, and Kanban
 Icon: layers
 Color: "#0284c7"
-Updated: 2026-10-06T10:33:06+02:00
+Updated: 2026-11-05T01:14:43+01:00
 ---
 
-# Canvas and Excalidraw Property Value Pool
+# Property Value Pool for Canvas, Excalidraw, and Kanban
 
-Property Value Pool finds reusable values to apply to existing task cards on Canvas and Excalidraw. Use it when several tasks need a status, priority, tag, or another supported property. [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]] adds existing tasks to the board; Property Value Pool changes their properties.
+Property Value Pool finds reusable values to apply to task cards on Canvas, Excalidraw, and Kanban. Use it to apply a status, priority, tag, or another supported value to an existing task. [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]] adds existing tasks to the board; Property Value Pool changes their properties.
 
 ## Open the pool
 
-Open the pool from the active surface's controls, or use its command:
+Open the pool from the active view's controls. In Kanban, **Kanban Property Pool** is on the right edge of the board. Canvas and Excalidraw also offer commands:
 
 | Surface | Command |
 | --- | --- |
 | Canvas | **Operon: Open Canvas Property Value Pool** |
 | Excalidraw | **Operon: Open Excalidraw Property Pool** |
 
-The corresponding view must be active. The panel opens on its first visible shortcut. In Excalidraw, it follows the drawing's light or dark appearance. Both surfaces share favorites, shortcut preferences, and panel size settings.
+The corresponding view must be active. The panel opens on its first visible shortcut. In Excalidraw, it follows the drawing's light or dark appearance. Canvas, Excalidraw, and Kanban share favorites, shortcut preferences, and panel size settings.
 
 ## Search and favorite values
 
@@ -30,11 +30,11 @@ Choose **All values**, **Favorites**, or a property shortcut. All values searche
 
 Among value results, matching favorites come first. In All values and Favorites, properties follow your configured shortcut order, including hidden shortcuts; unassigned properties follow the standard order. Dates gives date fields a shared position, with the first occurrence winning when individual date shortcuts also exist. Unavailable favorites follow usable results and can still be removed.
 
-Use a row's star to add or remove a favorite. Favorites are shared across Canvas and Excalidraw in the vault. Switching shortcuts preserves your query; Clear returns to the first visible shortcut.
+Use a row's star to add or remove a favorite. Favorites are shared across Canvas, Excalidraw, and Kanban in the vault. Switching shortcuts preserves your query; Clear returns to the first visible shortcut.
 
 ## Apply a value to a task
 
-Drag a value onto an Operon task card and inspect the change preview before releasing. On a tablet, press and hold the row before dragging; an ordinary swipe scrolls results.
+Drag a value onto an Operon task card and inspect the change preview before releasing. On a touch screen, press and hold the row before dragging. An ordinary swipe scrolls results.
 
 Single-value properties replace the existing value. List properties append missing items without duplicates:
 
@@ -49,11 +49,19 @@ Tags: planning → planning; launch
 
 Drops update the source task, so its other cards and views reflect the change. Changing a File Task's status follows its configured pipeline folder rules. Editing an unrelated field does not by itself relocate a manually placed File Task to a pipeline folder.
 
+### Apply a value in Kanban
+
+Drop the value onto **one task card** in the same board. Dropping into empty cell space leaves the tasks in that cell unchanged. If the preview blocks a change and directs you to Task Editor, finish the change there.
+
+You can change a field used for a column or swimlane. The board places the card according to its updated values and sorting rules. The drop edits the selected field without reapplying the old cell's rules or setting a manual insertion position. For example, adding Miro to an assignee list can show the same task in Miro's group while it remains in groups for its existing assignees.
+
+The pool stays open after a successful drop and keeps your search and selected property. If the updated task does not match the board's saved filter, Operon keeps the change, shows a warning, and opens Task Editor.
+
 ### Undo and task changes
 
 On Canvas, Undo/Redo includes related changes recorded with the drop, including supported pipeline folder moves. Later task changes may prevent replay.
 
-Excalidraw Undo affects the drawing scene, not the source task fields changed by Property Value Pool. To change a value back, apply the previous value or use [[DOCS-021 Task Editor|Task Editor]].
+Excalidraw Undo affects the drawing scene. Kanban has no Undo/Redo for these drops. To revert a source property change on either surface, edit the task in [[DOCS-021 Task Editor|Task Editor]].
 
 ### Use values with Canvas groups
 
@@ -79,7 +87,7 @@ With an empty search box, `Left` and `Right` switch shortcuts directly without m
 
 In the separate **Create group** context, `Enter` creates the group instead of changing favorites.
 
-Drag the header to move the panel. Pin it to keep it open when clicking elsewhere; an unpinned panel closes on an outside click. Interacting with Task Pool or Property Value Pool brings that panel forward.
+Drag the header to move the panel. Pin it to keep it open when clicking elsewhere; an unpinned panel closes on an outside click. When both panels are open, interacting with one brings it forward. In Kanban, pin both pools to keep them open together. Opening the other pool can close an unpinned panel.
 
 ## Tips
 
@@ -96,13 +104,13 @@ Drag the header to move the panel. Pin it to keep it open when clicking elsewher
 
 ## Settings
 
-Open **Settings → Operon → Views → Task Cards**. Three separate sections control this pool: `Canvas and Excalidraw Property Pool` for size, `Property Pool Shortcuts` for shortcut visibility and order, and `Property Pool Favorites` for managing saved values.
+Open **Settings → Operon → Views → Task Cards**. Three separate sections control this pool: `Canvas, Excalidraw and Kanban Property Pool` for size, `Property Pool Shortcuts` for shortcut visibility and order, and `Property Pool Favorites` for managing saved values.
 
 `Property Pool Shortcuts` provides nine slots with visibility and ordering controls. Initially all are enabled: All values, Favorites, Status, Dates, ReminderRules, Contexts, Tags, Assignees, and Type. Property shortcuts retain their canonical identities but display your [[DOCS-039 Key mappings|mapped property names]]; a context mapping named Up appears as Up.
 
-Under `Canvas and Excalidraw Property Pool`, `Panel width` offers 240, 280, 320, 360, or 400 px, constrained by available space. `Visible rows` offers 5, 7, 11, or 13. Defaults are 320 px and 5 rows.
+Under `Canvas, Excalidraw and Kanban Property Pool`, `Panel width` offers 240, 280, 320, 360, or 400 px, constrained by available space. `Visible rows` offers 5, 7, 11, or 13. Defaults are 320 px and 5 rows.
 
-`Property Pool Favorites` lists saved property values and lets you remove them from favorites. These are shared across Canvas and Excalidraw in the vault; removing a favorite does not remove that value from tasks.
+`Property Pool Favorites` lists saved property values and lets you remove them from favorites. These are shared across Canvas, Excalidraw, and Kanban in the vault; removing a favorite does not remove that value from tasks.
 
 ## Related
 

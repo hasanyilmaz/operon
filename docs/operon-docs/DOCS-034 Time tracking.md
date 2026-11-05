@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-10-29T18:28:32+01:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # Time tracking
@@ -23,15 +23,19 @@ The menu reflects the task you opened it for. Stop checks that the same task and
 
 ## Track from the Status Dock
 
-On desktop, the [[DOCS-152 Status Dock|Status Dock]] keeps Play/Stop and the active task available across main workspace tabs. Play/Stop does not automatically open FlowTime. Coffee finishes the current work session and starts a break shared with FlowTime. Play resumes the waiting task in a new session; ending the break alone does not restart work.
+On desktop, the [[DOCS-152 Status Dock|Status Dock]] shows Play/Stop and the active task across main workspace tabs when its **Time Tracker** section is enabled. Play/Stop does not automatically open FlowTime. Coffee finishes the current work session and starts a break shared with FlowTime. Play resumes the waiting task in a new session; ending the break alone does not restart work.
 
 When idle, during a break, after a break, or while tracking without an assigned task, the available Finder and Creator controls let you choose or create a task to track. Calendar-task icons in the dock reveal Play on hover, while task-name clicks follow the dock’s source/editor opening preference.
 
-The dock also offers **Overdue** and **Happens Today** lists when matching open tasks exist. Hover over a list card to reveal its Play/Stop control; using it keeps the list open.
+The Dock also offers task lists for **Overdue**, **Happens Today**, **Pinned Tasks**, and **Modified Tasks** when those lists have entries and their sections are enabled. Hover over a task card to reveal its Play/Stop control. Using it keeps the list open.
 
-A newly saved task session produces a temporary card while the dock is visible. Click its duration to open **Edit session**. The card waits while a task list is open; clicking elsewhere on the dock closes the list and runs the chosen action. See [[DOCS-053 Time session history|Time session history]] for other editing entry points.
+A newly saved task session produces a temporary card while the dock is visible. Click its duration to open **Edit session**. The card waits while a Dock list is open; clicking elsewhere on the dock closes the list and runs the chosen action. See [[DOCS-053 Time session history|Time session history]] for other editing entry points.
 
 Use **Toggle status dock** to hide or show this surface without stopping tracking. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+
+## Track across devices
+
+When your sync provider delivers a change to Operon's active tracker file, Operon can update the timer shown in FlowTime, TrackTime, and the desktop Status Dock without restarting Obsidian. This includes starting or stopping a timer and switching tasks. Saved sessions sync with their task notes. See [[DOCS-047 Sync conflict safety|Sync conflict safety]] for what your provider needs to sync and what to do if a timer action is blocked.
 
 ## The fields involved
 
@@ -99,7 +103,7 @@ Open the **Time Session History** panel to see and edit the sessions you have tr
 
 Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
 
-On desktop, timer controls are always part of the Status Dock; the former timer visibility toggle is removed. Mobile retains its native status-bar timer preference where supported.
+On desktop, use **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Sections and Order** to show, hide, or move **Time Tracker**. Hiding that section leaves any running timer or break active. On mobile, use the native status-bar timer preference where available.
 
 To choose where the contextual action appears, use **Interface → Context Menu**. The single **Start Timer** row controls both Start and Stop appearances, their order, and their allowed surfaces; there is no separate Stop Timer setting. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 

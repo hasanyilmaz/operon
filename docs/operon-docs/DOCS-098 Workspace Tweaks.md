@@ -1,19 +1,24 @@
 ---
-Notes: Background dimming and optional cosmetic helpers for scrollbars, side dock tabs, and Properties
+Notes: Status Dock settings and workspace appearance preferences
 Icon: sliders-horizontal
 Color: "#ca8a04"
-Updated: 2026-10-22T21:43:14+02:00
+Updated: 2026-11-05T01:07:15+01:00
 ---
 
 # Workspace Tweaks
 
-**Workspace Tweaks** are a small set of optional, purely cosmetic helpers that tidy up how the Obsidian workspace looks while you work in Operon. They change appearance only: nothing here is written into your notes, no task data is touched. Background dimming uses a level selector; other tweaks use toggles, a Properties scope selector, and folder exceptions.
-
-These preferences help keep the workspace focused. Dimming has a starting level; the other cosmetic toggles remain optional and off by default.
+**Workspace Tweaks** groups the desktop Status Dock controls with preferences for lightbox dimming, scrollbars, sidebar tabs, and the Properties panel.
 
 ## Where it lives
 
-Open **Settings → Operon → Interface → Workspace Tweaks**. The page has **Workspace Appearance**, **Properties Panel**, and **Properties Excluded Folders**. The folder section and collapse-scope control appear when **Collapse Properties by Default** is enabled; disabling it preserves their values.
+Open **Settings → Operon → Interface → Workspace Tweaks**. On desktop, **Status Dock** comes first, followed by **Workspace Appearance** and **Properties Panel**. The **Properties Excluded Folders** section and collapse-scope control appear when **Collapse Properties by Default** is enabled.
+
+## Status Dock
+
+- **Click behavior** chooses what opens when you click a task name in the Dock or its lists. The default is **Source File + Task Editor**. You can also choose **Source File Only** or **Task Editor Only**.
+- **Sections and Order** controls which sections appear and where they sit. All seven start enabled. Use a toggle to hide a section and the arrows to move it. The top row in Settings is the leftmost section in the Dock. **Ongoing Tasks** and **Upcoming Tasks** have separate toggles.
+
+Use the help button beside **Status Dock** to open the [[DOCS-152 Status Dock|Status Dock guide]].
 
 ## Workspace Appearance
 
@@ -92,7 +97,7 @@ Background dimming starts at **50%** for a new or missing preference. The other 
 
 ## Settings
 
-All of these live in **Settings → Operon → Interface → Workspace Tweaks**: Lightbox background dimming, Hide Scrollbars, Compact Sidebar Tab Icons, Collapse Properties by Default, the Properties collapse scope, and the Excluded folders list. You can find any of them quickly through [[DOCS-043 Settings search|Settings search]].
+Find the Dock, appearance, and Properties controls through [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

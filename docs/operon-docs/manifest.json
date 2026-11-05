@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "0ca54a5c4ac7fb7301f284704691e8b50ed639baa4804f6123df99f533142713",
-      "bytes": 12382
+      "sha256": "22aced5f1dba498837c4ebe3511bcde7fa94481a926ad518096137566785f598",
+      "bytes": 12611
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "5e70ece5887d2d1e3b567b694a22bf28f5a2988a45e57d67153bc1a651e0c192",
-      "bytes": 6648
+      "sha256": "905293d2f8daf81b56eed0d18426c10220ee60afb5acb8d17ac7ae5a88ce2980",
+      "bytes": 6553
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -34,13 +34,13 @@
     },
     {
       "path": "DOCS-006 Glossary of Operon terms.md",
-      "sha256": "57cf5aa21ca40a6ef9dddc69fafa737cb1ebe677f1bf196430cab7e430912be4",
-      "bytes": 9744
+      "sha256": "a66f58db862dafaae774febc55c475c2ed00a9dc7310ec53a7a450808506c17d",
+      "bytes": 9453
     },
     {
       "path": "DOCS-007 Install and enable Operon.md",
-      "sha256": "f06069c48a4018622c5c07ef7d86e86ebd9392fddd3079d4f80ac09379022b72",
-      "bytes": 5182
+      "sha256": "aeca2d2b2d5a286d373a1a53dd7fa804bc9685e49ddd1ca23d549c65dd2ce13c",
+      "bytes": 5388
     },
     {
       "path": "DOCS-008 Essential settings to configure first.md",
@@ -139,8 +139,8 @@
     },
     {
       "path": "DOCS-027 Task Finder.md",
-      "sha256": "27dd18205909b5035b403de2cb7f814cebf46959487ca1ca10ac9dfe9fdbc76e",
-      "bytes": 11982
+      "sha256": "75e6bd64dd79082b2bb7b8da74cb275ef1d7446ec805a3db257db0459767c417",
+      "bytes": 12319
     },
     {
       "path": "DOCS-028 Calendar overview.md",
@@ -154,18 +154,18 @@
     },
     {
       "path": "DOCS-030 Kanban overview.md",
-      "sha256": "819919ee869753b6b46d08a1295856af80a63b46bfa3c6c71427a0f922a9f750",
-      "bytes": 13158
+      "sha256": "d028455fa3129dc1c927d43ccafa40c0b6a8907a08459df408ecc694cfe65b35",
+      "bytes": 14151
     },
     {
       "path": "DOCS-031 Kanban manual order.md",
-      "sha256": "810b5675f4e635537bcaf6182ade06dd1f58cfed0ea042bcc3463557a7f8a169",
-      "bytes": 3973
+      "sha256": "4cf6a69ff0721b319f1be3f702ec681dd7f21b8c2319088c287235fb67df9a0f",
+      "bytes": 4608
     },
     {
       "path": "DOCS-032 Pinned Task Dock.md",
-      "sha256": "227206c410be1ec8621bc7929ca3f130bc657d6b1a81b978b1c16b9c71c3fca6",
-      "bytes": 5672
+      "sha256": "f339e29e0675dd7a9a77f0b24deb2e08ce0581d57725c26f0ecf994ca2e91cc7",
+      "bytes": 6068
     },
     {
       "path": "DOCS-033 Recurring tasks.md",
@@ -174,13 +174,13 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "012d6a6ff9b8a969f6dc948c52b251c80833157f4eb600265e631676118529f2",
-      "bytes": 8106
+      "sha256": "7e1e56e9330cd8ec26bd8205ef8bd7f78e79aec7cc510eeb70cad48b582bef29",
+      "bytes": 8790
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
-      "sha256": "4547bce7096e4099dff9d73d74d8691d391e34b92d26665b0476fb9296070ae6",
-      "bytes": 6945
+      "sha256": "afc380fb86646b805ad1e8d29ed3083ad9d3b0d6b0fc4cecf0e80dac0598d50c",
+      "bytes": 7197
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
@@ -239,8 +239,8 @@
     },
     {
       "path": "DOCS-047 Sync conflict safety.md",
-      "sha256": "d83e37c4f688741282eda94d52528bd4a5e593f254834111442b05daf8a4336e",
-      "bytes": 5399
+      "sha256": "572e3545f5902af02d43544cbf912fbf750d04a4300386c4c8f3bffc5e1ec0fa",
+      "bytes": 6707
     },
     {
       "path": "DOCS-048 External calendars.md",
@@ -269,8 +269,8 @@
     },
     {
       "path": "DOCS-053 Time session history.md",
-      "sha256": "e63c1e97e4d71fca3cd3f8bb508deaa85023bd51f9eb0ee619a70798b8439b4b",
-      "bytes": 6336
+      "sha256": "db283a913a22d9f723136b908295f5d34fc95e53b130fc101262aed466a12762",
+      "bytes": 7037
     },
     {
       "path": "DOCS-054 Missing tasks.md",
@@ -319,8 +319,8 @@
     },
     {
       "path": "DOCS-063 Date and time picker.md",
-      "sha256": "8a3640270f3c28b4459302fdffa894387a5e7ba11235d820865ccd77c303ed58",
-      "bytes": 8720
+      "sha256": "6ab2e4ef55a28a30ebfc9c58a2b6891cda92c3a84a38fa0594dc43d9e3499390",
+      "bytes": 9040
     },
     {
       "path": "DOCS-064 Recurrence picker.md",
@@ -494,8 +494,8 @@
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
-      "sha256": "178dfb735cba988d52e7c88c10418d973faf7bfcff3660a63815aa0e8d893c2d",
-      "bytes": 8223
+      "sha256": "f047b4cf4847a1e73ab8d27fba000aa23aecc528531ff1c6cfa65d3638a62e08",
+      "bytes": 8201
     },
     {
       "path": "DOCS-099 State Icons.md",
@@ -504,13 +504,13 @@
     },
     {
       "path": "DOCS-100 Mobile Kanban.md",
-      "sha256": "27d8f50dcc75c0dcef633f9c41ee1af09c08d2f4549db8b6e69f956aca8a7ea6",
-      "bytes": 5877
+      "sha256": "c43ea0506b5ef5052788a1df5527a0ddf7b19e7c9cd86400f806b067d6d155d1",
+      "bytes": 6533
     },
     {
       "path": "DOCS-101 Mobile General.md",
-      "sha256": "24eb56c227bc5ba53df47abf4af989cd6d5052f8923f968b1a1c02641f392b05",
-      "bytes": 8391
+      "sha256": "a624eca03156fdae8cefa29d4d9aea23833c6f2c22d804a96fdab8142a4f8392",
+      "bytes": 8580
     },
     {
       "path": "DOCS-102 Do you need to use all of Operon.md",
@@ -704,8 +704,8 @@
     },
     {
       "path": "DOCS-140 Upcoming Tasks.md",
-      "sha256": "efb7c4df13da75b85719baddf8b590a61dabe7f1125a7a6c4c21ca85ec61e5be",
-      "bytes": 9501
+      "sha256": "6d1a725712081d03185ebac7e7386bf371c3535457090f0574893f2373017aff",
+      "bytes": 9352
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
@@ -729,8 +729,8 @@
     },
     {
       "path": "DOCS-145 Canvas and Excalidraw Property Value Pool.md",
-      "sha256": "47a5c14f72af8e76503e752382ea5e9563bd62a2479fd36fa9bb4c870486d596",
-      "bytes": 8064
+      "sha256": "527d203a5605b0fdcb8ebc5aa8f569f8a66d27c3df94efecb49b0782b5bf7d31",
+      "bytes": 9156
     },
     {
       "path": "DOCS-146 Operon Groups in Canvas.md",
@@ -744,8 +744,8 @@
     },
     {
       "path": "DOCS-148 Canvas and Excalidraw Task Pool.md",
-      "sha256": "935606eca45b9ad388d2da5ca2834502095b0d35a4c5224329ea8fc76406d344",
-      "bytes": 7043
+      "sha256": "90e1949cc6e507489b695248cdd43dfab09c71a12ef576cd7d98e27ecf2fc2d8",
+      "bytes": 8630
     },
     {
       "path": "DOCS-149 Tasks bulk conversion.md",
@@ -764,8 +764,8 @@
     },
     {
       "path": "DOCS-152 Status Dock.md",
-      "sha256": "dfee9fbd6c4b776f376a113d4843d5ee1e0b677dc607918a2e0dbb24f40ad6ab",
-      "bytes": 12317
+      "sha256": "d88a32cff1eb83744da29bdf5603287da6cf194fcf2662855bad9e47b7027fac",
+      "bytes": 14495
     },
     {
       "path": "DOCS-153 Kanban presets.md",
@@ -773,5 +773,5 @@
       "bytes": 9839
     }
   ],
-  "generatedAt": "2026-10-30T10:01:06.390Z"
+  "generatedAt": "2026-11-05T00:23:01.903Z"
 }

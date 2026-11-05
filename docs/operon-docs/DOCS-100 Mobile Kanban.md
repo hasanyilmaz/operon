@@ -2,7 +2,7 @@
 Notes: How the Kanban board works on a phone, with touch layout, status snap, and the compact swimlane rail
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-10-29T18:22:34+01:00
+Updated: 2026-11-05T01:08:45+01:00
 ---
 
 # Mobile Kanban
@@ -46,6 +46,13 @@ Expanded swimlane cells keep their selected height, with overflowing cards scrol
 Mobile Kanban uses the same **Kanban Task Chips** settings as desktop Kanban, so the chips you choose for cards stay visible on a phone too. On mobile they are read-only: tapping a chip does not open a picker, link, preview, location map, or action. Kanban cards do not show hidden-chip `+N` counts on mobile.
 
 That keeps card gestures predictable. Tap the card to open it, scroll the board normally, and long-press the card itself when you want to drag. If space is tight, use Icon Only or a shorter Kanban chip order in **Settings → Operon → Interface → Task Chips → Kanban Task Chips**.
+
+## Drag from the pools on touch screens
+
+Open **Kanban Task Pool** or **Kanban Property Pool** from the buttons on the right edge of the board. Press and hold a result row until dragging starts. Swipe normally to scroll the results. A short tap on a task title opens the task.
+
+- From **Task Pool**, drag the task to a cell and review the field preview. In a Manual cell, use the insertion indicator to choose its position. See [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]].
+- From **Property Pool**, drag the value onto one task card and review the change preview. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]].
 
 ## The quick-create button
 

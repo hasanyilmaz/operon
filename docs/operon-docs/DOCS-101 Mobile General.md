@@ -2,7 +2,7 @@
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-Updated: 2026-10-22T21:43:14+02:00
+Updated: 2026-11-05T01:12:23+01:00
 ---
 
 # Mobile General
@@ -17,11 +17,11 @@ Phone-specific settings do not change tablet or desktop layout selection. The de
 
 ## The quick-create button
 
-On a phone, Operon shows a **floating plus button** that opens the [[DOCS-020 Task Creator|Task Creator]] from anywhere across the mobile surfaces, so capturing a task is always one tap away. It is on by default. Three controls shape it:
+On a phone, Operon shows a **floating plus button** that opens the [[DOCS-020 Task Creator|Task Creator]] from anywhere across the mobile surfaces, so capturing a task is always one tap away. It is on by default. The button starts on the right, with a gap below it equal to **20% of the visible screen height**. It can sit higher to clear the system safe area. Drag it to choose a position that Operon remembers. Use these settings to manage the button:
 
 - **Show mobile quick-create button** turns it on or off everywhere.
 - **Hide in Calendar** and **Hide in Kanban** each suppress the button while that view is active, so you can keep it for general use but clear it off the surfaces where it would be in the way. Both are off by default, meaning the button shows everywhere.
-- **Reset position.** You can drag the button to a spot that suits your grip; this puts it back at the default bottom-right corner.
+- **Reset position.** Return the button to its default position on the right, above the bottom controls.
 
 ## Choose the phone Task Editor layout
 
@@ -81,7 +81,7 @@ These live under **Settings → Operon → Mobile**. **Mobile General → Quick 
 
 **The plus button is gone on one screen.** It is likely hidden for that surface. Check Hide in Calendar and Hide in Kanban, or that the button is enabled at all.
 
-**I moved the button and want it back.** Use Reset position to return it to the bottom-right corner.
+**I moved the button and want it back.** Use **Reset position** to restore the default gap below it.
 
 **My touch menu closes too fast.** Raise the mobile context menu auto-hide time. The reverse lowers it.
 

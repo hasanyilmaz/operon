@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-10-29T18:28:32+01:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # Time session history
@@ -35,9 +35,15 @@ You can also edit a session directly from a table: click its chip in detailed **
 
 The task description at the top of **Edit session** is a formatted, read-only context label. Default and six-color highlights appear in their display form, with the color marker hidden, just as on a Kanban card. This does not alter the source description or the session's times and save behavior. To change the description or its highlight color, use [[DOCS-021 Task Editor|Task Editor]]; see [[DOCS-113 Text field editor popover|Text field editor popover]] for highlight syntax.
 
-## Edit the latest session from Status Dock
+## Open Session History from Status Dock
 
-On desktop, the visible [[DOCS-152 Status Dock|Status Dock]] shows a temporary card for the latest newly saved task session. Click its **duration**, such as **34m 22s**, to open the same **Edit session** window. The card lasts ten seconds, with its countdown paused while you hover over or interact with it. If a dock task list is open, the card waits until that list closes.
+On desktop, click **Session History** in the [[DOCS-152 Status Dock|Status Dock]]. The icon appears when the section is enabled and has entries. The list follows **History window (days)** under **Settings → Operon → Tasks → Tracker → Session History**. The newest session by start time is closest to the Dock. Each session gets its own card, so the same task can appear more than once.
+
+Click a duration to open **Edit session** for that record. The task name uses the Dock's **Click behavior** setting. Use **Start Timer** to start a new session for the task while keeping the historical record.
+
+## Edit the latest saved session
+
+On desktop, the visible [[DOCS-152 Status Dock|Status Dock]] shows a temporary card for the latest newly saved task session. Click its **duration**, such as **34m 22s**, to open the same **Edit session** window. The card lasts ten seconds, with its countdown paused while you hover over or interact with it. If a Dock list is open, the card waits until that list closes. This card is available even when the Session History section is off.
 
 Clicking the card's task description follows the **Status Dock** opening preference, independently of the history panel's **Task description click action** setting. Once the card disappears, the saved session remains available in history and Task Editor.
 

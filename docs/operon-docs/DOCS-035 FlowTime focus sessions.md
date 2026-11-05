@@ -2,7 +2,7 @@
 Notes: Run a countdown focus session on a task, with breaks and overtime
 Icon: hourglass
 Color: "#9333ea"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # FlowTime focus sessions
@@ -16,6 +16,8 @@ FlowTime is the focus side of Operon's [[DOCS-034 Time tracking|time tracking]].
 ## Start a session
 
 Open the panel with **Open FlowTime panel** from the command palette. The panel has two modes, **TrackTime** and **FlowTime**; choose FlowTime. Pick the task to focus on, set the session length in minutes, and the countdown begins. The time you spend is recorded against the task, just as it is with TrackTime, so a focus session still feeds the task's duration.
+
+FlowTime can reflect a start, stop, or task switch from another device once the active tracker file reaches this device. See [[DOCS-047 Sync conflict safety|Sync conflict safety]] for what needs to sync and how Operon handles temporary file problems.
 
 ## Breaks
 

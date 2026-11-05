@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-10-13T16:56:39+02:00
+Updated: 2026-11-05T01:14:43+01:00
 ---
 
 # Date and time picker
@@ -21,7 +21,7 @@ The **Date format** setting in **Settings → Operon → Core → General → La
 
 This is a display preference, not a storage format. Task fields remain canonical ISO values such as `2026-09-03`, and changing the setting does not rewrite tasks, change Daily or Weekly Note filenames, or alter Calendar and Gantt headers. Date & time displays combine this preference with the separate 12-hour or 24-hour **Time format** setting.
 
-The selected date in the picker input and the date shown beside suggestions such as **Today** and **Tomorrow** follow this setting. Relative labels and weekday names still follow the interface language. Custom keys typed as **Date** or **Date & time** use the same display behavior; their saved values remain unchanged.
+The selected date in the picker input and the date shown beside suggestions such as **Today** and **Tomorrow** follow this setting. In the suggestion list, relative labels and weekday names use English when Korean is selected. The calendar grid uses Obsidian's language setting. Custom keys typed as **Date** or **Date & time** use the same display behavior; their saved values remain unchanged.
 
 > **MEDIA-DOCS-063-1:** The date picker open, with a typed phrase and the matching date suggested below.
 
@@ -29,7 +29,7 @@ The selected date in the picker input and the date shown beside suggestions such
 
 ## Type the date in words
 
-Open the picker and start typing. As you type, it suggests dates that match. It understands, in your interface language:
+Open the picker and start typing. As you type, it suggests dates that match. The examples below use English. With Korean (**한국어**) selected, enter English date phrases such as **tomorrow** or **next Tuesday**. For the other supported interface languages, use phrases in the selected language.
 
 - **Named days**: `today`, `tomorrow`, `yesterday`.
 - **Weekdays**: `next tuesday`, and the coming weekday by name.
@@ -82,7 +82,7 @@ A date field can be emptied. When a field already has a value, the picker offers
 
 **Do I have to use a calendar?** No. Typing a phrase like "next friday" is usually faster, and the calendar is there when you want it.
 
-**What date phrases work?** Named days (today, tomorrow), weekdays (next tuesday), offsets (3 days from now, 2 weeks ago), a bare number for a quick offset (3), and a day with a month name written number-first (3 march), in your interface language.
+**What date phrases work?** Named days (today, tomorrow), weekdays (next tuesday), offsets (3 days from now, 2 weeks ago), a bare number for a quick offset (3), and a day with a month name written number-first (3 march). Use the date picker language. With the Korean interface, type the English phrases shown here.
 
 **Why doesn't `aug 3` work?** The day always comes before the month, so write `3 aug`, not `aug 3`. Operon reads a typed date number-first; the separate Date format setting controls only how the resolved date is shown.
 

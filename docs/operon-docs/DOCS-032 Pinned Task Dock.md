@@ -2,7 +2,7 @@
 Notes: Keep chosen tasks always in view
 Icon: pin
 Color: "#0284c7"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # Pinned Task Dock
@@ -34,7 +34,7 @@ Open **Settings → Operon → Interface → Pinned Dock → Automatic Pinning**
 
 These rules apply to the shared pinned list, whether you use the floating dock or sidebar. Pinning when a reminder arrives is configured separately under **Tasks → Reminders → Reminder delivery**.
 
-## Two surfaces: floating dock or side panel
+## Choose a Pinned Tasks surface
 
 You can show your pinned tasks in either of two places:
 
@@ -42,6 +42,10 @@ You can show your pinned tasks in either of two places:
 - A **side panel**, like a normal Obsidian sidebar view. Open it with **Open Pinned Tasks**.
 
 Which one you get is a setting. Under **Settings → Operon → Interface → Pinned Dock → Display**, the pinned-tasks surface can be set to the dock or the sidebar, and when you use the sidebar you can choose the left or right side. On smaller screens the sidebar can be the more comfortable choice.
+
+### See your pins in Status Dock
+
+On desktop, the **Pinned Tasks** icon in [[DOCS-152 Status Dock|Status Dock]] opens the same active pinned group. It follows the sort order set under **Pinned Dock → Appearance & Order**, with the first task closest to the Dock. The icon appears when the section is enabled and the group has tasks. Use the floating dock or sidebar to manage manual order.
 
 ## Acting on pinned tasks
 
@@ -65,7 +69,7 @@ Click a pinned task to open it in the [[DOCS-021 Task Editor|Task Editor]]. Hold
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Interface → Pinned Dock**, under **Display**, **Appearance & Order**, **Automatic Pinning**, **Sidebar**, and **Floating Dock**. These configure the shared pinned list and its two display surfaces. The **Pin task when its reminder time arrives** automation is set separately, in **Settings → Operon → Tasks → Reminders**.
+Operon settings for this live in **Settings → Operon → Interface → Pinned Dock**, under **Display**, **Appearance & Order**, **Automatic Pinning**, **Sidebar**, and **Floating Dock**. These configure the shared pinned list and its dedicated floating dock and sidebar. The **Pin task when its reminder time arrives** automation is set separately, in **Settings → Operon → Tasks → Reminders**.
 
 ## Related
 
