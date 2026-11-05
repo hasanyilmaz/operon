@@ -2,7 +2,7 @@
 Notes: Install the plugin and turn it on
 Icon: download
 Color: "#16a34a"
-Updated: 2026-10-01T13:41:33+02:00
+Updated: 2026-11-05T01:12:23+01:00
 ---
 
 # Install and enable Operon
@@ -39,7 +39,7 @@ Operon can check GitHub for a newer compatible release once each time it starts,
 
 ## Language packs
 
-English is built into Operon and is available immediately. The following interface languages are available as downloadable packs from **Settings → Operon → Core → General → Language & Formats → Language**:
+Operon supports **12 interface languages**. English is built in and available immediately. The other 11 languages are available as downloadable packs from **Settings → Operon → Core → General → Language & Formats → Language**:
 
 - Turkish
 - German
@@ -51,8 +51,11 @@ English is built into Operon and is available immediately. The following interfa
 - Russian
 - Italian
 - Brazilian Portuguese
+- Korean (**한국어**)
 
 Operon downloads, validates, and caches the selected pack before changing the interface. If that download or validation fails, the previous active language and its saved selection stay in place; Operon does not switch you to a partial or fallback interface. A cached pack can be used again without downloading it first.
+
+With Korean selected, use English phrases for natural-language date input. See [[DOCS-063 Date and time picker|Date and time picker]].
 
 ## Compatibility
 
@@ -72,7 +75,7 @@ The main compatibility risk is another task plugin that also rewrites checkbox l
 
 **Does Operon update itself?** No. It can check GitHub on startup and notify you when a newer compatible release is out, but you still update it yourself through Community Plugins. See **Settings → Operon → Core → General → Updates** to turn the check off.
 
-**Which interface languages are available?** English is built in. Downloadable packs are available for Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, Italian, and Brazilian Portuguese. Select one in **Settings → Operon → Core → General → Language & Formats → Language**. If its pack cannot be downloaded or validated, Operon keeps the language already active.
+**Which interface languages are available?** English is built in. Downloadable packs are available for Turkish, German, French, Spanish, Simplified Chinese, Traditional Chinese, Japanese, Russian, Italian, Brazilian Portuguese, and Korean (**한국어**). Select one in **Settings → Operon → Core → General → Language & Formats → Language**. If its pack cannot be downloaded or validated, Operon keeps the language already active.
 
 ## Next step
 

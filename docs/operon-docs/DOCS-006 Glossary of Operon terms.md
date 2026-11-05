@@ -2,7 +2,7 @@
 Notes: Definitions of Operon's core terms
 Icon: book-a
 Color: "#16a34a"
-Updated: 2026-10-29T18:48:06+01:00
+Updated: 2026-11-05T01:12:23+01:00
 ---
 
 # Glossary of Operon terms
@@ -38,8 +38,8 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Canvas Task Card**: an interactive representation of an Inline Task or File Task on an Obsidian Canvas, linked to its source by `operonId`. It is a view of the task, not a third task type. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 - **Excalidraw Task Card**: an interactive view of an Inline Task or File Task inside an Excalidraw drawing. It follows the source task while the drawing stores its placement. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 
-- **Canvas and Excalidraw Task Pool**: a floating list for finding existing tasks and adding their cards to either surface. Modes are Overdue, Unscheduled, All, Finished, and Pinned. It is independent of the Calendar Task Pool. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
-- **Canvas and Excalidraw Property Value Pool**: a floating panel for finding and favoriting reusable property values to apply to task cards. Unlike Task Pool, it supplies values rather than tasks. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
+- **Task Pool**: find existing tasks by search or mode. Add their cards to Canvas or Excalidraw, or place them in a Kanban cell. See [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]].
+- **Property Value Pool**: find and favorite reusable values to apply to task cards on Canvas, Excalidraw, or Kanban. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]].
 - **Operon group**: a Canvas group whose title contains one property rule, applied to a task when its card is dropped into the group. It is not a task type or a parent–child relationship. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Group Mismatches**: the Canvas destination for existing cards that no longer match a single-value group when no suitable normal destination is available. It can contain value-specific subgroups; list groups do not trigger this automatic routing. See [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]].
 - **Embedded Task Card**: a live card for one existing task inside a note, created with an `operon` block containing `view: card` and `taskId`. Removing the embed leaves the task intact. See [[DOCS-142 Embedded Task Cards|Embedded Task Cards]].
@@ -51,7 +51,7 @@ Short definitions for the words used across these docs. When a term has its own 
 - **Favorite preset**: a preset marked with a star for quick access. Table, Calendar, and Kanban favorites appear as shortcuts in the view's toolbar; saved filters can be favorited too. See [[DOCS-109 Table presets|Table presets]].
 - **Column summary**: a value rolled up at the foot of a table column, such as a count, a sum, or the earliest date, shown per group and for the whole table. See [[DOCS-108 Table summaries|Table summaries]].
 - **Pinned Task Dock**: a surface that keeps chosen tasks always in view, as a floating dock or a side panel. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
-- **Status Dock**: the compact desktop surface for the timer, shared FlowTime breaks, overdue and today task lists, recent saved sessions, current and upcoming calendar tasks, and duplicate-ID warnings. Unlike the Pinned Task Dock, it follows tracking and scheduling state rather than a manually pinned list. See [[DOCS-152 Status Dock|Status Dock]].
+- **Status Dock**: a movable desktop bar with configurable sections for the timer and breaks, ongoing and upcoming calendar tasks, overdue and today lists, pinned and modified tasks, and session history. It also shows duplicate-ID warnings. See [[DOCS-152 Status Dock|Status Dock]].
 - **Contextual menu**: the right-click and hover menu of task actions, with a configurable, context-aware action list. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
 ## Time

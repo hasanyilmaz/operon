@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-10-29T18:48:06+01:00
+Updated: 2026-11-05T01:12:23+01:00
 ---
 
 # Operon Docs
@@ -47,7 +47,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-102 Do you need to use all of Operon|Do you need to use all of Operon?]]
 - [[DOCS-005 Operon core concepts|Operon core concepts]]
 - [[DOCS-006 Glossary of Operon terms|Glossary of Operon terms]]
-- [[DOCS-007 Install and enable Operon|Install and enable Operon]]
+- [[DOCS-007 Install and enable Operon|Install and enable Operon]]: installation and downloadable interface languages
 - [[DOCS-008 Essential settings to configure first|Essential settings to configure first]]
 - [[DOCS-009 Create your first task|Create your first task]]
 - [[DOCS-010 Build your first filtered view|Build your first filtered view]]
@@ -111,12 +111,12 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-113 Text field editor popover|Text field editor popover]]: single-field editing and default/six-color highlights
 
 ### Views and planning
-- [[DOCS-152 Status Dock|Status Dock]]: desktop timer, overdue and today lists, recent sessions, upcoming tasks, and conflict alerts
+- [[DOCS-152 Status Dock|Status Dock]]: customizable desktop sections for time tracking, calendar tasks, task lists, and session history
 - [[DOCS-151 Lightbox|Lightbox]]: shared desktop previews, editable files, and window controls
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
 - [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]
-- [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]]
-- [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]]
+- [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool for Canvas, Excalidraw, and Kanban]]: find existing tasks and place them on a board or drawing
+- [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool for Canvas, Excalidraw, and Kanban]]: apply reusable values to task cards
 - [[DOCS-146 Operon Groups in Canvas|Operon Groups in Canvas]]
 - [[DOCS-142 Embedded Task Cards|Embedded Task Cards]]
 - [[DOCS-025 Filter View|Filter View]]
@@ -170,7 +170,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-043 Settings search|Settings search]]
 - [[DOCS-098 Workspace Tweaks|Workspace Tweaks]]
 - [[DOCS-099 State Icons|State Icons]]
-- [[DOCS-101 Mobile General|Mobile General]]
+- [[DOCS-101 Mobile General|Mobile General]]: quick-create button, mobile editor, and touch menus
 
 ### Data and sync
 - [[DOCS-044 Where Operon stores data|Where Operon stores data]]

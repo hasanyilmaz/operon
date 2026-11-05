@@ -2,7 +2,7 @@
 Notes: Date-based planning with sidebar countdowns and desktop Status Dock tasks
 Icon: calendar-clock
 Color: "#0284c7"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-11-05T01:07:15+01:00
 ---
 
 # Upcoming Tasks
@@ -43,11 +43,11 @@ When a task reaches zero, its sidebar countdown stays at zero and the next futur
 
 ## Use the desktop Status Dock
 
-The [[DOCS-152 Status Dock|Status Dock]] shows ongoing timed tasks first, ordered by their start time, followed by the next future timed Scheduled task within the configured day range. It works even when the sidebar is closed. Several ongoing tasks can appear together; their area scrolls horizontally when space is limited.
+The [[DOCS-152 Status Dock|Status Dock]] has separate **Ongoing Tasks** and **Upcoming Tasks** sections. Ongoing timed tasks appear in start-time order. Upcoming shows the next future timed Scheduled task within the configured day range. Both sections work even when the sidebar is closed.
 
 An ongoing task has started and has not reached its end time. The end can be explicit or derived from its estimate. Eligible blocks spanning midnight are included even though the sidebar starts with today. Finished and cancelled tasks remain excluded. All-day entries do not become dock countdowns.
 
-Ongoing names have no zero countdown or visible **Now:** label; **Now:** appears in the task-name tooltip. When a countdown ends, the selected task can remain alongside the next future task. If no ongoing block is available, this retained task remains until its selection becomes invalid, for example through completion, deletion, or a changed scheduled start. Selection is recalculated when Operon reloads.
+Ongoing entries show their task names without a zero countdown or a **Now:** label. When a countdown ends, the selected task can remain alongside the next future task. If no ongoing block is available, this retained task remains until its selection becomes invalid, for example through completion, deletion, or a changed scheduled start. Selection is recalculated when Operon reloads.
 
 Hover over a task to reveal Play in place of its icon, then click the icon to start tracking. Clicking its name follows the dock’s shared **Click behavior** setting, whose default is **Source File + Task Editor**. Countdown text is not a click target. The task’s own icon takes priority; fallback icons use Scheduled for current tasks and Due for the next task. The Due icon does not change selection to use Due dates.
 
@@ -81,11 +81,9 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 
 ### Status Dock and mobile status bar
 
-On desktop, the **Operon status dock** section contains the upcoming-task visibility toggle, enabled by default. It controls the calendar-task area, not the timer or the whole dock. Use **Toggle status dock** to hide or show the whole dock.
+On desktop, open **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Sections and Order** to show, hide, or reorder **Ongoing Tasks** and **Upcoming Tasks** independently. Both start enabled. **Click behavior** sits in the same Status Dock settings section. To show or hide the whole Dock, use **Toggle status dock** from the command palette.
 
-The desktop **When countdown ends** and **Status bar click action** selectors have been removed. Task-name opening is configured under **Interface → Workspace Tweaks → Operon status dock → Click behavior** instead.
-
-On mobile, **Show next upcoming task in status bar**, **When countdown ends**, and **Status bar click action** retain the behavior described above. The latter two controls appear when the indicator is enabled. **Daily group order** appears when **Show all-day tasks** is enabled. Hidden controls retain their saved values.
+On mobile, **Show next upcoming task in status bar**, **When countdown ends**, and **Status bar click action** live under **Tasks → Upcoming Tasks**. The latter two controls appear when the indicator is enabled. **Daily group order** appears when **Show all-day tasks** is enabled. Hidden controls retain their saved values.
 
 ## FAQ
 

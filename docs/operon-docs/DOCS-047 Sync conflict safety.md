@@ -2,7 +2,7 @@
 Notes: How Operon's data behaves under sync, and how to resolve conflicts
 Icon: shield-check
 Color: "#0891b2"
-Updated: 2026-10-19T13:40:31+02:00
+Updated: 2026-11-05T01:10:44+01:00
 ---
 
 # Sync conflict safety
@@ -24,6 +24,16 @@ Sync can still produce a copy: two devices create from the same template, or an 
 ## Operon writes its own files safely
 
 Operon uses guarded writes for its [[DOCS-046 Plugin data and state files|plugin data and state files]]. Before saving settings, it checks that the stored version still matches the version it read. If another device or sync process has changed it, Operon can suspend settings writes rather than overwrite that newer state. An interruption or uncertain write result may require recovery; these safeguards are not a guarantee against every storage failure.
+
+## Active timers across devices
+
+To see a running timer on another device, your sync provider needs to transfer Operon's `state/active-trackers.json` file under the plugin configuration folder, normally `.obsidian/plugins/operon/`. Completed sessions travel with their task notes. The provider determines when each file arrives.
+
+While Obsidian is visible, a file change notification can refresh the active timer in FlowTime, TrackTime, and Status Dock without a restart. Operon also checks at startup and when you return to the app. If a notification is missed, return to the app to check the latest local copy. These checks are triggered by events and user actions, without polling.
+
+During a refresh, a temporarily missing, unreadable, or incomplete tracker file leaves the last valid timer state in place. If the tracker arrives before its task note, Operon keeps the task link and can show the task details once the note is available.
+
+Before starting, stopping, or switching a timer, Operon checks the current saved state. If it has changed or cannot be verified, Operon may ask you to check the current timer and try again. Allow the files to finish syncing before retrying. If two offline devices make conflicting timer changes, the resulting file depends on your sync provider's conflict handling.
 
 ## An automatic backup conflict is not a settings failure
 

@@ -2,7 +2,7 @@
 Notes: Set board-wide fallback sorting and per-column Kanban order
 Icon: list-ordered
 Color: "#0284c7"
-Updated: 2026-10-29T18:22:34+01:00
+Updated: 2026-11-05T01:08:45+01:00
 ---
 
 # Kanban manual order
@@ -25,6 +25,10 @@ Automatic rules can use task fields such as priority, dates, text, or **Project 
 With Manual mode effective for a column, drag a card up or down within a cell. Operon saves that cell's order. Switching to Manual alone does not create saved orders for every cell; cells you have not arranged continue to follow the sorting rules.
 
 Moving to another cell applies its column and row property values. A Manual target keeps the insertion position you chose; an Automatic target re-sorts by its rules. With list properties, the source card can remain because the move adds membership. Its source order is retained while it still belongs there. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]].
+
+The same insertion rule applies when you drag an existing task from [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]]. For example, drop a task between the second and third cards in a Manual cell to place it there. If the task already belongs to that cell, you can move it to a different position without changing its fields. An Automatic cell follows its sorting rules regardless of drop position.
+
+Dropping a value from [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]] onto a card edits the field without setting a manual position. If the card stays in the same cell, its saved position is preserved.
 
 Order belongs to the preset and the particular column-and-row intersection. It is not shared by every visible copy of a task. Changing axes does not apply one property's saved cell order to an unrelated property.
 

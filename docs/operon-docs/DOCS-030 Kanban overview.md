@@ -2,7 +2,7 @@
 Notes: Plan tasks in property-based columns and swimlanes
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-10-29T18:48:06+01:00
+Updated: 2026-11-05T01:14:43+01:00
 ---
 
 # Kanban overview
@@ -71,6 +71,17 @@ These are real edits to the task's Markdown, shared by every view. Existing comp
 Placing an existing task into a cell uses the same value rules. Creating a task from a cell prefills both axis values in [[DOCS-020 Task Creator|Task Creator]]; you can change the draft before saving. Cancelling does not create a task.
 
 On desktop-layout tablets and other hybrid devices, touch and pen use press-and-hold before a card begins to drag. Moving before activation scrolls the board or cell, and a normal tap still opens the card. Links, chips, menus, and inline editors keep their own actions. Mouse and trackpad support direct drag-and-drop.
+
+## Use Task Pool and Property Pool
+
+The two pool buttons sit on the right edge of the board. They share panel settings with Canvas and Excalidraw.
+
+| Pool | Where to drop | What changes |
+| --- | --- | --- |
+| **Kanban Task Pool** | An expanded cell, including empty space or an existing card in that cell | Places an existing task by applying the target column and swimlane values together. A Manual cell uses the indicated insertion position. |
+| **Kanban Property Pool** | One task card | Applies the selected value to that task. If the value affects grouping, the card follows the updated property. |
+
+Review the field changes in the preview before releasing. Both pools keep existing list members when adding a new value. If the updated task does not match the board's saved filter, Operon keeps the change, shows a warning, and opens Task Editor. See [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]] and [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]].
 
 ## Open a card
 
