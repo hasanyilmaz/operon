@@ -90,7 +90,7 @@ import type { CanvasConversionReceipt } from './src/ui/canvas-task-conversion';
  * Plugin entry point. Manages lifecycle, commands, and module initialization.
  */
 
-import { parseYaml, Editor, EditorPosition, EditorSelection, ItemView, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
+import { parseYaml, Editor, EditorPosition, EditorSelection, ItemView, Keymap, MarkdownRenderChild, MarkdownSectionInformation, MarkdownView, MarkdownPostProcessorContext, Menu, MenuItem, Notice, Platform, Plugin, TFile, TAbstractFile, TFolder, WorkspaceLeaf, apiVersion, editorLivePreviewField, requestUrl, requireApiVersion, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import type { StateEffect } from '@codemirror/state';
 import {
@@ -18015,15 +18015,15 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
-	private navigateToTask(task: IndexedTask): void {
+	private navigateToTask(task: IndexedTask, evt?: MouseEvent | KeyboardEvent): void {
 		if (task.primary.format === 'yaml') {
-			runAsyncAction('task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
+			runAsyncAction('task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', Keymap.isModEvent(evt)));
 			return;
 		}
 
 		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 		if (!(file instanceof TFile)) return;
-		const leaf = this.app.workspace.getLeaf(false);
+		const leaf = this.app.workspace.getLeaf(Keymap.isModEvent(evt));
 			runAsyncAction('inline task navigation failed', async () => {
 				await leaf.openFile(file);
 				const editor = getCursorEditorFromView(leaf.view);
@@ -22997,7 +22997,7 @@ export default class OperonPlugin extends Plugin {
 				void this.handleTaskIconClick(operonId);
 			},
 			getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
-			navigateToTask: (task: IndexedTask) => this.navigateToTask(task),
+			navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => this.navigateToTask(task, evt),
 			getSettings: () => this.settings,
 			updateField: (operonId: string, key: string, value: string) => (
 				this.updateTaskFieldAndRefresh(operonId, key, value)
@@ -23051,11 +23051,11 @@ export default class OperonPlugin extends Plugin {
 				getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
 				saveSettings: () => this.storage.saveSettings(),
 				getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
-					navigateToTask: (task: IndexedTask) => {
+					navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => {
 						if (task.primary.format === 'yaml') {
-							runAsyncAction('embedded filter task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
+							runAsyncAction('embedded filter task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', Keymap.isModEvent(evt)));
 						} else {
-							const leaf = this.app.workspace.getLeaf(false);
+							const leaf = this.app.workspace.getLeaf(Keymap.isModEvent(evt));
 							const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 								if (!(file instanceof TFile)) return;
 								runAsyncAction('embedded filter inline task navigation failed', async () => {
@@ -23663,11 +23663,11 @@ export default class OperonPlugin extends Plugin {
 					cycleStatus: (operonId: string) => {
 						void this.handleTaskIconClick(operonId);
 					},
-					navigateToTask: (task: IndexedTask) => {
+					navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => {
 							if (task.primary.format === 'yaml') {
-								runAsyncAction('filter task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
+								runAsyncAction('filter task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', Keymap.isModEvent(evt)));
 							} else {
-								const leaf = this.app.workspace.getLeaf(false);
+								const leaf = this.app.workspace.getLeaf(Keymap.isModEvent(evt));
 								const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
 								if (!(file instanceof TFile)) return;
 									runAsyncAction('filter inline task navigation failed', async () => {

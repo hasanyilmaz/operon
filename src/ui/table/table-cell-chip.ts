@@ -4,7 +4,7 @@ import { formatDurationHuman, parseTrackerList, parseTrackerRange } from '../../
 import { asHTMLElement, createOwnerElement } from '../../core/dom-compat';
 import { bindLinksChipKeyboard, handleLinksChipClick } from '../links-chip-action';
 import { bindAssigneeIconImage } from '../assignee-chip-image';
-import { Platform, setIcon, type App } from 'obsidian';
+import { Keymap, Platform, setIcon, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
 import type { TableColumn } from '../../types/table';
@@ -241,14 +241,14 @@ export function bindTableTaskMediaChipActivation(
 		label: displayLabel,
 		sourcePath: options.sourcePath ?? '',
 	});
-	const activate = (event: Event): void => {
+	const activate = (event: MouseEvent | KeyboardEvent): void => {
 		event.preventDefault();
 		event.stopPropagation();
 		if (reference.kind === 'http-url') {
 			openExternalUrl(target);
 			return;
 		}
-		void options.app!.workspace.openLinkText(target, options.sourcePath ?? '', false);
+		void options.app!.workspace.openLinkText(target, options.sourcePath ?? '', Keymap.isModEvent(event));
 	};
 	chip.addEventListener('pointerdown', event => {
 		if (event.button !== 0) return;

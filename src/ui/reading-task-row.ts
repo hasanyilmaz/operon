@@ -7,7 +7,7 @@ import { bindDesktopChipOpening } from './links-chip-action';
 import { identifyInlineTaskPart, registerInlineTaskDomRefresh, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { bindAssigneeChipImage } from './assignee-chip-image';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
-import { App, Platform, setIcon } from 'obsidian';
+import { App, Keymap, Platform, setIcon } from 'obsidian';
 import { IndexedTask } from '../types/fields';
 import { showDatePicker, type ManualDatePickerOptions } from './field-pickers/date-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
@@ -72,7 +72,7 @@ export interface ReadingTaskRowCallbacks {
 	getDescendantTaskSummary?: (operonId: string) => DescendantTaskSummary;
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void | Promise<void>;
-	navigateToTask: (task: IndexedTask) => void;
+	navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => void;
 	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
@@ -354,13 +354,13 @@ export function buildReadingTaskRowElement(
 	description.addEventListener('click', (event) => {
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		callbacks.navigateToTask(task, event);
 	});
 	description.addEventListener('keydown', (event) => {
 		if (event.target !== description) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		callbacks.navigateToTask(task, event);
 	});
 	head.appendChild(description);
 
@@ -858,7 +858,7 @@ function attachReadingChipAction(
 			case 'blocking':
 			case 'blockedBy':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, Keymap.isModEvent(event));
 					onCommit?.();
 				}
 				break;
@@ -891,7 +891,7 @@ function attachReadingChipAction(
 			case 'taskImage':
 			case 'taskGallery':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, Keymap.isModEvent(event));
 					onCommit?.();
 				} else if (entry.externalUrl) {
 					openExternalUrl(entry.externalUrl);
@@ -954,7 +954,7 @@ function attachReadingChipAction(
 				const customMapping = getCustomFieldMapping(settings.keyMappings, entry.key);
 				if (!customMapping || !isProjectedCustomFieldType(customMapping)) return;
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, Keymap.isModEvent(event));
 					onCommit?.();
 					return;
 				}

@@ -11,7 +11,7 @@ import {
 	WidgetType,
 } from '@codemirror/view';
 import { Extension, RangeSetBuilder, StateEffect } from '@codemirror/state';
-import { App, Platform, editorLivePreviewField, setIcon } from 'obsidian';
+import { App, Keymap, Platform, editorLivePreviewField, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { normalizeTaskColorValue } from '../core/task-color-value';
@@ -423,14 +423,14 @@ class TaskWikilinkLabelWidget extends WidgetType {
 			if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 			event.preventDefault();
 			event.stopPropagation();
-			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, false);
+			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, Keymap.isModEvent(event));
 		});
 		label.addEventListener('keydown', (event) => {
 			if (event.target !== label) return;
 			if (event.key !== 'Enter' && event.key !== ' ') return;
 			event.preventDefault();
 			event.stopPropagation();
-			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, false);
+			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, Keymap.isModEvent(event));
 		});
 
 		return label;

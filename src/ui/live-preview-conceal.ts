@@ -16,7 +16,7 @@ import {
 	WidgetType,
 } from '@codemirror/view';
 import { EditorState, Extension, RangeSetBuilder, StateEffect, StateField } from '@codemirror/state';
-import { App, Platform, editorInfoField, editorLivePreviewField, setIcon } from 'obsidian';
+import { App, Keymap, Platform, editorInfoField, editorLivePreviewField, setIcon } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import { parseTaskLine } from '../core/parser';
 import { IndexedTask, ParsedTask } from '../types/fields';
@@ -1433,7 +1433,7 @@ function attachLivePreviewChipAction(
 			case 'blocking':
 			case 'blockedBy':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), Keymap.isModEvent(event));
 					onCommit?.();
 				}
 				break;
@@ -1467,7 +1467,7 @@ function attachLivePreviewChipAction(
 			case 'taskImage':
 			case 'taskGallery':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), Keymap.isModEvent(event));
 					onCommit?.();
 				} else if (entry.externalUrl) {
 					openExternalUrl(entry.externalUrl);
@@ -1533,7 +1533,7 @@ function attachLivePreviewChipAction(
 				const customMapping = getCustomFieldMapping(settings.keyMappings, entry.key);
 				if (!customMapping || !isProjectedCustomFieldType(customMapping)) return;
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), Keymap.isModEvent(event));
 					onCommit?.();
 					return;
 				}

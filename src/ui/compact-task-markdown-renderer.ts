@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import { Keymap, type App } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { collectMarkdownProtectedRanges } from '../core/markdown-protected-ranges';
 import { bindTaskDescriptionWikilinkPreview } from './compact-chip-link-preview';
@@ -513,7 +513,7 @@ function appendLink(
 			event.preventDefault();
 			event.stopPropagation();
 			const destination = node.type === 'wikilink' ? node.target : node.destination;
-			void options.app?.workspace.openLinkText(destination, options.sourcePath ?? '', false);
+			void options.app?.workspace.openLinkText(destination, options.sourcePath ?? '', Keymap.isModEvent(event));
 		});
 		bindTaskDescriptionWikilinkPreview(
 			options.app as App,
