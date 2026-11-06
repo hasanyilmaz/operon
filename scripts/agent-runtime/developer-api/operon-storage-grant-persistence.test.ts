@@ -239,7 +239,7 @@ function stripFileTaskDisplayTitleDefaults(data: OperonDataPackageV1, verify = f
 	delete settings.fileTaskDisplayTitleEnabled;
 	if (verify) {
 		assert.equal(settings.fileTaskDisplayTitleChangeMode, 'keep');
-		assert.deepEqual(settings.fileTaskFilenameRule, { preset: 'kebab', lowercase: true, rules: [] });
+		assert.deepEqual(settings.fileTaskFilenameRule, { preset: 'same' });
 	}
 	delete settings.fileTaskDisplayTitleChangeMode;
 	delete settings.fileTaskFilenameRule;
