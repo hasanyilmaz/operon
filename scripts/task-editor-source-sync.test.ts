@@ -18,7 +18,7 @@ import { editorInfoField } from 'obsidian';
 import { NativeLightboxLifecycle } from '../src/ui/native-lightbox-lifecycle';
 import { lightboxBodyStart, nativeLightboxBodyExtension } from '../src/ui/native-lightbox-body';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
-import { DEFAULT_FILENAME_RULE, filenameSuggestionAfterTitleEdit } from '../src/core/filename-rule';
+import { filenameSuggestionAfterTitleEdit } from '../src/core/filename-rule';
 import { t } from '../src/core/i18n';
 
 const state = (fields: Record<string, string> = {}): TaskEditorSourceState => ({ description: 'before', checkbox: 'open', tags: ['one'], fieldValues: { operonId: 'task1', priority: 'A', note: 'old note', ...fields } });
@@ -447,11 +447,11 @@ const SavedTitleEditor = methods('src/ui/task-editor-content.ts', ['persistEdito
  buildTaskEditorOperonField: (key: string, value: string) => ({ key, value, rawValue: value, sourceKey: key, type: 'text', isCanonical: true }),
  serializeTask, isTaskEditorSaveCommit: (value: object) => 'canonicalState' in value,
 });
-function savedTitleEditor() {
+function savedTitleEditor(preset: 'same' | 'kebab' | 'snake' = 'same') {
  const editor = new SavedTitleEditor(), events: string[] = [], policyTitles: string[] = [];
  const suggestion: { rendered: number; current: { filename: string; canCommit: () => boolean } | null } = { rendered: 0, current: null };
  const values = { operonId: 'task001', fileTaskDisplayTitle: 'Pre-existing drift' };
- Object.assign(editor, { settings: { ...DEFAULT_SETTINGS, fileTaskDisplayTitleEnabled: true }, onRenameFileTask() {},
+ Object.assign(editor, { settings: { ...DEFAULT_SETTINGS, fileTaskDisplayTitleEnabled: true, fileTaskFilenameRule: { preset } }, onRenameFileTask() {},
   description: 'slug', persistedDescription: 'slug', fieldValues: { ...values }, persistedFieldValues: { ...values },
   checkbox: 'open', tags: [], inlineCompletionMode: 'keep-completed', checkboxBodyRevision: 0, fileBodyDraft: '',
   existingTask: { filePath: 'slug.md', fields: [] }, submittedFileProperties: new Set(), editVersion: 1, fileTaskTitleRevision: 0,
@@ -467,7 +467,7 @@ function savedTitleEditor() {
    policyTitles.push(title);
    assert.equal(events.at(-1), 'saved', 'title must be committed before asking or renaming');
    events.push('policy');
-   return filenameSuggestionAfterTitleEdit(title, 'slug', 'ask', DEFAULT_FILENAME_RULE);
+   return filenameSuggestionAfterTitleEdit(title, 'slug', 'ask', editor.settings.fileTaskFilenameRule);
   },
   getCurrentIndexedTask: () => ({ description: 'slug', primary: { filePath: 'slug.md' } }),
   getCompactTextSourcePath: () => 'slug.md',
@@ -499,8 +499,8 @@ test('suggestion follows a committed Operon edit, never pre-existing drift', asy
 
 // These are the surviving UI revision guarantees, before rename dispatch.
 test('a newer title invalidates an old Ask action and keeps the current derived or edited name', async () => {
- for (const filename of ['title-b', '02-custom-for-b']) {
-  const { editor, suggestion } = savedTitleEditor(); const renamed: string[] = [];
+ for (const [preset, expected] of [['same', 'Title B'], ['kebab', 'title-b'], ['snake', 'title_b']] as const) for (const filename of [expected, '02-custom-for-b']) {
+  const { editor, suggestion } = savedTitleEditor(preset); const renamed: string[] = [];
   editor.onRenameFileTask = async (value: string) => { renamed.push(value); };
   editor.setEditableName('Title A'); await editor.persistEditorState();
   const old = suggestion.current!;
@@ -509,14 +509,14 @@ test('a newer title invalidates an old Ask action and keeps the current derived 
   await assert.rejects(editor.renameFileTask('title-a', old.canCommit), { message: t('taskEditor', 'fileTaskRenameFailed') });
   assert.deepEqual(renamed, []);
   await editor.persistEditorState();
-  assert.equal(suggestion.current!.filename, 'title-b');
+  assert.equal(suggestion.current!.filename, expected);
   await editor.renameFileTask(filename, suggestion.current!.canCommit);
   assert.deepEqual(renamed, [filename]);
  }
 });
 test('delayed save or suggestion for A cannot restore a prompt after B is entered', async () => {
- for (const boundary of ['save', 'suggestion']) {
-  const { editor, suggestion } = savedTitleEditor();
+ for (const [preset, expected] of [['same', 'Title B'], ['kebab', 'title-b'], ['snake', 'title_b']] as const) for (const boundary of ['save', 'suggestion']) {
+  const { editor, suggestion } = savedTitleEditor(preset);
   let release!: () => void, entered!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   const ready = new Promise<void>(resolve => { entered = resolve; });
@@ -531,6 +531,6 @@ test('delayed save or suggestion for A cannot restore a prompt after B is entere
   await ready; editor.setEditableName('Title B'); release(); await saving;
   assert.equal(suggestion.current, null);
   await editor.persistEditorState();
-  assert.equal(suggestion.current!.filename, 'title-b');
+  assert.equal(suggestion.current!.filename, expected);
  }
 });
