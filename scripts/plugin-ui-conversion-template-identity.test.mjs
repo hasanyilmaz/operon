@@ -11,6 +11,7 @@ const source = await readFile(path.join(root, 'main.ts'), 'utf8');
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
 const plugin = ast.statements.find(n => ts.isClassDeclaration(n) && n.name?.text === 'OperonPlugin');
 const names = [
+ 'newFileTaskName',
  'loadFileTaskTemplateDocumentFromOption', 'buildOperonTemplatePlaceholderContext', 'normalizeTaskCreatorText',
  'resolveLoadedFileTaskTemplateDocument', 'fileTaskContentNeedsTemplaterProcessing', 'resolveOperonIdPlaceholdersInContent',
  'resolveOperonTemplatePlaceholdersInContent', 'resolveFileTaskTemplatePlaceholdersInContent', 'buildFileTaskDraft',
