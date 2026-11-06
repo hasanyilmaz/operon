@@ -1,3 +1,4 @@
+import { testSemanticCheckboxChannels } from './semantic-checkbox-channels';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import { TFile, type App } from 'obsidian';
@@ -101,11 +102,13 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 	// Keep this in-memory fixture out of the persistence queue; scans and revisions are real.
 	Object.assign(indexer, { coherenceBasis: 'verified-full-scan', persistIndex: async () => undefined });
 	let mismatches = 0;
+	let changeAgainAfterMismatch = false;
 	const source = new RuntimeSourceHydratorV1({
 		read: async () => ({ content, mtimeMs: 1, sizeBytes: 1_000, stable: true }),
 		onMismatch: async filePath => {
 			mismatches += 1;
 			await indexer.reindexFilePath(filePath, { notify: false });
+			if (changeAgainAfterMismatch) content = content.replace('Changed task', 'Changed task again');
 		},
 	});
 	const catalog = buildLivePropertyCatalogV1(settings);
@@ -137,11 +140,11 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 			packageRevision: 'test',
 		}),
 	});
-	const query = (limit: number) => coordinator.execute({
-		minimumConsistency: 'live-verified',
+	const query = (limit: number, consistency: 'live-verified' | 'best-effort' = 'live-verified', cursor?: string) => coordinator.execute({
+		minimumConsistency: consistency,
 		read: revision => bridge.queryTasks({
 			contractVersion: 1, requestId: 'semantic-checkbox', kind: 'task-query',
-			consistency: 'live-verified', limit,
+			consistency, limit, ...(cursor ? { cursor } : {}),
 		}, { ...fixture.execution, revision: revision.contextRevision }),
 	});
 	for (const [fields, marker, expected] of [
@@ -180,6 +183,117 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 	assert.equal(indexer.getGeneration(), generation + 1);
 	assert.equal(mismatches, 1);
 	assert.ok(changed.value.tasks.some(task => task.description === 'Changed task'));
+
+	// Pagination and both read consistencies must verify the affected final task.
+	content = [...prefix, `- [ ] Terminal task {{operonId:: z000017}} {{status:: ${pipeline.name}.${cancelled.label}}}`].join('\n');
+	await indexer.reindexFilePath(file.path, { notify: false });
+	mismatches = 0;
+	for (const consistency of ['live-verified', 'best-effort'] as const) {
+		const generation = indexer.getGeneration();
+		const ids: string[] = [];
+		let cursor: string | undefined;
+		do {
+			const page = await query(1, consistency, cursor);
+			assert.ok(page.ok && page.value.ok, JSON.stringify(page));
+			assert.equal(page.attempts, 1);
+			ids.push(...page.value.tasks.map(task => task.identity.operonId));
+			cursor = page.value.page.nextCursor;
+			assert.ok(ids.length <= 17, 'Cursor must advance without duplicates');
+		} while (cursor);
+		assert.equal(new Set(ids).size, 17);
+		assert.ok(ids.includes('z000017'));
+		assert.equal(indexer.getGeneration(), generation);
+		assert.equal(mismatches, 0);
+	}
+
+	const channelGeneration = indexer.getGeneration();
+	await testSemanticCheckboxChannels(async request => {
+		source.invalidatePath(file.path);
+		assert.ok(request.consistency === 'live-verified' || request.consistency === 'best-effort');
+		const result = await query(request.limit ?? 17, request.consistency, request.cursor);
+		assert.ok(result.ok);
+		assert.equal(result.attempts, 1);
+		return result.value;
+	});
+	assert.equal(indexer.getGeneration(), channelGeneration);
+	assert.equal(mismatches, 0);
+
+	// A one-task vault with mapped status/date names has no hidden result-count boundary.
+	const originalMappings = settings.keyMappings;
+	const aliases: Record<string, string> = { status: 'State', dateCancelled: 'Cancelled', dateCompleted: 'Completed' };
+	settings.keyMappings = originalMappings.map(mapping => aliases[mapping.canonicalKey]
+		? { ...mapping, visiblePropertyName: aliases[mapping.canonicalKey] }
+		: mapping);
+	for (const [fields, expected] of [
+		[`{{State:: ${pipeline.name}.${cancelled.label}}}`, 'cancelled'],
+		[`{{State:: ${pipeline.name}.${done.label}}}`, 'done'],
+		['{{State:: Unknown.Missing}} {{Cancelled:: 2026-01-01}}', 'cancelled'],
+		['{{State:: Unknown.Missing}} {{Completed:: 2026-01-01}}', 'done'],
+		['{{State:: Unknown.Missing}}', 'open'],
+	] as const) {
+		content = `- [ ] Terminal task {{operonId:: z000017}} ${fields}`;
+		await indexer.reindexFilePath(file.path, { notify: false });
+		const generation = indexer.getGeneration();
+		for (const consistency of ['live-verified', 'best-effort'] as const) {
+			source.invalidatePath(file.path);
+			const result = await query(1, consistency);
+			assert.ok(result.ok && result.value.ok, JSON.stringify({ fields, result }));
+			assert.equal(result.value.tasks.length, 1);
+			assert.equal(result.value.tasks[0].checkbox, expected);
+			assert.equal(result.attempts, 1);
+			assert.equal(indexer.getGeneration(), generation);
+			assert.equal(mismatches, 0);
+		}
+	}
+	settings.keyMappings = originalMappings;
+
+	// Exercise the same direct hydration call used before a Runtime mutation.
+	const original = `- [ ] Terminal task {{operonId:: z000017}} {{status:: ${pipeline.name}.${cancelled.label}}} {{dateCancelled:: 2026-01-01}} #before`;
+	for (const [label, before, after] of [
+		['description', original, original.replace('Terminal task', 'Edited task')],
+		['checkbox', '- [ ] Terminal task {{operonId:: z000017}}', '- [x] Terminal task {{operonId:: z000017}}'],
+		['status', original, original.replace(cancelled.label, done.label)],
+		['date', original, original.replace('2026-01-01', '2026-01-02')],
+		['tags', original, original.replace('#before', '#after')],
+		['identity', original, original.replace('z000017', 'z000018')],
+	] as const) {
+		content = before;
+		await indexer.reindexFilePath(file.path, { notify: false });
+		mismatches = 0;
+		const task = indexer.getTaskSnapshot('z000017');
+		assert.ok(task);
+		const generation = indexer.getGeneration();
+		const hydrate = () => source.hydrate({ task, keyMappings: settings.keyMappings,
+			pipelines: settings.pipelines, ramGeneration: generation, includeSourceMarkdown: false });
+		assert.equal((await hydrate()).ok, true, label);
+		content = after;
+		const stale = await hydrate();
+		assert.deepEqual(stale, { ok: false, reason: 'source-invalid' }, label);
+		assert.equal(mismatches, 1, label);
+		assert.equal(indexer.getGeneration(), generation + 1, label);
+		const recovered = await query(1);
+		assert.ok(recovered.ok && recovered.value.ok, label);
+		assert.equal(recovered.attempts, 1, label);
+		assert.equal(mismatches, 1, label);
+		assert.equal(content, after, 'Source verification must never write Markdown');
+	}
+
+	// Both failed attempts must remain bounded when an external writer keeps changing the source.
+	content = original;
+	await indexer.reindexFilePath(file.path, { notify: false });
+	mismatches = 0;
+	content = original.replace('Terminal task', 'Changed task');
+	changeAgainAfterMismatch = true;
+	const driftingGeneration = indexer.getGeneration();
+	const drifting = await query(1);
+	changeAgainAfterMismatch = false;
+	assert.equal(drifting.ok, false);
+	assert.equal(!drifting.ok && drifting.error.code, 'live-settling');
+	assert.equal(drifting.attempts, 2);
+	assert.equal(mismatches, 2);
+	assert.equal(indexer.getGeneration(), driftingGeneration + 2);
+	console.log('Semantic checkbox regressions passed: precedence, aliases, single task, cursor, both consistencies, six source edits, bounded drift');
+
 }
 
 async function testLegacyMinuteDatetimeRead(fixture: Fixture): Promise<void> {
