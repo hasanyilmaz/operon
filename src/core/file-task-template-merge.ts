@@ -1,4 +1,5 @@
 import { parseYaml } from 'obsidian';
+import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
 import { CANONICAL_KEY_ORDER } from '../types/keys';
 import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { buildForwardMapping, buildReverseMapping } from './yaml-fields';
@@ -314,7 +315,7 @@ function parseSection(
 	parsed: ParsedFrontmatterSection;
 	value?: string | string[];
 } {
-	if (section.yamlKey === 'title') {
+	if (section.yamlKey === 'title' && reverseMap.get(section.yamlKey) !== 'fileTaskDisplayTitle') {
 		return {
 			parsed: {
 				yamlKey: section.yamlKey,
@@ -356,7 +357,11 @@ function parseSection(
 	}
 
 	const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
-	const value = fieldType === 'list'
+	const isDisplayTitle = canonicalKey === 'fileTaskDisplayTitle' && hasFileTaskDisplayTitleMapping(keyMappings);
+	const nativeTitle = isDisplayTitle ? readSectionYaml(section)?.[section.yamlKey] : undefined;
+	const value = isDisplayTitle
+		? typeof nativeTitle === 'string' ? nativeTitle : ''
+		: fieldType === 'list'
 		? canonicalKey === 'taskGallery'
 			? serializeTaskMediaReferenceList(parseListSection(section))
 			: parseListSection(section).join('; ')

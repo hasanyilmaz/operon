@@ -9598,6 +9598,172 @@ body .operon-task-editor button.operon-task-editor-title-copy-id:is(:hover, :foc
 	white-space: nowrap;
 }
 
+.operon-file-task-name-row {
+	min-width: 0;
+}
+
+.operon-file-task-name-row .setting-item-info,
+.operon-file-task-name-row .setting-item-description {
+	align-self: stretch;
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.operon-file-task-name-row .setting-item-description {
+	overflow: visible;
+}
+
+.operon-file-task-rename-controls {
+	min-width: 0;
+}
+
+.operon-file-task-rename-controls.is-editor-row {
+	width: 100%;
+	container-type: inline-size;
+}
+
+.operon-file-task-rename-change-line {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+	flex-wrap: wrap;
+}
+
+.operon-file-task-rename-diff {
+	display: flex;
+	flex: 0 1 auto;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	min-width: 0;
+}
+
+.operon-file-task-rename-current {
+	color: var(--text-muted);
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-file-task-rename-suggestion-pair {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: var(--size-2-1);
+	white-space: nowrap;
+}
+
+.operon-file-task-rename-arrow {
+	color: var(--text-muted);
+	flex: 0 0 auto;
+}
+
+.operon-file-task-rename-suggestion-host {
+	flex: 0 0 auto;
+}
+
+button.operon-file-task-rename-suggestion,
+button.operon-file-task-rename-action {
+	appearance: none;
+	min-height: 0;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+}
+
+button.operon-file-task-rename-suggestion {
+	width: auto;
+	text-align: left;
+	white-space: nowrap;
+}
+
+button.operon-file-task-rename-action {
+	color: var(--text-accent);
+}
+
+button.operon-file-task-rename-suggestion:is(:hover, :focus-visible),
+button.operon-file-task-rename-action:is(:hover, :focus-visible) {
+	background: transparent;
+	box-shadow: none;
+	text-decoration: underline;
+}
+
+.operon-file-task-rename-input {
+	box-sizing: border-box;
+	width: auto;
+	min-height: 0;
+	height: var(--operon-file-task-name-value-height, 1.4em);
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-bottom: 1px solid var(--interactive-accent);
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-normal);
+	font: inherit;
+	line-height: inherit;
+}
+
+.operon-file-task-rename-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin-left: auto;
+}
+
+.operon-file-task-rename-action-divider {
+	color: var(--text-muted);
+}
+
+.operon-file-task-rename-controls.is-popover {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: 0;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-change-line {
+	width: 100%;
+	flex-wrap: wrap;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-diff {
+	flex-basis: 100%;
+}
+
+.operon-file-task-rename-controls.is-popover .operon-file-task-rename-actions {
+	flex-basis: 100%;
+	justify-content: flex-end;
+}
+
+@container (max-width: 420px) {
+	.operon-file-task-rename-change-line {
+		flex-wrap: wrap;
+	}
+
+	.operon-file-task-rename-diff {
+		flex-basis: 100%;
+	}
+
+	.operon-file-task-rename-actions {
+		flex-basis: 100%;
+		justify-content: flex-end;
+	}
+}
+
 .operon-editor-core-actions {
 	display: inline-flex;
 	align-items: center;
@@ -28683,6 +28849,10 @@ body .modal.operon-kanban-preset-quick-settings-modal .operon-kanban-sort-mode-s
 .operon-file-task-daily-notes-setting,
 .operon-file-task-migration-setting:where(.operon-settings-scope, .operon-settings-scope *) {
 	margin-top: 18px;
+}
+
+.operon-file-task-display-settings:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item:not(:first-child) {
+	border-top: var(--setting-items-divider-width) solid var(--setting-items-divider-color);
 }
 
 .operon-file-task-migration-desc:where(.operon-settings-scope, .operon-settings-scope *) {

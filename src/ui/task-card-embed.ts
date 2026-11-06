@@ -1,4 +1,5 @@
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, createCompactTaskMarkdownTooltipContent } from './operon-hover-tooltip';
 import { mergeTaskRefreshScopes, type TaskRefreshScope } from '../core/task-refresh-scope';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
@@ -191,7 +192,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
 			const icon = resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox);
 			const color = resolveTaskStatusIconColor(task.fieldValues, settings) ?? '';
 			const status = task.fieldValues.status || task.checkbox;
-			const title = task.description || t('errors', 'taskCard_untitled');
+			const title = getTaskDisplayTitle(task, settings.fileTaskDisplayTitleEnabled) || t('errors', 'taskCard_untitled');
 			const hint = this.containerEl.closest('.operon-task-card-canvas-node, [data-operon-task-card-excalidraw]') ? t('taskEditor', 'description') : t('errors', 'taskCard_open');
    const accent = resolveTaskColorSource(task.fieldValues, preferences.taskCardColorSource, settings);
    const media = this.parsed.options.image === false ? null : resolveKanbanCardImageReference(task.fieldValues, preferences.taskCardImageSource);
@@ -223,7 +224,7 @@ class TaskCardEmbedChild extends MarkdownRenderChild {
      mode: Platform.isDesktopApp ? 'interactive' : 'visual-only',
      bindLink: taskDescriptionOpening(this.owner.deps.app, () => {
       const current = this.owner.resolve(task.operonId); return current.state === 'ready' ? current.task : null;
-     }, () => this.active && (!this.excalidrawHost?.attached || this.excalidrawHost.canInteract())),
+     }, () => this.active && (!this.excalidrawHost?.attached || this.excalidrawHost.canInteract()), settings.fileTaskDisplayTitleEnabled),
     });
 				this.title.dataset.description = title;
 			}

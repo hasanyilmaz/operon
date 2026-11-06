@@ -114,6 +114,9 @@ export function projectContextSettingsV1(settings: Readonly<OperonSettings>): Js
 		filters: settings.filterSets,
 		creation: pickSettings(settings, CREATION_KEYS),
 		automation: pickSettings(settings, AUTOMATION_KEYS),
+		fileTaskFilenameRule: settings.fileTaskFilenameRule,
+		fileTaskDisplayTitleEnabled: settings.fileTaskDisplayTitleEnabled,
+		fileTaskDisplayTitleChangeMode: settings.fileTaskDisplayTitleChangeMode,
 		projectSerialScopes: settings.projectSerialScopes,
 	};
 	return toJsonValueV1(compactJson(material));

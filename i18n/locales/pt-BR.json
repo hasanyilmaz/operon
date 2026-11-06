@@ -2348,7 +2348,21 @@
 		"kanbanAxisRemoveValue": "Remover valor",
 		"kanbanAutoCollapseFinishedGroups": "Recolher grupos de status concluídos",
 		"kanbanAutoCollapseFinishedGroupsDesc": "Recolher automaticamente os status concluídos em colunas e raias.",
-		"kanbanCellHeightDisabledDesc": "Ative as raias para aplicar uma altura fixa às células."
+		"kanbanCellHeightDisabledDesc": "Ative as raias para aplicar uma altura fixa às células.",
+		"fileTaskDisplayTitleEnabled": "Usar uma propriedade como título de exibição da tarefa em arquivo",
+		"fileTaskDisplayTitleEnabledDesc": "Mostrar a propriedade de título mapeada como título da tarefa de arquivo. O caminho do arquivo e a identidade da tarefa permanecem separados.",
+		"fileTaskDisplayTitleChangeMode": "Quando o título de exibição muda",
+		"fileTaskDisplayTitleChangeModeDesc": "Mantenha o nome do arquivo, pergunte se deseja renomeá-lo após salvar o título na interface do Operon ou renomeie-o automaticamente sempre que o título de exibição mudar, inclusive fora do Operon (Propriedades, código-fonte ou alterações no frontmatter feitas por agentes).",
+		"fileTaskDisplayTitleChangeModeKeep": "Manter o nome do arquivo",
+		"fileTaskDisplayTitleChangeModeAsk": "Perguntar",
+		"fileTaskDisplayTitleChangeModeAuto": "Renomear automaticamente",
+		"fileTaskFilenameRule": "Regra de nome de arquivo",
+		"fileTaskFilenameRuleDesc": "Como o nome de arquivo é criado a partir do título de exibição. Caracteres proibidos em nomes de arquivo sempre são removidos.",
+		"fileTaskFilenameRuleSame": "Igual ao título",
+		"fileTaskFilenameRuleKebab": "kebab-case",
+		"fileTaskFilenameRuleSnake": "snake_case",
+		"keyMappingsDesc_fileTaskDisplayTitle": "Propriedade frontmatter somente leitura usada como rótulo da tarefa em arquivo quando os títulos de exibição estão ativados.",
+		"keyMappingsMappingCollision": "Alguns mapeamentos de chave integrados não puderam ser adicionados porque chaves personalizadas existentes usam a mesma chave canônica ou o mesmo nome de propriedade padrão. Renomeie a chave em conflito e reabra as Configurações."
 	},
 	"buttons": {
 		"open": "Abrir",
@@ -3257,7 +3271,14 @@
 		"dockSelectTask": "Selecionar ou criar uma tarefa",
 		"dockNextTask": "Próxima tarefa",
 		"dockTaskCreatorTitle": "Criador de tarefas",
-		"dockCreateAndTrack": "Criar uma tarefa e iniciar o rastreamento de tempo"
+		"dockCreateAndTrack": "Criar uma tarefa e iniciar o rastreamento de tempo",
+		"fileTaskFile": "Arquivo",
+		"fileTaskKeep": "Manter",
+		"fileTaskRenameAction": "Renomear",
+		"fileTaskRenameInvalid": "Insira um nome de arquivo válido sem caracteres proibidos.",
+		"fileTaskRenameCollision": "Já existe um arquivo com esse nome nesta pasta.",
+		"fileTaskRenameFailed": "Não foi possível renomear o arquivo. O título de exibição foi salvo.",
+		"fileTaskFilenameFallback": "A regra produziu um nome de arquivo vazio. Mantendo {{filename}}."
 	},
 	"indexStats": {
 		"title": "Índice Operon",

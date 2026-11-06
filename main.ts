@@ -11,6 +11,8 @@ import { buildKanbanCellPlan, splitKanbanCreatorSeeds, resolveLegacyKanbanCellTa
 import { createKanbanPropertyAccess } from './src/core/kanban-axis-properties';
 import { resolveKanbanAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
+import { deriveTaskFilename, sanitizeTaskFilename, filenameSuggestionAfterTitleEdit, type FileTaskRenameSuggestion } from './src/core/filename-rule';
+import { newFileTaskTitleFields } from './src/core/task-display-title';
 import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
 import type { TaskMarkdownSource } from './src/core/task-markdown-source';
@@ -712,6 +714,7 @@ import { FlowTimeBreakController } from './src/systems/flow-time-break';
 import { FormatConverter } from './src/systems/format-converter';
 import { FileTaskArchiver } from './src/systems/file-task-archiver';
 import { FileTaskPipelineMover } from './src/systems/file-task-pipeline-mover';
+import { FileTaskTitleRenamer } from './src/systems/file-task-title-renamer';
 import { ExternalCalendarService } from './src/systems/external-calendar-service';
 import { buildExternalCalendarItems } from './src/systems/external-calendar-query';
 import { formatDurationHuman, parseLocalDatetime } from './src/systems/tracker-utils';
@@ -1641,6 +1644,7 @@ export default class OperonPlugin extends Plugin {
 	private readonly recordedInlineCreationIds = new Set<string>();
 	private readonly inlineCreatorActiveFiles = new WeakMap<TaskCreatorDraft, string | null>();
 	indexer!: OperonIndexer;
+	private fileTaskTitleRenamer?: FileTaskTitleRenamer;
 	writer!: TaskWriter;
 	dependencyManager!: DependencyManager;
 	aggregateCoordinator!: AggregateCoordinator;
@@ -3260,6 +3264,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private handleSettingsChanged(options: { notifyReindex?: boolean } = {}): SettingsChangedSettlement {
+		this.fileTaskTitleRenamer?.cancelPending();
 		refreshAssigneeChipImages(this.app, this.settings.assigneeImageProperty);
 		if (!this.settings.checkForUpdatesOnStartup) this.cancelStartupReleaseCheck();
 		this.invalidateAgentRuntimeSettingsProjectionCaches();
@@ -16756,6 +16761,16 @@ export default class OperonPlugin extends Plugin {
 				);
 			this.initializeIndexV8ManifestMonitor();
 		this.initializeTableFilePropertyTypeMonitor();
+		const fileTaskTitleRenamer = this.fileTaskTitleRenamer = new FileTaskTitleRenamer(
+			this.indexer, () => this.settings, () => this.startupReady,
+			task => {
+				const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+				return file instanceof TFile ? file.basename : null;
+			},
+			(operonId, filename) => this.renameFileTaskFromTitle(operonId, filename),
+			message => { new Notice(message); },
+		);
+		this.register(() => fileTaskTitleRenamer.destroy());
 
 		// Refresh sidebar views whenever the index is updated
 		// Suppressed during startup — onLayoutReady handles the authoritative render
@@ -17923,6 +17938,8 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 					onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onFileTaskTitleChanged: (operonId, title) => this.handleFileTaskTitleChanged(operonId, title),
+					onRenameFileTask: (operonId, filename) => this.renameFileTaskFromTitle(operonId, filename),
 					onUpdateGanttTaskFields: (operonId, payload, context) => (
 						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
 					),
@@ -17969,6 +17986,8 @@ export default class OperonPlugin extends Plugin {
 						onFlushPresetWrites: presetId => this.tablePresetRegistry.flushPatches(presetId),
 						onSaveFilterSet: (filterSet) => this.saveFilterSetAndRefresh(filterSet),
 					onUpdateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+					onFileTaskTitleChanged: (operonId, title) => this.handleFileTaskTitleChanged(operonId, title),
+					onRenameFileTask: (operonId, filename) => this.renameFileTaskFromTitle(operonId, filename),
 					onUpdateGanttTaskFields: (operonId, payload, context) => (
 						this.updateGanttTaskFieldsAndRefresh(operonId, payload, context)
 					),
@@ -23152,6 +23171,8 @@ export default class OperonPlugin extends Plugin {
 			openTaskSource: (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); },
 			allowWrites: true,
 			updateTaskFields: (operonId, payload) => this.updateTableTaskFieldsAndRefresh(operonId, payload),
+			onFileTaskTitleChanged: (operonId, title) => this.handleFileTaskTitleChanged(operonId, title),
+			onRenameFileTask: (operonId, filename) => this.renameFileTaskFromTitle(operonId, filename),
 			updateGanttTaskFields: (operonId, payload) => this.updateGanttTaskFieldsAndRefresh(operonId, payload),
 			validateGanttDependency: (fromId, toId) => this.validateGanttDependencyCandidate(fromId, toId),
 			createGanttDependency: (fromId, toId) => this.createGanttDependencyAndRefresh(fromId, toId),
@@ -24790,6 +24811,10 @@ export default class OperonPlugin extends Plugin {
 			};
 		const baseOptions = {
 			...this.getTaskEditorSubtaskOptions(task),
+			...(indexedBeforeSave?.primary.format === 'yaml' ? {
+				onRenameFileTask: (filename: string) => this.renameFileTaskFromTitle(indexedBeforeSave.operonId, filename),
+				onFileTaskTitleChanged: (title: string) => this.handleFileTaskTitleChanged(indexedBeforeSave.operonId, title),
+			} : {}),
 			onSetHideScrollbars: async (hidden: boolean): Promise<void> => {
 				await this.storage.updateSettings({ workspaceTweaksHideScrollbars: hidden });
 				this.applyWorkspaceTweaks();
@@ -27918,6 +27943,9 @@ export default class OperonPlugin extends Plugin {
 		payload: Record<string, string>,
 		request: TaskEditorSaveRequest,
 	): void {
+		if (request.fileTaskDisplayTitleChange !== undefined) {
+			payload['fileTaskDisplayTitle'] = request.fileTaskDisplayTitleChange.trim();
+		}
 		if (request.parentTaskIntent === 'explicitly-cleared') {
 			payload['parentTask'] = '';
 		}
@@ -28327,10 +28355,13 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private sanitizeTaskFileName(name: string): string {
-		return name
-			.replace(/[\\/:*?"<>|]/g, '')
-			.replace(/\s+/g, ' ')
-			.trim();
+		return sanitizeTaskFilename(name);
+	}
+
+	private newFileTaskName(title: string): string {
+		return (this.settings.fileTaskDisplayTitleEnabled
+			? deriveTaskFilename(title, this.settings.fileTaskFilenameRule)
+			: this.sanitizeTaskFileName(title)) || t('taskEditor', 'untitledTaskFile');
 	}
 
 	private getYamlTaskByFilePath(filePath: string): IndexedTask | null {
@@ -30071,10 +30102,12 @@ export default class OperonPlugin extends Plugin {
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
 		const sourceContextFilePath = options.sourceContextFilePath ?? options.sourceReplacement?.sourceFilePath ?? null;
 		const seedFieldValues = { ...(options.seedFieldValues ?? {}) };
+		Object.assign(seedFieldValues, newFileTaskTitleFields(title, seedFieldValues, this.settings));
 		if (!(seedFieldValues['operonId'] ?? '').trim() && templateResult.resolvedOperonIdSeed) {
 			seedFieldValues['operonId'] = templateResult.resolvedOperonIdSeed;
 		}
 		const seedFieldPresence = new Set(options.seedFieldPresence ?? Object.keys(seedFieldValues));
+		if (this.settings.fileTaskDisplayTitleEnabled) seedFieldPresence.add('fileTaskDisplayTitle');
 		const shouldApplyLinkedAutoParent = !!options.sourceReplacement && !!sourceContextFilePath;
 		const linkedSeed = shouldApplyLinkedAutoParent
 			? await this.buildLinkedFileTaskSeed(
@@ -30110,7 +30143,7 @@ export default class OperonPlugin extends Plugin {
 
 		if (options.canCommit?.() === false) return null;
 		await this.ensureFileTaskFolder(folder, options.canCommit);
-		const sanitized = this.sanitizeTaskFileName(title) || t('taskEditor', 'untitledTaskFile');
+		const sanitized = this.newFileTaskName(title);
 		const filePath = this.formatConverter.getUniqueFilePath(folder, sanitized);
 		const needsTemplaterProcessing = this.fileTaskContentNeedsTemplaterProcessing(template, draft.content);
 		this.suppressRawTaskCreationNotice(draft.operonId);
@@ -30431,7 +30464,7 @@ export default class OperonPlugin extends Plugin {
     if (tries>=100) throw new Error('Could not allocate Creator identity');
     operonId=generateOperonId();
    }
-   commit.content=prepareCreationCommit(commit.request,commit.properties,{operonId,now:localNow(), createdAt:commit.sourceCreatedAt, checkbox: resolveWorkflowStatus(this.settings.pipelines,String(commit.request.snapshot.fields.find(field=>field.property.canonicalKey==='status')?.value ?? ''))?.checkbox ?? 'open'}, {
+   commit.content=prepareCreationCommit({...commit.request,fileTaskDisplayTitleEnabled:this.settings.fileTaskDisplayTitleEnabled},commit.properties,{operonId,now:localNow(), createdAt:commit.sourceCreatedAt, checkbox: resolveWorkflowStatus(this.settings.pipelines,String(commit.request.snapshot.fields.find(field=>field.property.canonicalKey==='status')?.value ?? ''))?.checkbox ?? 'open'}, {
     getAllRepeatSeriesIds:()=>this.storage.repeatSeries.getAllSeriesIds(),getRepeatSkipDates:id=>this.storage.repeatSeries.getSkipDates(id),
    });
 
@@ -30470,7 +30503,7 @@ export default class OperonPlugin extends Plugin {
   const folder=this.getTargetFileTaskFolder(options.fallbackFile ?? null,options.targetFolderOverride,content.fieldValues);
   await this.ensureFileTaskFolder(folder);
   const title=this.normalizeTaskCreatorText(commit.request.description);
-  const path=this.formatConverter.getUniqueFilePath(folder,this.sanitizeTaskFileName(title)||t('taskEditor','untitledTaskFile'));
+  const path=this.formatConverter.getUniqueFilePath(folder,this.newFileTaskName(title));
   const preparedContent=content.fileContent();
   const template=parseFrontmatterDocument(preparedContent,this.settings.keyMappings);
   const needsTemplater=this.fileTaskContentNeedsTemplaterProcessing(template,preparedContent);
@@ -35787,6 +35820,17 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async commitTableTaskFieldsAndRefresh(operonId: string, payload: Record<string, string>): Promise<boolean> {
+		if (Object.keys(payload).length === 1 && 'fileTaskDisplayTitle' in payload) {
+			const current = this.indexer.getTask(operonId);
+			if (current?.primary.format !== 'yaml' || !this.settings.fileTaskDisplayTitleEnabled) return false;
+			const wrote = await this.writer.writeTaskFields(operonId, {
+				fileTaskDisplayTitle: payload['fileTaskDisplayTitle'].trim(), datetimeModified: localNow(),
+			}, { mode: 'merge', reindex: 'none' });
+			if (!wrote) return false;
+			await this.indexer.reindexCommittedMutationSources([current.primary.filePath], { notify: false });
+			this.refreshViews({ preserveKanbanViewport: true });
+			return true;
+		}
 		const guardedUpdate = this.normalizeTableTaskFieldsWritebackPayload(payload);
 		if (!guardedUpdate) return false;
 		const { payload: guardedPayload, changedKeys } = guardedUpdate;
@@ -36408,6 +36452,38 @@ export default class OperonPlugin extends Plugin {
 
 	private async updateTableTaskDescriptionAndRefresh(task: IndexedTask, description: string): Promise<boolean> {
 		return this.withTableMutationRefresh(() => this.commitTableTaskDescriptionAndRefresh(task, description));
+	}
+
+	private async renameFileTaskFromTitle(operonId: string, filename: string): Promise<void> {
+		const task = this.indexer.getTask(operonId);
+		if (!task || task.primary.format !== 'yaml') throw new Error(t('taskEditor', 'fileTaskRenameFailed'));
+		const name = filename.trim();
+		if (!name || name === '.' || name === '..' || this.sanitizeTaskFileName(name) !== name) {
+			throw new Error(t('taskEditor', 'fileTaskRenameInvalid'));
+		}
+		const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+		if (!(file instanceof TFile)) throw new Error(t('taskEditor', 'fileTaskRenameFailed'));
+		const destination = file.parent?.path ? `${file.parent.path}/${name}.md` : `${name}.md`;
+		if (name !== file.basename && this.app.vault.getAbstractFileByPath(destination)) {
+			throw new Error(t('taskEditor', 'fileTaskRenameCollision'));
+		}
+		await this.withTableMutationRefresh(async () => {
+			if (name === file.basename) return;
+			if (this.app.vault.getAbstractFileByPath(destination)) throw new Error(t('taskEditor', 'fileTaskRenameCollision'));
+			// A filename-only operation must never serialize indexed fields back into the source.
+			await this.app.fileManager.renameFile(file, destination);
+			await this.indexer.reindexCommittedMutationSources([file.path], { notify: false });
+			this.scheduleProjectSerialIndexReconcile();
+			this.consumeTableMutationRefresh();
+			this.refreshViews({ preserveKanbanViewport: true });
+		});
+	}
+
+	private async handleFileTaskTitleChanged(operonId: string, title: string): Promise<FileTaskRenameSuggestion | null> {
+		const task = this.indexer.getTask(operonId);
+		if (!this.settings.fileTaskDisplayTitleEnabled || task?.primary.format !== 'yaml') return null;
+		return filenameSuggestionAfterTitleEdit(title, task.description, this.settings.fileTaskDisplayTitleChangeMode,
+			this.settings.fileTaskFilenameRule);
 	}
 
 	private async commitTableTaskDescriptionAndRefresh(task: IndexedTask, description: string): Promise<boolean> {

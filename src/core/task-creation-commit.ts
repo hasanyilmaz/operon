@@ -1,4 +1,5 @@
 import { normalizeRepeatIdentityPayload } from './repeat-identity';
+import { newFileTaskTitleFields } from './task-display-title';
 import { serializeTaskListValue } from './subtask-inheritance';
 import { stringifyYaml } from 'obsidian';
 import { CANONICAL_KEY_MAP } from '../types/keys';
@@ -19,6 +20,7 @@ import { type NormalizeTaskFieldPatchOptions } from './task-field-patch';
 export interface PreparedCreationInput {
  description: string;
  createType: 'file' | 'inline';
+ fileTaskDisplayTitleEnabled?: boolean;
  snapshot: CreationDraftSnapshot;
  template: PreparedCreationTemplate | { status: 'empty' | 'loading' | 'error' };
 }
@@ -107,6 +109,12 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
    definitions.push(definition);
    native.push({ sourceName: name, type: property.type, expected: { present: false }, mutation: { kind: 'set', value: value===null && property.type==='text' ? '' : value===null && property.type==='list' ? [] : value } });
   } else if (key && key !== 'subtasks' && key !== 'pinned') managed[key] = Array.isArray(value) ? serializeTaskListValue(value.map(String)) : value == null ? '' : String(value);
+ }
+ if (input.createType === 'file' && input.fileTaskDisplayTitleEnabled) {
+  Object.assign(managed, newFileTaskTitleFields(input.description, managed, { fileTaskDisplayTitleEnabled: true, keyMappings: mappings }));
+  const property = catalog.resolve('fileTaskDisplayTitle');
+  removed.delete(property.id);
+  values.set(property.id, { name: getVisiblePropertyName('fileTaskDisplayTitle', mappings), value: input.description });
  }
  const fieldValues = { ...managed, operonId: identity.operonId, datetimeCreated: identity.createdAt ?? identity.now, datetimeModified: identity.now };
  normalizeRepeatIdentityPayload({}, fieldValues, repeat.getAllRepeatSeriesIds ?? (() => new Set<string>()));

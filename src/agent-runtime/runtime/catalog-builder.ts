@@ -508,6 +508,9 @@ function buildPolicies(
 			graphTransactionVersion: 1,
 			graphTransactionFeatures: [...GRAPH_TRANSACTION_FEATURES_V1],
 		},
+		fileTaskFilenameRule: {
+			...settings.fileTaskFilenameRule,
+		},
 		inheritance: {
 			fields: [...settings.childTaskInheritanceFields],
 			statusPipelineSource: settings.childTaskInheritanceStatusPipelineSource,

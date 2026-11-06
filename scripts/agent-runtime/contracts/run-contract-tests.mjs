@@ -941,6 +941,27 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		assertPair('field-catalog', candidate, expected, label);
 	}
 
+	const filenameRuleCatalog = fixture(fixtures, 'valid-live-property-catalog-with-filename-rule').value;
+	const assertFilenameRuleCatalog = (candidate, expected, label) => {
+		candidate.catalogRevision = createHash('sha256').update(canonicalJsonForSchema({
+			settingsFingerprint: candidate.settingsFingerprint,
+			taxonomy: candidate.taxonomy,
+			fields: candidate.fields,
+			policies: candidate.policies,
+		}), 'utf8').digest('hex');
+		assertPair('operon-catalog', candidate, expected, label);
+	};
+	for (const preset of ['same', 'kebab', 'snake', 'custom', 'unknown']) {
+		const candidate = structuredClone(filenameRuleCatalog);
+		candidate.policies.fileTaskFilenameRule = { preset };
+		assertFilenameRuleCatalog(candidate, ['same', 'kebab', 'snake'].includes(preset), `filename format: ${preset}`);
+	}
+	for (const property of ['rules', 'lowercase']) {
+		const candidate = structuredClone(filenameRuleCatalog);
+		candidate.policies.fileTaskFilenameRule[property] = [];
+		assertFilenameRuleCatalog(candidate, false, `filename format rejects unsupported ${property}`);
+	}
+
 	const context = fixture(fixtures, 'valid-legacy-invalid-task-context').value;
 	for (const [label, mutate, expected] of [
 		['task context valid leap date', candidate => { candidate.dates.due = '2024-02-29'; }, true],

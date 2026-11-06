@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "Wenn aktiviert, verschiebt Operon erledigte oder abgebrochene Datei-Aufgaben nach der konfigurierten Verzögerung in den Archivordner.",
       "fileTaskConversion": "Datei-Aufgaben-Umwandlung",
       "fileTaskDailyNotes": "Tagesnotizen",
+      "fileTaskDisplayTitleChangeMode": "Wenn sich der Anzeigetitel ändert",
+      "fileTaskDisplayTitleChangeModeAsk": "Fragen",
+      "fileTaskDisplayTitleChangeModeAuto": "Automatisch umbenennen",
+      "fileTaskDisplayTitleChangeModeDesc": "Dateinamen beibehalten, nach dem Speichern des Titels in der Operon-Oberfläche nachfragen oder bei jeder Änderung des Anzeigetitels automatisch umbenennen, auch außerhalb von Operon (Eigenschaften, Quelltext oder Frontmatter-Änderungen durch Agenten).",
+      "fileTaskDisplayTitleChangeModeKeep": "Dateinamen beibehalten",
+      "fileTaskDisplayTitleEnabled": "Eigenschaft als Anzeigetitel für Dateiaufgaben verwenden",
+      "fileTaskDisplayTitleEnabledDesc": "Die zugeordnete Titel-Eigenschaft als Titel der Dateiaufgabe anzeigen. Dateipfad und Aufgabenidentität bleiben getrennt.",
       "fileTaskFileParentTargetMode": "Datei-Aufgaben-Platzierung, wenn die übergeordnete Aufgabe eine Datei-Aufgabe ist",
       "fileTaskFileParentTargetModeDesc": "Wähle, wo „Neue Operon-Aufgabe“ Datei-Aufgaben erstellt, wenn die ausgewählte übergeordnete Aufgabe eine Datei-Aufgabe ist.",
       "fileTaskFileParentTargetSameFolder": "Gleicher Ordner wie die übergeordnete Datei",
+      "fileTaskFilenameRule": "Dateinamensregel",
+      "fileTaskFilenameRuleDesc": "Wie der Dateiname aus dem Anzeigetitel erstellt wird. Unzulässige Zeichen in Dateinamen werden immer entfernt.",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "Wie Titel",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "Datei-Aufgaben-Platzierung, wenn die übergeordnete Aufgabe inline ist",
       "fileTaskInlineParentTargetModeDesc": "Wähle, wo „Neue Operon-Aufgabe“ Datei-Aufgaben erstellt, wenn die ausgewählte übergeordnete Aufgabe eine Inline-Aufgabe ist.",
       "fileTaskInlineParentTargetSameFolder": "Gleicher Ordner wie die übergeordnete Notiz",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "Geplantes Startdatum mit Uhrzeit, das von Kalender- und Zeitansichten verwendet wird.",
       "keyMappingsDesc_duration": "Erfasste Arbeitsdauer, gespeichert in Sekunden.",
       "keyMappingsDesc_estimate": "Geschätzte Arbeitsdauer, gespeichert in Sekunden.",
+      "keyMappingsDesc_fileTaskDisplayTitle": "Schreibgeschützte Frontmatter-Eigenschaft, die als Beschriftung einer Dateiaufgabe verwendet wird, wenn Anzeigetitel aktiviert sind.",
       "keyMappingsDesc_links": "Externe Weblinks, die mit der Aufgabe verknüpft sind.",
       "keyMappingsDesc_location": "Location-Koordinaten, die als latitude, longitude Text gespeichert und als Karten-Chip angezeigt werden.",
       "keyMappingsDesc_note": "Kurze Notiz oder Anmerkung, die neben der Aufgabe angezeigt wird.",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[Typ]",
       "keyMappingsLegendValueSharingDesc": "In Datei-Aufgaben-YAML verwendete Werte werden mit passenden Inline-Aufgabenfeldern geteilt, sodass sie beim Bearbeiten von Inline-Aufgaben als Vorschläge erscheinen können, oder umgekehrt.",
       "keyMappingsLegendValueSharingLabel": "Gemeinsame Nutzung von Eigenschaftswerten",
+      "keyMappingsMappingCollision": "Einige integrierte Schlüsselzuordnungen konnten nicht hinzugefügt werden, weil bestehende benutzerdefinierte Schlüssel denselben kanonischen Schlüssel oder Standard-Eigenschaftsnamen verwenden. Benenne den kollidierenden Schlüssel um und öffne die Einstellungen erneut.",
       "keyMappingsNoCustom": "Keine benutzerdefinierten Schlüssel definiert. Verwende die Schaltfläche unten, um einen hinzuzufügen.",
       "keyMappingsPropertyAria": "Sichtbarer Eigenschaftsname",
       "keyMappingsPropertyLabel": "Eigenschaft",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "{{name}} ist in Operon schreibgeschützt, weil der Wert oder die Zuordnung dem Eigenschaftstyp widerspricht.",
       "filePropertyUnavailable": "{{name}} ist in Operon schreibgeschützt, weil der Eigenschaftstyp oder die Quelle nicht überprüft werden konnte.",
       "filePropertyUnsupported": "{{name}} ist in Operon schreibgeschützt, weil das Wertformat nicht zur Bearbeitung unterstützt wird.",
+      "fileTaskFile": "Datei",
+      "fileTaskFilenameFallback": "Die Regel hat einen leeren Dateinamen erzeugt. {{filename}} wird beibehalten.",
+      "fileTaskKeep": "Beibehalten",
       "fileTaskNameTitle": "Name der Datei-Aufgabe",
+      "fileTaskRenameAction": "Umbenennen",
+      "fileTaskRenameCollision": "In diesem Ordner gibt es bereits eine Datei mit diesem Namen.",
+      "fileTaskRenameFailed": "Die Datei konnte nicht umbenannt werden. Der Anzeigetitel wurde gespeichert.",
+      "fileTaskRenameInvalid": "Gib einen gültigen Dateinamen ohne unzulässige Zeichen ein.",
       "fileTemplateInfoLabel": "Info:",
       "filterStatus": "Status filtern",
       "finished": "Erledigt",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "680dbe35a9154be0756d0ce6d80adba55590a769074dc0d38f805b0ee24b73e8"
+  "sourceVersion": "1512d39c3484011ba5a92931544cabec79b004d5a1341db378d7b7a18eeed1f5"
 }

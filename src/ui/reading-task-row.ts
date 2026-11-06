@@ -1,5 +1,6 @@
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { isTaskInfoChipKey } from '../core/task-info-chips';
 import { bindTaskInfoSourceAction, createTaskSourceActionButton } from './task-info-chip-action';
 import { getTimeScopeSignature, replaceTaskTimeScope } from '../core/time-scope-values';
@@ -624,11 +625,19 @@ function renderTaskDescription(
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
 ): void {
-	const description = task.description || t('taskEditor', 'untitledTask');
+	const description = getTaskDisplayTitle(
+		task,
+		callbacks.getSettings().fileTaskDisplayTitleEnabled,
+	) || t('taskEditor', 'untitledTask');
 	const rendered = renderCompactTaskMarkdown(descriptionEl, {
 		app: callbacks.app,
 		value: description,
-  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(current => current.operonId === task.operonId)),
+		bindLink: taskDescriptionOpening(
+			callbacks.app,
+			() => callbacks.getAllTasks().find(current => current.operonId === task.operonId),
+			undefined,
+			callbacks.getSettings().fileTaskDisplayTitleEnabled,
+		),
 		sourcePath: task.primary.filePath,
 		mode: 'interactive',
 		containerClassName: 'operon-reading-task-description-markdown',
