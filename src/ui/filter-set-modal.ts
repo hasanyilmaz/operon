@@ -284,7 +284,7 @@ export interface FilterModalEvalDeps {
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void;
 	getChildIds: (parentId: string) => string[];
-	navigateToTask: (task: import('../types/fields').IndexedTask) => void;
+	navigateToTask: (task: import('../types/fields').IndexedTask, evt?: MouseEvent | KeyboardEvent) => void;
 	getSettings: () => import('../types/settings').OperonSettings;
 	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;

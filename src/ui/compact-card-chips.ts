@@ -2,7 +2,7 @@ import { isTaskInfoChipKey } from '../core/task-info-chips';
 import { bindTaskInfoSourceAction, createTaskSourceActionButton } from './task-info-chip-action';
 import { bindDesktopChipOpening, isDesktopOpeningChip } from './links-chip-action';
 import { bindAssigneeChipImage } from './assignee-chip-image';
-import { App, Platform, setIcon } from 'obsidian';
+import { App, Keymap, Platform, setIcon } from 'obsidian';
 import { createOwnerElement, getOwnerWindow } from '../core/dom-compat';
 import type { ContextualMenuActionHandler, ContextualMenuActionId, ContextualMenuContext } from '../core/contextual-menu-engine';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
@@ -452,7 +452,7 @@ function attachKanbanChipAction(
 			return;
 		}
 		if (entry.linkTarget) {
-			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, Keymap.isModEvent(event));
 			onCommit?.();
 			return;
 		}

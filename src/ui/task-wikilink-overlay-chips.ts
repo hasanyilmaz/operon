@@ -4,7 +4,7 @@ import { bindTaskInfoSourceAction } from './task-info-chip-action';
 import { identifyInlineTaskPart } from './inline-retained-dom';
 import { bindDesktopChipOpening, isDesktopOpeningChip } from './links-chip-action';
 import { bindAssigneeChipImage } from './assignee-chip-image';
-import { App } from 'obsidian';
+import { App, Keymap } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { IndexedTask } from '../types/fields';
 import type { ProjectSerialDisplay } from '../core/project-serials';
@@ -320,7 +320,7 @@ function attachOverlayChipAction(
 			return;
 		}
 		if (entry.linkTarget) {
-			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, Keymap.isModEvent(event));
 			onCommit?.();
 			return;
 		}

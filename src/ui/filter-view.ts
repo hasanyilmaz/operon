@@ -120,7 +120,7 @@ export class FilterView extends ItemView {
 	private getPipelines: () => Pipeline[];
 	private getPriorities: () => PriorityDefinition[];
 	private getChildIds: (parentId: string) => string[];
-	private navigateToTask: (task: IndexedTask) => void;
+	private navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => void;
 	private getSettings: () => OperonSettings;
 	private updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	private updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
@@ -181,7 +181,7 @@ export class FilterView extends ItemView {
 		getPipelines: () => Pipeline[],
 		getPriorities: () => PriorityDefinition[],
 		getChildIds: (parentId: string) => string[],
-		navigateToTask: (task: IndexedTask) => void,
+		navigateToTask: (task: IndexedTask, evt?: MouseEvent | KeyboardEvent) => void,
 		getSettings: () => OperonSettings,
 		updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>,
 		updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>,

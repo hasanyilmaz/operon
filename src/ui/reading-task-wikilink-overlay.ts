@@ -3,7 +3,7 @@ import { taskDescriptionOpening } from './task-text-link-opening';
 import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
-import { App, Platform, parseLinktext, setIcon, TFile } from 'obsidian';
+import { App, Keymap, Platform, parseLinktext, setIcon, TFile } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { DescendantTaskSummary } from '../indexer/indexer';
@@ -1006,14 +1006,14 @@ function createTaskFileLinkLabel(
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, Keymap.isModEvent(event));
 	});
 	label.addEventListener('keydown', (event) => {
 		if (event.target !== label) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, Keymap.isModEvent(event));
 	});
 
 	return label;
@@ -1032,13 +1032,13 @@ function prepareTaskFileLinkAnchor(
 	anchor.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, Keymap.isModEvent(event));
 	});
 	anchor.addEventListener('keydown', (event) => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, Keymap.isModEvent(event));
 	});
 }
 

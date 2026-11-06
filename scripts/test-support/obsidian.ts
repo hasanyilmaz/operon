@@ -20,6 +20,12 @@ export const editorInfoField = StateField.define<{ file: { path: string } | null
 
 export type KeymapEventHandler = (...args: any[]) => any;
 
+export class Keymap {
+	static isModEvent(evt?: { metaKey?: boolean; ctrlKey?: boolean } | null): boolean | 'tab' {
+		return evt?.metaKey || evt?.ctrlKey ? 'tab' : false;
+	}
+}
+
 export class Scope {
  readonly handlers: Array<{ key: string; callback: (event: KeyboardEvent) => boolean | void }> = [];
 	constructor(_parent?: Scope) {}
