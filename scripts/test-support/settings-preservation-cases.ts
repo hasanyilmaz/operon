@@ -49,6 +49,46 @@ add('Status Dock defaults are additive and explicit menu choices remain protecte
  }
 });
 
+add('File Task title defaults are exact and explicit preferences remain protected', async () => {
+ const original = sourcePackage();
+ for (const [key, fallback, wrong] of [
+  ['fileTaskDisplayTitleEnabled', false, true],
+  ['fileTaskDisplayTitleChangeMode', 'keep', 'auto'],
+  ['fileTaskFilenameRule', { preset: 'same' }, { preset: 'snake' }],
+ ] as const) {
+  const added = clone(original);
+  Reflect.set(added.settings, key, fallback);
+  assertPersonalSettingsPreserved(added, original);
+  Reflect.set(added.settings, key, wrong);
+  assert.throws(() => assertPersonalSettingsPreserved(added, original), /Unexpected title default/);
+  assertPersonalSettingsPreserved(clone(added), added);
+  const overwritten = clone(added);
+  Reflect.set(overwritten.settings, key, fallback);
+  assert.throws(() => assertPersonalSettingsPreserved(overwritten, added), /User settings changed/);
+ }
+ const mapped = clone(original);
+ const titleMapping = {
+  canonicalKey: 'fileTaskDisplayTitle', visiblePropertyName: 'title', type: 'text' as const, sync: 'no' as const,
+  enabled: true, hideInFileTaskView: false, icon: '', isSystem: true, isInternal: false,
+ };
+ mapped.taxonomy.keyMappings.system.push(titleMapping);
+ assertPersonalSettingsPreserved(mapped, original);
+ const duplicate = clone(mapped);
+ duplicate.taxonomy.keyMappings.system.push(titleMapping);
+ assert.throws(() => assertPersonalSettingsPreserved(duplicate, original), /standard mapped title/);
+ titleMapping.visiblePropertyName = 'Custom title';
+ assert.throws(() => assertPersonalSettingsPreserved(mapped, original), /standard mapped title/);
+ assertPersonalSettingsPreserved(clone(mapped), mapped);
+ const rewritten = clone(mapped);
+ rewritten.taxonomy.keyMappings.system.find(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle')!.visiblePropertyName = 'title';
+ assert.throws(() => assertPersonalSettingsPreserved(rewritten, mapped), /User settings changed/);
+ const versioned = clone(original);
+ versioned.settings.settingsVersion = 116;
+ assertPersonalSettingsPreserved(versioned, original);
+ versioned.settings.settingsVersion = 117;
+ assert.throws(() => assertPersonalSettingsPreserved(versioned, original), /settings version transition/);
+});
+
 for (const version of ['3.8.0', '3.9.0'] as const) {
  add(`${version} sealed personalized settings survive startup save and second startup`, async () => {
   await withSettingsFixture({ version }, async fixture => {
