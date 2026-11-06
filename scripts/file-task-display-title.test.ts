@@ -1,3 +1,8 @@
+import { FormatConverter } from '../src/systems/format-converter';
+import { parseTaskLine } from '../src/core/parser';
+import type { OperonIndexer } from '../src/indexer/indexer';
+import { RecurrenceService, buildRecurringFileFieldPresence } from '../src/systems/recurrence-service';
+import { parseRepeatRule } from '../src/core/repeat-rule';
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -301,7 +306,7 @@ async function vaultFixture(context: TestContext) {
 	const renamer = new FileTaskTitleRenamer(indexer, () => settings, () => state.ready, () => currentFile.basename,
 		(id, name) => main.renameFileTaskFromTitle(id, name), message => notices.push(message));
 	(context as TestScope).after(() => renamer.destroy());
-	return { app, file: currentFile, settings, state, main, indexer, notices, destinations, occupied,
+	return { app, file: currentFile, settings, state, main, indexer, renamer, notices, destinations, occupied,
 		task: () => current, source: () => source, frontmatter: () => parseYaml(splitFrontmatterDocument(source).frontmatter!) as Record<string, unknown>,
 		full: () => emit({ kind: 'full', generation: 1 }),
 		edit: async (title: string) => { await app.fileManager.processFrontMatter(currentFile, value => { value.title = title; }); await indexer.reindexCommittedMutationSources(); },
@@ -603,4 +608,124 @@ test('Runtime TaskContext displayTitle is optional and bounded in UTF-8 bytes', 
 			assert.equal(decoded.value.description, entity.description);
 		}
 	}
+});
+
+
+test('Runtime title-only edits suppress Auto and later external edits still rename', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ await f.renamer.preservingFilename(task.operonId, 'API title', async () => { await f.edit('API title'); return { mutationMayHaveApplied: true }; });
+ await tick(); assert.deepEqual(f.destinations, []); assert.equal(f.frontmatter().title, 'API title');
+ await f.edit('User title'); await tick(); assert.deepEqual(f.destinations, ['user-title.md']);
+});
+
+test('a delayed write echo after an uncertain Runtime outcome cannot rename', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ await f.renamer.preservingFilename(task.operonId, 'Delayed API title', async () => ({ mutationMayHaveApplied: true }));
+ await f.edit('Delayed API title'); await tick(); assert.deepEqual(f.destinations, []);
+ await f.edit('Later user title'); await tick(); assert.deepEqual(f.destinations, ['later-user-title.md']);
+});
+
+test('a refused Runtime title mutation does not consume a later user edit', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ await f.renamer.preservingFilename(task.operonId, 'Same title', async () => ({ mutationMayHaveApplied: false }));
+ await f.edit('Same title'); await tick(); assert.deepEqual(f.destinations, ['same-title.md']);
+});
+
+
+test('a concurrent human edit is deferred and renamed after a refused Runtime write', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ await f.renamer.preservingFilename(task.operonId, 'API title', async () => { await f.edit('Human title'); await tick(); assert.deepEqual(f.destinations, []); return { mutationMayHaveApplied: false }; });
+ await tick(); assert.deepEqual(f.destinations, ['human-title.md']);
+});
+
+
+test('settings changes and full scans cancel deferred preexisting rename work', async context => {
+ const tick = renameClock(context);
+ for (const cancel of ['settings', 'full'] as const) {
+  const f = await vaultFixture(context); f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+  await f.renamer.preservingFilename(task.operonId, 'API title', async () => {
+   await f.edit('Human title');
+   if (cancel === 'full') f.full(); else f.renamer.cancelPending();
+   return { mutationMayHaveApplied: false };
+  });
+  await tick(); assert.deepEqual(f.destinations, []);
+ }
+});
+
+
+test('a compensated Runtime title write never renames the restored title', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ const beforeTitle = f.task().fieldValues.fileTaskDisplayTitle;
+ await f.renamer.preservingFilename(task.operonId, 'API title', async () => {
+  await f.edit('API title'); await f.edit(beforeTitle);
+  return { mutationMayHaveApplied: false };
+ });
+ await tick(); assert.deepEqual(f.destinations, []); assert.equal(f.frontmatter().title, beforeTitle);
+});
+
+
+test('a later recovery uses journal title preimages to suppress compensation rename', async context => {
+ const tick = renameClock(context), f = await vaultFixture(context);
+ f.settings.fileTaskDisplayTitleChangeMode = 'auto';
+ const original = f.task().fieldValues.fileTaskDisplayTitle;
+ await f.renamer.preservingFilename(task.operonId, 'API title', async () => { await f.edit('API title'); return { mutationMayHaveApplied: true }; });
+ await f.renamer.preservingFilename(task.operonId, 'API title', async () => {
+  f.renamer.preserveJournalTitleEchoes(task.operonId, [original, 'API title']);
+  await f.edit(original); return { mutationMayHaveApplied: false };
+ });
+ await tick(); assert.deepEqual(f.destinations, []);
+});
+
+
+test('recurring File Tasks preserve their exact native human title and body', () => {
+ const title = ' Human: title \n第二行 ', now = '2026-11-06T12:00:00';
+ const content = `---\noperonId: n000123\ntitle: ${JSON.stringify(title)}\nrepeat: mode=schedule|freq=day|interval=1\n---\nBody`;
+ for (const enabled of [false, true]) {
+  const settings = { ...DEFAULT_SETTINGS, fileTaskDisplayTitleEnabled: enabled };
+  const document = parseFrontmatterDocument(content, settings.keyMappings);
+  const sourceTask: IndexedTask = { ...task, fieldValues: document.managedFieldValues };
+  const service = Object.create(RecurrenceService.prototype) as RecurrenceService;
+  Reflect.set(service, 'getSettings', () => settings);
+  const planned = Reflect.apply(Reflect.get(service, 'buildNextOccurrenceFieldValues'), service, [sourceTask, sourceTask, parseRepeatRule('mode=schedule|freq=day|interval=1'), { seriesId: 'series1', skipDates: [] }, '2026-11-07', '2026-11-07', {}, now, 'n000124']) as Record<string, string>;
+  const draft = buildMergedFileTaskDraft({ source: { description: 'next-physical-name', fieldValues: planned, fieldPresence: buildRecurringFileFieldPresence(planned, document), frontmatterDocument: document }, defaults: { operonId: 'n000124', datetimeModified: now }, keyMappings: settings.keyMappings, bodyStrategy: 'preserve-source', preserveSourceKeyChoices: true });
+  const split = splitFrontmatterDocument(draft.content);
+  assert.equal(planned.fileTaskDisplayTitle, title); assert.equal(parseYaml(split.frontmatter!).title, title); assert.equal(split.body, 'Body');
+ }
+});
+
+
+test('File to Inline to File preserves the native human title', async () => {
+ const title = ' Human: title \n第二行 ', now = '2026-11-06T12:00:00';
+ const ConversionHost = methods('main.ts', ['finishInlineTaskToFileTaskConversionInSource'], { newFileTaskTitleFields, localNow: () => now, t });
+ for (const enabled of [false, true]) {
+  const settings = { ...DEFAULT_SETTINGS, fileTaskDisplayTitleEnabled: enabled };
+  const sourceTask: IndexedTask = { ...task, fieldValues: { operonId: task.operonId, fileTaskDisplayTitle: title } };
+  const converter = new FormatConverter({} as App, { getTask: () => sourceTask } as unknown as OperonIndexer, settings);
+  const line = converter.yamlToInline(task.operonId)!;
+  const parsed = parseTaskLine(line, 0, 'Inbox.md', settings.keyMappings)!;
+  assert.equal(parsed.fields.find(field => field.key === 'fileTaskDisplayTitle')?.value, title);
+  let draft: ReturnType<typeof buildMergedFileTaskDraft> | undefined;
+  const host = new ConversionHost();
+  Object.assign(host, { settings,
+   indexer: { reindexFilesBatch: async () => {}, hasDuplicateOperonIdConflict: () => false, getTask: () => null },
+   persistTaskEditorDeleteOpenSources: async () => true,
+   readAgentRuntimeMutationSource: async () => ({ content: line }), findInlineTaskLineIndex: () => 0,
+   parseInlineTaskLine: (text: string, number: number, path: string) => parseTaskLine(text, number, path, settings.keyMappings),
+   loadFileTaskTemplateDocumentFromOption: async () => ({}),
+   buildParsedTaskFieldValues: (value: NonNullable<ReturnType<typeof parseTaskLine>>) => Object.fromEntries(value.fields.map(field => [field.key, field.value])),
+   buildLinkedFileTaskSeed: async (_path: string, fieldValues: Record<string, string>, fieldPresence: Set<string>) => ({ fieldValues, fieldPresence }),
+   applyPipelineMinimalFileTaskTemplateStatus: () => true, resolveLoadedFileTaskTemplateDocument: () => null,
+   buildOperonTemplatePlaceholderContext: () => ({}),
+   buildFileTaskDraft: (source: Parameters<typeof buildMergedFileTaskDraft>[0]['source']) => (draft = buildMergedFileTaskDraft({ source, defaults: { operonId: task.operonId, datetimeModified: now }, keyMappings: settings.keyMappings, bodyStrategy: 'use-template' })),
+   validateDependencyDraftOrShow: () => false,
+   showUiConversionResult: (result: unknown) => { throw new Error(JSON.stringify(result)); },
+  });
+  await host.finishInlineTaskToFileTaskConversionInSource({ path: 'Inbox.md' }, parsed, {});
+  assert.ok(draft); assert.equal(parseYaml(splitFrontmatterDocument(draft.content).frontmatter!).title, title);
+ }
 });

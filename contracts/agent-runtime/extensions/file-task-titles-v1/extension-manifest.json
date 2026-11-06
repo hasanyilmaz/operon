@@ -1,0 +1,221 @@
+{
+  "manifestVersion": 1,
+  "contractVersion": 1,
+  "extensionId": "file-task-titles-v1",
+  "baseContractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
+  "baseSchemaManifestAggregateSha256": "43ca9fa184f9a2433a3583446ab19557e7c81b3e3b0f3f57be95a95ee3859506",
+  "cliSupport": "provider-ready-client-deferred",
+  "capabilities": [
+    "tasks.file.create.preview",
+    "tasks.file.create.apply",
+    "tasks.file.title.preview",
+    "tasks.file.title.apply"
+  ],
+  "documents": [
+    {
+      "file": "capabilities.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:file-task-titles:capabilities",
+      "sha256": "5a40d088073f4ee1f1fd2d7db2e37d3db356cc3db852b1d895b5bc65417295fb"
+    },
+    {
+      "file": "mutation.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d"
+    },
+    {
+      "file": "developer-api.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518"
+    },
+    {
+      "file": "cli.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:file-task-titles:cli",
+      "sha256": "ae61d483cbb715bc2c6d0de2aa29fe615219288421f8ee7403bbd726bc494e3e"
+    }
+  ],
+  "entrypoints": [
+    {
+      "schemaId": "file-task-titles-capabilities-capabilityId",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:capabilities#/$defs/capabilityId",
+      "file": "capabilities.schema.json",
+      "sha256": "5a40d088073f4ee1f1fd2d7db2e37d3db356cc3db852b1d895b5bc65417295fb",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-capabilities-capabilityRegistry",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:capabilities#/$defs/capabilityRegistry",
+      "file": "capabilities.schema.json",
+      "sha256": "5a40d088073f4ee1f1fd2d7db2e37d3db356cc3db852b1d895b5bc65417295fb",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-createSpec",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/createSpec",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-editSpec",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/editSpec",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-titleExecutionPlan",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/titleExecutionPlan",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-previewRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/previewRequest",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-createSealedPlan",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/createSealedPlan",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-sealedPlan",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/sealedPlan",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-applyRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/applyRequest",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-previewResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/previewResult",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-continuation",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/continuation",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-mutationResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/mutationResult",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-mutation-receipt",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:mutation#/$defs/receipt",
+      "file": "mutation.schema.json",
+      "sha256": "4a52d53349bce75e956cbbe4fd8d8b97d815f63ba2bce25865fd511add30df2d",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-accessRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/accessRequest",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-previewIntent",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/previewIntent",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-planHandle",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/planHandle",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-applyInput",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/applyInput",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-recoverInput",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/recoverInput",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-previewResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/previewResult",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-receipt",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/receipt",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-recovery",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/recovery",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-executionResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/executionResult",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-pendingRecovery",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/pendingRecovery",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-developer-api-pendingRecoveriesResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:developer-api#/$defs/pendingRecoveriesResult",
+      "file": "developer-api.schema.json",
+      "sha256": "67dd20202820fa7ff5a3064062bdf4ac129b28f00c88eb3e5162bde7afa63518",
+      "direction": "response"
+    },
+    {
+      "schemaId": "file-task-titles-cli-invocation",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:cli#/$defs/invocation",
+      "file": "cli.schema.json",
+      "sha256": "ae61d483cbb715bc2c6d0de2aa29fe615219288421f8ee7403bbd726bc494e3e",
+      "direction": "input"
+    },
+    {
+      "schemaId": "file-task-titles-cli-result",
+      "ref": "urn:operon:schema:runtime:v1:extension:file-task-titles:cli#/$defs/result",
+      "file": "cli.schema.json",
+      "sha256": "ae61d483cbb715bc2c6d0de2aa29fe615219288421f8ee7403bbd726bc494e3e",
+      "direction": "response"
+    }
+  ],
+  "aggregateSha256": "44f43f3bf9426172bcc93fd25db5dc34a14c6be2075403ef3f0e0b82ff67b217"
+}

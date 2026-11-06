@@ -1,3 +1,6 @@
+import { fileTaskTitlesAdvertisementsV1, type FileTaskTitlesPreviewRequestV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/contracts';
+import { fileTaskTitlesExecutionRequestV1, sealFileTaskTitlesPlanV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/decode';
+import { computeSealedMutationPlanHashV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
 import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -14,7 +17,7 @@ import {
 	unlink,
 	writeFile,
 } from 'node:fs/promises';
-import { constants as fsConstants, lstatSync } from 'node:fs';
+import { constants as fsConstants, lstatSync, readFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -2923,3 +2926,42 @@ function createSupervisorScheduler(): {
 		},
 	};
 }
+
+
+test('dispatcher routes File Task title preview and apply through their dedicated provider', async () => {
+ const vault = await mkdtemp(join(tmpdir(), 'operon-file-title-transport-'));
+ try {
+  const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
+  const calls: string[] = [];
+  const health = { ...createHealth(), capabilities: [...createHealth().capabilities, ...fileTaskTitlesAdvertisementsV1(true)] };
+  const base = createRuntime(health);
+  const runtime: OperonAgentRuntimeCoreV1 = { ...base, hasCapability: id => health.capabilities.some(cap => cap.id === id),
+   fileTaskTitles: {
+    preview: async value => { const request = value as FileTaskTitlesPreviewRequestV1; calls.push(request.capability); return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: false, warnings: [], error: { contractVersion: 1, code: 'live-settling', reason: 'title provider route', retryable: true, action: 'wait-and-retry' } }; },
+    apply: async value => { const request = value as MutationApplyRequestV1; calls.push('apply'); return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-result', status: 'failed', mutationMayHaveApplied: false, retryAllowed: false, groupResults: [] }; },
+    recover: async () => { throw new Error('Unexpected recover'); },
+   },
+  };
+  for (const edit of [false, true]) {
+   const fixture = JSON.parse(readFileSync('scripts/agent-runtime/receipts/legacy-transaction-identifiers.json', 'utf8')).file.plan as MutationApplyRequestV1['plan'];
+   const request: FileTaskTitlesPreviewRequestV1 = { contractVersion: 1, requestId: 'file-title-route', kind: 'mutation-preview', clientInstanceId: fixture.clientInstanceId, idempotencyKey: 'file-title-route-key', authorization: { basis: 'user-explicit-request' }, ...(edit ? { capability: 'tasks.file.title.preview', mutationKind: 'task.update', target: { operonId: fixture.targets[0].operonId!, locator: fixture.targets[0].locator! }, spec: { operation: 'set-title', displayTitle: 'Readable title' } } : { capability: 'tasks.file.create.preview', mutationKind: 'task.create', spec: { operation: 'create-file', item: { itemRef: 'one', displayTitle: 'Readable title', target: { representation: 'file', mode: 'configured-default' }, fields: [] } } }) };
+   const inner = fileTaskTitlesExecutionRequestV1(request);
+   fixture.capability = inner.capability; fixture.mutationKind = inner.mutationKind;
+   if (inner.spec.operation !== 'create' && inner.spec.operation !== 'update') throw new Error('Unexpected title intent');
+   fixture.spec = inner.spec; fixture.idempotencyKeyHash = sha256HexV1(inner.idempotencyKey);
+   if (edit) delete fixture.createEffects;
+   fixture.planHash = computeSealedMutationPlanHashV1(fixture);
+   const plan = sealFileTaskTitlesPlanV1(fixture, request.capability, request.idempotencyKey, request.spec);
+   for (const apply of [false, true]) {
+    const command = apply ? 'mutation.apply' as const : 'mutation.preview' as const;
+    const invocation = { contractVersion: 1, kind: 'cli-invocation', requestId: request.requestId, command, mode: 'live', clientVersion: '1.0.0', compatibility: COMPATIBILITY, cliContract: { min: 1, max: 1 }, expectedVaultSha256, readinessTimeoutMs: 1000, request: apply ? { contractVersion: 1, requestId: request.requestId, kind: 'mutation-apply', plan, idempotencyKey: request.idempotencyKey, authorization: request.authorization, acknowledgements: [] } : request };
+    const token = (edit ? (apply ? 'T' : 'U') : (apply ? 'V' : 'W')).repeat(32);
+    await publishRequest(token, JSON.stringify(invocation), 0o600);
+    const output = await dispatchAgentRuntimeCliV1({ runtime, nodeApi, vaultAdapter: { getFullPath: () => vault }, runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '4.5.0', minAppVersion: '1.7.2' }, apiVersion: 1 }, monotonicNow: () => 10 }, { expectedCommand: command, requestToken: token });
+    assert.equal(JSON.parse(output).ok, apply, output);
+    if (!apply) assert.equal(JSON.parse(output).failure.error.reason, 'title provider route');
+   }
+  }
+  assert.deepEqual(calls, ['tasks.file.create.preview', 'apply', 'tasks.file.title.preview', 'apply']);
+ } finally { await rm(vault, { recursive: true, force: true }); }
+});

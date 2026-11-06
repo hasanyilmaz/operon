@@ -56,6 +56,7 @@ import {
 } from './recurring-file-naming';
 
 const COPIED_FIELDS = new Set([
+	'fileTaskDisplayTitle',
 	'repeat',
 	'repeatSeriesId',
 	'datetimeRepeatEnd',

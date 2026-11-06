@@ -1,3 +1,4 @@
+import type { FileTaskTitlesRuntimeV1 } from '../extensions/file-task-titles-v1/gateway';
 import type { CheckboxOwnershipRuntimeV1 } from '../extensions/checkbox-ownership-v1/gateway';
 import type { CapabilityAdvertisementV1 } from '../contracts/v1/capabilities';
 import type { CatalogRequestV1, OperonCatalogV1 } from '../contracts/v1/catalog';
@@ -130,6 +131,7 @@ export interface RuntimeTimersFacadeV1 {
 
 export interface OperonAgentRuntimeCoreV1 {
 	checkboxOwnership?: CheckboxOwnershipRuntimeV1;
+	fileTaskTitles?: FileTaskTitlesRuntimeV1;
 	apiVersion: typeof RUNTIME_API_VERSION_V1;
 	hasCapability(name: string): boolean;
 	system: RuntimeSystemFacadeV1;

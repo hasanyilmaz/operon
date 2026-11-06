@@ -2760,7 +2760,7 @@ for (const pathLength of [115, 116]) {
 	});
 }
 
-async function samePlanLeaseFixture() {
+async function samePlanLeaseFixture(fileTitle = false) {
 	let now = BASE_TIME;
 	let content = 'before';
 	let writes = 0;
@@ -2788,7 +2788,7 @@ async function samePlanLeaseFixture() {
 		before: transactionState('before'), after: transactionState('after'),
 	}];
 	const prepared = {
-		target: { operonId: 'lease01', locator: { representation: 'inline' as const, filePath, lineNumber: 1 }, targetDigest: sha256(701) },
+		target: { operonId: 'lease01', locator: fileTitle ? { representation: 'file' as const, filePath } : { representation: 'inline' as const, filePath, lineNumber: 1 }, targetDigest: sha256(701) },
 		affectedResources: [{ resourceKind: 'task-source' as const, resourceKey: filePath, revision: sha256HexV1('before') }],
 		atomicGroups: [{ groupId, order: 0, resources: [{ resourceKind: 'task-source' as const, resourceKey: filePath }] }],
 		predictedEffects: [{ resourceKind: 'task-source' as const, resourceKey: filePath, action: 'update' as const, summary: 'Transition the task.' }], warnings: [], token: {},
@@ -2798,7 +2798,9 @@ async function samePlanLeaseFixture() {
 		isReady: () => true, sampleContextRevision: () => transactionIdRevision,
 		prepareCreation: async () => { throw new Error('Unexpected creation'); },
 		commitCreation: async () => { throw new Error('Unexpected creation commit'); },
-		prepareMutation: async () => ({ ok: true, value: prepared }),
+		prepareMutation: async (_request, _at, policy) => fileTitle && !policy?.fileTaskTitleMutation
+   ? { ok: false, code: 'field-not-writable', reason: 'The built-in title requires its extension capability.' }
+   : { ok: true, value: prepared },
 		commitMutation: async () => { throw new Error('Unjournaled mutation'); },
 		prepareMutationTransaction: async () => ({ ok: true, steps }),
 		commitMutationTransaction: async (_request, _prepared, _at, _journal, checkpoint) => {
@@ -2825,8 +2827,9 @@ async function samePlanLeaseFixture() {
 		receiptStore: () => store, vaultIdentityHash: async () => sha256(702), nowEpochMs: () => now, randomId: () => `lease-${++sequence}`,
 	});
 	const gateway = newGateway();
-	const preview = await gateway.preview({ contractVersion: 1, requestId: 'lease-preview', kind: 'mutation-preview', clientInstanceId: 'lease-client', idempotencyKey: 'same-plan-lease-key', capability: 'tasks.transition.preview', mutationKind: 'task.transition', target: { operonId: prepared.target.operonId, locator: prepared.target.locator },
-		spec: { operation: 'transition', targetStatusId: 'status-done', expectedStatusId: 'status-open' }, authorization: { basis: 'user-explicit-request' } });
+ const previewRequest: MutationPreviewRequestV1 = { contractVersion: 1, requestId: 'lease-preview', kind: 'mutation-preview', clientInstanceId: 'lease-client', idempotencyKey: 'same-plan-lease-key', capability: fileTitle ? 'tasks.update.preview' : 'tasks.transition.preview', mutationKind: fileTitle ? 'task.update' : 'task.transition', target: { operonId: prepared.target.operonId, locator: prepared.target.locator },
+  spec: fileTitle ? { operation: 'update', changes: [{ field: 'fileTaskDisplayTitle', valueType: 'text', value: 'After title' }] } : { operation: 'transition', targetStatusId: 'status-done', expectedStatusId: 'status-open' }, authorization: { basis: 'user-explicit-request' } };
+ const preview = fileTitle ? await gateway.previewForPluginUi(previewRequest, { fileTaskTitleMutation: true }) : await gateway.preview(previewRequest);
 	assert.equal(preview.ok, true, JSON.stringify(preview));
 	if (!preview.ok) throw new Error('Preview failed');
 	const request = { contractVersion: 1 as const, requestId: 'lease-apply', kind: 'mutation-apply' as const, plan: preview.plan, idempotencyKey: 'same-plan-lease-key', authorization: { basis: 'user-explicit-request' as const }, acknowledgements: [] };
@@ -3085,4 +3088,39 @@ for (const interrupted of [false, true]) test(`contiguous adoption real receipt 
  const first = await extension.apply(input); assert.equal(first.status, interrupted ? 'outcome-unknown' : 'applied', JSON.stringify(first)); assert.equal(decodeCheckboxOwnershipMutationResultV1(first).ok,true,JSON.stringify(first));
  if(interrupted){ const recovered = await extension.recover(input); assert.equal(recovered.status,'applied',JSON.stringify(recovered)); assert.equal(decodeCheckboxOwnershipMutationResultV1(recovered).ok,true); }
  const replay = await extension.apply(input); assert.equal(replay.status,'already-applied',JSON.stringify(replay)); assert.equal(decodeCheckboxOwnershipMutationResultV1(replay).ok,true); assert.equal(writes,1);
+});
+
+
+for (const failure of ['interrupt', 'checkpoint', 'finalize'] as const) {
+ test(`File Task title private policy journals and recovers ${failure} without repeating writes`, async () => {
+  const f = await samePlanLeaseFixture(true), policy = { fileTaskTitleMutation: true };
+  assert.equal((await f.gateway.apply(f.request)).status, 'failed', 'frozen V1 cannot dispatch a title plan');
+  assert.equal(f.stats().writes, 0);
+  if (failure === 'checkpoint') f.failCheckpoint();
+  assert.equal((await f.gateway.applyForPluginUi(f.request, policy)).status, 'outcome-unknown');
+  const deniedRecovery = await f.gateway.apply(f.request);
+  assert.equal(deniedRecovery.status, 'outcome-unknown'); assert.equal(f.stats().recoveries, 0);
+  const restarted = f.newGateway();
+  assert.equal((await restarted.applyForPluginUi(f.request, policy)).status, 'outcome-unknown');
+  f.advance(30_000);
+  if (failure === 'finalize') { f.failFinalize(); assert.equal((await restarted.applyForPluginUi(f.request, policy)).status, 'outcome-unknown'); }
+  const result = await restarted.applyForPluginUi(f.request, policy);
+  assert.equal(result.status, 'applied', JSON.stringify(result));
+  assert.equal((await restarted.applyForPluginUi(f.request, policy)).status, 'already-applied');
+  assert.equal(f.stats().writes, 1); assert.equal(f.factory.journals.size, 0);
+ });
+}
+
+
+test('File Task title verified compensation reports completion only after restoration and journal cleanup', async () => {
+ const f = await samePlanLeaseFixture(true);
+ let compensated = 0;
+ const policy = { fileTaskTitleMutation: true, onVerifiedCompensation: () => { compensated++; } };
+ assert.equal((await f.gateway.applyForPluginUi(f.request, policy)).status, 'outcome-unknown');
+ assert.equal(compensated, 0);
+ f.failCheckpoint();
+ const result = await f.gateway.applyForPluginUi(f.request, policy);
+ assert.equal(result.status, 'failed', JSON.stringify(result));
+ assert.equal(result.mutationMayHaveApplied, false); assert.equal(compensated, 1);
+ assert.equal(f.stats().writes, 2); assert.equal(f.factory.journals.size, 0); assert.equal(f.factory.records.size, 0);
 });

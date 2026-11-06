@@ -1,3 +1,4 @@
+import { decodeFileTaskTitlesApplyV1 } from '../extensions/file-task-titles-v1/decode';
 import { decodeCheckboxOwnershipApplyV1 } from '../extensions/checkbox-ownership-v1/decode';
 import type {
 	MutationAcknowledgementV1,
@@ -479,8 +480,9 @@ function assertRecoveryRecord(record: DeveloperMutationRecoveryRecordV1): void {
 		);
 	}
 	const envelope = { contractVersion: 1, requestId: 'developer-recovery-validation', kind: 'mutation-apply', plan: record.sealed, authorization: record.authorization, idempotencyKey: record.idempotencyKey, acknowledgements: record.acknowledgements };
-	const decodedApply = 'extension' in record.sealed
-		? decodeCheckboxOwnershipApplyV1(envelope)
+	const decodedApply = 'extension' in record.sealed && record.sealed.extension === 'file-task-titles-v1'
+		? decodeFileTaskTitlesApplyV1(envelope)
+		: 'extension' in record.sealed ? decodeCheckboxOwnershipApplyV1(envelope)
 		: isTaskWorkflowExtensionPlan(record.sealed)
 		? decodeTaskWorkflowApplyRequestExtensionV1({
 			contractVersion: 1,

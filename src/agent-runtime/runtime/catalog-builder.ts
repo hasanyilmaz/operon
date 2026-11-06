@@ -314,6 +314,8 @@ function buildFields(
 		const key = comparable(mapping.canonicalKey);
 		if (!customByComparable.has(key)) customByComparable.set(key, mapping);
 	}
+	const titleKey = comparable('fileTaskDisplayTitle');
+	const preserveCustomTitle = customByComparable.has(titleKey) && !activeMappings.some(mapping => mapping.isSystem !== false && comparable(mapping.canonicalKey) === titleKey);
 	const fields: FieldDescriptorV1[] = [];
 	const emitted = new Set<string>();
 
@@ -330,7 +332,7 @@ function buildFields(
 	}
 
 	for (const definition of CANONICAL_KEYS) {
-		if (RETIRED_OR_STALE_KEYS.has(definition.name)) continue;
+		if (RETIRED_OR_STALE_KEYS.has(definition.name) || (preserveCustomTitle && definition.name === 'fileTaskDisplayTitle')) continue;
 		const key = comparable(definition.name);
 		const collidingCustom = customByComparable.get(key);
 		const mapping = collidingCustom ? undefined : activeMappings.find(candidate => (
@@ -361,7 +363,7 @@ function buildFields(
 			));
 			continue;
 		}
-		const canonicalCollision = BUILT_IN_CANONICAL_NAMES.has(key)
+		const canonicalCollision = (BUILT_IN_CANONICAL_NAMES.has(key) && !(preserveCustomTitle && key === titleKey))
 			|| VIRTUAL_FIELD_NAMES.has(key)
 			|| (customCanonicalCounts.get(key) ?? 0) > 1;
 		const visibleCollision = (visibleCounts.get(comparable(mapping.visiblePropertyName)) ?? 0) > 1;

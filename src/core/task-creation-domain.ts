@@ -1,3 +1,4 @@
+import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
 import { resolveFileTaskDefaults } from './file-task-defaults';
 import {
 	buildMergedFileTaskDraft,
@@ -583,7 +584,8 @@ function validateRequest(
 			}
 		}
 		for (const field of Object.keys(item.runtimeFields ?? {})) {
-			if (!ADAPTER_OWNED_TEMPORAL_CREATION_FIELDS.has(field)) {
+			if (!ADAPTER_OWNED_TEMPORAL_CREATION_FIELDS.has(field)
+				&& !(field === 'fileTaskDisplayTitle' && item.target.representation === 'file' && hasFileTaskDisplayTitleMapping(options.settings.keyMappings))) {
 				blockers.push({
 					code: 'field-not-allowed',
 					message: `Adapter-owned field ${field} is not writable through canonical task creation.`,

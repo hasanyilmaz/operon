@@ -1,3 +1,5 @@
+import { fileTaskTitlesApplyCapabilityV1 } from '../../extensions/file-task-titles-v1/contracts';
+import { isFileTaskTitlesPreviewCapabilityV1 } from '../../extensions/file-task-titles-v1/decode';
 import { checkboxOwnershipApplyCapabilityV1 } from '../../extensions/checkbox-ownership-v1/contracts';
 import { isCheckboxOwnershipPreviewCapabilityV1 } from '../../extensions/checkbox-ownership-v1/decode';
 import {
@@ -337,6 +339,7 @@ export function resolveDeveloperRoutineAuthorizationBasisV1(
 export function resolveDeveloperMutationApplyCapabilityV1(
 	plan: DeveloperMutationSealedPlanV1,
 ): DeveloperMutationCapabilityV1 {
+	if (isFileTaskTitlesPreviewCapabilityV1(plan.capability)) return fileTaskTitlesApplyCapabilityV1(plan.capability);
 	if (isCheckboxOwnershipPreviewCapabilityV1(plan.capability)) return checkboxOwnershipApplyCapabilityV1(plan.capability);
 	return plan.mutationKind === 'task.adopt'
 		? 'tasks.adopt.apply'

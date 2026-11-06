@@ -1,3 +1,5 @@
+import { isFileTaskTitlesPreviewCapabilityV1 } from '../extensions/file-task-titles-v1/decode';
+import { fileTaskTitlesApplyCapabilityV1, type FileTaskTitlesCliInvocationV1, type FileTaskTitlesCliResultEnvelopeV1, type FileTaskTitlesPreviewResultV1, type FileTaskTitlesMutationResultV1 } from '../extensions/file-task-titles-v1/contracts';
 import {
 	resolveCliInvocationCapabilityV1,
 	type CliCommandV1,
@@ -353,8 +355,8 @@ export async function dispatchAgentRuntimeCliV1(
 	}
 }
 
-type RuntimeCliInvocationV1 = CliInvocationV1 | TaskWorkflowCliInvocationV1;
-type RuntimeCliResultV1 = CliRuntimeResultV1 | TaskFilterQueryResultV1 | TaskWorkflowPreviewResultV1 | TaskWorkflowMutationResultV1;
+type RuntimeCliInvocationV1 = CliInvocationV1 | TaskWorkflowCliInvocationV1 | FileTaskTitlesCliInvocationV1;
+type RuntimeCliResultV1 = CliRuntimeResultV1 | TaskFilterQueryResultV1 | TaskWorkflowPreviewResultV1 | TaskWorkflowMutationResultV1 | FileTaskTitlesPreviewResultV1 | FileTaskTitlesMutationResultV1;
 
 function timingFlowForInvocationV1(invocation: RuntimeCliInvocationV1): RuntimeTimingFlowV1 {
 	if (invocation.command === 'mutation.preview') return 'mutation-preview';
@@ -366,10 +368,10 @@ function resolveInvocationCapabilityV1(invocation: RuntimeCliInvocationV1): stri
 	let capability: string | undefined;
 	if (invocation.command === 'tasks.filter-query') capability = 'tasks.filter-query';
 	else if (invocation.command === 'mutation.preview') {
-		capability = resolveTaskWorkflowPreviewCapabilityV1(invocation.request);
+		capability = (invocation.request?.kind === 'mutation-preview' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.capability)) ? invocation.request.capability : resolveTaskWorkflowPreviewCapabilityV1(invocation.request);
 	}
 	else if (invocation.command === 'mutation.apply') {
-		capability = resolveTaskWorkflowApplyCapabilityV1(invocation.request);
+		capability = (invocation.request?.kind === 'mutation-apply' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.plan.capability)) ? fileTaskTitlesApplyCapabilityV1(invocation.request.plan.capability) : resolveTaskWorkflowApplyCapabilityV1(invocation.request);
 	}
 	else capability = resolveCliInvocationCapabilityV1(invocation);
 	if (!capability && invocation.command !== 'tasks.filter-query') {
@@ -518,12 +520,20 @@ async function invokeRuntimeReadV1(
 		case 'timers.read':
 			return await runtime.timers.read(invocation.request as TimerReadRequestV1, context);
 		case 'mutation.preview':
+   if ((invocation.request?.kind === 'mutation-preview' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.capability))) {
+    if (!runtime.fileTaskTitles) throw new Error('file-task-titles-unavailable');
+    return await runtime.fileTaskTitles.preview(invocation.request);
+   }
 			if (resolveTaskWorkflowPreviewCapabilityV1(invocation.request)) {
 				if (!runtime.mutations.previewTaskWorkflow) throw new Error('task-workflow-preview-unavailable');
 				return await runtime.mutations.previewTaskWorkflow(invocation.request as TaskWorkflowPreviewRequestV1, context);
 			}
 			return await runtime.mutations.preview(invocation.request as MutationPreviewRequestV1, context);
 		case 'mutation.apply':
+   if ((invocation.request?.kind === 'mutation-apply' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.plan.capability))) {
+    if (!runtime.fileTaskTitles) throw new Error('file-task-titles-unavailable');
+    return await runtime.fileTaskTitles.apply(invocation.request);
+   }
 			if (resolveTaskWorkflowApplyCapabilityV1(invocation.request)) {
 				if (!runtime.mutations.applyTaskWorkflow) throw new Error('task-workflow-apply-unavailable');
 				return await runtime.mutations.applyTaskWorkflow(invocation.request as TaskWorkflowApplyRequestV1);
@@ -544,7 +554,7 @@ function successEnvelope(
 	state: DispatchStateV1,
 	ports: AgentRuntimeCliDispatcherPortsV1,
 	startedAt: number,
-): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 {
+): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 | FileTaskTitlesCliResultEnvelopeV1 {
 	let warnings = readWarnings(result);
 	if (readInvocationConsistency(invocation) === 'best-effort') {
 		const bestEffortWarning: ContractWarningV1 = {
@@ -573,7 +583,7 @@ function successEnvelope(
 		timing: { handlerMs: elapsedMilliseconds(ports, startedAt) },
 		warnings,
 		result,
-	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1;
+	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 | FileTaskTitlesCliResultEnvelopeV1;
 }
 
 function failureEnvelope(
@@ -584,7 +594,7 @@ function failureEnvelope(
 	stage: CliFailureStageV1,
 	error: StructuredErrorV1,
 	warnings: ContractWarningV1[] = [],
-): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 {
+): CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 | FileTaskTitlesCliResultEnvelopeV1 {
 	return {
 		contractVersion: CONTRACT_VERSION_V1,
 		kind: 'cli-result',
@@ -606,7 +616,7 @@ function failureEnvelope(
 
 function serializeBoundedEnvelopeV1(
 	ports: AgentRuntimeCliDispatcherPortsV1,
-	envelope: CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1,
+	envelope: CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 | FileTaskTitlesCliResultEnvelopeV1,
 ): string {
 	let serialized: string;
 	try {
@@ -641,7 +651,7 @@ function serializeBoundedEnvelopeV1(
 				false,
 			),
 		},
-	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1;
+	} as CliResultEnvelopeV1 | TaskWorkflowCliResultEnvelopeV1 | FileTaskTitlesCliResultEnvelopeV1;
 	return JSON.stringify(failure);
 }
 

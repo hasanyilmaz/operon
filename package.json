@@ -229,7 +229,7 @@
     "kanban:cell-virtualization:test": "node scripts/run-kanban-cell-virtualization-tests.mjs",
     "kanban:axis-settings:test": "node scripts/run-kanban-axis-settings-tests.mjs",
     "kanban:two-axis-integration:test": "node scripts/run-kanban-two-axis-integration-tests.mjs",
-    "file-task:display-title:test": "node scripts/run-file-task-display-title-tests.mjs"
+    "file-task:display-title:test": "node scripts/run-file-task-display-title-tests.mjs && node scripts/agent-runtime/file-task-titles/run-tests.mjs"
   },
   "keywords": [],
   "author": "Hasan Y\u0131lmaz",

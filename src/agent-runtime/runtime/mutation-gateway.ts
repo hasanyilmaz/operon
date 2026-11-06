@@ -142,6 +142,9 @@ export interface RuntimeInternalMutationPolicyV1 {
 	readonly allowUnavailableAncestors?: boolean;
 	readonly detachDirectChildrenOnDelete?: boolean;
 	readonly checkboxOwnership?: 'contiguous';
+	readonly fileTaskTitleCreation?: boolean;
+	readonly fileTaskTitleMutation?: boolean;
+	readonly onVerifiedCompensation?: () => void;
 	readonly vaultMutationLease?: RuntimeVaultMutationLeaseV1;
 	readonly inlineDrawingTarget?: string;
 	readonly conversionSources?: {
@@ -816,6 +819,14 @@ export class RuntimeMutationGatewayV1 {
 			};
 		}
 		if (existingJournal) {
+   // Only the title extension creates single-file title journals. Public custom-field
+   // updates retain their legacy path; an extracted inner plan cannot bypass the
+   // extension's filename-preservation guard during journal recovery.
+   if (!internalPolicy?.fileTaskTitleMutation && request.plan.spec.operation === 'update'
+    && request.plan.targets[0]?.locator?.representation === 'file'
+    && request.plan.spec.changes.some(change => change.field === 'fileTaskDisplayTitle')) {
+    return mutationOutcomeUnknown(request, 'Recover this File Task title through its dedicated capability.');
+   }
 			if (!graphJournalMatchesPlanV1(existingJournal, request.plan, vaultIdentityHash)) {
 				return mutationFailure(
 					request.requestId,
@@ -854,6 +865,7 @@ export class RuntimeMutationGatewayV1 {
 						vaultIdentityHash,
 						journalLeaseOwner,
 						admissionToken,
+						internalPolicy
 					)
 					: await this.recoverPreparedGraphTransaction(
 						request,
@@ -1389,6 +1401,7 @@ export class RuntimeMutationGatewayV1 {
 		vaultIdentityHash: string,
 		journalLeaseOwner: string,
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
+		internalPolicy?: RuntimeInternalMutationPolicyV1,
 	): Promise<MutationResultV1> {
 		return await this.recoverGraphTransaction(
 			request,
@@ -1407,6 +1420,7 @@ export class RuntimeMutationGatewayV1 {
 			this.ports.verifyCreationTransactionState
 				? (journal, expected) => this.ports.verifyCreationTransactionState!(journal, expected)
 				: undefined,
+			internalPolicy?.onVerifiedCompensation,
 		);
 		}
 
@@ -1745,6 +1759,7 @@ export class RuntimeMutationGatewayV1 {
 			this.ports.verifyMutationTransactionState
 				? (journal, expected) => this.ports.verifyMutationTransactionState!(journal, expected)
 				: undefined,
+			internalPolicy?.onVerifiedCompensation,
 		);
 	}
 
@@ -1758,6 +1773,7 @@ export class RuntimeMutationGatewayV1 {
 		admissionToken: MutationReceiptApplyAdmissionTokenV1 | null,
 		recover: RuntimeMutationGatewayPortsV1['recoverMutationTransaction'],
 		verifyState: RuntimeMutationGatewayPortsV1['verifyMutationTransactionState'],
+		onVerifiedCompensation?: () => void,
 	): Promise<MutationResultV1> {
 		if (!recover || !verifyState) {
 			return await this.outcomeUnknownAfterAuditFence(
@@ -1828,6 +1844,7 @@ export class RuntimeMutationGatewayV1 {
 					'Graph recovery was compensated, but terminal audit persistence failed.',
 				);
 			}
+			onVerifiedCompensation?.();
 			return {
 				contractVersion: 1,
 				requestId: request.requestId,
@@ -1983,7 +2000,7 @@ export class RuntimeMutationGatewayV1 {
 					'Runtime context changed while apply-time mutation state was prepared.',
 				);
 			}
-			if (isPreparedGraphTransactionPlan(request.plan)) {
+			if (internalPolicy?.fileTaskTitleMutation || isPreparedGraphTransactionPlan(request.plan)) {
 				return await this.applyPreparedGraphTransaction(
 					request,
 					prepared.value,

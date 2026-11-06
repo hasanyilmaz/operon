@@ -1,3 +1,5 @@
+import { fileTaskTitlesAdvertisementsV1, isFileTaskTitlesCapabilityV1 } from '../extensions/file-task-titles-v1/contracts';
+import type { FileTaskTitlesRuntimeV1 } from '../extensions/file-task-titles-v1/gateway';
 import { checkboxOwnershipAdvertisementsV1, isCheckboxOwnershipCapabilityV1 } from '../extensions/checkbox-ownership-v1/contracts';
 import type { CheckboxOwnershipRuntimeV1 } from '../extensions/checkbox-ownership-v1/gateway';
 import {
@@ -92,6 +94,8 @@ const COMPATIBILITY_V1: CompatibilityOfferV1 = Object.freeze({
 
 export interface RuntimeFacadePortsV1 {
 	checkboxOwnership?: CheckboxOwnershipRuntimeV1;
+	fileTaskTitles?: FileTaskTitlesRuntimeV1;
+	fileTaskTitlesReady?(): boolean;
 	checkboxOwnershipReady?(): boolean;
 	beforeHealth?(): Promise<void>;
 	persistencePhase(): V8PersistencePhaseV1;
@@ -163,10 +167,10 @@ export function createOperonAgentRuntimeFacadeV1(
 			stability: 'stable',
 			reason: 'The V1 contract is defined, but this capability has not passed its Runtime parity gate.',
 		};
-	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []);
+	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []).concat(ports.fileTaskTitles ? fileTaskTitlesAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.fileTaskTitlesReady?.() === true) : []);
 
 	const hasCapability = (name: string): boolean => {
-		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name)) return false;
+		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name) && !isFileTaskTitlesCapabilityV1(name)) return false;
 		const capability = capabilities().find(candidate => candidate.id === name);
 		return capability?.availability === 'available' || capability?.availability === 'degraded';
 	};
@@ -521,6 +525,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	return Object.freeze({
 		apiVersion: RUNTIME_API_VERSION_V1,
 		...(ports.checkboxOwnership ? { checkboxOwnership: ports.checkboxOwnership } : {}),
+		...(ports.fileTaskTitles ? { fileTaskTitles: ports.fileTaskTitles } : {}),
 		hasCapability,
 		system,
 		catalog,

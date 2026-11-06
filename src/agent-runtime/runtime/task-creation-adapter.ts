@@ -1,3 +1,4 @@
+import { hasFileTaskDisplayTitleMapping } from '../../core/raw-yaml-property';
 import { resolveInlineParentCheckboxPlacement, indentNewInlineSubtask } from '../../core/task-creator-target-resolver';
 import { boundRuntimeTransactionIdV1 } from './transaction-identifiers';
 import type {
@@ -240,6 +241,7 @@ export interface RuntimeTaskCreationParentTargetV1 {
 
 export interface RuntimeTaskCreationAdapterPortsV1 {
 	checkboxOwnership?: 'contiguous';
+	fileTaskTitleCreation?: boolean;
 	settings(): Readonly<OperonSettings>;
 	listOperonIds(): ReadonlySet<string>;
 	listDependencyGraphTasks(): readonly ExistingTaskCreationContext[];
@@ -750,6 +752,11 @@ export async function prepareRuntimeTaskCreationV1(
 		});
 	}
 	let plan = result.plan;
+ if (ports.fileTaskTitleCreation) {
+  // Rendering uses the human title; the committed file identity is its final basename.
+  plan = { ...plan, tasks: plan.tasks.map(task => task.representation === 'file'
+   ? { ...task, description: fileTaskBasename(task.filePath) } : task) };
+ }
 	let dependencyResources: Extract<
 		RuntimeTaskCreationPreparationV1,
 		{ ok: true }
@@ -1439,6 +1446,12 @@ async function adaptCreateItem(
 		...configuredFields.runtimeFields,
 		...adaptedFields.runtimeFields,
 	};
+	if (ports.fileTaskTitleCreation) {
+		if (representation !== 'file' || !hasFileTaskDisplayTitleMapping(settings.keyMappings)) {
+			throw new CreationAdapterError('field-not-writable', 'File Task title creation requires an unambiguous system title mapping.');
+		}
+		runtimeFields['fileTaskDisplayTitle'] = item.description;
+	}
 	if (item.statusId) fields['status'] = resolveStatusValue(item.statusId, settings);
 	if (item.priorityId) fields['priority'] = resolvePriorityValue(item.priorityId, settings);
 	const templateId = representation === 'file'
@@ -1461,7 +1474,7 @@ async function adaptCreateItem(
 		: representation === 'inline'
 			? configuredInline?.filePath ?? ''
 			: await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
-	if (representation === 'file' && item.target.mode === 'exact-path') {
+	if (representation === 'file' && item.target.mode === 'exact-path' && !ports.fileTaskTitleCreation) {
 		const canonicalDescriptionPath = await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
 		if (fileTaskBasename(canonicalDescriptionPath) !== fileTaskBasename(filePath)) {
 			throw new CreationAdapterError(
