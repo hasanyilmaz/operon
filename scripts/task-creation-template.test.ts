@@ -7,6 +7,142 @@ import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { buildPipelineMinimalFileTaskTemplateOptions, type FileTaskTemplateOption } from '../src/core/file-task-templates';
 import type { CreationDraftPropertyContext } from '../src/core/task-creation-draft-properties';
 import { resolveOperonTemplatePlaceholders } from '../src/core/operon-id-placeholders';
+import { buildMergedFileTaskDraft, parseFrontmatterDocument, splitFrontmatterDocument } from '../src/core/file-task-template-merge';
+import { scanFileWithMappings } from '../src/indexer/file-scanner';
+import { App, parseYaml, TFile } from 'obsidian';
+
+const yamlRoundTripValues = [
+ 'Office: North wing', 'Office:', ':', '123', '01', '1e3', 'true', 'false', 'null', 'yes', 'NO', '~',
+ '@leading', '*alias', '&anchor', '- item', '#entrance', '[value]', '{key: value}',
+ 'line one\nline two', 'line one\r\nline two', 'tab\tvalue', 'C:\\path\\file',
+ 'C:\\path "quoted"', "It's 'quoted'", 'Grüße 東京', ' leading and trailing ',
+];
+const mergeYamlFields = (fieldValues: Record<string, string>) => buildMergedFileTaskDraft({
+ source: { description: 'round-trip', fieldValues: { operonId: 'n000123', ...fieldValues } },
+ defaults: { operonId: 'n000123', datetimeModified: '2026-11-06T10:00:00' },
+ keyMappings: DEFAULT_SETTINGS.keyMappings, bodyStrategy: 'preserve-source',
+});
+
+for (const value of yamlRoundTripValues) test(`managed text survives writer, YAML and scanner: ${JSON.stringify(value)}`, async () => {
+ const draft = mergeYamlFields({ location: value });
+ const native = parseYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+ assert.equal(native.location, value);
+ assert.equal(parseFrontmatterDocument(draft.content, DEFAULT_SETTINGS.keyMappings).managedFieldValues.location, value);
+ const file = Object.assign(Object.create(TFile.prototype) as TFile, { path: 'round-trip.md', basename: 'round-trip', stat: { mtime: 1, size: draft.content.length } });
+ const scanned = await scanFileWithMappings(new App(), file, DEFAULT_SETTINGS.keyMappings, draft.content);
+ assert.equal(scanned.yamlTask?.fieldValues.location, value);
+ assert.equal(scanned.yamlTask?.description, 'round-trip');
+});
+
+test('managed text lists and tags retain string members', async () => {
+ const members = yamlRoundTripValues.filter(value => value.trim() === value);
+ const draft = mergeYamlFields({ contexts: members.join('; ') });
+ const native = parseYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+ assert.deepEqual(native.contexts, members);
+ assert.equal(parseFrontmatterDocument(draft.content, DEFAULT_SETTINGS.keyMappings).managedFieldValues.contexts, members.join('; '));
+ const file = Object.assign(Object.create(TFile.prototype) as TFile, { path: 'round-trip.md', basename: 'round-trip', stat: { mtime: 1, size: draft.content.length } });
+ const scanned = await scanFileWithMappings(new App(), file, DEFAULT_SETTINGS.keyMappings, draft.content);
+ assert.equal(scanned.yamlTask?.fieldValues.contexts, members.join('; '));
+ const tagsDraft = buildMergedFileTaskDraft({
+  source: { description: 'tags', fieldValues: {}, tags: ['123', 'true', 'Office: North wing'], tagsPresent: true },
+  defaults: { operonId: 'n000123', datetimeModified: '2026-11-06T10:00:00' },
+  keyMappings: DEFAULT_SETTINGS.keyMappings, bodyStrategy: 'preserve-source',
+ });
+ assert.deepEqual(parseYaml(splitFrontmatterDocument(tagsDraft.content).frontmatter ?? '').tags, ['123', 'true', 'Office: North wing']);
+});
+
+for (const [encoded, expected] of [
+ ['"one\\x20two\\u263A\\U0001F600"', 'one two☺😀'],
+ ["'It''s C:\\path'", "It's C:\\path"],
+ ['"line\\nnext" # retained comment', 'line\nnext'],
+ ['|-\n  first\n  second', 'first\nsecond'],
+ ['>\n  first\n  second', 'first second\n'],
+ ['|+\n  first\n\n', 'first\n\n'],
+] as const) test(`managed YAML reads complete scalar syntax: ${encoded}`, async () => {
+ for (const following of ['', '\npriority: A']) {
+  const content = `---\noperonId: n000123\nlocation: ${encoded}${following}\n---\nBody`;
+  const parsed = parseFrontmatterDocument(content, DEFAULT_SETTINGS.keyMappings);
+  const native = parseYaml(splitFrontmatterDocument(content).frontmatter ?? '');
+  if (!following) assert.equal(native.location, expected);
+  assert.equal(parsed.managedFieldValues.location, native.location);
+  assert.equal(parsed.body, 'Body');
+  const file = Object.assign(Object.create(TFile.prototype) as TFile, { path: 'round-trip.md', basename: 'round-trip', stat: { mtime: 1, size: content.length } });
+  const scanned = await scanFileWithMappings(new App(), file, DEFAULT_SETTINGS.keyMappings, content);
+  assert.equal(scanned.yamlTask?.fieldValues.location, parsed.managedFieldValues.location);
+ }
+});
+
+test('managed flow and block lists decode YAML quoting and multiline members', () => {
+ for (const encoded of [
+  '["one\\x20two", \'It\'\'s C:\\path\', "line\\nnext"]',
+  '\n  - "one\\x20two"\n  - \'It\'\'s C:\\path\'\n  - |-\n    line\n    next',
+ ]) {
+  const parsed = parseFrontmatterDocument(`---\ncontexts: ${encoded}\n---\n`, DEFAULT_SETTINGS.keyMappings);
+  assert.equal(parsed.managedFieldValues.contexts, "one two; It's C:\\path; line\nnext");
+ }
+});
+
+test('merge preserves mapped block text, unknown sections, body and native typed values', () => {
+ const mappings = DEFAULT_SETTINGS.keyMappings.map(mapping => mapping.canonicalKey === 'location' ? { ...mapping, visiblePropertyName: 'Venue' } : mapping);
+ const original = '---\noperonId: n000123\nVenue: |-\n  first\n  second\nUnknown:\n  nested: [1, true, "001"]\n# keep unknown comment\nestimate: 42\ndateDue: 2026-11-07\ndatetimeStart: 2026-11-07T12:30:00\npriority: A\n---\n# Body\n\n[[Link]]\n';
+ const source = parseFrontmatterDocument(original, mappings);
+ const draft = buildMergedFileTaskDraft({
+  source: { description: 'existing', fieldValues: { ...source.managedFieldValues, priority: 'B' }, frontmatterDocument: source },
+  defaults: { operonId: 'n000123', datetimeModified: '2026-11-06T10:00:00' },
+  keyMappings: mappings, bodyStrategy: 'preserve-source', preserveSourceKeyChoices: true,
+ });
+ assert.equal(splitFrontmatterDocument(draft.content).body, source.body);
+ assert.ok(draft.content.includes('Venue: |-\n  first\n  second\nUnknown:\n  nested: [1, true, "001"]\n# keep unknown comment'));
+ const native = parseYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+ assert.equal(native.Venue, 'first\nsecond');
+ assert.equal(native.estimate, 42);
+ assert.equal(native.dateDue, '2026-11-07');
+ assert.equal(native.datetimeStart, '2026-11-07T12:30:00');
+ assert.deepEqual(native.Unknown, { nested: [1, true, '001'] });
+ assert.deepEqual(draft.orderedYamlKeys.slice(0, 7), ['operonId', 'Venue', 'Unknown', 'estimate', 'dateDue', 'datetimeStart', 'priority']);
+});
+
+test('native number, checkbox, date and existing heterogeneous list values retain their types', () => {
+ const mappings = [...DEFAULT_SETTINGS.keyMappings, {
+  canonicalKey: 'reviewed', visiblePropertyName: 'Reviewed', type: 'checkbox' as const,
+  sync: 'yes' as const, enabled: true, isSystem: false,
+ }];
+ const source = parseFrontmatterDocument('---\noperonId: n000123\ncontexts: [3, "3", true, "true"]\n---\nBody', mappings);
+ const draft = buildMergedFileTaskDraft({
+  source: { description: 'typed', frontmatterDocument: source, fieldValues: {
+   ...source.managedFieldValues, estimate: ' 42 ', reviewed: 'false', dateDue: '2026-11-07',
+   datetimeStart: '2026-11-07T12:30:00', reminderDatetimes: '2026-11-07T12:30:00; 2026-11-08T12:30:00',
+  } },
+  defaults: { operonId: 'n000123', datetimeModified: '2026-11-06T10:00:00' },
+  keyMappings: mappings, bodyStrategy: 'preserve-source',
+ });
+ const native = parseYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+ assert.equal(native.estimate, 42);
+ assert.equal(native.Reviewed, false);
+ assert.equal(native.dateDue, '2026-11-07');
+ assert.equal(native.datetimeStart, '2026-11-07T12:30:00');
+ assert.deepEqual(native.ReminderDatetimes, ['2026-11-07T12:30:00', '2026-11-08T12:30:00']);
+ assert.deepEqual(native.contexts, [3, '3', true, 'true']);
+ assert.ok(draft.content.includes('contexts: [3, "3", true, "true"]'));
+});
+
+test('appending modified time preserves managed and unknown block scalar boundaries', () => {
+ for (const key of ['location', 'Unknown']) for (const header of ['|+', '>+', '|', '>', '|-', '>-']) {
+  for (const trailing of ['', '\n', '\n\n']) for (const following of ['', '\npriority: A']) {
+   const original = `---\noperonId: n000123\n${key}: ${header}\n  first${trailing}${following}\n---\nBody`;
+   const source = parseFrontmatterDocument(original, DEFAULT_SETTINGS.keyMappings);
+   const draft = buildMergedFileTaskDraft({
+    source: { description: 'block', fieldValues: source.managedFieldValues, frontmatterDocument: source },
+    defaults: { operonId: 'n000123', datetimeModified: '2026-11-06T10:00:00' },
+    keyMappings: DEFAULT_SETTINGS.keyMappings, bodyStrategy: 'preserve-source',
+   });
+   const before = parseYaml(splitFrontmatterDocument(original).frontmatter ?? '');
+   const after = parseYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+   assert.equal(after[key], before[key], JSON.stringify({ key, header, trailing, following }));
+   assert.equal(splitFrontmatterDocument(draft.content).body, 'Body');
+  }
+ }
+});
 
 const properties: CreationDraftPropertyContext = {
  keyMappings: DEFAULT_SETTINGS.keyMappings,
