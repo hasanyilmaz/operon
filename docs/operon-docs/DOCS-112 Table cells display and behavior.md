@@ -196,6 +196,8 @@ The two text fields have deliberately different policies. A **description** is t
 
 ![MEDIA-DOCS-112-4 - The text editor popover on a compact cell](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-112-4.png)
 
+With File Task display titles enabled, the **Task** column shows the mapped title when present and falls back to the filename. Editing that cell saves the mapped title and follows the File Task rename preference. The source and file columns continue to show where the task lives. See [[DOCS-013 File tasks#Display title and filename|File Task display settings]].
+
 ## Text property editing
 
 Task Type, Custom Text, and Vault Property Text use a picker with the **current value above an empty search field**. Suggestions are available immediately; click the current value to edit it. A supported multiline current value opens the shared text editor rather than being forced into one input line.

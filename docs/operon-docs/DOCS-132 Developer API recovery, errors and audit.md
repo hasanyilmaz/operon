@@ -91,6 +91,12 @@ For a plan from `getCheckboxOwnershipDeveloperApiV1()`, use that extension API's
 
 Recovery keeps the ownership behavior sealed at preview. Do not pass the plan to the base or Task Workflow API, change capability, or create a replacement preview. Revocation leaves the evidence intact, but this extension requires an active matching grant before recovery can continue.
 
+## File Task title and creation recovery
+
+If an apply reports an uncertain outcome, recover through the same extension's `mutations.recover({ plan })`. After reload, reopen that extension for the same consumer with the matching apply grant and use `mutations.recover({ recoveryRef })`. `pendingRecoveries()` lists unresolved operations in the granted scope. Recover the original operation to avoid creating a duplicate task.
+
+A verified rollback can undo task writes while retaining native property definitions registered by settings-based creation. The result reports retained definitions. They can already be in use by other tasks.
+
 ## Recovery and execution locks
 
 After an earlier call has ended, the same Runtime executor can recover its matching journal without waiting for its own lease to expire. A still-running operation remains protected by the existing lock. Another executor, including one created by an Operon reload, must wait for the previous lease to expire, normally 30 seconds from its last renewal. This does not relax source, plan, or journal checks, or authorize a new apply.

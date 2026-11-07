@@ -60,16 +60,20 @@ For each field, the mapping records:
 
 Operon has a built-in set of canonical fields covering the whole task model. You can edit their visible names and icons, but you do not change their types, create them, or delete them here. The `operonId` property name is protected and cannot be renamed. To add a field of your own, see [[DOCS-040 Custom keys|Custom keys]].
 
+## File Task display title mapping
+
+The built-in `fileTaskDisplayTitle` field maps to the frontmatter property `title` by default. You can choose a different property name in **Task Property Mapping**. The display setting requires a valid, unique built-in mapping. The property supplies the visible label while the file path and `operonId` identify the source and task. See [[DOCS-013 File tasks#Display title and filename|File Task display settings]].
+
 ## The reminder fields and name collisions
 
-Most canonical fields default to a visible name that matches their canonical key. The two reminder fields are the exception worth knowing about, because they arrived after many vaults were already set up:
+Most canonical fields default to a visible name that matches their canonical key. The reminder fields also have distinct defaults, because they arrived after many vaults were already set up:
 
 - `reminderDatetimes` defaults to the visible name **ReminderDatetimes**.
 - `reminderRules` defaults to the visible name **ReminderRules**.
 
 Since visible names must be unique, Operon has to handle the case where one of those names is already taken. Two different collisions are possible, and they resolve differently.
 
-**Another field already uses the name.** Operon gives the reminder field a prefixed name instead, **OperonReminderDatetimes** or **OperonReminderRules**, adding a number if that is taken too. Your existing field keeps its name untouched. This is the only reason you would see an `Operon`-prefixed property in your frontmatter, and you can rename it afterwards like any other visible name.
+**Another field already uses the name.** Operon gives the reminder field a prefixed name instead, **OperonReminderDatetimes** or **OperonReminderRules**, adding a number if that is taken too. Your existing field keeps its name untouched. You can rename the prefixed reminder property afterwards like any other visible name.
 
 **A custom key already owns the canonical key itself**, because you had created your own `reminderDatetimes` or `reminderRules` field before Operon reserved those names. Here Operon does not take the name over. Your custom field stays authoritative and keeps behaving exactly as it did, and the built-in reminder feature simply does not activate for it: no reminder picker, and nothing you stored in it is ever read as a reminder or scheduled as a notification. Reading arbitrary existing values as reminder data would be the unsafe move, so Operon declines to guess. To use built-in reminders, rename or remove that custom key first, and Operon adds the system field on the next load. See [[DOCS-040 Custom keys|Custom keys]] and [[DOCS-116 Reminders|Reminders]].
 

@@ -53,6 +53,20 @@ After:
 
 The note becomes easier to scan, and the task gets room to grow. A wikilink to a file task is not just a plain link: Operon decorates it with the task's chips and actions as a [[DOCS-103 Task Wikilink Overlay|Task Wikilink Overlay]], and the same overlay can decorate a link to an inline task written as `[[File#-operonId]]`.
 
+## Display title and filename
+
+Open **Settings → Operon → Tasks → File Tasks → Display** to control three separate choices.
+
+| Setting | What it controls |
+| --- | --- |
+| **Use a property as the File Task display title** | Off by default. Turn it on to show the mapped title property, normally `title`. A missing, blank, or invalid title falls back to the filename. |
+| **When the display title changes** | **Keep the filename** is the default. **Ask** offers a rename after a title edit saved in Operon. **Rename automatically** also follows later title edits made in Obsidian Properties or directly in frontmatter. Clearing the title keeps the filename. |
+| **Filename rule** | Applies when a new File Task gets its filename or a later title edit triggers a rename. Choose **Same as title** (default), **kebab-case**, or **snake_case**. Characters that cannot be used in a filename are removed. |
+
+For example, **kebab-case** creates a task titled **Review Q3 Plan** as `review-q3-plan.md`. With **Keep the filename**, editing the visible title to **Review Q4 Plan** keeps that original file path and the same `operonId`. Turning the feature on or changing the filename rule does not rename your existing files.
+
+See [[DOCS-039 Key mappings|Key mappings]] if you want to use a different frontmatter property for the visible title.
+
 ## A lifecycle, not a commitment
 
 File tasks have their own small set of commands that give work a lifecycle:
@@ -107,6 +121,7 @@ File tasks shine for recurring work with a stable structure: a weekly review, a 
 Open **Settings → Operon → Tasks → File Tasks**:
 
 - **New File Task Creation Defaults** sets Task Creator's default File mode and preselected file-task template.
+- **Display** controls the visible task title and filename behavior.
 - **File Task Templates** manages file-task templates.
 - **Daily and Weekly Notes as File Tasks** contains the two toggles for creating new Daily or Weekly Notes as Operon File Tasks. Their management, format, template, and folder settings live under **Tasks → Task Router → Daily and Weekly Notes**; see [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
 - **File Task Conversion** contains conversion preferences.

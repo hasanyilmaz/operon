@@ -38,6 +38,8 @@ The Editor's Subtasks popover, embedded filters, and mobile behavior are separat
 
 The filter is locked to the task you opened it on. Its one condition is dynamic and cannot be edited: it matches the children of that task's `operonId`. The result is a self-contained project tree for that branch, and it stays live, so completing or adding a subtask updates the window in place.
 
+On desktop, subtask descriptions follow the [[DOCS-025 Filter View#Acting from the view|filter opening rules]]. Task Editor opens above the filter so you can return to the same list.
+
 ## How it compares to the Dynamic File Task Filter
 
 The two are siblings: both are operonId-locked subtask filters that Operon builds for you. They differ in surface and trigger.

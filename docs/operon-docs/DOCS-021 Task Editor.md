@@ -167,6 +167,8 @@ Task identity is checked when saving, including after a file moves or is renamed
 
 The **Description** is the task's one-line title. **Notes** are a separate multiline field for the detail that belongs with the task but does not belong in its title. In the Notes control, use **Shift+Enter** to insert a line break; pasted multiline text and intentional blank lines are kept. Normal **Enter** keeps the existing action for the surface instead of becoming a second line-break command. On phones, normal Enter keeps its one-line behavior by inserting a space, while Shift+Enter inserts a note line break.
 
+For a File Task with display titles enabled, editing the title saves the mapped frontmatter property. The **When the display title changes** setting controls whether the filename stays as it is, Operon offers a rename, or the file is renamed automatically. See [[DOCS-013 File tasks#Display title and filename|File Task display settings]].
+
 For an inline task, those visual line breaks are stored as `\n` escapes inside the `note` field, keeping the entire task on one physical Markdown line. A literal `\n` is written as `\\n`. See [[DOCS-012 Inline task syntax|Inline task syntax]] for the on-disk form and [[DOCS-113 Text field editor popover|Text field editor popover]] for the shared compact editor.
 
 Default and six-color highlights retain their source Markdown. In the Live Preview-style editor, editing a colored highlight exposes Obsidian's color control where supported, rather than hiding it as a read-only display would. Phone textareas can edit the source syntax directly. See [[DOCS-113 Text field editor popover|Text field editor popover]] for the color markers and examples.

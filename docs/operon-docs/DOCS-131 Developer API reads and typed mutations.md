@@ -153,6 +153,62 @@ The typed caller does not supply settings, note paths, templates, Markdown, pare
 
 Preview produces a session-bound, opaque plan handle. Apply only that unchanged handle: do not clone it, reconstruct it from fields, pass it to another session or consumer, or make a fresh preview as a retry. If the file, line number, or expected line changes before apply, Operon fails closed before writing. A successful replay returns `already-applied` without another source write.
 
+## File Task titles and settings-based creation
+
+A File Task context can include `displayTitle` when a valid mapped title exists, even with the Plugin display toggle off. `description` still carries the filename identity. Use the task ID and source locator to target edits.
+
+Use the two extension sessions from [[DOCS-130 Developer API identity and capability grants#File Task title and creation grants|the capability table]]. With a granted creation session, read the current defaults, destinations, and template candidates before choosing an intent. The policy read writes nothing.
+
+```ts
+const policy = await creationApi.creation.readPolicy({
+  contractVersion: 1,
+  requestId: "creation-policy-1",
+  kind: "task-creation-policy",
+  consistency: "live-verified"
+});
+```
+
+With the preview capability granted, ask Operon to use the configured destination and template. The preview reports the resolved target, template, fields, and skipped properties. Active File and Ask Every Time require an explicit target unless the supplied parent resolves placement.
+
+```ts
+const preview = await creationApi.mutations?.preview?.({
+  capability: "tasks.create.routed.preview",
+  mutationKind: "task.create",
+  spec: {
+    operation: "create",
+    item: {
+      itemRef: "one",
+      title: "Review release notes",
+      fields: [],
+      target: {
+        mode: "configured-default"
+      },
+      template: {
+        mode: "configured"
+      }
+    }
+  }
+});
+```
+
+For a title edit, use the File Task titles session and an exact File Task target from a current verified read.
+
+```ts
+const titlePreview = await titleApi.mutations.preview({
+  capability: "tasks.file.title.preview",
+  mutationKind: "task.update",
+  target: exactFileTaskTarget,
+  spec: {
+    operation: "set-title",
+    displayTitle: "Review Q4 plan"
+  }
+});
+```
+
+Set `displayTitle` to `null` to clear it. API title edits keep the file path even if automatic rename is enabled in the Plugin. File Task creation accepts an exact path or lets Operon apply the configured filename rule.
+
+After reviewing a successful preview, call the same session's `mutations.apply({ plan: preview.plan })` with its original handle and an active apply grant. Follow any consent prompt. If relevant settings, templates, or sources changed, get a new preview. See [[DOCS-132 Developer API recovery, errors and audit#File Task title and creation recovery|recovery for uncertain outcomes]].
+
 ## Preview a typed mutation
 
 `DeveloperMutationPreviewInputV1` is a discriminated union. Each branch binds a mutation kind to its preview capability, target policy, and specification. TypeScript rejects mismatched capability and mutation combinations before runtime admission.

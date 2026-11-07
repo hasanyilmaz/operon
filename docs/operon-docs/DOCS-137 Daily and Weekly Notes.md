@@ -123,6 +123,8 @@ The CLI and live Runtime must advertise the matching periodic capability. An old
 
 Runtime preview must be deterministic and write-free. A configured periodic template containing Templater `<% ... %>` expressions is therefore refused during Runtime preview rather than executed or written raw. Use deterministic Markdown and supported Operon/Core-style template tokens for this route.
 
+The separate settings-based creation extension also accepts Daily or Weekly Inline targets. Operon uses an explicit routing date first, then the effective scheduled date, the local start date, or the day captured during preview. Dates supplied by the selected Inline template can contribute to that calculation. The preview shows the resolved note and whether it needs to be created. See [[DOCS-131 Developer API reads and typed mutations#File Task titles and settings-based creation|settings-based creation]].
+
 ## FAQ
 
 **Do I need the Core Daily Notes plugin?** Not when **Manage Daily Notes with Operon** is enabled. When it is disabled, the Core plugin supplies the fallback Daily configuration.

@@ -33,6 +33,8 @@ A common use is a **project note that owns its tasks**: give the project a filte
 
 You can embed a **table** the same way, with its own Copy embed code, when you want the tasks as rows and columns rather than a list. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 
+Task descriptions in an embedded filter follow the same [[DOCS-025 Filter View#Acting from the view|desktop opening rules as Filter View]]. You can open the editor over the note or use Cmd/Ctrl-click for a source tab.
+
 ## FAQ
 
 **How do I get the right `filterId`?** Use Copy embed code on the filter; it writes the correct id into the block for you. The embed references a filter only by its id.

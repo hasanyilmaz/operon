@@ -46,6 +46,10 @@ Inside a text editor, ordinary Enter and Space remain editing keys. The link sho
 
 Aliases change the visible label, not the destination. Relative paths are resolved from the source note; supported heading, block, PDF page, and Inline task line targets are retained. Missing local targets are not created by previewing them. Depending on the field, Operon returns to its picker or editor, or reports that the target could not be found.
 
+## Open a task from a filter
+
+On desktop, activating a task description in a standalone, embedded, or dynamic filter opens Task Editor over the filter. Cmd/Ctrl-click opens its source in a focused tab. See [[DOCS-025 Filter View#Acting from the view|Filter View opening rules]] for keyboard access and links inside the row.
+
 ## Open a task source
 
 On desktop, the shared preview also opens a task's source from:

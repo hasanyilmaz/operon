@@ -160,6 +160,8 @@ These settings live in **Settings → Operon → Tasks → Task Router**, in the
 
 In Settings Search, use `daily`, `daily note`, `daily notes`, `weekly`, `weekly note`, or `weekly notes` to find the corresponding management and note-as-task settings.
 
+Integrations can read the creation policy and preview one task using these settings. Operon resolves the destination and placement. See [[DOCS-131 Developer API reads and typed mutations#File Task titles and settings-based creation|settings-based creation]].
+
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]

@@ -129,7 +129,7 @@ On interactive desktop surfaces, these are the field actions. Task Finder chips 
 | Task Type, Custom Text | A complete, existing wikilink opens the lightbox; other values open the Text/Type picker |
 | Custom List | Each existing wikilink item opens the lightbox; other items open the list picker |
 | Parent | Opens the current parent's source in the lightbox, at the task line for an Inline parent; an unresolved parent returns to its picker |
-| Blocking, Blocked by | Keep their existing dependency actions; they are not part of the general wikilink exception |
+| Blocking, Blocked by | When the chip opens a dependency source link, Cmd/Ctrl-click opens it in a focused tab in Reading View, Live Preview, task cards, and overlays. Icon-only chips keep their preview action. |
 | Tags | Opens the task's tag picker |
 | Links | Opens an HTTP/HTTPS link through the shared desktop lightbox rules |
 | Source | Opens the task's current source and Inline line in the lightbox |

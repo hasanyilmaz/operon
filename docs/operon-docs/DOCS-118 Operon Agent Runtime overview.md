@@ -23,7 +23,7 @@ Use **`operon-cli`** when a person, agent, or script works from a terminal or su
 
 Use the **in-process Developer API** when another enabled Obsidian plugin integrates with Operon. It requires running Operon but does not use the official Obsidian CLI. The host verifies the calling plugin, and access beyond health and capability discovery requires exact capability grants. Start at [[DOCS-129 In-process Developer API overview|In-process Developer API overview]].
 
-The two surfaces share Runtime API V1, capabilities, structured errors, mutation safety, receipts, and postflight verification. Their trust and recovery handles are deliberately different. CLI plans use a local `planRef`. Developer API calls use an opaque plan handle during the session and a consumer-bound `recoveryRef` for restart-safe recovery. Neither surface is a shortcut into Operon's private internals.
+The two surfaces share Runtime API V1, structured errors, mutation safety, receipts, and postflight verification. Discover the capabilities available to each consumer before calling them. Their trust and recovery handles are deliberately different. CLI plans use a local `planRef`. Developer API calls use an opaque plan handle during the session and a consumer-bound `recoveryRef` for restart-safe recovery. Neither surface is a shortcut into Operon's private internals.
 
 ## The layers behind the public surfaces
 
@@ -43,6 +43,8 @@ The Runtime does both halves through the CLI and Developer API, and reads are st
 **Writes are live too, behind a sealed preview.** Creating, updating, transitioning, converting, relocating, and deleting tasks all go through the Mutation Gateway's preview-to-apply model. The Runtime computes exactly what a change would do, seals that plan, and applies only that same plan. Nothing is written from a raw request. Eligible routine direct CLI commands may apply an unchanged warning-free plan without a separate manual stop. Typed CLI input, agent stdin, `--preview-only`, and any warning, acknowledgement, confirmation, or destructive gate retain the plan for review or explicit handling. Developer API callers use typed mutation inputs and their own capability and consent rules. The read journey never depends on the write path, so you can rely on reads on their own.
 
 The additive task-workflow extension also supports Daily and Weekly semantic creation and scheduled-date parent realignment. The caller states intent; Operon owns settings, templates, Markdown, container registration, and recovery. Updating a periodic relationship never physically moves the existing task. See [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]].
+
+The **File Task titles** and **task creation** extensions add display-title writes, creation policy reads, and settings-based creation of one Inline or File Task. The Plugin resolves destinations and templates and shows the result before apply. These extensions are available through the Developer API on supported desktop hosts. Standalone CLI support follows separately. See [[DOCS-129 In-process Developer API overview#File Task titles and creation policy|Developer API extensions]].
 
 ## Who this is for
 

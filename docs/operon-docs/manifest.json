@@ -69,8 +69,8 @@
     },
     {
       "path": "DOCS-013 File tasks.md",
-      "sha256": "5ba078a622a999f57591d85f56224c08e5bf3139af46c7439e80ec8a958cb80b",
-      "bytes": 6648
+      "sha256": "5830ee0d8efff0fbebfb2c3fe4d64d927221ca81eb007146323f7d50546dbebb",
+      "bytes": 8060
     },
     {
       "path": "DOCS-014 Inline vs file tasks.md",
@@ -109,8 +109,8 @@
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "fa6202dec3d45548c0c8a9bda2c9a1c1ecb592a9a188ec7ec710bdadf9ab08ff",
-      "bytes": 21965
+      "sha256": "3ec44c448acbe083615f6f3352d995c507bc85df3331fcb2089bfd78f78d05d0",
+      "bytes": 22306
     },
     {
       "path": "DOCS-022 Command palette reference.md",
@@ -124,23 +124,23 @@
     },
     {
       "path": "DOCS-024 Task templates.md",
-      "sha256": "df48c24e6da5cc2061ebaf5eeb30b47d63f4ff20713a2e4c6ea7431c233dca37",
-      "bytes": 8304
+      "sha256": "f4ff6ea3895d8bae30e88083edbe6267a5b56f38ddf2cb9f828c0cc1b6380617",
+      "bytes": 8493
     },
     {
       "path": "DOCS-025 Filter View.md",
-      "sha256": "a401cf6817316e2518f7d6d79659e076f420345a2426f95dd464c600a5bf00e3",
-      "bytes": 8157
+      "sha256": "056de055555fdd65922c9c008e9a273efa072f2ef914bc59d422c266e9004438",
+      "bytes": 8567
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
-      "sha256": "3a01d4d6c85e8de58e6d09c116c9a03851a5669beac107a301281ac67736041a",
-      "bytes": 4432
+      "sha256": "a1631f1805f9144abc66b94751bd2dcf918f62ce0bc5984b3bf10a896b74c6c5",
+      "bytes": 4622
     },
     {
       "path": "DOCS-027 Task Finder.md",
-      "sha256": "75e6bd64dd79082b2bb7b8da74cb275ef1d7446ec805a3db257db0459767c417",
-      "bytes": 12319
+      "sha256": "68a15df58f8e517354c75b927a43dedb55c12f800d964a50086d128f69bb0875",
+      "bytes": 12423
     },
     {
       "path": "DOCS-028 Calendar overview.md",
@@ -199,8 +199,8 @@
     },
     {
       "path": "DOCS-039 Key mappings.md",
-      "sha256": "742fe1e49a8d1d6827be98392791025c6274943e40f4a9202cbea2b40c7bbb3f",
-      "bytes": 10074
+      "sha256": "1f973d21a49b65a1b5f5f9d675ae5790172999a0c412c8b12609ea1bdfbe4497",
+      "bytes": 10449
     },
     {
       "path": "DOCS-040 Custom keys.md",
@@ -209,8 +209,8 @@
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
-      "sha256": "7b8dbfbffd010255afea5c67724db18789667bb17a5e002e2a5176cbb3219bcb",
-      "bytes": 22804
+      "sha256": "13d2d63b61ef113ea321e59597dbf57dfdc260b713a61273d76a91b0a1f47cef",
+      "bytes": 22899
     },
     {
       "path": "DOCS-042 Contextual menu actions.md",
@@ -299,8 +299,8 @@
     },
     {
       "path": "DOCS-059 Dynamic Subtasks Filter.md",
-      "sha256": "f864d87f29312e319941518762f3f0eb43a95c514272bcffa33ea6d46f846e3e",
-      "bytes": 3798
+      "sha256": "95ca5c433105455b74ac6e3e5f8e33138d04458f37aaa45041c35cf7e8c3f6bd",
+      "bytes": 3982
     },
     {
       "path": "DOCS-060 Calendar layout toolbar and sidebar.md",
@@ -309,8 +309,8 @@
     },
     {
       "path": "DOCS-061 operonId template variables.md",
-      "sha256": "2c76e983bf26703acdd3289aabfad0d0988bc965dba519fe9df0e058ae145c06",
-      "bytes": 12676
+      "sha256": "3dc5fe3a4939846503b3508aa7877eaab986fc77968512351e4dc7f102d28a26",
+      "bytes": 12988
     },
     {
       "path": "DOCS-062 Field pickers overview.md",
@@ -419,8 +419,8 @@
     },
     {
       "path": "DOCS-083 Embed a filter in a note.md",
-      "sha256": "c974558f7b02027a80517963756411e907f91d6e48cc1bbc3e55618e5df38a8e",
-      "bytes": 2661
+      "sha256": "94add022c2a943c8332f19682db5ac70a0eb9ddbd0349db62ce5848090fa9023",
+      "bytes": 2880
     },
     {
       "path": "DOCS-084 Create New Operon Task.md",
@@ -519,8 +519,8 @@
     },
     {
       "path": "DOCS-103 Task Wikilink Overlay.md",
-      "sha256": "4414e8770ee253cb96f6978cda714add5d58558ee0a8342d16aed8935be69301",
-      "bytes": 8943
+      "sha256": "13567c34bf4c22c530491a78d6e5717a2142619574e530c4e30405dda6ef3f50",
+      "bytes": 9133
     },
     {
       "path": "DOCS-104 Add Task Wikilink Overlay.md",
@@ -564,8 +564,8 @@
     },
     {
       "path": "DOCS-112 Table cells display and behavior.md",
-      "sha256": "71d0a05f3ea9ccb57eb0bfb05bfa30924455c642482174b6bf3dde25488980de",
-      "bytes": 27402
+      "sha256": "d29889e43556b5fff3a5c2e228b8f2bd6a100971ba6e41af2bcbf5f45926fba4",
+      "bytes": 27766
     },
     {
       "path": "DOCS-113 Text field editor popover.md",
@@ -594,8 +594,8 @@
     },
     {
       "path": "DOCS-118 Operon Agent Runtime overview.md",
-      "sha256": "cbb5b7b8986f0f2d241e7dd1a4cf916501b2f72bca4c241a6d8af8e0eb8b32c4",
-      "bytes": 10180
+      "sha256": "d0f729b75b9b2421b956da9cb9040bb626c290e96141f7db96ce4f57677e1a5f",
+      "bytes": 10728
     },
     {
       "path": "DOCS-119 Install and verify Operon CLI.md",
@@ -624,8 +624,8 @@
     },
     {
       "path": "DOCS-124 Troubleshooting and recovery.md",
-      "sha256": "cbb9984dfaeda53de45592fde76c821a58d3656821e765cf21341f1458b042f8",
-      "bytes": 14050
+      "sha256": "c5c699b6cc303b9a5ed14752e0cda8bbf890b2f0a9645fedf16789144d708cb2",
+      "bytes": 14164
     },
     {
       "path": "DOCS-125 CLI contract and discovery reference.md",
@@ -649,23 +649,23 @@
     },
     {
       "path": "DOCS-129 In-process Developer API overview.md",
-      "sha256": "d5cb5fc0be45a39c6484916f6ed426a32b3dde1457ec870abc56f6169f918ee7",
-      "bytes": 9822
+      "sha256": "aaa55af6e2262851515791cd5fa1d1d96ec1e2b331ba47531ec481f44b49d9a0",
+      "bytes": 10588
     },
     {
       "path": "DOCS-130 Developer API identity and capability grants.md",
-      "sha256": "152ed9be9f06a9b4e23fa4cd496e3c085e38c215f7becb34672274bf38aeba2f",
-      "bytes": 10023
+      "sha256": "ed54285097706fd06053c809913c7d8d082730664d3554669ada23cec692a8c6",
+      "bytes": 11137
     },
     {
       "path": "DOCS-131 Developer API reads and typed mutations.md",
-      "sha256": "442b03f24f953125e4158ab2663b11174309ce40e8cc45605a3cc2b735e631db",
-      "bytes": 12592
+      "sha256": "380b2289cae89349bd0bbec139050ae94404756c73970a5568486ee35eb1c3cf",
+      "bytes": 15016
     },
     {
       "path": "DOCS-132 Developer API recovery, errors and audit.md",
-      "sha256": "31dc23a86379dfb5fae165e298d3e1fb918e81b4e4cc493523f3e1e586acc4af",
-      "bytes": 10510
+      "sha256": "55e34b3b1b821a22e24d48f6bd6b36a460a13e816c6f8597ce0b90087f03198a",
+      "bytes": 11145
     },
     {
       "path": "DOCS-133 JSONL sessions for scripts and agents.md",
@@ -684,13 +684,13 @@
     },
     {
       "path": "DOCS-136 Task Router.md",
-      "sha256": "444a847d97da5bad919d8c91cdc9054c6be2de5658c2b766de63b859e7a32307",
-      "bytes": 12990
+      "sha256": "3edaee691e5336704cb7b891ed7f6b1e8911a89daf3d6515f436f0026a36eb2d",
+      "bytes": 13250
     },
     {
       "path": "DOCS-137 Daily and Weekly Notes.md",
-      "sha256": "34202c8cf972cde99e79f8b08772e5dc8a50ffb2824cf79e461474680c6157f3",
-      "bytes": 12528
+      "sha256": "d9b2d6d84aeb723bf29f489ca65b4c0d8e968ef8d110768f44dfda84969f739b",
+      "bytes": 13040
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
@@ -744,8 +744,8 @@
     },
     {
       "path": "DOCS-148 Canvas and Excalidraw Task Pool.md",
-      "sha256": "90e1949cc6e507489b695248cdd43dfab09c71a12ef576cd7d98e27ecf2fc2d8",
-      "bytes": 8630
+      "sha256": "e0a8ab6e54dbfd862ccb69379031155fcdf8b3f52fe3334ee0b179f7550074a3",
+      "bytes": 9066
     },
     {
       "path": "DOCS-149 Tasks bulk conversion.md",
@@ -754,13 +754,13 @@
     },
     {
       "path": "DOCS-150 Using inline task templates.md",
-      "sha256": "aedc4e0859be712f2ec9b517e8a05cc5304b8593858571caa4a64a7d47e0c5ed",
-      "bytes": 9990
+      "sha256": "3d137efe6d0d131541722fdeca8976337571264c0d820f0daeffd7b32912c940",
+      "bytes": 10295
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "46b826bc6f8d4816d26683e4af88328a4e77350353305f07a1440267e394642a",
-      "bytes": 19524
+      "sha256": "242f7a9dc94999726f581af8d71c08080661789178561b7b11357fb6e2687ca0",
+      "bytes": 19849
     },
     {
       "path": "DOCS-152 Status Dock.md",
@@ -773,5 +773,5 @@
       "bytes": 9839
     }
   ],
-  "generatedAt": "2026-11-05T00:23:01.903Z"
+  "generatedAt": "2026-11-07T23:09:01.371Z"
 }

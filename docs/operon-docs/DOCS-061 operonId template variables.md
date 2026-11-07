@@ -43,13 +43,13 @@ Operon recognizes this familiar syntax in its own creation flows. It does **not*
 
 | Syntax | Resolves to | Best place to use it |
 | --- | --- | --- |
-| `{{title}}` | final File basename; drafted description in Inline template properties | a heading or `title:` frontmatter |
+| `{{title}}` | final File basename or drafted description in Inline template properties | headings and text that should follow the filename or Inline draft |
 | `{{date}}` | local creation date | canonical task dates in File Task/raw-inline use, or prose |
 | `{{time}}` | local creation time | headings, prose, or inline-task notes |
 | `{{date:FORMAT}}` | creation date formatted with Moment | labels, prose, and custom text properties |
 | `{{time:FORMAT}}` | creation time formatted with Moment | labels, prose, and custom text properties |
 
-`{{title}}` has no format suffix: `{{title:...}}` stays literal. In File creation, `{{title}}` is the final filename after sanitizing and any duplicate-name suffix, while `{{taskDescription}}` is the task text entered in Task Creator. `{{time}}` is `HH:mm` in File Task and raw-inline use; `{{datetime}}` remains the full ISO datetime with seconds.
+`{{title}}` has no format suffix: `{{title:...}}` stays literal. In File creation, `{{title}}` gives the final basename after the filename rule, sanitizing, and any duplicate-name suffix. `{{taskDescription}}` gives the task text entered in Task Creator. With [[DOCS-013 File tasks#Display title and filename|File Task display titles]] enabled, Operon writes that entered text into the mapped title property. `{{time}}` is `HH:mm` in File Task and raw-inline use; `{{datetime}}` remains the full ISO datetime with seconds.
 
 > [!warning] Keep task dates canonical
 > In a File Task, prepared Inline template property, or raw inline snippet, use plain `{{date}}` in an Operon date field such as `dateScheduled`. In a Calendar Daily Note template, use `{{date:YYYY-MM-DD}}` for an Operon date field because plain `{{date}}` follows the Templates Date format setting. A custom format such as `{{date:DD.MM.YYYY}}` is display text, not canonical task-date storage.
@@ -79,7 +79,7 @@ The matrix separates this prepared-property path from raw pasted snippets; their
 
 ## Filling task context in a File Task template
 
-Use task-context variables for task data and compatible variables for the title or display text.
+Use task-context variables for task data and compatible variables for headings or display text. The example below shows `title` used as an ordinary template property with File Task display titles off.
 
 Template input:
 

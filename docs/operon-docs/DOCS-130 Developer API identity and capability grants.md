@@ -79,6 +79,19 @@ Check `ownershipAccess.ok` before using its API. Request only the capabilities n
 
 This accessor requires a nonempty set of supported, unique capability names. Its returned methods reflect that set; it has no `channel.status()` or `hasCapability()` method. Recovery also requires the current matching `.apply` grant. Revocation preserves recovery evidence but blocks these extension calls until the required grant is active again.
 
+## File Task title and creation grants
+
+Open the matching accessor with `contractVersion: 1`, a `runtimeApi` range that includes 1, and the exact `requestedCapabilities` your feature needs.
+
+| Accessor | Capability | Allows |
+| --- | --- | --- |
+| `getFileTaskTitlesDeveloperApiV1()` | `tasks.file.create.preview` / `tasks.file.create.apply` | Preview and create a File Task with a display title. |
+| `getFileTaskTitlesDeveloperApiV1()` | `tasks.file.title.preview` / `tasks.file.title.apply` | Preview and set or clear an existing title while keeping its filename. |
+| `getTaskCreationDeveloperApiV1()` | `tasks.creation-policy.read` | Read the configured creation destinations and templates. |
+| `getTaskCreationDeveloperApiV1()` | `tasks.create.routed.preview` / `tasks.create.routed.apply` | Preview and create one task using the Plugin's routing and template rules. |
+
+Request both capabilities in a pair for a preview-and-apply flow. Recovery needs the matching apply grant. The existing [[DOCS-130 Developer API identity and capability grants#User approval|user approval flow]] applies to both extensions.
+
 ## Exact capability grants
 
 Every non-discovery read and every mutation requires an exact grant. Effective session scope is the intersection of:
