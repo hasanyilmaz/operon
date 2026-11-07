@@ -1,4 +1,3 @@
-import { applyDesktopModalBackdrop } from './modal-backdrop';
 import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { isSettingsScope, scopeSettingsModal } from './settings/settings-scope';
 import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
@@ -2531,8 +2530,6 @@ export class FilterSetModal extends Modal {
  * Quick preview modal — shows the task list for the current filter state.
  */
 class FilterPreviewModal extends Modal {
-	private backdropCleanup: (() => void) | null = null;
-	private stopWindowMigration: (() => void) | null = null;
 	private filterSet: FilterSet;
 	private deps: FilterModalEvalDeps;
 	private lastRenderSignature: string | null = null;
@@ -2550,11 +2547,6 @@ class FilterPreviewModal extends Modal {
 
 	onOpen(): void {
 		activeFilterPreviewModals.add(this);
-		this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
-		this.stopWindowMigration = this.containerEl.onWindowMigrated?.(() => {
-			this.backdropCleanup?.();
-			this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
-		}) ?? null;
 		this.modalEl.addClass('operon-filter-preview-modal-shell');
 		this.refresh();
 	}
@@ -2754,10 +2746,6 @@ class FilterPreviewModal extends Modal {
 
 	onClose(): void {
 		activeFilterPreviewModals.delete(this);
-		this.stopWindowMigration?.();
-		this.stopWindowMigration = null;
-		this.backdropCleanup?.();
-		this.backdropCleanup = null;
 		this.lastRenderSignature = null;
 		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);

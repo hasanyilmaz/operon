@@ -203,37 +203,33 @@ test('main wires only filter dependency providers and passes activation into Fil
  assert.deepEqual(constructors.sort(), ['FilterView', 'OperonSettingsTab']);
 });
 
-function modalMethods(file, className, deps) {
- const ast = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
- const cls = ast.statements.find(n => ts.isClassDeclaration(n) && n.name?.text === className);
- assert.ok(cls);
- const methods = cls.members.filter(n => ts.isMethodDeclaration(n) && ['onOpen', 'onClose', 'bindViewportWindow'].includes(n.name.getText(ast))).map(n => n.getText(ast)).join('\n');
- const js = ts.transpileModule(`class Subject { ${methods} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
- return new Function(...Object.keys(deps), `${js}; return Subject.prototype;`)(...Object.values(deps));
-}
-test('filter preview registers modal ownership, renews it after window migration, and releases it on close', () => {
- let owners = 0, releases = 0, stop = 0, migrated, refreshes = 0;
- const prototype = modalMethods('src/ui/filter-set-modal.ts', 'FilterPreviewModal', {
-  activeFilterPreviewModals: new Set(), applyDesktopModalBackdrop: container => { assert.equal(container, host.containerEl); owners++; return () => releases++; },
-  requestCloseTextFieldPopoversForOwner() {}, cleanupOperonRenderRoot() {},
- });
- const host = {
-  containerEl: { onWindowMigrated: fn => { migrated = fn; return () => stop++; } }, modalEl: { addClass() {} },
-  contentEl: { empty() {} }, refresh: () => refreshes++,
- };
- prototype.onOpen.call(host); assert.equal(owners, 1); assert.equal(refreshes, 1);
- migrated(); assert.equal(owners, 2); assert.equal(releases, 1);
- prototype.onClose.call(host); assert.equal(releases, 2); assert.equal(stop, 1);
-});
-test('file-task and subtasks filter modals both register desktop modal ownership', () => {
- for (const fileTaskPath of [undefined, () => 'Task.md']) {
-  let owners = 0;
-  const node = { addClass() {}, setText() {}, empty() {}, createDiv: () => ({}) };
-  const host = { options: { fileTaskPath }, containerEl: { ...node, ownerDocument: { body: { classList: { add() {} } } } }, modalEl: node, titleEl: node, contentEl: node, bindViewportWindow() {}, refresh() {} };
-  const prototype = modalMethods('src/ui/subtasks-filter-modal.ts', 'SubtasksFilterModal', {
-   Platform: { isPhone: false }, applyDesktopModalBackdrop: container => { assert.equal(container, host.containerEl); owners++; return () => {}; },
-   SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS: 'open', t: () => 'Subtasks', createFilterSurfaceInstance: () => ({}),
-  });
-  prototype.onOpen.call(host); assert.equal(owners, 1);
+test('filter lightboxes recognize existing modal owners without changing their backdrop policy', () => {
+ const ast = ts.createSourceFile('lightbox.ts', read('src/ui/lightbox.ts'), ts.ScriptTarget.Latest, true);
+ let declaration;
+ function visit(node) {
+  if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'modalOwner') declaration = node;
+  ts.forEachChild(node, visit);
  }
+ visit(ast); assert.ok(declaration);
+ const owner = {};
+ const element = cls => ({ closest: selector => selector.split(',').map(s => s.trim()).includes(cls) ? owner : null });
+ for (const cls of ['.operon-focus-modal', '.operon-filter-preview-modal-shell', '.operon-subtasks-filter-modal']) {
+  for (const fromSource of [false, true]) {
+   const deps = { Platform: { isDesktopApp: true }, parent: undefined, anchor: element(fromSource ? '' : cls), source: fromSource ? { owner: element(cls) } : undefined, asHTMLElement: value => value };
+   assert.equal(evaluate(declaration.initializer.getText(ast), deps), owner);
+   deps.Platform.isDesktopApp = false;
+   assert.equal(evaluate(declaration.initializer.getText(ast), deps), undefined);
+  }
+ }
+ assert.equal(evaluate(declaration.initializer.getText(ast), { Platform: { isDesktopApp: true }, parent: undefined, anchor: element('.unrelated-modal'), source: undefined, asHTMLElement: value => value }), undefined);
+ const inherited = {};
+ assert.equal(evaluate(declaration.initializer.getText(ast), { Platform: { isDesktopApp: true }, parent: { modalOwner: inherited }, anchor: element('.operon-filter-preview-modal-shell'), source: undefined, asHTMLElement: value => value }), inherited);
+});
+
+test('filter modal recognition keeps file-filter dimming exclusion and existing preview appearance', () => {
+ const subtasks = read('src/ui/subtasks-filter-modal.ts');
+ assert.equal(subtasks.match(/this.options.fileTaskPath \? null : applyDesktopModalBackdrop\(this.containerEl\)/gu)?.length, 2);
+ const preview = read('src/ui/filter-set-modal.ts').split('class FilterPreviewModal extends Modal')[1];
+ assert.ok(preview.includes("this.modalEl.addClass('operon-filter-preview-modal-shell')"));
+ assert.doesNotMatch(preview, /applyDesktopModalBackdrop|registerDesktopBackdrop/u);
 });
