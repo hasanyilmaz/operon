@@ -1834,7 +1834,8 @@ export class OperonStorage {
 
 		const previousSettings = cloneOperonSettings(this.settings);
 		const previousRecovery = this.getTablePresetRecoveryDiagnostics();
-		const previousTableSnapshot = pickTablePresetProjectionSettings(previousSettings);
+		// Compare the actual runtime projection, not its migrated rollback copy.
+		const previousTableSnapshot = pickTablePresetProjectionSettings(this.settings);
 		const nextTableSnapshot = pickTablePresetProjectionSettings(nextSettings);
 		const tableProjectionChanged = JSON.stringify(previousTableSnapshot)
 			!== JSON.stringify(nextTableSnapshot);
