@@ -40,7 +40,7 @@ export class SubtasksFilterModal extends Modal {
 
 	onOpen(): void {
 		this.backdropCleanup?.();
-		this.backdropCleanup = this.options.fileTaskPath ? null : applyDesktopModalBackdrop(this.containerEl);
+		this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
 		this.containerEl.addClass('operon-subtasks-filter-modal-container');
 		this.modalEl.addClass('operon-subtasks-filter-modal');
 		this.containerEl.ownerDocument.body.classList.add(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
@@ -106,7 +106,7 @@ export class SubtasksFilterModal extends Modal {
   }
   if (!this.stopViewportMigration) this.stopViewportMigration = this.containerEl.onWindowMigrated?.(() => this.bindViewportWindow()) ?? null;
   if (old) {
-   this.backdropCleanup?.(); this.backdropCleanup = this.options.fileTaskPath ? null : applyDesktopModalBackdrop(this.containerEl);
+   this.backdropCleanup?.(); this.backdropCleanup = applyDesktopModalBackdrop(this.containerEl);
    this.updateMobileViewportHeight();
    old.document.body.classList.remove(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);
    next.document.body.classList.add(SUBTASKS_FILTER_MODAL_OPEN_BODY_CLASS);

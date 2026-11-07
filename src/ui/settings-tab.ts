@@ -1,3 +1,4 @@
+import type { ReadingTaskRowCallbacks } from './reading-task-row';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
@@ -989,6 +990,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
 		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 		private readonly tasksConversionUi?: TasksConversionUiIntegration,
+		private readonly filterPreviewActivateDescription?: ReadingTaskRowCallbacks['activateDescription'],
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -1090,6 +1092,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			cycleStatus: this.filterPreviewCycleStatus,
 			getChildIds: (parentId: string) => [...indexer.secondary.getChildIds(parentId)],
 			navigateToTask: this.filterPreviewNavigateToTask,
+			activateDescription: this.filterPreviewActivateDescription,
 			getSettings: () => settings,
 			updateField: this.filterPreviewUpdateField,
 			updateFields: this.filterPreviewUpdateFields,

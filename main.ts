@@ -1,3 +1,4 @@
+import { isTaskSourceOpenModifierClick } from './src/ui/task-source-open-modifier';
 import { getFileTaskTitlesDeveloperApiV1, type FileTaskTitlesDeveloperAccessRequestV1, type FileTaskTitlesCapabilitySubsetV1 } from './src/agent-runtime/extensions/file-task-titles-v1/developer-api';
 import { createFileTaskTitlesRuntimeV1 } from './src/agent-runtime/extensions/file-task-titles-v1/gateway';
 import type { FileTaskTitlesApplyRequestV1, FileTaskTitlesMutationResultV1 } from './src/agent-runtime/extensions/file-task-titles-v1/contracts';
@@ -17150,6 +17151,7 @@ export default class OperonPlugin extends Plugin {
 			this.buildSettingsBackupUiIntegration(),
 			() => this.reconcileAllParentTaskDateRangesWhenSafe(),
 			{ mount: container => { const controller = this.getTasksBulkConversion(); if (!controller) return () => {}; const view = new TasksConversionSettings(this.app, container, controller); return () => view.dispose(); }, available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading' },
+			(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			);
 		this.addSettingTab(this.settingsTab);
 
@@ -17737,6 +17739,7 @@ export default class OperonPlugin extends Plugin {
 				(filterSetId) => this.togglePresetFavoriteAndRefresh('filter', filterSetId),
 				(target) => this.openRelatedViewTarget(target),
 				(target) => this.createRelatedViewPresetAndOpen(target),
+				(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			)
 		);
 
@@ -18093,7 +18096,23 @@ export default class OperonPlugin extends Plugin {
 		this.registerExtensions(['table'], OPERON_TABLE_FILE_VIEW_TYPE);
 	}
 
-	private async openTaskSourcePreview(operonId: string, anchor?: HTMLElement): Promise<void> {
+	private activateFilterTaskDescription(task: IndexedTask, event: MouseEvent | KeyboardEvent, anchor: HTMLElement): void {
+		runAsyncAction('filter task description opening failed', async () => {
+			if (this.redirectDuplicateOperonIdAction(task.operonId)) return;
+			const current = this.indexer.getTask(task.operonId);
+			if (!current || !(this.app.vault.getAbstractFileByPath(current.primary.filePath) instanceof TFile)) {
+				this.showPluginUiMutationOutcome('source-missing');
+				return;
+			}
+			if ('button' in event && event.detail !== 0 && isTaskSourceOpenModifierClick(event)) {
+				await this.openTaskSourcePreview(current.operonId, anchor, event);
+			} else {
+				await this.openEditorForId(current.operonId, undefined, anchor);
+			}
+		});
+	}
+
+	private async openTaskSourcePreview(operonId: string, anchor?: HTMLElement, event?: MouseEvent): Promise<void> {
 		const task = this.indexer.getTask(operonId);
 		if (!task) return;
 		if (!Platform.isDesktopApp) { this.navigateToTask(task); return; }
@@ -18108,7 +18127,7 @@ export default class OperonPlugin extends Plugin {
 		};
 		await activateResolvedOpening(target, {
 			...openingContext, resolve: () => resolveChipOpening({ key: 'taskInfo.source' }, openingContext),
-		});
+		}, event);
 	}
 
 	private navigateToTask(task: IndexedTask): void {
@@ -23093,6 +23112,7 @@ export default class OperonPlugin extends Plugin {
 				void this.handleTaskIconClick(operonId);
 			},
 			getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
+			activateDescription: (task: IndexedTask, event: MouseEvent | KeyboardEvent, anchor: HTMLElement) => this.activateFilterTaskDescription(task, event, anchor),
 			navigateToTask: (task: IndexedTask) => this.navigateToTask(task),
 			getSettings: () => this.settings,
 			updateField: (operonId: string, key: string, value: string) => (
@@ -23147,6 +23167,7 @@ export default class OperonPlugin extends Plugin {
 				getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
 				saveSettings: () => this.storage.saveSettings(),
 				getChildIds: (parentId: string) => [...this.indexer.secondary.getChildIds(parentId)],
+					activateDescription: (task: IndexedTask, event: MouseEvent | KeyboardEvent, anchor: HTMLElement) => this.activateFilterTaskDescription(task, event, anchor),
 					navigateToTask: (task: IndexedTask) => {
 						if (task.primary.format === 'yaml') {
 							runAsyncAction('embedded filter task file navigation failed', () => this.app.workspace.openLinkText(task.primary.filePath, '', false));
@@ -24596,7 +24617,7 @@ export default class OperonPlugin extends Plugin {
 	 * Open the task editor for any task identified by operonId.
 	 * Convenience wrapper used by sidebar views and subtask edit buttons.
 	 */
-	private openEditorForId(operonId: string, showSource: boolean, openingAnchor: HTMLElement, canOpen?: () => boolean): Promise<void>;
+	private openEditorForId(operonId: string, showSource: boolean | undefined, openingAnchor: HTMLElement, canOpen?: () => boolean): Promise<void>;
 	private openEditorForId(operonId: string, showSource?: boolean): void;
 	private openEditorForId(operonId: string, showSource?: boolean, openingAnchor?: HTMLElement, canOpen?: () => boolean): void | Promise<void> {
 		const opening = (async () => {

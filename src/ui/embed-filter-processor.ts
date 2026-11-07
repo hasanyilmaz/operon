@@ -88,6 +88,7 @@ export interface EmbedFilterDeps {
     saveSettings: () => Promise<void>;
     getChildIds: (parentId: string) => string[];
     navigateToTask: (task: import('../types/fields').IndexedTask) => void;
+    activateDescription?: FilterTaskRowCallbacks['activateDescription'];
     getSettings: () => OperonSettings;
     updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
     updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
@@ -397,6 +398,7 @@ export function renderFilterSurface(
         openEditor: (operonId) => deps.openTaskEditor(operonId),
         cycleStatus: (operonId) => { deps.cycleStatus(operonId); },
         navigateToTask: deps.navigateToTask,
+        activateDescription: deps.activateDescription,
         getSettings: deps.getSettings,
         getAllTasks: () => deps.indexer.getAllTasks(),
         updateField: deps.updateField,
@@ -863,6 +865,7 @@ function renderHeader(
                 cycleStatus: deps.cycleStatus,
                 getChildIds: deps.getChildIds,
                 navigateToTask: deps.navigateToTask,
+                activateDescription: deps.activateDescription,
                 getSettings: deps.getSettings,
                 updateField: deps.updateField,
                 updateFields: deps.updateFields,

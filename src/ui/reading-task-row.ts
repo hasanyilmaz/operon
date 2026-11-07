@@ -74,6 +74,7 @@ export interface ReadingTaskRowCallbacks {
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void | Promise<void>;
 	navigateToTask: (task: IndexedTask) => void;
+	activateDescription?: (task: IndexedTask, event: MouseEvent | KeyboardEvent, anchor: HTMLElement) => void;
 	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
@@ -128,6 +129,7 @@ export function guardReadingTaskRowActions(
 		openEditor: onBlockedAction,
 		cycleStatus: onBlockedAction,
 		navigateToTask: onBlockedAction,
+		activateDescription: callbacks.activateDescription ? onBlockedAction : undefined,
 		updateField: rejectUpdate,
 		onContextualAction: callbacks.onContextualAction ? onBlockedAction : undefined,
 		toggleTimer: callbacks.toggleTimer ? onBlockedAction : undefined,
@@ -355,13 +357,21 @@ export function buildReadingTaskRowElement(
 	description.addEventListener('click', (event) => {
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		if (Platform.isDesktopApp && callbacks.activateDescription) {
+			if (event.button !== 0 || event.detail > 1) return;
+			event.stopPropagation();
+			callbacks.activateDescription(task, event, description);
+		} else callbacks.navigateToTask(task);
 	});
 	description.addEventListener('keydown', (event) => {
 		if (event.target !== description) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		if (Platform.isDesktopApp && callbacks.activateDescription) {
+			if (event.repeat) return;
+			event.stopPropagation();
+			callbacks.activateDescription(task, event, description);
+		} else callbacks.navigateToTask(task);
 	});
 	head.appendChild(description);
 
