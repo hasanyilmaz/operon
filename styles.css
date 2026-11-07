@@ -34999,6 +34999,12 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 
 .operon-canvas-task-pool .operon-canvas-task-pool-title { cursor: grab; }
 
+/* Keep keyboard/focus scrolling inside the task list on touch-capable devices.
+   Unlike hidden, clip does not create a second scroll container around controls. */
+@media (any-pointer: coarse) {
+ .operon-canvas-task-pool:not(.operon-canvas-task-pool-needs-focus-scroll) { overflow: clip; }
+}
+
 /* Larger touch targets without changing desktop Canvas density. */
 @media (pointer: coarse) {
  body .operon-canvas-task-pool button,

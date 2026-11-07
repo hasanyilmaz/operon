@@ -167,7 +167,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
    session.register(() => { viewport.removeEventListener('resize', position); viewport.removeEventListener('scroll', position); });
   }
   const Resize = (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver;
-  const observer = new Resize(() => this.position()); observer.observe(this.surface.contentEl); session.register(() => observer.disconnect());
+  const observer = new Resize(() => this.position()); observer.observe(this.surface.contentEl); observer.observe(panel); session.register(() => observer.disconnect());
   this.refresh(); search.focus({ preventScroll: true });
  }
  private clearTimer(): void { if (this.timer !== null) this.win.clearTimeout(this.timer); this.timer = null; }
@@ -206,7 +206,11 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   const bounds = this.surface.contentEl.getBoundingClientRect(), anchor = this.button.getBoundingClientRect();
   const settings = normalizeTaskCardSettings(this.cards.deps.getSettings());
   const viewport = this.win.visualViewport;
-  const leftEdge = Math.max(bounds.left, viewport?.offsetLeft ?? 0), topEdge = Math.max(bounds.top, viewport?.offsetTop ?? 0);
+  const touch = this.win.matchMedia?.('(any-pointer: coarse)').matches ?? false;
+  const leftEdge = Math.max(bounds.left, viewport?.offsetLeft ?? 0);
+  // Touch keyboards can leave too little room below the pane header. Move the
+  // whole overlay higher before allowing any focus-driven scrolling inside it.
+  const topEdge = touch ? viewport?.offsetTop ?? 0 : Math.max(bounds.top, viewport?.offsetTop ?? 0);
   const rightEdge = Math.min(bounds.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? this.win.innerWidth));
   const bottomEdge = Math.min(bounds.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? this.win.innerHeight));
   const width = Math.max(0, Math.min(settings.canvasTaskPoolWidth, rightEdge - leftEdge - 16));
@@ -216,6 +220,11 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   const left = Math.max(leftEdge + 8, Math.min(this.panelPoint?.x ?? anchor.left - width - 8, rightEdge - width - 8));
   const top = Math.max(topEdge + 8, Math.min(this.panelPoint?.y ?? anchor.top, bottomEdge - this.panel.offsetHeight - 8));
   this.panel.style.left = `${left}px`; this.panel.style.top = `${top}px`;
+  const search = this.panel.querySelector<HTMLInputElement>('.operon-canvas-task-pool-search');
+  // If even the full visible height cannot fit the search control, retain native
+  // focus scrolling rather than trapping the caret in clipped content.
+  this.panel.classList.toggle('operon-canvas-task-pool-needs-focus-scroll', !!(touch && search
+   && search.offsetTop + search.offsetHeight > this.panel.clientHeight));
  }
  private refresh(): void {
   if (!this.panel || !this.list || !this.summary) return;
