@@ -66,7 +66,7 @@ When you type, Task Finder does two separate things: first it decides **which** 
 
 Task Finder does not look only at a task's title. For each task it gathers a broad set of text and matches your query against all of it:
 
-- the task's own **words** (its description) and its **id**
+- the task's **description**, **id**, and, when enabled, its [[DOCS-013 File tasks#Display title and filename|File Task display title]]
 - its **note**
 - its **tags**, **contexts**, **assignees**, and **priority**
 - its **dates** (due, scheduled, started, completed, cancelled)
@@ -85,7 +85,7 @@ Two rules govern a match:
 
 Among the tasks that match, Task Finder scores each one and shows the strongest first. Not every matchable field counts the same for ranking:
 
-- A hit in the **description** or **id** counts most, and an **exact** or **start-of-text** hit beats one in the middle.
+- A hit in the **description**, **display title**, or **id** counts most, and an **exact** or **start-of-text** hit beats one in the middle.
 - Then **status** and **priority**, then **file path**, **note**, and **custom fields**, in decreasing weight.
 - **Open tasks rank above** done and cancelled ones, and among equal scores the **most recently modified** comes first.
 
@@ -93,7 +93,7 @@ The key point: **the set of fields you can match on is wider than the set that l
 
 | What your query matches | Gets the task listed | Lifts it up the ranking |
 |---|---|---|
-| Description (the task's words) | Yes | Strongest |
+| Description or File Task display title | Yes | Strongest |
 | Id | Yes | Strong |
 | Status, priority | Yes | Moderate |
 | File path, note, custom fields | Yes | Light |

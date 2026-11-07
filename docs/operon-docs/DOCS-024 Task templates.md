@@ -59,7 +59,7 @@ A File Task template can use three different kinds of dynamic syntax:
 
 Operon does not call the Core Templates **Insert template** command. When it creates a File Task, it resolves the compatible tokens itself after Templater has run. The **File Task Templates** folder in Operon chooses these templates; it is separate from the Core Templates plugin's own template folder. See [[DOCS-061 operonId template variables|Template variables]] for the full scope matrix and syntax rules.
 
-A template can combine Operon variables with compatible creation variables. For example, use `title: "{{title}}"` when frontmatter should reflect the final file basename, and use plain `{{date}}` in canonical Operon date fields.
+A template can combine Operon variables with compatible creation variables. In a File Task template, `{{title}}` gives the final file basename, and `{{taskDescription}}` gives the text entered in Task Creator. With [[DOCS-013 File tasks#Display title and filename|File Task display titles]] enabled, Operon writes that entered text into the mapped title property. Use plain `{{date}}` in canonical Operon date fields.
 
 For example, this template frontmatter:
 

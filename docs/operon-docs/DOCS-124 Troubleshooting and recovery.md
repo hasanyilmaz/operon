@@ -68,7 +68,7 @@ For periodic creation the required capabilities are `tasks.create.periodic-note.
 
 ## Stale or unexpected data
 
-If a read looks older than you expect, check its freshness, the "as of" moment in the result. Right after edits or during settling, the index may briefly lag. Re-read as of a fresh moment first. If data still looks wrong after the Runtime reports it is ready, rebuild the index from inside Obsidian and read again; see [[DOCS-091 Rebuild full index|Rebuild full index]]. Reads are safe to repeat, so re-reading is always a reasonable first move.
+If a read looks older than you expect, check its freshness, the "as of" moment in the result. Right after edits, an eligible read can wait briefly and retry while the RAM index settles, within the request deadline. If the result still looks stale or the read cannot verify its source, try a fresh read first. If data still looks wrong after the Runtime reports it is ready, rebuild the index from inside Obsidian and read again; see [[DOCS-091 Rebuild full index|Rebuild full index]]. Reads are safe to repeat, so re-reading is always a reasonable first move.
 
 ## Vault moved or identity changed
 

@@ -38,6 +38,8 @@ The five mode buttons appear in this order: **Overdue → Unscheduled → All �
 
 The pool searches existing tasks using its own modes and query. In Kanban, it can find tasks that are outside the board filter. Search narrows the selected mode across its matching tasks, not just the rows currently displayed. More results load as you scroll, and task changes refresh the results.
 
+File Task rows use the [[DOCS-013 File tasks#Display title and filename|mapped display title]] when enabled and available. You can search by that title as well as the filename.
+
 Changing the mode or query does not remove cards already placed on the board. The results are available tasks from your notes, not an inventory limited to this drawing.
 
 ## Add a card on Canvas or Excalidraw
@@ -70,6 +72,8 @@ Drag the header to move the panel. Moving it also pins the panel open. You can i
 Panel pinning is separate from the `Pinned` task mode. The panel pin keeps the pool open; the mode shows tasks pinned in Operon.
 
 An unpinned pool closes after a successful placement or an outside click. A pinned pool stays open as you add cards and work elsewhere on the surface. Choose **Unpin and close** or press `Escape` to close it. When both panels are open, interacting with one brings it forward. In Kanban, pin both pools to keep them open together. Opening the other pool can close an unpinned panel.
+
+On touch screens, the panel can move up when the on-screen keyboard opens. The header and search stay in place within the panel while the results scroll. If the available space is very short, the panel can scroll to keep the focused search field reachable.
 
 ## Plan a project on Canvas or Excalidraw
 

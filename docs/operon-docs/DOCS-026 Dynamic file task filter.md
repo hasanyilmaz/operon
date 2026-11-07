@@ -28,6 +28,8 @@ The filter also appears in the native Markdown source panel alongside the deskto
 
 The filter stays out of Markdown table cells, short Description/Note editors, and checkbox popovers. Inline task features inside those compact editors are separate from this file-level filter.
 
+Subtask descriptions follow the [[DOCS-025 Filter View#Acting from the view|desktop filter opening rules]]. Open Task Editor over the note or use Cmd/Ctrl-click for the subtask source tab.
+
 ## The locked condition
 
 The filter has a single condition that you cannot edit: its `operonId` is the current file task's `operonId`. That is what makes it dynamic. The same embedded filter shows different subtasks in every file task, because each note resolves the condition to itself. There is nothing to maintain as your tasks change; the list always reflects the current children.

@@ -116,6 +116,8 @@ This is a workflow suggestion, not a change to your settings. Hiding a permanent
 
 Invalid template YAML stops creation rather than applying a partial interpretation. Type conflicts or an unverifiable source can also block submission. These differ from fields intentionally skipped for Inline creation. See [[DOCS-051 Templater and QuickAdd workflows|Templater and QuickAdd workflows]] for File template integrations.
 
+Integrations can choose the default Inline template, a specific template, or no template. The write-free preview shows the resulting properties and why any fields were skipped. See [[DOCS-131 Developer API reads and typed mutations#File Task titles and settings-based creation|settings-based creation]].
+
 ## Related
 
 - [[DOCS-001 Operon Docs MOC|Operon Docs MOC]]

@@ -79,7 +79,7 @@ Each of these links renders with the task's progress, chips, and actions inline,
 On a decorated link, Operon shows, in order:
 
 - A **task icon** before the label, which follows the global **Task icon click action** preference: **Follow pipeline** by default, or **Cycle task state** through Open, Finished, and Cancelled. It also exposes the overlay’s contextual actions. See [[DOCS-099 State Icons|State Icons]] for the behavior and fallback rules.
-- The task **label**, using an explicit link alias if you wrote one, otherwise the task description.
+- The task **label** uses your explicit link alias first. Otherwise it shows the task description or the [[DOCS-013 File tasks#Display title and filename|File Task display title]] when enabled and available.
 - A **progress** indicator for a parent task, summarizing its subtasks.
 - The **Open checkboxes** action, when enabled, for regular Markdown checkboxes associated with the task.
 - The configured **chips**, the same compact metadata chips used elsewhere.
@@ -89,7 +89,7 @@ On a decorated link, Operon shows, in order:
 
 Terminal tasks (done or cancelled) show their state and drop the actions that no longer apply.
 
-On desktop, supported links **inside the task description** use the [[DOCS-151 Lightbox|lightbox]]. The outer task-link label retains its existing action; opening an inner link does not also activate that outer label. Configured Parent, Source, and complete existing Text/List wikilinks follow [[DOCS-041 Task chips display and behavior|the shared chip rules]]. Missing wikilink values keep their picker rather than creating a note.
+On desktop, supported links **inside the task description** use the [[DOCS-151 Lightbox|lightbox]]. For a File Task, the outer label opens the linked note. Cmd-click on macOS or Ctrl-click on Windows/Linux opens it in a focused tab. Links inside the description open independently of the outer label. Configured Parent, Source, and complete existing Text/List wikilinks follow [[DOCS-041 Task chips display and behavior|the shared chip rules]]. Missing wikilink values keep their picker rather than creating a note.
 
 ## Configure it
 

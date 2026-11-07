@@ -82,6 +82,13 @@ Check that the accessor exists on the active Operon instance, then request the e
 
 The extension's canonical types and schemas live in the Operon Plugin source under `src/agent-runtime/extensions/checkbox-ownership-v1` and `contracts/agent-runtime/extensions/checkbox-ownership-v1`. The base npm import above does not provide this extension. CLI support is deferred; existing CLI commands and consumers remain unchanged.
 
+## File Task titles and creation policy
+
+- `getFileTaskTitlesDeveloperApiV1()` previews and applies creation with a display title or sets or clears an existing File Task title while keeping its filename.
+- `getTaskCreationDeveloperApiV1()` reads the Plugin's creation policy and previews and applies one task using the selected target and template rules.
+
+Check that the accessor is present on the active Operon instance and that the access result is successful. Each extension has its own capability grants and plan handles. See [[DOCS-130 Developer API identity and capability grants#File Task title and creation grants|the capability table]] and [[DOCS-131 Developer API reads and typed mutations#File Task titles and settings-based creation|request examples]].
+
 ## Open a discovery-only session
 
 Start without domain capabilities when you only need baseline health and capability status:
