@@ -19,13 +19,14 @@ function fixture(templateContent:string|null=null,periodic=false,container=false
  const resolution=(kind:'daily'|'weekly')=>periodic?{available:true as const,config:config(kind)}:{available:false as const,reason:'operon-disabled' as const};
  const policy=()=>buildTaskCreationPolicyV1(settings,templates,resolution('daily'),resolution('weekly'));
  const files=new Map([['Tasks.md','# Tasks\n']]);
+ const propertyTypes:Record<string,string>={score:'number',ref:'text'};
  const ports:RuntimeTaskCreationAdapterPortsV1={settings:()=>settings,listOperonIds:()=>new Set(),listDependencyGraphTasks:()=>[],getExistingTask:()=>null,readSource:async filePath=>({filePath,content:files.get(filePath)??null}),resolveConfiguredInlineTarget:async()=>({filePath:'Tasks.md',placement:{kind:'append'}}),resolveConfiguredFilePath:async title=>title+'.md',readTemplate:async()=>templateContent===null?null:{templateId:'test-template',content:templateContent,revision:sha256HexV1(templateContent)},creationFieldCatalog:()=>catalog().fields,resolveCoreTemplateVariables:content=>content,generateOperonId:()=> 'new0001',now:()=>now.slice(0,19)};
- const host=new Host({settings,app:{native:{ensure:async()=>{},typesAvailable:()=>true,getTypes:()=>({score:'number',ref:'text'})}},indexer:{getTaskSnapshot:()=>null,getAllOperonIds:()=>new Set(),getFileTaskByPath:()=>null,getAllTasks:()=>[],hasDuplicateOperonIdConflict:()=>false},storage:{getCommittedInlinePropertyDefinitions:()=>undefined,periodicNoteContainers:{isHealthy:()=>true},repeatSeries:{getAllSeriesIds:()=>new Set(),getRevision:()=>0}},readTaskCreationPolicySource:async()=>policy(),readAgentRuntimeCreationTemplate:ports.readTemplate,readAgentRuntimeMutationSource:ports.readSource,resolveEffectivePeriodicNoteConfig:async(kind:'daily'|'weekly')=>resolution(kind),resolveWeeklyNoteDailyDateHeading:async(date:string)=>date,getAgentRuntimeCatalogBuild:()=>({ok:true}),requireAgentRuntimeCatalogProjection:catalog,getPeriodicNoteService:()=>({prepareAt:async({kind,dateKey}:{kind:'daily'|'weekly';dateKey:string})=>{const path=(kind==='daily'?'Daily':'Weekly')+'/'+dateKey+'.md';return files.has(path)?{status:'existing',result:{path}}:{status:'prepared',plan:{path,content:(container?'---\noperonId: parent1\n---\n':'')+'# Periodic note\n',templatePath:null,mode:'plain'}};}}),resolveAgentRuntimeFileCreationPath:ports.resolveConfiguredFilePath,
+ const host=new Host({settings,app:{native:{ensure:async()=>{},typesAvailable:()=>true,getTypes:()=>propertyTypes}},indexer:{getTaskSnapshot:()=>null,getAllOperonIds:()=>new Set(),getFileTaskByPath:()=>null,getAllTasks:()=>[],hasDuplicateOperonIdConflict:()=>false},storage:{getCommittedInlinePropertyDefinitions:()=>undefined,periodicNoteContainers:{isHealthy:()=>true},repeatSeries:{getAllSeriesIds:()=>new Set(),getRevision:()=>0}},readTaskCreationPolicySource:async()=>policy(),readAgentRuntimeCreationTemplate:ports.readTemplate,readAgentRuntimeMutationSource:ports.readSource,resolveEffectivePeriodicNoteConfig:async(kind:'daily'|'weekly')=>resolution(kind),resolveWeeklyNoteDailyDateHeading:async(date:string)=>date,getAgentRuntimeCatalogBuild:()=>({ok:true}),requireAgentRuntimeCatalogProjection:catalog,getPeriodicNoteService:()=>({prepareAt:async({kind,dateKey}:{kind:'daily'|'weekly';dateKey:string})=>{const path=(kind==='daily'?'Daily':'Weekly')+'/'+dateKey+'.md';return files.has(path)?{status:'existing',result:{path}}:{status:'prepared',plan:{path,content:(container?'---\noperonId: parent1\n---\n':'')+'# Periodic note\n',templatePath:null,mode:'plain'}};}}),resolveAgentRuntimeFileCreationPath:ports.resolveConfiguredFilePath,
   prepareAgentRuntimeIdentityCreation:async(requestId:string,spec:Parameters<typeof prepareRuntimeTaskCreationV1>[1],effectiveAt:string,ids:ReadonlyMap<string,string>|undefined,active:ReadonlySet<string>|undefined,series:ReadonlyMap<string,string>|undefined,allocations:Parameters<typeof prepareRuntimeTaskCreationV1>[7],options:Partial<RuntimeTaskCreationAdapterPortsV1>)=>prepareRuntimeTaskCreationV1(requestId,spec,{...ports,...options},ids,effectiveAt.slice(0,19),active,series,allocations),
   prepareAgentRuntimeIdentityGraphSteps:async(prepared:Extract<Awaited<ReturnType<typeof prepareRuntimeTaskCreationV1>>,{ok:true}>)=>({ok:true,steps:prepared.plan.sourceGroups.map(group=>{const state=(content:string|null)=>({state:content===null?'absent' as const:'present' as const,content,digest:sha256HexV1(content??'')});return {stepId:'source:'+group.filePath,groupId:'task-source:'+group.filePath,resourceKind:'task-source',resourceKey:group.filePath,operation:group.expectedContent===null?'create':'modify',before:state(group.expectedContent),after:state(group.resultingContent)} as GraphTransactionJournalStepV1;})}),
  });
  const f=executionFixture();f.request.spec.item={itemRef:'one',title:'Review Q3',fields:[],target:{mode:'configured-default',representation:'inline'},template:templateContent===null?{mode:'none'}:{mode:'selected',templateId:'test-template'}};
- return {host,settings,request:f.request,revision:f.plan.contextRevision,files};
+ return {host,settings,request:f.request,revision:f.plan.contextRevision,files,propertyTypes,setTemplate(content:string){templateContent=content;}};
 }
 test('Plugin routed inline preview is zero-write and seals typed definitions before its task source',async()=>{
  const f=fixture('---\nscore: 7\n---\nNever copy');const before=[...f.files];
@@ -106,7 +107,7 @@ test('Plugin apply uses approved journal, registers definitions first and replay
  assert.equal((await f.run()).status,'already-applied');assert.equal(f.writes(),1);
 });
 test('Plugin rejects changed settings or source before definition and task writes',async()=>{
- for(const change of ['settings','source'] as const){const f=await executionHost();if(change==='settings')f.settings.inlineTaskHeading='Changed';else f.files.set('Tasks.md','# Other\n');const result=await f.run();assert.equal(result.status,'failed');assert.equal(f.writes(),0);assert.equal(f.definitions(),undefined);assert.equal(f.journal(),null);}
+ for(const change of ['settings','source','template','types'] as const){const f=await executionHost();if(change==='settings')f.settings.inlineTaskHeading='Changed';else if(change==='source')f.files.set('Tasks.md','# Other\n');else if(change==='template')f.setTemplate('---\nscore: 8\n---\n');else f.propertyTypes.score='text';const result=await f.run();assert.equal(result.status,'failed');assert.equal(f.writes(),0);assert.equal(f.definitions(),undefined);assert.equal(f.journal(),null);}
 });
 test('Plugin partial native registration recovers the same journal while retaining its definitions',async()=>{
  const f=await executionHost();f.setFailure(true);assert.equal((await f.run()).status,'outcome-unknown');assert.ok(f.journal());assert.equal(f.writes(),0);assert.ok(f.definitions());
@@ -124,4 +125,45 @@ test('Plugin configured File representation and selected/none templates remain e
  const selected=await f.host.prepareRoutedRuntimeCreation(f.request,now);assert.equal(selected.preparation.plan.tasks[0].representation,'file');assert.equal(selected.creation.templateId,'test-template');
  const plan=f.host.buildRoutedRuntimeCreationPlan(f.request,selected,f.revision,now,'configured-file');assert.ok(decodeRoutedTaskCreationPlanV1(plan).ok);assert.ok(validate('sealedPlan',plan));
  f.request.spec.item.template={mode:'none'};const none=await f.host.prepareRoutedRuntimeCreation(f.request,now);assert.equal(none.creation.templateId,null);assert.ok(!none.steps[0].after.content!.includes('Body'));assert.ok(!none.steps[0].after.content!.includes('score:'));
+});
+
+
+for (const representation of ['inline','file'] as const) {
+ for (const targetMode of ['configured-default','exact-path'] as const) {
+  for (const templateMode of ['configured','selected','none'] as const) {
+   test(`Plugin integrated creation ${representation}/${targetMode}/${templateMode} preserves input and zero-write preview`,async()=>{
+    const f=fixture('---\nnote: "001"\nscore: 7\n---\nTemplate body');
+    f.settings.defaultInlineTaskTemplateId='test-template';f.settings.taskCreatorDefaultFileTemplateId='test-template';
+    f.request.spec.item.title='İş Übersicht 計画';
+    f.request.spec.item.target=targetMode==='exact-path'?{mode:targetMode,representation,filePath:representation==='file'?'Exact Unicode 計画.md':'Tasks.md'}:{mode:targetMode,representation};
+    f.request.spec.item.template=templateMode==='selected'?{mode:templateMode,templateId:'test-template'}:{mode:templateMode};
+    const request=structuredClone(f.request),settings=structuredClone(f.settings),files=[...f.files];
+    const prepared=await f.host.prepareRoutedRuntimeCreation(f.request,now);
+    const plan=f.host.buildRoutedRuntimeCreationPlan(f.request,prepared,f.revision,now,'matrix-plan');
+    assert.ok(decodeRoutedTaskCreationPlanV1(plan).ok);assert.ok(validate('sealedPlan',plan));
+    assert.equal(prepared.preparation.plan.tasks[0].representation,representation);
+    assert.equal(prepared.creation.templateId,templateMode==='none'?null:'test-template');
+    if(templateMode!=='none')assert.equal(prepared.creation.resolvedFields.note,'001');
+    if(targetMode==='exact-path')assert.equal(prepared.preparation.plan.tasks[0].filePath,request.spec.item.target.mode==='exact-path'?request.spec.item.target.filePath:'');
+    const content=prepared.steps.filter(step=>step.resourceKind==='task-source').at(-1)!.after.content!;
+    assert.equal(content.includes('Template body'),representation==='file'&&templateMode!=='none');
+    assert.deepEqual(f.request,request);assert.deepEqual(f.settings,settings);assert.deepEqual([...f.files],files);
+    assert.deepEqual(await f.host.prepareRoutedRuntimeCreation(f.request,now,plan),prepared);
+   });
+  }
+ }
+}
+
+test('Plugin requires explicit active/ask targets and refuses missing templates and File collisions',async()=>{
+ for(const mode of ['active-file','ask-every-time'] as const){
+  const f=fixture();f.settings.inlineTaskSaveMode=mode;
+  await assert.rejects(()=>f.host.prepareRoutedRuntimeCreation(f.request,now),/explicit target/);
+  f.request.spec.item.target={mode:'exact-path',representation:'inline',filePath:'Tasks.md'};
+  assert.equal((await f.host.prepareRoutedRuntimeCreation(f.request,now)).preparation.plan.tasks[0].filePath,'Tasks.md');
+ }
+ const missing=fixture();missing.request.spec.item.template={mode:'selected',templateId:'missing'};
+ await assert.rejects(()=>missing.host.prepareRoutedRuntimeCreation(missing.request,now));
+ const collision=fixture();collision.request.spec.item.target={mode:'exact-path',representation:'file',filePath:'Tasks.md'};
+ await assert.rejects(()=>collision.host.prepareRoutedRuntimeCreation(collision.request,now));
+ assert.equal(collision.files.get('Tasks.md'),'# Tasks\n');
 });
