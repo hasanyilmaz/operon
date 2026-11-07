@@ -1,3 +1,4 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { createTaskSourceActionButton } from './task-info-chip-action';
 import { taskDescriptionOpening } from './task-text-link-opening';
 import { getTaskDisplayTitle } from '../core/task-display-title';
@@ -1007,7 +1008,7 @@ function createTaskFileLinkLabel(
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void openTaskFileLinkWithModifier(callbacks.app, label, resolved.resolvedFile.path, resolved.sourcePath, event);
 	});
 	label.addEventListener('keydown', (event) => {
 		if (event.target !== label) return;
@@ -1033,7 +1034,7 @@ function prepareTaskFileLinkAnchor(
 	anchor.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void openTaskFileLinkWithModifier(callbacks.app, anchor, resolved.resolvedFile.path, resolved.sourcePath, event);
 	});
 	anchor.addEventListener('keydown', (event) => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;

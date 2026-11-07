@@ -1,3 +1,4 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { taskDescriptionOpening } from './task-text-link-opening';
 import { getTaskDisplayTitle } from '../core/task-display-title';
@@ -877,7 +878,11 @@ function attachReadingChipAction(
 			case 'blocking':
 			case 'blockedBy':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					if (entry.key === 'blocking' || entry.key === 'blockedBy') {
+						void openTaskFileLinkWithModifier(callbacks.app, chip, entry.linkTarget, task.primary.filePath, event);
+					} else {
+						void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					}
 					onCommit?.();
 				}
 				break;

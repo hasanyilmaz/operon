@@ -1,3 +1,4 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { isTaskInfoChipKey } from '../core/task-info-chips';
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import { bindTaskInfoSourceAction } from './task-info-chip-action';
@@ -320,7 +321,11 @@ function attachOverlayChipAction(
 			return;
 		}
 		if (entry.linkTarget) {
-			void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+			if (entry.key === 'blocking' || entry.key === 'blockedBy') {
+				void openTaskFileLinkWithModifier(callbacks.app, chip, entry.linkTarget, task.primary.filePath, event);
+			} else {
+				void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+			}
 			onCommit?.();
 			return;
 		}

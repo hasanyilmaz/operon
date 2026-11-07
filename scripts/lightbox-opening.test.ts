@@ -6,7 +6,7 @@ import { lightboxFixture } from './test-support/lightbox-dom';
 import { activateResolvedOpening, resolveChipOpening } from '../src/ui/links-chip-action';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { openLightbox } from '../src/ui/lightbox';
-import { openLightboxTarget, resolveLightboxFile } from '../src/ui/lightbox-opening';
+import { openLightboxTarget, openTaskFileLinkWithModifier, resolveLightboxFile } from '../src/ui/lightbox-opening';
 import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { bindTaskMediaChipPreview, cleanupTaskMediaChipPreviews } from '../src/ui/compact-chip-link-preview';
@@ -669,4 +669,29 @@ test('vetoed native navigation retains its profile and unsaved content',async()=
   assert.equal(navigated,0);assert.equal(host.classes.has('is-markdown'),true);assert.equal(host.inert,false);
   assert.equal(f.view.getViewData(),'unsaved');
  }finally{f.cleanup();await tick();}
+});
+
+for (const mac of [true, false]) test(`task-file modifier uses an owned focused tab on ${mac ? 'macOS' : 'Windows/Linux'}`, async () => {
+ const f = fixture();
+ try {
+  Platform.isMacOS = mac;
+  const focused: unknown[][] = [];
+  f.app.workspace.setActiveLeaf = (...args: unknown[]) => focused.push(args);
+  f.app.workspace.openLinkText = () => assert.fail('Must not replace the current tab');
+  await openTaskFileLinkWithModifier(f.app, f.anchor, f.file.path, 'Host.md', mouse(mac ? {metaKey:true} : {ctrlKey:true}));
+  assert.equal(f.stats().created, 1);
+  assert.equal(f.opens.length, 1);
+  assert.equal(f.opens[0].active, false);
+  assert.deepEqual(focused, [[f.leaf, {focus:true}]]);
+  assert.equal(f.leaf.view.containerEl.ownerDocument, f.anchor.ownerDocument);
+ } finally { f.cleanup(); }
+});
+test('missing task-file modifier target does not create a file or open a fallback tab', async () => {
+ const f = fixture();
+ try {
+  f.app.workspace.openLinkText = () => assert.fail('Missing source must not use a creating fallback');
+  await openTaskFileLinkWithModifier(f.app, f.anchor, 'missing', 'Host.md', mouse({metaKey:true}));
+  assert.equal(f.stats().created, 0);
+  assert.equal(f.opens.length, 0);
+ } finally { f.cleanup(); }
 });

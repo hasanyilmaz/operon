@@ -1,3 +1,4 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { createTaskSourceActionButton } from './task-info-chip-action';
 import { taskDescriptionOpening } from './task-text-link-opening';
 import { getTaskDisplayTitle } from '../core/task-display-title';
@@ -424,7 +425,7 @@ class TaskWikilinkLabelWidget extends WidgetType {
 			if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 			event.preventDefault();
 			event.stopPropagation();
-			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, false);
+			void openTaskFileLinkWithModifier(this.callbacks.app, label, this.resolved.resolvedFile.path, sourcePath, event);
 		});
 		label.addEventListener('keydown', (event) => {
 			if (event.target !== label) return;
