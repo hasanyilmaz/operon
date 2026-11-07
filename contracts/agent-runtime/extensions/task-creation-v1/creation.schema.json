@@ -3,6 +3,154 @@
   "$id": "urn:operon:schema:runtime:v1:extension:task-creation:creation",
   "title": "Task creation V1 extension",
   "$defs": {
+    "cliResult": {
+      "type": "object",
+      "x-operon-cliResultBinding": true,
+      "additionalProperties": false,
+      "x-operon-maxUtf8Bytes": 3145728,
+      "required": [
+        "contractVersion",
+        "kind",
+        "requestId",
+        "command",
+        "ok",
+        "transport",
+        "vaultIdentity",
+        "timing",
+        "warnings"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": 1
+        },
+        "kind": {
+          "const": "cli-result"
+        },
+        "requestId": {
+          "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/requestId"
+        },
+        "command": {
+          "const": "catalog"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "transport": {
+          "$ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/transport"
+        },
+        "vaultIdentity": {
+          "$ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/vaultIdentity"
+        },
+        "compatibility": {
+          "$ref": "urn:operon:schema:runtime:v1:compatibility.schema.json#/$defs/selection"
+        },
+        "cliContract": {
+          "const": 1
+        },
+        "runtime": {
+          "$ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/runtimeMetadata"
+        },
+        "timing": {
+          "$ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/timing"
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/warning"
+          }
+        },
+        "client": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "profile": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "planRef": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        },
+        "result": {
+          "$ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/policyResult"
+        },
+        "failure": {
+          "$ref": "urn:operon:schema:runtime:v1:cli.schema.json#/$defs/failure"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "ok": {
+              "const": true
+            },
+            "compatibility": {
+              "allOf": [
+                {
+                  "$ref": "urn:operon:schema:runtime:v1:compatibility.schema.json#/$defs/selection"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "compatible": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "compatible"
+                  ]
+                }
+              ]
+            },
+            "vaultIdentity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "expectedMatch"
+              ],
+              "properties": {
+                "expectedMatch": {
+                  "const": true
+                }
+              }
+            }
+          },
+          "required": [
+            "ok",
+            "compatibility",
+            "cliContract",
+            "runtime",
+            "result"
+          ],
+          "not": {
+            "required": [
+              "failure"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "ok": {
+              "const": false
+            }
+          },
+          "required": [
+            "ok",
+            "failure"
+          ],
+          "not": {
+            "required": [
+              "result"
+            ]
+          }
+        }
+      ]
+    },
     "previewResult": {
       "oneOf": [
         {
@@ -165,7 +313,65 @@
           ]
         },
         "receipt": {
-          "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationReceipt"
+          "type": "object",
+          "x-operon-receiptTimeline": true,
+          "additionalProperties": false,
+          "required": [
+            "contractVersion",
+            "vaultIdentityHash",
+            "clientInstanceId",
+            "idempotencyKeyHash",
+            "planHash",
+            "mutationKind",
+            "targetDigest",
+            "terminalOutcome",
+            "effectiveAt",
+            "completedAt",
+            "expiresAt"
+          ],
+          "properties": {
+            "contractVersion": {
+              "const": 1
+            },
+            "vaultIdentityHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "clientInstanceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "x-operon-maxUtf8Bytes": 128
+            },
+            "idempotencyKeyHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "planHash": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "mutationKind": {
+              "const": "task.create"
+            },
+            "targetDigest": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/sha256"
+            },
+            "terminalOutcome": {
+              "type": "string",
+              "enum": [
+                "applied",
+                "already-applied",
+                "outcome-unknown"
+              ]
+            },
+            "effectiveAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "completedAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            },
+            "expiresAt": {
+              "$ref": "urn:operon:schema:runtime:v1:common.schema.json#/$defs/auditTimestamp"
+            }
+          }
         },
         "postflight": {
           "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/mutationPostflight"
@@ -1855,7 +2061,242 @@
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mutationKind": {
+                "const": "task.recurrence"
+              }
+            },
+            "required": [
+              "mutationKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "capability": {
+                "const": "tasks.recurrence.preview"
+              },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/recurrenceSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mutationKind": {
+                "const": "task.relationship"
+              }
+            },
+            "required": [
+              "mutationKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "capability": {
+                "const": "tasks.relationship.preview"
+              },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/relationshipSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mutationKind": {
+                "const": "timer.session"
+              }
+            },
+            "required": [
+              "mutationKind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "capability": {
+                "const": "timers.session.preview"
+              },
+              "spec": {
+                "$ref": "urn:operon:schema:runtime:v1:mutation.schema.json#/$defs/timerSessionSpec"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mutationKind": {
+                "const": "task.create"
+              }
+            },
+            "required": [
+              "mutationKind"
+            ]
+          },
+          "then": {
+            "required": [
+              "createEffects"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "createEffects"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mutationKind": {
+                "const": "task.convert"
+              }
+            },
+            "required": [
+              "mutationKind"
+            ]
+          },
+          "then": {
+            "required": [
+              "conversionEffect"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "conversionEffect"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "spec": {
+                "properties": {
+                  "operation": {
+                    "const": "update-batch"
+                  }
+                },
+                "required": [
+                  "operation"
+                ]
+              }
+            },
+            "required": [
+              "spec"
+            ]
+          },
+          "then": {
+            "required": [
+              "updateBatchEffects"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "updateBatchEffects"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "riskLevel": {
+                "const": "destructive"
+              }
+            },
+            "required": [
+              "riskLevel"
+            ]
+          },
+          "then": {
+            "properties": {
+              "requiresConfirmation": {
+                "const": true
+              },
+              "requiredAcknowledgements": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "spec": {
+                "properties": {
+                  "operation": {
+                    "const": "delete"
+                  }
+                },
+                "required": [
+                  "operation"
+                ]
+              }
+            },
+            "required": [
+              "spec"
+            ]
+          },
+          "then": {
+            "properties": {
+              "riskLevel": {
+                "const": "destructive"
+              },
+              "requiresConfirmation": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "spec": {
+                "properties": {
+                  "operation": {
+                    "const": "convert"
+                  },
+                  "from": {
+                    "const": "file"
+                  },
+                  "to": {
+                    "const": "inline"
+                  }
+                },
+                "required": [
+                  "operation",
+                  "from",
+                  "to"
+                ]
+              }
+            },
+            "required": [
+              "spec"
+            ]
+          },
+          "then": {
+            "properties": {
+              "riskLevel": {
+                "const": "destructive"
+              },
+              "requiresConfirmation": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
     },
     "applyRequest": {
       "type": "object",

@@ -135,3 +135,31 @@ test('published examples match the public schema and decoders', () => {
  assert.ok(validate('policyRequest',examples.policyRequest));assert.ok(decodeTaskCreationPolicyRequestV1(examples.policyRequest).ok);
  assert.ok(validate('previewRequest',examples.previewRequest));assert.ok(decodeRoutedTaskCreationPreviewV1(examples.previewRequest).ok);
 });
+
+test('reserved continuation requires a fresh seal and schema retains base create constraints', () => {
+ const legacy=JSON.parse(readFileSync('scripts/agent-runtime/receipts/legacy-transaction-identifiers.json','utf8')).file.plan;
+ const item={...legacy.spec.items[0],title:legacy.spec.items[0].description,template:{mode:'none'}};delete item.description;
+ const plan={...legacy,extension:'task-creation-v1',capability:'tasks.create.routed.preview',policyRevision:'a'.repeat(64),spec:{operation:'create',item},planHash:''};
+ const {planHash:_hash,...body}=plan;plan.planHash=sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+ const error=structuredErrorV1('capability-unavailable','Synthetic interruption');
+ const partial={contractVersion:1,requestId:'continuation-test',kind:'mutation-result',status:'partial',mutationMayHaveApplied:true,retryAllowed:false,groupResults:[{groupId:'earlier-committed',status:'committed'},{groupId:plan.atomicGroups[0].groupId,status:'failed',error}],error,continuation:{originPlanHash:'b'.repeat(64),remainingGroupIds:plan.atomicGroups.map((g:{groupId:string})=>g.groupId),plan}};
+ assert.ok(decodeRoutedTaskCreationMutationResultV1(partial).ok);
+ partial.continuation.originPlanHash=plan.planHash;assert.equal(decodeRoutedTaskCreationMutationResultV1(partial).ok,false);
+ const check=ajv.getSchema(`${document.$id}#/$defs/sealedPlan`)!;
+ const {createEffects:_effects,...missing}=plan;assert.equal(check(missing),false);
+ assert.equal(check({...plan,conversionEffect:{}}),false);assert.equal(check({...plan,updateBatchEffects:[]}),false);
+});
+test('oversized policy fails consistently before either channel returns it',async()=>{
+ const f=fixture();const large=f.policy();large.exclusions=Array(512).fill('漢'.repeat(4096));
+ const runtime=createTaskCreationRuntimeV1({ready:()=>true,admit:async()=>({ok:true}),readSource:async()=>structuredClone(large)});
+ const result=await runtime.readPolicy(request);assert.equal(result.ok,false);if(!result.ok)assert.equal(result.error.code,'capability-unavailable');
+});
+
+test('reserved input supports each template selection and explicit inline/file/periodic targets', () => {
+ for(const target of [{mode:'configured-default'},{mode:'exact-path',representation:'inline',filePath:'Inbox.md',lineNumber:0},{mode:'exact-path',representation:'file',filePath:'Tasks/Review Q3.md'},{mode:'periodic-note',representation:'inline',periodicKind:'daily',routeDate:'2026-12-31'}]) {
+  for(const template of [{mode:'configured'},{mode:'none'},{mode:'selected',templateId:'folder-file-task-template:Templates/Task.md'}]) {
+   const input={...preview,spec:{...preview.spec,item:{...preview.spec.item,title:'İnceleme 日本語',target,template}}};
+   assert.ok(decodeRoutedTaskCreationPreviewV1(input).ok);assert.ok(validate('previewRequest',input));
+  }
+ }
+});

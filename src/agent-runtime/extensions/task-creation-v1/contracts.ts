@@ -73,4 +73,4 @@ export type TaskCreationCliResultEnvelopeV1 = Envelope<TaskWorkflowCliResultEnve
 type WithPlan<T> = T extends { ok: true } ? Omit<T, 'plan'> & { plan: RoutedTaskCreationPlanV1 } : T;
 export type RoutedTaskCreationPreviewResultV1 = WithPlan<MutationPreviewResultV1>;
 /** No success/continuation can be returned while execution is contract-only. */
-export type RoutedTaskCreationMutationResultV1 = Omit<MutationResultV1, 'continuation'> & { continuation?: Omit<NonNullable<MutationResultV1['continuation']>, 'plan'> & { plan: RoutedTaskCreationPlanV1 } };
+export type RoutedTaskCreationMutationResultV1 = Omit<MutationResultV1, 'continuation' | 'receipt'> & { receipt?: Omit<NonNullable<MutationResultV1['receipt']>, 'mutationKind'> & { mutationKind: 'task.create' }; continuation?: Omit<NonNullable<MutationResultV1['continuation']>, 'plan'> & { plan: RoutedTaskCreationPlanV1 } };

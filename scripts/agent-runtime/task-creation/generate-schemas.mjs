@@ -36,7 +36,7 @@ try {
  const spec = obj({ operation: { const: 'create' }, item });
  const preview = copy(core.$defs.mutationPreviewRequest); delete preview.allOf; delete preview.properties.target;
  preview.properties.capability = { const: 'tasks.create.routed.preview' }; preview.properties.mutationKind = { const: 'task.create' }; preview.properties.spec = ref('createSpec');
- const plan = copy(core.$defs.sealedMutationPlan); delete plan.allOf;
+ const plan = copy(core.$defs.sealedMutationPlan);
  plan.required.push('extension','policyRevision'); plan.properties.extension = { const: 'task-creation-v1' }; plan.properties.policyRevision = digest;
  plan.properties.capability = { const: 'tasks.create.routed.preview' }; plan.properties.mutationKind = { const: 'task.create' }; plan.properties.spec = ref('createSpec');
  const apply = copy(core.$defs.mutationApplyRequest); apply.properties.plan = ref('sealedPlan');
@@ -45,13 +45,15 @@ try {
  invocation.properties.command = { const: 'catalog' }; invocation.properties.request = ref('policyRequest'); if (!invocation.required.includes('request')) invocation.required.push('request');
  const previewResult = JSON.parse(JSON.stringify(copy(core.$defs.mutationPreviewResult)).replaceAll(`${core.$id}#/$defs/sealedMutationPlan`, `${ns}creation#/$defs/sealedPlan`));
  const mutationResult = copy(core.$defs.mutationResult);
+ const receipt = copy(core.$defs.mutationReceipt); receipt.properties.mutationKind = { const: 'task.create' }; mutationResult.properties.receipt = receipt;
  const continuation = copy(core.$defs.mutationContinuation); continuation.properties.plan = ref('sealedPlan'); mutationResult.properties.continuation = continuation;
- const defs = { previewResult, mutationResult, policy, policyRequest: request, policyResult: result, template, target, createSpec: spec, previewRequest: preview, sealedPlan: plan, applyRequest: apply, developerAccessRequest: accessRequest, cliInvocation: invocation };
+ const cliResult = copy(cli.$defs.result, cli.$id); delete cliResult.allOf; delete cliResult.properties.recovery; cliResult.additionalProperties = false; cliResult.properties.command = { const: 'catalog' }; cliResult.properties.result = ref('policyResult');
+ const defs = { cliResult, previewResult, mutationResult, policy, policyRequest: request, policyResult: result, template, target, createSpec: spec, previewRequest: preview, sealedPlan: plan, applyRequest: apply, developerAccessRequest: accessRequest, cliInvocation: invocation };
  const document = { $schema: 'https://json-schema.org/draft/2020-12/schema', $id: `${ns}creation`, title: 'Task creation V1 extension', $defs: defs };
  const bytes = JSON.stringify(document, null, 2) + '\n';
  const hash = value => createHash('sha256').update(value).digest('hex');
  const baseline = await read('contracts/agent-runtime/extensions/file-task-titles-v1/extension-manifest.json');
- const manifest = { manifestVersion: 1, contractVersion: 1, extensionId: 'task-creation-v1', baseContractDigest: baseline.baseContractDigest, baseSchemaManifestAggregateSha256: baseline.baseSchemaManifestAggregateSha256, cliSupport: 'provider-read-ready-client-deferred', capabilities: caps.map(id => ({ id, availability: id === caps[0] ? 'implemented' : 'contract-only' })), documents: [{ file: 'creation.schema.json', id: document.$id, sha256: hash(bytes) }], entrypoints: Object.keys(defs).map(name => ({ schemaId: `task-creation-${name}`, ref: `${document.$id}#/$defs/${name}`, file: 'creation.schema.json', sha256: hash(bytes), direction: ['policy','policyResult','sealedPlan','previewResult','mutationResult'].includes(name) ? 'response' : 'input' })) };
+ const manifest = { manifestVersion: 1, contractVersion: 1, extensionId: 'task-creation-v1', baseContractDigest: baseline.baseContractDigest, baseSchemaManifestAggregateSha256: baseline.baseSchemaManifestAggregateSha256, cliSupport: 'provider-read-ready-client-deferred', capabilities: caps.map(id => ({ id, availability: id === caps[0] ? 'implemented' : 'contract-only' })), documents: [{ file: 'creation.schema.json', id: document.$id, sha256: hash(bytes) }], entrypoints: Object.keys(defs).map(name => ({ schemaId: `task-creation-${name}`, ref: `${document.$id}#/$defs/${name}`, file: 'creation.schema.json', sha256: hash(bytes), direction: ['policy','policyResult','sealedPlan','previewResult','mutationResult','cliResult'].includes(name) ? 'response' : 'input' })) };
  manifest.aggregateSha256 = hash(JSON.stringify(manifest));
  const rendered = new Map([['creation.schema.json', bytes], ['extension-manifest.json', JSON.stringify(manifest,null,2)+'\n']]);
  if (process.argv.includes('--write')) { await mkdir(directory, { recursive: true }); for (const [file, content] of rendered) await writeFile(`${directory}/${file}`, content); }

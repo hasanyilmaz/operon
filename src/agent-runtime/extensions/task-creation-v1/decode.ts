@@ -11,15 +11,20 @@ export function creationKeysV1(value: Record<string, unknown>, required: string[
 function invalid<T>(): DecodeResultV1<T> { return { ok: false, issues: [{ path: '', code: 'value', message: 'Invalid task creation extension value.' }] }; }
 function validId(value: unknown): value is string { return typeof value === 'string' && REQUEST_ID_PATTERN_V1.test(value) && utf8ByteLengthV1(value) <= CONTRACT_LIMITS_V1.requestIdBytes; }
 export function decodeTaskCreationPolicyRequestV1(value: unknown): DecodeResultV1<TaskCreationPolicyRequestV1> {
+ try {
  if (!isRecord(value) || !creationKeysV1(value, ['contractVersion', 'requestId', 'kind', 'consistency']) || value.contractVersion !== 1 || value.kind !== 'task-creation-policy' || value.consistency !== 'live-verified' || !validId(value.requestId)) return invalid();
  return { ok: true, value: structuredClone(value) as unknown as TaskCreationPolicyRequestV1 };
+ } catch { return invalid(); }
 }
 export function decodeTaskCreationPolicyResultV1(value: unknown): DecodeResultV1<TaskCreationPolicyResultV1> {
+ try {
+ if (utf8ByteLengthV1(JSON.stringify(value) ?? '') > CONTRACT_LIMITS_V1.transportResultBytes - 16384) return invalid();
  if (!isRecord(value) || value.contractVersion !== 1 || value.kind !== 'task-creation-policy-result' || !validId(value.requestId)) return invalid();
  const base = ['contractVersion', 'requestId', 'kind', 'ok'];
  if (value.ok === false && creationKeysV1(value, [...base, 'error']) && decodeStructuredErrorV1(value.error).ok) return { ok: true, value: structuredClone(value) as unknown as TaskCreationPolicyResultV1 };
  if (value.ok !== true || !creationKeysV1(value, [...base, 'policy', 'policyRevision']) || typeof value.policyRevision !== 'string' || !/^[a-f0-9]{64}$/u.test(value.policyRevision) || !matchesCreationSchemaV1(value.policy, TASK_CREATION_POLICY_SCHEMA_V1)) return invalid();
  return { ok: true, value: structuredClone(value) as unknown as TaskCreationPolicyResultV1 };
+ } catch { return invalid(); }
 }
 /** Only validates intent. No executor is exposed until its parity gate passes. */
 export function decodeRoutedTaskCreationPreviewV1(value: unknown): DecodeResultV1<RoutedTaskCreationPreviewRequestV1> {
@@ -102,7 +107,7 @@ export function decodeRoutedTaskCreationMutationResultV1(value: unknown): Decode
   if (continuation !== undefined) {
    if (!isRecord(continuation)) return invalid();
    const plan = decodeRoutedTaskCreationPlanV1(continuation.plan);
-   if (!plan.ok) return invalid();
+   if (!plan.ok || continuation.originPlanHash === plan.value.planHash) return invalid();
    continuation = { ...continuation, plan: structuralPlan(plan.value) };
   }
   if (isRecord(value.receipt) && value.receipt.mutationKind !== 'task.create') return invalid();
