@@ -20,6 +20,8 @@ import type {
 	RuntimeRevisionSnapshotV1,
 } from './types';
 
+const TRANSIENT_READ_SETTLEMENT_TIMEOUT_MS = 1_000;
+
 export class SingleFlightRuntimeBarrierV1 {
 	private active: Promise<void> | null = null;
 
@@ -124,7 +126,7 @@ export class RuntimeCoherentReadCoordinatorV1 {
 		}
 		const firstPostAdmission = this.lifecycle.admitRead(request.minimumConsistency);
 		admissionWarnings = mergeWarnings(admissionWarnings, firstPostAdmission.warnings);
-		if (first.stable && firstPostAdmission.ok) {
+		if (!first.settling && first.stable && firstPostAdmission.ok) {
 			return {
 				ok: true,
 				value: first.value,
@@ -134,7 +136,7 @@ export class RuntimeCoherentReadCoordinatorV1 {
 			};
 		}
 
-		if (request.minimumConsistency === 'best-effort') {
+		if (!first.settling && request.minimumConsistency === 'best-effort') {
 			if (!firstPostAdmission.ok) {
 				return {
 					ok: false,
@@ -153,9 +155,18 @@ export class RuntimeCoherentReadCoordinatorV1 {
 			};
 		}
 
+		// A busy read authority consumes the existing second attempt, including for
+		// best-effort. Bound the new wait even when the in-process caller has no deadline.
+		const retryBoundary = first.settling
+			? new RuntimeReadBoundaryV1(
+				Math.min(request.deadlineAtMs ?? Infinity, this.ports.now() + TRANSIENT_READ_SETTLEMENT_TIMEOUT_MS),
+				request.signal,
+				this.ports,
+			)
+			: boundary;
 		try {
 			const second = await this.measure(request, 'drift-retry', 2, async () => {
-				await boundary.wait(this.settleBarrier.run(() => this.ports.settle(request.requestId)));
+				await retryBoundary.wait(this.settleBarrier.run(() => this.ports.settle(request.requestId)));
 				const retryAdmission = this.lifecycle.admitRead(request.minimumConsistency);
 				admissionWarnings = mergeWarnings(admissionWarnings, retryAdmission.warnings);
 				if (!retryAdmission.ok) throw new RuntimeRetryAdmissionErrorV1(retryAdmission.error!);
@@ -163,20 +174,23 @@ export class RuntimeCoherentReadCoordinatorV1 {
 			});
 			const secondPostAdmission = this.lifecycle.admitRead(request.minimumConsistency);
 			admissionWarnings = mergeWarnings(admissionWarnings, secondPostAdmission.warnings);
-			if (second.stable && secondPostAdmission.ok) {
+			if (!second.settling && secondPostAdmission.ok
+				&& (second.stable || request.minimumConsistency === 'best-effort')) {
 				return {
 					ok: true,
 					value: second.value,
 					revision: cloneRuntimeRevisionV1(second.after),
-					warnings: admissionWarnings,
+					warnings: second.stable ? admissionWarnings : mergeWarnings(admissionWarnings, [revisionDriftWarning()]),
 					attempts: 2,
 				};
 			}
 			return {
 				ok: false,
-				error: liveSettlingError(),
+				error: first.settling && request.minimumConsistency === 'best-effort'
+					? secondPostAdmission.error ?? liveSettlingError()
+					: liveSettlingError(),
 				revision: cloneRuntimeRevisionV1(second.after),
-				warnings: mergeWarnings(admissionWarnings, [revisionDriftWarning()]),
+				warnings: second.settling ? admissionWarnings : mergeWarnings(admissionWarnings, [revisionDriftWarning()]),
 				attempts: 2,
 			};
 		} catch (error) {
@@ -200,15 +214,14 @@ export class RuntimeCoherentReadCoordinatorV1 {
 	): Promise<{
 		before: RuntimeRevisionSnapshotV1;
 		after: RuntimeRevisionSnapshotV1;
-		value: T;
-		stable: boolean;
-	}> {
+	} & ({ settling: true } | { settling: false; value: T; stable: boolean })> {
 		const before = cloneRuntimeRevisionV1(await this.measure(
 			request,
 			'revision-before',
 			attempt,
 			() => boundary.wait(Promise.resolve(this.ports.sampleRevision(request.signal))),
 		));
+		if (request.isReadSettling?.()) return { before, after: before, settling: true };
 		const projected = await this.measure(
 			request,
 			'projection',
@@ -222,9 +235,11 @@ export class RuntimeCoherentReadCoordinatorV1 {
 			attempt,
 			() => boundary.wait(Promise.resolve(this.ports.sampleRevision(request.signal))),
 		));
+		if (request.isReadSettling?.()) return { before, after, settling: true };
 		return {
 			before,
 			after,
+			settling: false,
 			value,
 			stable: request.isRevisionStable
 				? request.isRevisionStable(before, after)

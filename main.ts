@@ -15154,6 +15154,7 @@ export default class OperonPlugin extends Plugin {
 		return await this.agentRuntimeCoherentRead.execute({
 			requestId,
 			minimumConsistency: consistency,
+			isReadSettling: () => this.agentRuntimeContextBridge?.isReadSettling() === true,
 			deadlineAtMs: context?.deadlineAtMs,
 			read: async revision => await project(
 				revision,

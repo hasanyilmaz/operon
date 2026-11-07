@@ -76,6 +76,9 @@ async function run(): Promise<void> {
 	await testCoherentReadRecoversRetryableFreshness();
 	await testCoherentReadDetectsSettlementDuringProjection();
 	await testCoherentReadSecondDrift();
+	await testTransientReadSettlement();
+	await testTransientReadSettlementBoundaries();
+	await testSettledReadPreservesConsistencyAndDeadline();
 	await testBestEffortDrift();
 	await testBestEffortReadmitsAfterRefresh();
 	await testProjectionIsolationAndPrivateErrors();
@@ -1555,6 +1558,125 @@ async function testCoherentReadSecondDrift(): Promise<void> {
 	assert.equal(result.error.code, 'live-settling');
 	assert.equal(result.attempts, 2);
 	assert.equal(result.warnings[0]?.code, 'runtime-revision-drift');
+}
+
+async function testTransientReadSettlement(): Promise<void> {
+	for (const consistency of ['best-effort', 'live-verified'] as const) {
+		for (const timing of ['before', 'during', 'repeated'] as const) {
+			let settling = timing !== 'during';
+			let reads = 0;
+			let waits = 0;
+			const coordinator = new RuntimeCoherentReadCoordinatorV1(readyLifecycle(), {
+				...runtimeTimingPorts(),
+				refreshSettings: async () => undefined,
+				settle: async () => {
+					waits += 1;
+					// A new event can arrive just after the verified pre-read barrier.
+					if (consistency === 'best-effort' || waits > 1) settling = timing === 'repeated';
+				},
+				sampleRevision: () => revision(1),
+			});
+			const result = await coordinator.execute({
+				minimumConsistency: consistency,
+				isReadSettling: () => settling,
+				read: async () => {
+					reads += 1;
+					if (timing === 'during' && reads === 1) settling = true;
+					return `snapshot-${reads}`;
+				},
+			});
+			assert.equal(result.attempts, 2, `${consistency}/${timing}`);
+			assert.equal(waits, consistency === 'best-effort' ? 1 : 2);
+			if (timing === 'repeated') {
+				assert.equal(reads, 0, 'Never project partially settled RAM');
+				assert.ok(!result.ok);
+				assert.equal(result.error.code, 'live-settling');
+				assert.equal(result.warnings.some(warning => warning.code === 'runtime-revision-drift'), false);
+			} else {
+				assert.ok(result.ok);
+				assert.equal(result.value, timing === 'during' ? 'snapshot-2' : 'snapshot-1');
+				assert.equal(reads, timing === 'during' ? 2 : 1);
+			}
+		}
+	}
+}
+
+async function testTransientReadSettlementBoundaries(): Promise<void> {
+	for (const mode of ['fallback', 'deadline', 'abort', 'unload'] as const) {
+		const lifecycle = readyLifecycle();
+		const controller = new AbortController();
+		const timers = new Set<ReturnType<typeof setTimeout>>();
+		const scheduledDelays: number[] = [];
+		let reads = 0;
+		let waits = 0;
+		const coordinator = new RuntimeCoherentReadCoordinatorV1(lifecycle, {
+			...runtimeTimingPorts(),
+			setTimer: (callback, delay) => {
+				scheduledDelays.push(delay);
+				const handle = setTimeout(callback, delay);
+				timers.add(handle);
+				return handle;
+			},
+			clearTimer: handle => {
+				clearTimeout(handle as ReturnType<typeof setTimeout>);
+				timers.delete(handle as ReturnType<typeof setTimeout>);
+			},
+			refreshSettings: async () => undefined,
+			settle: async () => {
+				waits += 1;
+				if (mode === 'unload') { lifecycle.beginUnloading(); return; }
+				if (mode === 'abort') queueMicrotask(() => controller.abort());
+				await new Promise<void>(() => undefined);
+			},
+			sampleRevision: () => revision(1),
+		});
+		const startedAt = Date.now();
+		const result = await coordinator.execute({
+			minimumConsistency: 'best-effort',
+			...(mode === 'deadline' ? { deadlineAtMs: startedAt + 50 } : {}),
+			signal: controller.signal,
+			isReadSettling: () => true,
+			read: async () => { reads += 1; return 'must not run'; },
+		});
+		assert.ok(!result.ok);
+		assert.equal(result.error.code, mode === 'abort' ? 'invalid-request' : mode === 'unload' ? 'capability-unavailable' : 'live-settling');
+		assert.equal(waits, 1);
+		assert.equal(reads, 0);
+		assert.equal(timers.size, 0, 'Every deadline/abort path clears its timer');
+		assert.ok(scheduledDelays.length > 0);
+		assert.ok(scheduledDelays.every(delay => delay <= (mode === 'deadline' ? 50 : 1_000)), 'Earlier caller deadline wins over the fallback cap');
+		assert.ok(Date.now() - startedAt < 3_000, 'Missing caller deadline must still bound settlement');
+	}
+	console.log('Transient read settlement regressions passed: 10 scenarios');
+}
+
+async function testSettledReadPreservesConsistencyAndDeadline(): Promise<void> {
+	for (const mode of ['revision-drift', 'caller-deadline', 'no-deadline'] as const) {
+		let now = 0;
+		let generation = 1;
+		let settling = true;
+		const coordinator = new RuntimeCoherentReadCoordinatorV1(readyLifecycle(), {
+			...runtimeTimingPorts(), now: () => now,
+			refreshSettings: async () => undefined,
+			settle: async () => { settling = false; },
+			sampleRevision: () => revision(generation),
+		});
+		const result = await coordinator.execute({
+			minimumConsistency: 'best-effort',
+			...(mode === 'caller-deadline' ? { deadlineAtMs: 10_000 } : {}),
+			isReadSettling: () => settling,
+			read: async () => {
+				if (mode === 'revision-drift') generation += 1;
+				else now = 1_500; // The new settlement budget must not shorten projection time.
+				return 'settled-snapshot';
+			},
+		});
+		assert.ok(result.ok, JSON.stringify(result));
+		assert.equal(result.attempts, 2);
+		assert.equal(result.value, 'settled-snapshot');
+		assert.equal(result.warnings.some(warning => warning.code === 'runtime-revision-drift'), mode === 'revision-drift');
+	}
+	console.log('Settled read semantics regressions passed: 3 scenarios');
 }
 
 async function testBestEffortDrift(): Promise<void> {

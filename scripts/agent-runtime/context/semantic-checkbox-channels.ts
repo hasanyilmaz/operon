@@ -1,3 +1,4 @@
+import type { DeepReadonlyV1 } from '../../../src/agent-runtime/public/v1/developer-api';
 import { canonicalJsonV1, toJsonValueV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
 import { computeRunningVaultSha256V1 } from '../../../src/agent-runtime/transport/secure-request-file';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ import type { TaskQueryRequestV1, TaskQueryResultV1 } from '../../../src/agent-r
 import { decodeCliResultEnvelopeV1 } from '../../../src/agent-runtime/contracts/v1/decode';
 
 /** Exercise both production adapters over the real indexer/Context query supplied by the fixture. */
-export async function testSemanticCheckboxChannels(query: (request: TaskQueryRequestV1) => Promise<TaskQueryResultV1>): Promise<void> {
+export async function testSemanticCheckboxChannels(query: (request: TaskQueryRequestV1) => Promise<TaskQueryResultV1>, allowGenerationAdvance = false): Promise<void> {
 	const compatibility = { contractVersion: 1 as const, runtimeApi: { min: 1, max: 1 } };
 	const health: RuntimeHealthV1 = {
 		apiVersion: 1, contractVersion: 1, ok: true, lifecyclePhase: 'ready', v8PersistencePhase: 'idle',
@@ -69,7 +70,13 @@ export async function testSemanticCheckboxChannels(query: (request: TaskQueryReq
 			assert.ok(decoded.value.ok);
 			const cliResult = decoded.value.result as TaskQueryResultV1;
 			assert.ok(cliResult.ok);
-			assert.equal(canonicalJsonV1(toJsonValueV1(cliResult.tasks)), canonicalJsonV1(toJsonValueV1(apiResult.tasks)));
+			const comparable = (result: DeepReadonlyV1<Extract<TaskQueryResultV1, { ok: true }>>) => result.tasks.map(task => {
+				assert.deepEqual(task.contextRevision, result.contextRevision, 'Every task uses its enclosing read revision');
+				return allowGenerationAdvance
+					? { ...task, contextRevision: { ...task.contextRevision, index: { ...task.contextRevision.index, ramGeneration: 0 } } }
+					: task;
+			});
+			assert.equal(canonicalJsonV1(toJsonValueV1(comparable(cliResult))), canonicalJsonV1(toJsonValueV1(comparable(apiResult))));
 			assert.equal(cliResult.tasks.length, 17);
 			assert.equal(cliResult.tasks.find(task => task.identity.operonId === 'z000017')?.checkbox, 'cancelled');
 		}

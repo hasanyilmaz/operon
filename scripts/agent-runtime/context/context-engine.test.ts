@@ -92,10 +92,11 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 		taskLine(`Task ${index}`, `s${String(index).padStart(6, '0')}`, `${pipeline.name}.${open.label}`, '', '')
 	));
 	let content = '';
+	let pendingRead: Promise<void> | undefined;
 	const app = {
 		vault: {
 			getAbstractFileByPath: () => file,
-			read: async () => content,
+			read: async () => { await pendingRead; return content; },
 		},
 	} as unknown as App;
 	const indexer = new OperonIndexer(app, { getSettings: () => settings } as never);
@@ -142,10 +143,14 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 	});
 	const query = (limit: number, consistency: 'live-verified' | 'best-effort' = 'live-verified', cursor?: string) => coordinator.execute({
 		minimumConsistency: consistency,
+		isReadSettling: () => bridge.isReadSettling(),
 		read: revision => bridge.queryTasks({
 			contractVersion: 1, requestId: 'semantic-checkbox', kind: 'task-query',
 			consistency, limit, ...(cursor ? { cursor } : {}),
-		}, { ...fixture.execution, revision: revision.contextRevision }),
+		}, {
+			...fixture.execution, revision: revision.contextRevision,
+			freshness: { ...fixture.execution.freshness, coherence: consistency === 'live-verified' ? 'verified' : 'settling', settled: consistency === 'live-verified' },
+		}),
 	});
 	for (const [fields, marker, expected] of [
 		[`{{status:: ${pipeline.name}.${cancelled.label}}}`, ' ', 'cancelled'],
@@ -217,6 +222,43 @@ async function testSemanticCheckboxQuery(): Promise<void> {
 	});
 	assert.equal(indexer.getGeneration(), channelGeneration);
 	assert.equal(mismatches, 0);
+
+	// Both adapters must recover while a real RAM scan is awaiting its source read.
+	await testSemanticCheckboxChannels(async request => {
+		let releaseRead!: () => void;
+		pendingRead = new Promise<void>(resolve => { releaseRead = resolve; });
+		const indexing = indexer.reindexFilePath(file.path, { notify: false });
+		assert.equal(indexer.getLiveReadAuthoritySnapshot().state, 'settling');
+		const timer = setTimeout(releaseRead, 0);
+		try {
+			assert.ok(request.consistency === 'live-verified' || request.consistency === 'best-effort');
+			const result = await query(request.limit ?? 17, request.consistency, request.cursor);
+			assert.ok(result.ok && result.value.ok, JSON.stringify(result));
+			assert.equal(result.attempts, request.consistency === 'best-effort' ? 2 : 1);
+			assert.equal(result.value.freshness.coherence, request.consistency === 'live-verified' ? 'verified' : 'settling');
+			return result.value;
+		} finally {
+			clearTimeout(timer);
+			releaseRead();
+			await indexing;
+			pendingRead = undefined;
+		}
+	}, true);
+	assert.equal(mismatches, 0);
+	for (const state of ['unverified', 'recovery-required', 'unloading'] as const) {
+		const guarded = createFixture();
+		Object.assign(guarded.index, { getLiveReadAuthoritySnapshot: () => ({ state, ramGeneration: 3 }) });
+		assert.equal(guarded.bridge.isReadSettling(), false);
+		for (const consistency of ['live-verified', 'best-effort'] as const) {
+			const result = await guarded.bridge.queryTasks({
+				contractVersion: 1, requestId: 'guarded', kind: 'task-query', consistency,
+			}, guarded.execution);
+			assert.ok(!result.ok);
+			assert.equal(result.error.code, 'live-settling');
+			assert.equal(guarded.readCounts.size, 0, 'Invalid authority never reaches source hydration');
+		}
+	}
+	console.log('Transient RAM authority regressions passed: 4 channel reads, 6 terminal guard cases');
 
 	// A one-task vault with mapped status/date names has no hidden result-count boundary.
 	const originalMappings = settings.keyMappings;

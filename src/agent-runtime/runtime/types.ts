@@ -174,6 +174,8 @@ export interface RuntimeReadRequestV1<T> {
 	minimumConsistency: ConsistencyV1;
 	deadlineAtMs?: number;
 	signal?: AbortSignal;
+	/** Internal read-authority gate; only transient RAM work requests settlement. */
+	isReadSettling?(): boolean;
 	read(revision: RuntimeRevisionSnapshotV1, signal?: AbortSignal): Promise<T>;
 	isRevisionStable?(
 		before: RuntimeRevisionSnapshotV1,

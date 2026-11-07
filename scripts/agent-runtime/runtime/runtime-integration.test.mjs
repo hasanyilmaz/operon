@@ -481,3 +481,10 @@ test('identity apply refuses unreceipted after-state convergence before creating
 		/if \(await this\.verifyAgentRuntimeIdentityPlanAfterState\(plan\)\) \{[\s\S]*?'stale-source'/u,
 	);
 });
+
+
+test('task Context reads opt into transient RAM settlement without changing other read channels', () => {
+ const contextRead = methodBody(mainSource, '\tprivate async executeAgentRuntimeContextRead<T>', '\n\tprivate async readAgentRuntimeTimer');
+ assert.match(contextRead, /isReadSettling: \(\) => this\.agentRuntimeContextBridge\?\.isReadSettling\(\) === true/u);
+ assert.equal((mainSource.match(/isReadSettling:/gu) ?? []).length, 1);
+});
