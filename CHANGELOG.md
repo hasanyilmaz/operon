@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed hidden **Operon ribbon buttons** reappearing after restarting Obsidian, preserving visibility choices made in Obsidian’s ribbon menu. ([#324](https://github.com/hasanyilmaz/operon/issues/324))
+
 ### Validation
 
 ## [4.5.0] - 2026-11-05

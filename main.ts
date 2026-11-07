@@ -20,7 +20,7 @@ import { newFileTaskTitleFields } from './src/core/task-display-title';
 import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
 import type { TaskMarkdownSource } from './src/core/task-markdown-source';
-import { SettingsWritesSuspendedError } from './src/storage/operon-data-package-store';
+import { SettingsWritesSuspendedError, isUnrecognizableCanonicalDataPackage } from './src/storage/operon-data-package-store';
 import { bindLightboxSizePreference } from './src/core/lightbox-size';
 import { updateDesktopBackdropDimming, disposeDesktopBackdrops, bindDesktopBackdropDimmingPreference, subscribeDesktopBackdropDimming } from './src/ui/modal-backdrop';
 import { tasksConversionProtectedLines } from './src/core/tasks-conversion-scope';
@@ -588,6 +588,7 @@ import {
 } from './src/agent-runtime/contracts/v1/identity';
 import type { AffectedResourceRevisionMapV1 } from './src/agent-runtime/contracts/v1/identity';
 import {
+	getAppLocale,
 	getCommunityPlugin,
 	getExternalModifiedTimeFrontmatterPropertyNames,
 	isDailyNotesCoreAvailable,
@@ -882,6 +883,8 @@ import {
 	resolveTaskCreatorInlinePlacement,
 } from './src/core/task-creator-target-resolver';
 import {
+	isSupportedLanguage,
+	migrateLegacyLanguageSettings,
 	cloneFilterSet,
 	CURRENT_TASK_STATS_BACKFILL_VERSION,
 	DEFAULT_INLINE_TASK_TARGET_FILE,
@@ -1702,6 +1705,7 @@ export default class OperonPlugin extends Plugin {
 	private pendingAggregateRemovedTasks = new Map<string, IndexedTask>();
 	private aggregatePendingRetryTimer: WindowTimeoutHandle | null = null;
 	private aggregatePendingDrainRunning = false;
+	private ribbonActionsReady = false;
 	private localePackManager: LocalePackManager | null = null;
 	private keyMappingSignature = '';
 	private workflowStatusSemanticsSignature = '';
@@ -15594,7 +15598,7 @@ export default class OperonPlugin extends Plugin {
 			: this.reminderScheduler?.whenIdle());
 	}
 
-	onload(): void {
+	async onload(): Promise<void> {
 		this.initializeAgentRuntime();
 		this.registerAgentRuntimeCliTransport();
 		if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) {
@@ -15602,6 +15606,10 @@ export default class OperonPlugin extends Plugin {
 				drainRuntimeTimings: () => this.agentRuntimeTimingProbe?.drain() ?? [],
 			});
 			}
+		// Obsidian restores ribbon visibility after awaiting plugin onload. Only
+		// cached labels belong in this barrier; storage/index startup stays asynchronous.
+		await this.prepareRibbonIcons();
+		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
 			runAsyncAction('plugin load failed', async () => {
 				try {
 					await this.loadPlugin();
@@ -16407,8 +16415,67 @@ export default class OperonPlugin extends Plugin {
 		return (hash >>> 0).toString(16);
 	}
 
-	private async loadPlugin(): Promise<void> {
+	private async prepareRibbonIcons(): Promise<void> {
+		let language: OperonSettings['language'] = 'en';
+		try {
+			const raw: unknown = await this.loadData();
+			if (isRecord(raw) && !isUnrecognizableCanonicalDataPackage(raw)) {
+				const settings = migrateLegacyLanguageSettings(raw.settings, getAppLocale(this.app));
+				if (typeof settings.language === 'string' && isSupportedLanguage(settings.language)) {
+					language = settings.language;
+				}
+			}
+		} catch (error) {
+			console.warn('Operon: could not read cached ribbon language', error);
+		}
+		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+		await this.initializeCachedLanguage(language);
+		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
 		registerObsidianIconFallbacks();
+		const add = (icon: string, title: string, action: () => void): void => {
+			this.addRibbonIcon(icon, title, () => {
+				if (this.ribbonActionsReady) action();
+			});
+		};
+		add('list-plus', t('commands', 'openTaskCreator'), () => {
+			this.openTaskCreator();
+		});
+		add('funnel-plus', t('commands', 'openFilterView'), () => {
+			runAsyncAction('open filter view from ribbon failed', () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId));
+		});
+		add('scan-search', t('commands', 'openTaskFinder'), () => {
+			this.openTaskFinderModal();
+		});
+		add('calendar', t('commands', 'openCalendar'), () => {
+			runAsyncAction('open calendar from ribbon failed', () => this.openCalendarView());
+		});
+		add('square-kanban', t('commands', 'openKanban'), () => {
+			runAsyncAction('open kanban from ribbon failed', () => this.openKanbanView());
+		});
+		add('table-2', t('commands', 'openOperonTable'), () => {
+			runAsyncAction('open operon table from ribbon failed', () => this.openOperonTable());
+		});
+		add('pin', t('commands', 'openPinnedTasks'), () => {
+			runAsyncAction('open pinned tasks from ribbon failed', () => this.openPinnedTasksSurface());
+		});
+	}
+
+	private async initializeCachedLanguage(language: OperonSettings['language']): Promise<void> {
+		this.localePackManager ??= new LocalePackManager({
+			adapter: this.app.vault.adapter,
+			configDir: this.app.vault.configDir,
+			pluginId: this.manifest.id,
+		});
+		await this.localePackManager.initialize();
+		resetI18nToEnglish();
+		if (language !== 'en') {
+			const cachedLocale = await this.localePackManager.loadCachedLocale(language);
+			if (cachedLocale) installI18nLocale(language, cachedLocale.translations);
+		}
+		initI18n(undefined, language);
+	}
+
+	private async loadPlugin(): Promise<void> {
 		if (Platform.isDesktopApp) {
 			try {
 				const nodeApi = await loadAgentRuntimeDesktopNodeApiV1();
@@ -16535,12 +16602,6 @@ export default class OperonPlugin extends Plugin {
 			isGrantCurrent: grant => this.isDeveloperApiGrantCurrent(grant),
 			now: () => new Date(),
 		});
-		this.localePackManager = new LocalePackManager({
-			adapter: this.app.vault.adapter,
-			configDir: this.app.vault.configDir,
-			pluginId: this.manifest.id,
-		});
-		await this.localePackManager.initialize();
 		this.projectSerialIndexReconcileScheduler = new CoalescedAsyncScheduler({
 			delayMs: 80,
 			maxRetries: 1,
@@ -16562,12 +16623,7 @@ export default class OperonPlugin extends Plugin {
 			get: () => this.settings,
 			save: change => this.storage.saveLocationPickerDefault(change),
 		}));
-		resetI18nToEnglish();
-		if (this.settings.language !== 'en') {
-			const cachedLocale = await this.localePackManager.loadCachedLocale(this.settings.language);
-			if (cachedLocale) installI18nLocale(this.settings.language, cachedLocale.translations);
-		}
-		initI18n(undefined, this.settings.language);
+		await this.initializeCachedLanguage(this.settings.language);
 		this.tableFilePropertyIndex = getTableFilePropertyIndex(this.app, {
 			typeResolver: this.tableFilePropertyTypeResolver,
 		});
@@ -17145,7 +17201,7 @@ export default class OperonPlugin extends Plugin {
 					() => this.retryPendingWorkflowRename(),
 					() => this.resolvePendingWorkflowRenameConflict(),
 			this.buildTablePresetSettingsFileIntegration(),
-			this.localePackManager,
+			this.localePackManager ?? undefined,
 			() => this.reminderDeliveryController?.previewInOperon(),
 			async () => await this.reminderDeliveryController?.previewSystemNotification() ?? false,
 			this.buildDeveloperApiSettingsIntegration(),
@@ -17215,34 +17271,7 @@ export default class OperonPlugin extends Plugin {
 			}, 10);
 			runAsyncAction('startup layout maintenance failed', async () => {
 			try {
-			// Add ribbon icons after all plugins have loaded so they appear at the end
-			this.addRibbonIcon('list-plus', t('commands', 'openTaskCreator'), () => {
-				this.openTaskCreator();
-			});
-
-				this.addRibbonIcon('funnel-plus', t('commands', 'openFilterView'), () => {
-					runAsyncAction('open filter view from ribbon failed', () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId));
-				});
-
-				this.addRibbonIcon('scan-search', t('commands', 'openTaskFinder'), () => {
-					this.openTaskFinderModal();
-				});
-
-				this.addRibbonIcon('calendar', t('commands', 'openCalendar'), () => {
-					runAsyncAction('open calendar from ribbon failed', () => this.openCalendarView());
-				});
-
-			this.addRibbonIcon('square-kanban', t('commands', 'openKanban'), () => {
-				runAsyncAction('open kanban from ribbon failed', () => this.openKanbanView());
-			});
-
-			this.addRibbonIcon('table-2', t('commands', 'openOperonTable'), () => {
-				runAsyncAction('open operon table from ribbon failed', () => this.openOperonTable());
-			});
-
-				this.addRibbonIcon('pin', t('commands', 'openPinnedTasks'), () => {
-					runAsyncAction('open pinned tasks from ribbon failed', () => this.openPinnedTasksSurface());
-				});
+			this.ribbonActionsReady = this.agentRuntimeLifecycle.getPhase() !== 'unloading';
 
 			this.scheduleYamlPropertyVisibilityRefresh(150);
 
@@ -17419,6 +17448,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.ribbonActionsReady = false;
 		this.timeTracker?.cancelExternalRefresh();
 		this.tasksConversionController?.dispose();
 		disposeAssigneeChipImages(this.app);
