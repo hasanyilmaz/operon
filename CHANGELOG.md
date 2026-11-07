@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed **Task Pool layout on touch-capable devices** when the on-screen keyboard opens: the panel can move higher while its header and search stay in place and the task list remains scrollable. Very short viewports keep the focused search field accessible. Applies to Excalidraw, Canvas, and Kanban.
 - Fixed hidden **Operon ribbon buttons** reappearing after restarting Obsidian, preserving visibility choices made in Obsidian’s ribbon menu. ([#324](https://github.com/hasanyilmaz/operon/issues/324))
 
 ### Validation
