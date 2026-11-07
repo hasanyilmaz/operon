@@ -27105,6 +27105,29 @@ export default class OperonPlugin extends Plugin {
 		timeout = setWindowTimeout(finish, 600);
 	}
 
+	/** Skip only settled Reading views with positive evidence of no task surfaces. */
+	private isUnrelatedReadingTaskView(view: MarkdownView): boolean {
+		if (this.taskCardIndexState !== 'ready' || !view.file
+			|| this.indexer.getLiveReadAuthoritySnapshot().state !== 'verified') return false;
+		const root = view.contentEl.querySelector<HTMLElement>('.markdown-preview-sizer');
+		if (!root?.isConnected) return false;
+		if (this.indexer.getTaskIdsInFileSnapshot(view.file.path).length > 0) return false;
+		const metadata = this.app.metadataCache.getFileCache(view.file);
+		if (!metadata || metadata.listItems?.some(item => item.task !== undefined)
+			|| metadata.links?.length || metadata.embeds?.length) return false;
+		if (root.querySelector(
+			'[class*="operon-"], [data-operon-reading-task-id], [data-operon-task-wikilink-wrapper], '
+			+ '.task-list-item, input[type="checkbox"], a.internal-link, .internal-embed',
+		)) return false;
+		// Use the already loaded view text: metadata can lag a recent edit. No vault reads.
+		if (typeof view.getViewData !== 'function') return false;
+		const source = view.getViewData();
+		if (typeof source !== 'string') return false;
+		// Conservative candidates include unresolved links, unindexed checkboxes, and
+		// not-yet-mounted Operon code blocks (including quoted/nested fences).
+		return !/\[\[|\]\s*\(|\]\s*\[|\[[^\]\r\n]\]|(?:`{3,}|~{3,})[ \t]*operon\b/iu.test(source);
+	}
+
 	private refreshMarkdownTaskSurfaces(options: MarkdownTaskSurfaceRefreshOptions = {}): MarkdownTaskSurfaceRefreshResult {
 		// Force-refresh CM6 task bar widgets in all open markdown editors
 		// so they rebuild with fresh index data (same pattern as FilterView.render()).
@@ -27126,6 +27149,11 @@ export default class OperonPlugin extends Plugin {
 			if (scopedFilePaths && (!view.file || !scopedFilePaths.has(view.file.path))) {
 				skippedLeaves++;
 				continue;
+			}
+			if (view.getMode() === 'preview' && options.forceReadingViewRerender !== true) {
+				try {
+					if (this.isUnrelatedReadingTaskView(view)) { skippedLeaves++; continue; }
+				} catch { /* Unavailable metadata or detached views keep the existing fallback. */ }
 			}
 			refreshedLeaves++;
 			if (view.getMode() === 'preview') {
