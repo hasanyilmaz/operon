@@ -38,7 +38,7 @@ import { FileTaskTitleRenamer, FILE_TASK_TITLE_RENAME_DELAY_MS } from '../src/sy
 import { getTableTaskRawValue } from '../src/ui/table/table-value-adapter';
 import { createTableValueResolver } from '../src/ui/table/table-value-cache';
 import { buildTableTaskSearchMatcher } from '../src/ui/table/table-search';
-import { renderFileTaskRenameControls } from '../src/ui/file-task-rename-callout';
+import { createFileTaskTitleAfterCommit, renderFileTaskRenameControls } from '../src/ui/file-task-rename-callout';
 
 const file = Object.assign(Object.create(TFile.prototype) as TFile, {
 	path: 'old-file.md', name: 'old-file.md', basename: 'old-file', extension: 'md', parent: { path: '' },
@@ -497,6 +497,20 @@ function renameControls(host: Control, filename: string, rename: (value: string)
 	renderFileTaskRenameControls(host as unknown as HTMLElement, { filename }, { variant: 'editor-row', currentFilename: 'old-file.md', rename, dismiss });
 	return { rename: host.find('button', t('taskEditor', 'fileTaskRenameAction')), keep: host.find('button', t('taskEditor', 'fileTaskKeep')) };
 }
+
+test('popover rename refuses a stale suggestion and requests saving the current draft', async () => {
+ const host = new Control(); let current = false, saves = 0, renames = 0;
+ const after = createFileTaskTitleAfterCommit(task, {
+  onFileTaskTitleChanged: async () => ({ filename: 'saved-title' }),
+  onRenameFileTask: async () => { renames++; },
+ });
+ assert.equal(await after('Saved title', host as unknown as HTMLElement, () => { saves++; }, () => current), false);
+ host.find('button', t('taskEditor', 'fileTaskRenameAction')).click(); await setImmediate();
+ assert.equal(renames, 0); assert.equal(saves, 1);
+ current = true;
+ host.find('button', t('taskEditor', 'fileTaskRenameAction')).click(); await setImmediate();
+ assert.equal(renames, 1); assert.equal(saves, 2);
+});
 
 test('Keep preserves the saved title and repeated Rename commits an edited suggestion once', async context => {
 	const f = await vaultFixture(context), host = new Control();

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { App } from 'obsidian';
+import { App, Platform } from 'obsidian';
+import { transferLightboxOpening } from '../src/ui/lightbox';
 import {
 	showTextFieldPopover,
 	type TextFieldPopoverDependencies,
@@ -81,6 +82,7 @@ class FakeElement {
 		this.classList.delete(name);
 	}
 
+	contains(node: unknown): boolean { return node === this || this.children.some(child => child.contains(node)); }
 	addEventListener(): void {}
 	removeEventListener(): void {}
 
@@ -173,6 +175,83 @@ async function runTextFieldPopoverBehaviorTests(): Promise<void> {
 		equal(afterSaves, 1); equal(saves, 1); equal(closes, 0);
 		equal(await handle.requestCloseAndWait(), true, 'dismissing a saved title does not save again');
 		equal(saves, 1); equal(closes, 1);
+	}
+
+	for (const action of ['revert', 'keep', 'rename', 'failed-save', 'during-save'] as const) {
+		let value = 'Saved title', persisted = 'Original title', closes = 0;
+		let dismiss = () => {}, current = () => false;
+		const saved: string[] = [];
+		const gate = deferred<void>();
+		const dependencies: TextFieldPopoverDependencies = {
+			createCompactEditorSurface: () => ({
+				getCommit: () => ({ shouldCommit: value !== 'Original title', value }),
+				focusEnd() {}, refreshLayout() {}, destroy() {},
+			}) as unknown as CompactMarkdownEditorSurface,
+			createPanel: (_anchor, _className, onClose) => ({
+				panel: new FakeElement() as unknown as HTMLElement,
+				close: () => { closes++; onClose?.(); },
+			}),
+		};
+		const handle = showTextFieldPopover({
+			app: new App(), anchor: {} as DOMRect, title: 'Title', initialValue: 'Original title',
+			editor: { kind: 'compact-markdown', sourcePath: 'Task.md' },
+			onCommit: async next => {
+				if (action === 'during-save') await gate.promise;
+				if (action === 'failed-save' && saved.length) return false;
+				persisted = next; saved.push(next); return true;
+			},
+			onAfterCommit: async (_title, _host, close, isCurrent) => {
+				dismiss = close; current = isCurrent!;
+				return action === 'during-save';
+			},
+		}, dependencies);
+		const first = handle.requestCloseAndWait();
+		if (action === 'during-save') { value = 'Newer draft'; gate.resolve(); }
+		equal(await first, false, `${action}: save must retain the editor`);
+		equal(persisted, 'Saved title'); equal(closes, 0);
+		if (action === 'during-save') {
+			equal(await handle.requestCloseAndWait(), true); equal(persisted, 'Newer draft');
+		} else {
+			equal(current(), true);
+			value = action === 'revert' ? 'Original title' : 'Newer draft';
+			equal(current(), false, 'an old filename suggestion cannot rename a newer draft');
+			if (action === 'revert') handle(); else dismiss();
+			await flushAsync();
+			equal(closes, 0, 'a newer draft is saved or retained on failure');
+			equal(persisted, action === 'failed-save' ? 'Saved title' : value);
+			value = persisted;
+			dismiss(); await flushAsync(); equal(closes, 1);
+		}
+	}
+
+	{
+		const wasDesktop = Platform.isDesktopApp;
+		Platform.isDesktopApp = true;
+		let value = 'Saved title', persisted = 'Original title', closes = 0, activations = 0;
+		const panel = new FakeElement();
+		const handle = showTextFieldPopover({
+			app: new App(), anchor: {} as DOMRect, title: 'Title', initialValue: 'Original title',
+			editor: { kind: 'compact-markdown', sourcePath: 'Task.md', openLinksInLightbox: true },
+			onCommit: next => { persisted = next; return true; }, onAfterCommit: async () => false,
+		}, {
+			createCompactEditorSurface: () => ({
+				getCommit: () => ({ shouldCommit: value !== 'Original title', value }),
+				focusEnd() {}, refreshLayout() {}, destroy() {},
+			}) as unknown as CompactMarkdownEditorSurface,
+			createPanel: (_anchor, _className, onClose) => ({ panel: panel as unknown as HTMLElement, close: () => { closes++; onClose?.(); } }),
+		});
+		try {
+			equal(await handle.requestCloseAndWait(), false);
+			value = 'Original title';
+			const transfer = () => transferLightboxOpening(panel as unknown as HTMLElement, async () => () => { activations++; });
+			equal(await transfer(), false, 'reverting to the opening value is still a dirty draft after a save');
+			equal(closes, 0); equal(activations, 0); equal(persisted, 'Saved title');
+			value = '';
+			equal(await transfer(), false, 'a disallowed empty draft retains the existing transfer guard');
+			value = 'Saved title';
+			equal(await transfer(), true, 'the saved value is clean even though the opening value differs');
+			equal(closes, 1); equal(activations, 1);
+		} finally { value = persisted; handle(); Platform.isDesktopApp = wasDesktop; }
 	}
 
 	for (const closeReason of ['handle', 'outside'] as const) {

@@ -10,6 +10,7 @@ type FileTaskRenameControlsOptions = {
 	currentFilename: string;
 	rename: (filename: string) => Promise<void>;
 	dismiss: () => void;
+	beforeRename?: () => boolean;
 };
 
 export function renderFileTaskRenameControls(
@@ -106,7 +107,7 @@ export function renderFileTaskRenameControls(
 		input.select();
 	};
 	const renameFile = async (): Promise<void> => {
-		if (!isCurrent()) return;
+		if (!isCurrent() || options.beforeRename?.() === false) return;
 		const filename = input?.value ?? suggestion.filename;
 		if (input && !input.reportValidity()) return;
 		if (!input && suggestion.error) {
@@ -149,12 +150,14 @@ export function renderFileTaskRenameCallout(
 	suggestion: FileTaskRenameSuggestion,
 	rename: (filename: string) => Promise<void>,
 	dismiss: () => void,
+	beforeRename?: () => boolean,
 ): void {
 	renderFileTaskRenameControls(host, suggestion, {
 		variant: 'popover',
 		currentFilename,
 		rename,
 		dismiss,
+		beforeRename,
 	});
 }
 
@@ -165,14 +168,18 @@ export function createFileTaskTitleAfterCommit(
 		onRenameFileTask?: (operonId: string, filename: string) => Promise<void>;
 	},
 ): NonNullable<TextFieldPopoverOptions['onAfterCommit']> {
-	return async (title, host, close) => {
+	return async (title, host, close, isCurrent) => {
 		const suggestion = await callbacks.onFileTaskTitleChanged?.(task.operonId, title);
 		if (!suggestion) return true;
 		renderFileTaskRenameCallout(host, task.primary.filePath.split('/').pop() ?? '',
 			suggestion, async filename => {
 				if (!callbacks.onRenameFileTask) throw new Error(t('taskEditor', 'fileTaskRenameFailed'));
 				await callbacks.onRenameFileTask(task.operonId, filename);
-			}, close);
+			}, close, () => {
+				if (isCurrent?.() !== false) return true;
+				close();
+				return false;
+			});
 		return false;
 	};
 }
