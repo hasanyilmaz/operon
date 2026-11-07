@@ -2987,3 +2987,25 @@ test('creation policy uses the secure catalog transport without calling legacy c
   assert.equal(output.ok,true,JSON.stringify(output));assert.deepEqual(output.result,expected);assert.equal(reads,4);
  } finally {await rm(vault,{recursive:true,force:true});}
 });
+
+test('routed creation preview/apply use the dedicated provider through secure native transport',async()=>{
+ const vault=await mkdtemp(join(tmpdir(),'operon-routed-creation-transport-'));
+ try {
+  const legacy=JSON.parse(readFileSync('scripts/agent-runtime/receipts/legacy-transaction-identifiers.json','utf8')).file.plan;
+  const item={...legacy.spec.items[0],title:legacy.spec.items[0].description,template:{mode:'none'}};delete item.description;
+  const request={contractVersion:1,requestId:'routed-transport',kind:'mutation-preview',capability:'tasks.create.routed.preview',mutationKind:'task.create',clientInstanceId:legacy.clientInstanceId,idempotencyKey:'routed-transport-key',authorization:{basis:'user-explicit-request'},spec:{operation:'create',item}};
+  const plan={...legacy,extension:'task-creation-v1',capability:request.capability,spec:request.spec,policyRevision:'a'.repeat(64),idempotencyKeyHash:sha256HexV1(request.idempotencyKey),creation:{version:1,executionSpec:{...legacy.spec,items:[{...legacy.spec.items[0],target:{...legacy.spec.items[0].target,identityPlaceholderPolicy:'resolve-operon-id-v1'}}]},periodicRoute:null,templateId:null,templateDigest:sha256HexV1(''),materialRevision:'b'.repeat(64),graphDigest:'c'.repeat(64),resolvedFields:{},resolvedTags:[],nativeProperties:[],allocations:[],fileAllocations:[],definitions:[],skipped:[],retention:'preserve-definitions-on-failure'}};
+  const {planHash:_hash,...body}=plan;plan.planHash=sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+  const calls:string[]=[];const health={...createHealth(),capabilities:[...createHealth().capabilities,...taskCreationAdvertisementsV1(true,true)]};
+  const failure={contractVersion:1 as const,code:'stale-source' as const,reason:'provider conflict',retryable:false,action:'refresh-state' as const};
+  const runtime:OperonAgentRuntimeCoreV1={...createRuntime(health),hasCapability:id=>health.capabilities.some(cap=>cap.id===id&&cap.availability==='available'),taskCreation:{readPolicy:async()=>{throw Error('Unexpected policy read');},mutations:{preview:async value=>{calls.push('preview');return {contractVersion:1,requestId:(value as {requestId:string}).requestId,kind:'mutation-preview-result',ok:false,warnings:[],error:failure};},apply:async value=>{calls.push('apply');return {contractVersion:1,requestId:(value as {requestId:string}).requestId,kind:'mutation-result',status:'failed',mutationMayHaveApplied:false,retryAllowed:false,groupResults:[],error:failure};},recover:async()=>{throw Error('Unexpected recover');}}}};
+  for(const apply of [false,true]) {
+   const command=apply?'mutation.apply' as const:'mutation.preview' as const;
+   const invocation={...await catalogInvocation(vault,request.requestId,1000),command,request:apply?{contractVersion:1,requestId:request.requestId,kind:'mutation-apply',authorization:request.authorization,idempotencyKey:request.idempotencyKey,acknowledgements:[],plan}:request};
+   const token=(apply?'R':'S').repeat(32);await publishRequest(token,JSON.stringify(invocation),0o600);
+   const output=JSON.parse(await dispatchAgentRuntimeCliV1({runtime,nodeApi,vaultAdapter:{getFullPath:()=>vault},runtimeMetadata:{appVersion:'1.13.3',plugin:{id:'operon',version:'4.5.0',minAppVersion:'1.7.2'},apiVersion:1},monotonicNow:()=>10},{expectedCommand:command,requestToken:token}));
+   assert.equal(output.ok,apply,JSON.stringify(output));if(apply)assert.equal(output.result.error.reason,'provider conflict');else assert.equal(output.failure.error.reason,'provider conflict');
+  }
+  assert.deepEqual(calls,['preview','apply']);
+ } finally {await rm(vault,{recursive:true,force:true});}
+});

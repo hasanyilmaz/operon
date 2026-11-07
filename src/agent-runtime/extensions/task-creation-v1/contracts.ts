@@ -1,6 +1,9 @@
+import type { VaultPropertyValue } from '../../../core/vault-property-codec';
+import type { InlinePropertyDefinition } from '../../../core/inline-property-definitions';
+import type { IdentityPlaceholderCreateSpecV1, PeriodicNoteCreateSpecV1, PeriodicNoteCreateSealedPlanV1, TemplateIdentityAllocationV1 } from '../task-workflows-v1/contracts';
 import type { CapabilityAdvertisementV1 } from '../../contracts/v1/capabilities';
 import type { CatalogRequestV1 } from '../../contracts/v1/catalog';
-import type { CreateTaskItemV1, MutationPreviewRequestV1, MutationApplyRequestV1, MutationPreviewResultV1, MutationResultV1, SealedMutationPlanV1 } from '../../contracts/v1/mutation';
+import type { CreateTaskItemV1, CreateTaskSpecV1, MutationPreviewRequestV1, MutationApplyRequestV1, MutationPreviewResultV1, MutationResultV1, SealedMutationPlanV1 } from '../../contracts/v1/mutation';
 import type { StructuredErrorV1 } from '../../contracts/v1/primitives';
 import type { TaskWorkflowCliInvocationBaseV1, TaskWorkflowCliResultEnvelopeV1 } from '../task-workflows-v1/contracts';
 
@@ -10,8 +13,8 @@ export type TaskCreationCapabilityV1 = typeof TASK_CREATION_CAPABILITIES_V1[numb
 export function isTaskCreationCapabilityV1(value: string): value is TaskCreationCapabilityV1 {
  return (TASK_CREATION_CAPABILITIES_V1 as readonly string[]).includes(value);
 }
-export function taskCreationAdvertisementsV1(ready: boolean): CapabilityAdvertisementV1[] {
- return TASK_CREATION_CAPABILITIES_V1.map(id => ({ id, stability: 'stable', availability: id === 'tasks.creation-policy.read' ? ready ? 'available' : 'unavailable' : 'contract-only', ...(id === 'tasks.creation-policy.read' ? {} : { reason: 'Routed creation execution is not enabled.' }) }));
+export function taskCreationAdvertisementsV1(ready: boolean, mutationsReady = false): CapabilityAdvertisementV1[] {
+ return TASK_CREATION_CAPABILITIES_V1.map(id => ({ id, stability: 'stable', availability: id === 'tasks.creation-policy.read' || mutationsReady ? ready ? 'available' : 'unavailable' : 'contract-only', ...(id === 'tasks.creation-policy.read' || mutationsReady ? {} : { reason: 'Routed creation execution is not enabled.' }) }));
 }
 export type TaskCreationPolicyRequestV1 = Omit<CatalogRequestV1, 'kind' | 'consistency'> & { kind: 'task-creation-policy'; consistency: 'live-verified' };
 export interface PeriodicCreationPolicyV1 {
@@ -55,7 +58,7 @@ export type TaskCreationTemplateV1 = { mode: 'configured' | 'none' } | { mode: '
 /** Exactly one item. title is human input; File Task identity remains its physical path. */
 export interface RoutedTaskCreationSpecV1 {
  operation: 'create';
- item: Omit<CreateTaskItemV1, 'description' | 'target'> & { title: string; target: TaskCreationTargetV1; template: TaskCreationTemplateV1 };
+ item: Omit<CreateTaskItemV1, 'description' | 'target'> & { title: string; target: TaskCreationTargetV1; template: TaskCreationTemplateV1; nativeProperties?: Array<{ sourceName: string; value: VaultPropertyValue }> };
 }
 export type RoutedTaskCreationPreviewRequestV1 = Omit<MutationPreviewRequestV1, 'capability' | 'mutationKind' | 'target' | 'spec'> & {
  capability: 'tasks.create.routed.preview'; mutationKind: 'task.create'; target?: never; spec: RoutedTaskCreationSpecV1;
@@ -64,13 +67,39 @@ export type RoutedTaskCreationPreviewRequestV1 = Omit<MutationPreviewRequestV1, 
 export type RoutedTaskCreationPlanV1 = Omit<SealedMutationPlanV1, 'capability' | 'spec' | 'mutationKind'> & {
  mutationKind: 'task.create'; extension: typeof TASK_CREATION_EXTENSION_V1; capability: 'tasks.create.routed.preview'; spec: RoutedTaskCreationSpecV1;
  policyRevision: string;
+ creation?: RoutedCreationEvidenceV1;
 };
 export type RoutedTaskCreationApplyRequestV1 = Omit<MutationApplyRequestV1, 'plan'> & { plan: RoutedTaskCreationPlanV1 };
-export type TaskCreationCliInvocationV1 = TaskWorkflowCliInvocationBaseV1 & { command: 'catalog'; request: TaskCreationPolicyRequestV1 };
-type Envelope<T> = T extends { ok: true } ? Omit<T, 'command' | 'result'> & { command: 'catalog'; result: TaskCreationPolicyResultV1 } : Omit<T, 'command'> & { command: 'catalog' };
+export type TaskCreationCliInvocationV1 = TaskWorkflowCliInvocationBaseV1 & ({ command: 'catalog'; request: TaskCreationPolicyRequestV1 } | {command:'mutation.preview';request:RoutedTaskCreationPreviewRequestV1} | {command:'mutation.apply';request:RoutedTaskCreationApplyRequestV1});
+type Envelope<T> = T extends { ok: true } ? Omit<T, 'command' | 'result'> & { command: 'catalog'|'mutation.preview'|'mutation.apply'; result: TaskCreationPolicyResultV1|RoutedTaskCreationPreviewResultV1|RoutedTaskCreationMutationResultV1 } : Omit<T, 'command'> & { command: 'catalog'|'mutation.preview'|'mutation.apply' };
 export type TaskCreationCliResultEnvelopeV1 = Envelope<TaskWorkflowCliResultEnvelopeV1>;
 
 type WithPlan<T> = T extends { ok: true } ? Omit<T, 'plan'> & { plan: RoutedTaskCreationPlanV1 } : T;
 export type RoutedTaskCreationPreviewResultV1 = WithPlan<MutationPreviewResultV1>;
 /** No success/continuation can be returned while execution is contract-only. */
-export type RoutedTaskCreationMutationResultV1 = Omit<MutationResultV1, 'continuation' | 'receipt'> & { receipt?: Omit<NonNullable<MutationResultV1['receipt']>, 'mutationKind'> & { mutationKind: 'task.create' }; continuation?: Omit<NonNullable<MutationResultV1['continuation']>, 'plan'> & { plan: RoutedTaskCreationPlanV1 } };
+export type RoutedTaskCreationMutationResultV1 = { recoveryOutcome?: 'compensated' } & Omit<MutationResultV1, 'continuation' | 'receipt'> & { receipt?: Omit<NonNullable<MutationResultV1['receipt']>, 'mutationKind'> & { mutationKind: 'task.create' }; continuation?: Omit<NonNullable<MutationResultV1['continuation']>, 'plan'> & { plan: RoutedTaskCreationPlanV1 } };
+
+/** Executable Stage 2 material; reserved Stage 1 plans without it cannot be applied. */
+export interface RoutedCreationEvidenceV1 {
+ version: 1;
+ executionSpec: CreateTaskSpecV1 | IdentityPlaceholderCreateSpecV1 | PeriodicNoteCreateSpecV1;
+ periodicRoute: PeriodicNoteCreateSealedPlanV1['periodicRoute'] | null;
+ templateId: string | null;
+ templateDigest: string;
+ materialRevision: string;
+ graphDigest: string;
+ resolvedFields: Record<string,string>;
+ resolvedTags: string[];
+ nativeProperties: Array<{sourceName:string;value:VaultPropertyValue}>;
+ allocations: string[];
+ fileAllocations: TemplateIdentityAllocationV1[];
+ definitions: InlinePropertyDefinition[];
+ skipped: Array<{ sourceName: string; reason: string }>;
+ retention: 'preserve-definitions-on-failure';
+}
+export type ExecutableRoutedCreationPlanV1 = RoutedTaskCreationPlanV1 & {
+ creation: RoutedCreationEvidenceV1;
+ createEffects: NonNullable<SealedMutationPlanV1['createEffects']>;
+};
+
+export type RoutedCreationSummaryV1 = Pick<RoutedCreationEvidenceV1,'resolvedFields'|'resolvedTags'|'nativeProperties'|'templateId'|'skipped'|'periodicRoute'> & {target:NonNullable<SealedMutationPlanV1['createEffects']>[number]['locator']};

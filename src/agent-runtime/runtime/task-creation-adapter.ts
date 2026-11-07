@@ -240,6 +240,10 @@ export interface RuntimeTaskCreationParentTargetV1 {
 }
 
 export interface RuntimeTaskCreationAdapterPortsV1 {
+ /** Routed creation only; absent for every existing V1 executor. */
+ prepareMaterial?: import('../../core/task-creation-domain').CanonicalCreationMaterializer;
+ allowExactFilePath?: boolean;
+ disableDefaultFileTemplate?: boolean;
 	checkboxOwnership?: 'contiguous';
 	fileTaskTitleCreation?: boolean;
 	settings(): Readonly<OperonSettings>;
@@ -519,6 +523,7 @@ export async function prepareRuntimeTaskCreationV1(
 			: [];
 		let generatedIndex = 0;
 		return prepareCanonicalTaskCreation({ requestId, items: canonicalItems }, {
+			...(ports.prepareMaterial ? { prepareMaterial: ports.prepareMaterial } : {}),
 			settings,
 			now: effectiveAt ?? ports.now(),
 			existingOperonIds: ports.listOperonIds(),
@@ -1456,7 +1461,7 @@ async function adaptCreateItem(
 	if (item.priorityId) fields['priority'] = resolvePriorityValue(item.priorityId, settings);
 	const templateId = representation === 'file'
 		? ('templateId' in item.target ? item.target.templateId : undefined) ?? (
-			item.target.mode === 'configured-default'
+			item.target.mode === 'configured-default' && !ports.disableDefaultFileTemplate
 				? settings.taskCreatorDefaultFileTemplateId ?? undefined
 				: undefined
 		)
@@ -1474,7 +1479,7 @@ async function adaptCreateItem(
 		: representation === 'inline'
 			? configuredInline?.filePath ?? ''
 			: await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
-	if (representation === 'file' && item.target.mode === 'exact-path' && !ports.fileTaskTitleCreation) {
+	if (representation === 'file' && item.target.mode === 'exact-path' && !ports.fileTaskTitleCreation && !ports.allowExactFilePath) {
 		const canonicalDescriptionPath = await ports.resolveConfiguredFilePath(item.description, resolvedParent, fields);
 		if (fileTaskBasename(canonicalDescriptionPath) !== fileTaskBasename(filePath)) {
 			throw new CreationAdapterError(
@@ -1768,7 +1773,7 @@ function splitTemporalList(value: string | undefined): string[] {
 	return (value ?? '').split(';').map(item => item.trim()).filter(Boolean);
 }
 
-function resolveStatusValue(statusId: string, settings: Readonly<OperonSettings>): string {
+export function resolveStatusValue(statusId: string, settings: Readonly<OperonSettings>): string {
 	const matches = settings.pipelines.flatMap(pipeline => (
 		pipeline.statuses
 			.filter(status => status.id === statusId)
@@ -1780,7 +1785,7 @@ function resolveStatusValue(statusId: string, settings: Readonly<OperonSettings>
 	return matches[0];
 }
 
-function resolvePriorityValue(priorityId: string, settings: Readonly<OperonSettings>): string {
+export function resolvePriorityValue(priorityId: string, settings: Readonly<OperonSettings>): string {
 	const matches = settings.priorities.filter(priority => priority.id === priorityId);
 	if (matches.length !== 1) {
 		throw new CreationAdapterError('invalid-request', `Priority stable ID is missing or ambiguous: ${priorityId}`);

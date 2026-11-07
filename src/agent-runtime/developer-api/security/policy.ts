@@ -339,6 +339,7 @@ export function resolveDeveloperRoutineAuthorizationBasisV1(
 export function resolveDeveloperMutationApplyCapabilityV1(
 	plan: DeveloperMutationSealedPlanV1,
 ): DeveloperMutationCapabilityV1 {
+	if (plan.capability === 'tasks.create.routed.preview') return 'tasks.create.routed.apply';
 	if (isFileTaskTitlesPreviewCapabilityV1(plan.capability)) return fileTaskTitlesApplyCapabilityV1(plan.capability);
 	if (isCheckboxOwnershipPreviewCapabilityV1(plan.capability)) return checkboxOwnershipApplyCapabilityV1(plan.capability);
 	return plan.mutationKind === 'task.adopt'

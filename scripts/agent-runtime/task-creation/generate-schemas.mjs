@@ -13,6 +13,7 @@ try {
  const { TASK_CREATION_POLICY_SCHEMA_V1: policy } = await import(pathToFileURL(outfile).href);
  const core = await read('contracts/agent-runtime/v1/mutation.schema.json');
  const cli = await read('contracts/agent-runtime/v1/cli.schema.json');
+ const workflows = await read('contracts/agent-runtime/extensions/task-workflows-v1/mutation.schema.json');
  const common = await read('contracts/agent-runtime/v1/common.schema.json');
  const ns = 'urn:operon:schema:runtime:v1:extension:task-creation:';
  const ref = name => ({ $ref: `${ns}creation#/$defs/${name}` });
@@ -32,28 +33,45 @@ try {
  item.required = item.required.filter(k => k !== 'description'); item.required.push('title', 'template');
  item.properties.title = item.properties.description; delete item.properties.description;
  item.properties.target = target; item.properties.template = template;
+ const scalar={type:['string','number','boolean','null']};
+ item.properties.nativeProperties={type:'array',maxItems:128,items:obj({sourceName:{type:'string',minLength:1,maxLength:256},value:{anyOf:[scalar,{type:'array',items:scalar}]}})};
  item.allOf = [...(item.allOf ?? []), { if: { properties: { target: { properties: { mode: { const: 'periodic-note' } }, required: ['mode'] } }, required: ['target'] }, then: { not: { anyOf: [{ required: ['parent'] }, { required: ['bodyMarkdown'] }] } } }];
  const spec = obj({ operation: { const: 'create' }, item });
  const preview = copy(core.$defs.mutationPreviewRequest); delete preview.allOf; delete preview.properties.target;
  preview.properties.capability = { const: 'tasks.create.routed.preview' }; preview.properties.mutationKind = { const: 'task.create' }; preview.properties.spec = ref('createSpec');
  const plan = copy(core.$defs.sealedMutationPlan);
  plan.required.push('extension','policyRevision'); plan.properties.extension = { const: 'task-creation-v1' }; plan.properties.policyRevision = digest;
+ const workflowRef=name=>({$ref:`${workflows.$id}#/$defs/${name}`});
+ const definition=obj({sourceName:{type:'string',minLength:1,maxLength:4096},type:{enum:['text','list','number','checkbox','date','datetime']},encoding:{enum:['legacy','vault-v1']}});
+ const creation=obj({version:{const:1},executionSpec:{anyOf:[{$ref:`${core.$id}#/$defs/createSpec`},workflowRef('identityCreateSpec'),workflowRef('periodicNoteCreateSpec')]},periodicRoute:{anyOf:[{type:'null'},workflowRef('periodicNoteRouteEvidence')]},templateId:{anyOf:[{type:'null'},text]},templateDigest:digest,materialRevision:digest,graphDigest:digest,resolvedFields:{type:'object',maxProperties:256,propertyNames:{maxLength:256},additionalProperties:{type:'string'}},resolvedTags:{type:'array',maxItems:256,items:{type:'string'}},nativeProperties:item.properties.nativeProperties,allocations:{type:'array',maxItems:128,uniqueItems:true,items:{type:'string',pattern:'^[a-z0-9]{7}$'}},fileAllocations:{type:'array',maxItems:128,items:workflowRef('templateIdentityAllocation')},definitions:{type:'array',maxItems:128,items:definition},skipped:{type:'array',maxItems:512,items:obj({sourceName:text,reason:text})},retention:{const:'preserve-definitions-on-failure'}});
+ plan.properties.creation=creation;
  plan.properties.capability = { const: 'tasks.create.routed.preview' }; plan.properties.mutationKind = { const: 'task.create' }; plan.properties.spec = ref('createSpec');
  const apply = copy(core.$defs.mutationApplyRequest); apply.properties.plan = ref('sealedPlan');
  const accessRequest = obj({ contractVersion: { const: 1 }, runtimeApi: obj({ min: { type: 'integer', minimum: 1 }, max: { type: 'integer', minimum: 1 } }), requestedCapabilities: { type: 'array', minItems: 1, maxItems: 3, uniqueItems: true, items: { enum: caps } } });
  const invocation = copy(cli.$defs.invocation, cli.$id); delete invocation.oneOf; delete invocation.allOf;
- invocation.properties.command = { const: 'catalog' }; invocation.properties.request = ref('policyRequest'); if (!invocation.required.includes('request')) invocation.required.push('request');
+ invocation.properties.command = { enum: ['catalog','mutation.preview','mutation.apply'] }; invocation.properties.request = {anyOf:[ref('policyRequest'),ref('previewRequest'),ref('applyRequest')]}; invocation.allOf=[...['catalog','mutation.preview','mutation.apply'].map((command,index)=>({if:{properties:{command:{const:command}}},then:{properties:{request:ref(['policyRequest','previewRequest','applyRequest'][index])}}}))]; if (!invocation.required.includes('request')) invocation.required.push('request');
  const previewResult = JSON.parse(JSON.stringify(copy(core.$defs.mutationPreviewResult)).replaceAll(`${core.$id}#/$defs/sealedMutationPlan`, `${ns}creation#/$defs/sealedPlan`));
  const mutationResult = copy(core.$defs.mutationResult);
+ mutationResult.properties.recoveryOutcome={const:'compensated'};
+ mutationResult.allOf=[...(mutationResult.allOf??[]),{if:{required:['recoveryOutcome']},then:{properties:{status:{const:'failed'},mutationMayHaveApplied:{const:false}}}}];
  const receipt = copy(core.$defs.mutationReceipt); receipt.properties.mutationKind = { const: 'task.create' }; mutationResult.properties.receipt = receipt;
  const continuation = copy(core.$defs.mutationContinuation); continuation.properties.plan = ref('sealedPlan'); mutationResult.properties.continuation = continuation;
- const cliResult = copy(cli.$defs.result, cli.$id); delete cliResult.allOf; delete cliResult.properties.recovery; cliResult.additionalProperties = false; cliResult.properties.command = { const: 'catalog' }; cliResult.properties.result = ref('policyResult');
- const defs = { cliResult, previewResult, mutationResult, policy, policyRequest: request, policyResult: result, template, target, createSpec: spec, previewRequest: preview, sealedPlan: plan, applyRequest: apply, developerAccessRequest: accessRequest, cliInvocation: invocation };
+ const cliResult = copy(cli.$defs.result, cli.$id); delete cliResult.allOf; delete cliResult.properties.recovery; cliResult.additionalProperties = false; cliResult.properties.command = { enum:['catalog','mutation.preview','mutation.apply'] }; cliResult.properties.result = {anyOf:[ref('policyResult'),ref('previewResult'),ref('mutationResult')]};
+ const developer=JSON.parse(JSON.stringify(await read('contracts/agent-runtime/extensions/file-task-titles-v1/developer-api.schema.json')).replaceAll('file-task-titles','task-creation').replaceAll('File Task titles','Task creation'));
+ const devIntent=structuredClone(preview);
+ for(const key of ['contractVersion','kind','requestId','clientInstanceId','correlationId','idempotencyKey','authorization']) {delete devIntent.properties[key];devIntent.required=devIntent.required.filter(k=>k!==key);}
+ developer.$defs.previewIntent=devIntent;
+ const summary=obj({target:{$ref:'urn:operon:schema:runtime:v1:common.schema.json#/$defs/taskSourceLocator'},...Object.fromEntries(['resolvedFields','resolvedTags','nativeProperties','templateId','skipped','periodicRoute'].map(key=>[key,creation.properties[key]]))});
+ for(const branch of developer.$defs.previewResult.oneOf) if(branch.properties?.ok?.const===true) {branch.properties.creation=summary;branch.required.push('creation');}
+ developer.$defs.accessRequest=accessRequest;
+ const developerDefs=Object.fromEntries(Object.entries(developer.$defs).filter(([name])=>name!=='accessRequest').map(([name,value])=>['developer'+name[0].toUpperCase()+name.slice(1),JSON.parse(JSON.stringify(value).replace(/urn:operon:schema:runtime:v1:extension:task-creation:developer-api#\/\$defs\/([A-Za-z]+)/g,(_match,key)=>`${ns}creation#/$defs/developer${key[0].toUpperCase()+key.slice(1)}`))]));
+ cliResult.allOf=['catalog','mutation.preview','mutation.apply'].map((command,index)=>({if:{properties:{command:{const:command}}},then:{properties:{result:ref(['policyResult','previewResult','mutationResult'][index])}}}));
+ const defs = { ...developerDefs, cliResult, previewResult, mutationResult, policy, policyRequest: request, policyResult: result, template, target, createSpec: spec, previewRequest: preview, sealedPlan: plan, applyRequest: apply, developerAccessRequest: accessRequest, cliInvocation: invocation };
  const document = { $schema: 'https://json-schema.org/draft/2020-12/schema', $id: `${ns}creation`, title: 'Task creation V1 extension', $defs: defs };
  const bytes = JSON.stringify(document, null, 2) + '\n';
  const hash = value => createHash('sha256').update(value).digest('hex');
  const baseline = await read('contracts/agent-runtime/extensions/file-task-titles-v1/extension-manifest.json');
- const manifest = { manifestVersion: 1, contractVersion: 1, extensionId: 'task-creation-v1', baseContractDigest: baseline.baseContractDigest, baseSchemaManifestAggregateSha256: baseline.baseSchemaManifestAggregateSha256, cliSupport: 'provider-read-ready-client-deferred', capabilities: caps.map(id => ({ id, availability: id === caps[0] ? 'implemented' : 'contract-only' })), documents: [{ file: 'creation.schema.json', id: document.$id, sha256: hash(bytes) }], entrypoints: Object.keys(defs).map(name => ({ schemaId: `task-creation-${name}`, ref: `${document.$id}#/$defs/${name}`, file: 'creation.schema.json', sha256: hash(bytes), direction: ['policy','policyResult','sealedPlan','previewResult','mutationResult','cliResult'].includes(name) ? 'response' : 'input' })) };
+ const manifest = { manifestVersion: 1, contractVersion: 1, extensionId: 'task-creation-v1', baseContractDigest: baseline.baseContractDigest, baseSchemaManifestAggregateSha256: baseline.baseSchemaManifestAggregateSha256, cliSupport: 'provider-ready-client-deferred', capabilities: caps.map(id => ({ id, availability: 'implemented' })), documents: [{ file: 'creation.schema.json', id: document.$id, sha256: hash(bytes) }], entrypoints: Object.keys(defs).map(name => ({ schemaId: `task-creation-${name}`, ref: `${document.$id}#/$defs/${name}`, file: 'creation.schema.json', sha256: hash(bytes), direction: ['policy','policyResult','sealedPlan','previewResult','mutationResult','cliResult'].includes(name) ? 'response' : 'input' })) };
  manifest.aggregateSha256 = hash(JSON.stringify(manifest));
  const rendered = new Map([['creation.schema.json', bytes], ['extension-manifest.json', JSON.stringify(manifest,null,2)+'\n']]);
  if (process.argv.includes('--write')) { await mkdir(directory, { recursive: true }); for (const [file, content] of rendered) await writeFile(`${directory}/${file}`, content); }

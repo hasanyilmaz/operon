@@ -3124,3 +3124,16 @@ test('File Task title verified compensation reports completion only after restor
  assert.equal(result.mutationMayHaveApplied, false); assert.equal(compensated, 1);
  assert.equal(f.stats().writes, 2); assert.equal(f.factory.journals.size, 0); assert.equal(f.factory.records.size, 0);
 });
+
+
+test('routed native-definition journal survives restart with exact steps and rejects create operations',async()=>{
+ const factory=new FakeIndexedDbFactory();const options={indexedDBFactory:factory as unknown as IDBFactory,now:()=>BASE_TIME,databaseName:'receipt-native-definition-journal'};
+ const store=new IndexedDbMutationReceiptStoreV1(options);
+ const before=JSON.stringify({mappings:[],entries:[{sourceName:'score',definition:null}]}),after=JSON.stringify({mappings:[],entries:[{sourceName:'score',definition:{sourceName:'score',type:'number',encoding:'vault-v1'}}]});
+ const value=journal(186,{steps:[{stepId:'creation-inline-property-definitions',groupId:'source:one',resourceKind:'inline-property-definitions',resourceKey:'creation-inline-property-definitions',operation:'modify',before:{state:'present',content:before,digest:sha256HexV1(before)},after:{state:'present',content:after,digest:sha256HexV1(after)}}]});
+ assert.equal(await store.acquireJournal(value,LEASE_OWNER),true);
+ const interrupted={...value,phase:'compensating' as const,completedStepCount:1};await store.persistJournal(interrupted,LEASE_OWNER);
+ const restarted=new IndexedDbMutationReceiptStoreV1(options);assert.deepEqual(await restarted.lookupJournal(scope(receipt(186))),interrupted);
+ const invalid=journal(187,{steps:[{...value.steps[0],operation:'create',before:{state:'absent',content:null,digest:sha256HexV1('')}}]});
+ await assert.rejects(()=>restarted.acquireJournal(invalid,LEASE_OWNER));
+});

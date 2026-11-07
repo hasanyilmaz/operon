@@ -170,7 +170,7 @@ export function createOperonAgentRuntimeFacadeV1(
 			stability: 'stable',
 			reason: 'The V1 contract is defined, but this capability has not passed its Runtime parity gate.',
 		};
-	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []).concat(ports.fileTaskTitles ? fileTaskTitlesAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.fileTaskTitlesReady?.() === true) : []).concat(ports.taskCreation ? taskCreationAdvertisementsV1(lifecycle.getPhase() === 'ready') : []);
+	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []).concat(ports.fileTaskTitles ? fileTaskTitlesAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.fileTaskTitlesReady?.() === true) : []).concat(ports.taskCreation ? taskCreationAdvertisementsV1(lifecycle.getPhase() === 'ready', !!ports.taskCreation.mutations) : []);
 
 	const hasCapability = (name: string): boolean => {
 		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name) && !isFileTaskTitlesCapabilityV1(name) && !isTaskCreationCapabilityV1(name)) return false;

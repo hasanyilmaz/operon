@@ -1,3 +1,6 @@
+import type {RoutedCreationSummaryV1} from './contracts';
+import { createTaskCreationDeveloperSessionV1 } from './developer-session';
+import type { TaskCreationDeveloperApiV1 as MutationSessionApiV1 } from './session-contract';
 import type { OperonAgentRuntimeCoreV1 } from '../../runtime/types';
 import type { OperonDeveloperApiConsumerPluginV1 } from '../../public/v1/developer-api';
 import type { TaskWorkflowDeveloperApiRuntimeOptionsV1, TaskWorkflowDeveloperMutationPlanHandleV1, TaskWorkflowDeveloperMutationPreviewResultV1, TaskWorkflowDeveloperMutationExecutionResultV1 } from '../task-workflows-v1/developer-api';
@@ -14,11 +17,11 @@ export type TaskCreationDeveloperPlanHandleV1 = Pick<TaskWorkflowDeveloperMutati
  readonly [creationHandleBrand]: true; readonly kind: 'task-creation-developer-mutation-plan';
 };
 export type TaskCreationDeveloperPreviewIntentV1 = Omit<RoutedTaskCreationPreviewRequestV1, 'contractVersion' | 'kind' | 'requestId' | 'clientInstanceId' | 'correlationId' | 'idempotencyKey' | 'authorization'>;
-type PreviewResult<T> = T extends { ok: true } ? Omit<T, 'kind' | 'plan'> & { kind: 'task-creation-developer-mutation-preview-result'; plan: TaskCreationDeveloperPlanHandleV1 } : Omit<T, 'kind'> & { kind: 'task-creation-developer-mutation-preview-result' };
+type PreviewResult<T> = T extends { ok: true } ? Omit<T, 'kind' | 'plan'> & { kind: 'task-creation-developer-mutation-preview-result'; plan: TaskCreationDeveloperPlanHandleV1; creation:RoutedCreationSummaryV1 } : Omit<T, 'kind'> & { kind: 'task-creation-developer-mutation-preview-result' };
 export type TaskCreationDeveloperPreviewResultV1 = PreviewResult<TaskWorkflowDeveloperMutationPreviewResultV1>;
 type ExecutionResult<T> = T extends { recovery: infer R } ? Omit<T, 'kind' | 'recovery'> & { kind: 'task-creation-developer-mutation-execution-result'; recovery: Omit<R, 'plan'> & { plan: TaskCreationDeveloperPlanHandleV1 } } : Omit<T, 'kind'> & { kind: 'task-creation-developer-mutation-execution-result' };
 export type TaskCreationDeveloperExecutionResultV1 = ExecutionResult<TaskWorkflowDeveloperMutationExecutionResultV1>;
-/** Reserved signatures use opaque handles, like the existing Developer API. Not exposed in Stage 1. */
+/** Mutation calls use opaque session handles; summaries expose the approved creation result. */
 export interface TaskCreationDeveloperMutationContractV1 {
  preview(intent: TaskCreationDeveloperPreviewIntentV1): Promise<TaskCreationDeveloperPreviewResultV1>;
  apply(input: { readonly plan: TaskCreationDeveloperPlanHandleV1 }): Promise<TaskCreationDeveloperExecutionResultV1>;
@@ -28,6 +31,7 @@ export interface TaskCreationDeveloperApiAccessorV1 {
 }
 export interface TaskCreationDeveloperApiV1 {
  readonly contractVersion: 1; readonly runtimeApi: 1;
+ readonly mutations?: MutationSessionApiV1['mutations'];
  readonly creation: { readPolicy(request: TaskCreationPolicyRequestV1): Promise<TaskCreationPolicyResultV1> };
 }
 export type TaskCreationDeveloperAccessResultV1 =
@@ -48,12 +52,12 @@ export function getTaskCreationDeveloperApiV1(core: OperonAgentRuntimeCoreV1 | n
   if (grant.state === 'pending') options.grantController.recordPending(consumer, capabilities);
   return fail('authority-insufficient', 'An exact creation capability grant is required.');
  }
- const valid = () => options.isCoreActive(core) && options.lifecyclePhase() === 'ready' && options.grantController.isConsumerCurrent(consumer) && options.grantController.evaluate(consumer, capabilities).state === 'active' && core.hasCapability('tasks.creation-policy.read');
+ const valid = () => options.isCoreActive(core) && options.lifecyclePhase() === 'ready' && options.grantController.isConsumerCurrent(consumer) && options.grantController.evaluate(consumer, capabilities).state === 'active' && capabilities.every(capability=>core.hasCapability(capability));
  if (!valid()) return fail('live-settling', 'The creation extension is not ready.');
- return Object.freeze({ contractVersion: 1, kind: 'task-creation-developer-api-access-result', ok: true, api: Object.freeze({ contractVersion: 1, runtimeApi: 1, creation: Object.freeze({ async readPolicy(input: TaskCreationPolicyRequestV1): Promise<TaskCreationPolicyResultV1> {
+ return Object.freeze({ contractVersion: 1, kind: 'task-creation-developer-api-access-result', ok: true, api: Object.freeze({ contractVersion: 1, runtimeApi: 1, ...(core.taskCreation.mutations && capabilities.some(capability=>capability.endsWith('.preview')||capability.endsWith('.apply')) ? {mutations:createTaskCreationDeveloperSessionV1(core,consumer,capabilities,options).mutations} : {}), creation: Object.freeze({ async readPolicy(input: TaskCreationPolicyRequestV1): Promise<TaskCreationPolicyResultV1> {
   const decoded = decodeTaskCreationPolicyRequestV1(input);
   if (!decoded.ok) return creationPolicyFailureV1('invalid-request', 'invalid-request', 'Invalid creation policy request.');
-  if (!valid()) return creationPolicyFailureV1(decoded.value.requestId, 'authority-insufficient', 'The creation read grant is no longer active.');
+  if (!valid() || !capabilities.includes('tasks.creation-policy.read')) return creationPolicyFailureV1(decoded.value.requestId, 'authority-insufficient', 'The creation read grant is no longer active.');
   const result = await core.taskCreation!.readPolicy(input);
   return valid() ? result : creationPolicyFailureV1(decoded.value.requestId, 'authority-insufficient', 'The creation read grant changed during the request.');
  } }) }) });

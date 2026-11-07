@@ -29,9 +29,10 @@ function fixture() {
 }
 const ajv = new Ajv2020({ strict: false, validateFormats: false });
 for (const file of readdirSync('contracts/agent-runtime/v1').filter(f => f.endsWith('.schema.json'))) ajv.addSchema(JSON.parse(readFileSync(`contracts/agent-runtime/v1/${file}`, 'utf8')));
+for (const file of readdirSync('contracts/agent-runtime/extensions/task-workflows-v1').filter(f=>f.endsWith('.schema.json'))) ajv.addSchema(JSON.parse(readFileSync(`contracts/agent-runtime/extensions/task-workflows-v1/${file}`,'utf8')));
 const document = JSON.parse(readFileSync('contracts/agent-runtime/extensions/task-creation-v1/creation.schema.json', 'utf8'));
 ajv.addSchema(document);
-const validate = (name: string, value: unknown) => { const check = ajv.getSchema(`${document.$id}#/$defs/${name}`)!; const ok = check(value); if (!ok) console.error(check.errors); return ok; };
+export const validate = (name: string, value: unknown) => { const check = ajv.getSchema(`${document.$id}#/$defs/${name}`)!; const ok = check(value); if (!ok) console.error(check.errors); return ok; };
 const preview: RoutedTaskCreationPreviewRequestV1 = { contractVersion: 1, kind: 'mutation-preview', requestId: 'create-test', clientInstanceId: 'test-client', idempotencyKey: 'creation-test-key', capability: 'tasks.create.routed.preview', mutationKind: 'task.create', authorization: { basis: 'user-explicit-request' }, spec: { operation: 'create', item: { itemRef: 'one', title: 'Review Q3', target: { mode: 'configured-default', representation: 'inline' }, template: { mode: 'configured' }, fields: [] } } };
 
 test('policy projects actual weekly destination, templates, parent and filename rules without mutating settings', () => {

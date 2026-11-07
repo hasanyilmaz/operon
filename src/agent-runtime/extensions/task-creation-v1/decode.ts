@@ -1,5 +1,8 @@
+import { validateInlinePropertyDefinitions } from '../../../core/inline-property-definitions';
+import { isSupportedRawYamlPropertyValue } from '../../../core/raw-yaml-property';
+import { decodeTaskWorkflowPreviewRequestExtensionV1, decodeTaskWorkflowPreviewResultExtensionV1 } from '../task-workflows-v1/decode';
 import { canonicalJsonV1, sha256HexV1, toJsonValueV1, computeSealedMutationPlanHashV1 } from '../../contracts/v1/canonical';
-import type { SealedMutationPlanV1 } from '../../contracts/v1/mutation';
+import type { SealedMutationPlanV1, CreateTaskTargetV1 } from '../../contracts/v1/mutation';
 import { decodeMutationPreviewRequestV1, decodeMutationPreviewResultV1, decodeMutationApplyRequestV1, decodeMutationResultV1, decodeStructuredErrorV1, type DecodeResultV1 } from '../../contracts/v1/decode';
 import { REQUEST_ID_PATTERN_V1, CONTRACT_LIMITS_V1, utf8ByteLengthV1 } from '../../contracts/v1/primitives';
 import { isRecord } from '../../../core/unknown-value';
@@ -26,7 +29,7 @@ export function decodeTaskCreationPolicyResultV1(value: unknown): DecodeResultV1
  return { ok: true, value: structuredClone(value) as unknown as TaskCreationPolicyResultV1 };
  } catch { return invalid(); }
 }
-/** Only validates intent. No executor is exposed until its parity gate passes. */
+/** Strict single-task intent admission; execution uses the shared Plugin services. */
 export function decodeRoutedTaskCreationPreviewV1(value: unknown): DecodeResultV1<RoutedTaskCreationPreviewRequestV1> {
  try {
  if (utf8ByteLengthV1(JSON.stringify(value) ?? '') > CONTRACT_LIMITS_V1.transportInputBytes) return invalid();
@@ -45,13 +48,14 @@ export function decodeRoutedTaskCreationPreviewV1(value: unknown): DecodeResultV
  } else if (target.mode === 'exact-path') {
   if (!creationKeysV1(target, ['mode', 'representation', 'filePath'], ['lineNumber']) || target.representation === 'file' && target.lineNumber !== undefined) return invalid();
  } else return invalid();
- const { title, template: _template, ...rest } = item;
+ if (item.nativeProperties !== undefined && (!Array.isArray(item.nativeProperties) || item.nativeProperties.length > 128 || !item.nativeProperties.every(field => isRecord(field) && creationKeysV1(field, ['sourceName','value']) && typeof field.sourceName === 'string' && field.sourceName.length > 0 && field.sourceName.length <= 256 && isSupportedRawYamlPropertyValue(field.value)))) return invalid();
+ const { title, template: _template, nativeProperties: _native, ...rest } = item;
  const legacy = { ...value, capability: 'tasks.create.preview', spec: { operation: 'create', items: [{ ...rest, description: title, target: legacyTarget }] } };
  if (!decodeMutationPreviewRequestV1(legacy).ok) return invalid();
  return { ok: true, value: structuredClone(value) as unknown as RoutedTaskCreationPreviewRequestV1 };
  } catch { return invalid(); }
 }
-/** Structural admission only; it does not authorize or execute this reserved plan. */
+/** Structural admission only; a valid seal still needs Runtime authorization and live checks. */
 export function decodeRoutedTaskCreationPlanV1(value: unknown): DecodeResultV1<RoutedTaskCreationPlanV1> {
  try {
   if (!isRecord(value) || value.extension !== 'task-creation-v1' || value.capability !== 'tasks.create.routed.preview' || value.mutationKind !== 'task.create' || typeof value.policyRevision !== 'string' || !/^[a-f0-9]{64}$/u.test(value.policyRevision)) return invalid();
@@ -60,16 +64,22 @@ export function decodeRoutedTaskCreationPlanV1(value: unknown): DecodeResultV1<R
   const { planHash: _hash, ...body } = value;
   if (sha256HexV1(canonicalJsonV1(toJsonValueV1(body))) !== value.planHash) return invalid();
   const plan = value as unknown as RoutedTaskCreationPlanV1;
+  if ('creation' in plan && !validCreationEvidence(plan)) return invalid();
   if (!decodeMutationPreviewResultV1({ contractVersion: 1, requestId: 'plan-validation', kind: 'mutation-preview-result', ok: true, warnings: [], plan: structuralPlan(plan) }).ok) return invalid();
   return { ok: true, value: structuredClone(plan) };
  } catch { return invalid(); }
 }
 /** Reuse frozen V1 validation without changing or admitting an old executable plan. */
 function structuralPlan(plan: RoutedTaskCreationPlanV1): SealedMutationPlanV1 {
- const { extension: _extension, policyRevision: _revision, spec, ...base } = plan;
- const { title, template: _template, ...item } = spec.item;
- const target = item.target.mode === 'periodic-note' ? { mode: 'configured-default' as const, representation: 'inline' as const } : item.target;
- const shadow: SealedMutationPlanV1 = { ...base, capability: 'tasks.create.preview', spec: { operation: 'create', items: [{ ...item, description: title, target }] } };
+ const { extension: _extension, policyRevision: _revision, creation: _creation, spec, ...base } = plan;
+ const { title, template: _template, nativeProperties: _native, ...item } = spec.item;
+ let target:CreateTaskTargetV1;
+ if(item.target.mode==='periodic-note') target={mode:'configured-default',representation:'inline'};
+ else if(item.target.mode==='configured-default') target={mode:'configured-default',representation:item.target.representation??plan.createEffects?.[0]?.locator.representation??'inline'};
+ else target=item.target;
+ if(target.representation==='file' && plan.creation?.templateId) target={...target,templateId:plan.creation.templateId};
+ const periodicParent=plan.creation?.periodicRoute?.container.operonId;
+ const shadow: SealedMutationPlanV1 = { ...base, capability: 'tasks.create.preview', spec: { operation: 'create', items: [{ ...item, ...(periodicParent?{parent:{kind:'existing' as const,operonId:periodicParent}}:{}), description: title, target }] } };
  shadow.planHash = computeSealedMutationPlanHashV1(shadow);
  return shadow;
 }
@@ -111,7 +121,36 @@ export function decodeRoutedTaskCreationMutationResultV1(value: unknown): Decode
    continuation = { ...continuation, plan: structuralPlan(plan.value) };
   }
   if (isRecord(value.receipt) && value.receipt.mutationKind !== 'task.create') return invalid();
-  if (!decodeMutationResultV1({ ...value, ...(continuation === undefined ? {} : { continuation }) }).ok) return invalid();
+  const {recoveryOutcome,...base}=value;
+  if(recoveryOutcome!==undefined && (recoveryOutcome!=='compensated' || value.status!=='failed' || value.mutationMayHaveApplied!==false)) return invalid();
+  if (!decodeMutationResultV1({ ...base, ...(continuation === undefined ? {} : { continuation }) }).ok) return invalid();
   return { ok: true, value: structuredClone(value) as unknown as RoutedTaskCreationMutationResultV1 };
  } catch { return invalid(); }
+}
+
+function validCreationEvidence(plan: RoutedTaskCreationPlanV1): boolean {
+ const evidence = plan.creation;
+ if (!evidence || !creationKeysV1(evidence as unknown as Record<string,unknown>, ['version','executionSpec','periodicRoute','templateId','templateDigest','materialRevision','graphDigest','resolvedFields','resolvedTags','nativeProperties','allocations','fileAllocations','definitions','skipped','retention']) || evidence.version !== 1 || evidence.retention !== 'preserve-definitions-on-failure') return false;
+ for (const digest of [evidence.templateDigest,evidence.materialRevision,evidence.graphDigest]) if (!/^[a-f0-9]{64}$/u.test(digest)) return false;
+ if (evidence.templateId !== null && (typeof evidence.templateId !== 'string' || evidence.templateId.length > 4096)) return false;
+ if (!Array.isArray(evidence.allocations) || evidence.allocations.length > 128 || evidence.allocations.some(id=>typeof id!=='string' || !/^[a-z0-9]{7}$/u.test(id)) || new Set(evidence.allocations).size !== evidence.allocations.length) return false;
+ if (!Array.isArray(evidence.fileAllocations) || evidence.fileAllocations.length > 128 || !Array.isArray(evidence.definitions) || evidence.definitions.length > 128 || !Array.isArray(evidence.skipped) || evidence.skipped.length > 512) return false;
+ if(!evidence.definitions.every(entry=>isRecord(entry)&&creationKeysV1(entry,['sourceName','type','encoding']))) return false;
+ validateInlinePropertyDefinitions({version:1,entries:evidence.definitions});
+ if (!evidence.skipped.every(item=>isRecord(item) && creationKeysV1(item,['sourceName','reason']) && typeof item.sourceName==='string' && item.sourceName.length<=4096 && typeof item.reason==='string' && item.reason.length<=4096)) return false;
+ if(!isRecord(evidence.resolvedFields) || Object.keys(evidence.resolvedFields).length>256 || !Object.entries(evidence.resolvedFields).every(([key,value])=>key.length<=256 && typeof value==='string') || !Array.isArray(evidence.resolvedTags) || evidence.resolvedTags.length>256 || evidence.resolvedTags.some(tag=>typeof tag!=='string')) return false;
+ if(!Array.isArray(evidence.nativeProperties) || evidence.nativeProperties.length>128 || !evidence.nativeProperties.every(field=>isRecord(field)&&creationKeysV1(field,['sourceName','value'])&&typeof field.sourceName==='string'&&field.sourceName.length<=256&&isSupportedRawYamlPropertyValue(field.value))) return false;
+ const capability = evidence.periodicRoute ? 'tasks.create.periodic-note.preview' : 'tasks.create.identity-placeholders';
+ const validationRequest={contractVersion:1,kind:'mutation-preview',requestId:'creation-validation',clientInstanceId:plan.clientInstanceId,idempotencyKey:'creation-validation',capability,mutationKind:'task.create',authorization:{basis:'user-explicit-request'},spec:evidence.executionSpec};
+ const inline=!evidence.periodicRoute && evidence.executionSpec.items[0]?.target.representation==='inline';
+ if(inline) {
+  if(evidence.executionSpec.items.length!==1 || evidence.fileAllocations.length || !decodeMutationPreviewRequestV1({...validationRequest,capability:'tasks.create.preview'}).ok) return false;
+  return true;
+ }
+ if (!decodeTaskWorkflowPreviewRequestExtensionV1(validationRequest).ok) return false;
+ const {extension:_extension,policyRevision:_policy,creation:_creation,...base}=plan;
+ const shadow={...base,capability,spec:evidence.executionSpec,...(evidence.periodicRoute ? {periodicRoute:evidence.periodicRoute} : {createEffects:plan.createEffects?.map(effect=>({...effect,templateIdentityAllocations:evidence.fileAllocations}))})};
+ const {planHash:_hash,...body}=shadow;
+ shadow.planHash=sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+ return decodeTaskWorkflowPreviewResultExtensionV1({contractVersion:1,requestId:'creation-validation',kind:'mutation-preview-result',ok:true,warnings:plan.warnings,plan:shadow}).ok;
 }

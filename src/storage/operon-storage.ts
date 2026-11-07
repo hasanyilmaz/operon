@@ -7,7 +7,7 @@ import { resolveKanbanAxes } from '../core/kanban-axis-model';
 import { normalizeTaskAfterCreateAction } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
-import { cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
+import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
@@ -797,6 +797,35 @@ export class OperonStorage {
 			await this.persistSettings({ forceRecoveredWrite: true }, entries, undefined, false, {}, canCommit);
 			const definitions = this.getCommittedInlinePropertyDefinitions();
 			if (!definitions) throw new Error('Missing property definitions');
+			return definitions;
+		});
+	}
+
+	/** Runtime creation may register only the definitions approved in its journal. */
+	async registerRuntimeInlinePropertyDefinitions(entries: readonly InlinePropertyDefinition[], canCommit: () => boolean): Promise<InlinePropertyDefinitions> {
+		return this.enqueueSettingsTransaction(async () => {
+			const submitted = this.settings.inlinePropertyDefinitions;
+			const expectedMappings = JSON.stringify(this.settings.keyMappings);
+			const expectedDefinitions = JSON.stringify(this.getCommittedInlinePropertyDefinitions());
+			const current = () => canCommit() && JSON.stringify(this.settings.keyMappings) === expectedMappings
+				&& JSON.stringify(this.settings.inlinePropertyDefinitions) === expectedDefinitions;
+			if (!current()) throw new Error('Native property settings changed before registration.');
+			await this.dataPackageStore.updateDataPackageCas(pkg => {
+				const mappings = [...pkg.taxonomy.keyMappings.system, ...pkg.taxonomy.keyMappings.custom];
+				if (JSON.stringify(mappings) !== expectedMappings || JSON.stringify(pkg.taxonomy.inlinePropertyDefinitions) !== expectedDefinitions) throw new Error('Committed property settings changed before registration.');
+				let definitions = cloneInlinePropertyDefinitions(pkg.taxonomy.inlinePropertyDefinitions);
+				for (const entry of entries) {
+					const resolved = resolveInlinePropertyDefinition(entry.sourceName, entry.type, mappings, definitions);
+					if (resolved.encoding !== entry.encoding) throw new Error('Native property interpretation changed.');
+					definitions = retainInlinePropertyDefinition(definitions, entry);
+				}
+				// Use the already-existing typed-property package version and its backup-before-write path.
+				return { ...pkg, schemaVersion: 3, taxonomy: { ...pkg.taxonomy, inlinePropertyDefinitions: definitions } };
+			}, current);
+			const definitions = this.getCommittedInlinePropertyDefinitions();
+			if (!definitions) throw new Error('Missing committed native property definitions.');
+			if (this.settings.inlinePropertyDefinitions === submitted) this.settings.inlinePropertyDefinitions = cloneInlinePropertyDefinitions(definitions);
+			this.notifyPropertyPoolChange();
 			return definitions;
 		});
 	}

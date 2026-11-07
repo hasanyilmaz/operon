@@ -1,4 +1,4 @@
-import type { TaskCreationCliInvocationV1, TaskCreationCliResultEnvelopeV1, TaskCreationPolicyResultV1 } from '../extensions/task-creation-v1/contracts';
+import type { TaskCreationCliInvocationV1, TaskCreationCliResultEnvelopeV1, TaskCreationPolicyResultV1, RoutedTaskCreationPreviewResultV1, RoutedTaskCreationMutationResultV1 } from '../extensions/task-creation-v1/contracts';
 import { isFileTaskTitlesPreviewCapabilityV1 } from '../extensions/file-task-titles-v1/decode';
 import { fileTaskTitlesApplyCapabilityV1, type FileTaskTitlesCliInvocationV1, type FileTaskTitlesCliResultEnvelopeV1, type FileTaskTitlesPreviewResultV1, type FileTaskTitlesMutationResultV1 } from '../extensions/file-task-titles-v1/contracts';
 import {
@@ -357,7 +357,7 @@ export async function dispatchAgentRuntimeCliV1(
 }
 
 type RuntimeCliInvocationV1 = CliInvocationV1 | TaskWorkflowCliInvocationV1 | FileTaskTitlesCliInvocationV1 | TaskCreationCliInvocationV1;
-type RuntimeCliResultV1 = CliRuntimeResultV1 | TaskFilterQueryResultV1 | TaskWorkflowPreviewResultV1 | TaskWorkflowMutationResultV1 | FileTaskTitlesPreviewResultV1 | FileTaskTitlesMutationResultV1 | TaskCreationPolicyResultV1;
+type RuntimeCliResultV1 = CliRuntimeResultV1 | TaskFilterQueryResultV1 | TaskWorkflowPreviewResultV1 | TaskWorkflowMutationResultV1 | FileTaskTitlesPreviewResultV1 | FileTaskTitlesMutationResultV1 | TaskCreationPolicyResultV1 | RoutedTaskCreationPreviewResultV1 | RoutedTaskCreationMutationResultV1;
 
 function timingFlowForInvocationV1(invocation: RuntimeCliInvocationV1): RuntimeTimingFlowV1 {
 	if (invocation.command === 'mutation.preview') return 'mutation-preview';
@@ -368,6 +368,8 @@ function timingFlowForInvocationV1(invocation: RuntimeCliInvocationV1): RuntimeT
 function resolveInvocationCapabilityV1(invocation: RuntimeCliInvocationV1): string {
 	let capability: string | undefined;
 	if (invocation.command === 'catalog' && invocation.request?.kind === 'task-creation-policy') return 'tasks.creation-policy.read';
+	if (invocation.command === 'mutation.preview' && invocation.request?.kind === 'mutation-preview' && invocation.request.capability === 'tasks.create.routed.preview') return 'tasks.create.routed.preview';
+ if (invocation.command === 'mutation.apply' && invocation.request?.kind === 'mutation-apply' && invocation.request.plan.capability === 'tasks.create.routed.preview') return 'tasks.create.routed.apply';
 	if (invocation.command === 'tasks.filter-query') capability = 'tasks.filter-query';
 	else if (invocation.command === 'mutation.preview') {
 		capability = (invocation.request?.kind === 'mutation-preview' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.capability)) ? invocation.request.capability : resolveTaskWorkflowPreviewCapabilityV1(invocation.request);
@@ -526,6 +528,10 @@ async function invokeRuntimeReadV1(
 		case 'timers.read':
 			return await runtime.timers.read(invocation.request as TimerReadRequestV1, context);
 		case 'mutation.preview':
+   if (invocation.request?.kind === 'mutation-preview' && invocation.request.capability === 'tasks.create.routed.preview') {
+    if (!runtime.taskCreation?.mutations) throw new Error('task-creation-unavailable');
+    return await runtime.taskCreation.mutations.preview(invocation.request, context);
+   }
    if ((invocation.request?.kind === 'mutation-preview' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.capability))) {
     if (!runtime.fileTaskTitles) throw new Error('file-task-titles-unavailable');
     return await runtime.fileTaskTitles.preview(invocation.request);
@@ -536,6 +542,10 @@ async function invokeRuntimeReadV1(
 			}
 			return await runtime.mutations.preview(invocation.request as MutationPreviewRequestV1, context);
 		case 'mutation.apply':
+   if (invocation.request?.kind === 'mutation-apply' && invocation.request.plan.capability === 'tasks.create.routed.preview') {
+    if (!runtime.taskCreation?.mutations) throw new Error('task-creation-unavailable');
+    return await runtime.taskCreation.mutations.apply(invocation.request);
+   }
    if ((invocation.request?.kind === 'mutation-apply' && isFileTaskTitlesPreviewCapabilityV1(invocation.request.plan.capability))) {
     if (!runtime.fileTaskTitles) throw new Error('file-task-titles-unavailable');
     return await runtime.fileTaskTitles.apply(invocation.request);

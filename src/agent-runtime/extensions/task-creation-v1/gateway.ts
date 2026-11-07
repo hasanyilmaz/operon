@@ -1,9 +1,11 @@
+import type { createRoutedCreationMutationGatewayV1 } from './mutation-gateway';
 import { canonicalJsonV1, sha256HexV1, toJsonValueV1 } from '../../contracts/v1/canonical';
 import { structuredErrorV1, type StructuredErrorV1 } from '../../contracts/v1/primitives';
 import type { RuntimeInvocationContextV1 } from '../../runtime/types';
 import type { TaskCreationPolicyRequestV1, TaskCreationPolicyResultV1, TaskCreationPolicyV1 } from './contracts';
 import { decodeTaskCreationPolicyRequestV1, decodeTaskCreationPolicyResultV1 } from './decode';
 export interface TaskCreationRuntimeV1 {
+ mutations?: ReturnType<typeof createRoutedCreationMutationGatewayV1>;
  readPolicy(value: unknown, context?: RuntimeInvocationContextV1): Promise<TaskCreationPolicyResultV1>;
 }
 export interface TaskCreationReadPortsV1 {
@@ -15,8 +17,8 @@ export function creationPolicyFailureV1(requestId: string, code: Parameters<type
  return { contractVersion: 1, requestId, kind: 'task-creation-policy-result', ok: false, error: structuredErrorV1(code, reason) };
 }
 /** No write port: policy reads cannot create notes, process templates or remember selections. */
-export function createTaskCreationRuntimeV1(ports: TaskCreationReadPortsV1): TaskCreationRuntimeV1 {
- return Object.freeze({ async readPolicy(value: unknown, context?: RuntimeInvocationContextV1): Promise<TaskCreationPolicyResultV1> {
+export function createTaskCreationRuntimeV1(ports: TaskCreationReadPortsV1, mutations?: ReturnType<typeof createRoutedCreationMutationGatewayV1>): TaskCreationRuntimeV1 {
+ return Object.freeze({ ...(mutations ? {mutations} : {}), async readPolicy(value: unknown, context?: RuntimeInvocationContextV1): Promise<TaskCreationPolicyResultV1> {
   const decoded = decodeTaskCreationPolicyRequestV1(value);
   if (!decoded.ok) return creationPolicyFailureV1('invalid-request', 'invalid-request', 'Invalid creation policy request.');
   const request = decoded.value;

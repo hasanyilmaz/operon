@@ -1,3 +1,12 @@
+import { resolveStatusValue, resolvePriorityValue } from './src/agent-runtime/runtime/task-creation-adapter';
+import { createRoutedCreationMutationGatewayV1 } from './src/agent-runtime/extensions/task-creation-v1/mutation-gateway';
+import type { ExecutableRoutedCreationPlanV1, RoutedTaskCreationApplyRequestV1, RoutedTaskCreationMutationResultV1, RoutedTaskCreationPreviewRequestV1, RoutedTaskCreationPreviewResultV1, RoutedCreationEvidenceV1 } from './src/agent-runtime/extensions/task-creation-v1/contracts';
+import { decodeRoutedTaskCreationPreviewResultV1, decodeRoutedTaskCreationMutationResultV1 } from './src/agent-runtime/extensions/task-creation-v1/decode';
+import { prepareRoutedCreationDraftV1, selectRoutedCreationV1 } from './src/agent-runtime/extensions/task-creation-v1/preparation';
+import { createRoutedCreationMaterializerV1 } from './src/agent-runtime/extensions/task-creation-v1/materializer';
+import { prepareCreationDefinitionStepV1 } from './src/agent-runtime/extensions/task-creation-v1/definition-journal';
+import type { RuntimeTaskCreationAdapterPortsV1 } from './src/agent-runtime/runtime/task-creation-adapter';
+import { applyCreationDefinitionStepV1, readCreationDefinitionStateV1, verifyRetainedCreationDefinitionsV1 } from './src/agent-runtime/extensions/task-creation-v1/definition-journal';
 import { buildTaskCreationPolicyV1 } from './src/agent-runtime/extensions/task-creation-v1/policy';
 import { createTaskCreationRuntimeV1 } from './src/agent-runtime/extensions/task-creation-v1/gateway';
 import { getTaskCreationDeveloperApiV1, type TaskCreationDeveloperAccessRequestV1 } from './src/agent-runtime/extensions/task-creation-v1/developer-api';
@@ -2013,9 +2022,9 @@ export default class OperonPlugin extends Plugin {
 			| 'apply-completed'
 			| 'recovery-dispatched'
 			| 'recovery-completed',
-		request: MutationApplyRequestV1 | TaskWorkflowApplyRequestV1 | CheckboxOwnershipApplyRequestV1 | FileTaskTitlesApplyRequestV1,
+		request: MutationApplyRequestV1 | TaskWorkflowApplyRequestV1 | CheckboxOwnershipApplyRequestV1 | FileTaskTitlesApplyRequestV1 | RoutedTaskCreationApplyRequestV1,
 		receipt?: MutationReceiptV1 | TaskWorkflowMutationReceiptV1,
-		taskWorkflowResult?: TaskWorkflowMutationResultV1 | CheckboxOwnershipMutationResultV1 | FileTaskTitlesMutationResultV1,
+		taskWorkflowResult?: TaskWorkflowMutationResultV1 | CheckboxOwnershipMutationResultV1 | FileTaskTitlesMutationResultV1 | RoutedTaskCreationMutationResultV1,
 	): SecurityAuditEventV1 | null {
 		const clientInstanceId = request.plan.clientInstanceId;
 		const isCli = clientInstanceId.startsWith('operon-cli-');
@@ -2075,8 +2084,8 @@ export default class OperonPlugin extends Plugin {
 			| 'apply-completed'
 			| 'recovery-dispatched'
 			| 'recovery-completed',
-		request: TaskWorkflowApplyRequestV1,
-		result?: TaskWorkflowMutationResultV1,
+		request: TaskWorkflowApplyRequestV1 | RoutedTaskCreationApplyRequestV1,
+		result?: TaskWorkflowMutationResultV1 | RoutedTaskCreationMutationResultV1,
 	): Promise<void> {
 		const store = this.agentRuntimeSecurityAuditStore;
 		if (!store || !this.agentRuntimeVaultIdentityHash || !await store.health()) throw new Error('Task-workflow security audit is unavailable.');
@@ -4453,13 +4462,8 @@ export default class OperonPlugin extends Plugin {
 				taskCreation: createTaskCreationRuntimeV1({
 					ready: () => this.agentRuntimeLifecycle?.getPhase() === 'ready',
 					admit: (request, context) => this.readAgentRuntimeCatalog({ ...request, kind: 'catalog' }, context),
-					readSource: async () => {
-						const settings = structuredClone(this.settings);
-						const templates = this.getFileTaskTemplateOptions();
-						const [daily, weekly] = await Promise.all([this.resolveEffectivePeriodicNoteConfig('daily'), this.resolveEffectivePeriodicNoteConfig('weekly')]);
-						return buildTaskCreationPolicyV1(settings, templates, daily, weekly);
-					},
-				}),
+					readSource: () => this.readTaskCreationPolicySource(),
+				}, this.createRoutedCreationRuntime()),
 				fileTaskTitlesReady: () => this.agentRuntimeMutationGateway !== null,
 				checkboxOwnershipReady: () => this.agentRuntimeMutationGateway !== null && this.agentRuntimeTaskWorkflowGateway !== null,
 				beforeHealth: async () => {
@@ -9223,7 +9227,7 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
-	private computeTaskWorkflowPlanHash(plan: TaskWorkflowSealedPlanV1): string {
+	private computeTaskWorkflowPlanHash(plan: TaskWorkflowSealedPlanV1 | ExecutableRoutedCreationPlanV1): string {
 		const { planHash: _planHash, ...material } = plan;
 		return sha256HexV1(canonicalJsonV1(toJsonValueV1(material)));
 	}
@@ -12445,7 +12449,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(
-		request: TaskWorkflowApplyRequestV1,
+		request: TaskWorkflowApplyRequestV1 | RoutedTaskCreationApplyRequestV1,
 	): Promise<boolean> {
 		const receiptStore = this.agentRuntimeReceiptStore;
 		const vaultIdentityHash = this.agentRuntimeVaultIdentityHash;
@@ -12939,6 +12943,105 @@ export default class OperonPlugin extends Plugin {
 		return await this.applyAgentRuntimeTaskAdoption({ ...request, plan: request.plan }, execution);
 	}
 
+
+
+ private createRoutedCreationRuntime() {
+  return createRoutedCreationMutationGatewayV1({
+   ready:()=>this.agentRuntimeLifecycle?.getPhase()==='ready' && this.agentRuntimeMutationGateway!==null,
+   now:()=>Date.now(),
+   preview:(request,context)=>this.previewRoutedRuntimeCreation(request,context),
+   hasRecoveryEvidence:request=>this.hasSamePlanAgentRuntimeTaskWorkflowRecoveryEvidence(request),
+   audit:(event,request,result)=>this.recordTaskWorkflowSecurityAudit(event,request,result),
+   apply:async(request,execution)=>{
+    await this.refreshAgentRuntimeSettingsBoundaryStrict();
+    const result=await this.applyAgentRuntimeIdentityCreation(request,execution);
+    const retained=request.plan.creation.definitions.filter(definition=>this.storage.getCommittedInlinePropertyDefinitions()?.entries.some(entry=>entry.sourceName===definition.sourceName && entry.type===definition.type && entry.encoding===definition.encoding));
+    if(result.status!=='applied' && result.status!=='already-applied' && result.error && retained.length) result.error={...result.error,reason:result.error.reason+' Native property definitions are retained: '+retained.map(entry=>entry.sourceName).join(', ')+'.'};
+    const decoded=decodeRoutedTaskCreationMutationResultV1(result);
+    if(!decoded.ok) throw new Error('Routed creation returned an invalid result.');
+    return decoded.value;
+   },
+  });
+ }
+ private async readTaskCreationPolicySource() {
+  const settings=structuredClone(this.settings);
+  const templates=this.getFileTaskTemplateOptions();
+  const [daily,weekly]=await Promise.all([this.resolveEffectivePeriodicNoteConfig('daily'),this.resolveEffectivePeriodicNoteConfig('weekly')]);
+  return buildTaskCreationPolicyV1(settings,templates,daily,weekly);
+ }
+
+ private async prepareRoutedRuntimeCreation(request:RoutedTaskCreationPreviewRequestV1, createdAt:string, sealed?:ExecutableRoutedCreationPlanV1) {
+  const policy=await this.readTaskCreationPolicySource();
+  const item=request.spec.item;
+  const parent=item.parent?.kind==='existing' ? this.indexer.getTaskSnapshot(item.parent.operonId) : null;
+  const parentPlacement=!!parent && (parent.primary.format==='inline' ? policy.inline.parentInline==='below-parent' : policy.inline.parentFile==='inside-parent-file');
+  const selected=selectRoutedCreationV1(policy,item.target,item.template,parentPlacement);
+  if(!selected.ok) throw new Error(selected.reason);
+  const template=selected.templateId ? await this.readAgentRuntimeCreationTemplate(selected.templateId) : null;
+  if(selected.templateId && !template) throw new Error('The selected template is unavailable.');
+  const native=getNativePropertyIndex(this.app); await native.ensure([]);
+  if(!native.typesAvailable()) throw new Error('The native property type registry is unavailable.');
+  const properties:CreationDraftPropertyContext={keyMappings:structuredClone(this.settings.keyMappings),propertyTypes:{...native.getTypes()},inlineDefinitions:structuredClone(this.storage.getCommittedInlinePropertyDefinitions())};
+  const explicitText=(key:string)=>{const field=item.fields.find(field=>'field' in field && field.field===key);return field && 'value' in field ? String(field.value) : '';};
+  const templateInputs={title:item.title,taskDescription:item.title,note:explicitText('note'),status:item.statusId?resolveStatusValue(item.statusId,this.settings):'',priority:item.priorityId?resolvePriorityValue(item.priorityId,this.settings):'',dateStarted:explicitText('dateStarted'),dateScheduled:explicitText('dateScheduled'),dateDue:explicitText('dateDue')};
+  const selectedTemplate=template ? {id:template.templateId,content:template.content}:null;
+  const material=createRoutedCreationMaterializerV1({properties,template:selectedTemplate,templateInputs,
+   explicitFields:item.fields,explicitStatus:!!item.statusId,explicitPriority:!!item.priorityId,explicitTags:item.tags!==undefined,nativeProperties:item.nativeProperties??[],displayTitleEnabled:policy.file.displayTitleEnabled,
+   generateId:()=>generateOperonId(),existingIds:this.indexer.getAllOperonIds(),...(sealed?{sealedAllocations:sealed.creation.allocations}:{}),
+  });
+  const options:Partial<RuntimeTaskCreationAdapterPortsV1>={prepareMaterial:material.prepareMaterial,disableDefaultFileTemplate:true,allowExactFilePath:true,checkboxOwnership:'contiguous',
+   fileTaskTitleCreation:selected.representation==='file' && policy.file.displayTitleEnabled,
+   resolveConfiguredFilePath:(title,parent,fields)=>this.resolveAgentRuntimeFileCreationPath(title,parent,fields,policy.file.displayTitleEnabled),
+  };
+  const {title,template:_template,nativeProperties:_native,target:_target,...baseItem}=item;
+  const target=selected.target;
+  const executionSpec:IdentityPlaceholderCreateSpecV1|PeriodicNoteCreateSpecV1={operation:'create',items:[{...baseItem,fields:structuredClone(baseItem.fields),description:title,target:target.mode==='periodic-note' ? target : selected.representation==='file' ? {...target,representation:'file',...(selected.templateId?{templateId:selected.templateId}:{}),identityPlaceholderPolicy:'resolve-operon-id-v1'} : {...target,representation:'inline'}}]} as IdentityPlaceholderCreateSpecV1|PeriodicNoteCreateSpecV1;
+  if(target.mode==='periodic-note' && (item.parent || item.bodyMarkdown!==undefined)) throw new Error('Periodic creation cannot carry an explicit parent or body.');
+  const ids=sealed ? new Map(sealed.createEffects.map(effect=>[effect.itemRef,effect.operonId])):undefined;
+  const series=sealed ? new Map(sealed.createEffects.flatMap(effect=>effect.repeatSeriesId?[[effect.itemRef,effect.repeatSeriesId] as const]:[])):undefined;
+  if(target.mode==='periodic-note') {
+   const routingDraft=prepareRoutedCreationDraftV1({representation:'inline',title:item.title,properties,template:selectedTemplate,templateInputs,now:toLocalDatetime(new Date(createdAt)),defaults:[],parent:[],surface:[],explicit:item.fields.flatMap(field=>'field' in field && 'value' in field ? [{sourceName:field.field,value:field.value}]:[])});
+   for(const key of ['dateScheduled','datetimeStart'] as const) {
+    if(executionSpec.items[0].fields.some(field=>'field' in field && field.field===key)) continue;
+    const value=routingDraft.snapshot.fields.find(field=>field.property.canonicalKey===key)?.value;
+    if(typeof value==='string' && value) executionSpec.items[0].fields.push(key==='dateScheduled'?{kind:'date',field:key,value}:{kind:'datetime',field:key,value});
+   }
+  }
+  const periodic=target.mode==='periodic-note' ? await this.prepareAgentRuntimePeriodicCreation(request.requestId,executionSpec as PeriodicNoteCreateSpecV1,createdAt,ids,sealed?.creation.periodicRoute??undefined,options,series):null;
+  if(periodic && !periodic.ok) throw new Error(periodic.reason);
+  const preparation=periodic?.ok ? periodic.preparation : await this.prepareAgentRuntimeIdentityCreation(request.requestId,executionSpec as IdentityPlaceholderCreateSpecV1,createdAt,ids,ids?new Set(ids.keys()):undefined,series,sealed?new Map([[item.itemRef,sealed.creation.fileAllocations]]):undefined,options);
+  if(!preparation.ok) throw new Error(preparation.reason);
+  const graph=await this.prepareAgentRuntimeIdentityGraphSteps(preparation,createdAt);
+  if(!graph.ok) throw new Error(graph.reason);
+  const evidence=material.evidence();
+  const definitionStep=prepareCreationDefinitionStepV1(evidence.definitions,properties.keyMappings,properties.inlineDefinitions,graph.steps[0].groupId);
+  if(definitionStep) graph.steps.unshift(definitionStep);
+  const creation:RoutedCreationEvidenceV1={version:1,executionSpec,periodicRoute:periodic?.ok?periodic.route:null,templateId:selected.templateId,templateDigest:sha256HexV1(template?.content??''),materialRevision:evidence.revision,graphDigest:sha256HexV1(canonicalJsonV1(toJsonValueV1(graph.steps))),resolvedFields:{...preparation.plan.tasks[0].fieldValues},resolvedTags:[...preparation.plan.tasks[0].tags],nativeProperties:evidence.nativeProperties,allocations:evidence.allocations,fileAllocations:preparation.createEffects[0].templateIdentityAllocations??[],definitions:evidence.definitions,skipped:evidence.skipped,retention:'preserve-definitions-on-failure'};
+  return {preparation,steps:graph.steps,creation,policyRevision:sha256HexV1(canonicalJsonV1(toJsonValueV1(policy)))};
+ }
+
+ private buildRoutedRuntimeCreationPlan(request:RoutedTaskCreationPreviewRequestV1, prepared:Awaited<ReturnType<OperonPlugin['prepareRoutedRuntimeCreation']>>, revision:ReturnType<OperonPlugin['sampleAgentRuntimeRevision']>['contextRevision'], createdAt:string, planId:string):ExecutableRoutedCreationPlanV1 {
+  const base=this.buildAgentRuntimeIdentityPlanCandidate({...request,capability:'tasks.create.identity-placeholders',spec:prepared.creation.executionSpec as IdentityPlaceholderCreateSpecV1},prepared.preparation,revision,createdAt,planId,prepared.steps).plan;
+  const plan:ExecutableRoutedCreationPlanV1={...base,planHash:'',extension:'task-creation-v1',capability:'tasks.create.routed.preview',spec:request.spec,policyRevision:prepared.policyRevision,creation:prepared.creation,createEffects:base.createEffects.map(({templateIdentityAllocations:_allocations,...effect})=>effect)};
+  plan.planHash=this.computeTaskWorkflowPlanHash(plan);
+  return plan;
+ }
+
+ private async previewRoutedRuntimeCreation(request:RoutedTaskCreationPreviewRequestV1,context?:RuntimeInvocationContextV1):Promise<RoutedTaskCreationPreviewResultV1> {
+  const admission=await this.readAgentRuntimeCatalog({contractVersion:1,requestId:request.requestId,kind:'catalog',consistency:'live-verified'},context);
+  if(!admission.ok) return {contractVersion:1,requestId:request.requestId,kind:'mutation-preview-result',ok:false,warnings:[],error:admission.error};
+  for(let attempt=0;attempt<2;attempt++) {
+   const revision=this.sampleAgentRuntimeRevision().contextRevision;const createdAt=new Date().toISOString();
+   const prepared=await this.prepareRoutedRuntimeCreation(request,createdAt);
+   if(canonicalJsonV1(toJsonValueV1(revision))!==canonicalJsonV1(toJsonValueV1(this.sampleAgentRuntimeRevision().contextRevision))) continue;
+   const plan=this.buildRoutedRuntimeCreationPlan(request,prepared,revision,createdAt,getActiveWindow().crypto.randomUUID());
+   const output=decodeRoutedTaskCreationPreviewResultV1({contractVersion:1,requestId:request.requestId,kind:'mutation-preview-result',ok:true,warnings:plan.warnings,plan});
+   if(!output.ok) throw new Error('The routed creation plan failed public validation.');
+   return output.value;
+  }
+  return {contractVersion:1,requestId:request.requestId,kind:'mutation-preview-result',ok:false,warnings:[],error:structuredErrorV1('live-settling','Creation inputs changed during preview.')};
+ }
+
 	private async prepareAgentRuntimeIdentityCreation(
 		requestId: string,
 		spec: IdentityPlaceholderCreateSpecV1,
@@ -12947,6 +13050,7 @@ export default class OperonPlugin extends Plugin {
 		activeItemRefs?: ReadonlySet<string>,
 		sealedSeriesIds?: ReadonlyMap<string, string>,
 		sealedAllocations?: ReadonlyMap<string, readonly TemplateIdentityAllocationV1[]>,
+		routed?: Partial<RuntimeTaskCreationAdapterPortsV1>,
 	): Promise<RuntimeTaskCreationPreparationV1> {
 		return await prepareRuntimeTaskCreationV1(
 			requestId,
@@ -12988,6 +13092,7 @@ export default class OperonPlugin extends Plugin {
 				generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
 				repeatSeriesRevision: () => sha256HexV1(String(this.storage.repeatSeries.getRevision())),
 				now: () => localNow(),
+				...routed,
 			},
 			sealedIds,
 			toLocalDatetime(new Date(effectiveAt)),
@@ -13003,6 +13108,8 @@ export default class OperonPlugin extends Plugin {
 		effectiveAt: string,
 		sealedIds?: ReadonlyMap<string, string>,
 		sealedRoute?: PeriodicNoteCreateSealedPlanV1['periodicRoute'],
+		routed?: Partial<RuntimeTaskCreationAdapterPortsV1>,
+		sealedSeriesIds?: ReadonlyMap<string,string>,
 	): Promise<{
 		ok: true;
 		preparation: Extract<RuntimeTaskCreationPreparationV1, { ok: true }>;
@@ -13172,10 +13279,12 @@ export default class OperonPlugin extends Plugin {
 				generateRepeatSeriesId: usedIds => generateRepeatSeriesId(new Set(usedIds)),
 				repeatSeriesRevision: () => sha256HexV1(String(this.storage.repeatSeries.getRevision())),
 				now: () => localNow(),
+				...routed,
 			},
 			sealedIds,
 			toLocalDatetime(new Date(effectiveAt)),
 			sealedIds ? new Set(sealedIds.keys()) : undefined,
+			sealedSeriesIds,
 		);
 		if (!preparation.ok) return { ok: false, code: preparation.code, reason: preparation.reason };
 		const templatePath = preparedNote.status === 'prepared' ? preparedNote.plan.templatePath : null;
@@ -13386,8 +13495,8 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async applyAgentRuntimeIdentityCreation(
-		request: TaskWorkflowApplyRequestV1 & {
-			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1;
+		request: Omit<TaskWorkflowApplyRequestV1, 'plan'> & {
+			plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | ExecutableRoutedCreationPlanV1;
 		},
 		execution: {
 			recoveryOnly: boolean;
@@ -13395,7 +13504,9 @@ export default class OperonPlugin extends Plugin {
 		},
 	): Promise<TaskWorkflowMutationResultV1> {
 		const plan = request.plan;
-		const creationLabel = plan.capability === 'tasks.update.periodic-note.preview'
+		const creationLabel = plan.capability === 'tasks.create.routed.preview'
+			? 'Routed task creation'
+			: plan.capability === 'tasks.update.periodic-note.preview'
 			? 'Periodic-note update'
 			: plan.capability === 'tasks.create.periodic-note.preview'
 			? 'Periodic-note creation'
@@ -13580,7 +13691,7 @@ export default class OperonPlugin extends Plugin {
 							plan.atomicGroups[0]?.groupId,
 						);
 					}
-					return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The interrupted identity graph was safely compensated; preview again.', true);
+					return Object.assign(this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', 'The interrupted identity graph was safely compensated; preview again.', true), plan.capability === 'tasks.create.routed.preview' ? { recoveryOutcome: 'compensated' as const } : {});
 				}
 				if (recovered.status !== 'forward-completed') {
 					return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, [], 'Identity graph recovery could not prove a safe terminal state.', plan.atomicGroups[0]?.groupId);
@@ -13620,7 +13731,15 @@ export default class OperonPlugin extends Plugin {
 					let preparedPeriodic: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicCreation']>> | null = null;
 					let preparedPeriodicUpdate: Awaited<ReturnType<OperonPlugin['prepareAgentRuntimePeriodicUpdate']>> | null = null;
 					let preparation: RuntimeTaskCreationPreparationV1 | null = null;
-					if (plan.capability === 'tasks.update.periodic-note.preview') {
+					let preparedRouted: Awaited<ReturnType<OperonPlugin['prepareRoutedRuntimeCreation']>> | null = null;
+					if (plan.capability === 'tasks.create.routed.preview') {
+						try {
+							preparedRouted = await this.prepareRoutedRuntimeCreation({contractVersion:1,requestId:request.requestId,kind:'mutation-preview',clientInstanceId:plan.clientInstanceId,idempotencyKey:request.idempotencyKey,correlationId:plan.correlationId,capability:plan.capability,mutationKind:'task.create',authorization:{basis:'user-explicit-request'},spec:plan.spec},plan.createdAt,plan);
+						} catch (error) {
+							return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', error instanceof Error ? error.message : 'Creation inputs changed; preview again.');
+						}
+						graph = { ok: true, steps: preparedRouted.steps };
+					} else if (plan.capability === 'tasks.update.periodic-note.preview') {
 						preparedPeriodicUpdate = await this.prepareAgentRuntimePeriodicUpdate({
 							contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview',
 							clientInstanceId: plan.clientInstanceId, idempotencyKey: request.idempotencyKey,
@@ -13675,7 +13794,9 @@ export default class OperonPlugin extends Plugin {
 							`Runtime context changed while ${creationLabel.toLowerCase()} apply values were prepared.`,
 						);
 					}
-					const rebuilt = plan.capability === 'tasks.update.periodic-note.preview'
+					const rebuilt = plan.capability === 'tasks.create.routed.preview'
+						? {ok:true as const,matches:!!preparedRouted && this.buildRoutedRuntimeCreationPlan({contractVersion:1,requestId:request.requestId,kind:'mutation-preview',clientInstanceId:plan.clientInstanceId,idempotencyKey:request.idempotencyKey,correlationId:plan.correlationId,capability:plan.capability,mutationKind:'task.create',authorization:{basis:'user-explicit-request'},spec:plan.spec},preparedRouted,plan.contextRevision,plan.createdAt,plan.planId).planHash===plan.planHash}
+						: plan.capability === 'tasks.update.periodic-note.preview'
 						? {
 							ok: true as const,
 							matches: preparedPeriodicUpdate?.ok === true
@@ -13877,7 +13998,7 @@ export default class OperonPlugin extends Plugin {
 					);
 				}
 				if (!await this.verifyAgentRuntimeIdentityPlanAfterState(plan, verificationSteps, sourceProofs)) throw new Error();
-				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview') {
+				if (plan.capability === 'tasks.create.periodic-note.preview' || plan.capability === 'tasks.update.periodic-note.preview' || plan.capability === 'tasks.create.routed.preview' && plan.creation.periodicRoute) {
 					const registry = await this.ensureAgentRuntimePeriodicRegistry(plan);
 					if (registry.status === 'uncertain') {
 						return this.agentRuntimeIdentityOutcomeUnknown(
@@ -13917,7 +14038,7 @@ export default class OperonPlugin extends Plugin {
 						if (!await receiptStore.deleteJournal(scope, journal, leaseOwner)) {
 							return this.agentRuntimeIdentityOutcomeUnknown(request.requestId, groupResults, 'Periodic compensation completed but journal cleanup was not verified.', plan.atomicGroups[0]?.groupId);
 						}
-						return this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', registry.message, true);
+						return Object.assign(this.agentRuntimeTaskWorkflowApplyFailure(request.requestId, 'stale-source', registry.message, true), plan.capability === 'tasks.create.routed.preview' ? { recoveryOutcome: 'compensated' as const } : {});
 					}
 				}
 				if (journal && journal.phase !== 'postflight') await checkpoint({ phase: 'postflight', completedStepCount: journal.steps.length });
@@ -13992,9 +14113,10 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async ensureAgentRuntimePeriodicRegistry(
-		plan: PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
+		plan: PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | ExecutableRoutedCreationPlanV1,
 	): Promise<PeriodicNoteContainerRegistryPersistenceResult> {
-		const route = plan.capability === 'tasks.create.periodic-note.preview' ? plan.periodicRoute : plan.periodicUpdate;
+		const route = plan.capability === 'tasks.create.routed.preview' ? plan.creation.periodicRoute : plan.capability === 'tasks.create.periodic-note.preview' ? plan.periodicRoute : plan.periodicUpdate;
+		if (!route) return { status: 'committed', acknowledgement: 'direct' };
 		const expectation = route.container;
 		if (expectation.registryState === 'not-required') {
 			return { status: 'committed', acknowledgement: 'direct' };
@@ -14198,7 +14320,16 @@ export default class OperonPlugin extends Plugin {
 		return left.state === right.state && left.digest === right.digest && left.content === right.content;
 	}
 
+	private creationDefinitionJournalPorts() {
+		return {
+			mappings: () => this.settings.keyMappings,
+			definitions: () => this.storage.getCommittedInlinePropertyDefinitions(),
+			register: (entries: readonly import('./src/core/inline-property-definitions').InlinePropertyDefinition[], canCommit: () => boolean) => this.storage.registerRuntimeInlinePropertyDefinitions(entries, canCommit),
+		};
+	}
+
 	private async readAgentRuntimeIdentityGraphState(step: GraphTransactionJournalStepV1): Promise<GraphTransactionJournalStepV1['before']> {
+		if (step.resourceKind === 'inline-property-definitions') return readCreationDefinitionStateV1(step, this.creationDefinitionJournalPorts());
 		if (step.resourceKind === 'repeat-series') {
 			const entry = this.storage.repeatSeries.getEntry(step.resourceKey);
 			return this.agentRuntimeIdentityGraphState(entry ? canonicalJsonV1(toJsonValueV1(entry)) : null);
@@ -14302,6 +14433,11 @@ export default class OperonPlugin extends Plugin {
 		step: GraphTransactionJournalStepV1,
 		direction: 'forward' | 'reverse',
 	): Promise<boolean> {
+		if (step.resourceKind === 'inline-property-definitions') {
+			return direction === 'forward'
+				? await applyCreationDefinitionStepV1(step, this.creationDefinitionJournalPorts())
+				: verifyRetainedCreationDefinitionsV1(step, this.creationDefinitionJournalPorts());
+		}
 		const before = direction === 'forward' ? step.before : step.after;
 		const after = direction === 'forward' ? step.after : step.before;
 		if (this.agentRuntimeIdentityGraphStatesMatch(before, after)) {
@@ -14331,12 +14467,14 @@ export default class OperonPlugin extends Plugin {
 		expected: 'before' | 'after',
 	): Promise<boolean> {
 		const states = await Promise.all(steps.map(step => this.readAgentRuntimeIdentityGraphState(step)));
-		return states.every((state, index) => this.agentRuntimeIdentityGraphStatesMatch(state, steps[index][expected]));
+		return states.every((state, index) => expected === 'before' && steps[index].resourceKind === 'inline-property-definitions'
+			? verifyRetainedCreationDefinitionsV1(steps[index], this.creationDefinitionJournalPorts())
+			: this.agentRuntimeIdentityGraphStatesMatch(state, steps[index][expected]));
 	}
 
 	private agentRuntimeIdentityJournalMatchesPlan(
 		journal: GraphTransactionJournalV1,
-		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | ExecutableRoutedCreationPlanV1,
 		vaultIdentityHash: string,
 	): boolean {
 		return journal.vaultIdentityHash === vaultIdentityHash
@@ -14345,7 +14483,8 @@ export default class OperonPlugin extends Plugin {
 			&& journal.mutationKind === (plan.mutationKind === 'task.update' ? 'task.update' : 'task.create')
 			&& journal.planId === plan.planId
 			&& journal.planHash === plan.planHash
-			&& journal.targetDigest === plan.receiptTargetDigest;
+			&& journal.targetDigest === plan.receiptTargetDigest
+			&& (plan.capability !== 'tasks.create.routed.preview' || sha256HexV1(canonicalJsonV1(toJsonValueV1(journal.steps))) === plan.creation.graphDigest);
 	}
 
 	private agentRuntimeIdentityOutcomeUnknown(
@@ -14377,7 +14516,7 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private async verifyAgentRuntimeIdentityPlanAfterState(
-		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1,
+		plan: IdentityPlaceholderSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | ExecutableRoutedCreationPlanV1,
 		steps?: readonly GraphTransactionJournalStepV1[],
 		sourceProofs?: readonly RuntimeIdentityGraphSourceSettlementProofV1[],
 	): Promise<boolean> {
