@@ -1,3 +1,6 @@
+import { buildTaskCreationPolicyV1 } from './src/agent-runtime/extensions/task-creation-v1/policy';
+import { createTaskCreationRuntimeV1 } from './src/agent-runtime/extensions/task-creation-v1/gateway';
+import { getTaskCreationDeveloperApiV1, type TaskCreationDeveloperAccessRequestV1 } from './src/agent-runtime/extensions/task-creation-v1/developer-api';
 import { isTaskSourceOpenModifierClick } from './src/ui/task-source-open-modifier';
 import { getFileTaskTitlesDeveloperApiV1, type FileTaskTitlesDeveloperAccessRequestV1, type FileTaskTitlesCapabilitySubsetV1 } from './src/agent-runtime/extensions/file-task-titles-v1/developer-api';
 import { createFileTaskTitlesRuntimeV1 } from './src/agent-runtime/extensions/file-task-titles-v1/gateway';
@@ -1905,6 +1908,17 @@ export default class OperonPlugin extends Plugin {
 
 	getCheckboxOwnershipDeveloperApiV1<C extends CheckboxOwnershipCapabilitySubsetV1>(consumerPlugin: OperonDeveloperApiConsumerPluginV1, request: CheckboxOwnershipDeveloperAccessRequestV1<C>) {
 		return getCheckboxOwnershipDeveloperApiV1(this.agentRuntimeCore ?? null, consumerPlugin, request, {
+			isDesktopAvailable: () => Platform.isDesktopApp,
+			isHostVersionSupported: () => requireApiVersion('1.12.2'),
+			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
+			isCoreActive: candidate => this.agentRuntimeCore === candidate && this.agentRuntimeLifecycle?.getPhase() !== 'unloading',
+			grantController: this.developerApiGrantController,
+			mutationSecurityPolicy: this.developerApiMutationSecurityPolicy,
+		});
+	}
+
+	getTaskCreationDeveloperApiV1(consumerPlugin: OperonDeveloperApiConsumerPluginV1, request: TaskCreationDeveloperAccessRequestV1) {
+		return getTaskCreationDeveloperApiV1(this.agentRuntimeCore ?? null, consumerPlugin, request, {
 			isDesktopAvailable: () => Platform.isDesktopApp,
 			isHostVersionSupported: () => requireApiVersion('1.12.2'),
 			lifecyclePhase: () => this.agentRuntimeLifecycle?.getPhase() ?? 'booting',
@@ -4436,6 +4450,16 @@ export default class OperonPlugin extends Plugin {
 			{
 				checkboxOwnership: this.createCheckboxOwnershipRuntime(),
 				fileTaskTitles: this.createFileTaskTitlesRuntime(),
+				taskCreation: createTaskCreationRuntimeV1({
+					ready: () => this.agentRuntimeLifecycle?.getPhase() === 'ready',
+					admit: (request, context) => this.readAgentRuntimeCatalog({ ...request, kind: 'catalog' }, context),
+					readSource: async () => {
+						const settings = structuredClone(this.settings);
+						const templates = this.getFileTaskTemplateOptions();
+						const [daily, weekly] = await Promise.all([this.resolveEffectivePeriodicNoteConfig('daily'), this.resolveEffectivePeriodicNoteConfig('weekly')]);
+						return buildTaskCreationPolicyV1(settings, templates, daily, weekly);
+					},
+				}),
 				fileTaskTitlesReady: () => this.agentRuntimeMutationGateway !== null,
 				checkboxOwnershipReady: () => this.agentRuntimeMutationGateway !== null && this.agentRuntimeTaskWorkflowGateway !== null,
 				beforeHealth: async () => {

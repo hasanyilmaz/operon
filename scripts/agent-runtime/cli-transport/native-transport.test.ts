@@ -1,3 +1,7 @@
+import { taskCreationAdvertisementsV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/contracts';
+import { createTaskCreationRuntimeV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/gateway';
+import { buildTaskCreationPolicyV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/policy';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
 import { fileTaskTitlesAdvertisementsV1, type FileTaskTitlesPreviewRequestV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/contracts';
 import { fileTaskTitlesExecutionRequestV1, sealFileTaskTitlesPlanV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/decode';
 import { computeSealedMutationPlanHashV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
@@ -2964,4 +2968,22 @@ test('dispatcher routes File Task title preview and apply through their dedicate
   }
   assert.deepEqual(calls, ['tasks.file.create.preview', 'apply', 'tasks.file.title.preview', 'apply']);
  } finally { await rm(vault, { recursive: true, force: true }); }
+});
+
+
+test('creation policy uses the secure catalog transport without calling legacy catalog or mutation', async () => {
+ const vault=await mkdtemp(join(tmpdir(),'operon-creation-policy-transport-'));
+ try {
+  const health={...createHealth(),capabilities:[...createHealth().capabilities,...taskCreationAdvertisementsV1(true)]};
+  const policy=buildTaskCreationPolicyV1(structuredClone(DEFAULT_SETTINGS),[],{available:false,reason:'core-daily-notes-unavailable'},{available:false,reason:'operon-disabled'});
+  let reads=0;
+  const provider=createTaskCreationRuntimeV1({ready:()=>true,admit:async()=>({ok:true}),readSource:async()=>{reads++;return structuredClone(policy);}});
+  const runtime:OperonAgentRuntimeCoreV1={...createRuntime(health),taskCreation:provider,hasCapability:id=>health.capabilities.some(c=>c.id===id&&c.availability==='available')};
+  const request={contractVersion:1 as const,requestId:'creation-transport',kind:'task-creation-policy' as const,consistency:'live-verified' as const};
+  const expected=await provider.readPolicy(request);
+  const invocation={...await catalogInvocation(vault,request.requestId,1000),request};
+  const token='J'.repeat(32); await publishRequest(token,JSON.stringify(invocation),0o600);
+  const output=JSON.parse(await dispatchAgentRuntimeCliV1({runtime,nodeApi,vaultAdapter:{getFullPath:()=>vault},runtimeMetadata:{appVersion:'1.13.3',plugin:{id:'operon',version:'4.5.0',minAppVersion:'1.7.2'},apiVersion:1},monotonicNow:()=>10},{expectedCommand:'catalog',requestToken:token}));
+  assert.equal(output.ok,true,JSON.stringify(output));assert.deepEqual(output.result,expected);assert.equal(reads,4);
+ } finally {await rm(vault,{recursive:true,force:true});}
 });

@@ -1,3 +1,5 @@
+import { decodeTaskCreationPolicyRequestV1 } from '../extensions/task-creation-v1/decode';
+import type { TaskCreationCliInvocationV1 } from '../extensions/task-creation-v1/contracts';
 import { decodeFileTaskTitlesPreviewV1, decodeFileTaskTitlesApplyV1 } from '../extensions/file-task-titles-v1/decode';
 import type { FileTaskTitlesCliInvocationV1 } from '../extensions/file-task-titles-v1/contracts';
 import {
@@ -19,7 +21,7 @@ import {
 } from '../extensions/task-workflows-v1';
 
 type InvocationValidationV1 =
-	| { ok: true; value: CliInvocationV1 | TaskWorkflowCliInvocationV1 | FileTaskTitlesCliInvocationV1 }
+	| { ok: true; value: CliInvocationV1 | TaskWorkflowCliInvocationV1 | FileTaskTitlesCliInvocationV1 | TaskCreationCliInvocationV1 }
 	| { ok: false };
 
 const INVOCATION_KEYS = [
@@ -65,6 +67,11 @@ export function validateCliInvocationForTransportV1(value: unknown): InvocationV
 	) {
 		if (value.request !== undefined) return { ok: false };
 	} else {
+		const policy = value.command === 'catalog' ? decodeTaskCreationPolicyRequestV1(value.request) : null;
+		if (policy?.ok && policy.value.requestId === value.requestId) {
+			const serialized = serializeWithinInputCap(value);
+			return serialized === null ? { ok: false } : { ok: true, value: JSON.parse(serialized) as TaskCreationCliInvocationV1 };
+		}
 		const titleRequest = value.command === 'mutation.preview' ? decodeFileTaskTitlesPreviewV1(value.request)
    : value.command === 'mutation.apply' ? decodeFileTaskTitlesApplyV1(value.request) : null;
   if (titleRequest?.ok && titleRequest.value.requestId === value.requestId) {

@@ -1,0 +1,123 @@
+{
+  "manifestVersion": 1,
+  "contractVersion": 1,
+  "extensionId": "task-creation-v1",
+  "baseContractDigest": "407f3a222f8c59a9622038e99e9345d0d34882fd358149b38bce5354ae0ca92b",
+  "baseSchemaManifestAggregateSha256": "43ca9fa184f9a2433a3583446ab19557e7c81b3e3b0f3f57be95a95ee3859506",
+  "cliSupport": "provider-read-ready-client-deferred",
+  "capabilities": [
+    {
+      "id": "tasks.creation-policy.read",
+      "availability": "implemented"
+    },
+    {
+      "id": "tasks.create.routed.preview",
+      "availability": "contract-only"
+    },
+    {
+      "id": "tasks.create.routed.apply",
+      "availability": "contract-only"
+    }
+  ],
+  "documents": [
+    {
+      "file": "creation.schema.json",
+      "id": "urn:operon:schema:runtime:v1:extension:task-creation:creation",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c"
+    }
+  ],
+  "entrypoints": [
+    {
+      "schemaId": "task-creation-previewResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/previewResult",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-creation-mutationResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/mutationResult",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-creation-policy",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/policy",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-creation-policyRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/policyRequest",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-policyResult",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/policyResult",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-creation-template",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/template",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-target",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/target",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-createSpec",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/createSpec",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-previewRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/previewRequest",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-sealedPlan",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/sealedPlan",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "response"
+    },
+    {
+      "schemaId": "task-creation-applyRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/applyRequest",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-developerAccessRequest",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/developerAccessRequest",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    },
+    {
+      "schemaId": "task-creation-cliInvocation",
+      "ref": "urn:operon:schema:runtime:v1:extension:task-creation:creation#/$defs/cliInvocation",
+      "file": "creation.schema.json",
+      "sha256": "3316bf65d619f55de0692eb15930c18a348e337d0241b456fe7b223fd5674e0c",
+      "direction": "input"
+    }
+  ],
+  "aggregateSha256": "586dadc0e1ce7b24e9bccacab265b4b7b088705d72bbc4a5345e795ccce186c8"
+}

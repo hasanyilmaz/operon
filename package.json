@@ -41,7 +41,7 @@
     "agent-runtime:external-cli:public-proof": "node scripts/agent-runtime/cli/check-published-cli-public-proof.mjs",
     "agent-runtime:cli-cutover:check": "node scripts/agent-runtime/cli/check-cli-cutover.mjs",
     "agent-runtime:external-cli:test": "node --test scripts/agent-runtime/cli/published-cli-v1.test.mjs scripts/agent-runtime/cli/cli-cutover-v1.test.mjs scripts/agent-runtime/cli/external-cli-workflow.test.mjs && npm run agent-runtime:external-cli:binding:check && npm run agent-runtime:cli-cutover:check",
-    "agent-runtime:contracts:plugin": "npm run agent-runtime:schemas:plugin:test && npm run agent-runtime:schemas:check && npm run agent-runtime:runtime-baseline:check && npm run agent-runtime:task-workflows-extension:test && npm run agent-runtime:checkbox-ownership-extension:test && node scripts/agent-runtime/contracts/run-contract-tests.mjs && node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs",
+    "agent-runtime:contracts:plugin": "npm run agent-runtime:schemas:plugin:test && npm run agent-runtime:schemas:check && npm run agent-runtime:runtime-baseline:check && npm run agent-runtime:task-workflows-extension:test && npm run agent-runtime:checkbox-ownership-extension:test && npm run agent-runtime:task-creation-extension:test && node scripts/agent-runtime/contracts/run-contract-tests.mjs && node --test scripts/agent-runtime/receipts/receipt-benchmark.test.mjs",
     "agent-runtime:contracts:cli-compat": "npm run agent-runtime:schemas:cli-compat:test && npm run agent-runtime:external-cli:test && npm run agent-runtime:cli-contracts:check && npm run agent-runtime:compatibility:check && npm run agent-runtime:historical-freeze:test && npm run agent-runtime:historical-freeze:check && npm run agent-runtime:cli-schemas:test",
     "agent-runtime:contracts": "npm run agent-runtime:contracts:plugin",
     "agent-runtime:contracts:candidate": "npm run agent-runtime:contracts:plugin",
@@ -231,7 +231,8 @@
     "kanban:cell-virtualization:test": "node scripts/run-kanban-cell-virtualization-tests.mjs",
     "kanban:axis-settings:test": "node scripts/run-kanban-axis-settings-tests.mjs",
     "kanban:two-axis-integration:test": "node scripts/run-kanban-two-axis-integration-tests.mjs",
-    "file-task:display-title:test": "node scripts/run-file-task-display-title-tests.mjs && node scripts/agent-runtime/file-task-titles/run-tests.mjs"
+    "file-task:display-title:test": "node scripts/run-file-task-display-title-tests.mjs && node scripts/agent-runtime/file-task-titles/run-tests.mjs",
+    "agent-runtime:task-creation-extension:test": "node scripts/agent-runtime/task-creation/generate-schemas.mjs && node scripts/agent-runtime/task-creation/run-tests.mjs"
   },
   "keywords": [],
   "author": "Hasan Y\u0131lmaz",

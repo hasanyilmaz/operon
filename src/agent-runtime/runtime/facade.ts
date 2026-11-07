@@ -1,3 +1,5 @@
+import { taskCreationAdvertisementsV1, isTaskCreationCapabilityV1 } from '../extensions/task-creation-v1/contracts';
+import type { TaskCreationRuntimeV1 } from '../extensions/task-creation-v1/gateway';
 import { fileTaskTitlesAdvertisementsV1, isFileTaskTitlesCapabilityV1 } from '../extensions/file-task-titles-v1/contracts';
 import type { FileTaskTitlesRuntimeV1 } from '../extensions/file-task-titles-v1/gateway';
 import { checkboxOwnershipAdvertisementsV1, isCheckboxOwnershipCapabilityV1 } from '../extensions/checkbox-ownership-v1/contracts';
@@ -95,6 +97,7 @@ const COMPATIBILITY_V1: CompatibilityOfferV1 = Object.freeze({
 export interface RuntimeFacadePortsV1 {
 	checkboxOwnership?: CheckboxOwnershipRuntimeV1;
 	fileTaskTitles?: FileTaskTitlesRuntimeV1;
+	taskCreation?: TaskCreationRuntimeV1;
 	fileTaskTitlesReady?(): boolean;
 	checkboxOwnershipReady?(): boolean;
 	beforeHealth?(): Promise<void>;
@@ -167,10 +170,10 @@ export function createOperonAgentRuntimeFacadeV1(
 			stability: 'stable',
 			reason: 'The V1 contract is defined, but this capability has not passed its Runtime parity gate.',
 		};
-	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []).concat(ports.fileTaskTitles ? fileTaskTitlesAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.fileTaskTitlesReady?.() === true) : []);
+	}).concat(ports.checkboxOwnership ? checkboxOwnershipAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.checkboxOwnershipReady?.() === true) : []).concat(ports.fileTaskTitles ? fileTaskTitlesAdvertisementsV1(lifecycle.getPhase() === 'ready' && ports.fileTaskTitlesReady?.() === true) : []).concat(ports.taskCreation ? taskCreationAdvertisementsV1(lifecycle.getPhase() === 'ready') : []);
 
 	const hasCapability = (name: string): boolean => {
-		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name) && !isFileTaskTitlesCapabilityV1(name)) return false;
+		if (!isCapabilityIdV1(name) && !isTaskWorkflowCapabilityIdV1(name) && !isCheckboxOwnershipCapabilityV1(name) && !isFileTaskTitlesCapabilityV1(name) && !isTaskCreationCapabilityV1(name)) return false;
 		const capability = capabilities().find(candidate => candidate.id === name);
 		return capability?.availability === 'available' || capability?.availability === 'degraded';
 	};
@@ -524,6 +527,7 @@ export function createOperonAgentRuntimeFacadeV1(
 	});
 	return Object.freeze({
 		apiVersion: RUNTIME_API_VERSION_V1,
+		...(ports.taskCreation ? { taskCreation: ports.taskCreation } : {}),
 		...(ports.checkboxOwnership ? { checkboxOwnership: ports.checkboxOwnership } : {}),
 		...(ports.fileTaskTitles ? { fileTaskTitles: ports.fileTaskTitles } : {}),
 		hasCapability,

@@ -1,0 +1,37 @@
+{
+  "policyRequest": {
+    "contractVersion": 1,
+    "requestId": "creation-policy-example",
+    "kind": "task-creation-policy",
+    "consistency": "live-verified"
+  },
+  "previewRequest": {
+    "contractVersion": 1,
+    "requestId": "routed-creation-example",
+    "kind": "mutation-preview",
+    "clientInstanceId": "example-client",
+    "idempotencyKey": "routed-creation-example-1",
+    "capability": "tasks.create.routed.preview",
+    "mutationKind": "task.create",
+    "authorization": {
+      "basis": "user-explicit-request"
+    },
+    "spec": {
+      "operation": "create",
+      "item": {
+        "itemRef": "one",
+        "title": "Review Q3 Plan",
+        "fields": [],
+        "target": {
+          "mode": "periodic-note",
+          "representation": "inline",
+          "periodicKind": "weekly",
+          "routeDate": "2026-11-09"
+        },
+        "template": {
+          "mode": "configured"
+        }
+      }
+    }
+  }
+}
