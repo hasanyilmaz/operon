@@ -31,6 +31,30 @@ function applyInput(plan = sealFileTaskTitlesPlanV1(innerPlan(), previewInput.ca
 function successful(requestId: string, plan: SealedMutationPlanV1): MutationResultV1 { return { contractVersion: 1, requestId, kind: 'mutation-result', status: 'applied', mutationMayHaveApplied: true, retryAllowed: false, groupResults: plan.atomicGroups.map(g => ({ groupId: g.groupId, status: 'committed' })), receipt: { contractVersion: 1, vaultIdentityHash: 'a'.repeat(64), clientInstanceId: plan.clientInstanceId, idempotencyKeyHash: plan.idempotencyKeyHash, planHash: plan.planHash, mutationKind: plan.mutationKind, targetDigest: plan.receiptTargetDigest, terminalOutcome: 'applied', effectiveAt: plan.createdAt, completedAt: plan.createdAt, expiresAt: plan.expiresAt }, postflight: { status: 'verified', observedAt: plan.createdAt, contextRevision: plan.contextRevision } }; }
 function fixture(overrides: Partial<FileTaskTitlesPortsV1> = {}) { let writes = 0; return { writes: () => writes, runtime: createFileTaskTitlesRuntimeV1({ ready: () => true, hasRecoveryEvidence: async () => true, audit: async () => {}, previewCore: async request => ({ contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: true, warnings: [], plan: innerPlan(request) }), applyCore: async request => { writes++; return successful(request.requestId, request.plan); }, ...overrides }) }; }
 
+test('both title previews reject invalid original idempotency keys before core dispatch', async () => {
+ const target = { operonId: legacy.targets[0].operonId!, locator: legacy.targets[0].locator! };
+ const requests: FileTaskTitlesPreviewRequestV1[] = [previewInput, { ...previewInput, capability: 'tasks.file.title.preview', mutationKind: 'task.update', target, spec: { operation: 'set-title', displayTitle: 'Next' } }];
+ for (const request of requests) {
+  let dispatches = 0;
+  const f = fixture({ previewCore: async req => { dispatches++; return { contractVersion: 1, requestId: req.requestId, kind: 'mutation-preview-result', ok: true, warnings: [], plan: innerPlan(req) }; } });
+  for (const idempotencyKey of [undefined, null, 123, {}, [], '', 'a'.repeat(15), 'a'.repeat(257), 'valid-key with spaces', 'é'.repeat(16), 'a'.repeat(16) + '\n']) {
+   const invalid = { ...request, idempotencyKey };
+   assert.equal(decodeFileTaskTitlesPreviewV1(invalid).ok, false);
+   const result = await f.runtime.preview(invalid); assert.equal(result.ok, false);
+   if (!result.ok) assert.equal(result.error.code, 'invalid-request');
+  }
+  assert.equal(dispatches, 0); assert.equal(f.writes(), 0);
+  for (const idempotencyKey of ['a'.repeat(16), 'A0._:-'.repeat(42) + 'abcd']) {
+   const result = await f.runtime.preview({ ...request, idempotencyKey }); assert.ok(result.ok);
+   if (!result.ok) continue;
+   const apply = { ...applyInput(result.plan), idempotencyKey };
+   assert.equal(decodeFileTaskTitlesApplyV1(apply).ok, true);
+   assert.equal((await f.runtime.apply(apply)).status, 'applied');
+  }
+  assert.equal(dispatches, 2); assert.equal(f.writes(), 2);
+ }
+});
+
 test('explicit title creation seals both intents and preserves old V1 admission', async () => {
  const f = fixture(), result = await f.runtime.preview(previewInput); assert.ok(result.ok, JSON.stringify(result)); if (!result.ok) return;
  sample('mutation/previewRequest', previewInput); sample('mutation/previewResult', result); sample('mutation/sealedPlan', result.plan);

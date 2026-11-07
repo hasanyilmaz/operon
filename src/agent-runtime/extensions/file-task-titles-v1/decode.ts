@@ -25,6 +25,7 @@ function validSpec(capability: FileTaskTitlesPreviewCapabilityV1, value: unknown
 export function decodeFileTaskTitlesPreviewV1(value: unknown): DecodeResultV1<FileTaskTitlesPreviewRequestV1> {
  try {
   if (!isRecord(value) || !isFileTaskTitlesPreviewCapabilityV1(value.capability) || !validSpec(value.capability, value.spec) || new TextEncoder().encode(JSON.stringify(value)).length > CONTRACT_LIMITS_V1.transportInputBytes) return invalid();
+  if (typeof value.idempotencyKey !== 'string' || !IDEMPOTENCY_KEY_PATTERN_V1.test(value.idempotencyKey)) return invalid();
   if (value.capability === 'tasks.file.title.preview' && (!isRecord(value.target) || !isRecord(value.target.locator) || value.target.locator.representation !== 'file')) return invalid();
   if (value.capability === 'tasks.file.create.preview' && 'target' in value) return invalid();
   const request = value as unknown as FileTaskTitlesPreviewRequestV1;
