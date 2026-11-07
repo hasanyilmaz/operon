@@ -133,7 +133,7 @@ export function createTaskCreationDeveloperSessionV1<C extends TaskCreationCapab
    } catch { return failure(storageError()); }
   };
  }
- return freeze({ contractVersion: 1, runtimeApi: 1, tasks, mutations }) as TaskCreationDeveloperApiV1<C>;
+ return freeze({ contractVersion: 1, runtimeApi: 1, tasks, mutations });
 }
 function project(id: string, bound: BoundPlan, result: TaskCreationMutationResultV1): TaskCreationDeveloperExecutionResultV1 {
  if (successful(result) && result.receipt && result.postflight) return freeze({ contractVersion: 1, kind: 'task-creation-developer-mutation-execution-result', requestId: id, status: result.status as 'applied' | 'already-applied', mutationMayHaveApplied: true, retryAllowed: false, groupResults: structuredClone(result.groupResults), receipt: { contractVersion: 1, planDigest: result.receipt.planHash, mutationKind: result.receipt.mutationKind, targetDigest: result.receipt.targetDigest, terminalOutcome: result.status as 'applied' | 'already-applied', effectiveAt: result.receipt.effectiveAt, completedAt: result.receipt.completedAt, expiresAt: result.receipt.expiresAt }, postflight: structuredClone(result.postflight) });
