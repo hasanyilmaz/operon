@@ -1,3 +1,4 @@
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { bindCanvasPoolLayer } from './canvas-pool-layer';
 import { Component, Notice, setIcon, type App, type TFile } from 'obsidian';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -224,16 +225,17 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
   const state = this.cards.deps.getIndexState();
   const settings = this.cards.deps.getSettings();
   const source = this.cards.getAllTasks();
-  const queryKey = `${this.mode}:${this.query}:${new Date().toDateString()}`;
+  const displayTitleEnabled = settings.fileTaskDisplayTitleEnabled;
+  const queryKey = `${this.mode}:${this.query}:${new Date().toDateString()}:${displayTitleEnabled}`;
   if (source !== this.source || queryKey !== this.queryKey || state !== this.readiness) {
    this.source = source; this.queryKey = queryKey; this.readiness = state;
-   this.matches = state === 'ready' ? queryCanvasTaskPool(source, this.mode, this.query, undefined, id => this.cards.deps.controls?.chips.isTaskPinned?.(id) === true) : [];
+   this.matches = state === 'ready' ? queryCanvasTaskPool(source, this.mode, this.query, undefined, id => this.cards.deps.controls?.chips.isTaskPinned?.(id) === true, displayTitleEnabled) : [];
   }
   const matches = this.matches;
   if (!matches.some(task => task.operonId === this.selectedId)) this.selectedId = matches[0]?.operonId ?? null;
   if (settings !== this.settingsSnapshot) { this.settingsSnapshot = settings; this.settingsKey = JSON.stringify(settings); }
   const visible = matches.slice(0, this.limit);
-  const signature = JSON.stringify([state, matches.length, visible, this.mode, this.query, this.limit, this.surface.readOnly(), this.settingsKey]);
+  const signature = JSON.stringify([state, matches.length, visible, this.mode, this.query, this.limit, this.surface.readOnly(), this.settingsKey, displayTitleEnabled]);
   if (signature === this.signature) return;
   this.signature = signature;
   const scroll = this.list.scrollTop;
@@ -265,7 +267,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
    getTask: taskId => this.cards.resolve(taskId).state === 'ready' ? deps.getTask(taskId) : undefined,
   }));
   const title = row.createEl('button', { cls: 'operon-canvas-task-pool-title', attr: { type: 'button' } });
-  renderCompactTaskMarkdown(title, { app: this.surface.app, value: task.description || id, mode: 'visual-only' });
+  renderCompactTaskMarkdown(title, { app: this.surface.app, value: getTaskDisplayTitle(task, settings.fileTaskDisplayTitleEnabled) || id, mode: 'visual-only' });
   lifetime.registerDomEvent(title, 'click', event => { event.stopPropagation(); if (row.dataset.dragged === 'true') { event.preventDefault(); delete row.dataset.dragged; return; } if (this.isSessionCurrent() && row.isConnected) this.cards.activate(id, event.metaKey || event.ctrlKey); });
   const meta = row.createDiv('operon-canvas-task-pool-meta');
   const indicators = this.mode === 'finished' ? ['duration', 'totalDuration'] : [];
@@ -331,7 +333,7 @@ export class SurfaceTaskPool<T extends TaskPoolTarget> extends Component {
    if (!ghost && Math.hypot(next.clientX - x, next.clientY - y) < 5) return;
    row.dataset.dragged = 'true';
    if (!ghost) {
-    ghost = doc.body.createDiv({ cls: 'operon-canvas-task-pool-drag', text: task.description || task.operonId });
+    ghost = doc.body.createDiv({ cls: 'operon-canvas-task-pool-drag', text: getTaskDisplayTitle(task, this.cards.deps.getSettings().fileTaskDisplayTitleEnabled) || task.operonId });
     this.surface.bindPanelTheme?.(ghost, lifetime);
    }
    ghost.style.left = `${next.clientX + 12}px`; ghost.style.top = `${next.clientY + 12}px`;
