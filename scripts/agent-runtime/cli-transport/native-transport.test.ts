@@ -2932,10 +2932,61 @@ function createSupervisorScheduler(): {
 }
 
 
+async function dispatchNativeRoutingFixture(
+	runtime: OperonAgentRuntimeCoreV1,
+	vault: string,
+	invocation: { readonly command: CliInvocationV1['command'] },
+	token: string,
+): Promise<string> {
+	const vaultAdapter = { getFullPath: () => vault };
+	const runtimeMetadata = persistentReadTestMetadata();
+	const ports = { runtime, nodeApi, vaultAdapter, runtimeMetadata, monotonicNow: () => 10 };
+	const expectedVaultSha256 = await computeRunningVaultSha256V1(nodeApi, vaultAdapter);
+	const payload = JSON.stringify({ ...invocation, expectedVaultSha256 });
+	const expectedCommand = invocation.command;
+
+	if (process.platform !== 'win32') {
+		const requestPath = await publishRequest(token, payload, 0o600);
+		try {
+			return await dispatchAgentRuntimeCliV1(ports, { expectedCommand, requestToken: token });
+		} finally {
+			await cleanupPersistentRequest({ token, requestPath });
+		}
+	}
+
+	installPersistentReadTestWindow();
+	const handle = await startAgentRuntimePersistentReadServerV1(
+		persistentReadTestPlugin(vault) as never,
+		runtime,
+		{ runtimeMetadata },
+	);
+	try {
+		assert.equal(handle.available, true, handle.reason);
+		const descriptor = handle.bootstrapDescriptor();
+		assert.ok(descriptor);
+		const publication = await publishPersistentRequest(descriptor, token, payload);
+		const output = await dispatchAgentRuntimeCliV1(ports, {
+			expectedCommand,
+			requestToken: publication.token,
+			transportKind: 'windows-named-pipe',
+			brokerScope: descriptor,
+		});
+		const status = await sendBrokerControlRequest(descriptor, {
+			type: 'status',
+			requestToken: publication.token,
+		});
+		assert.equal(status.state, expectedCommand === 'mutation.apply' ? 'dispatch-started' : 'consumed');
+		return output;
+	} finally {
+		await handle.close();
+		clearWindowsBrokerStagesForTestsV1();
+	}
+}
+
+
 test('dispatcher routes File Task title preview and apply through their dedicated provider', async () => {
  const vault = await mkdtemp(join(tmpdir(), 'operon-file-title-transport-'));
  try {
-  const expectedVaultSha256 = createHash('sha256').update(await realpath(vault)).digest('hex');
   const calls: string[] = [];
   const health = { ...createHealth(), capabilities: [...createHealth().capabilities, ...fileTaskTitlesAdvertisementsV1(true)] };
   const base = createRuntime(health);
@@ -2958,10 +3009,9 @@ test('dispatcher routes File Task title preview and apply through their dedicate
    const plan = sealFileTaskTitlesPlanV1(fixture, request.capability, request.idempotencyKey, request.spec);
    for (const apply of [false, true]) {
     const command = apply ? 'mutation.apply' as const : 'mutation.preview' as const;
-    const invocation = { contractVersion: 1, kind: 'cli-invocation', requestId: request.requestId, command, mode: 'live', clientVersion: '1.0.0', compatibility: COMPATIBILITY, cliContract: { min: 1, max: 1 }, expectedVaultSha256, readinessTimeoutMs: 1000, request: apply ? { contractVersion: 1, requestId: request.requestId, kind: 'mutation-apply', plan, idempotencyKey: request.idempotencyKey, authorization: request.authorization, acknowledgements: [] } : request };
+    const invocation = { contractVersion: 1, kind: 'cli-invocation', requestId: request.requestId, command, mode: 'live', clientVersion: '1.0.0', compatibility: COMPATIBILITY, cliContract: { min: 1, max: 1 }, readinessTimeoutMs: 1000, request: apply ? { contractVersion: 1, requestId: request.requestId, kind: 'mutation-apply', plan, idempotencyKey: request.idempotencyKey, authorization: request.authorization, acknowledgements: [] } : request };
     const token = (edit ? (apply ? 'T' : 'U') : (apply ? 'V' : 'W')).repeat(32);
-    await publishRequest(token, JSON.stringify(invocation), 0o600);
-    const output = await dispatchAgentRuntimeCliV1({ runtime, nodeApi, vaultAdapter: { getFullPath: () => vault }, runtimeMetadata: { appVersion: '1.13.3', plugin: { id: 'operon', version: '4.5.0', minAppVersion: '1.7.2' }, apiVersion: 1 }, monotonicNow: () => 10 }, { expectedCommand: command, requestToken: token });
+    const output = await dispatchNativeRoutingFixture(runtime, vault, invocation, token);
     assert.equal(JSON.parse(output).ok, apply, output);
     if (!apply) assert.equal(JSON.parse(output).failure.error.reason, 'title provider route');
    }
@@ -2982,8 +3032,7 @@ test('creation policy uses the secure catalog transport without calling legacy c
   const request={contractVersion:1 as const,requestId:'creation-transport',kind:'task-creation-policy' as const,consistency:'live-verified' as const};
   const expected=await provider.readPolicy(request);
   const invocation={...await catalogInvocation(vault,request.requestId,1000),request};
-  const token='J'.repeat(32); await publishRequest(token,JSON.stringify(invocation),0o600);
-  const output=JSON.parse(await dispatchAgentRuntimeCliV1({runtime,nodeApi,vaultAdapter:{getFullPath:()=>vault},runtimeMetadata:{appVersion:'1.13.3',plugin:{id:'operon',version:'4.5.0',minAppVersion:'1.7.2'},apiVersion:1},monotonicNow:()=>10},{expectedCommand:'catalog',requestToken:token}));
+  const output = JSON.parse(await dispatchNativeRoutingFixture(runtime, vault, invocation, 'J'.repeat(32)));
   assert.equal(output.ok,true,JSON.stringify(output));assert.deepEqual(output.result,expected);assert.equal(reads,4);
  } finally {await rm(vault,{recursive:true,force:true});}
 });
@@ -3002,8 +3051,8 @@ test('routed creation preview/apply use the dedicated provider through secure na
   for(const apply of [false,true]) {
    const command=apply?'mutation.apply' as const:'mutation.preview' as const;
    const invocation={...await catalogInvocation(vault,request.requestId,1000),command,request:apply?{contractVersion:1,requestId:request.requestId,kind:'mutation-apply',authorization:request.authorization,idempotencyKey:request.idempotencyKey,acknowledgements:[],plan}:request};
-   const token=(apply?'R':'S').repeat(32);await publishRequest(token,JSON.stringify(invocation),0o600);
-   const output=JSON.parse(await dispatchAgentRuntimeCliV1({runtime,nodeApi,vaultAdapter:{getFullPath:()=>vault},runtimeMetadata:{appVersion:'1.13.3',plugin:{id:'operon',version:'4.5.0',minAppVersion:'1.7.2'},apiVersion:1},monotonicNow:()=>10},{expectedCommand:command,requestToken:token}));
+   const token = (apply ? 'R' : 'S').repeat(32);
+   const output = JSON.parse(await dispatchNativeRoutingFixture(runtime, vault, invocation, token));
    assert.equal(output.ok,apply,JSON.stringify(output));if(apply)assert.equal(output.result.error.reason,'provider conflict');else assert.equal(output.failure.error.reason,'provider conflict');
   }
   assert.deepEqual(calls,['preview','apply']);
