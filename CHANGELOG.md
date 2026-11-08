@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.6.0] - 2026-11-08
+
 ### New
 
 - Added opt-in **File Task display titles** in Settings → Tasks → File Tasks, so tasks can show a readable title independently of their filename across task views, search, and the Canvas, Excalidraw, and Kanban Task Pools. Titles use the mapped `title` property and fall back to the filename when no valid title is available. ([#301](https://github.com/hasanyilmaz/operon/pull/301))

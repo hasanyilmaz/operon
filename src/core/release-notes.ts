@@ -13,6 +13,14 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: "4.6.0",
+		date: "2026-11-08",
+		title: "File Task Titles and Everyday Fixes",
+		showOnUpdate: true,
+		bannerUrl: false,
+		body: "Give File Tasks readable titles, choose when filenames follow them, and open tasks from filters without losing your place.\n\n### File Task titles and filenames\n\n- Turn on **File Task display titles** under **Settings → Operon → Tasks → File Tasks → Display**. Operon shows the mapped title property when it has a value and falls back to the filename otherwise.\n- Choose **Same as title**, **kebab-case**, or **snake_case** for filenames. When you edit a title later, Operon can keep the filename, ask before renaming, or rename it automatically.\n\n### Everyday fixes\n\n- Click a filter task’s description to open Task Editor over the list. **Cmd/Ctrl-click** opens the source in a focused tab. The shortcut also works on supported File Task wikilinks and dependency links.\n- On touch screens, **Task Pool** keeps search reachable when the keyboard opens. Hidden ribbon buttons stay hidden after restarting Obsidian.\n- File Task creation and template merging preserve YAML text values, including quotes, line breaks, and text lists. Reading View also avoids unnecessary refreshes of unrelated notes.\n\n### Runtime V1 and Developer API\n\n- **The Runtime V1 contract now includes File Task display titles and filename rules.** Integrations can create titled File Tasks and edit existing titles while keeping their file paths.\n- **Read creation settings, then preview and apply one Inline or File Task.** Operon resolves the destination and template, including Daily and Weekly Notes.\n- Standalone CLI support will follow in a separate update.\n\n### Updated Docs\n\n- [[DOCS-013 File tasks|File Tasks]]\n- [[DOCS-025 Filter View|Filter View]]\n- [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool for Canvas, Excalidraw, and Kanban]]\n- [[DOCS-118 Operon Agent Runtime overview|Operon Agent Runtime Overview]]\n- [[DOCS-131 Developer API reads and typed mutations|Developer API Reads and Typed Mutations]]\n- And 19 more updated docs.",
+	},
+	{
 		version: "4.5.0",
 		date: "2026-11-05",
 		title: "Kanban Pools and a Customizable Status Dock",
