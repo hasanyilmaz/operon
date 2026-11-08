@@ -12,7 +12,7 @@ import type { PinnedCache } from '../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 
 type PropertyAccess = Pick<ReturnType<typeof createKanbanPropertyAccess>, 'resolve' | 'read' | 'revision' | 'getCurrentRevision'>;
-type Settings = Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'>;
+type Settings = Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'> & Partial<Pick<OperonSettings, 'fileTaskDisplayTitleEnabled'>>;
 export interface KanbanGroupHeader {
 	readonly key: string;
 	readonly value: Readonly<KanbanAxisValue> | null;
@@ -202,7 +202,9 @@ export function buildKanbanGroupingSnapshot(options: KanbanGroupingOptions): Kan
 	const memberships = headers.map(list => new Map(list.map(header => [header.key, new Set<string>()])));
 	const allowed = options.taskIdFilter ? new Set(options.taskIdFilter) : null;
 	const search = (options.searchQuery ?? '').trim().toLocaleLowerCase();
-	const matcher = search ? buildTaskSearchMatcher(tasks, options.settings.keyMappings) : null;
+	const matcher = search
+		? buildTaskSearchMatcher(tasks, options.settings.keyMappings, options.settings.fileTaskDisplayTitleEnabled === true)
+		: null;
 	const displayed = new Map<string, IndexedTask>();
 	for (const task of scoped) {
 		if (allowed && !allowed.has(task.operonId) || matcher && !matcher(task, search)) continue;

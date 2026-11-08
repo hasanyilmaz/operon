@@ -24,6 +24,10 @@ import {
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function countLocaleKeys(locale) {
+	return Object.values(locale).reduce((count, category) => count + Object.keys(category).length, 0);
+}
+
 function readTypeScriptSource(relativePath) {
 	const filePath = path.join(repoRoot, relativePath);
 	return ts.createSourceFile(
@@ -383,9 +387,10 @@ test('atomic artifact writes preserve the last good file and clean up on rename 
 
 test('real locale artifacts preserve English plus all supported keyed remote packs', () => {
 	const localeDirectory = path.join(repoRoot, 'i18n/locales');
+	const englishLocale = JSON.parse(fs.readFileSync(path.join(localeDirectory, 'en.json'), 'utf8'));
 	const artifacts = buildLocaleArtifacts({ localeDirectory });
 	const pack = artifacts.embeddedPack;
-	assert.equal(pack.keyCount, 3_777);
+	assert.equal(pack.keyCount, countLocaleKeys(englishLocale));
 	assert.deepEqual(pack.languageOrder, ['en']);
 	assert.equal(artifacts.releaseAssets.length, LOCALE_DEFINITIONS.length - 1);
 	assert.equal(pack.keyCount * (1 + artifacts.releaseAssets.length), pack.keyCount * LOCALE_DEFINITIONS.length);

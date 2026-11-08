@@ -1,3 +1,4 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { iterateMarkdownLinesOutsideFences } from '../core/markdown-fenced-lines';
 import { taskTextLinkEditorExtension } from './task-text-link-editor';
@@ -1433,7 +1434,11 @@ function attachLivePreviewChipAction(
 			case 'blocking':
 			case 'blockedBy':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					if (entry.key === 'blocking' || entry.key === 'blockedBy') {
+						void openTaskFileLinkWithModifier(callbacks.app, chip, entry.linkTarget, callbacks.getFilePath(view), event);
+					} else {
+						void callbacks.app.workspace.openLinkText(entry.linkTarget, callbacks.getFilePath(view), false);
+					}
 					onCommit?.();
 				}
 				break;

@@ -17,6 +17,7 @@ import { splitTaskListValue } from '../../core/task-field-patch';
 import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
 import { showFilterSetPicker } from '../filter-set-picker';
 import { getTaskIconActionLabel } from '../../core/task-icon-action';
+import { getTaskDisplayTitle } from '../../core/task-display-title';
 import { ItemView, Notice, Platform, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { getSchemePalette, isLightScheme } from '../appearance-schemes';
 import { OperonIndexer } from '../../indexer/indexer';
@@ -2831,14 +2832,15 @@ export class KanbanView extends ItemView {
 			laneKey,
 			workflowStatusIdentityIndex,
 		);
-		const titleText = task.description || task.operonId;
+		const displayTitleEnabled = this.getSettings().fileTaskDisplayTitleEnabled;
+		const titleText = getTaskDisplayTitle(task, displayTitleEnabled) || task.operonId;
 		const titleEl = head.createSpan({
 			cls: 'operon-kanban-card-title',
 		});
 		renderCompactTaskMarkdown(titleEl, {
 			app: this.app,
 			value: titleText,
-   bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(task.operonId)),
+			bindLink: taskDescriptionOpening(this.app, () => this.indexer.getTask(task.operonId), undefined, displayTitleEnabled),
 			sourcePath: task.primary.filePath,
 			mode: 'interactive',
 			containerClassName: 'operon-task-description-markdown',

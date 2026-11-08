@@ -26,6 +26,20 @@ const productionContractImporters = new Set([
 	'src/agent-runtime/developer-api/recovery-store.ts',
 	'src/agent-runtime/developer-api/security/policy.ts',
 	'src/agent-runtime/developer-api/security/types.ts',
+	'src/agent-runtime/extensions/task-creation-v1/contracts.ts',
+	'src/agent-runtime/extensions/task-creation-v1/decode.ts',
+	'src/agent-runtime/extensions/task-creation-v1/developer-api.ts',
+	'src/agent-runtime/extensions/task-creation-v1/gateway.ts',
+	'src/agent-runtime/extensions/task-creation-v1/definition-journal.ts',
+	'src/agent-runtime/extensions/task-creation-v1/developer-session.ts',
+	'src/agent-runtime/extensions/task-creation-v1/materializer.ts',
+	'src/agent-runtime/extensions/task-creation-v1/mutation-gateway.ts',
+	'src/agent-runtime/extensions/task-creation-v1/preparation.ts',
+	'src/agent-runtime/extensions/file-task-titles-v1/contracts.ts',
+	'src/agent-runtime/extensions/file-task-titles-v1/decode.ts',
+	'src/agent-runtime/extensions/file-task-titles-v1/developer-api.ts',
+	'src/agent-runtime/extensions/file-task-titles-v1/developer-session.ts',
+	'src/agent-runtime/extensions/file-task-titles-v1/gateway.ts',
 	'src/agent-runtime/extensions/checkbox-ownership-v1/contracts.ts',
 	'src/agent-runtime/extensions/checkbox-ownership-v1/decode.ts',
 	'src/agent-runtime/extensions/checkbox-ownership-v1/developer-api.ts',
@@ -939,6 +953,27 @@ function runGeneratedBoundaryDifferential(fixtures, module, validators) {
 		if (propertyName === 'mutationOwner') candidate[0].mutationClass = 'runtime-owned';
 		candidate[0][propertyName] = value;
 		assertPair('field-catalog', candidate, expected, label);
+	}
+
+	const filenameRuleCatalog = fixture(fixtures, 'valid-live-property-catalog-with-filename-rule').value;
+	const assertFilenameRuleCatalog = (candidate, expected, label) => {
+		candidate.catalogRevision = createHash('sha256').update(canonicalJsonForSchema({
+			settingsFingerprint: candidate.settingsFingerprint,
+			taxonomy: candidate.taxonomy,
+			fields: candidate.fields,
+			policies: candidate.policies,
+		}), 'utf8').digest('hex');
+		assertPair('operon-catalog', candidate, expected, label);
+	};
+	for (const preset of ['same', 'kebab', 'snake', 'custom', 'unknown']) {
+		const candidate = structuredClone(filenameRuleCatalog);
+		candidate.policies.fileTaskFilenameRule = { preset };
+		assertFilenameRuleCatalog(candidate, ['same', 'kebab', 'snake'].includes(preset), `filename format: ${preset}`);
+	}
+	for (const property of ['rules', 'lowercase']) {
+		const candidate = structuredClone(filenameRuleCatalog);
+		candidate.policies.fileTaskFilenameRule[property] = [];
+		assertFilenameRuleCatalog(candidate, false, `filename format rejects unsupported ${property}`);
 	}
 
 	const context = fixture(fixtures, 'valid-legacy-invalid-task-context').value;

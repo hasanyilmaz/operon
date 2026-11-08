@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "활성화하면 설정된 지연 후 완료 또는 취소된 파일 작업을 보관 폴더로 이동합니다.",
       "fileTaskConversion": "파일 작업 변환",
       "fileTaskDailyNotes": "일일 노트",
+      "fileTaskDisplayTitleChangeMode": "표시 제목이 변경될 때",
+      "fileTaskDisplayTitleChangeModeAsk": "확인",
+      "fileTaskDisplayTitleChangeModeAuto": "자동으로 이름 변경",
+      "fileTaskDisplayTitleChangeModeDesc": "파일 이름을 유지하거나, Operon에서 제목을 저장한 후 확인하거나, 외부 편집을 포함한 제목 변경 시 자동으로 이름을 변경합니다.",
+      "fileTaskDisplayTitleChangeModeKeep": "파일 이름 유지",
+      "fileTaskDisplayTitleEnabled": "속성을 파일 작업의 표시 제목으로 사용",
+      "fileTaskDisplayTitleEnabledDesc": "매핑된 제목 속성을 파일 작업 제목으로 표시합니다. 파일 경로와 작업 식별자는 별도로 유지됩니다.",
       "fileTaskFileParentTargetMode": "상위가 파일 작업일 때의 파일 작업 배치",
       "fileTaskFileParentTargetModeDesc": "선택한 상위가 파일 작업일 때 새 Operon 작업이 파일 작업을 만들 위치를 선택합니다.",
       "fileTaskFileParentTargetSameFolder": "상위 파일과 같은 폴더",
+      "fileTaskFilenameRule": "파일 이름 형식",
+      "fileTaskFilenameRuleDesc": "표시 제목으로 파일 이름을 만드는 형식입니다. 파일 이름에 사용할 수 없는 문자는 제거됩니다.",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "제목과 동일",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "상위가 인라인 작업일 때의 파일 작업 배치",
       "fileTaskInlineParentTargetModeDesc": "선택한 상위가 인라인 작업일 때 새 Operon 작업이 파일 작업을 만들 위치를 선택합니다.",
       "fileTaskInlineParentTargetSameFolder": "상위 노트와 같은 폴더",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "캘린더 및 시간 보기에 사용하는 예정 시작 날짜 및 시간입니다.",
       "keyMappingsDesc_duration": "초 단위로 저장하는 추적 작업 시간입니다.",
       "keyMappingsDesc_estimate": "초 단위로 저장하는 예상 작업 시간입니다.",
+      "keyMappingsDesc_fileTaskDisplayTitle": "표시 제목이 활성화된 경우 파일 작업 제목에 사용하는 프런트매터 속성입니다.",
       "keyMappingsDesc_links": "작업과 연결된 외부 웹 링크입니다.",
       "keyMappingsDesc_location": "위도, 경도 텍스트로 저장하며 지도 칩으로 표시하는 위치 좌표입니다.",
       "keyMappingsDesc_note": "작업 옆에 표시하는 짧은 노트 또는 주석입니다.",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[유형]",
       "keyMappingsLegendValueSharingDesc": "파일 작업 YAML의 값은 일치하는 인라인 작업 필드와 공유하므로 인라인 작업 편집 시 제안으로 표시되며 그 반대도 가능합니다.",
       "keyMappingsLegendValueSharingLabel": "속성값 공유",
+      "keyMappingsMappingCollision": "기존 사용자 정의 키와 이름이 충돌하여 일부 기본 키 매핑을 추가할 수 없습니다. 충돌하는 키의 이름을 바꾼 후 설정을 다시 여세요.",
       "keyMappingsNoCustom": "사용자 정의 키가 없습니다. 아래 버튼으로 추가하세요.",
       "keyMappingsPropertyAria": "표시 속성 이름",
       "keyMappingsPropertyLabel": "속성",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "값 또는 매핑이 속성 유형과 충돌하여 Operon에서 '{{name}}' 속성은 읽기 전용입니다.",
       "filePropertyUnavailable": "속성 유형이나 원본을 확인할 수 없어 Operon에서 '{{name}}' 속성은 읽기 전용입니다.",
       "filePropertyUnsupported": "이 값 형식은 편집을 지원하지 않아 Operon에서 '{{name}}' 속성은 읽기 전용입니다.",
+      "fileTaskFile": "파일",
+      "fileTaskFilenameFallback": "규칙에서 빈 파일 이름이 생성되었습니다. {{filename}}을(를) 유지합니다.",
+      "fileTaskKeep": "유지",
       "fileTaskNameTitle": "파일 작업 이름",
+      "fileTaskRenameAction": "이름 변경",
+      "fileTaskRenameCollision": "이 폴더에 같은 이름의 파일이 이미 있습니다.",
+      "fileTaskRenameFailed": "파일 이름을 변경할 수 없습니다. 표시 제목은 저장되었습니다.",
+      "fileTaskRenameInvalid": "금지된 문자가 없는 유효한 파일 이름을 입력하세요.",
       "fileTemplateInfoLabel": "정보:",
       "filterStatus": "상태 필터링",
       "finished": "완료됨",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "623c4c4b79e92607158a7efd665d1ec77c276803388a377c3e52707bc412608a"
+  "sourceVersion": "a73c0bd58f58569782bcc9019a6f90d7197a2135503e3ac6a46bbaba068bee2c"
 }

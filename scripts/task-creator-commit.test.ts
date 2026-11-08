@@ -16,6 +16,26 @@ async function fixture(yaml:string) {
  await ui.select({kind:'folder',path:'a.md',id:'a',name:'A'},'Task');
  return ui;
 }
+test('new file title preserves human text independently of all filename presets and template titles', async () => {
+ const ui = await fixture('title: Template title');
+ const request = ui.submission('file', 'Review Q3 Plan', 'keep-completed');
+ const result = prepareCreationCommit({ ...request, fileTaskDisplayTitleEnabled: true }, context,
+  { operonId: 'abc1234', now: '2026-10-11T09:00:00' });
+ assert.equal(parseYaml(splitFrontmatterDocument(result.fileContent()).frontmatter!).title, 'Review Q3 Plan');
+ assert.equal(result.fieldValues.fileTaskDisplayTitle, 'Review Q3 Plan');
+ assert.equal(parseYaml(splitFrontmatterDocument(result.fileContent('---\ntitle: Templater title\n---\nRendered body')).frontmatter!).title, 'Review Q3 Plan');
+ const mapped = { ...context, keyMappings: context.keyMappings.map(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle'
+  ? { ...mapping, visiblePropertyName: 'Display title' } : mapping) };
+ const emptyUi = await fixture('');
+ const mappedResult = prepareCreationCommit({ ...emptyUi.submission('file', 'Human: title', 'keep-completed'), fileTaskDisplayTitleEnabled: true },
+  mapped, { operonId: 'abc1234', now: '2026-10-11T09:00:00' });
+ const frontmatter = parseYaml(splitFrontmatterDocument(mappedResult.fileContent()).frontmatter!);
+ assert.equal(frontmatter['Display title'], 'Human: title');
+ assert.equal(frontmatter.title, undefined);
+ const inline = prepareCreationCommit({ ...emptyUi.submission('inline', 'Inline task', 'keep-completed'), fileTaskDisplayTitleEnabled: true },
+  context, { operonId: 'abc1234', now: '2026-10-11T09:00:00' });
+ assert.equal(inline.fieldValues.fileTaskDisplayTitle, undefined);
+});
 for(const [key,type,source,value] of [['Client','text','hello','hello'],['Client','text','',null],['Client','text','""',''],['Count','number','0',0],['Checked','checkbox','false',false],['Day','date','2026-10-10','2026-10-10'],['Time','datetime','2026-10-10T12:34:56','2026-10-10T12:34:56'],['Values','list','[3,"3",Ali,Ali]',[3,'3','Ali','Ali']],['Values','list','[]',[]],['Values','list','[""]',['']]] as const) test(`snapshot serializes ${key} ${source} to both sources`,async()=>{
  const ui=await fixture(`${key}: ${source}`);
  const before=ui.submission('inline','Task','keep-completed');

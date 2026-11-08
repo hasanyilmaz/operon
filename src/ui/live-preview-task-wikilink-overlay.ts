@@ -1,5 +1,7 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { createTaskSourceActionButton } from './task-info-chip-action';
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import {
@@ -398,13 +400,13 @@ class TaskWikilinkLabelWidget extends WidgetType {
 		applyTaskFileLinkLabelState(label, this.visuals);
 
 		const alias = this.resolved.alias?.trim();
-		const description = this.resolved.task.description.trim();
+		const description = getTaskDisplayTitle(this.resolved.task, this.callbacks.getSettings().fileTaskDisplayTitleEnabled).trim();
 		const fallbackText = alias || description || this.resolved.rawLinktext;
 		if (!alias && description) {
 			renderCompactTaskMarkdown(label, {
 				app: this.callbacks.app,
 				value: description,
-    bindLink: taskDescriptionOpening(this.callbacks.app, () => this.callbacks.getAllTasks().find(task => task.operonId === this.resolved.task.operonId)),
+    bindLink: taskDescriptionOpening(this.callbacks.app, () => this.callbacks.getAllTasks().find(task => task.operonId === this.resolved.task.operonId), undefined, this.callbacks.getSettings().fileTaskDisplayTitleEnabled),
 				sourcePath: this.resolved.task.primary.filePath,
 				mode: 'interactive',
 				containerClassName: 'operon-task-wikilink-label-markdown',
@@ -423,7 +425,7 @@ class TaskWikilinkLabelWidget extends WidgetType {
 			if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 			event.preventDefault();
 			event.stopPropagation();
-			void this.callbacks.app.workspace.openLinkText(this.resolved.resolvedFile.path, sourcePath, false);
+			void openTaskFileLinkWithModifier(this.callbacks.app, label, this.resolved.resolvedFile.path, sourcePath, event);
 		});
 		label.addEventListener('keydown', (event) => {
 			if (event.target !== label) return;
@@ -751,7 +753,7 @@ export function buildTaskWikilinkLabelRenderSignature(
 	return stableStringify({
 		alias: resolved.alias ?? '',
 		checkbox: resolved.task.checkbox,
-		description: resolved.task.description,
+		description: getTaskDisplayTitle(resolved.task, callbacks.getSettings().fileTaskDisplayTitleEnabled),
 		language: settings.language,
 		labelState: visuals.labelState,
 		rawLinktext: resolved.rawLinktext,

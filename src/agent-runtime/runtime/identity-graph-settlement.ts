@@ -159,7 +159,7 @@ export function buildRuntimeIdentityGraphGroupResultsV1(
 	return [...new Set(steps.map(step => step.groupId))].map(groupId => ({
 		groupId,
 		status: 'committed',
-		resourceRevisions: steps.filter(step => step.groupId === groupId).map(step => ({
+		resourceRevisions: steps.filter(step => step.groupId === groupId && step.resourceKind !== 'inline-property-definitions').map(step => ({
 			resourceKind: step.resourceKind === 'repeat-series' ? 'repeat-series' : 'task-source',
 			resourceKey: step.resourceKey,
 			revision: step.resourceKind === 'repeat-series'

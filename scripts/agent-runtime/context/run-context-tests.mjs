@@ -20,6 +20,7 @@ try {
 		platform: 'node',
 		target: ['node18'],
 		logLevel: 'silent',
+		define: { OPERON_AGENT_RUNTIME_PROBE_ENABLED: 'false' },
 	});
 	await import(`${pathToFileURL(outfile).href}?t=${Date.now()}`);
 	const testRun = globalThis.__operonAgentRuntimeContextTestRun;

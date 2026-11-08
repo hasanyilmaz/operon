@@ -1,3 +1,4 @@
+import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
 import { transferLightboxOpening, getLightboxOrigin } from './lightbox';
 import { Notice, Platform, TFile, parseLinktext, type App, type WorkspaceLeaf } from 'obsidian';
 import { getInternalPlugin, isPluginEnabled } from '../core/obsidian-app';
@@ -87,4 +88,23 @@ function mediaTabOpening(app: App, anchor: HTMLElement, target: LightboxTarget, 
    return () => { activate(); if (local && destination) focusLightboxSourceCaret(destination, local); };
   } catch { new Notice(placement === 'below' ? 'Could not open below the original tab. The lightbox is still open.' : placement === 'split' ? 'Could not open to the right of the original tab. The lightbox is still open.' : 'Could not open a new tab. The lightbox is still open.'); return null; }
  };
+}
+
+/** Keep legacy task-file navigation except for the existing desktop source-tab gesture. */
+export async function openTaskFileLinkWithModifier(
+ app: App,
+ anchor: HTMLElement,
+ linktext: string,
+ sourcePath: string,
+ event: Pick<MouseEvent, 'button' | 'detail' | 'metaKey' | 'ctrlKey'>,
+): Promise<void> {
+ if (!Platform.isDesktopApp || event.button !== 0 || event.detail === 0 || !isTaskSourceOpenModifierClick(event)) {
+  await app.workspace.openLinkText(linktext, sourcePath, false);
+  return;
+ }
+ if (event.detail > 1) return;
+ try {
+  const result = await openLightboxTarget(app, anchor, { kind: 'local', linktext, sourcePath }, 'tab');
+  if (result === 'missing') new Notice('Link target not found.');
+ } catch { new Notice('Could not open this link. Please try again.'); }
 }

@@ -13,6 +13,8 @@ try {
 		entryPoints: [path.join(scriptDirectory, 'graph-transaction-executor.test.ts')],
 		outfile,
 		bundle: true,
+		alias: { obsidian: path.resolve(scriptDirectory, '../../test-support/obsidian-native-yaml.ts') },
+		banner: { js: 'import { createRequire as createYamlTestRequire } from "node:module"; const require = createYamlTestRequire(import.meta.url);' },
 		format: 'esm',
 		platform: 'node',
 		target: ['node18'],

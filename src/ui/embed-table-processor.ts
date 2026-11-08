@@ -198,7 +198,9 @@ import {
 } from './table/table-editing';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { showTextFieldPopover } from './text-field-popover';
-import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute } from './table/table-text-edit-route';
+import { resolveTableParentTaskActivation, resolveTableTaskTextEditRoute, resolveTableTaskTextEditTarget } from './table/table-text-edit-route';
+import { createFileTaskTitleAfterCommit } from './file-task-rename-callout';
+import type { FileTaskRenameSuggestion } from '../core/filename-rule';
 import { showTaskNotePopover } from './task-note-action';
 import {
 	buildTrackerSessionEditContext,
@@ -329,6 +331,8 @@ export interface EmbedTableDeps {
 	openTaskSource: (operonId: string) => void;
 	allowWrites?: boolean;
 	updateTaskFields?: (operonId: string, payload: Record<string, string>) => void | Promise<boolean>;
+	onFileTaskTitleChanged?: (operonId: string, title: string) => Promise<FileTaskRenameSuggestion | null>;
+	onRenameFileTask?: (operonId: string, filename: string) => Promise<void>;
 	updateGanttTaskFields?: (
 		operonId: string,
 		payload: Record<string, string>,
@@ -4948,7 +4952,7 @@ function renderEmbedTableInlineTextCell(
 	const editable = isEditableTableTaskFieldKey(key, renderState.settings) && canWriteEmbedTable(deps);
 	const instance = findEmbedTableInstance(cell);
 	const cellKey = buildTableEditableCellKey(task, key);
-	const payloadKey = key === 'description' ? '_description' : key;
+	const { payloadKey, editValue } = resolveTableTaskTextEditTarget(task, key, value, renderState.settings.fileTaskDisplayTitleEnabled);
 	const showIconOnly = shouldUseEmbedTableIconOnlyColumn(column, renderState.settings);
 	const canOpenTextPopover = editable && !!instance;
 	if (canOpenTextPopover) {
@@ -4970,7 +4974,7 @@ function renderEmbedTableInlineTextCell(
 		})
 		: null;
 	const iconContent = formatTableIconOnlyTooltipContent(value);
- if (canOpenTextPopover && instance) embedTableCellOpeners.set(cell, () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, value, fieldLabel, cellKey, payloadKey));
+ if (canOpenTextPopover && instance) embedTableCellOpeners.set(cell, () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, editValue, fieldLabel, cellKey, payloadKey));
 	renderTableDescriptionCellContent(cell, {
   ...(Platform.isDesktopApp ? { bindLink: (anchor, link) => bindTableMarkdownOpening(anchor, link, key === 'note' ? 'note' : 'description', embedTableOpeningContext(cell, task, deps)) } : {}),
 		value,
@@ -4993,7 +4997,7 @@ function renderEmbedTableInlineTextCell(
 			sourcePath: task.primary.filePath,
 		},
 		onOpen: canOpenTextPopover && instance
-			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, value, fieldLabel, cellKey, payloadKey)
+			? () => openEmbedTableInlineTextPopover(instance, deps, cell, task, column.key, editValue, fieldLabel, cellKey, payloadKey)
 			: undefined,
 	});
 }
@@ -5012,6 +5016,8 @@ function openEmbedTableInlineTextPopover(
 	preserveLineBreaks = false,
 ): void {
 	if (instance.pendingCellKey !== null) return;
+	const editsTitle = payloadKey === 'fileTaskDisplayTitle';
+	if (editsTitle) allowEmptyCommit = true;
 	closeEmbedTableActivePicker(instance);
 	let closeTextPopover: (() => void) | null = null;
 	const releaseTextPopoverOwnership = (): boolean => {
@@ -5065,6 +5071,7 @@ function openEmbedTableInlineTextPopover(
 				sourcePath: task.primary.filePath,
 			},
 			onCommit: commitValue,
+			...(editsTitle ? { onAfterCommit: createFileTaskTitleAfterCommit(task, deps) } : {}),
 			onClose: releaseTextPopoverOwnership,
 			onFocusReturn: () => {
 				if (cell.isConnected) cell.focus();

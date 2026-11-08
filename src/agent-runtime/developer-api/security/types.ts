@@ -1,3 +1,5 @@
+import type { RoutedTaskCreationPlanV1 } from '../../extensions/task-creation-v1/contracts';
+import type { FileTaskTitlesSealedPlanV1 } from '../../extensions/file-task-titles-v1/contracts';
 import type { CheckboxOwnershipSealedPlanV1 } from '../../extensions/checkbox-ownership-v1/contracts';
 import type { DeveloperApiGrantCapabilityV1 } from '../grants';
 import type {
@@ -14,7 +16,7 @@ import type {
 } from '../../contracts/v1/mutation';
 
 /** Shared host-only plan family for base and task-workflow mutation sessions. */
-export type DeveloperMutationSealedPlanV1 = SealedMutationPlanV1 | AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | CheckboxOwnershipSealedPlanV1;
+export type DeveloperMutationSealedPlanV1 = SealedMutationPlanV1 | AdoptTaskSealedPlanV1 | PeriodicNoteCreateSealedPlanV1 | PeriodicNoteUpdateSealedPlanV1 | CheckboxOwnershipSealedPlanV1 | FileTaskTitlesSealedPlanV1 | RoutedTaskCreationPlanV1;
 export type DeveloperMutationCapabilityV1 = DeveloperApiGrantCapabilityV1;
 
 export type DeveloperGrantStateV1 = 'pending' | 'active' | 'suspended' | 'revoked';

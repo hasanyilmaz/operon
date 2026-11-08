@@ -1,0 +1,71 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const base = 'contracts/agent-runtime/v1', dir = 'contracts/agent-runtime/extensions/file-task-titles-v1';
+const read = async file => JSON.parse(await readFile(file, 'utf8'));
+const core = await read(`${base}/mutation.schema.json`), cli = await read(`${base}/cli.schema.json`);
+const prior = await read('contracts/agent-runtime/extensions/checkbox-ownership-v1/extension-manifest.json');
+const ns = 'urn:operon:schema:runtime:v1:extension:file-task-titles:';
+const ref = name => ({ $ref: `${ns}mutation#/$defs/${name}` });
+const copy = (value, id = core.$id) => JSON.parse(JSON.stringify(value).replaceAll('"#/', `"${id}#/`));
+const obj = (properties, required = Object.keys(properties)) => ({ type: 'object', additionalProperties: false, required, properties });
+const caps = ['tasks.file.create.preview', 'tasks.file.create.apply', 'tasks.file.title.preview', 'tasks.file.title.apply'];
+const schema = (name, defs) => ({ $schema: 'https://json-schema.org/draft/2020-12/schema', $id: ns + name, title: `File Task titles V1 ${name}`, $defs: defs });
+const title = { type: 'string', maxLength: 8192, 'x-operon-maxUtf8Bytes': 8192 };
+const fileTarget = copy(core.$defs.createItem.properties.target);
+const createItem = copy(core.$defs.createItem);
+delete createItem.properties.description; createItem.required = createItem.required.filter(k => k !== 'description'); createItem.required.push('displayTitle');
+createItem.properties.displayTitle = { allOf: [copy(core.$defs.createItem.properties.description), { ...title, minLength: 1 }] };
+createItem.properties.target = { allOf: [fileTarget, { type: 'object', required: ['representation'], properties: { representation: { const: 'file' } } }] };
+const createSpec = obj({ operation: { const: 'create-file' }, item: createItem });
+const editSpec = obj({ operation: { const: 'set-title' }, displayTitle: { anyOf: [title, { type: 'null' }] } });
+const titleChange = { oneOf: [obj({ field: { const: 'fileTaskDisplayTitle' }, valueType: { const: 'text' }, value: title }), obj({ operation: { const: 'clear' }, field: { const: 'fileTaskDisplayTitle' }, valueType: { const: 'text' } })] };
+const innerTitleSpec = obj({ operation: { const: 'update' }, changes: { type: 'array', minItems: 1, maxItems: 1, items: titleChange } });
+const fileLocator = { allOf: [copy(core.$defs.exactMutationTarget), { type: 'object', properties: { locator: { type: 'object', properties: { representation: { const: 'file' } } } } }] };
+const filePlanTarget = { allOf: [copy(core.$defs.planTarget), { type: 'object', required: ['locator'], properties: { locator: { type: 'object', required: ['representation'], properties: { representation: { const: 'file' } } } } }] };
+const innerTitlePlan = copy(core.$defs.sealedMutationPlan);
+innerTitlePlan.properties.targets = { type: 'array', minItems: 1, maxItems: 1, items: filePlanTarget };
+innerTitlePlan.properties.spec = innerTitleSpec; innerTitlePlan.properties.capability = { const: 'tasks.update.preview' }; innerTitlePlan.properties.mutationKind = { const: 'task.update' };
+const previews = [], plans = [];
+for (const [capability, kind, spec] of [['tasks.file.create.preview', 'task.create', createSpec], ['tasks.file.title.preview', 'task.update', editSpec]]) {
+ const preview = copy(core.$defs.mutationPreviewRequest); delete preview.allOf;
+ preview.properties.capability = { const: capability }; preview.properties.mutationKind = { const: kind }; preview.properties.spec = spec;
+ if (kind === 'task.update') { preview.required.push('target'); preview.properties.target = fileLocator; } else delete preview.properties.target;
+ previews.push(preview);
+ const plan = copy(core.$defs.sealedMutationPlan); delete plan.allOf;
+ plan.required.push('extension', 'executionPlan'); plan.properties.extension = { const: 'file-task-titles-v1' }; plan.properties.capability = { const: capability }; plan.properties.mutationKind = { const: kind }; plan.properties.spec = spec;
+ plan.properties.executionPlan = kind === 'task.create' ? { $ref: `${core.$id}#/$defs/sealedMutationPlan` } : ref('titleExecutionPlan');
+ if (kind === 'task.update') plan.properties.targets = structuredClone(innerTitlePlan.properties.targets);
+ plans.push(plan);
+}
+const defs = { createSpec, editSpec, titleExecutionPlan: innerTitlePlan, previewRequest: { oneOf: previews }, createSealedPlan: plans[0], sealedPlan: { oneOf: plans } };
+const apply = copy(core.$defs.mutationApplyRequest); apply.properties.plan = ref('sealedPlan'); defs.applyRequest = apply;
+const previewResult = JSON.parse(JSON.stringify(copy(core.$defs.mutationPreviewResult)).replaceAll(`${core.$id}#/$defs/sealedMutationPlan`, `${ns}mutation#/$defs/sealedPlan`)); defs.previewResult = previewResult;
+const continuation = copy(core.$defs.mutationContinuation); continuation.properties.plan = ref('createSealedPlan'); defs.continuation = continuation;
+const mutationResult = copy(core.$defs.mutationResult); mutationResult.properties.continuation = ref('continuation'); mutationResult.properties.recoveryOutcome = { const: 'compensated' }; mutationResult.allOf = [...(mutationResult.allOf ?? []), { if: { required: ['recoveryOutcome'] }, then: { properties: { status: { const: 'failed' }, mutationMayHaveApplied: { const: false } }, not: { required: ['continuation'] } } }]; defs.mutationResult = mutationResult;
+defs.receipt = copy(core.$defs.mutationReceipt);
+defs.receipt.properties.mutationKind = { enum: ['task.create', 'task.update'] };
+mutationResult.properties.receipt = ref('receipt');
+const mutation = schema('mutation', defs);
+const capabilities = schema('capabilities', { capabilityId: { type: 'string', enum: caps }, capabilityRegistry: { type: 'array', minItems: 4, maxItems: 4, uniqueItems: true, items: obj({ id: { enum: caps }, mode: { enum: ['preview', 'apply'] }, mutationKind: { enum: ['task.create', 'task.update'] }, destructive: { const: false } }) } });
+const developer = JSON.parse(JSON.stringify(await read('contracts/agent-runtime/extensions/checkbox-ownership-v1/developer-api.schema.json')).replaceAll('checkbox-ownership', 'file-task-titles').replaceAll('Checkbox ownership', 'File Task titles'));
+developer.$defs.previewIntent = { oneOf: previews.map(input => { const intent = structuredClone(input); for (const key of ['contractVersion','kind','requestId','clientInstanceId','correlationId','idempotencyKey','authorization']) { delete intent.properties[key]; intent.required = intent.required.filter(k => k !== key); } return intent; }) };
+if (developer.$defs.accessRequest?.properties.requestedCapabilities) developer.$defs.accessRequest.properties.requestedCapabilities.maxItems = 4;
+const cliInvocation = copy(cli.$defs.invocation, cli.$id); delete cliInvocation.oneOf;
+cliInvocation.properties.command = { enum: ['mutation.preview', 'mutation.apply'] }; cliInvocation.properties.request = { oneOf: [ref('previewRequest'), ref('applyRequest')] };
+cliInvocation.allOf = [ { if: { properties: { command: { const: 'mutation.preview' } } }, then: { properties: { request: ref('previewRequest') }, required: ['request'] }, else: { properties: { request: ref('applyRequest') }, required: ['request'] } } ];
+const cliResult = JSON.parse(JSON.stringify(copy(cli.$defs.result, cli.$id)).replaceAll(`${core.$id}#/$defs/mutationPreviewResult`, `${ns}mutation#/$defs/previewResult`).replaceAll(`${core.$id}#/$defs/mutationResult`, `${ns}mutation#/$defs/mutationResult`));
+cliResult.properties.command = { enum: ['mutation.preview', 'mutation.apply'] };
+cliResult.properties.result = { oneOf: [ref('previewResult'), ref('mutationResult')] };
+const cliSchema = schema('cli', { invocation: cliInvocation, result: cliResult });
+const documents = [['capabilities.schema.json', capabilities], ['mutation.schema.json', mutation], ['developer-api.schema.json', developer], ['cli.schema.json', cliSchema]];
+const hash = value => createHash('sha256').update(value).digest('hex');
+const manifest = { manifestVersion: 1, contractVersion: 1, extensionId: 'file-task-titles-v1', baseContractDigest: prior.baseContractDigest, baseSchemaManifestAggregateSha256: (await read(`${base}/schema-manifest.json`)).aggregateSha256, cliSupport: 'provider-ready-client-deferred', capabilities: caps, documents: [], entrypoints: [] };
+const rendered = new Map();
+for (const [file, doc] of documents) {
+ const bytes = JSON.stringify(doc, null, 2) + '\n'; rendered.set(file, bytes); const sha256 = hash(bytes);
+ manifest.documents.push({ file, id: doc.$id, sha256 });
+ for (const name of Object.keys(doc.$defs)) manifest.entrypoints.push({ schemaId: `file-task-titles-${file.replace('.schema.json','')}-${name}`, ref: `${doc.$id}#/$defs/${name}`, file, sha256, direction: ['previewRequest','applyRequest','createSpec','editSpec','accessRequest','previewIntent','applyInput','recoverInput','invocation'].includes(name) ? 'input' : 'response' });
+}
+manifest.aggregateSha256 = hash(JSON.stringify(manifest)); rendered.set('extension-manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+if (process.argv.includes('--write')) { await mkdir(dir, { recursive: true }); for (const [file, bytes] of rendered) await writeFile(`${dir}/${file}`, bytes); }
+else { for (const [file, bytes] of rendered) if (await readFile(`${dir}/${file}`, 'utf8') !== bytes) throw new Error(`File Task title schema drift: ${file}`); }

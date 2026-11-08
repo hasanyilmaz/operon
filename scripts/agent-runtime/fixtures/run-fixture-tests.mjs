@@ -15,6 +15,8 @@ try {
 		outfile,
 		absWorkingDir: pluginRoot,
 		bundle: true,
+		alias: { obsidian: path.resolve(fixtureRoot, '../../test-support/obsidian-native-yaml.ts') },
+		banner: { js: 'import { createRequire as createYamlTestRequire } from "node:module"; const require = createYamlTestRequire(import.meta.url);' },
 		format: 'esm',
 		platform: 'node',
 		target: ['node18'],

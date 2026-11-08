@@ -691,6 +691,10 @@ export class ContextBridgeV1 {
 		};
 	}
 
+	isReadSettling(): boolean {
+		return this.provider.getReadAuthority().reason === 'settling';
+	}
+
 	private authorityError(): StructuredErrorV1 | null {
 		const authority = this.provider.getReadAuthority();
 		return authority.verified

@@ -6,6 +6,7 @@ import type * as Typescript from 'typescript';
 import { App, TFile, Notice } from 'obsidian';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission } from '../src/ui/task-creator-prepared-draft';
 import { prepareCreationCommit } from '../src/core/task-creation-commit';
+import { deriveTaskFilename } from '../src/core/filename-rule';
 import { CreationDraftProperties } from '../src/core/task-creation-draft-properties';
 import { decodeVaultPropertyValue } from '../src/core/vault-property-codec';
 import { parseFrontmatterDocument } from '../src/core/file-task-template-merge';
@@ -96,6 +97,7 @@ async function fixture() {
  host.compilePreparedCreator=method('compilePreparedCreator','commit',{prepareCreationCommit,generateOperonId:()=>`s3${String(++ids).padStart(5,'0')}`,localNow:()=> '2026-10-11T10:00:00',resolveWorkflowStatus});
  host.writePreparedCreatorInline=method('writePreparedCreatorInline','draft,file,before,after,canCommit,source');
  host.buildTaskCreatorInlineTaskLine=method('buildTaskCreatorInlineTaskLine','draft,filePath,lineNumber,inherited,now');
+ host.newFileTaskName=method('newFileTaskName','title',{deriveTaskFilename,t});
  host.createPreparedFileTask=method('createPreparedFileTask','selectedTemplate,options,commit',{TFile,parseFrontmatterDocument,t,Notice});
  let modal:any;
  class ModalBoundary {

@@ -1,7 +1,10 @@
+import type { ReadingTaskRowCallbacks } from './reading-task-row';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
 import { prepareCustomKeyTypeReuse } from './custom-key-type-reuse';
+import { normalizeFilenameRule } from '../core/filename-rule';
+import { hasFileTaskDisplayTitleMapping } from '../core/raw-yaml-property';
 import { saveDesktopBackdropDimming } from './modal-backdrop';
 import { BACKGROUND_DIMMING_OPTIONS, normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
@@ -39,6 +42,7 @@ import {
 	isNonEnglishSupportedLanguage,
 	type NonEnglishOperonLanguage,
 } from '../types/settings';
+import { getMissingDefaultKeyMappingCollisions } from '../types/settings';
 import {
 	createProjectSerialScopeId,
 	formatProjectSerialLabel,
@@ -986,6 +990,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
 		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 		private readonly tasksConversionUi?: TasksConversionUiIntegration,
+		private readonly filterPreviewActivateDescription?: ReadingTaskRowCallbacks['activateDescription'],
 	) {
 		super(app, plugin);
 		Reflect.set(this, 'icon', 'factory');
@@ -1087,6 +1092,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			cycleStatus: this.filterPreviewCycleStatus,
 			getChildIds: (parentId: string) => [...indexer.secondary.getChildIds(parentId)],
 			navigateToTask: this.filterPreviewNavigateToTask,
+			activateDescription: this.filterPreviewActivateDescription,
 			getSettings: () => settings,
 			updateField: this.filterPreviewUpdateField,
 			updateFields: this.filterPreviewUpdateFields,
@@ -1199,6 +1205,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === 'fileTaskDisplayTitleEnabled' && (value === true || value === 'true')
+			&& !hasFileTaskDisplayTitleMapping(this.settings.keyMappings)) {
+			new Notice(t('settings', 'keyMappingsMappingCollision'));
+			this.updateNativeSettingsDefinitions();
+			return;
+		}
   if (key === 'fileTaskAfterCreate' || key === 'inlineTaskAfterCreate') {
    await this.storage.updateSettings({ [key]: normalizeTaskAfterCreateAction(value) });
    this.notifySettingsChanged();
@@ -1582,11 +1594,13 @@ export class OperonSettingsTab extends PluginSettingTab {
 		return this.buildTaskSettingsGroups([
 			['newFileTaskCreationDefaults', ['taskCreatorDefaultToFileTask', 'fileTaskAfterCreate', 'taskCreatorDefaultFileTemplateId', 'fileTaskUseLastTemplateAsDefault'], (el, key) => this.renderFileCreationDefaultsSection(el, key), ['DOCS-024 Task templates', 'DOCS-020 Task Creator']],
 			['fileTaskTemplates', ['fileTaskTemplateFolder'], el => this.renderFileTemplatesSection(el), 'DOCS-024 Task templates'],
+			['display', ['fileTaskDisplayTitleEnabled', 'fileTaskDisplayTitleChangeMode', 'fileTaskFilenameRule'], (el, key) => this.renderFileTaskDisplaySettings(el, key), ['DOCS-013 File tasks', 'DOCS-039 Key mappings']],
 			['periodicNotesAsFileTasks', ['createDailyNotesAsOperonTask', 'createWeeklyNotesAsOperonTask'], (el, key) => this.renderPeriodicFileTaskSettings(el, key), 'DOCS-137 Daily and Weekly Notes'],
 			['fileTaskConversion', ['inlineToFileTaskMovePlainCheckboxes', 'inlineToFileTaskSourceDisposition'], (el, key) => this.renderFileConversionSection(el, key), 'DOCS-019 Converting inline and file tasks'],
 			['excludedFolders', ['excludedFolders'], el => this.renderExcludedFolderSettings(el), 'DOCS-054 Missing tasks'],
 			['fileTaskMigrationTitle', ['fileTaskMigration'], el => this.renderFileTaskMigrationSettings(el), ['DOCS-082 Bulk convert a folder into file tasks', 'DOCS-093 How to migrate from TaskNotes']],
-		], entries, t('settings', 'subtabFileTasks'), 'DOCS-013 File tasks');
+		], entries, t('settings', 'subtabFileTasks'), 'DOCS-013 File tasks', undefined,
+			key => !['fileTaskDisplayTitleChangeMode', 'fileTaskFilenameRule'].includes(key) || this.settings.fileTaskDisplayTitleEnabled);
 	}
 
 	private buildTaskCaptureSearchSection(
@@ -3348,6 +3362,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule({ preset: value });
 		if (key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return normalizeTaskFinderResultBehavior(value, DEFAULT_SETTINGS[key]);
 		if (key === 'statusDockClickAction') return normalizeTaskFinderResultBehavior(value, 'source-and-editor');
   if (key === 'taskEditorPosition') return value === 'left' ? 'left' : 'right';
@@ -3385,6 +3400,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'inlineToFileTaskSourceDisposition') {
 			return text === 'remove-inline-task' ? 'remove-inline-task' : 'keep-link';
+		}
+		if (key === 'fileTaskDisplayTitleChangeMode') {
+			return text === 'ask' || text === 'auto' ? text : 'keep';
 		}
 		if (key === 'inlineTaskParentInlineTargetMode') {
 			return text === 'default' ? 'default' : 'below-parent';
@@ -3503,6 +3521,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return value === false ? 'collapsed' : 'expanded';
 		}
@@ -3747,6 +3766,16 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'fileTaskFilenameRule') return {
+			same: t('settings', 'fileTaskFilenameRuleSame'),
+			kebab: t('settings', 'fileTaskFilenameRuleKebab'),
+			snake: t('settings', 'fileTaskFilenameRuleSnake'),
+		};
+		if (key === 'fileTaskDisplayTitleChangeMode') return {
+			keep: t('settings', 'fileTaskDisplayTitleChangeModeKeep'),
+			ask: t('settings', 'fileTaskDisplayTitleChangeModeAsk'),
+			auto: t('settings', 'fileTaskDisplayTitleChangeModeAuto'),
+		};
   if (key === 'taskEditorPosition') return { right: t('settings', 'taskEditorPositionRight'), left: t('settings', 'taskEditorPositionLeft') };
   if (key === 'workspaceTweaksBackgroundDimming') return Object.fromEntries(BACKGROUND_DIMMING_OPTIONS.map(value => [String(value), value === 50 ? t('settings', 'workspaceTweaksBackgroundDimmingDefault') : `${value}%`]));
 		if (key === 'calendarTimeGridScale') {
@@ -4140,6 +4169,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	private applySettingsSearchAfterSaveEffects(key: OperonSettingSearchKey): void {
+		if (key === 'fileTaskDisplayTitleEnabled') this.updateNativeSettingsDefinitions();
 		if (key === 'taskIconClickAction') {
 			this.refreshNativeSettingsDom();
 			this.applyPendingSettingsChange();
@@ -5934,6 +5964,43 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 
 	private renderFileTemplatesSection(containerEl: HTMLElement): void {
 		this.renderFileTaskTemplateSettings(containerEl);
+	}
+
+	private renderFileTaskDisplaySettings(containerEl: HTMLElement, selectedKey?: string): void {
+		containerEl.addClass?.('operon-file-task-display-settings');
+		if (!selectedKey || selectedKey === 'fileTaskDisplayTitleEnabled') {
+			this.renderBoundToggleSetting(
+				containerEl,
+				t('settings', 'fileTaskDisplayTitleEnabled'),
+				t('settings', 'fileTaskDisplayTitleEnabledDesc'),
+				'fileTaskDisplayTitleEnabled',
+				{ onAfterChange: () => this.redisplayPreservingScroll() },
+			);
+		}
+		if (!this.settings.fileTaskDisplayTitleEnabled) return;
+		if (!selectedKey || selectedKey === 'fileTaskDisplayTitleChangeMode') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'fileTaskDisplayTitleChangeMode'),
+				t('settings', 'fileTaskDisplayTitleChangeModeDesc'), 'fileTaskDisplayTitleChangeMode', {
+					value: this.settings.fileTaskDisplayTitleChangeMode,
+					dropdownOptions: [
+						{ value: 'keep', label: t('settings', 'fileTaskDisplayTitleChangeModeKeep') },
+						{ value: 'ask', label: t('settings', 'fileTaskDisplayTitleChangeModeAsk') },
+						{ value: 'auto', label: t('settings', 'fileTaskDisplayTitleChangeModeAuto') },
+					],
+					onAfterChange: () => this.redisplayPreservingScroll(),
+				});
+		}
+		if (!selectedKey || selectedKey === 'fileTaskFilenameRule') {
+			this.renderBoundDropdownSetting(containerEl, t('settings', 'fileTaskFilenameRule'),
+				t('settings', 'fileTaskFilenameRuleDesc'), 'fileTaskFilenameRule', {
+					value: this.settings.fileTaskFilenameRule.preset,
+					dropdownOptions: [
+						{ value: 'same', label: t('settings', 'fileTaskFilenameRuleSame') },
+						{ value: 'kebab', label: t('settings', 'fileTaskFilenameRuleKebab') },
+						{ value: 'snake', label: t('settings', 'fileTaskFilenameRuleSnake') },
+					],
+				});
+		}
 	}
 
 	private renderFileConversionSection(containerEl: HTMLElement, selectedKey?: string): void {
@@ -11593,6 +11660,9 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	 */
 	private buildKeyMappingsSettingsItems(): SettingDefinitionItem[] {
 		const canonicalSortIndex = new Map(CANONICAL_KEY_ORDER.map((entry, index) => [entry.name, index]));
+		const missingDefaultKeyMappingCollisions = getMissingDefaultKeyMappingCollisions(
+			this.settings.keyMappings,
+		);
 		const systemMappings = this.settings.keyMappings
 			.filter(mapping => mapping.isSystem && mapping.isInternal !== true)
 			.sort((left, right) => (canonicalSortIndex.get(left.canonicalKey) ?? Number.MAX_SAFE_INTEGER)
@@ -11611,6 +11681,12 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 				const explanation = host.createDiv('setting-item-description operon-key-mappings-help');
 				explanation.createEl('p', { text: t('settings', 'keyMappingsIntro') });
 				explanation.createEl('p', { text: t('settings', 'keyMappingsLegendHideDesc') });
+				if (missingDefaultKeyMappingCollisions.length > 0) {
+					explanation.createEl('p', {
+						text: t('settings', 'keyMappingsMappingCollision'),
+						cls: 'mod-warning',
+					});
+				}
 				const title = t('settings', 'tabKeyMappings');
 				return attachDeclarativeSettingsPageTitleAction(host, title,
 					['DOCS-039 Key mappings', 'DOCS-018 Task properties'].map(target => this.buildNativeSettingsDocsAction(title, target).action));

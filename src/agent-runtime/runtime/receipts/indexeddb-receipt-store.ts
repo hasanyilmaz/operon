@@ -1833,6 +1833,7 @@ function isJournalValid(journal: GraphTransactionJournalV1): boolean {
 				'pinned',
 				'active-tracker',
 				'semantic-transition',
+				'inline-property-definitions',
 			].includes(step.resourceKind)
 			|| !['create', 'modify', 'delete'].includes(step.operation)
 			|| !isResourceStateValid(step.before)
@@ -1857,6 +1858,7 @@ function isJournalValid(journal: GraphTransactionJournalV1): boolean {
 				step.resourceKind === 'pinned'
 				|| step.resourceKind === 'active-tracker'
 				|| step.resourceKind === 'semantic-transition'
+				|| step.resourceKind === 'inline-property-definitions'
 			)
 			&& step.operation !== 'modify'
 		) return false;

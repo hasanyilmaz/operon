@@ -11,7 +11,7 @@ try {
  const outfile=path.join(dir,'test.mjs');
  await build({stdin:{contents:`export {guardReadingTaskRowActions} from ${JSON.stringify(path.join(root,'src/ui/reading-task-row'))};`,resolveDir:root,loader:'ts'},outfile,bundle:true,format:'esm',platform:'node',logLevel:'silent',alias:{obsidian:path.join(root,'scripts/test-support/obsidian.ts')}});
  const {guardReadingTaskRowActions:guard}=await import(pathToFileURL(outfile).href);
- const actions=['openEditor','cycleStatus','navigateToTask','updateField','onContextualAction','toggleTimer','requestSubtask','updateFields','updateSubtasks','updateDependencyField','updateRepeatSeriesInlineCompletionMode'];
+ const actions=['openEditor','cycleStatus','navigateToTask','activateDescription','updateField','onContextualAction','toggleTimer','requestSubtask','updateFields','updateSubtasks','updateDependencyField','updateRepeatSeriesInlineCompletionMode'];
  let calls=0,blocked=0;const original=Object.fromEntries(actions.map(key=>[key,()=>{calls++;}]));
  const settings={};original.getSettings=()=>settings;original.isTaskPinned=()=>true;
  const safe=guard(original,()=>{blocked++;});
@@ -22,7 +22,7 @@ try {
  assert.notEqual(original.openEditor,safe.openEditor);
  const minimal=guard({openEditor(){},cycleStatus(){},navigateToTask(){},updateField(){}},()=>{});
  assert.equal(minimal.toggleTimer,undefined);assert.equal(minimal.onContextualAction,undefined);
- console.log('Reading blocked actions: 11/11 action callbacks blocked; display providers preserved');
+ console.log('Reading blocked actions: 12/12 action callbacks blocked; display providers preserved');
  const lpSource=fs.readFileSync(path.join(root,'src/ui/live-preview-conceal.ts'),'utf8');
  const ast=ts.createSourceFile('lp.ts',lpSource,ts.ScriptTarget.Latest,true);
  const names=['blockInvalidLivePreviewTaskAction','bindInvalidLivePreviewTaskActions'];

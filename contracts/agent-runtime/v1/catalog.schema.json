@@ -348,6 +348,10 @@
         "inlineRelocation", "deletion", "projectSerialScopes"
       ],
       "properties": {
+        "fileTaskFilenameRule": {
+          "type": "object", "additionalProperties": false, "required": ["preset"],
+          "properties": { "preset": { "enum": ["same", "kebab", "snake"] } }
+        },
         "creation": { "$ref": "#/$defs/creation" },
         "inheritance": { "$ref": "#/$defs/inheritance" },
         "exclusions": {

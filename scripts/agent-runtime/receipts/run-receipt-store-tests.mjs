@@ -15,6 +15,8 @@ try {
 		entryPoints: [path.join(scriptDirectory, 'indexeddb-receipt-store.test.ts')],
 		outfile,
 		bundle: true,
+		alias: { obsidian: path.join(pluginRoot, 'scripts/test-support/obsidian-native-yaml.ts') },
+		banner: { js: 'import { createRequire as createYamlTestRequire } from "node:module"; const require = createYamlTestRequire(import.meta.url);' },
 		format: 'esm',
 		platform: 'node',
 		target: ['node18'],

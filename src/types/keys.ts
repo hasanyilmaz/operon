@@ -105,6 +105,7 @@ export const CANONICAL_KEYS: CanonicalKeyDef[] = [
 	{ name: 'links', type: 'list', sync: 'yes', group: 'workflow', position: 32.75, description: 'External web links' },
 	{ name: 'taskImage', type: 'text', sync: 'yes', group: 'workflow', position: 32.8, description: 'Single task media reference' },
 	{ name: 'taskGallery', type: 'list', sync: 'yes', group: 'workflow', position: 32.85, description: 'Ordered task media references' },
+	{ name: 'fileTaskDisplayTitle', type: 'text', sync: 'no', group: 'workflow', position: 32.9, description: 'Read-only File Task display label' },
 	// Scheduling — Auto
 	{ name: 'datetimeModified', type: 'datetime', sync: 'auto', group: 'scheduling', position: 34, description: 'Task modification timestamp (auto-updated)' },
 ];

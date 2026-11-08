@@ -113,6 +113,8 @@ export function openLightbox(anchor: HTMLElement, options: LightboxOptions): Lig
  const modalOwner = Platform.isDesktopApp ? parent?.modalOwner
   ?? anchor.closest<HTMLElement>('.operon-focus-modal')
   ?? asHTMLElement(source?.owner, anchor)?.closest<HTMLElement>('.operon-focus-modal')
+  ?? anchor.closest<HTMLElement>('.operon-filter-preview-modal-shell, .operon-subtasks-filter-modal')
+  ?? asHTMLElement(source?.owner, anchor)?.closest<HTMLElement>('.operon-filter-preview-modal-shell, .operon-subtasks-filter-modal')
   ?? undefined : undefined;
 	if (previous && !parent) {
 		const result = previous();

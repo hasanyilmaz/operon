@@ -56,7 +56,8 @@ export class CreationDraftProperties {
 		for (const mapping of mappings) {
 			this.addAliases(mapping.canonicalKey, getManagedYamlAliases(mapping.canonicalKey, [mapping]));
 			if (mappings.filter(item => identity(item.canonicalKey) === identity(mapping.canonicalKey)).length > 1
-				|| mapping.isSystem === false && (CANONICAL_KEY_MAP.has(mapping.canonicalKey) || ['tags', 'subtasks', 'pinned'].includes(mapping.canonicalKey))) {
+				|| mapping.isSystem === false && mapping.canonicalKey !== 'fileTaskDisplayTitle'
+					&& (CANONICAL_KEY_MAP.has(mapping.canonicalKey) || ['tags', 'subtasks', 'pinned'].includes(mapping.canonicalKey))) {
 				this.conflictingKeys.add(mapping.canonicalKey);
 			}
 		}
@@ -70,7 +71,8 @@ export class CreationDraftProperties {
 		const matches = [...(this.aliases.get(identity(sourceName)) ?? [])];
 		const key = matches.length === 1 ? matches[0] : undefined;
 		const mapping = this.context.keyMappings.find(item => item.canonicalKey === key);
-		const canonical = key ? CANONICAL_KEY_MAP.get(key) : undefined;
+		const canonical = key && !(key === 'fileTaskDisplayTitle' && mapping?.isSystem === false)
+			? CANONICAL_KEY_MAP.get(key) : undefined;
 		const descriptor: CreationDraftProperty = {
 			id: key ? `managed:${key}` : `native:${identity(sourceName)}`,
 			sourceName,

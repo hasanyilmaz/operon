@@ -1,5 +1,7 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { isTaskInfoChipKey } from '../core/task-info-chips';
 import { bindTaskInfoSourceAction, createTaskSourceActionButton } from './task-info-chip-action';
 import { getTimeScopeSignature, replaceTaskTimeScope } from '../core/time-scope-values';
@@ -73,6 +75,7 @@ export interface ReadingTaskRowCallbacks {
 	openEditor: (operonId: string) => void;
 	cycleStatus: (operonId: string) => void | Promise<void>;
 	navigateToTask: (task: IndexedTask) => void;
+	activateDescription?: (task: IndexedTask, event: MouseEvent | KeyboardEvent, anchor: HTMLElement) => void;
 	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
@@ -127,6 +130,7 @@ export function guardReadingTaskRowActions(
 		openEditor: onBlockedAction,
 		cycleStatus: onBlockedAction,
 		navigateToTask: onBlockedAction,
+		activateDescription: callbacks.activateDescription ? onBlockedAction : undefined,
 		updateField: rejectUpdate,
 		onContextualAction: callbacks.onContextualAction ? onBlockedAction : undefined,
 		toggleTimer: callbacks.toggleTimer ? onBlockedAction : undefined,
@@ -354,13 +358,21 @@ export function buildReadingTaskRowElement(
 	description.addEventListener('click', (event) => {
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		if (Platform.isDesktopApp && callbacks.activateDescription) {
+			if (event.button !== 0 || event.detail > 1) return;
+			event.stopPropagation();
+			callbacks.activateDescription(task, event, description);
+		} else callbacks.navigateToTask(task);
 	});
 	description.addEventListener('keydown', (event) => {
 		if (event.target !== description) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
-		callbacks.navigateToTask(task);
+		if (Platform.isDesktopApp && callbacks.activateDescription) {
+			if (event.repeat) return;
+			event.stopPropagation();
+			callbacks.activateDescription(task, event, description);
+		} else callbacks.navigateToTask(task);
 	});
 	head.appendChild(description);
 
@@ -624,11 +636,19 @@ function renderTaskDescription(
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
 ): void {
-	const description = task.description || t('taskEditor', 'untitledTask');
+	const description = getTaskDisplayTitle(
+		task,
+		callbacks.getSettings().fileTaskDisplayTitleEnabled,
+	) || t('taskEditor', 'untitledTask');
 	const rendered = renderCompactTaskMarkdown(descriptionEl, {
 		app: callbacks.app,
 		value: description,
-  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(current => current.operonId === task.operonId)),
+		bindLink: taskDescriptionOpening(
+			callbacks.app,
+			() => callbacks.getAllTasks().find(current => current.operonId === task.operonId),
+			undefined,
+			callbacks.getSettings().fileTaskDisplayTitleEnabled,
+		),
 		sourcePath: task.primary.filePath,
 		mode: 'interactive',
 		containerClassName: 'operon-reading-task-description-markdown',
@@ -858,7 +878,11 @@ function attachReadingChipAction(
 			case 'blocking':
 			case 'blockedBy':
 				if (entry.linkTarget) {
-					void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					if (entry.key === 'blocking' || entry.key === 'blockedBy') {
+						void openTaskFileLinkWithModifier(callbacks.app, chip, entry.linkTarget, task.primary.filePath, event);
+					} else {
+						void callbacks.app.workspace.openLinkText(entry.linkTarget, task.primary.filePath, false);
+					}
 					onCommit?.();
 				}
 				break;

@@ -27,6 +27,7 @@ export interface TextFieldPopoverOptions {
 	sessionKey?: string;
 	allowEmptyCommit?: boolean;
 	onCommit: (value: string) => Promise<boolean | void> | boolean | void;
+	onAfterCommit?: (value: string, container: HTMLElement, close: () => void, isCurrent?: () => boolean) => Promise<boolean>;
 	onClose?: () => void;
 	lifecycleOwner?: Node;
 	onFocusReturn?: () => void;
@@ -126,6 +127,7 @@ export function showTextFieldPopover(
 	let saving = false;
 	let closed = false;
 	let editorHost: HTMLElement | null = null;
+	let committedValue: string | undefined;
  let previewSource: ReturnType<typeof registerLightboxSource> | null = null;
 	const closeAttemptWaiters = new Set<(closed: boolean) => void>();
 	const requestClose = (): void => {
@@ -219,6 +221,7 @@ export function showTextFieldPopover(
 		}
 	}
 	editorHost = body.createDiv('operon-text-field-popover-editor-host');
+	const afterCommitHost = options.onAfterCommit ? body.createDiv('operon-text-field-popover-after-commit') : null;
 	editorSurface = options.editor
 		? createCompactTextFieldEditorSurface(
 			editorHost,
@@ -230,7 +233,7 @@ export function showTextFieldPopover(
 		: createTextareaTextFieldEditorSurface(editorHost, options, requestClose, normalizeValue);
 	if (Platform.isDesktopApp && options.editor?.openLinksInLightbox) {
   previewSource = registerLightboxSource(panel, asHTMLElement(options.anchor) ?? getFloatingRectAnchorOwner(options.anchor) ?? options.lifecycleOwner ?? null, {
-   blocked: () => saving || readEditorCommit()?.shouldCommit === true,
+   blocked: () => { const commit = readEditorCommit(); return saving || (commit !== null && hasEditorValueChanged(commit)); },
    focus: () => editorSurface?.focus(),
    closeClean: () => { session.focusReturn = null; forceClose(); },
   });
@@ -263,8 +266,12 @@ export function showTextFieldPopover(
 		return editorSurface.getCommit();
 	}
 
+	function hasEditorValueChanged(commit: ReturnType<TextFieldEditorSurface['getCommit']>): boolean {
+		return committedValue === undefined ? commit.shouldCommit : commit.value !== committedValue;
+	}
+
 	function shouldCommitValue(commit: ReturnType<TextFieldEditorSurface['getCommit']>): boolean {
-		if (!commit.shouldCommit) return false;
+		if (!hasEditorValueChanged(commit)) return false;
 		return options.allowEmptyCommit === true || commit.value.length > 0;
 	}
 
@@ -283,6 +290,19 @@ export function showTextFieldPopover(
 			if (result === false) {
 				new Notice(t('notifications', 'taskSaveFailed'));
 				refocusEditor();
+				settleCloseAttempt(false);
+				return;
+			}
+			committedValue = nextValue;
+			if (afterCommitHost && options.onAfterCommit
+				&& !await options.onAfterCommit(nextValue, afterCommitHost, requestClose,
+					() => !saving && committedValue === nextValue && readEditorCommit()?.value === nextValue)) {
+				settleCloseAttempt(false);
+				return;
+			}
+			// A save or post-save action may finish after another edit. Keep that draft open.
+			const current = readEditorCommit();
+			if (current && shouldCommitValue(current)) {
 				settleCloseAttempt(false);
 				return;
 			}

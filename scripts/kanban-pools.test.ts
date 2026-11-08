@@ -11,6 +11,7 @@ import type * as Typescript from 'typescript';
 import { statusDockDocument } from './test-support/status-dock-dom';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { normalizeTaskCardSettings } from '../src/types/task-card';
+import { getTaskDisplayTitle } from '../src/core/task-display-title';
 import { queryCanvasTaskPool, canvasTaskPoolBatch } from '../src/systems/canvas-task-pool';
 import { readPropertyPoolPreferences } from '../src/core/property-value-pool';
 import { SettingsPreservationHarness } from './test-support/settings-preservation-harness';
@@ -46,7 +47,7 @@ const common = {
 };
 const controls: any[] = [], notes: any[] = [];
 const TaskPool = productionClass('src/ui/surface-task-pool.ts', 'SurfaceTaskPool', {
- ...common, canvasTaskPoolBatch, queryCanvasTaskPool, CANVAS_TASK_POOL_SEARCH_DELAY: 120,
+ ...common, getTaskDisplayTitle, canvasTaskPoolBatch, queryCanvasTaskPool, CANVAS_TASK_POOL_SEARCH_DELAY: 120,
  resolveTaskColorSource: () => null, resolveTaskDisplayIcon: () => 'circle',
  TaskCardControls: class { constructor(...args: any[]) { controls.push(args.at(-1)); } },
  renderCompactTaskMarkdown: (el: any, options: any) => { el.textContent = options.value; },
@@ -109,6 +110,25 @@ function openProperties(f: ReturnType<typeof fixture>) {
  // Value enumeration has its own suite; retain the actual panel/session/event lifecycle here.
  pool.refresh = () => {}; pool.position = () => {}; pool.show(); return pool;
 }
+
+test('shared Task Pool renders and searches display titles when enabled, including in-place settings changes', () => {
+ const f = fixture(); try {
+  Object.assign(f.tasks[0], { description: 'task-20261107', primary: { filePath: 'task-20261107.md', format: 'yaml' }, fieldValues: { fileTaskDisplayTitle: 'Zebra Roadmap' } });
+  const settings = f.services.cards.deps.getSettings(), pool = openTasks(f);
+  const title = () => pool.list.children[0].querySelector('.operon-canvas-task-pool-title').textContent;
+  assert.equal(title(), 'task-20261107');
+  settings.fileTaskDisplayTitleEnabled = true; pool.refresh();
+  assert.equal(title(), 'Zebra Roadmap', 'same settings object must invalidate rendered labels');
+  for (const query of ['Zebra', 'Zbr Rdm', 'task-20261107']) {
+   pool.query = query; pool.refresh(); assert.equal(pool.matches.length, 1); assert.equal(title(), 'Zebra Roadmap');
+  }
+  pool.query = 'Zebra'; pool.refresh();
+  settings.fileTaskDisplayTitleEnabled = false; pool.refresh(); assert.equal(pool.matches.length, 0, 'same query must be reevaluated when disabled');
+  settings.fileTaskDisplayTitleEnabled = true; pool.refresh(); assert.equal(pool.matches.length, 1);
+  pool.query = ''; pool.refresh(); assert.equal(title(), 'Zebra Roadmap');
+  settings.fileTaskDisplayTitleEnabled = false; pool.refresh(); assert.equal(title(), 'task-20261107');
+ } finally { f.close(); }
+});
 
 test('Kanban fileless panels open with independent edit and placement capabilities', () => {
  const f = fixture(); try {

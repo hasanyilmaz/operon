@@ -1,4 +1,6 @@
+import type { VaultPropertyValue } from './vault-property-codec';
 import { normalizeRepeatIdentityPayload } from './repeat-identity';
+import { newFileTaskTitleFields } from './task-display-title';
 import { serializeTaskListValue } from './subtask-inheritance';
 import { stringifyYaml } from 'obsidian';
 import { CANONICAL_KEY_MAP } from '../types/keys';
@@ -19,6 +21,7 @@ import { type NormalizeTaskFieldPatchOptions } from './task-field-patch';
 export interface PreparedCreationInput {
  description: string;
  createType: 'file' | 'inline';
+ fileTaskDisplayTitleEnabled?: boolean;
  snapshot: CreationDraftSnapshot;
  template: PreparedCreationTemplate | { status: 'empty' | 'loading' | 'error' };
 }
@@ -27,10 +30,14 @@ export interface PreparedCreationContent {
  fieldValues: Record<string, string>;
  tags: string[];
  definitions: InlinePropertyDefinition[];
+ nativeProperties: Array<{sourceName:string;value:VaultPropertyValue}>;
  skipped: { sourceName: string; reason: string }[];
  inlineLine: string;
+ /** Apply only typed native values to an already canonical task line. */
+ decorateInlineLine: (line: string) => string;
  /** Reapply authoritative fields after File Templater, preserving its body and deferred fields. */
- fileContent: (rendered?: string) => string;
+ fileContent: (rendered?: string, excludedFields?: readonly string[]) => string;
+ templateIdentityAllocations: Array<{occurrence:number;suffix?:string;operonId:string}>;
 }
 
 /** Serialization only. Source priority and user intent have already been resolved by the shared draft. */
@@ -43,6 +50,7 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
  if (template?.diagnostics.some(item => item.reason === 'type-conflict' || item.reason === 'unavailable')) throw new Error('Template property conflict');
  // Reuse the established identity allocator: independent body tasks stay independent,
  // while a suffix on the root identity remains bound to this task.
+ const templateIdentityAllocations: Array<{occurrence:number;suffix?:string;operonId:string}> = [];
  let identitySource = template?.rawContent ?? '';
  if (template) {
   const document = parseFrontmatterDocument(identitySource, mappings);
@@ -54,6 +62,7 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
   if (input.createType === 'inline') identitySource = `---\n${splitFrontmatterDocument(identitySource).frontmatter ?? ''}\n---\n`;
   identitySource = resolveOperonIdPlaceholders(identitySource, {
    generateOperonId: identity.allocateId ?? generateOperonId,
+   onIdentityAllocation: allocation => templateIdentityAllocations.push(allocation),
    ...(suffix ? {stableSuffixOperonIds:{[suffix]:identity.operonId}} : {}),
   });
  }
@@ -108,8 +117,14 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
    native.push({ sourceName: name, type: property.type, expected: { present: false }, mutation: { kind: 'set', value: value===null && property.type==='text' ? '' : value===null && property.type==='list' ? [] : value } });
   } else if (key && key !== 'subtasks' && key !== 'pinned') managed[key] = Array.isArray(value) ? serializeTaskListValue(value.map(String)) : value == null ? '' : String(value);
  }
+ if (input.createType === 'file' && input.fileTaskDisplayTitleEnabled) {
+  Object.assign(managed, newFileTaskTitleFields(input.description, managed, { fileTaskDisplayTitleEnabled: true, keyMappings: mappings }));
+  const property = catalog.resolve('fileTaskDisplayTitle');
+  removed.delete(property.id);
+  values.set(property.id, { name: getVisiblePropertyName('fileTaskDisplayTitle', mappings), value: input.description });
+ }
  const fieldValues = { ...managed, operonId: identity.operonId, datetimeCreated: identity.createdAt ?? identity.now, datetimeModified: identity.now };
- normalizeRepeatIdentityPayload({}, fieldValues, repeat.getAllRepeatSeriesIds ?? (() => new Set<string>()));
+ normalizeRepeatIdentityPayload({}, fieldValues, repeat.getAllRepeatSeriesIds ?? (() => new Set<string>()), repeat.deferRepeatIdentity);
  for (const [key,value] of Object.entries(fieldValues)) {
   const property = catalog.resolve(key);
   const old = values.get(property.id);
@@ -128,16 +143,19 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
  let inlineLine = serializeTask(parsed, mappings);
  let combined = context.inlineDefinitions;
  for (const definition of definitions) combined=retainInlinePropertyDefinition(combined,definition);
- if (native.length) inlineLine = patchInlineProperties(inlineLine, '', identity.operonId, native, mappings, combined);
- const fileContent = (rendered?: string): string => {
+ const decorateInlineLine = (line: string): string => native.length ? patchInlineProperties(line, '', identity.operonId, native, mappings, combined) : line;
+ inlineLine = decorateInlineLine(inlineLine);
+ const fileContent = (rendered?: string, excludedFields: readonly string[] = []): string => {
+  const excluded = new Set(excludedFields.map(key => catalog.resolve(key).id));
   const document = parseFrontmatterDocument(rendered ?? identitySource, mappings);
   const source = rendered ?? identitySource;
   const materialized = template && rendered === undefined ? resolveCreationTemplatePropertyValues(source,template.inputs,template.clock) : {};
   const written = new Set<string>();
   const sections: string[] = [];
   for (const section of document.sections) {
-   const id = catalog.resolve(section.yamlKey).id;
-   if (removed.has(id)) continue;
+   const property = catalog.resolve(section.yamlKey);
+   const id = property.id;
+   if (removed.has(id) || excluded.has(id)) continue;
    const replacement = values.get(id);
    if (replacement) {
     if (!written.has(id)) sections.push(stringifyYaml({ [section.yamlKey]: replacement.value }).trimEnd());
@@ -148,10 +166,10 @@ export function prepareCreationCommit(input: PreparedCreationInput, context: Cre
     sections.push(stringifyYaml({[section.yamlKey]:materialized[section.yamlKey]}).trimEnd());
    } else sections.push(section.raw.trimEnd());
   }
-  for (const [id,field] of values) if (!written.has(id)) sections.push(stringifyYaml({ [field.name]: field.value }).trimEnd());
+  for (const [id,field] of values) if (!written.has(id) && !excluded.has(id)) sections.push(stringifyYaml({ [field.name]: field.value }).trimEnd());
   let body = document.body;
   if (rendered === undefined && template) body = resolveCreationTemplateValue(body, template.inputs, template.clock);
   return `---\n${sections.join('\n')}\n---\n${body}`;
  };
- return { ...identity, fieldValues, tags, definitions, skipped, inlineLine, fileContent };
+ return { ...identity, fieldValues, tags, definitions, nativeProperties:native.flatMap(change=>change.mutation.kind==='set'?[{sourceName:change.sourceName,value:change.mutation.value}]:[]), skipped, inlineLine, decorateInlineLine, fileContent, templateIdentityAllocations };
 }
