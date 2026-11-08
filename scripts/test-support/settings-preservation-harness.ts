@@ -51,6 +51,32 @@ export function assertPersonalSettingsPreserved(actual: OperonDataPackageV1, exp
 	// Keep every pre-existing choice and every other package byte under comparison.
 	expected = clone(expected);
 	actual = clone(actual);
+	// W041 adds only these explicit defaults and the mapped system title field.
+	// Existing values stay in the exact comparison; immutable legacy fixtures are not rewritten.
+	for (const [key, fallback] of [
+		['fileTaskDisplayTitleEnabled', false],
+		['fileTaskDisplayTitleChangeMode', 'keep'],
+		['fileTaskFilenameRule', { preset: 'same' }],
+	] as const) {
+		if (!Object.prototype.hasOwnProperty.call(expected.settings, key)
+			&& Object.prototype.hasOwnProperty.call(actual.settings, key)) {
+			assert.deepEqual(actual.settings[key], fallback, `Unexpected title default: ${key}`);
+			Reflect.deleteProperty(actual.settings, key);
+		}
+	}
+	if (expected.settings.settingsVersion === 115 && actual.settings.settingsVersion !== 115) {
+		assert.equal(actual.settings.settingsVersion, 116, 'Only the W041 settings version transition is allowed');
+		expected.settings.settingsVersion = 116;
+	}
+	const previousTitle = expected.taxonomy.keyMappings.system.find(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle');
+	const addedTitles = actual.taxonomy.keyMappings.system.filter(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle');
+	if (!previousTitle && addedTitles.length) {
+		assert.deepEqual(addedTitles, [{
+			canonicalKey: 'fileTaskDisplayTitle', visiblePropertyName: 'title', type: 'text', sync: 'no',
+			enabled: true, hideInFileTaskView: false, icon: '', isSystem: true, isInternal: false,
+		}], 'Only the standard mapped title field may be added');
+		actual.taxonomy.keyMappings.system = actual.taxonomy.keyMappings.system.filter(mapping => mapping.canonicalKey !== 'fileTaskDisplayTitle');
+	}
 	// The previously accepted global dropdown rounded the sealed 320px value to 325px.
 	// Verify that exact legacy transition; preset sizing does not read this field.
 	if (expected.settings.kanbanExpandedColumnWidthPx === 320 && actual.settings.kanbanExpandedColumnWidthPx !== 320) {

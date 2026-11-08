@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "Açık olduğunda Operon biten veya iptal edilen dosya görevlerini ayarlanan gecikmeden sonra arşiv klasörüne taşır.",
       "fileTaskConversion": "Dosya Görevi Dönüşümü",
       "fileTaskDailyNotes": "Günlük notlar",
+      "fileTaskDisplayTitleChangeMode": "Görüntüleme başlığı değiştiğinde",
+      "fileTaskDisplayTitleChangeModeAsk": "Sor",
+      "fileTaskDisplayTitleChangeModeAuto": "Otomatik yeniden adlandır",
+      "fileTaskDisplayTitleChangeModeDesc": "Dosya adını koruyun, Operon arayüzünde başlığı kaydettikten sonra yeniden adlandırmayı sorun veya görünen başlık her değiştiğinde otomatik olarak yeniden adlandırın; Operon dışındaki düzenlemeler de buna dahildir (Özellikler, kaynak veya ajanların frontmatter düzenlemeleri).",
+      "fileTaskDisplayTitleChangeModeKeep": "Dosya adını koru",
+      "fileTaskDisplayTitleEnabled": "Dosya görevi görüntüleme başlığı olarak bir özellik kullan",
+      "fileTaskDisplayTitleEnabledDesc": "Eşlenen başlık özelliğini Dosya Görevi başlığı olarak göster. Dosya yolu ve görev kimliği ayrı kalır.",
       "fileTaskFileParentTargetMode": "Üst dosya görevi ise dosya görevi konumu",
       "fileTaskFileParentTargetModeDesc": "Seçilen üst görev dosya görevi olduğunda Yeni Operon Görevi'nin dosya görevini nerede oluşturacağını seç.",
       "fileTaskFileParentTargetSameFolder": "Üst dosyayla aynı klasör",
+      "fileTaskFilenameRule": "Dosya adı kuralı",
+      "fileTaskFilenameRuleDesc": "Dosya adının görüntüleme başlığından nasıl oluşturulduğu. Yasak dosya adı karakterleri her zaman kaldırılır.",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "Başlıkla aynı",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "Üst satır içi ise dosya görevi konumu",
       "fileTaskInlineParentTargetModeDesc": "Seçilen üst görev satır içi görev olduğunda Yeni Operon Görevi'nin dosya görevini nerede oluşturacağını seç.",
       "fileTaskInlineParentTargetSameFolder": "Üst notla aynı klasör",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "Takvim ve zamanlama görünümlerinde kullanılan planlı başlangıç tarihi-saati.",
       "keyMappingsDesc_duration": "Saniye cinsinden saklanan takip edilmiş çalışma süresi.",
       "keyMappingsDesc_estimate": "Saniye cinsinden saklanan tahmini çalışma süresi.",
+      "keyMappingsDesc_fileTaskDisplayTitle": "Görüntüleme başlıkları etkin olduğunda Dosya görevi etiketi olarak kullanılan salt okunur frontmatter özelliği.",
       "keyMappingsDesc_links": "Görevle ilişkili dış web bağlantıları.",
       "keyMappingsDesc_location": "lat, lng metni olarak saklanan ve harita chip’i olarak gösterilen location koordinatları.",
       "keyMappingsDesc_note": "Görev yanında gösterilen kısa not veya açıklama.",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[tür]",
       "keyMappingsLegendValueSharingDesc": "Dosya görevi YAML'ında kullanılan değerler eşleşen satır içi görev alanlarıyla paylaşılır; böylece satır içi görevleri düzenlerken öneri olarak görünebilir veya tersi olabilir.",
       "keyMappingsLegendValueSharingLabel": "Özellik Değeri Paylaşımı",
+      "keyMappingsMappingCollision": "Mevcut özel anahtarlar aynı kanonik anahtarı veya varsayılan özellik adını kullandığından bazı yerleşik anahtar haritalamaları eklenemedi. Çakışan anahtarı yeniden adlandırın ve ardından Ayarları yeniden açın.",
       "keyMappingsNoCustom": "Tanımlı özel anahtar yok. Yeni bir anahtar eklemek için aşağıdaki düğmeyi kullan.",
       "keyMappingsPropertyAria": "Görünen özellik adı",
       "keyMappingsPropertyLabel": "Özellik",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "{{name}}, değeri veya eşlemesi özellik türüyle çeliştiği için Operon’da salt okunurdur.",
       "filePropertyUnavailable": "{{name}}, özellik türü veya kaynağı doğrulanamadığı için Operon’da salt okunurdur.",
       "filePropertyUnsupported": "{{name}}, değer biçimi düzenleme için desteklenmediği için Operon’da salt okunurdur.",
+      "fileTaskFile": "Dosya",
+      "fileTaskFilenameFallback": "Kural boş bir dosya adı üretti. {{filename}} korunuyor.",
+      "fileTaskKeep": "Koru",
       "fileTaskNameTitle": "Dosya Tipi Görev Adı",
+      "fileTaskRenameAction": "Yeniden adlandır",
+      "fileTaskRenameCollision": "Bu klasörde bu ada sahip bir dosya zaten var.",
+      "fileTaskRenameFailed": "Dosya yeniden adlandırılamadı. Görüntüleme başlığı kaydedildi.",
+      "fileTaskRenameInvalid": "Yasak karakterler içermeyen geçerli bir dosya adı girin.",
       "fileTemplateInfoLabel": "Bilgi:",
       "filterStatus": "Durum filtrele",
       "finished": "Tamamlandı",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "daa3989ffdadb362f8c668dfeac16c6d51ac8157089387324b1f63e947980a68"
+  "sourceVersion": "f5ce1323bda63a80625236604e8ed7f7f01410ef10bb96f269f5c302a547728a"
 }

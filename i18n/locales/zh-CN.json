@@ -2348,7 +2348,21 @@
 		"kanbanAxisRemoveValue": "移除值",
 		"kanbanAutoCollapseFinishedGroups": "折叠已完成状态组",
 		"kanbanAutoCollapseFinishedGroupsDesc": "自动折叠列和泳道中的已完成状态。",
-		"kanbanCellHeightDisabledDesc": "启用泳道以应用固定单元格高度。"
+		"kanbanCellHeightDisabledDesc": "启用泳道以应用固定单元格高度。",
+		"fileTaskDisplayTitleEnabled": "使用属性作为文件任务显示标题",
+		"fileTaskDisplayTitleEnabledDesc": "将映射的标题属性显示为文件任务标题。文件路径和任务标识保持独立。",
+		"fileTaskDisplayTitleChangeMode": "当显示标题更改时",
+		"fileTaskDisplayTitleChangeModeDesc": "保留文件名、在 Operon 界面中保存标题后询问是否重命名，或在显示标题每次更改时自动重命名，包括 Operon 外的编辑（属性、源码或智能体对 frontmatter 的编辑）。",
+		"fileTaskDisplayTitleChangeModeKeep": "保留文件名",
+		"fileTaskDisplayTitleChangeModeAsk": "询问",
+		"fileTaskDisplayTitleChangeModeAuto": "自动重命名",
+		"fileTaskFilenameRule": "文件名规则",
+		"fileTaskFilenameRuleDesc": "如何根据显示标题构建文件名。始终会移除文件名中禁止的字符。",
+		"fileTaskFilenameRuleSame": "与标题相同",
+		"fileTaskFilenameRuleKebab": "kebab-case",
+		"fileTaskFilenameRuleSnake": "snake_case",
+		"keyMappingsDesc_fileTaskDisplayTitle": "启用显示标题时，用作文件任务标签的只读 frontmatter 属性。",
+		"keyMappingsMappingCollision": "由于现有自定义键使用了相同的规范键或默认属性名称，无法添加某些内置键映射。请重命名冲突的键，然后重新打开设置。"
 	},
 	"buttons": {
 		"open": "打开",
@@ -3257,7 +3271,14 @@
 		"dockSelectTask": "选择或创建新任务",
 		"dockNextTask": "下一个任务",
 		"dockTaskCreatorTitle": "任务创建器",
-		"dockCreateAndTrack": "创建新任务并开始计时"
+		"dockCreateAndTrack": "创建新任务并开始计时",
+		"fileTaskFile": "文件",
+		"fileTaskKeep": "保留",
+		"fileTaskRenameAction": "重命名",
+		"fileTaskRenameInvalid": "请输入不含禁止字符的有效文件名。",
+		"fileTaskRenameCollision": "此文件夹中已存在同名文件。",
+		"fileTaskRenameFailed": "无法重命名文件。显示标题已保存。",
+		"fileTaskFilenameFallback": "规则生成了空文件名。将保留 {{filename}}。"
 	},
 	"indexStats": {
 		"title": "Operon 索引",

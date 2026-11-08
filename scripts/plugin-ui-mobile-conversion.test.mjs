@@ -12,13 +12,13 @@ export async function runMobileConversionTests(rootDir) {
  const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
  const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
  assert.ok(plugin);
- const names = ['isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'planSourceTransitionAggregatePatches', 'getFrontmatterLineCount', 'isExcalidrawTaskSource', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
+ const names = ['newFileTaskName', 'isPluginTaskWritePathContained', 'readAgentRuntimeMutationSource', 'readAgentRuntimeCreationTemplate', 'agentRuntimeTaskLocator', 'prepareAgentRuntimeSourceTransition', 'applyMobileUiCanonicalConversion', 'planSourceTransitionAggregatePatches', 'getFrontmatterLineCount', 'isExcalidrawTaskSource', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
  const methods = names.map(name => {
   const method = plugin.members.find(member => member.name?.getText(ast) === name);
   assert.ok(method, name);
   return method.getText(ast);
  }).join('\n');
- const importNames = new Set(['rebaseExcalidrawTaskSource', 'withExcalidrawMarkdownSources', 'insertExcalidrawInlineTask', 'splitFrontmatterDocument', 'iterateMarkdownLinesOutsideFences', 'boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
+ const importNames = new Set(['deriveTaskFilename', 'newFileTaskTitleFields', 'rebaseExcalidrawTaskSource', 'withExcalidrawMarkdownSources', 'insertExcalidrawInlineTask', 'splitFrontmatterDocument', 'iterateMarkdownLinesOutsideFences', 'boundRuntimeTransactionIdV1', 'validateVaultRelativePathV1', 'canonicalJsonV1', 'toJsonValueV1', 'sha256HexV1', 'sourceRevisionForTaskCreationV1', 'analyzeRuntimeFileToInlineLossV1', 'parseFrontmatterDocument', 'isWritableRawYamlPropertyName', 'buildRuntimeConversionAncestorPredictedEffectsV1', 'compareResourceReferencesCanonicalV1', 'toLocalDatetime', 'resolveWorkflowStatus', 'findFileTaskTemplateOptionById', 'resolvePipelineMinimalFileTaskTemplateStatus', 'collectScopedPlainCheckboxMoveLines', 'removePlainCheckboxMoveLinesFromContent']);
  const selectedImports = ast.statements.filter(ts.isImportDeclaration).flatMap(node => {
   const bindings = node.importClause?.namedBindings;
   if (!bindings || !ts.isNamedImports(bindings)) return [];

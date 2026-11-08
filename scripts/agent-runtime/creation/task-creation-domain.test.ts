@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import typedCreateGolden from '../fixtures/typed-create-golden.json';
 
 import {
@@ -10,6 +11,37 @@ import {
 	type TaskCreationCommitPort,
 } from '../../../src/core/task-creation-domain';
 import { resolveDefaultFileTaskStatus } from '../../../src/core/file-task-defaults';
+import { buildMergedFileTaskDraft, parseFrontmatterDocument, splitFrontmatterDocument } from '../../../src/core/file-task-template-merge';
+import { parseYaml as parseNativeYaml } from '../../test-support/obsidian-native-yaml';
+
+test('managed YAML preserves typed output and round-trips unsafe text', () => {
+	for (const value of ['Rule: Non-title', '@leading', '*alias', '&anchor', '- item', 'true', '123', 'line one\nline two', 'C:\\path\\file']) {
+		const draft = buildMergedFileTaskDraft({
+			source: {
+				description: 'old-file', fieldValues: { operonId: 'n000123', location: value },
+				frontmatterDocument: parseFrontmatterDocument('---\noperonId: n000123\n---\nbody', DEFAULT_SETTINGS.keyMappings),
+			},
+			defaults: { operonId: 'n000123', datetimeModified: '2026-10-25T02:00:00' },
+			keyMappings: DEFAULT_SETTINGS.keyMappings, bodyStrategy: 'preserve-source',
+		});
+		const native: unknown = parseNativeYaml(splitFrontmatterDocument(draft.content).frontmatter ?? '');
+		assert.ok(native && typeof native === 'object' && 'location' in native);
+		assert.equal(native.location, value);
+		assert.equal(parseFrontmatterDocument(draft.content, DEFAULT_SETTINGS.keyMappings).managedFieldValues.location, value);
+	}
+	const draft = buildMergedFileTaskDraft({
+		source: { description: 'old-file', fieldValues: {
+			operonId: 'n000123', reminderDatetimes: '2026-01-16T09:00:00; 2026-01-17T10:30:00',
+			dateDue: '2026-01-18', estimate: '42', location: '#entrance',
+		} },
+		defaults: { operonId: 'n000123', datetimeModified: '2026-10-25T02:00:00' },
+		keyMappings: DEFAULT_SETTINGS.keyMappings, bodyStrategy: 'preserve-source',
+	});
+	assert.match(draft.content, /ReminderDatetimes:\n  - 2026-01-16T09:00:00\n  - 2026-01-17T10:30:00/u);
+	assert.match(draft.content, /dateDue: 2026-01-18/u);
+	assert.match(draft.content, /estimate: 42/u);
+	assert.match(draft.content, /location: "#entrance"/u);
+});
 import { resolveOperonIdPlaceholders } from '../../../src/core/operon-id-placeholders';
 import { parseTaskLine } from '../../../src/core/parser';
 import {
@@ -643,8 +675,9 @@ assert.match(
 );
 assert.match(deterministicVariableContent, /Status=Pipeline 1\.Not Started Priority=A/u);
 for (const [canonicalKey, value] of Object.entries(deterministicVariableValues)) {
-	assert.ok(
-		deterministicVariableContent.split('\n').includes(`${visibleTemplateKey(canonicalKey)}: ${value}`),
+	assert.equal(
+		parseFrontmatterDocument(deterministicVariableContent, DEFAULT_SETTINGS.keyMappings).managedFieldValues[canonicalKey],
+		value,
 		`${canonicalKey} frontmatter must use the final merged value`,
 	);
 }
@@ -2133,8 +2166,11 @@ async function runCommitPortTests(): Promise<void> {
 			'2026-07-26T10:45:00',
 		);
 		const renderedFile = temporalFileCreation.plan.tasks[0].renderedFileContent ?? '';
-		assert.match(renderedFile, /^datetimeStart: 2026-07-26T09:30:00$/mu);
-		assert.match(renderedFile, /^CustomDatetime: 2026-07-26T10:45:00$/mu);
+		const renderedFrontmatter: unknown = parseNativeYaml(splitFrontmatterDocument(renderedFile).frontmatter ?? '');
+		assert.ok(renderedFrontmatter && typeof renderedFrontmatter === 'object'
+			&& 'datetimeStart' in renderedFrontmatter && 'CustomDatetime' in renderedFrontmatter);
+		assert.equal(renderedFrontmatter.datetimeStart, '2026-07-26T09:30:00');
+		assert.equal(renderedFrontmatter.CustomDatetime, '2026-07-26T10:45:00');
 		assert.equal(
 			temporalFileCreation.plan.sourceGroups[0]?.resultingContent,
 			renderedFile,

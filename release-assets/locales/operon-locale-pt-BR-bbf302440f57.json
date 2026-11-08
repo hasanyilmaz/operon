@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "Quando ativado, o Operon move as tarefas em arquivo concluídas ou canceladas para a pasta de arquivo após o atraso configurado.",
       "fileTaskConversion": "Conversão de Tarefa em Arquivo",
       "fileTaskDailyNotes": "Notas diárias",
+      "fileTaskDisplayTitleChangeMode": "Quando o título de exibição muda",
+      "fileTaskDisplayTitleChangeModeAsk": "Perguntar",
+      "fileTaskDisplayTitleChangeModeAuto": "Renomear automaticamente",
+      "fileTaskDisplayTitleChangeModeDesc": "Mantenha o nome do arquivo, pergunte se deseja renomeá-lo após salvar o título na interface do Operon ou renomeie-o automaticamente sempre que o título de exibição mudar, inclusive fora do Operon (Propriedades, código-fonte ou alterações no frontmatter feitas por agentes).",
+      "fileTaskDisplayTitleChangeModeKeep": "Manter o nome do arquivo",
+      "fileTaskDisplayTitleEnabled": "Usar uma propriedade como título de exibição da tarefa em arquivo",
+      "fileTaskDisplayTitleEnabledDesc": "Mostrar a propriedade de título mapeada como título da tarefa de arquivo. O caminho do arquivo e a identidade da tarefa permanecem separados.",
       "fileTaskFileParentTargetMode": "Posicionamento da tarefa em arquivo quando a tarefa pai é uma tarefa em arquivo",
       "fileTaskFileParentTargetModeDesc": "Escolha onde o fluxo Nova tarefa do Operon criará tarefas em arquivo quando a tarefa pai selecionada também estiver em um arquivo.",
       "fileTaskFileParentTargetSameFolder": "Pasta do mesmo local que o pai",
+      "fileTaskFilenameRule": "Regra de nome de arquivo",
+      "fileTaskFilenameRuleDesc": "Como o nome de arquivo é criado a partir do título de exibição. Caracteres proibidos em nomes de arquivo sempre são removidos.",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "Igual ao título",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "Posicionamento de tarefa em arquivo quando a tarefa pai é uma tarefa inline",
       "fileTaskInlineParentTargetModeDesc": "Escolha onde o fluxo Nova tarefa do Operon criará tarefas em arquivo quando a tarefa pai selecionada for uma tarefa inline.",
       "fileTaskInlineParentTargetSameFolder": "Mesma pasta do pai",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "Data e hora de início agendado usados por visualizações de calendário e cronograma.",
       "keyMappingsDesc_duration": "Duração de trabalho rastreada armazenada em segundos.",
       "keyMappingsDesc_estimate": "Duração estimada do trabalho armazenada em segundos.",
+      "keyMappingsDesc_fileTaskDisplayTitle": "Propriedade frontmatter somente leitura usada como rótulo da tarefa em arquivo quando os títulos de exibição estão ativados.",
       "keyMappingsDesc_links": "Links web externos associados à tarefa.",
       "keyMappingsDesc_location": "Coordenadas de localização armazenadas como texto (latitude, longitude) e exibidas como um chip de mapa.",
       "keyMappingsDesc_note": "Nota curta ou anotação exibida ao lado da tarefa.",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[tipo]",
       "keyMappingsLegendValueSharingDesc": "Os valores usados na tarefa em arquivo YAML são compartilhados com os campos correspondentes da tarefa inline, podendo aparecer como sugestões ao editar tarefas inline ou vice-versa.",
       "keyMappingsLegendValueSharingLabel": "Compartilhamento de Valor da Propriedade",
+      "keyMappingsMappingCollision": "Alguns mapeamentos de chave integrados não puderam ser adicionados porque chaves personalizadas existentes usam a mesma chave canônica ou o mesmo nome de propriedade padrão. Renomeie a chave em conflito e reabra as Configurações.",
       "keyMappingsNoCustom": "Nenhuma chave personalizada definida. Use o botão abaixo para adicionar uma.",
       "keyMappingsPropertyAria": "Nome da propriedade visível",
       "keyMappingsPropertyLabel": "Propriedade",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "{{name}} é somente leitura no Operon porque seu valor ou mapeamento entra em conflito com o tipo de propriedade.",
       "filePropertyUnavailable": "{{name}} é somente leitura no Operon porque seu tipo de propriedade ou fonte não pôde ser verificado.",
       "filePropertyUnsupported": "{{name}} é somente leitura no Operon porque o formato do valor não permite edição.",
+      "fileTaskFile": "Arquivo",
+      "fileTaskFilenameFallback": "A regra produziu um nome de arquivo vazio. Mantendo {{filename}}.",
+      "fileTaskKeep": "Manter",
       "fileTaskNameTitle": "Nome da tarefa em arquivo",
+      "fileTaskRenameAction": "Renomear",
+      "fileTaskRenameCollision": "Já existe um arquivo com esse nome nesta pasta.",
+      "fileTaskRenameFailed": "Não foi possível renomear o arquivo. O título de exibição foi salvo.",
+      "fileTaskRenameInvalid": "Insira um nome de arquivo válido sem caracteres proibidos.",
       "fileTemplateInfoLabel": "Info:",
       "filterStatus": "Filtrar status",
       "finished": "Concluído",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "31fc0ddaa840f8f326068f43cfe02ea862d71d91071d34816bcf8aaf0d2d170d"
+  "sourceVersion": "26e9aac31d98a66ac32f1fc1fb0a075cd66ab1f0e0faa67683a5e9aa4350f454"
 }

@@ -1,5 +1,7 @@
+import { openTaskFileLinkWithModifier } from './lightbox-opening';
 import { createTaskSourceActionButton } from './task-info-chip-action';
 import { taskDescriptionOpening } from './task-text-link-opening';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 import { identifyInlineTaskPart, rememberInlineTaskDom, reconcileInlineTaskDom } from './inline-retained-dom';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
@@ -977,7 +979,7 @@ function createTaskFileLinkLabel(
 		return anchor;
 	}
 
-	const description = resolved.task.description.trim();
+	const description = getTaskDisplayTitle(resolved.task, callbacks.getSettings().fileTaskDisplayTitleEnabled).trim();
 	if (!description) {
 		prepareTaskFileLinkAnchor(anchor, resolved, visuals, callbacks);
 		return anchor;
@@ -987,7 +989,7 @@ function createTaskFileLinkLabel(
 	renderCompactTaskMarkdown(label, {
 		app: callbacks.app,
 		value: description,
-  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(task => task.operonId === resolved.task.operonId)),
+  bindLink: taskDescriptionOpening(callbacks.app, () => callbacks.getAllTasks().find(task => task.operonId === resolved.task.operonId), undefined, callbacks.getSettings().fileTaskDisplayTitleEnabled),
 		sourcePath: resolved.task.primary.filePath,
 		mode: 'interactive',
 		containerClassName: 'operon-task-wikilink-label-markdown',
@@ -1006,7 +1008,7 @@ function createTaskFileLinkLabel(
 		if (isCompactTaskMarkdownLinkEventTarget(event.target, label)) return;
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void openTaskFileLinkWithModifier(callbacks.app, label, resolved.resolvedFile.path, resolved.sourcePath, event);
 	});
 	label.addEventListener('keydown', (event) => {
 		if (event.target !== label) return;
@@ -1032,7 +1034,7 @@ function prepareTaskFileLinkAnchor(
 	anchor.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		void callbacks.app.workspace.openLinkText(resolved.resolvedFile.path, resolved.sourcePath, false);
+		void openTaskFileLinkWithModifier(callbacks.app, anchor, resolved.resolvedFile.path, resolved.sourcePath, event);
 	});
 	anchor.addEventListener('keydown', (event) => {
 		if (event.key !== 'Enter' && event.key !== ' ') return;

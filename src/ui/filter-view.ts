@@ -206,6 +206,7 @@ export class FilterView extends ItemView {
 		toggleFilterFavorite?: (filterSetId: string) => Promise<void>,
 		onOpenRelatedView?: (target: RelatedViewOpenTarget) => void | Promise<void>,
 		onCreateRelatedView?: (target: RelatedViewCreateTarget) => void | Promise<void>,
+		private readonly activateDescription?: FilterTaskRowCallbacks['activateDescription'],
 	) {
 		super(leaf);
 		this.indexer = indexer;
@@ -385,6 +386,7 @@ export class FilterView extends ItemView {
 			openEditor: (operonId) => this.openTaskEditor(operonId),
 			cycleStatus: (operonId) => { this.invokeFilterStatusCycle(operonId); },
 			navigateToTask: this.navigateToTask,
+			activateDescription: this.activateDescription,
 			getSettings: this.getSettings,
 			getAllTasks: () => this.indexer.getAllTasks(),
 			updateField: this.updateField,
@@ -486,6 +488,7 @@ export class FilterView extends ItemView {
 					},
 					getChildIds: this.getChildIds,
 					navigateToTask: this.navigateToTask,
+					activateDescription: this.activateDescription,
 					getSettings: this.getSettings,
 					updateField: (operonId, key, value) => this.updateField(operonId, key, value),
 					updateFields: this.updateFields
@@ -766,6 +769,7 @@ export class FilterView extends ItemView {
 			},
 			getChildIds: this.getChildIds,
 			navigateToTask: this.navigateToTask,
+			activateDescription: this.activateDescription,
 			getSettings: this.getSettings,
 			updateField: (operonId, key, value) => this.updateField(operonId, key, value),
 			updateFields: this.updateFields

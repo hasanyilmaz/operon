@@ -22,7 +22,7 @@ function methodBody(source, signature, nextSignature) {
 }
 
 test('publishes the Runtime facade synchronously before asynchronous plugin loading', () => {
-	const onload = methodBody(mainSource, '\tonload(): void {', '\n\tprivate async initializeTablePresetRegistry');
+	const onload = methodBody(mainSource, '\tasync onload(): Promise<void> {', '\n\tprivate async initializeTablePresetRegistry');
 	const firstStatement = onload
 		.slice(onload.indexOf('{') + 1)
 		.split('\n')
@@ -89,7 +89,7 @@ test('verified settlement waits for RAM work but not V8 persistence idle', () =>
 	const settlement = methodBody(
 		mainSource,
 		'\tprivate async awaitAgentRuntimeSettlement(options:',
-		'\n\n\tonload(): void {',
+		'\n\n\tasync onload(): Promise<void> {',
 	);
 	assert.match(settlement, /this\.indexer\.awaitRamSettlement\(\)/u);
 	assert.match(settlement, /this\.awaitSettingsReindexSettlement\(\)/u);
@@ -289,7 +289,7 @@ test('both identity graph preparation paths share the sealed source-state resolv
 	const gatewayBinding = methodBody(
 		mainSource,
 		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
-		'\n\n\tonload(): void {',
+		'\n\n\tasync onload(): Promise<void> {',
 	);
 	const livePreparation = methodBody(
 		mainSource,
@@ -352,7 +352,7 @@ test('graph source writes and inspected recovery prefixes use the shared reindex
 	const gatewayBinding = methodBody(
 		mainSource,
 		'\tprivate async bindAgentRuntimeMutationGateway(): Promise<void> {',
-		'\n\n\tonload(): void {',
+		'\n\n\tasync onload(): Promise<void> {',
 	);
 	const identityApply = methodBody(
 		mainSource,
@@ -480,4 +480,11 @@ test('identity apply refuses unreceipted after-state convergence before creating
 		applyIdentity.slice(convergenceIndex, receiptIndex),
 		/if \(await this\.verifyAgentRuntimeIdentityPlanAfterState\(plan\)\) \{[\s\S]*?'stale-source'/u,
 	);
+});
+
+
+test('task Context reads opt into transient RAM settlement without changing other read channels', () => {
+ const contextRead = methodBody(mainSource, '\tprivate async executeAgentRuntimeContextRead<T>', '\n\tprivate async readAgentRuntimeTimer');
+ assert.match(contextRead, /isReadSettling: \(\) => this\.agentRuntimeContextBridge\?\.isReadSettling\(\) === true/u);
+ assert.equal((mainSource.match(/isReadSettling:/gu) ?? []).length, 1);
 });

@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const source = await readFile(path.join(root, 'main.ts'), 'utf8');
 const ast = ts.createSourceFile('main.ts', source, ts.ScriptTarget.Latest, true);
 const plugin = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
-const methodNames = ['beginAgentRuntimeConversionIdentityTransition', 'reindexAgentRuntimeTaskSourceWrite', 'reindexAgentRuntimeGraphCommittedPrefix', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
+const methodNames = ['preserveFileTaskTitleJournalEchoes', 'beginAgentRuntimeConversionIdentityTransition', 'reindexAgentRuntimeTaskSourceWrite', 'reindexAgentRuntimeGraphCommittedPrefix', 'applyUiCanonicalConversion', 'refreshUiConversionViews'];
 const methods = methodNames.map(name => {
  const method = plugin.members.find(node => node.name?.getText(ast) === name);
  assert.ok(method, name); return method.getText(ast);
@@ -41,6 +41,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {TFile,TFolder} from 'obsidian';
 import {OperonIndexer} from './src/indexer/indexer';
+import {parseFrontmatterDocument} from './src/core/file-task-template-merge';
 import {TaskWriter} from './src/core/task-writer';
 import {withExcalidrawMarkdownSources,rebaseExcalidrawTaskSource} from './src/ui/excalidraw-markdown-source';
 import {RuntimeMutationGatewayV1,withRuntimeVaultMutationLockV1} from './src/agent-runtime/runtime/mutation-gateway';

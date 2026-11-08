@@ -2348,7 +2348,21 @@
 		"kanbanAxisRemoveValue": "Удалить значение",
 		"kanbanAutoCollapseFinishedGroups": "Сворачивать группы завершённых статусов",
 		"kanbanAutoCollapseFinishedGroupsDesc": "Автоматически сворачивать завершённые статусы в столбцах и дорожках.",
-		"kanbanCellHeightDisabledDesc": "Включите дорожки, чтобы задать фиксированную высоту ячеек."
+		"kanbanCellHeightDisabledDesc": "Включите дорожки, чтобы задать фиксированную высоту ячеек.",
+		"fileTaskDisplayTitleEnabled": "Использовать свойство как отображаемый заголовок файловой задачи",
+		"fileTaskDisplayTitleEnabledDesc": "Показывать сопоставленное свойство заголовка как название файловой задачи. Путь к файлу и идентификатор задачи остаются отдельными.",
+		"fileTaskDisplayTitleChangeMode": "Когда отображаемый заголовок изменяется",
+		"fileTaskDisplayTitleChangeModeDesc": "Сохранить имя файла, спросить о переименовании после сохранения заголовка в интерфейсе Operon или переименовывать автоматически при каждом изменении отображаемого заголовка, в том числе вне Operon (свойства, исходный текст или изменения frontmatter агентами).",
+		"fileTaskDisplayTitleChangeModeKeep": "Сохранить имя файла",
+		"fileTaskDisplayTitleChangeModeAsk": "Спрашивать",
+		"fileTaskDisplayTitleChangeModeAuto": "Переименовывать автоматически",
+		"fileTaskFilenameRule": "Правило имени файла",
+		"fileTaskFilenameRuleDesc": "Как имя файла формируется из отображаемого заголовка. Недопустимые символы в именах файлов всегда удаляются.",
+		"fileTaskFilenameRuleSame": "Как заголовок",
+		"fileTaskFilenameRuleKebab": "kebab-case",
+		"fileTaskFilenameRuleSnake": "snake_case",
+		"keyMappingsDesc_fileTaskDisplayTitle": "Свойство frontmatter только для чтения, используемое как метка файловой задачи, когда отображаемые заголовки включены.",
+		"keyMappingsMappingCollision": "Некоторые встроенные сопоставления ключей не удалось добавить, потому что существующие пользовательские ключи используют тот же канонический ключ или имя свойства по умолчанию. Переименуйте конфликтующий ключ и снова откройте настройки."
 	},
 	"buttons": {
 		"open": "Открыть",
@@ -3257,7 +3271,14 @@
 		"dockSelectTask": "Выбрать или создать задачу",
 		"dockNextTask": "Следующая задача",
 		"dockTaskCreatorTitle": "Создание задач",
-		"dockCreateAndTrack": "Создать задачу и начать отслеживание времени"
+		"dockCreateAndTrack": "Создать задачу и начать отслеживание времени",
+		"fileTaskFile": "Файл",
+		"fileTaskKeep": "Оставить",
+		"fileTaskRenameAction": "Переименовать",
+		"fileTaskRenameInvalid": "Введите допустимое имя файла без запрещенных символов.",
+		"fileTaskRenameCollision": "В этой папке уже существует файл с таким именем.",
+		"fileTaskRenameFailed": "Не удалось переименовать файл. Отображаемый заголовок сохранен.",
+		"fileTaskFilenameFallback": "Правило создало пустое имя файла. Сохраняется {{filename}}."
 	},
 	"indexStats": {
 		"title": "Индекс Operon",

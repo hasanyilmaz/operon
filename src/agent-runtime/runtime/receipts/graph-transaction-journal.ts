@@ -16,7 +16,8 @@ export type GraphTransactionResourceKindV1 =
 	| 'repeat-series'
 	| 'pinned'
 	| 'active-tracker'
-	| 'semantic-transition';
+	| 'semantic-transition'
+	| 'inline-property-definitions';
 
 export interface GraphTransactionResourceStateV1 {
 	state: 'absent' | 'present';

@@ -15,6 +15,7 @@ import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, closeBoundOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindDescendantFocusVisible, cleanupDescendantFocusVisible } from './descendant-focus-visible';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
+import { getTaskDisplayTitle } from '../core/task-display-title';
 
 export type StatusDockAlert = { state: 'hidden' | 'conflict' | 'resolved'; count: number };
 export interface StatusDockSnapshot {
@@ -240,7 +241,7 @@ export class StatusDockWidget {
 		this.timerAction.classList.toggle('is-running', !!active);
 		this.root.classList.toggle('is-break', !!breakSnapshot.breakState);
 		this.root.classList.toggle('is-idle', !active && !breakSnapshot.breakState);
-		const description = active?.task?.description || (active?.isUnassigned ? t('taskEditor', 'dockSelectTask')
+		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '') || (active?.isUnassigned ? t('taskEditor', 'dockSelectTask')
 			: snapshot.pendingDescription || t('taskEditor', 'trackerIdleLabel'));
 		const elapsedSeconds = active?.elapsedSeconds ?? (breakSnapshot.breakState ? snapshot.breakSeconds : 0);
 		const elapsed = formatDurationHuman(elapsedSeconds, elapsedSeconds < 60 ? 'seconds' : 'minutes');
@@ -286,7 +287,9 @@ export class StatusDockWidget {
 		this.icon(this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(future?.task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateDue', settings.keyMappings) || 'calendar');
 		const nextRemaining = humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true);
 		text(this.nextTime, nextRemaining ?? ''); this.nextTime.hidden = nextRemaining === null;
-		const nextTitle = future?.task.description || t('pinnedTasks', 'untitledTask');
+		const nextTitle = (future?.task
+			? getTaskDisplayTitle(future.task, settings.fileTaskDisplayTitleEnabled)
+			: '') || t('pinnedTasks', 'untitledTask');
 		this.name(this.nextName, nextTitle, settings.language);
 		this.label(this.nextName, t('taskEditor', 'dockNextTask'), nextTitle,
 			`${t('taskEditor', 'dockNextTask')}: ${nextTitle}${nextRemaining ? `, ${nextRemaining}` : ''}`);
@@ -295,7 +298,9 @@ export class StatusDockWidget {
 			: humanizeUpcomingCountdown(upcoming.countdown, upcoming.countdown?.startsWith('00:00:') === true);
 		text(this.upcomingTime, remaining ?? '');
 		this.upcomingTime.hidden = remaining === null;
-		const nextDescription = upcoming.task?.description || t('pinnedTasks', 'untitledTask');
+		const nextDescription = (upcoming.task
+			? getTaskDisplayTitle(upcoming.task, settings.fileTaskDisplayTitleEnabled)
+			: '') || t('pinnedTasks', 'untitledTask');
 		this.name(this.upcomingName, nextDescription, settings.language);
 		this.upcoming.classList.toggle('is-due', upcoming.due);
 		this.label(this.upcomingName, sourceLabel, current ? `${t('taskEditor', 'trackerNow')}: ${nextDescription}` : nextDescription, `${sourceLabel}: ${current ? t('taskEditor', 'trackerNow') + ': ' : ''}${nextDescription}${remaining ? `, ${remaining}` : ''}`);
@@ -369,7 +374,10 @@ export class StatusDockWidget {
 		control.play.disabled = snapshot.actionPending || snapshot.breakSnapshot.actionPending;
 		control.shell.classList.toggle('has-task-play', !control.play.hidden && !control.play.disabled);
 		control.play.style.color = normalizeTaskFieldColor(task?.fieldValues.taskColor) ?? '';
-		this.label(control.play, t('taskEditor', 'startTracker'), task?.description || t('pinnedTasks', 'untitledTask'));
+		const title = task
+			? getTaskDisplayTitle(task, snapshot.settings.fileTaskDisplayTitleEnabled)
+			: '';
+		this.label(control.play, t('taskEditor', 'startTracker'), title || t('pinnedTasks', 'untitledTask'));
 		if (control.play.hidden || control.play.disabled) closeBoundOperonHoverTooltip(control.play);
 	}
 
@@ -391,7 +399,8 @@ export class StatusDockWidget {
 			item.divider.hidden = index === 0;
 			this.icon(item.icon, normalizeTaskIconValue(task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateScheduled', settings.keyMappings) || 'calendar-clock');
 			item.icon.style.color = normalizeTaskFieldColor(task.fieldValues.taskColor) ?? '';
-			const now = `${t('taskEditor', 'trackerNow')}:`, description = task.description || t('pinnedTasks', 'untitledTask');
+			const now = `${t('taskEditor', 'trackerNow')}:`,
+				description = getTaskDisplayTitle(task, settings.fileTaskDisplayTitleEnabled) || t('pinnedTasks', 'untitledTask');
 			text(item.time, ''); item.time.hidden = true; this.name(item.name, description, settings.language);
 			this.label(item.name, sourceLabel, `${now} ${description}`, `${sourceLabel}: ${now} ${description}`);
 		}

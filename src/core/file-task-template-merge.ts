@@ -1,3 +1,5 @@
+import { parseYaml } from 'obsidian';
+import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
 import { CANONICAL_KEY_ORDER } from '../types/keys';
 import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { buildForwardMapping, buildReverseMapping } from './yaml-fields';
@@ -14,6 +16,7 @@ interface RawSection {
 	yamlKey: string;
 	lines: string[];
 	raw: string;
+	hasFollowingSection: boolean;
 }
 
 export interface OrderedFrontmatterKeyChoice {
@@ -103,12 +106,16 @@ function parseSections(frontmatter: string): RawSection[] {
 
 	for (const line of lines) {
 		if (isTopLevelYamlKey(line)) {
-			if (current) sections.push(current);
+			if (current) {
+				current.hasFollowingSection = true;
+				sections.push(current);
+			}
 			const yamlKey = line.slice(0, line.indexOf(':')).trim();
 			current = {
 				yamlKey,
 				lines: [line],
 				raw: line,
+				hasFollowingSection: false,
 			};
 			continue;
 		}
@@ -127,9 +134,9 @@ function unquote(value: string): string {
 	if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\'')))) {
 		const inner = value.slice(1, -1);
 		if (value.startsWith('"')) {
-			return inner.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+			return inner.replace(/\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/g, escape => JSON.parse(`"${escape}"`) as string);
 		}
-		return inner.replace(/\\'/g, '\'').replace(/\\\\/g, '\\');
+		return inner.replace(/''/g, '\'');
 	}
 	return value;
 }
@@ -182,7 +189,39 @@ function parseScalarValue(rawValue: string): string {
 	return unquote(trimmed);
 }
 
+function readSectionYaml(section: RawSection): Record<string, unknown> | null {
+	const headerLine = section.lines[0] ?? '';
+	const rawValue = headerLine.slice(headerLine.indexOf(':') + 1).trim();
+	if (rawValue.startsWith('{{') || rawValue.startsWith('<%')) return null;
+	try {
+		const parsed: unknown = parseYaml(section.raw + (section.hasFollowingSection ? '\n' : ''));
+		return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+			? parsed as Record<string, unknown>
+			: null;
+	} catch {
+		// Unevaluated template expressions may not be valid YAML yet.
+		return null;
+	}
+}
+
+function isYamlScalar(value: unknown): value is string | number | boolean | null {
+	return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function parseScalarSection(section: RawSection): string {
+	const parsed = readSectionYaml(section);
+	const value = parsed?.[section.yamlKey];
+	if (isYamlScalar(value)) return value === null ? '' : String(value);
+	const headerLine = section.lines[0] ?? '';
+	return parseScalarValue(headerLine.slice(headerLine.indexOf(':') + 1));
+}
+
 function parseListSection(section: RawSection): string[] {
+	const parsed = readSectionYaml(section);
+	const value = parsed?.[section.yamlKey];
+	if (Array.isArray(value) && value.every(isYamlScalar)) {
+		return value.map(item => item === null ? '' : String(item));
+	}
 	const headerLine = section.lines[0] ?? '';
 	const valuePart = headerLine.slice(headerLine.indexOf(':') + 1).trim();
 	if (valuePart.startsWith('[') && valuePart.endsWith(']')) {
@@ -198,23 +237,32 @@ function parseListSection(section: RawSection): string[] {
 	return items;
 }
 
-function renderScalar(value: string, forceQuoted = false): string {
+function renderManagedStringScalar(value: string, forceQuoted = false): string {
 	if (!value) return '""';
-	const safePlain = /^[A-Za-z0-9_./@:+()-]+(?: [A-Za-z0-9_./@:+()-]+)*$/;
-	if (!forceQuoted && safePlain.test(value)) {
+	const safePlain = /^[A-Za-z_][A-Za-z0-9_./@:+()-]*(?: [A-Za-z0-9_./@:+()-]+)*$/;
+	if (!forceQuoted && safePlain.test(value) && !/:(?:\s|$)/.test(value)
+		&& !/^(?:null|true|false|yes|no|on|off)$/i.test(value)) {
 		return value;
 	}
-	if (!value.includes('\'') && (value.includes('"') || value.includes('<%') || value.includes('%>'))) {
-		return `'${value.replace(/\\/g, '\\\\').replace(/'/g, '\'\'')}'`;
-	}
-	return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+	return JSON.stringify(value);
 }
 
-function renderListSection(yamlKey: string, values: string[]): string {
+function renderTypedScalar(value: string): string {
+	if (!value) return '""';
+	const safePlain = /^[A-Za-z0-9_./@:+()-]+(?: [A-Za-z0-9_./@:+()-]+)*$/;
+	if (safePlain.test(value) && !/:(?:\s|$)/.test(value)) {
+		return value;
+	}
+	return JSON.stringify(value);
+}
+
+function renderListSection(yamlKey: string, values: string[], datetimeItems = false): string {
 	if (values.length === 0) return `${yamlKey}:`;
 	return [
 		`${yamlKey}:`,
-		...values.map(value => `  - ${renderScalar(value)}`),
+		...values.map(value => `  - ${datetimeItems && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)
+			? renderTypedScalar(value)
+			: renderManagedStringScalar(value)}`),
 	].join('\n');
 }
 
@@ -230,18 +278,21 @@ function renderManagedSection(
 		const items = canonicalKey === 'taskGallery'
 			? parseTaskMediaReferenceList(value)
 			: value.split(';').map(item => item.trim()).filter(Boolean);
-		return renderListSection(yamlKey, items);
+		return renderListSection(yamlKey, items, canonicalKey.toLowerCase() === 'reminderdatetimes');
 	}
 
 	if (!value) return `${yamlKey}:`;
 	if (fieldType === 'number' && /^-?\d+(\.\d+)?$/.test(value.trim())) {
 		return `${yamlKey}: ${value.trim()}`;
 	}
+	if (fieldType && fieldType !== 'text') {
+		return `${yamlKey}: ${renderTypedScalar(value)}`;
+	}
 	if (canonicalKey === 'taskColor') {
-		return `${yamlKey}: ${renderScalar(formatTaskColorYamlValue(value))}`;
+		return `${yamlKey}: ${renderManagedStringScalar(formatTaskColorYamlValue(value))}`;
 	}
 
-	return `${yamlKey}: ${renderScalar(
+	return `${yamlKey}: ${renderManagedStringScalar(
 		value,
 		canonicalKey === 'operonId' && /^\d+$/u.test(value),
 	)}`;
@@ -264,9 +315,7 @@ function parseSection(
 	parsed: ParsedFrontmatterSection;
 	value?: string | string[];
 } {
-	if (section.yamlKey === 'title') {
-		const headerLine = section.lines[0] ?? '';
-		const valuePart = headerLine.slice(headerLine.indexOf(':') + 1);
+	if (section.yamlKey === 'title' && reverseMap.get(section.yamlKey) !== 'fileTaskDisplayTitle') {
 		return {
 			parsed: {
 				yamlKey: section.yamlKey,
@@ -274,7 +323,7 @@ function parseSection(
 				raw: section.raw,
 				canonicalKey: null,
 			},
-			value: parseScalarValue(valuePart),
+			value: parseScalarSection(section),
 		};
 	}
 
@@ -308,15 +357,17 @@ function parseSection(
 	}
 
 	const fieldType = getManagedTaskFieldType(canonicalKey, keyMappings);
-	const headerLine = section.lines[0] ?? '';
-	const valuePart = headerLine.slice(headerLine.indexOf(':') + 1);
-	const value = fieldType === 'list'
+	const isDisplayTitle = canonicalKey === 'fileTaskDisplayTitle' && hasFileTaskDisplayTitleMapping(keyMappings);
+	const nativeTitle = isDisplayTitle ? readSectionYaml(section)?.[section.yamlKey] : undefined;
+	const value = isDisplayTitle
+		? typeof nativeTitle === 'string' ? nativeTitle : ''
+		: fieldType === 'list'
 		? canonicalKey === 'taskGallery'
 			? serializeTaskMediaReferenceList(parseListSection(section))
 			: parseListSection(section).join('; ')
 		: canonicalKey === 'taskColor'
-			? normalizeTaskColorValue(parseScalarValue(valuePart))
-			: parseScalarValue(valuePart);
+			? normalizeTaskColorValue(parseScalarSection(section))
+			: parseScalarSection(section);
 
 	return {
 		parsed: {
@@ -661,30 +712,33 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 	}
 	if (tagsPresent) managedYamlKeys.add('tags');
 
-	const sections: string[] = [];
+	const sections: Array<{ raw: string; originalFinal?: boolean }> = [];
 	const orderedYamlKeys: string[] = [];
 	const emitted = new Set<string>();
 
-	const emit = (yamlKey: string, raw: string): void => {
+	const emit = (yamlKey: string, raw: string, originalFinal?: boolean): void => {
 		if (emitted.has(yamlKey)) return;
 		emitted.add(yamlKey);
 		orderedYamlKeys.push(yamlKey);
-		sections.push(raw);
+		sections.push({ raw, originalFinal });
 	};
 
 	const emitDocumentSections = (document: ParsedFrontmatterDocument | null, preserveTitle: boolean): void => {
 		if (!document) return;
+		const emitPreserved = (section: ParsedFrontmatterSection): void => {
+			emit(section.yamlKey, section.raw, section === document.sections[document.sections.length - 1]);
+		};
 		for (const section of document.sections) {
 			if (section.kind === 'unknown') {
 				if (!managedYamlKeys.has(section.yamlKey)) {
-					emit(section.yamlKey, section.raw);
+					emitPreserved(section);
 				}
 				continue;
 			}
 			if (section.kind === 'title') {
 				const isDynamicTemplateTitle = !preserveTitle && /\{\{title\}\}/.test(section.raw);
 				if ((preserveTitle || isDynamicTemplateTitle) && !managedYamlKeys.has(section.yamlKey)) {
-					emit(section.yamlKey, section.raw);
+					emitPreserved(section);
 				}
 				continue;
 			}
@@ -700,7 +754,7 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 			const mergedValue = mergedFields.values[section.canonicalKey] ?? '';
 			const originalValue = document.managedFieldValues[section.canonicalKey] ?? '';
 			if (mergedValue === originalValue) {
-				emit(choice.yamlKey, section.raw);
+				emitPreserved(section);
 				continue;
 			}
 			emit(choice.yamlKey, renderManagedSection(choice.yamlKey, section.canonicalKey, mergedValue, options.keyMappings));
@@ -732,7 +786,12 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 		emit('tags', renderTagsSection(tags));
 	}
 
-	const frontmatter = sections.join('\n');
+	// A preserved EOF newline may be scalar data (|+ or >+), not an extra separator.
+	const frontmatter = sections.map(({ raw, originalFinal }, index) => {
+		if (originalFinal === false) return `${raw}\n`;
+		if (index < sections.length - 1 && !(originalFinal === true && raw.endsWith('\n'))) return `${raw}\n`;
+		return raw;
+	}).join('');
 	const content = `---\n${frontmatter}\n---\n${body}`;
 
 	return {

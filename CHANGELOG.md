@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added opt-in **File Task display titles** in Settings → Tasks → File Tasks, so tasks can show a readable title independently of their filename across task views, search, and the Canvas, Excalidraw, and Kanban Task Pools. Titles use the mapped `title` property and fall back to the filename when no valid title is available. ([#301](https://github.com/hasanyilmaz/operon/pull/301))
+- Added **Same as title**, **kebab-case**, and **snake_case** filename formats for new File Tasks, with **Keep the filename**, **Ask**, or **Rename automatically** for later title edits. Display titles are off by default; enabling them or changing these settings does not rename existing files. Rename prompts preserve newer title edits made after saving.
+- Added **File Task title support to Runtime and Developer API**, allowing integrations to read display titles, preview and create titled File Tasks, and edit existing titles while preserving their file paths.
+- Added **settings-aware task creation to Runtime and Developer API**, so integrations can discover Inline Tasks, File Tasks, Task Router destinations, templates, and Daily/Weekly availability directly from Operon settings, then preview and create one task at a time. Operon resolves configured or explicit destinations, parent and pipeline placement, and Daily/Weekly note preparation. Previews show the target before anything is written; changed settings or sources require a fresh preview.
+- Added **template-aware creation for integrations**, with the default template, a selected template, or no template, including native properties and explanations for skipped fields. Inline templates contribute properties without copying their note body. Failed creation can be recovered through the same operation; newly registered property definitions are retained and reported if task writes are rolled back.
+
+These Runtime and Developer API additions do not include a standalone CLI update.
+
+### Fixed
+
+- Fixed **text-field editors** closing over newer edits made while an earlier save was still completing.
+- Fixed **Task Pool layout on touch-capable devices** when the on-screen keyboard opens: the panel can move higher while its header and search stay in place and the task list remains scrollable. Very short viewports keep the focused search field accessible. Applies to Excalidraw, Canvas, and Kanban.
+- Fixed hidden **Operon ribbon buttons** reappearing after restarting Obsidian, preserving visibility choices made in Obsidian’s ribbon menu. ([#324](https://github.com/hasanyilmaz/operon/issues/324))
+- Fixed **File Task YAML text** being interpreted as numbers or booleans, or losing quotes, backslashes, line breaks, and text-list values during creation and template merging. Unrelated properties, field order, and note content are preserved. ([#300](https://github.com/hasanyilmaz/operon/issues/300), [#301](https://github.com/hasanyilmaz/operon/pull/301))
+- Fixed **Runtime task reads** rejecting valid inline tasks when workflow status or completion/cancellation dates differ from the Markdown checkbox, and failing immediately while the RAM index briefly settles after changes. Reads now use the effective task status and wait briefly within the existing deadline and retry limits. ([#288](https://github.com/hasanyilmaz/operon/issues/288), [#289](https://github.com/hasanyilmaz/operon/pull/289), [#317](https://github.com/hasanyilmaz/operon/issues/317))
+- Fixed **filter task descriptions** replacing the current view: normal desktop clicks now open Task Editor in a lightbox, while Cmd/Ctrl-click opens the source in a focused new tab. Embedded and dynamic filters follow the same behavior.
+- Fixed **Cmd/Ctrl-click** being ignored by task-file wikilinks and dependency-link fallback paths in Reading View, Live Preview, and task cards, so these links open in a focused new source tab while ordinary clicks retain their existing behavior. ([#320](https://github.com/hasanyilmaz/operon/pull/320))
+- Fixed **unnecessary refreshes** caused by unchanged Table presets with temporarily unavailable filter references, and full Reading View rerenders of notes with no Operon content. Updates for tasks, links, embeds, and lightboxes are preserved. ([#293](https://github.com/hasanyilmaz/operon/issues/293))
+
+### Removed
+
+- Removed the fixed **5 MB bundle-size warning** from development checks; bundle-size reporting and missing/unreadable-file checks remain in place.
+
 ### Validation
+
+- Full local Plugin checks, production build, strict lint, release guard, and code review passed, with **5,312/5,312** local regression tests. Relationship timestamp regression checks are now timezone-independent. ([#299](https://github.com/hasanyilmaz/operon/issues/299))
 
 ## [4.5.0] - 2026-11-05
 

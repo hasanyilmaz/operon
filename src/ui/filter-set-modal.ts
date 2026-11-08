@@ -285,6 +285,7 @@ export interface FilterModalEvalDeps {
 	cycleStatus: (operonId: string) => void;
 	getChildIds: (parentId: string) => string[];
 	navigateToTask: (task: import('../types/fields').IndexedTask) => void;
+	activateDescription?: FilterTaskRowCallbacks['activateDescription'];
 	getSettings: () => import('../types/settings').OperonSettings;
 	updateField: (operonId: string, key: string, value: string) => void | boolean | Promise<void | boolean>;
 	updateFields?: (operonId: string, payload: Record<string, string>) => void | boolean | Promise<void | boolean>;
@@ -2638,6 +2639,7 @@ class FilterPreviewModal extends Modal {
 			openEditor: this.deps.openEditor,
 			cycleStatus: this.deps.cycleStatus,
 			navigateToTask: this.deps.navigateToTask,
+			activateDescription: this.deps.activateDescription,
 			getSettings: this.deps.getSettings,
 			getAllTasks: () => this.deps.indexer.getAllTasks(),
 			updateField: this.deps.updateField,

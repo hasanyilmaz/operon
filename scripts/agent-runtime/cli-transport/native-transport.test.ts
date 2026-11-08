@@ -1,3 +1,10 @@
+import { taskCreationAdvertisementsV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/contracts';
+import { createTaskCreationRuntimeV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/gateway';
+import { buildTaskCreationPolicyV1 } from '../../../src/agent-runtime/extensions/task-creation-v1/policy';
+import { DEFAULT_SETTINGS } from '../../../src/types/settings';
+import { fileTaskTitlesAdvertisementsV1, type FileTaskTitlesPreviewRequestV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/contracts';
+import { fileTaskTitlesExecutionRequestV1, sealFileTaskTitlesPlanV1 } from '../../../src/agent-runtime/extensions/file-task-titles-v1/decode';
+import { computeSealedMutationPlanHashV1 } from '../../../src/agent-runtime/contracts/v1/canonical';
 import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -14,7 +21,7 @@ import {
 	unlink,
 	writeFile,
 } from 'node:fs/promises';
-import { constants as fsConstants, lstatSync } from 'node:fs';
+import { constants as fsConstants, lstatSync, readFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -2923,3 +2930,131 @@ function createSupervisorScheduler(): {
 		},
 	};
 }
+
+
+async function dispatchNativeRoutingFixture(
+	runtime: OperonAgentRuntimeCoreV1,
+	vault: string,
+	invocation: { readonly command: CliInvocationV1['command'] },
+	token: string,
+): Promise<string> {
+	const vaultAdapter = { getFullPath: () => vault };
+	const runtimeMetadata = persistentReadTestMetadata();
+	const ports = { runtime, nodeApi, vaultAdapter, runtimeMetadata, monotonicNow: () => 10 };
+	const expectedVaultSha256 = await computeRunningVaultSha256V1(nodeApi, vaultAdapter);
+	const payload = JSON.stringify({ ...invocation, expectedVaultSha256 });
+	const expectedCommand = invocation.command;
+
+	if (process.platform !== 'win32') {
+		const requestPath = await publishRequest(token, payload, 0o600);
+		try {
+			return await dispatchAgentRuntimeCliV1(ports, { expectedCommand, requestToken: token });
+		} finally {
+			await cleanupPersistentRequest({ token, requestPath });
+		}
+	}
+
+	installPersistentReadTestWindow();
+	const handle = await startAgentRuntimePersistentReadServerV1(
+		persistentReadTestPlugin(vault) as never,
+		runtime,
+		{ runtimeMetadata },
+	);
+	try {
+		assert.equal(handle.available, true, handle.reason);
+		const descriptor = handle.bootstrapDescriptor();
+		assert.ok(descriptor);
+		const publication = await publishPersistentRequest(descriptor, token, payload);
+		const output = await dispatchAgentRuntimeCliV1(ports, {
+			expectedCommand,
+			requestToken: publication.token,
+			transportKind: 'windows-named-pipe',
+			brokerScope: descriptor,
+		});
+		const status = await sendBrokerControlRequest(descriptor, {
+			type: 'status',
+			requestToken: publication.token,
+		});
+		assert.equal(status.state, expectedCommand === 'mutation.apply' ? 'dispatch-started' : 'consumed');
+		return output;
+	} finally {
+		await handle.close();
+		clearWindowsBrokerStagesForTestsV1();
+	}
+}
+
+
+test('dispatcher routes File Task title preview and apply through their dedicated provider', async () => {
+ const vault = await mkdtemp(join(tmpdir(), 'operon-file-title-transport-'));
+ try {
+  const calls: string[] = [];
+  const health = { ...createHealth(), capabilities: [...createHealth().capabilities, ...fileTaskTitlesAdvertisementsV1(true)] };
+  const base = createRuntime(health);
+  const runtime: OperonAgentRuntimeCoreV1 = { ...base, hasCapability: id => health.capabilities.some(cap => cap.id === id),
+   fileTaskTitles: {
+    preview: async value => { const request = value as FileTaskTitlesPreviewRequestV1; calls.push(request.capability); return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-preview-result', ok: false, warnings: [], error: { contractVersion: 1, code: 'live-settling', reason: 'title provider route', retryable: true, action: 'wait-and-retry' } }; },
+    apply: async value => { const request = value as MutationApplyRequestV1; calls.push('apply'); return { contractVersion: 1, requestId: request.requestId, kind: 'mutation-result', status: 'failed', mutationMayHaveApplied: false, retryAllowed: false, groupResults: [] }; },
+    recover: async () => { throw new Error('Unexpected recover'); },
+   },
+  };
+  for (const edit of [false, true]) {
+   const fixture = JSON.parse(readFileSync('scripts/agent-runtime/receipts/legacy-transaction-identifiers.json', 'utf8')).file.plan as MutationApplyRequestV1['plan'];
+   const request: FileTaskTitlesPreviewRequestV1 = { contractVersion: 1, requestId: 'file-title-route', kind: 'mutation-preview', clientInstanceId: fixture.clientInstanceId, idempotencyKey: 'file-title-route-key', authorization: { basis: 'user-explicit-request' }, ...(edit ? { capability: 'tasks.file.title.preview', mutationKind: 'task.update', target: { operonId: fixture.targets[0].operonId!, locator: fixture.targets[0].locator! }, spec: { operation: 'set-title', displayTitle: 'Readable title' } } : { capability: 'tasks.file.create.preview', mutationKind: 'task.create', spec: { operation: 'create-file', item: { itemRef: 'one', displayTitle: 'Readable title', target: { representation: 'file', mode: 'configured-default' }, fields: [] } } }) };
+   const inner = fileTaskTitlesExecutionRequestV1(request);
+   fixture.capability = inner.capability; fixture.mutationKind = inner.mutationKind;
+   if (inner.spec.operation !== 'create' && inner.spec.operation !== 'update') throw new Error('Unexpected title intent');
+   fixture.spec = inner.spec; fixture.idempotencyKeyHash = sha256HexV1(inner.idempotencyKey);
+   if (edit) delete fixture.createEffects;
+   fixture.planHash = computeSealedMutationPlanHashV1(fixture);
+   const plan = sealFileTaskTitlesPlanV1(fixture, request.capability, request.idempotencyKey, request.spec);
+   for (const apply of [false, true]) {
+    const command = apply ? 'mutation.apply' as const : 'mutation.preview' as const;
+    const invocation = { contractVersion: 1, kind: 'cli-invocation', requestId: request.requestId, command, mode: 'live', clientVersion: '1.0.0', compatibility: COMPATIBILITY, cliContract: { min: 1, max: 1 }, readinessTimeoutMs: 1000, request: apply ? { contractVersion: 1, requestId: request.requestId, kind: 'mutation-apply', plan, idempotencyKey: request.idempotencyKey, authorization: request.authorization, acknowledgements: [] } : request };
+    const token = (edit ? (apply ? 'T' : 'U') : (apply ? 'V' : 'W')).repeat(32);
+    const output = await dispatchNativeRoutingFixture(runtime, vault, invocation, token);
+    assert.equal(JSON.parse(output).ok, apply, output);
+    if (!apply) assert.equal(JSON.parse(output).failure.error.reason, 'title provider route');
+   }
+  }
+  assert.deepEqual(calls, ['tasks.file.create.preview', 'apply', 'tasks.file.title.preview', 'apply']);
+ } finally { await rm(vault, { recursive: true, force: true }); }
+});
+
+
+test('creation policy uses the secure catalog transport without calling legacy catalog or mutation', async () => {
+ const vault=await mkdtemp(join(tmpdir(),'operon-creation-policy-transport-'));
+ try {
+  const health={...createHealth(),capabilities:[...createHealth().capabilities,...taskCreationAdvertisementsV1(true)]};
+  const policy=buildTaskCreationPolicyV1(structuredClone(DEFAULT_SETTINGS),[],{available:false,reason:'core-daily-notes-unavailable'},{available:false,reason:'operon-disabled'});
+  let reads=0;
+  const provider=createTaskCreationRuntimeV1({ready:()=>true,admit:async()=>({ok:true}),readSource:async()=>{reads++;return structuredClone(policy);}});
+  const runtime:OperonAgentRuntimeCoreV1={...createRuntime(health),taskCreation:provider,hasCapability:id=>health.capabilities.some(c=>c.id===id&&c.availability==='available')};
+  const request={contractVersion:1 as const,requestId:'creation-transport',kind:'task-creation-policy' as const,consistency:'live-verified' as const};
+  const expected=await provider.readPolicy(request);
+  const invocation={...await catalogInvocation(vault,request.requestId,1000),request};
+  const output = JSON.parse(await dispatchNativeRoutingFixture(runtime, vault, invocation, 'J'.repeat(32)));
+  assert.equal(output.ok,true,JSON.stringify(output));assert.deepEqual(output.result,expected);assert.equal(reads,4);
+ } finally {await rm(vault,{recursive:true,force:true});}
+});
+
+test('routed creation preview/apply use the dedicated provider through secure native transport',async()=>{
+ const vault=await mkdtemp(join(tmpdir(),'operon-routed-creation-transport-'));
+ try {
+  const legacy=JSON.parse(readFileSync('scripts/agent-runtime/receipts/legacy-transaction-identifiers.json','utf8')).file.plan;
+  const item={...legacy.spec.items[0],title:legacy.spec.items[0].description,template:{mode:'none'}};delete item.description;
+  const request={contractVersion:1,requestId:'routed-transport',kind:'mutation-preview',capability:'tasks.create.routed.preview',mutationKind:'task.create',clientInstanceId:legacy.clientInstanceId,idempotencyKey:'routed-transport-key',authorization:{basis:'user-explicit-request'},spec:{operation:'create',item}};
+  const plan={...legacy,extension:'task-creation-v1',capability:request.capability,spec:request.spec,policyRevision:'a'.repeat(64),idempotencyKeyHash:sha256HexV1(request.idempotencyKey),creation:{version:1,executionSpec:{...legacy.spec,items:[{...legacy.spec.items[0],target:{...legacy.spec.items[0].target,identityPlaceholderPolicy:'resolve-operon-id-v1'}}]},periodicRoute:null,templateId:null,templateDigest:sha256HexV1(''),materialRevision:'b'.repeat(64),graphDigest:'c'.repeat(64),resolvedFields:{},resolvedTags:[],nativeProperties:[],allocations:[],fileAllocations:[],definitions:[],skipped:[],retention:'preserve-definitions-on-failure'}};
+  const {planHash:_hash,...body}=plan;plan.planHash=sha256HexV1(canonicalJsonV1(toJsonValueV1(body)));
+  const calls:string[]=[];const health={...createHealth(),capabilities:[...createHealth().capabilities,...taskCreationAdvertisementsV1(true,true)]};
+  const failure={contractVersion:1 as const,code:'stale-source' as const,reason:'provider conflict',retryable:false,action:'refresh-state' as const};
+  const runtime:OperonAgentRuntimeCoreV1={...createRuntime(health),hasCapability:id=>health.capabilities.some(cap=>cap.id===id&&cap.availability==='available'),taskCreation:{readPolicy:async()=>{throw Error('Unexpected policy read');},mutations:{preview:async value=>{calls.push('preview');return {contractVersion:1,requestId:(value as {requestId:string}).requestId,kind:'mutation-preview-result',ok:false,warnings:[],error:failure};},apply:async value=>{calls.push('apply');return {contractVersion:1,requestId:(value as {requestId:string}).requestId,kind:'mutation-result',status:'failed',mutationMayHaveApplied:false,retryAllowed:false,groupResults:[],error:failure};},recover:async()=>{throw Error('Unexpected recover');}}}};
+  for(const apply of [false,true]) {
+   const command=apply?'mutation.apply' as const:'mutation.preview' as const;
+   const invocation={...await catalogInvocation(vault,request.requestId,1000),command,request:apply?{contractVersion:1,requestId:request.requestId,kind:'mutation-apply',authorization:request.authorization,idempotencyKey:request.idempotencyKey,acknowledgements:[],plan}:request};
+   const token = (apply ? 'R' : 'S').repeat(32);
+   const output = JSON.parse(await dispatchNativeRoutingFixture(runtime, vault, invocation, token));
+   assert.equal(output.ok,apply,JSON.stringify(output));if(apply)assert.equal(output.result.error.reason,'provider conflict');else assert.equal(output.failure.error.reason,'provider conflict');
+  }
+  assert.deepEqual(calls,['preview','apply']);
+ } finally {await rm(vault,{recursive:true,force:true});}
+});

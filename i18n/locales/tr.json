@@ -2348,7 +2348,21 @@
 		"kanbanAxisRemoveValue": "Değeri kaldır",
 		"kanbanAutoCollapseFinishedGroups": "Tamamlanan status gruplarını daralt",
 		"kanbanAutoCollapseFinishedGroupsDesc": "Sütun ve swimlane içindeki tamamlanan status gruplarını otomatik daralt.",
-		"kanbanCellHeightDisabledDesc": "Sabit hücre yüksekliği uygulamak için swimlane’leri etkinleştirin."
+		"kanbanCellHeightDisabledDesc": "Sabit hücre yüksekliği uygulamak için swimlane’leri etkinleştirin.",
+		"fileTaskDisplayTitleEnabled": "Dosya görevi görüntüleme başlığı olarak bir özellik kullan",
+		"fileTaskDisplayTitleEnabledDesc": "Eşlenen başlık özelliğini Dosya Görevi başlığı olarak göster. Dosya yolu ve görev kimliği ayrı kalır.",
+		"fileTaskDisplayTitleChangeMode": "Görüntüleme başlığı değiştiğinde",
+		"fileTaskDisplayTitleChangeModeDesc": "Dosya adını koruyun, Operon arayüzünde başlığı kaydettikten sonra yeniden adlandırmayı sorun veya görünen başlık her değiştiğinde otomatik olarak yeniden adlandırın; Operon dışındaki düzenlemeler de buna dahildir (Özellikler, kaynak veya ajanların frontmatter düzenlemeleri).",
+		"fileTaskDisplayTitleChangeModeKeep": "Dosya adını koru",
+		"fileTaskDisplayTitleChangeModeAsk": "Sor",
+		"fileTaskDisplayTitleChangeModeAuto": "Otomatik yeniden adlandır",
+		"fileTaskFilenameRule": "Dosya adı kuralı",
+		"fileTaskFilenameRuleDesc": "Dosya adının görüntüleme başlığından nasıl oluşturulduğu. Yasak dosya adı karakterleri her zaman kaldırılır.",
+		"fileTaskFilenameRuleSame": "Başlıkla aynı",
+		"fileTaskFilenameRuleKebab": "kebab-case",
+		"fileTaskFilenameRuleSnake": "snake_case",
+		"keyMappingsDesc_fileTaskDisplayTitle": "Görüntüleme başlıkları etkin olduğunda Dosya görevi etiketi olarak kullanılan salt okunur frontmatter özelliği.",
+		"keyMappingsMappingCollision": "Mevcut özel anahtarlar aynı kanonik anahtarı veya varsayılan özellik adını kullandığından bazı yerleşik anahtar haritalamaları eklenemedi. Çakışan anahtarı yeniden adlandırın ve ardından Ayarları yeniden açın."
 	},
 	"buttons": {
 		"open": "Aç",
@@ -3257,7 +3271,14 @@
 		"dockSelectTask": "Bir görev seç veya yeni görev oluştur",
 		"dockNextTask": "Sıradaki görev",
 		"dockTaskCreatorTitle": "Görev Oluşturucu",
-		"dockCreateAndTrack": "Yeni görev oluştur ve zaman takibini başlat"
+		"dockCreateAndTrack": "Yeni görev oluştur ve zaman takibini başlat",
+		"fileTaskFile": "Dosya",
+		"fileTaskKeep": "Koru",
+		"fileTaskRenameAction": "Yeniden adlandır",
+		"fileTaskRenameInvalid": "Yasak karakterler içermeyen geçerli bir dosya adı girin.",
+		"fileTaskRenameCollision": "Bu klasörde bu ada sahip bir dosya zaten var.",
+		"fileTaskRenameFailed": "Dosya yeniden adlandırılamadı. Görüntüleme başlığı kaydedildi.",
+		"fileTaskFilenameFallback": "Kural boş bir dosya adı üretti. {{filename}} korunuyor."
 	},
 	"indexStats": {
 		"title": "Operon İndeks",

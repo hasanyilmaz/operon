@@ -362,29 +362,32 @@ async function testSemanticsMismatchRequiresFullReindex(): Promise<void> {
 	const currentSemantics = JSON.parse(
 		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
 	) as Record<string, unknown>;
-	equal(currentSemantics.version, 4);
-	const loaded = await createLoadedV8(data, {
-		semantics: JSON.stringify({ ...currentSemantics, version: 2 }),
-	});
-	equal(hasIndexV8WorkflowSemanticsMismatch(
-		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
-		loaded.validatedSnapshot.manifest.indexSemanticsSignature,
-	), false);
-	equal(hasIndexV8WorkflowSemanticsMismatch(
-		buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
-		JSON.stringify({ ...currentSemantics, workflow: { changed: true } }),
-	), true);
-	equal(hasIndexV8WorkflowSemanticsMismatch('invalid', 'invalid'), true);
-	const indexer = new OperonIndexer(
-		createApp(filesFromLoaded(loaded)),
-		createStorage() as never,
-		null,
-		new FakeReadStore(loaded),
-	);
-	const result = await indexer.loadCachedIndex();
-	check(result.status === 'incompatible');
-	if (result.status === 'incompatible') equal(result.reason, 'index-semantics');
-	equal(indexer.getAllTasks().length, 0);
+	equal(currentSemantics.version, 5);
+	// Both older caches and the previous filename-only cache need the title-aware scan.
+	for (const legacyVersion of [2, 4]) {
+		const loaded = await createLoadedV8(data, {
+			semantics: JSON.stringify({ ...currentSemantics, version: legacyVersion }),
+		});
+		equal(hasIndexV8WorkflowSemanticsMismatch(
+			buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
+			loaded.validatedSnapshot.manifest.indexSemanticsSignature,
+		), false);
+		equal(hasIndexV8WorkflowSemanticsMismatch(
+			buildIndexV8SemanticsSignature(DEFAULT_SETTINGS),
+			JSON.stringify({ ...currentSemantics, workflow: { changed: true } }),
+		), true);
+		equal(hasIndexV8WorkflowSemanticsMismatch('invalid', 'invalid'), true);
+		const indexer = new OperonIndexer(
+			createApp(filesFromLoaded(loaded)),
+			createStorage() as never,
+			null,
+			new FakeReadStore(loaded),
+		);
+		const result = await indexer.loadCachedIndex();
+		check(result.status === 'incompatible');
+		if (result.status === 'incompatible') equal(result.reason, 'index-semantics');
+		equal(indexer.getAllTasks().length, 0);
+	}
 
 	const workflowLoaded = await createLoadedV8(data, {
 		semantics: JSON.stringify({ ...currentSemantics, workflow: { changed: true } }),

@@ -10,12 +10,13 @@ import {
 
 const effectiveAt = '2026-07-27T12:34:56.000Z';
 const sourceLocator = { representation: 'inline' as const, filePath: 'Tasks.md', lineNumber: 2 };
-const expectedModifiedAt = (() => {
-	const date = new Date(effectiveAt);
+const expectedModifiedAt = formatFixtureLocalDatetime(new Date(effectiveAt));
+
+function formatFixtureLocalDatetime(date: Date): string {
 	const pad = (part: number): string => String(part).padStart(2, '0');
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 		+ `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-})();
+}
 
 function snapshot(
 	operonId: string,
@@ -127,8 +128,14 @@ test('relationship replacement updates both dependency owners and seals exact cu
 	assert.equal(verify(), true);
 	const committedFile = committedTasks.get('new0001');
 	assert.ok(committedFile);
-	committedFile.fieldValues.datetimeModified = '2026-07-27T15:00:00';
-	assert.equal(verify(), true);
+	committedFile.fieldValues.datetimeModified = formatFixtureLocalDatetime(
+		new Date(Date.parse(effectiveAt) - 60 * 60 * 1000),
+	);
+	assert.equal(verify(), false, 'An older file timestamp must be rejected.');
+	committedFile.fieldValues.datetimeModified = formatFixtureLocalDatetime(
+		new Date(Date.parse(effectiveAt) + 60 * 60 * 1000),
+	);
+	assert.equal(verify(), true, 'A newer file timestamp must be accepted in every timezone.');
 	const committedSource = committedTasks.get('src0001');
 	assert.ok(committedSource);
 	committedSource.fieldValues.blocking = 'old0001';

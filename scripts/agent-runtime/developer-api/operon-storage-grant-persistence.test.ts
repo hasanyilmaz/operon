@@ -233,11 +233,33 @@ function stripTaskCardDefaults(data: OperonDataPackageV1, verify = false): void 
  delete data.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.taskCard;
 }
 
+function stripFileTaskDisplayTitleDefaults(data: OperonDataPackageV1, verify = false): void {
+	const settings = data.settings as Partial<typeof data.settings>;
+	if (verify) assert.equal(settings.fileTaskDisplayTitleEnabled, false);
+	delete settings.fileTaskDisplayTitleEnabled;
+	if (verify) {
+		assert.equal(settings.fileTaskDisplayTitleChangeMode, 'keep');
+		assert.deepEqual(settings.fileTaskFilenameRule, { preset: 'same' });
+	}
+	delete settings.fileTaskDisplayTitleChangeMode;
+	delete settings.fileTaskFilenameRule;
+	if (verify) assert.equal(settings.settingsVersion, 116);
+	settings.settingsVersion = 115;
+	const mappings = data.taxonomy.keyMappings.system;
+	const displayTitleMappings = mappings.filter(mapping => mapping.canonicalKey === 'fileTaskDisplayTitle');
+	if (verify) {
+		assert.equal(displayTitleMappings.length, 1);
+		assert.equal(displayTitleMappings[0]?.visiblePropertyName, 'title');
+	}
+	data.taxonomy.keyMappings.system = mappings.filter(mapping => mapping.canonicalKey !== 'fileTaskDisplayTitle');
+}
+
 function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataPackageV1 {
 	const dataPackage = buildOperonDataPackageFromSettings(DEFAULT_SETTINGS, {
 		developerApiGrants: grantPackage,
 	});
 	stripTaskCardDefaults(dataPackage);
+	stripFileTaskDisplayTitleDefaults(dataPackage);
 	// Preserve the sealed pre-Upcoming fixture bytes and their existing integrity assertions.
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
@@ -251,6 +273,7 @@ function packageWithGrant(grantPackage: DeveloperApiGrantPackageV1): OperonDataP
 function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: string, currentHash: string): void {
 	const currentShape = durable.snapshot();
 	stripTaskCardDefaults(currentShape, true);
+	stripFileTaskDisplayTitleDefaults(currentShape, true);
 	assert.equal(currentShape.settings.taskIconClickAction, 'pipeline');
 	delete (currentShape.settings as Partial<typeof currentShape.settings>).taskIconClickAction;
 	assert.deepEqual(currentShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask, DEFAULT_SETTINGS.contextualMenuSurfaceActionMatrix.upcomingTask);
@@ -264,6 +287,7 @@ function assertUpcomingDefaultsOnly(durable: DurablePluginData, previousHash: st
 	assert.equal(createHash('sha256').update(`${JSON.stringify(currentShape, null, '\t')}\n`).digest('hex'), currentHash);
 	const previousShape = durable.snapshot();
 	stripTaskCardDefaults(previousShape, true);
+	stripFileTaskDisplayTitleDefaults(previousShape, true);
 	delete previousShape.ui.contextualMenu.contextualMenuSurfaceActionMatrix?.upcomingTask;
 	for (const key of ['taskIconClickAction', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarClickAction', 'upcomingCountdownDisplay', 'upcomingDays', 'upcomingShowAllDayTasks', 'upcomingDailyGroupOrder',
 		'upcomingSidebarSide', 'upcomingTaskColorSource', 'upcomingShowStatusBar'] as const) {
@@ -1235,4 +1259,23 @@ test('preserves a manual suspension added after a future-version lock', async t 
 	await assert.rejects(storage.updateSettings({ demoWorkspacePromptDismissed: true }), /writes are suspended/iu);
 	storage.destroy();
 	assertAllowedFixtureFiles(durable, false, true);
+});
+
+test('Runtime definition registration persists only committed definitions and preserves pending unrelated settings', async t => {
+ const durable=new DurablePluginData(packageWithGrant(PENDING_CAPABILITY_GRANT));disposeAfterTest(t,durable);
+ const adapter=new FileBackedVaultAdapter(durable),storage=await initializeStorage(durable,adapter);
+ const before=durable.snapshot();const pending=!storage.getSettings().demoWorkspacePromptDismissed;
+ storage.getSettings().demoWorkspacePromptDismissed=pending;
+ const entry={sourceName:'runtimeScore',type:'number' as const,encoding:'vault-v1' as const};
+ await storage.registerRuntimeInlinePropertyDefinitions([entry],()=>true);
+ const after=durable.snapshot();const definitions=after.taxonomy.inlinePropertyDefinitions;if(before.taxonomy.inlinePropertyDefinitions)after.taxonomy.inlinePropertyDefinitions=before.taxonomy.inlinePropertyDefinitions;else delete after.taxonomy.inlinePropertyDefinitions;
+ assert.equal(after.schemaVersion,3);after.schemaVersion=before.schemaVersion;assert.deepEqual(after,before);assert.equal(storage.getSettings().demoWorkspacePromptDismissed,pending);assert.ok(definitions?.entries.some(item=>item.sourceName==='runtimeScore'));
+ storage.destroy();const restarted=await initializeStorage(durable,adapter);assert.ok(restarted.getCommittedInlinePropertyDefinitions()?.entries.some(item=>item.sourceName==='runtimeScore'));restarted.destroy();
+});
+test('Runtime definition registration refuses stale approval and failed publication without changing committed state',async t=>{
+ const durable=new DurablePluginData(packageWithGrant(PENDING_CAPABILITY_GRANT));disposeAfterTest(t,durable);
+ const storage=await initializeStorage(durable,new FileBackedVaultAdapter(durable));const before=durable.snapshot();
+ const entry={sourceName:'runtimeScore',type:'number' as const,encoding:'vault-v1' as const};
+ await assert.rejects(()=>storage.registerRuntimeInlinePropertyDefinitions([entry],()=>false));assert.deepEqual(durable.snapshot(),before);
+ durable.failNextSave();await assert.rejects(()=>storage.registerRuntimeInlinePropertyDefinitions([entry],()=>true));assert.deepEqual(durable.snapshot(),before);assert.equal(storage.getCommittedInlinePropertyDefinitions(),undefined);storage.destroy();
 });

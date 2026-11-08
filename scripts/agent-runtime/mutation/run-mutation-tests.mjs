@@ -1,6 +1,6 @@
 import { build } from 'esbuild';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
@@ -26,6 +26,8 @@ try {
 			'scripts/agent-runtime/mutation/timing-probe.test.ts',
 		],
 		bundle: true,
+		alias: { obsidian: resolve('scripts/test-support/obsidian-native-yaml.ts') },
+		banner: { js: 'import { createRequire as createYamlTestRequire } from "node:module"; const require = createYamlTestRequire(import.meta.url);' },
 		platform: 'node',
 		format: 'esm',
 		target: 'node22',

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "有効にすると、Operon は設定された遅延の後、完了またはキャンセルしたファイルタスクをアーカイブフォルダーに移動します。",
       "fileTaskConversion": "ファイルタスクの変換",
       "fileTaskDailyNotes": "デイリーノート",
+      "fileTaskDisplayTitleChangeMode": "表示タイトルが変更されたとき",
+      "fileTaskDisplayTitleChangeModeAsk": "確認する",
+      "fileTaskDisplayTitleChangeModeAuto": "自動的に名前を変更",
+      "fileTaskDisplayTitleChangeModeDesc": "ファイル名を保持するか、Operon の UI でタイトルを保存した後に変更を確認するか、表示タイトルが変わるたびに自動的に変更します。Operon 外での編集（プロパティ、ソース、エージェントによるフロントマターの編集）も対象です。",
+      "fileTaskDisplayTitleChangeModeKeep": "ファイル名を保持",
+      "fileTaskDisplayTitleEnabled": "ファイルタスクの表示タイトルとしてプロパティを使用",
+      "fileTaskDisplayTitleEnabledDesc": "マッピングされたタイトルプロパティをファイルタスクのタイトルとして表示します。ファイルパスとタスクの識別情報は別に保持されます。",
       "fileTaskFileParentTargetMode": "親がファイルタスクの場合のファイルタスクの配置",
       "fileTaskFileParentTargetModeDesc": "選択した親がファイルタスクの場合に、新しい Operon タスクがファイルタスクを作成する場所を選択します。",
       "fileTaskFileParentTargetSameFolder": "親ファイルと同じフォルダー",
+      "fileTaskFilenameRule": "ファイル名ルール",
+      "fileTaskFilenameRuleDesc": "表示タイトルからファイル名を作成する方法。禁止されているファイル名の文字は常に削除されます。",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "タイトルと同じ",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "親がインラインの場合のファイルタスクの配置",
       "fileTaskInlineParentTargetModeDesc": "選択した親がインラインタスクの場合に、新しい Operon タスクがファイルタスクを作成する場所を選択します。",
       "fileTaskInlineParentTargetSameFolder": "親ノートと同じフォルダー",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "カレンダーとタイミングのビューで使用される予定の開始日時。",
       "keyMappingsDesc_duration": "秒単位で保存される記録した作業時間。",
       "keyMappingsDesc_estimate": "秒単位で保存される予定の作業時間。",
+      "keyMappingsDesc_fileTaskDisplayTitle": "表示タイトルが有効な場合にファイルタスクのラベルとして使用される読み取り専用のフロントマタープロパティ。",
       "keyMappingsDesc_links": "タスクに関連付けられた外部のウェブリンク。",
       "keyMappingsDesc_location": "緯度・経度のテキストとして保存され、地図チップとして表示される場所の座標。",
       "keyMappingsDesc_note": "タスクと一緒に表示される短いノートまたは注釈。",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[タイプ]",
       "keyMappingsLegendValueSharingDesc": "ファイルタスクの YAML で使用される値は、一致するインラインタスクのフィールドと共有されるため、インラインタスクの編集中に候補として表示されたり、その逆も可能です。",
       "keyMappingsLegendValueSharingLabel": "プロパティ値の共有",
+      "keyMappingsMappingCollision": "既存のカスタムキーが同じ正規キーまたは既定のプロパティ名を使用しているため、一部の組み込みキーマッピングを追加できませんでした。競合するキーの名前を変更してから、設定を再度開いてください。",
       "keyMappingsNoCustom": "カスタムキーが定義されていません。下のボタンで追加してください。",
       "keyMappingsPropertyAria": "表示プロパティ名",
       "keyMappingsPropertyLabel": "プロパティ",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "{{name}} は値またはマッピングがプロパティの種類と一致しないため、Operon では読み取り専用です。",
       "filePropertyUnavailable": "{{name}} はプロパティの種類またはソースを確認できなかったため、Operon では読み取り専用です。",
       "filePropertyUnsupported": "{{name}} は値の形式が編集に対応していないため、Operon では読み取り専用です。",
+      "fileTaskFile": "ファイル",
+      "fileTaskFilenameFallback": "ルールによって空のファイル名が生成されました。{{filename}} を維持します。",
+      "fileTaskKeep": "保持",
       "fileTaskNameTitle": "ファイルタスク名",
+      "fileTaskRenameAction": "名前を変更",
+      "fileTaskRenameCollision": "このフォルダーには、その名前のファイルがすでに存在します。",
+      "fileTaskRenameFailed": "ファイル名を変更できませんでした。表示タイトルは保存されました。",
+      "fileTaskRenameInvalid": "禁止されている文字を含まない有効なファイル名を入力してください。",
       "fileTemplateInfoLabel": "情報:",
       "filterStatus": "ステータスで絞り込み",
       "finished": "完了",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b2e21c4df252a67ab40682e3ee8e9baaa8f077422671eb80913f74e912d652d4"
+  "sourceVersion": "b79561eee5290eb81471c9adb195e9e151a430f96d20111c918912398180729c"
 }

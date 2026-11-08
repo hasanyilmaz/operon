@@ -1804,7 +1804,7 @@ function isCompleteDataPackage(value: unknown): value is OperonDataPackageV1 {
 	return isStructurallyCompleteOperonDataPackageV1(value);
 }
 
-function isUnrecognizableCanonicalDataPackage(value: unknown): boolean {
+export function isUnrecognizableCanonicalDataPackage(value: unknown): boolean {
 	if (!isRecord(value) || !isRecord(value.settings) || Object.keys(value.settings).length === 0) return true;
 	// Legacy partial packages may omit a version, but a present version must be
 	// supported. A property name alone is not evidence of readable settings.

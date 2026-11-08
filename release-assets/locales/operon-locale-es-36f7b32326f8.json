@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3777,
-  "keyFingerprint": "4125d70b38e58a59dd93f23a22519f208e34eb5c9f8fc4579f142cb82dafaf89",
+  "keyCount": 3798,
+  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1578,9 +1578,21 @@
       "fileTaskAutoArchiveEnabledDesc": "Cuando está activado, Operon mueve las tareas de archivo finalizadas o canceladas a la carpeta de archivado después del retardo configurado.",
       "fileTaskConversion": "Conversión de tareas de archivo",
       "fileTaskDailyNotes": "Notas diarias",
+      "fileTaskDisplayTitleChangeMode": "Cuando cambia el título visible",
+      "fileTaskDisplayTitleChangeModeAsk": "Preguntar",
+      "fileTaskDisplayTitleChangeModeAuto": "Cambiar nombre automáticamente",
+      "fileTaskDisplayTitleChangeModeDesc": "Conserva el nombre del archivo, pregunta si deseas cambiarlo tras guardar el título en la interfaz de Operon o cámbialo automáticamente cada vez que cambie el título visible, incluso fuera de Operon (Propiedades, código fuente o cambios en el frontmatter realizados por agentes).",
+      "fileTaskDisplayTitleChangeModeKeep": "Conservar el nombre del archivo",
+      "fileTaskDisplayTitleEnabled": "Usar una propiedad como título visible de las tareas de archivo",
+      "fileTaskDisplayTitleEnabledDesc": "Mostrar la propiedad de título asignada como título de la tarea de archivo. La ruta y la identidad de la tarea permanecen separadas.",
       "fileTaskFileParentTargetMode": "Ubicación de tarea de archivo cuando la principal es tarea de archivo",
       "fileTaskFileParentTargetModeDesc": "Elegir dónde crea Nueva tarea de Operon las tareas de archivo cuando la tarea principal seleccionada es una tarea de archivo.",
       "fileTaskFileParentTargetSameFolder": "Misma carpeta que el archivo principal",
+      "fileTaskFilenameRule": "Regla de nombre de archivo",
+      "fileTaskFilenameRuleDesc": "Cómo se crea el nombre de archivo a partir del título visible. Los caracteres prohibidos en los nombres de archivo siempre se eliminan.",
+      "fileTaskFilenameRuleKebab": "kebab-case",
+      "fileTaskFilenameRuleSame": "Igual que el título",
+      "fileTaskFilenameRuleSnake": "snake_case",
       "fileTaskInlineParentTargetMode": "Ubicación de tarea de archivo cuando la principal es en línea",
       "fileTaskInlineParentTargetModeDesc": "Elegir dónde crea Nueva tarea de Operon las tareas de archivo cuando la tarea principal seleccionada es una tarea en línea.",
       "fileTaskInlineParentTargetSameFolder": "Misma carpeta que la nota principal",
@@ -2014,6 +2026,7 @@
       "keyMappingsDesc_datetimeStart": "Fecha y hora de inicio programadas usadas por las vistas de calendario y de temporización.",
       "keyMappingsDesc_duration": "Duración de trabajo registrada almacenada en segundos.",
       "keyMappingsDesc_estimate": "Duración de trabajo estimada almacenada en segundos.",
+      "keyMappingsDesc_fileTaskDisplayTitle": "Propiedad de frontmatter de solo lectura usada como etiqueta de la tarea de archivo cuando están activados los títulos visibles.",
       "keyMappingsDesc_links": "Enlaces web externos asociados a la tarea.",
       "keyMappingsDesc_location": "Coordenadas de ubicación almacenadas como texto de latitud, longitud y mostradas como un chip de mapa.",
       "keyMappingsDesc_note": "Nota o anotación breve mostrada junto a la tarea.",
@@ -2049,6 +2062,7 @@
       "keyMappingsLegendTypeLabel": "[tipo]",
       "keyMappingsLegendValueSharingDesc": "Los valores usados en el YAML de tareas de archivo se comparten con los campos coincidentes de tareas en línea, de modo que pueden aparecer como sugerencias al editar tareas en línea, o viceversa.",
       "keyMappingsLegendValueSharingLabel": "Compartición de valores de propiedad",
+      "keyMappingsMappingCollision": "No se pudieron agregar algunas asignaciones de claves integradas porque claves personalizadas existentes usan la misma clave canónica o el mismo nombre de propiedad predeterminado. Renombra la clave en conflicto y vuelve a abrir Configuración.",
       "keyMappingsNoCustom": "No hay claves personalizadas definidas. Usar el botón de abajo para añadir una.",
       "keyMappingsPropertyAria": "Nombre de propiedad visible",
       "keyMappingsPropertyLabel": "Propiedad",
@@ -3471,7 +3485,14 @@
       "filePropertyTypeConflict": "{{name}} es de solo lectura en Operon porque su valor o asignación entra en conflicto con el tipo de propiedad.",
       "filePropertyUnavailable": "{{name}} es de solo lectura en Operon porque no se pudo verificar su tipo de propiedad o fuente.",
       "filePropertyUnsupported": "{{name}} es de solo lectura en Operon porque su formato de valor no admite edición.",
+      "fileTaskFile": "Archivo",
+      "fileTaskFilenameFallback": "La regla produjo un nombre de archivo vacío. Se conserva {{filename}}.",
+      "fileTaskKeep": "Conservar",
       "fileTaskNameTitle": "Nombre de la tarea de archivo",
+      "fileTaskRenameAction": "Cambiar nombre",
+      "fileTaskRenameCollision": "Ya existe un archivo con ese nombre en esta carpeta.",
+      "fileTaskRenameFailed": "No se pudo cambiar el nombre del archivo. El título visible se ha guardado.",
+      "fileTaskRenameInvalid": "Introduce un nombre de archivo válido sin caracteres prohibidos.",
       "fileTemplateInfoLabel": "Información:",
       "filterStatus": "Filtrar estado",
       "finished": "Finalizada",
@@ -3822,5 +3843,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8b76f0017b4b32f64ff913ecbf1552aa6c54211a3fd0ed224769b135751851d7"
+  "sourceVersion": "6cde4063a2f377281c4626552a30d884b9dec95f90e7ef178f689d7cb500a357"
 }

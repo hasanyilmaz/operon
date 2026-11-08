@@ -7,6 +7,7 @@
  */
 
 import { App, TFile } from 'obsidian';
+import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
 import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { CANONICAL_KEYS, LEGACY_CANONICAL_KEY_ALIASES } from '../types/keys';
 import { normalizeTaskIconValue } from './task-icon-value';
@@ -139,16 +140,17 @@ export function readYamlFields(
     for (const [yamlKey, val] of Object.entries(frontmatter)) {
         if (yamlKey === 'position') continue; // Obsidian internal
         if (yamlKey === 'tags') continue; // handled via task.tags pseudo-key
-        if (yamlKey === 'title') continue; // title is derived from the filename
         if (yamlKey === 'pinned') continue; // pinned state lives only in cache
         if (yamlKey.startsWith('_')) continue; // Skip pseudo-keys
 
         // Resolve visible property name back to canonical key
         const canonicalKey = reverseMap.get(yamlKey) ?? yamlKey;
+        if (yamlKey === 'title' && canonicalKey !== 'fileTaskDisplayTitle') continue; // title is otherwise derived from the filename
         if (canonicalKey === 'pinned') continue;
         if (!isReadableYamlCanonicalKey(canonicalKey, keyMappings)) continue;
 
         if (val === null || val === undefined) continue;
+        if (canonicalKey === 'fileTaskDisplayTitle' && hasFileTaskDisplayTitleMapping(keyMappings) && typeof val !== 'string') continue;
 
 		if (Array.isArray(val)) {
 			// YAML list → semicolon-separated inline format

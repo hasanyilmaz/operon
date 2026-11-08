@@ -1,3 +1,4 @@
+import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
 import { resolveFileTaskDefaults } from './file-task-defaults';
 import {
 	buildMergedFileTaskDraft,
@@ -130,7 +131,20 @@ export interface ExistingTaskCreationContext {
 	tags: readonly string[];
 }
 
+/** Internal opt-in preparation; legacy creation never invokes it. */
+export interface CanonicalCreationMaterial {
+ fields: Readonly<Record<string, string>>;
+ tags: readonly string[];
+ decorateInlineLine?: (line: string) => string;
+ fileTemplateContent?: string;
+ templateIdentityAllocations?: Array<{occurrence:number;suffix?:string;operonId:string}>;
+}
+export type CanonicalCreationMaterializer = (item: CanonicalTaskCreationItem, context: {
+ operonId: string; now: string; inheritedFields: Readonly<Record<string,string>>; inheritedTags: readonly string[];
+}) => CanonicalCreationMaterial;
+
 export interface PrepareCanonicalTaskCreationOptions {
+ prepareMaterial?: CanonicalCreationMaterializer;
 	settings: OperonSettings;
 	now: string;
 	existingOperonIds: ReadonlySet<string>;
@@ -583,7 +597,8 @@ function validateRequest(
 			}
 		}
 		for (const field of Object.keys(item.runtimeFields ?? {})) {
-			if (!ADAPTER_OWNED_TEMPORAL_CREATION_FIELDS.has(field)) {
+			if (!ADAPTER_OWNED_TEMPORAL_CREATION_FIELDS.has(field)
+				&& !(field === 'fileTaskDisplayTitle' && item.target.representation === 'file' && hasFileTaskDisplayTitleMapping(options.settings.keyMappings))) {
 				blockers.push({
 					code: 'field-not-allowed',
 					message: `Adapter-owned field ${field} is not writable through canonical task creation.`,
@@ -801,7 +816,7 @@ function prepareTask(
 		parentContext?.tags,
 	);
 	const explicitTags = item.tags === undefined ? undefined : normalizeTags(item.tags);
-	const tags = explicitTags ?? normalizeTags(inherited.tags ?? []);
+	let tags = explicitTags ?? normalizeTags(inherited.tags ?? []);
 	const inheritedFields = Object.fromEntries(
 		Object.entries(inherited)
 			.filter(([key, value]) => key !== 'tags' && typeof value === 'string' && !!value.trim())
@@ -862,6 +877,12 @@ function prepareTask(
 		...item.fields,
 		...item.runtimeFields,
 	};
+	const material = options.prepareMaterial?.(item, { operonId, now: options.now, inheritedFields, inheritedTags: normalizeTags(inherited.tags ?? []) });
+	if (material) {
+		for (const key of Object.keys(sourceFields)) delete sourceFields[key];
+		Object.assign(sourceFields, material.fields, item.runtimeFields);
+		tags = normalizeTags(material.tags);
+	}
 	for (const field of managedTemplateVariableFields) {
 		if (sourceFields[field] === undefined) sourceFields[field] = '';
 	}
@@ -946,11 +967,8 @@ function prepareTask(
 
 	if (item.target.representation === 'inline') {
 		prepared.placement = item.target.placement;
-		prepared.renderedTaskLine = (item.target.inlineIndent ?? '') + buildTaskLine(description, fieldValues, {
-			checkbox,
-			tags,
-			keyMappings: options.settings.keyMappings,
-		});
+		const line = buildTaskLine(description, fieldValues, { checkbox, tags, keyMappings: options.settings.keyMappings });
+		prepared.renderedTaskLine = (item.target.inlineIndent ?? '') + (material?.decorateInlineLine?.(line) ?? line);
 		return prepared;
 	}
 
@@ -962,7 +980,7 @@ function prepareTask(
 			tags,
 			tagsPresent: true,
 		},
-		template: templateDocument,
+		template: material?.fileTemplateContent === undefined ? templateDocument : parseFrontmatterDocument(material.fileTemplateContent, options.settings.keyMappings),
 		defaults,
 		keyMappings: options.settings.keyMappings,
 		bodyStrategy: 'use-template',
@@ -975,7 +993,9 @@ function prepareTask(
 		options.now,
 		options.resolveCoreTemplateVariables,
 	);
-	if (item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1') {
+	if (material?.fileTemplateContent !== undefined) {
+		prepared.templateIdentityAllocations = material.templateIdentityAllocations ?? [];
+	} else if (item.target.identityPlaceholderPolicy === 'resolve-operon-id-v1') {
 		const allocations: Array<{ occurrence: number; suffix?: string; operonId: string }> = [];
 		resolvedContent = resolveOperonIdPlaceholders(resolvedContent, {
 			generateOperonId: options.generateOperonId,

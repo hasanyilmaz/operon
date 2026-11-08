@@ -167,6 +167,10 @@ function renderDynamicTaskFilterSurface(
 	const rootTaskId = rootTask.operonId;
 	const dynamicDeps: EmbedFilterDeps = {
 		...deps,
+		activateDescription: deps.activateDescription ? (task, event, anchor) => {
+			if (task.operonId === rootTaskId) return;
+			deps.activateDescription?.(task, event, anchor);
+		} : undefined,
 		navigateToTask: (task) => {
 			if (task.operonId === rootTaskId) return;
 			deps.navigateToTask(task);

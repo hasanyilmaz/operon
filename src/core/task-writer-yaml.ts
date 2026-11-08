@@ -5,6 +5,7 @@ import { normalizeTaskIconValue } from './task-icon-value';
 import { formatTaskColorYamlValue } from './task-color-value';
 import { getManagedTaskFieldType } from './managed-task-fields';
 import { parseTaskMediaReferenceList } from './task-media-reference';
+import { hasFileTaskDisplayTitleMapping, isWritableRawYamlPropertyName } from './raw-yaml-property';
 
 export interface YamlFrontmatterFormattingPlan {
 	blankYamlKeys: Set<string>;
@@ -204,13 +205,16 @@ function resolveManagedCanonicalKey(
 	reverseMap: Map<string, string>,
 	keyMappings: KeyMapping[],
 ): string | null {
-	if (yamlKey === 'position' || yamlKey === 'tags' || yamlKey === 'title' || yamlKey.startsWith('_')) {
+	if (yamlKey === 'position' || yamlKey === 'tags' || yamlKey.startsWith('_')) {
 		return null;
 	}
 	if (yamlKey === 'pinned') {
 		return 'pinned';
 	}
 	const mappedKey = reverseMap.get(yamlKey);
+	if (yamlKey === 'title' && mappedKey !== 'fileTaskDisplayTitle') {
+		return null;
+	}
 	if (mappedKey) {
 		return isRetiredKeyMapping(mappedKey) || !isManagedYamlCanonicalKey(mappedKey, keyMappings)
 			? null
@@ -285,6 +289,7 @@ function coerceYamlStoredValue(
 	keyMappings: KeyMapping[],
 	existingValue: unknown,
 ): unknown {
+	if (canonicalKey === 'fileTaskDisplayTitle' && hasFileTaskDisplayTitleMapping(keyMappings)) return value;
 	if (canonicalKey === 'taskIcon') {
 		return normalizeTaskIconValue(value);
 	}
@@ -345,7 +350,8 @@ export function applyYamlTaskFieldValues(
 	};
 
 	const clearYamlKey = (canonicalKey: string, yamlKey: string): void => {
-		if (YAML_EMPTY_REMOVAL_KEYS.has(canonicalKey)) {
+		if (YAML_EMPTY_REMOVAL_KEYS.has(canonicalKey)
+			|| canonicalKey === 'fileTaskDisplayTitle' && hasFileTaskDisplayTitleMapping(keyMappings)) {
 			removeYamlKey(yamlKey);
 			return;
 		}
@@ -417,7 +423,11 @@ export function applyYamlTaskFieldValues(
 		const existingValue = pickExistingManagedValue(frontmatter, canonicalKey, aliasKeys, preferredYamlKey);
 		const hasIncomingValue = Object.prototype.hasOwnProperty.call(managedPayload, canonicalKey) === true;
 		const incomingValue = managedPayload[canonicalKey];
-        const custom = keyMappings.some(mapping => mapping.isSystem === false && mapping.canonicalKey === canonicalKey);
+		const custom = keyMappings.some(mapping => mapping.isSystem === false && mapping.canonicalKey === canonicalKey);
+		if (canonicalKey === 'fileTaskDisplayTitle' && !custom && hasIncomingValue
+			&& !isWritableRawYamlPropertyName(preferredYamlKey, keyMappings, 'fileTaskDisplayTitle')) {
+			throw new Error('The File Task display title mapping is not writable');
+		}
         if (custom && existingManagedKeys.has(canonicalKey)) {
             if (!hasIncomingValue && mode === 'merge') continue;
             // An unchanged managed projection is not permission to coerce native values or normalize aliases.
@@ -451,6 +461,8 @@ export function applyYamlTaskFieldValues(
 		}
 
 		if (existingValue === undefined) continue;
+
+		if (canonicalKey === 'fileTaskDisplayTitle' && !custom) continue;
 
 		if (mode === 'replace') {
 			clearManagedField(canonicalKey, preferredYamlKey, aliasKeys);

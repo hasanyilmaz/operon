@@ -645,6 +645,7 @@ export interface RuntimeTaskMutationAdapterPortsV1 {
         fieldValues: Record<string, string>;
     };
 	readonly catalog: CatalogProjectionV1;
+	readonly allowFileTaskTitle?: boolean;
 	getTask(operonId: string): RuntimeExactTaskMutationSnapshotV1 | null;
 	getDependencyTask?(operonId: string): RuntimeTaskDependencySnapshotV1 | null;
 	getAllDependencyTasks?(): readonly RuntimeTaskDependencySnapshotV1[];
@@ -884,6 +885,9 @@ function prepareUpdate(
 	}
 	| { ok: false; code: StructuredErrorCodeV1; reason: string } {
 	const { catalog } = ports;
+	if (ports.allowFileTaskTitle && (task.locator.representation !== 'file' || spec.changes.length !== 1 || spec.changes[0].field !== 'fileTaskDisplayTitle')) {
+		return failure('invalid-request', 'Title editing requires one File Task title change.');
+	}
 	if (spec.changes.length === 0) {
 		return failure('invalid-request', 'Task update requires at least one field change.');
 	}
@@ -910,8 +914,9 @@ function prepareUpdate(
 			!descriptor
 			|| descriptor.mappingStatus !== 'mapped'
 			|| !descriptor.readable
-			|| descriptor.mutationClass !== 'general-update'
-			|| descriptor.mutationOwner !== 'tasks.update'
+			|| (ports.allowFileTaskTitle && descriptor.source !== 'built-in')
+			|| (!(ports.allowFileTaskTitle && change.field === 'fileTaskDisplayTitle')
+				&& (descriptor.mutationClass !== 'general-update' || descriptor.mutationOwner !== 'tasks.update'))
 			|| descriptor.valueType !== change.valueType
 		) {
 			return failure('field-not-writable', `Field is not writable through tasks.update: ${change.field}`);
