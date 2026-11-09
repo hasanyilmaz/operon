@@ -1654,6 +1654,7 @@ export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBe
 
 export interface OperonSettings extends TaskCardSettings {
 	/** Optional user choices: absence uses in-memory defaults without startup writes. */
+	statusDockVisible?: boolean;
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
 	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
@@ -4507,6 +4508,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	if (typeof src.statusDockVisible === 'boolean') out.statusDockVisible = src.statusDockVisible;
+	else delete out.statusDockVisible;
 	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStatusDockSections(src.statusDockSections);
 	else delete out.statusDockSections;
 	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;

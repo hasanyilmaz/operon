@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "任务层级的自动父级链接、继承和项目序号。",
       "settingsPageRemindersDesc": "提醒发送、系统通知、声音和错过提醒的补发行为。",
       "settingsPageStateIconsDesc": "任务图标的点击行为、备用图标和颜色来源。",
+      "settingsPageStatusDockDesc": "设置桌面端状态栏的显示、点击行为和分区顺序。",
       "settingsPageTaskChipsDesc": "Task Creator 标签，以及用于行内任务、筛选视图结果、看板卡片、任务查找器和任务维基链接覆盖层的紧凑任务标签。",
       "settingsPageTaskEditorDesc": "任务编辑器选择器行、顺序和可见性。",
       "settingsPageTaskFinderDesc": "任务查找器启动行为、可见结果、记住的范围、快捷键和结果标签。",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "{{pipeline}} 中的状态颜色：{{status}}",
       "statusDockClickAction": "点击行为",
       "statusDockClickActionDesc": "选择点击停靠栏中正在计时或即将开始的任务时打开的内容。",
+      "statusDockGeneralSettings": "常规设置",
       "statusDockMove": "移动停靠栏",
       "statusDockSection": "状态栏",
       "statusDockSection_history": "会话历史",
@@ -2597,9 +2599,12 @@
       "statusDockSection_pinned": "已固定的任务",
       "statusDockSection_tracker": "时间追踪",
       "statusDockSection_upcoming": "即将到来的任务",
-      "statusDockSections": "分区与顺序",
+      "statusDockSections": "分区和顺序",
       "statusDockSectionsDesc": "启用分区并在状态栏中从左到右排列。空列表保持隐藏。",
       "statusDockSectionsSaveFailed": "无法保存状态栏分区。",
+      "statusDockVisibilitySaveFailed": "无法保存状态栏的显示设置。",
+      "statusDockVisible": "显示状态栏",
+      "statusDockVisibleDesc": "在桌面窗口中显示状态栏。重启 Obsidian 后会保留此设置。",
       "statusIconAria": "{{pipeline}} 中的状态图标：{{status}}",
       "statusIconTooltip": "选择状态图标",
       "statusNameAria": "{{pipeline}} 中的状态名称：{{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "5605919ac66034d99a3d46cf1c9339788e0c7b145510eac48ad0e8db983c38ba"
+  "sourceVersion": "1d91fac30b2ffb5a0b90fa723b21b7b9e3bd871d1f71e0eb44008d3b4a83ea16"
 }

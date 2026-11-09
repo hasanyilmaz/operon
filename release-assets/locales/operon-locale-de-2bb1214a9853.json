@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Automatische übergeordnete Verknüpfungen, Vererbung und Projektseriennummern für Aufgabenhierarchien.",
       "settingsPageRemindersDesc": "Erinnerungszustellung, Systembenachrichtigungen, Ton und Nachholen verpasster Erinnerungen.",
       "settingsPageStateIconsDesc": "Klickverhalten der Aufgabensymbole, Ersatzsymbole und Farbquellen.",
+      "settingsPageStatusDockDesc": "Sichtbarkeit, Klickverhalten und Abschnittsreihenfolge des Statusdocks auf dem Desktop.",
       "settingsPageTaskChipsDesc": "Task-Creator-Chips sowie kompakte Aufgaben-Chips für Inline-Aufgaben, Filteransicht-Ergebnisse, Kanban-Karten, Aufgabensuche und Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Auswahlzeilen, Reihenfolge und Sichtbarkeit im Aufgaben-Editor.",
       "settingsPageTaskFinderDesc": "Startverhalten der Aufgabensuche, sichtbare Ergebnisse, gemerkte Suchbereiche, Kürzel und Ergebnis-Chips.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Statusfarbe in {{pipeline}}: {{status}}",
       "statusDockClickAction": "Klickverhalten",
       "statusDockClickActionDesc": "Wähle, was beim Klicken auf eine erfasste oder nächste Aufgabe im Status-Dock geöffnet wird.",
+      "statusDockGeneralSettings": "Allgemeine Einstellungen",
       "statusDockMove": "Dock verschieben",
       "statusDockSection": "Statusdock",
       "statusDockSection_history": "Sitzungsverlauf",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Abschnitte und Reihenfolge",
       "statusDockSectionsDesc": "Aktiviere Abschnitte und ordne sie im Statusdock von links nach rechts an. Leere Listen bleiben ausgeblendet.",
       "statusDockSectionsSaveFailed": "Statusdock-Abschnitte konnten nicht gespeichert werden.",
+      "statusDockVisibilitySaveFailed": "Die Sichtbarkeit des Statusdocks konnte nicht gespeichert werden.",
+      "statusDockVisible": "Statusdock anzeigen",
+      "statusDockVisibleDesc": "Zeigt das Statusdock in Desktop-Fenstern an. Die Einstellung bleibt beim Neustart von Obsidian erhalten.",
       "statusIconAria": "Statussymbol in {{pipeline}}: {{status}}",
       "statusIconTooltip": "Statussymbol auswählen",
       "statusNameAria": "Statusname in {{pipeline}}: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1512d39c3484011ba5a92931544cabec79b004d5a1341db378d7b7a18eeed1f5"
+  "sourceVersion": "92f6472b4c0e6631d31f00a335a8f020b58576b19fe5d3761acb1076fdd28c50"
 }

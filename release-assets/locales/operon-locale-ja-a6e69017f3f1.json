@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "タスク階層の自動親リンク、継承、プロジェクトシリアル。",
       "settingsPageRemindersDesc": "リマインダーの配信、システム通知、サウンド、未通知リマインダーの追跡動作。",
       "settingsPageStateIconsDesc": "タスクアイコンのクリック動作、代替アイコン、色のソース。",
+      "settingsPageStatusDockDesc": "デスクトップのステータスドックの表示、クリック時の動作、セクションの順序を設定します。",
       "settingsPageTaskChipsDesc": "Task Creator のチップと、インラインタスク・フィルタービューの結果・Kanban カード・タスクファインダー・タスクウィキリンクオーバーレイ用のコンパクトなタスクチップ。",
       "settingsPageTaskEditorDesc": "タスクエディターのピッカー行、順序、表示。",
       "settingsPageTaskFinderDesc": "タスクファインダーの起動動作、表示する結果、記憶される範囲、ショートカット、結果チップ。",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "{{pipeline}} のステータスのカラー: {{status}}",
       "statusDockClickAction": "クリック時の動作",
       "statusDockClickActionDesc": "ドック内の計測中または次のタスクをクリックしたときに開く内容を選択します。",
+      "statusDockGeneralSettings": "一般設定",
       "statusDockMove": "ドックを移動",
       "statusDockSection": "ステータスドック",
       "statusDockSection_history": "セッション履歴",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "セクションと順序",
       "statusDockSectionsDesc": "セクションを有効にし、ステータスドック内で左から右に並べます。空のリストは表示されません。",
       "statusDockSectionsSaveFailed": "ステータスドックのセクションを保存できませんでした。",
+      "statusDockVisibilitySaveFailed": "ステータスドックの表示設定を保存できませんでした。",
+      "statusDockVisible": "ステータスドックを表示",
+      "statusDockVisibleDesc": "デスクトップウィンドウにステータスドックを表示します。この設定は Obsidian の再起動後も保持されます。",
       "statusIconAria": "{{pipeline}} のステータスのアイコン: {{status}}",
       "statusIconTooltip": "ステータスのアイコンを選択",
       "statusNameAria": "{{pipeline}} のステータス名: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b79561eee5290eb81471c9adb195e9e151a430f96d20111c918912398180729c"
+  "sourceVersion": "e23e88e20d71a34f13955442ca3b8ae4fdb30d827c96a4764bda3a6d42d934e8"
 }

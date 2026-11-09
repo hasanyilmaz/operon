@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Enlaces automáticos a tareas principales, herencia y números de serie de proyecto para jerarquías de tareas.",
       "settingsPageRemindersDesc": "Entrega de recordatorios, notificaciones del sistema, sonido y recuperación de recordatorios perdidos.",
       "settingsPageStateIconsDesc": "Comportamiento al pulsar el icono de tarea, iconos alternativos y fuentes de color.",
+      "settingsPageStatusDockDesc": "Visibilidad, comportamiento al hacer clic y orden de las secciones del dock de estado en el escritorio.",
       "settingsPageTaskChipsDesc": "Chips de Task Creator más chips de tarea compactos para tareas en línea, resultados de la Vista de filtros, tarjetas Kanban, Buscador de tareas y Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Filas de selector del Editor de tareas, orden y visibilidad.",
       "settingsPageTaskFinderDesc": "Comportamiento de inicio del Buscador de tareas, resultados visibles, ámbitos recordados, atajos y chips de resultados.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Color del estado en {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamiento al hacer clic",
       "statusDockClickActionDesc": "Elige qué se abre al hacer clic en una tarea en seguimiento o próxima en el dock.",
+      "statusDockGeneralSettings": "Ajustes generales",
       "statusDockMove": "Mover dock",
       "statusDockSection": "Dock de estado",
       "statusDockSection_history": "Historial de sesiones",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Secciones y orden",
       "statusDockSectionsDesc": "Activa las secciones y ordénalas de izquierda a derecha en el dock de estado. Las listas vacías permanecen ocultas.",
       "statusDockSectionsSaveFailed": "No se pudieron guardar las secciones del dock de estado.",
+      "statusDockVisibilitySaveFailed": "No se pudo guardar la visibilidad del dock de estado.",
+      "statusDockVisible": "Mostrar el dock de estado",
+      "statusDockVisibleDesc": "Muestra el dock de estado en las ventanas de escritorio. La preferencia se conserva al reiniciar Obsidian.",
       "statusIconAria": "Icono del estado en {{pipeline}}: {{status}}",
       "statusIconTooltip": "Elegir icono de estado",
       "statusNameAria": "Nombre del estado en {{pipeline}}: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "6cde4063a2f377281c4626552a30d884b9dec95f90e7ef178f689d7cb500a357"
+  "sourceVersion": "8f29dc9e2f1209f65457029a7e5155a41063544be015cc33b54953e745ac0297"
 }

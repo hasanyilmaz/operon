@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "任務層級的自動父級連結、繼承和專案序號。",
       "settingsPageRemindersDesc": "提醒傳送、系統通知、聲音與錯過提醒的補送行為。",
       "settingsPageStateIconsDesc": "任務圖示的點擊行為、備用圖示及顏色來源。",
+      "settingsPageStatusDockDesc": "設定桌面版狀態列的顯示、點擊行為和區段順序。",
       "settingsPageTaskChipsDesc": "Task Creator 標籤，以及用於行內任務、篩選檢視結果、看板卡片、任務查詢器和任務維基連結覆蓋層的緊湊任務標籤。",
       "settingsPageTaskEditorDesc": "任務編輯器選擇器行、順序和可見性。",
       "settingsPageTaskFinderDesc": "任務查詢器啟動行為、可見結果、記住的範圍、快捷鍵和結果標籤。",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "{{pipeline}} 中的狀態顏色：{{status}}",
       "statusDockClickAction": "點擊行為",
       "statusDockClickActionDesc": "選擇點擊停靠列中正在計時或即將開始的任務時開啟的內容。",
+      "statusDockGeneralSettings": "一般設定",
       "statusDockMove": "移動停靠列",
       "statusDockSection": "狀態列",
       "statusDockSection_history": "工作階段歷史",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "區段與順序",
       "statusDockSectionsDesc": "啟用區段並在狀態列中由左至右排列。空清單保持隱藏。",
       "statusDockSectionsSaveFailed": "無法儲存狀態列區段。",
+      "statusDockVisibilitySaveFailed": "無法儲存狀態列的顯示設定。",
+      "statusDockVisible": "顯示狀態列",
+      "statusDockVisibleDesc": "在桌面視窗中顯示狀態列。重新啟動 Obsidian 後會保留此設定。",
       "statusIconAria": "{{pipeline}} 中的狀態圖示：{{status}}",
       "statusIconTooltip": "選擇狀態圖示",
       "statusNameAria": "{{pipeline}} 中的狀態名稱：{{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "7bbcc31cdcc20506608febec7d6e3723112218da83fa4b075af736df7ed4b6f9"
+  "sourceVersion": "15d5695e89af71ab26aee67c935ce4f31c4c8095d0cc540da6915a3ebec7d9ae"
 }

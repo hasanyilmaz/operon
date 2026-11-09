@@ -851,6 +851,22 @@ export class OperonStorage {
 		});
 	}
 
+	/** A command with no explicit value inverts the latest committed visibility. */
+	async saveStatusDockVisibility(visible?: boolean): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			const expected = this.settings.statusDockVisible;
+			const wasVisible = expected !== false;
+			const next = visible ?? !wasVisible;
+			if (next === wasVisible) return;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				const stored = current.ui.statusDock?.visible;
+				if ((typeof stored === 'boolean' ? stored : undefined) !== expected) throw new Error('Status dock visibility changed on disk');
+				return { ...current, ui: { ...current.ui, statusDock: { ...current.ui.statusDock, visible: next } } };
+			}, () => this.settings.statusDockVisible === expected);
+			this.settings.statusDockVisible = next;
+		});
+	}
+
 	async saveStatusDockSections(change: (current: StatusDockSection[]) => StatusDockSection[]): Promise<void> {
   await this.enqueueSettingsTransaction(async () => {
    const current = normalizeStatusDockSections(this.settings.statusDockSections);
@@ -1683,6 +1699,7 @@ export class OperonStorage {
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockVisible === undefined) delete candidateInput.statusDockVisible;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
 				const candidateSettings = migrateSettings(candidateInput);
@@ -1783,6 +1800,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockVisible')) delete this.settings.statusDockVisible;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockClickAction')) delete this.settings.statusDockClickAction;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockSections')) delete this.settings.statusDockSections;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;

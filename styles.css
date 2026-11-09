@@ -35463,6 +35463,11 @@ body .operon-state-icon-setting:where(.operon-settings-scope, .operon-settings-s
 }
 
 /* Workspace Tweaks Settings retain native rows and compact folder actions. */
+.operon-status-dock-sections-settings:where(.operon-settings-scope) > .operon-status-dock-sections-description {
+	margin: 0 0 var(--size-4-3);
+	padding-inline: var(--size-4-4);
+}
+
 .operon-workspace-tweaks-settings-group:where(.operon-settings-scope) .setting-items > .setting-item > .setting-item-control {
 	align-self: center;
 }

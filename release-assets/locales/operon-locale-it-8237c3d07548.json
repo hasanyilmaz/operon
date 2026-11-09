@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Collegamenti automatici all'attività principale, ereditarietà e serie di progetto per le gerarchie di attività.",
       "settingsPageRemindersDesc": "Consegna dei promemoria, notifiche di sistema, suono e recupero dei promemoria mancati.",
       "settingsPageStateIconsDesc": "Comportamento al clic sull’icona dell’attività, icone alternative e fonti di colore.",
+      "settingsPageStatusDockDesc": "Visibilità, comportamento al clic e ordine delle sezioni del dock di stato su desktop.",
       "settingsPageTaskChipsDesc": "Chip di Task Creator più chip di attività compatti per attività in linea, risultati della Vista filtro, schede Kanban, Ricerca attività e overlay wikilink attività.",
       "settingsPageTaskEditorDesc": "Righe di selezione dell'Editor attività, ordine e visibilità.",
       "settingsPageTaskFinderDesc": "Comportamento di avvio della Ricerca attività, risultati visibili, ambiti memorizzati, scorciatoie e chip dei risultati.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Colore stato in {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamento al clic",
       "statusDockClickActionDesc": "Scegli cosa aprire facendo clic su un’attività monitorata o successiva nel dock.",
+      "statusDockGeneralSettings": "Impostazioni generali",
       "statusDockMove": "Sposta dock",
       "statusDockSection": "Dock di stato",
       "statusDockSection_history": "Cronologia delle sessioni",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Sezioni e ordine",
       "statusDockSectionsDesc": "Attiva le sezioni e disponile da sinistra a destra nel dock di stato. Gli elenchi vuoti rimangono nascosti.",
       "statusDockSectionsSaveFailed": "Impossibile salvare le sezioni del dock di stato.",
+      "statusDockVisibilitySaveFailed": "Impossibile salvare la visibilità del dock di stato.",
+      "statusDockVisible": "Mostra il dock di stato",
+      "statusDockVisibleDesc": "Mostra il dock di stato nelle finestre desktop. La scelta viene mantenuta al riavvio di Obsidian.",
       "statusIconAria": "Icona stato in {{pipeline}}: {{status}}",
       "statusIconTooltip": "Scegli icona stato",
       "statusNameAria": "Nome stato in {{pipeline}}: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "fe806bcc30c4eb5c35a99f4d2ddc2c329b4e70b6850a5a32e62b70edd4da672b"
+  "sourceVersion": "f3bbbf08aa80157f256fdebc55ec0c8c4ce3d9a827acdfd8cf05eb1af1eb48bd"
 }

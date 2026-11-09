@@ -17371,6 +17371,7 @@ export default class OperonPlugin extends Plugin {
 			this.buildSettingsBackupUiIntegration(),
 			() => this.reconcileAllParentTaskDateRangesWhenSafe(),
 			{ mount: container => { const controller = this.getTasksBulkConversion(); if (!controller) return () => {}; const view = new TasksConversionSettings(this.app, container, controller); return () => view.dispose(); }, available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading' },
+			() => this.statusDock?.refresh(),
 			(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			);
 		this.addSettingTab(this.settingsTab);
@@ -37897,7 +37898,7 @@ export default class OperonPlugin extends Plugin {
 			name: t('commands', 'toggleStatusDock'),
 			checkCallback: checking => {
 				if (!Platform.isDesktopApp || !this.statusDock) return false;
-				if (!checking) this.statusDock.toggleVisibility();
+				if (!checking) void this.settingsTab?.setStatusDockVisibility();
 				return true;
 			},
 		});

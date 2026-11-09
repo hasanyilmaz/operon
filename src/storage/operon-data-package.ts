@@ -71,6 +71,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
 	| keyof WorkspaceTweaksPackageSettings
+	| 'statusDockVisible'
 	| 'statusDockSections'
 	| 'statusDockClickAction'
 	| 'statusDockMode'
@@ -103,6 +104,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskDataTypeIcon',
+	'statusDockVisible',
 	'statusDockSections',
 	'statusDockClickAction',
 	'statusDockMode',
@@ -356,7 +358,7 @@ export interface OperonViewsPackageV1 {
 }
 
 export interface OperonUiPackageV1 {
-	statusDock?: { sections?: OperonSettings['statusDockSections']; clickAction?: OperonSettings['statusDockClickAction']; mode?: OperonSettings['statusDockMode']; alignment?: OperonSettings['statusDockAlignment'] };
+	statusDock?: { visible?: boolean; sections?: OperonSettings['statusDockSections']; clickAction?: OperonSettings['statusDockClickAction']; mode?: OperonSettings['statusDockMode']; alignment?: OperonSettings['statusDockAlignment'] };
 	propertyValuePool?: unknown;
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferencePackageSettings>;
@@ -560,6 +562,7 @@ export function composeOperonSettingsFromDataPackage(
 		taskCardShowSourceAction: dataPackage.ui.taskUiPreferences.taskCardShowSourceAction !== false,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
+		statusDockVisible: dataPackage.ui.statusDock?.visible,
 		statusDockSections: dataPackage.ui.statusDock?.sections,
 		statusDockClickAction: dataPackage.ui.statusDock?.clickAction,
 		statusDockMode: dataPackage.ui.statusDock?.mode,
@@ -628,7 +631,8 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		ui: {
-			...(normalized.statusDockSections === undefined && normalized.statusDockClickAction === undefined && normalized.statusDockMode === undefined && normalized.statusDockAlignment === undefined ? {} : { statusDock: {
+			...(normalized.statusDockVisible === undefined && normalized.statusDockSections === undefined && normalized.statusDockClickAction === undefined && normalized.statusDockMode === undefined && normalized.statusDockAlignment === undefined ? {} : { statusDock: {
+				...(normalized.statusDockVisible === undefined ? {} : { visible: normalized.statusDockVisible }),
 				...(normalized.statusDockSections === undefined ? {} : { sections: cloneUnknown(normalized.statusDockSections) }),
 				...(normalized.statusDockClickAction === undefined ? {} : { clickAction: normalized.statusDockClickAction }),
 				...(normalized.statusDockMode === undefined ? {} : { mode: normalized.statusDockMode }),

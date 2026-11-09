@@ -127,7 +127,7 @@ test('old/default backup selections omit absent dock preferences and retain expl
 });
 
 test('backup restore preflight handles absent and explicit dock preferences without inventing defaults', () => {
-	for (const preferences of [{}, { statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
+	for (const preferences of [{}, { statusDockVisible: false, statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
 		const settings = migrateSettings({ ...DEFAULT_SETTINGS, ...preferences, dateDisplayFormat: 'DD/MM/YYYY' });
 		const exported = exportOperonSettingsBackupJsonV1({ settings,
 			source: { pluginVersion: '4.2.0', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
@@ -141,12 +141,46 @@ test('backup restore preflight handles absent and explicit dock preferences with
 		assert.equal(restored.ok, true, JSON.stringify(restored.diagnostics));
 		assert.ok(restored.restorePlan);
 		assert.equal(restored.restorePlan.candidateSettings.dateDisplayFormat, 'DD/MM/YYYY');
-		for (const key of ['statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
+		for (const key of ['statusDockVisible', 'statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
 			assert.equal(restored.restorePlan.candidateSettings[key], settings[key]);
 			assert.equal(Object.prototype.hasOwnProperty.call(restored.restorePlan.candidateSettings, key),
 				Object.prototype.hasOwnProperty.call(settings, key));
 		}
 	}
+});
+
+test('visibility persists across initialization and serializes command toggles without unrelated writes', async () => {
+	const fixture = new SettingsPreservationHarness();
+	try {
+		const storage = fixture.createStorage(); await storage.initialize();
+		const before = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		const writes = fixture.canonicalAttempts;
+		assert.equal(storage.getSettings().statusDockVisible, undefined);
+		await storage.saveStatusDockVisibility(true);
+		assert.equal(fixture.canonicalAttempts, writes);
+		await storage.saveStatusDockVisibility(false);
+		const saved = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, visible: false } } });
+		const restarted = fixture.createStorage(); await restarted.initialize();
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		const writesAfterRestart = fixture.canonicalAttempts;
+		fixture.writeFault = 'throw-before';
+		await assert.rejects(restarted.saveStatusDockVisibility());
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
+		fixture.writeFault = 'none';
+		await Promise.all([restarted.saveStatusDockVisibility(), restarted.saveStatusDockVisibility()]);
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		assert.equal(fixture.canonicalAttempts, writesAfterRestart + 3);
+		delete saved.ui.statusDock.visible;
+		fixture.seed(fixture.canonicalPath, JSON.stringify(saved));
+		const externalWrites = fixture.canonicalAttempts;
+		await assert.rejects(restarted.saveStatusDockVisibility());
+		assert.equal(fixture.canonicalAttempts, externalWrites);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
+		await restarted.reloadCanonicalSettingsPackage();
+		assert.equal(restarted.getSettings().statusDockVisible, undefined);
+	} finally { await fixture.dispose(); }
 });
 
 test('canonical reload clears removed choices before the next explicit save', async () => {
@@ -330,6 +364,11 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 	const original = main.doc.body.querySelector('.operon-status-dock');
 	const slot = main.doc.body.querySelector('.operon-status-dock-slot') as HTMLElement;
 	assert.equal(slot.style.width, '1000px'); assert.equal(slot.style.left, '10px'); assert.equal(slot.style.bottom, '42px');
+	const popoutSlot = popout.doc.body.querySelector('.operon-status-dock-slot') as HTMLElement;
+	Object.assign(settings, { statusDockVisible: false }); dock.refresh();
+	assert.ok(slot.hidden && popoutSlot.hidden);
+	Object.assign(settings, { statusDockVisible: true }); dock.refresh();
+	assert.ok(!slot.hidden && !popoutSlot.hidden);
 	Object.defineProperty(a.host, 'clientWidth', { value: 100 }); dock.refresh(); assert.equal(slot.style.width, '1000px');
 	viewport.width = 280; viewportEvents.get('resize')?.(); assert.equal(original?.classList.contains('is-detailed'), false);
 	assert.equal(settings.statusDockMode, 'detailed'); viewport.width = 1000; viewportEvents.get('resize')?.();
@@ -549,8 +588,8 @@ test('drag grip has an accessible name with no hover tooltip bindings', () => {
 });
 
 
-function feedbackHarness() {
-	const document = statusDockDocument(), settings = { ...DEFAULT_SETTINGS };
+function feedbackHarness(statusDockVisible?: boolean) {
+	const document = statusDockDocument(), settings = { ...DEFAULT_SETTINGS, statusDockVisible };
 	const tasks = new Map([['active', snapshot().active!.task!]]);
 	const state = { active: snapshot().active, transition: null as any, stopCalls: 0, startCalls: 0, saved: 0, opened: 0, failWithError: false };
 	const listeners = new Set<(event: any) => void>();
@@ -945,14 +984,22 @@ for(const behavior of ['source','editor','source-and-editor']as const)test(`each
  assert.deepEqual(opened,[`a:${behavior}`,`b:${behavior}`]);}finally{h.close();}
 });
 
-test('dock toggle affects every window and new windows without touching timer, settings or task data',()=>{
- const h=feedbackHarness();try{
- const settings=JSON.stringify(h.settings),active=h.state.active,roots=h.views.map(w=>w.root);assert.ok(h.views.every(w=>!w.slot.hidden));
- h.dock.toggleVisibility();assert.ok(h.views.every(w=>w.slot.hidden));h.state.active!.elapsedSeconds++;h.emit();assert.ok(h.views.every(w=>w.slot.hidden));
- const f=statusDockDocument(),context=(h.dock as any).createWindow({doc:f.doc,win:f.doc.defaultView});f.doc.body.appendChild(context.widget.slot);context.widget.update(snapshot());assert.equal(context.widget.slot.hidden,true);context.dispose();
- h.dock.toggleVisibility();assert.ok(h.views.every(w=>!w.slot.hidden));assert.deepEqual(h.views.map(w=>w.root),roots);assert.equal(h.state.active,active);assert.equal(h.state.stopCalls,0);assert.equal(h.state.startCalls,0);assert.equal(h.state.saved,0);assert.equal(h.state.opened,0);assert.equal(JSON.stringify(h.settings),settings);
- const fresh=feedbackHarness();try{assert.ok(fresh.views.every(w=>!w.slot.hidden));}finally{fresh.close();}
- }finally{h.close();}
+test('stored visibility affects every dock window, including windows opened later', () => {
+	const h = feedbackHarness(false);
+	try {
+		const active = h.state.active, roots = h.views.map(w => w.root);
+		assert.ok(h.views.every(w => w.slot.hidden));
+		h.state.active!.elapsedSeconds++; h.emit();
+		assert.ok(h.views.every(w => w.slot.hidden));
+		const f = statusDockDocument(), context = (h.dock as any).createWindow({ doc: f.doc, win: f.doc.defaultView });
+		f.doc.body.appendChild(context.widget.slot); context.widget.update(snapshot());
+		assert.equal(context.widget.slot.hidden, true); context.dispose();
+		h.settings.statusDockVisible = true; (h.dock as any).applyVisibility();
+		assert.ok(h.views.every(w => !w.slot.hidden));
+		assert.deepEqual(h.views.map(w => w.root), roots);
+		assert.equal(h.state.active, active);
+		assert.equal(h.state.stopCalls + h.state.startCalls + h.state.saved + h.state.opened, 0);
+	} finally { h.close(); }
 });
 test('hiding a widget closes dock tooltips and cancels dragging while keeping its DOM',()=>{
  const f=widget(),root=f.dock.root;let closed=0,dragStopped=0;f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-name')._operonHoverClose=()=>{closed++;};(f.dock as any).stopDrag=()=>{dragStopped++;(f.dock as any).stopDrag=null;};

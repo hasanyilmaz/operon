@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Görev hiyerarşileri için otomatik üst görev bağlantıları, kalıtım ve proje seri numaraları.",
       "settingsPageRemindersDesc": "Hatırlatıcı teslimi, sistem bildirimleri, ses ve kaçırılan hatırlatıcıları telafi etme davranışı.",
       "settingsPageStateIconsDesc": "Görev simgesinin tıklama davranışı, yedek simgeler ve renk kaynakları.",
+      "settingsPageStatusDockDesc": "Masaüstünde Durum Dock’unun görünürlüğü, tıklama davranışı ve bölüm sırası.",
       "settingsPageTaskChipsDesc": "Task Creator simgeleri, satır içi görevler, Filtre Görünümü sonuçları, Kanban kartları, Görev Bul ve Task Wikilink Overlay yüzeyleri için kompakt görev simgeleri.",
       "settingsPageTaskEditorDesc": "Görev Editörü picker satırları, sırası ve görünürlüğü.",
       "settingsPageTaskFinderDesc": "Görev Bul açılış davranışı, görünür sonuçlar, hatırlanan kapsamlar, kısayollar ve sonuç simgeleri.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "{{pipeline}} içindeki durum rengi: {{status}}",
       "statusDockClickAction": "Tıklama davranışı",
       "statusDockClickActionDesc": "Status dock’ta takip edilen veya sıradaki göreve tıkladığınızda neyin açılacağını seçin.",
+      "statusDockGeneralSettings": "Genel Ayarlar",
       "statusDockMove": "Dock’u taşı",
       "statusDockSection": "Durum Dock’u",
       "statusDockSection_history": "Oturum Geçmişi",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Bölümler ve Sıralama",
       "statusDockSectionsDesc": "Bölümleri etkinleştirin ve Status Dock içinde soldan sağa sıralayın. Boş listeler gizli kalır.",
       "statusDockSectionsSaveFailed": "Status Dock bölümleri kaydedilemedi.",
+      "statusDockVisibilitySaveFailed": "Durum Dock’unun görünürlük tercihi kaydedilemedi.",
+      "statusDockVisible": "Durum Dock’unu göster",
+      "statusDockVisibleDesc": "Masaüstü pencerelerinde Durum Dock’unu gösterir. Obsidian yeniden başlatıldığında bu tercih korunur.",
       "statusIconAria": "{{pipeline}} içindeki durum simgesi: {{status}}",
       "statusIconTooltip": "Durum simgesi seç",
       "statusNameAria": "{{pipeline}} içindeki durum adı: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f5ce1323bda63a80625236604e8ed7f7f01410ef10bb96f269f5c302a547728a"
+  "sourceVersion": "f89979c29313ddb73eb917f7cbf94c6f22a45bb7976efdaa1a1fa1dc7a61c35c"
 }

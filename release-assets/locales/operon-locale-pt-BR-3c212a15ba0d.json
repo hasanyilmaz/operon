@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Links parentais automáticos, herança e números de série de projeto para hierarquias de tarefas.",
       "settingsPageRemindersDesc": "Entrega de lembretes, notificações do sistema, som e comportamento de recuperação de lembretes perdidos.",
       "settingsPageStateIconsDesc": "Comportamento ao clicar no ícone da tarefa, ícones alternativos e fontes de cor.",
+      "settingsPageStatusDockDesc": "Visibilidade, comportamento ao clicar e ordem das seções do dock de status no aplicativo para computador.",
       "settingsPageTaskChipsDesc": "Chips do Task Creator, mais chips compactos para tarefas inline, resultados da Visualização Filtrada, cartões Kanban e Localizador de Tarefas, e Sobreposições Wikilink de Tarefa.",
       "settingsPageTaskEditorDesc": "Linhas do seletor (picker) do Editor de Tarefa, ordem e visibilidade.",
       "settingsPageTaskFinderDesc": "Comportamento de lançamento do Localizador de Tarefas, resultados visíveis, escopos lembrados, atalhos e chips de resultado.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Cor do status em {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamento ao clicar",
       "statusDockClickActionDesc": "Escolha o que abre ao clicar em uma tarefa em acompanhamento ou próxima no dock.",
+      "statusDockGeneralSettings": "Configurações gerais",
       "statusDockMove": "Mover dock",
       "statusDockSection": "Dock de status",
       "statusDockSection_history": "Histórico de sessões",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Seções e ordem",
       "statusDockSectionsDesc": "Ative as seções e organize-as da esquerda para a direita no dock de status. Listas vazias permanecem ocultas.",
       "statusDockSectionsSaveFailed": "Não foi possível salvar as seções do dock de status.",
+      "statusDockVisibilitySaveFailed": "Não foi possível salvar a visibilidade do dock de status.",
+      "statusDockVisible": "Mostrar o dock de status",
+      "statusDockVisibleDesc": "Mostra o dock de status nas janelas do aplicativo para computador. A preferência é mantida ao reiniciar o Obsidian.",
       "statusIconAria": "Ícone do status em {{pipeline}}: {{status}}",
       "statusIconTooltip": "Escolher ícone de status",
       "statusNameAria": "Nome do status em {{pipeline}}: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "26e9aac31d98a66ac32f1fc1fb0a075cd66ab1f0e0faa67683a5e9aa4350f454"
+  "sourceVersion": "f0ab09866849895e8729fd8f3205b4473ea928b0d0641f6bf718557d3bc0b0b6"
 }

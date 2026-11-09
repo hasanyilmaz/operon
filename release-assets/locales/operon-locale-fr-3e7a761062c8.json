@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Liens parents automatiques, héritage et numéros de série de projet pour les hiérarchies de tâches.",
       "settingsPageRemindersDesc": "Distribution des rappels, notifications système, son et rattrapage des rappels manqués.",
       "settingsPageStateIconsDesc": "Comportement au clic sur l’icône de tâche, icônes de remplacement et sources de couleur.",
+      "settingsPageStatusDockDesc": "Visibilité, comportement au clic et ordre des sections du dock d’état sur ordinateur.",
       "settingsPageTaskChipsDesc": "Puces de Task Creator et puces de tâche compactes pour les tâches en ligne, les résultats de la vue de filtre, les cartes Kanban, la recherche de tâches et les Task Wikilink Overlays.",
       "settingsPageTaskEditorDesc": "Lignes de sélecteurs de l'éditeur de tâche, ordre et visibilité.",
       "settingsPageTaskFinderDesc": "Comportement de lancement de la recherche de tâches, résultats visibles, portées mémorisées, raccourcis et puces de résultats.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Couleur du statut dans {{pipeline}} : {{status}}",
       "statusDockClickAction": "Comportement au clic",
       "statusDockClickActionDesc": "Choisissez ce qui s’ouvre lorsque vous cliquez sur une tâche suivie ou à venir dans le dock.",
+      "statusDockGeneralSettings": "Paramètres généraux",
       "statusDockMove": "Déplacer le dock",
       "statusDockSection": "Dock de statut",
       "statusDockSection_history": "Historique des sessions",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Sections et ordre",
       "statusDockSectionsDesc": "Activez les sections et classez-les de gauche à droite dans le dock de statut. Les listes vides restent masquées.",
       "statusDockSectionsSaveFailed": "Impossible d’enregistrer les sections du dock de statut.",
+      "statusDockVisibilitySaveFailed": "Impossible d’enregistrer la visibilité du dock d’état.",
+      "statusDockVisible": "Afficher le dock d’état",
+      "statusDockVisibleDesc": "Affiche le dock d’état dans les fenêtres de bureau. Ce choix est conservé au redémarrage d’Obsidian.",
       "statusIconAria": "Icône du statut dans {{pipeline}} : {{status}}",
       "statusIconTooltip": "Choisir l'icône de statut",
       "statusNameAria": "Nom du statut dans {{pipeline}} : {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "86d2d16278e0161a68fdbff8ae71f15a5e9fe4bf015d98e83c1462439d05d9b7"
+  "sourceVersion": "cd83fc9cdb5ade7ae3575db06b89136327d385ebd29da919f364644449dc96e5"
 }

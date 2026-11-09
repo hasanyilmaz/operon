@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "Автоматические родительские связи, наследование и проектные серийные номера для иерархий задач.",
       "settingsPageRemindersDesc": "Доставка напоминаний, системные уведомления, звук и обработка пропущенных напоминаний.",
       "settingsPageStateIconsDesc": "Действие при нажатии на значок задачи, резервные значки и источники цвета.",
+      "settingsPageStatusDockDesc": "Видимость, действие при нажатии и порядок разделов панели состояния в настольном приложении.",
       "settingsPageTaskChipsDesc": "Чипы Task Creator и компактные чипы задач для встроенных задач, результатов представления фильтра, карточек канбана, поиска задач и оверлеев вики-ссылок задач.",
       "settingsPageTaskEditorDesc": "Строки выбора, порядок и видимость в редакторе задач.",
       "settingsPageTaskFinderDesc": "Поведение запуска поиска задач, видимые результаты, запоминаемые области, сочетания клавиш и чипы результатов.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "Цвет статуса в {{pipeline}}: {{status}}",
       "statusDockClickAction": "Действие при нажатии",
       "statusDockClickActionDesc": "Выберите, что открывать при нажатии на отслеживаемую или следующую задачу в доке.",
+      "statusDockGeneralSettings": "Общие настройки",
       "statusDockMove": "Переместить док",
       "statusDockSection": "Панель состояния",
       "statusDockSection_history": "История сеансов",
@@ -2600,6 +2602,9 @@
       "statusDockSections": "Разделы и порядок",
       "statusDockSectionsDesc": "Включайте разделы и располагайте их слева направо на панели состояния. Пустые списки остаются скрытыми.",
       "statusDockSectionsSaveFailed": "Не удалось сохранить разделы панели состояния.",
+      "statusDockVisibilitySaveFailed": "Не удалось сохранить настройку видимости панели состояния.",
+      "statusDockVisible": "Показывать панель состояния",
+      "statusDockVisibleDesc": "Показывает панель состояния в окнах приложения. Выбор сохраняется при перезапуске Obsidian.",
       "statusIconAria": "Значок статуса в {{pipeline}}: {{status}}",
       "statusIconTooltip": "Выбрать значок статуса",
       "statusNameAria": "Название статуса в {{pipeline}}: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "be5458fb5b086556e912b27a85ed80c9b5ef9f8258b762f1600b6e462f8b47ee"
+  "sourceVersion": "adf29c101513a4642a285e07f147d7af3fe756c7224c85fac4a1673cf58a2ca3"
 }

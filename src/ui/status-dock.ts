@@ -63,7 +63,7 @@ export class OperonStatusDock extends Component {
 	private alert: StatusDockAlert = { state: 'hidden', count: 0 };
 	private refreshTimer: number | null = null;
 	private disposed = false;
-	private visible = true;
+	private visible: boolean;
 	private scopeCacheKey = '';
 	private scopeCache: StatusDockTaskScopes = { overdue: [], today: [] };
  private historyCacheKey = '';
@@ -75,6 +75,7 @@ export class OperonStatusDock extends Component {
 
 	constructor(private readonly app: App, private readonly dependencies: StatusDockDependencies) {
 		super();
+		this.visible = dependencies.getSettings().statusDockVisible !== false;
 		this.owner = getOwnerWindow(app.workspace.containerEl);
 		this.upcoming = new UpcomingTaskStatusModel(dependencies.indexer, () => {
    const settings = dependencies.getSettings();
@@ -117,13 +118,15 @@ export class OperonStatusDock extends Component {
 
 	refresh(): void {
 		if (this.disposed) return;
+		this.applyVisibility();
 		this.upcoming.refresh();
 		this.reconcile();
 	}
 
-	toggleVisibility(): void {
-		if (this.disposed) return;
-		this.visible = !this.visible;
+	private applyVisibility(): void {
+		const visible = this.dependencies.getSettings().statusDockVisible !== false;
+		if (this.visible === visible) return;
+		this.visible = visible;
 		for (const { widget, sessionCard, taskList } of this.windows.values()) {
 			widget.setVisible(this.visible);
 			if (!this.visible) { taskList?.close(false); sessionCard?.clear(); }

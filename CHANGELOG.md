@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improved
+
+- **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
+
 ### Validation
+
+- Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 
 ## [4.6.0] - 2026-11-08
 

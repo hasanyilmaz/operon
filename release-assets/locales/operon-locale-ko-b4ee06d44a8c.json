@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3798,
-  "keyFingerprint": "851bb33f6c307603890152fd2a9bb53374ddcf636f55aaa9c4e5b5a0fa07f707",
+  "keyCount": 3803,
+  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -2571,6 +2571,7 @@
       "settingsPageRelationshipsDesc": "작업 계층 구조의 자동 상위 연결, 상속 및 프로젝트 일련번호입니다.",
       "settingsPageRemindersDesc": "알림 전달, 시스템 알림, 소리 및 놓친 알림 처리 방식입니다.",
       "settingsPageStateIconsDesc": "작업 아이콘 클릭 동작, 대체 아이콘 및 색상 소스입니다.",
+      "settingsPageStatusDockDesc": "데스크톱 상태 Dock의 표시 여부, 클릭 동작 및 섹션 순서입니다.",
       "settingsPageTaskChipsDesc": "작업 생성기 칩과 인라인 작업, 필터 보기 결과, 칸반 카드, 작업 찾기, 작업 위키링크 오버레이의 간결한 작업 칩입니다.",
       "settingsPageTaskEditorDesc": "작업 편집기 선택기의 행, 순서 및 표시 여부입니다.",
       "settingsPageTaskFinderDesc": "작업 찾기 실행 동작, 표시 결과, 범위 기억, 바로가기 및 결과 칩입니다.",
@@ -2588,6 +2589,7 @@
       "statusColorAria": "{{pipeline}}의 상태 색상: {{status}}",
       "statusDockClickAction": "클릭 동작",
       "statusDockClickActionDesc": "상태 dock에서 추적 중이거나 예정된 작업을 클릭할 때 열 항목을 선택합니다.",
+      "statusDockGeneralSettings": "일반 설정",
       "statusDockMove": "dock 이동",
       "statusDockSection": "상태 Dock",
       "statusDockSection_history": "세션 기록",
@@ -2597,9 +2599,12 @@
       "statusDockSection_pinned": "고정된 작업",
       "statusDockSection_tracker": "시간 추적",
       "statusDockSection_upcoming": "다가오는 작업",
-      "statusDockSections": "섹션 및 순서",
+      "statusDockSections": "구역 및 순서",
       "statusDockSectionsDesc": "섹션을 활성화하고 상태 Dock에서 왼쪽부터 오른쪽으로 정렬합니다. 빈 목록은 표시되지 않습니다.",
       "statusDockSectionsSaveFailed": "상태 Dock 섹션을 저장하지 못했습니다.",
+      "statusDockVisibilitySaveFailed": "상태 Dock 표시 설정을 저장하지 못했습니다.",
+      "statusDockVisible": "상태 Dock 표시",
+      "statusDockVisibleDesc": "데스크톱 창에 상태 Dock을 표시합니다. Obsidian을 다시 시작해도 이 설정이 유지됩니다.",
       "statusIconAria": "{{pipeline}}의 상태 아이콘: {{status}}",
       "statusIconTooltip": "상태 아이콘 선택",
       "statusNameAria": "{{pipeline}}의 상태 이름: {{status}}",
@@ -3843,5 +3848,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "a73c0bd58f58569782bcc9019a6f90d7197a2135503e3ac6a46bbaba068bee2c"
+  "sourceVersion": "19b2520e2be1135cc1c272aea3f9174d0dd41e37b1ebc31818299f695509324a"
 }
