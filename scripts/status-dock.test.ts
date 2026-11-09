@@ -263,23 +263,26 @@ test('dial choices preserve old packages, round-trip independently, and reject i
 		const writes = fixture.canonicalAttempts;
 		assert.equal(storage.getSettings().statusDockShowTimerDial, undefined);
 		assert.equal(storage.getSettings().statusDockTimerDialSize, undefined);
-		assert.equal(migrateSettings({ statusDockTimerDialSize: 1.2 }).statusDockTimerDialSize, undefined);
+		assert.equal(migrateSettings({ statusDockTimerDialSize: 1.2 }).statusDockTimerDialSize, 1.2);
+		for (const retiredSize of [1.25, 1.75, 2]) {
+			assert.equal(migrateSettings({ statusDockTimerDialSize: retiredSize }).statusDockTimerDialSize, undefined);
+		}
 		await storage.saveStatusDockTimerPreference('statusDockShowTimerDial', false);
 		await storage.saveStatusDockTimerDialSize(1);
 		await assert.rejects(storage.saveStatusDockTimerDialSize(3), /invalid/iu);
 		assert.equal(fixture.canonicalAttempts, writes);
 		await storage.saveStatusDockTimerPreference('statusDockShowTimerDial', true);
-		await storage.saveStatusDockTimerDialSize(1.75);
+		await storage.saveStatusDockTimerDialSize(0.7);
 		const saved = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
-		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, showTimerDial: true, timerDialSize: 1.75 } } });
+		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, showTimerDial: true, timerDialSize: 0.7 } } });
 		const reopened = fixture.createStorage(); await reopened.initialize();
 		assert.equal(fixture.canonicalAttempts, writes + 2);
 		const patch = buildOperonSettingsBackupSelectedPatchV1({ selectedGroups: ['general'], candidateSettings: reopened.getSettings() });
 		assert.equal(patch.statusDockShowTimerDial, true);
-		assert.equal(patch.statusDockTimerDialSize, 1.75);
+		assert.equal(patch.statusDockTimerDialSize, 0.7);
 		fixture.writeFault = 'throw-before';
-		await assert.rejects(reopened.saveStatusDockTimerDialSize(2));
-		assert.equal(reopened.getSettings().statusDockTimerDialSize, 1.75);
+		await assert.rejects(reopened.saveStatusDockTimerDialSize(1.4));
+		assert.equal(reopened.getSettings().statusDockTimerDialSize, 0.7);
 		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
 	} finally { await fixture.dispose(); }
 });
@@ -751,7 +754,7 @@ test('dial uses the tracker center, keeps the dock top clear, and fits each view
 		const host = f.dock.slot.querySelector<HTMLElement>('.operon-status-dock-dial')!;
 		const bounds = () => ['left', 'top', 'width'].map(key => host.style.getPropertyValue(key));
 		assert.deepEqual(bounds(), ['258px', '348px', '144px']);
-		for (const [scale, size] of [[1.25, 180], [1.5, 216], [1.75, 252], [2, 288]] as const) {
+		for (const [scale, size] of [[0.5, 72], [0.6, 86], [0.7, 100], [0.8, 115], [0.9, 129], [1.1, 158], [1.2, 172], [1.3, 187], [1.4, 201], [1.5, 216]] as const) {
 			f.state.settings.statusDockTimerDialSize = scale;
 			f.dock.update(f.state); f.flush();
 			assert.deepEqual(bounds(), [`${330 - size / 2}px`, `${492 - size}px`, `${size}px`]);

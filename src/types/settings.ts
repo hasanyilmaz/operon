@@ -1652,8 +1652,8 @@ export function resolveStatusDockAlignment(value: unknown): StatusDockAlignment 
 
 export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBehavior { return normalizeTaskFinderResultBehavior(value, 'source-and-editor'); }
 
-export const STATUS_DOCK_TIMER_DIAL_SIZES = [1, 1.25, 1.5, 1.75, 2] as const;
-export const DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE = STATUS_DOCK_TIMER_DIAL_SIZES[0];
+export const STATUS_DOCK_TIMER_DIAL_SIZES = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5] as const;
+export const DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE = 1;
 export type StatusDockTimerDialSize = typeof STATUS_DOCK_TIMER_DIAL_SIZES[number];
 export function normalizeStatusDockTimerDialSize(value: unknown): StatusDockTimerDialSize | undefined {
 	return STATUS_DOCK_TIMER_DIAL_SIZES.find(size => size === value);

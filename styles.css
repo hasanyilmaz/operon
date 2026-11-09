@@ -37349,7 +37349,22 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	aspect-ratio: 1;
 	pointer-events: none;
 }
-.operon-status-dock-dial .operon-flow-time-dial { display: block; width: 100%; max-width: none; }
+.operon-status-dock-dial::before {
+	--operon-dial-backdrop-color: color-mix(in srgb, var(--background-primary) 90%, black);
+	content: "";
+	position: absolute;
+	/* Extend the fade through the gap between the dial and the dock. */
+	inset: -8px;
+	pointer-events: none;
+	background: radial-gradient(circle closest-side,
+		var(--operon-dial-backdrop-color) 48%,
+		color-mix(in srgb, var(--operon-dial-backdrop-color) 86.4%, transparent) 77%,
+		transparent);
+}
+.theme-dark .operon-status-dock-dial::before {
+	--operon-dial-backdrop-color: color-mix(in srgb, var(--background-primary) 55%, black);
+}
+.operon-status-dock-dial .operon-flow-time-dial { position: relative; display: block; width: 100%; max-width: none; }
 .operon-status-dock-dial .operon-flow-time-dial.is-editable { pointer-events: auto; }
 .operon-status-dock {
 	--operon-status-dock-card-width: calc(40ch + 67px);
