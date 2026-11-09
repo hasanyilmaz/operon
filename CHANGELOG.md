@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added an optional **Time Tracker dial** to the Status Dock with five sizes. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dock dial temporarily hides while a task list or recent session card is open.
+- Added an optional **Time Tracker dial** to the Status Dock with five sizes. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dial centers above the timer while it runs and temporarily hides while a task list or recent session card is open.
 
 ### Improved
 
@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Validation
 
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
-- **187/187** Status Dock tests passed, along with strict lint, production build, and release guard.
+- **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
 
 ## [4.6.0] - 2026-11-08
 

@@ -725,6 +725,7 @@ function feedbackHarness(statusDockVisible?: boolean) {
 test('dial uses the tracker center, keeps the dock top clear, and fits each viewport', () => {
 	const f = widget();
 	try {
+		f.state.active = null;
 		const tracker = f.find('operon-status-dock-tracker');
 		f.dock.root.getBoundingClientRect = () => ({ left: 100, top: 500, width: 400, height: 95 } as DOMRect);
 		tracker.getBoundingClientRect = () => ({ left: 230, top: 550, width: 200, height: 28 } as DOMRect);
@@ -757,6 +758,33 @@ test('dial uses the tracker center, keeps the dock top clear, and fits each view
 	} finally { f.dock.destroy(); }
 });
 
+test('dial centers on the timer button border during work and breaks, and on the tracker when idle', () => {
+	const f = widget();
+	try {
+		f.dock.root.getBoundingClientRect = () => ({ top: 500 } as DOMRect);
+		f.find('operon-status-dock-tracker').getBoundingClientRect = () => ({ left: 230, width: 200 } as DOMRect);
+		f.find('operon-status-dock-mode').getBoundingClientRect = () => ({ left: 245, width: 64 } as DOMRect);
+		f.dock.setViewport(900, 700, 0, 0);
+		f.state.settings.statusDockShowTimerDial = true;
+		f.state.settings.statusDockShowSeconds = true;
+		f.state.active!.elapsedSeconds = 599;
+		f.dock.update(f.state); f.flush();
+		const dial = f.dock.slot.querySelector<HTMLElement>('.operon-status-dock-dial')!;
+		const left = () => dial.style.getPropertyValue('left');
+		assert.equal(left(), '205px');
+		f.state.active!.elapsedSeconds = 600;
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '205px');
+		f.state.active = null;
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { taskId: 'active', startMs: 0, targetSeconds: 60 } };
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '205px');
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: null };
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '258px');
+	} finally { f.dock.destroy(); }
+});
+
 function sendDialPointer(surface: ReturnType<typeof statusDockDocument>, dial: any, type: string, degrees: number): void {
 	const angle = (degrees - 90) * Math.PI / 180;
 	const event = {
@@ -781,10 +809,10 @@ test('actual sidebar and two dock dials preview and commit 30 to 45 minutes from
 		h.settings.flowTimeMode = 'flowtime';
 		h.settings.flowTimeSessionMinutes = 30;
 		h.settings.statusDockShowTimerDial = true;
-		const firstTracker = h.views[0].root.querySelector('.operon-status-dock-tracker');
+		const firstTimer = h.views[0].root.querySelector('.operon-status-dock-mode');
 		for (const view of h.views) {
 			view.root.getBoundingClientRect = () => ({ left: 50, top: 500, width: 500, height: 40 });
-			view.root.querySelector('.operon-status-dock-tracker').getBoundingClientRect = () => ({ left: 150, width: 200 });
+			view.root.querySelector('.operon-status-dock-mode').getBoundingClientRect = () => ({ left: 150, width: 64 });
 			view.setViewport(900, 700, 0, 0);
 		}
 		h.emit();
@@ -818,7 +846,7 @@ test('actual sidebar and two dock dials preview and commit 30 to 45 minutes from
 		sendDialPointer(h.owners[0], dockDials[0], 'pointerdown', 270);
 		sendDialPointer(h.owners[0], dockDials[0], 'pointermove', 180);
 		check(30);
-		firstTracker.getBoundingClientRect = () => ({ left: 250, width: 200 });
+		firstTimer.getBoundingClientRect = () => ({ left: 250, width: 64 });
 		h.emit(); h.owners[0].flush();
 		assert.equal(host.style.getPropertyValue('left'), left);
 		h.views[0].setViewport(850, 700, 0, 0); h.owners[0].flush();

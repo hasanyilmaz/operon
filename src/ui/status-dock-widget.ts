@@ -474,6 +474,7 @@ export class StatusDockWidget {
 			this.dialHost.hidden = true;
 			this.dial = createFlowTimeDial(this.dialHost, this.timerControls);
 			this.resizeObserver.observe(this.tracker);
+			this.resizeObserver.observe(this.trackerTime);
 		}
 		const taskColor = snapshot.active?.task?.fieldValues.taskColor ?? snapshot.pendingTaskColor;
 		this.dial.update(timer, resolveFlowTimeDialAccent(taskColor));
@@ -505,12 +506,14 @@ export class StatusDockWidget {
 		if (!host || !this.shouldShowDial() || this.dial?.isDragging()) return;
 		const viewport = this.viewport;
 		const root = this.root.getBoundingClientRect();
-		const tracker = this.tracker.getBoundingClientRect();
-		const scale = this.lastSnapshot?.settings.statusDockTimerDialSize ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
+		const snapshot = this.lastSnapshot;
+		const anchor = snapshot?.active || snapshot?.breakSnapshot.breakState ? this.trackerTime : this.tracker;
+		const anchorRect = anchor.getBoundingClientRect();
+		const scale = snapshot?.settings.statusDockTimerDialSize ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
 		const size = Math.floor(Math.min(DIAL_BASE_SIZE * scale, viewport.width - 2 * DIAL_EDGE_INSET, root.top - viewport.top - DIAL_GAP));
 		host.hidden = size <= 0;
 		if (host.hidden) return;
-		const preferredLeft = tracker.left + (tracker.width - size) / 2;
+		const preferredLeft = anchorRect.left + (anchorRect.width - size) / 2;
 		const left = Math.max(viewport.left + DIAL_EDGE_INSET,
 			Math.min(preferredLeft, viewport.left + viewport.width - size - DIAL_EDGE_INSET));
 		host.setCssProps({
