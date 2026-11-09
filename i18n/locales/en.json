@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Enter one supported property and valid values.",
 		"canvasGroupChanged": "The property settings changed. Reopen the group editor.",
 		"dockSelectTask": "Select or create a new task",
+		"dockSelectTaskOnly": "Select a new task",
 		"dockNextTask": "Next task",
 		"dockTaskCreatorTitle": "Task Creator",
 		"dockCreateOnly": "Create a new task",

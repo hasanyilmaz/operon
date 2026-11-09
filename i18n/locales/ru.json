@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Укажите одно поддерживаемое свойство и допустимые значения.",
 		"canvasGroupChanged": "Настройки свойств изменились. Откройте редактор группы заново.",
 		"dockSelectTask": "Выбрать или создать задачу",
+		"dockSelectTaskOnly": "Выбрать новую задачу",
 		"dockNextTask": "Следующая задача",
 		"dockTaskCreatorTitle": "Создание задач",
 		"dockCreateOnly": "Создать новую задачу",

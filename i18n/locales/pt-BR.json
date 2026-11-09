@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Insira uma propriedade compatível e valores válidos.",
 		"canvasGroupChanged": "As configurações de propriedades mudaram. Reabra o editor do grupo.",
 		"dockSelectTask": "Selecionar ou criar uma tarefa",
+		"dockSelectTaskOnly": "Selecionar uma nova tarefa",
 		"dockNextTask": "Próxima tarefa",
 		"dockTaskCreatorTitle": "Criador de tarefas",
 		"dockCreateOnly": "Criar uma tarefa",

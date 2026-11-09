@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "请输入一个受支持的属性及有效值。",
 		"canvasGroupChanged": "属性设置已更改。请重新打开分组编辑器。",
 		"dockSelectTask": "选择或创建新任务",
+		"dockSelectTaskOnly": "选择新任务",
 		"dockNextTask": "下一个任务",
 		"dockTaskCreatorTitle": "任务创建器",
 		"dockCreateOnly": "创建新任务",

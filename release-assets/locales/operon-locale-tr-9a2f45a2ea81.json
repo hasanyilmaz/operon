@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "Yeni görev oluştur",
       "dockNextTask": "Sıradaki görev",
       "dockSelectTask": "Bir görev seç veya yeni görev oluştur",
+      "dockSelectTaskOnly": "Yeni bir görev seç",
       "dockTaskCreatorTitle": "Görev Oluşturucu",
       "dueDate": "Bitiş tarihi",
       "dueDatePlaceholder": "Bitiş Tarihi",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "bdb22a434c5bb87c3be8a0483c4548e99998a1f874299040a728981ad3123a19"
+  "sourceVersion": "0df9cae5b21e43a1b3fe37df86f469813832acfed7468e893c9e23e7da98b7c8"
 }

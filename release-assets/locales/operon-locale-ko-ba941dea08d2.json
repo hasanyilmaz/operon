@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "새 작업 만들기",
       "dockNextTask": "다음 작업",
       "dockSelectTask": "작업을 선택하거나 새로 만드세요",
+      "dockSelectTaskOnly": "새 작업을 선택하세요",
       "dockTaskCreatorTitle": "작업 생성기",
       "dueDate": "마감일",
       "dueDatePlaceholder": "마감일",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "9a89d181d8e6864113b0a4d79811a27fbb8a9576385cb0353d6dd90e7ec9c3f9"
+  "sourceVersion": "45d6e8818ddc36b2706e9bce508fd16fe2fe142e006f7488d51f69f0d90c6a4b"
 }

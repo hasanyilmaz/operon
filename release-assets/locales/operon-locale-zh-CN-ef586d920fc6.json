@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "创建新任务",
       "dockNextTask": "下一个任务",
       "dockSelectTask": "选择或创建新任务",
+      "dockSelectTaskOnly": "选择新任务",
       "dockTaskCreatorTitle": "任务创建器",
       "dueDate": "截止日期",
       "dueDatePlaceholder": "截止日期",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e45ab95f411a7473f722a4350df2faba750f7116ff5e54d2bd191a9269f0a7ce"
+  "sourceVersion": "985d7cb2cb457f1bd2aab34da5b23ff6095dc541690cf64cc18b617e7e56b277"
 }

@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Eine unterstützte Eigenschaft und gültige Werte eingeben.",
 		"canvasGroupChanged": "Die Eigenschaftseinstellungen haben sich geändert. Den Gruppeneditor erneut öffnen.",
 		"dockSelectTask": "Aufgabe auswählen oder neu erstellen",
+		"dockSelectTaskOnly": "Neue Aufgabe auswählen",
 		"dockNextTask": "Nächste Aufgabe",
 		"dockTaskCreatorTitle": "Aufgabenersteller",
 		"dockCreateOnly": "Neue Aufgabe erstellen",

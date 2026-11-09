@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Saisissez une propriété prise en charge et des valeurs valides.",
 		"canvasGroupChanged": "Les paramètres de propriété ont changé. Rouvrez l’éditeur du groupe.",
 		"dockSelectTask": "Sélectionner ou créer une tâche",
+		"dockSelectTaskOnly": "Sélectionner une nouvelle tâche",
 		"dockNextTask": "Tâche suivante",
 		"dockTaskCreatorTitle": "Créateur de tâches",
 		"dockCreateOnly": "Créer une tâche",

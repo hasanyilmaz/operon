@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "対応するプロパティを1つと有効な値を入力してください。",
 		"canvasGroupChanged": "プロパティ設定が変更されました。グループエディターを開き直してください。",
 		"dockSelectTask": "タスクを選択または新規作成",
+		"dockSelectTaskOnly": "新しいタスクを選択",
 		"dockNextTask": "次のタスク",
 		"dockTaskCreatorTitle": "タスク作成",
 		"dockCreateOnly": "新しいタスクを作成",

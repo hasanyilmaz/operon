@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "Crea una nuova attività",
       "dockNextTask": "Attività successiva",
       "dockSelectTask": "Seleziona o crea una nuova attività",
+      "dockSelectTaskOnly": "Seleziona una nuova attività",
       "dockTaskCreatorTitle": "Creatore di attività",
       "dueDate": "Data di scadenza",
       "dueDatePlaceholder": "Data di scadenza",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "95c45202946b61b941a2b382fad5e7754687a870f15f45ddf8464353a3387a96"
+  "sourceVersion": "0f2f14e6c39d99ec5cee1f7eca5edcb1cd1a0d3cc1f38c2022cabff95800241b"
 }

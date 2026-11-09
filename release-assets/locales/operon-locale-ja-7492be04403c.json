@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "新しいタスクを作成",
       "dockNextTask": "次のタスク",
       "dockSelectTask": "タスクを選択または新規作成",
+      "dockSelectTaskOnly": "新しいタスクを選択",
       "dockTaskCreatorTitle": "タスク作成",
       "dueDate": "期限日",
       "dueDatePlaceholder": "期限日",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "01c44dcb2c74266aa78fd76d8e5a43a03c1385765ba8a5e3f5e2348739c49430"
+  "sourceVersion": "0c8bee944715aecb9b8606ba78a332c98e40d030c771f5e24723b4960d09156f"
 }

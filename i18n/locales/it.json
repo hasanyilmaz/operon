@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Inserisci una proprietà supportata e valori validi.",
 		"canvasGroupChanged": "Le impostazioni delle proprietà sono cambiate. Riapri l’editor del gruppo.",
 		"dockSelectTask": "Seleziona o crea una nuova attività",
+		"dockSelectTaskOnly": "Seleziona una nuova attività",
 		"dockNextTask": "Attività successiva",
 		"dockTaskCreatorTitle": "Creatore di attività",
 		"dockCreateOnly": "Crea una nuova attività",

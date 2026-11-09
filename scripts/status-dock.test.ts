@@ -1287,6 +1287,10 @@ test('taskless reading is plain, while assigned tasks retain keyboard and source
   reading.click(); assert.equal(f.calls.length,0);
  }
  assert.equal(f.find('operon-status-dock-name').textContent,'Select or create a new task');
+ f.state.settings.statusDockCreatorStartsTimer = false; f.dock.update(f.state);
+ assert.equal(reading.textContent, 'Select a new task');
+ f.state.settings.statusDockCreatorStartsTimer = true; f.dock.update(f.state);
+ assert.equal(reading.textContent, 'Select or create a new task');
  f.state.active=snapshot().active; f.dock.update(f.state); assert.equal(reading.getAttribute('role'),'button'); reading.click(); assert.deepEqual(f.calls,['source-or-finder']);
  for(const key of ['Enter',' ']) reading.handlers.get('keydown').forEach((handler:any)=>handler({key,preventDefault(){},stopPropagation(){}}));
  assert.equal(f.calls.length,3); f.dock.destroy();

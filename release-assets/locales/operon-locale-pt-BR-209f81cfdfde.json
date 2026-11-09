@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3814,
-  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
+  "keyCount": 3815,
+  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -3463,6 +3463,7 @@
       "dockCreateOnly": "Criar uma tarefa",
       "dockNextTask": "Próxima tarefa",
       "dockSelectTask": "Selecionar ou criar uma tarefa",
+      "dockSelectTaskOnly": "Selecionar uma nova tarefa",
       "dockTaskCreatorTitle": "Criador de tarefas",
       "dueDate": "Data de vencimento",
       "dueDatePlaceholder": "Data de vencimento",
@@ -3859,5 +3860,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "34c8156275abca5fcee52a7e047997c04ebb119571e59f84e8fa6a586f8d5278"
+  "sourceVersion": "effec8d0b1f5b841073eba7e9d025a17feeb42b6c3d979a02e0635bd7d18f740"
 }

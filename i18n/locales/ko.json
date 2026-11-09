@@ -3291,6 +3291,7 @@
 		"canvasGroupInvalid": "지원되는 속성 하나와 유효한 값을 입력하세요.",
 		"canvasGroupChanged": "속성 설정이 변경되었습니다. 그룹 편집기를 다시 여세요.",
 		"dockSelectTask": "작업을 선택하거나 새로 만드세요",
+		"dockSelectTaskOnly": "새 작업을 선택하세요",
 		"dockNextTask": "다음 작업",
 		"dockTaskCreatorTitle": "작업 생성기",
 		"dockCreateOnly": "새 작업 만들기",

@@ -279,8 +279,9 @@ export class StatusDockWidget {
 		this.timerAction.classList.toggle('is-running', !!active);
 		this.root.classList.toggle('is-break', !!breakSnapshot.breakState);
 		this.root.classList.toggle('is-idle', !active && !breakSnapshot.breakState);
+		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
 		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '')
-			|| (active?.isUnassigned ? t('taskEditor', 'dockSelectTask') : snapshot.pendingDescription ?? '');
+			|| (active?.isUnassigned ? t('taskEditor', creatorStartsTimer ? 'dockSelectTask' : 'dockSelectTaskOnly') : snapshot.pendingDescription ?? '');
 		const breakState = breakSnapshot.breakState;
 		const { flowTimeMode, flowTimeSessionMinutes } = snapshot.timerSettings;
 		const timer = resolveFlowTimeDialState(
@@ -333,7 +334,6 @@ export class StatusDockWidget {
 		this.breakFinder.hidden = !choosing || !breakSnapshot.breakState; this.breakFinder.disabled = busy;
 		this.label(this.breakFinder, t('commands', 'openTaskFinder'), finderHint);
 		this.coffee.disabled = busy || (!choosing && !breakSnapshot.breakState && !active?.operonId);
-		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
 		this.creator.hidden = !isStatusDockSectionEnabled(sections, 'creator');
 		this.creator.disabled = busy;
 		this.label(this.creator, t('taskEditor', 'dockTaskCreatorTitle'), t('taskEditor', creatorStartsTimer ? 'dockCreateAndTrack' : 'dockCreateOnly'));

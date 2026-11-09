@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "請輸入一個支援的屬性及有效值。",
 		"canvasGroupChanged": "屬性設定已變更。請重新開啟群組編輯器。",
 		"dockSelectTask": "選擇或建立新任務",
+		"dockSelectTaskOnly": "選擇新任務",
 		"dockNextTask": "下一個任務",
 		"dockTaskCreatorTitle": "任務建立器",
 		"dockCreateOnly": "建立新任務",

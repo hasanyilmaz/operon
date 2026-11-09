@@ -3284,6 +3284,7 @@
 		"canvasGroupInvalid": "Desteklenen tek bir property ve geçerli değerler girin.",
 		"canvasGroupChanged": "Property ayarları değişti. Grup düzenleyicisini yeniden açın.",
 		"dockSelectTask": "Bir görev seç veya yeni görev oluştur",
+		"dockSelectTaskOnly": "Yeni bir görev seç",
 		"dockNextTask": "Sıradaki görev",
 		"dockTaskCreatorTitle": "Görev Oluşturucu",
 		"dockCreateOnly": "Yeni görev oluştur",
