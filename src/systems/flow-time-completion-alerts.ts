@@ -15,8 +15,7 @@ interface FlowTimeCompletionAlertState {
 
 /**
  * Tracks a live FlowTime boundary without replaying an alert for an already
- * elapsed target. Its owner controls its lifetime: focus alerts belong to the view,
- * while shared break alerts belong to the plugin-lifetime break controller.
+ * elapsed target. The plugin owns one tracker for focus and break sounds across views.
  */
 export class FlowTimeCompletionAlertTracker {
 	private readonly states = new Map<FlowTimeCompletionAlertKind, FlowTimeCompletionAlertState>();

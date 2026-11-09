@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Secciones y orden",
       "statusDockSectionsDesc": "Activa las secciones y ordénalas de izquierda a derecha en el dock de estado. Las listas vacías permanecen ocultas.",
       "statusDockSectionsSaveFailed": "No se pudieron guardar las secciones del dock de estado.",
+      "statusDockShowSeconds": "Mostrar segundos",
+      "statusDockShowSecondsDesc": "Muestra los segundos en el registro de tiempo del dock de estado.",
+      "statusDockShowTimerDial": "Mostrar la esfera del temporizador",
+      "statusDockShowTimerDialDesc": "Muestra la esfera del temporizador sobre el registro de tiempo en el dock de estado.",
+      "statusDockSwitchTimerMode": "Cambiar a {{mode}}",
+      "statusDockTimerDialSize": "Tamaño de la esfera del temporizador",
+      "statusDockTimerDialSizeDesc": "Elige el tamaño de la esfera del temporizador en el dock de estado.",
       "statusDockVisibilitySaveFailed": "No se pudo guardar la visibilidad del dock de estado.",
       "statusDockVisible": "Mostrar el dock de estado",
       "statusDockVisibleDesc": "Muestra el dock de estado en las ventanas de escritorio. La preferencia se conserva al reiniciar Obsidian.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "2ac470256f7381e70a22f3f55462abdf552956a13b6ab14ef9c82f14fe402c39"
+  "sourceVersion": "7bd2da3ba3f90e0780e7dd8ce9c9c2eb4350e4e498d48a7fdb6a22a1b7b2d0ed"
 }

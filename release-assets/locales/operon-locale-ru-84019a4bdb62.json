@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Разделы и порядок",
       "statusDockSectionsDesc": "Включайте разделы и располагайте их слева направо на панели состояния. Пустые списки остаются скрытыми.",
       "statusDockSectionsSaveFailed": "Не удалось сохранить разделы панели состояния.",
+      "statusDockShowSeconds": "Показывать секунды",
+      "statusDockShowSecondsDesc": "Показывать секунды в таймере на панели состояния.",
+      "statusDockShowTimerDial": "Показывать циферблат таймера",
+      "statusDockShowTimerDialDesc": "Показывает циферблат над таймером на панели состояния.",
+      "statusDockSwitchTimerMode": "Переключить на {{mode}}",
+      "statusDockTimerDialSize": "Размер циферблата таймера",
+      "statusDockTimerDialSizeDesc": "Выберите размер циферблата таймера на панели состояния.",
       "statusDockVisibilitySaveFailed": "Не удалось сохранить настройку видимости панели состояния.",
       "statusDockVisible": "Показывать панель состояния",
       "statusDockVisibleDesc": "Показывает панель состояния в окнах приложения. Выбор сохраняется при перезапуске Obsidian.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "5f874a0951f63a924967710dbdaefef2afefe0f57bb5a589d85ada06e10e1983"
+  "sourceVersion": "b35676fcab64b03e9c47f7f5ef8c65ff0cee8621979c5df961136530361e5001"
 }

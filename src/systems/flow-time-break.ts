@@ -3,6 +3,7 @@ import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 import type { ActiveTrackerState, TrackerSource } from '../types/tracker';
 import { FlowTimeCompletionAlertTracker } from './flow-time-completion-alerts';
+import { getFlowTimeTargetSeconds, resolveDefaultFlowTimeSessionMinutes } from './flow-time-dial-state';
 
 export interface FlowTimeBreakState {
 	readonly taskId: string;
@@ -35,7 +36,7 @@ interface FlowTimeBreakDependencies {
 
 type BreakEvent = 'state' | 'tick';
 
-/** One ephemeral break per plugin instance, shared by FlowTime and status docks. */
+/** Shared break state and completion sounds for one plugin instance. */
 export class FlowTimeBreakController {
 	private breakState: FlowTimeBreakState | null = null;
 	private pendingTaskId: string | null = null;
@@ -49,6 +50,7 @@ export class FlowTimeBreakController {
 	private selectionActive: ActiveTrackerState | null = null;
 	private revision = 0;
 	private lastSoundSettings = '';
+	private focusSoundSettings: { targetSeconds: number; enabled: boolean } | null = null;
 
 	constructor(private readonly dependencies: FlowTimeBreakDependencies) {
 		this.unsubscribeTracker = dependencies.timeTracker.subscribe(event => this.onTrackerEvent(event));
@@ -97,7 +99,7 @@ export class FlowTimeBreakController {
 				targetSeconds: Math.max(60, this.dependencies.getSettings().flowTimePauseMinutes * 60),
 			};
 			this.revision += 1;
-			this.completionAlerts.reset();
+			this.completionAlerts.reset('break');
 			this.observeBreakSound();
 			this.stopTicker = this.dependencies.scheduleTick(() => this.tick());
 			return true;
@@ -166,10 +168,15 @@ export class FlowTimeBreakController {
 	/** Existing FlowTime duration preference, applied only by explicit user actions. */
 	applyDefaultSessionDuration(): boolean {
 		const settings = this.dependencies.getSettings();
-		if (settings.flowTimeMode !== 'flowtime' || settings.flowTimeUseLastSelectedDuration
-			|| settings.flowTimeSessionMinutes === settings.flowTimeDefaultSessionMinutes) return false;
-		settings.flowTimeSessionMinutes = settings.flowTimeDefaultSessionMinutes;
+		const minutes = resolveDefaultFlowTimeSessionMinutes(settings);
+		if (settings.flowTimeMode !== 'flowtime' || settings.flowTimeSessionMinutes === minutes) return false;
+		settings.flowTimeSessionMinutes = minutes;
 		return true;
+	}
+
+	/** Rebase a changed mode, duration or sound setting without announcing a missed target. */
+	syncFocusSoundSettings(): void {
+		if (!this.disposed) this.observeFocusSound(this.dependencies.timeTracker.getActiveState(), true);
 	}
 
 	destroy(): void {
@@ -193,14 +200,44 @@ export class FlowTimeBreakController {
 	}
 
 	private onTrackerEvent(event: TimeTrackerEvent): void {
-		if (this.disposed || event !== 'state') return;
-		if (this.operation?.key === 'select' && this.selectionActive && !this.dependencies.timeTracker.getActiveState()) {
-			this.clearPending(); this.emit('state'); return;
+		if (this.disposed || (event !== 'state' && event !== 'tick')) return;
+		const active = this.dependencies.timeTracker.getActiveState();
+		if (event === 'state') {
+			if (this.operation?.key === 'select' && this.selectionActive && !active) {
+				this.clearPending();
+				this.emit('state');
+			} else if (active && !this.isResumeStartingActive() && !this.isSelectionActive()) {
+				// Any committed work supersedes a break, including starts from another surface.
+				this.clearPending();
+				this.emit('state');
+			}
 		}
-		if (this.dependencies.timeTracker.getActiveState() && !this.isResumeStartingActive() && !this.isSelectionActive()) {
-			// Any committed work supersedes a break, including starts from another surface.
-			this.clearPending();
-			this.emit('state');
+		this.observeFocusSound(active);
+	}
+
+	private observeFocusSound(active: ActiveTrackerState | null, settingsOnly = false): void {
+		const settings = this.dependencies.getSettings();
+		if (!active || settings.flowTimeMode !== 'flowtime') {
+			this.focusSoundSettings = null;
+			this.completionAlerts.reset('focus');
+			return;
+		}
+		if (this.breakState || this.dependencies.timeTracker.getTransitionState()) return;
+		const targetSeconds = getFlowTimeTargetSeconds(settings.flowTimeSessionMinutes);
+		const enabled = settings.flowTimePlayReminderSoundOnTargetReached;
+		const input = {
+			kind: 'focus' as const,
+			occurrenceKey: active.start,
+			elapsedSeconds: active.elapsedSeconds,
+			targetSeconds,
+			enabled,
+		};
+		const previous = this.focusSoundSettings;
+		if (previous?.targetSeconds !== targetSeconds || previous.enabled !== enabled) {
+			this.focusSoundSettings = { targetSeconds, enabled };
+			this.completionAlerts.sync(input);
+		} else if (!settingsOnly && this.completionAlerts.observe(input)) {
+			this.playCompletionSound();
 		}
 	}
 
@@ -232,15 +269,18 @@ export class FlowTimeBreakController {
 			this.completionAlerts.sync(input);
 			return;
 		}
-		if (!this.completionAlerts.observe(input)) return;
+		if (this.completionAlerts.observe(input)) this.playCompletionSound();
+	}
+
+	private playCompletionSound(): void {
 		void this.dependencies.playReminderSound().catch(error => {
-			console.warn('Operon: FlowTime break reminder sound playback failed unexpectedly', error);
+			console.warn('Operon: FlowTime reminder sound playback failed unexpectedly', error);
 		});
 	}
 
 	private clearBreak(): void {
 		this.breakState = null;
-		this.completionAlerts.reset();
+		this.completionAlerts.reset('break');
 		this.stopTicker?.();
 		this.stopTicker = null;
 	}

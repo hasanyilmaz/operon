@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 import { TFile } from 'obsidian';
-import { DEFAULT_SETTINGS, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
+import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
 import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { WriteQueue } from '../src/storage/write-queue';
@@ -243,10 +243,10 @@ for(const desktop of [false,true])for(const available of [false,true])test(`sing
 for (const desktop of [false, true]) test(`dock settings use their own searchable page on desktop: desktop=${desktop}`, () => {
  const Host = methods('src/ui/settings-tab.ts', [
   'getSettingsSearchEntriesByTab', 'getPrimarySettingsTabs', 'getSecondarySettingsTabs', 'isSettingsTabId',
-  'buildSettingsSearchTabPage', 'buildStatusDockSettingsItems', 'buildWorkspaceTweaksSettingsItems',
+  'getDefaultSettingsSearchValue', 'getSettingsSearchDropdownValue', 'buildSettingsSearchTabPage', 'buildStatusDockSettingsItems', 'buildWorkspaceTweaksSettingsItems',
  ], {
   Platform: { isDesktopApp: desktop }, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
-  settingsBackupT: (key: string) => key,
+  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize,
  });
  const host = Object.assign(new Host(), {
   settings: { ...DEFAULT_SETTINGS, upcomingShowStatusBar: false },
@@ -269,11 +269,15 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
  assert.equal(host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0].heading, 'workspaceTweaksWorkspaceSection');
  if (desktop) {
   const dockEntries = entries.get('interfaceStatusDock');
-  assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockCreatorStartsTimer', 'ui.statusDockSections', 'ui.statusDockClickAction']);
+  assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockCreatorStartsTimer', 'ui.statusDockShowSeconds', 'ui.statusDockShowTimerDial', 'ui.statusDockTimerDialSize', 'ui.statusDockSections', 'ui.statusDockClickAction']);
   const page = host.buildSettingsSearchTabPage(tabs[1], dockEntries);
   assert.equal(page.name, 'statusDockSection');
   assert.deepEqual(page.items.map((group: any) => group.heading), ['statusDockGeneralSettings', 'statusDockSections']);
-  assert.deepEqual(page.items[0].items.map((item: any) => item.key), ['statusDockVisible', 'statusDockClickAction', 'statusDockCreatorStartsTimer']);
+  assert.deepEqual(page.items[0].items.map((item: any) => item.key), ['statusDockVisible', 'statusDockClickAction', 'statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial', 'statusDockTimerDialSize']);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockShowSeconds'), false);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockShowTimerDial'), false);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockTimerDialSize'), 1);
+  assert.equal(host.getSettingsSearchDropdownValue('statusDockTimerDialSize', 1.75), '1.75x');
   assert.deepEqual(page.items[1].items.map((item: any) => item.key), ['statusDockSections']);
  } else {
   assert.equal(entries.has('interfaceStatusDock'), false);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "구역 및 순서",
       "statusDockSectionsDesc": "섹션을 활성화하고 상태 Dock에서 왼쪽부터 오른쪽으로 정렬합니다. 빈 목록은 표시되지 않습니다.",
       "statusDockSectionsSaveFailed": "상태 Dock 섹션을 저장하지 못했습니다.",
+      "statusDockShowSeconds": "초 표시",
+      "statusDockShowSecondsDesc": "상태 Dock의 시간 추적기에 초를 표시합니다.",
+      "statusDockShowTimerDial": "타이머 다이얼 표시",
+      "statusDockShowTimerDialDesc": "상태 Dock의 시간 추적기 위에 타이머 다이얼을 표시합니다.",
+      "statusDockSwitchTimerMode": "{{mode}}(으)로 전환",
+      "statusDockTimerDialSize": "타이머 다이얼 크기",
+      "statusDockTimerDialSizeDesc": "상태 Dock에 표시할 타이머 다이얼의 크기를 선택합니다.",
       "statusDockVisibilitySaveFailed": "상태 Dock 표시 설정을 저장하지 못했습니다.",
       "statusDockVisible": "상태 Dock 표시",
       "statusDockVisibleDesc": "데스크톱 창에 상태 Dock을 표시합니다. Obsidian을 다시 시작해도 이 설정이 유지됩니다.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "310d86498f0409d05907953057bd1978ad25bf83072e4b521ea94936c7a6b726"
+  "sourceVersion": "9a89d181d8e6864113b0a4d79811a27fbb8a9576385cb0353d6dd90e7ec9c3f9"
 }

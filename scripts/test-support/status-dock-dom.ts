@@ -10,6 +10,11 @@ export function statusDockDocument() {
 	doc.defaultView.Node = Element; doc.defaultView.Element = Element;
 	doc.defaultView.document = doc;
 	const proto = Element.prototype;
+	const setAttribute = proto.setAttribute;
+	proto.setAttribute = function (key: string, value: string) {
+		setAttribute.call(this, key, value);
+		if (key === 'class') this.className = value;
+	};
 	Object.defineProperties(proto, {
 		className: { get() { return [...this.classes].join(' '); }, set(value: string) { this.classes = new Set(value.split(/\s+/u).filter(Boolean)); } },
 		parentElement: { get() { return this.parent; } },
@@ -31,6 +36,8 @@ export function statusDockDocument() {
 	proto.matches = function (selector: string) {
 		if (selector.includes(',')) return selector.split(',').some((part: string) => this.matches(part.trim()));
 		if (selector === '*') return true;
+		const role = /^\[data-role="([^"]+)"\]$/u.exec(selector)?.[1];
+		if (role) return this.dataset.role === role;
 		if (selector.startsWith('.')) return this.classes.has(selector.slice(1));
 		if (selector.includes('data-operon-accessible-label')) return this.dataset.operonAccessibleLabel === 'true';
 		return false;
@@ -49,6 +56,7 @@ export function statusDockDocument() {
 	proto.removeEventListener = function (name: string, callback: (event: unknown) => void) { this.handlers?.get(name)?.delete(callback); };
 	proto.click = function () { if (!this.disabled) for (const callback of this.handlers?.get('click') ?? []) callback({ stopPropagation() {}, preventDefault() {} }); };
 	doc.createElement = (tag: string) => { const el = new Element(); el.tagName = tag.toUpperCase(); return el; };
+	doc.createElementNS = (_namespace: string, tag: string) => doc.createElement(tag);
 	doc.win.createEl = doc.createElement;
 	doc.win.createDiv = () => doc.createElement('div');
 	let sequence = 0;

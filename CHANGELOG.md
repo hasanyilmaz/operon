@@ -7,16 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Added an optional **Time Tracker dial** to the Status Dock with five sizes. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dock dial temporarily hides while a task list or recent session card is open.
+
 ### Improved
 
 - **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
 
 - **Task Creator** is now a separate Status Dock section, after Time Tracker by default. It stays available while a timer runs, and **Start timer when creating a task** lets you choose whether to start tracking the new task. **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title and wrap onto another row when they need more room.
 
+- Switch between **TrackTime** and **FlowTime** from the Status Dock timer, with the same mode reflected in the sidebar. The dock shows elapsed time, time remaining, or overtime in a compact reading. **Show seconds** adds seconds to the dock timer, and Finder and break controls sit together inside Time Tracker.
+
+### Fixed
+
+- FlowTime now plays the configured completion sound when a work session reaches zero, including when the sidebar is closed.
+
 ### Validation
 
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
-- **179/179** Status Dock tests passed, along with strict lint, production build, and release guard.
+- **187/187** Status Dock tests passed, along with strict lint, production build, and release guard.
 
 ## [4.6.0] - 2026-11-08
 

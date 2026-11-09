@@ -1652,9 +1652,19 @@ export function resolveStatusDockAlignment(value: unknown): StatusDockAlignment 
 
 export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBehavior { return normalizeTaskFinderResultBehavior(value, 'source-and-editor'); }
 
+export const STATUS_DOCK_TIMER_DIAL_SIZES = [1, 1.25, 1.5, 1.75, 2] as const;
+export const DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE = STATUS_DOCK_TIMER_DIAL_SIZES[0];
+export type StatusDockTimerDialSize = typeof STATUS_DOCK_TIMER_DIAL_SIZES[number];
+export function normalizeStatusDockTimerDialSize(value: unknown): StatusDockTimerDialSize | undefined {
+	return STATUS_DOCK_TIMER_DIAL_SIZES.find(size => size === value);
+}
+
 export interface OperonSettings extends TaskCardSettings {
 	/** Optional user choices: absence uses in-memory defaults without startup writes. */
 	statusDockCreatorStartsTimer?: boolean;
+	statusDockShowSeconds?: boolean;
+	statusDockShowTimerDial?: boolean;
+	statusDockTimerDialSize?: StatusDockTimerDialSize;
 	statusDockVisible?: boolean;
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
@@ -4511,6 +4521,13 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
 	if (typeof src.statusDockCreatorStartsTimer === 'boolean') out.statusDockCreatorStartsTimer = src.statusDockCreatorStartsTimer;
 	else delete out.statusDockCreatorStartsTimer;
+	if (typeof src.statusDockShowSeconds === 'boolean') out.statusDockShowSeconds = src.statusDockShowSeconds;
+	else delete out.statusDockShowSeconds;
+	if (typeof src.statusDockShowTimerDial === 'boolean') out.statusDockShowTimerDial = src.statusDockShowTimerDial;
+	else delete out.statusDockShowTimerDial;
+	const statusDockTimerDialSize = normalizeStatusDockTimerDialSize(src.statusDockTimerDialSize);
+	if (statusDockTimerDialSize !== undefined) out.statusDockTimerDialSize = statusDockTimerDialSize;
+	else delete out.statusDockTimerDialSize;
 	if (typeof src.statusDockVisible === 'boolean') out.statusDockVisible = src.statusDockVisible;
 	else delete out.statusDockVisible;
 	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStoredStatusDockSections(src.statusDockSections);

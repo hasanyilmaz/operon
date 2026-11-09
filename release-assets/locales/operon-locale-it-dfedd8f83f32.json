@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Sezioni e ordine",
       "statusDockSectionsDesc": "Attiva le sezioni e disponile da sinistra a destra nel dock di stato. Gli elenchi vuoti rimangono nascosti.",
       "statusDockSectionsSaveFailed": "Impossibile salvare le sezioni del dock di stato.",
+      "statusDockShowSeconds": "Mostra i secondi",
+      "statusDockShowSecondsDesc": "Mostra i secondi nel timer del dock di stato.",
+      "statusDockShowTimerDial": "Mostra il quadrante del timer",
+      "statusDockShowTimerDialDesc": "Mostra il quadrante sopra il timer nel dock di stato.",
+      "statusDockSwitchTimerMode": "Passa a {{mode}}",
+      "statusDockTimerDialSize": "Dimensione del quadrante",
+      "statusDockTimerDialSizeDesc": "Scegli la dimensione del quadrante del timer nel dock di stato.",
       "statusDockVisibilitySaveFailed": "Impossibile salvare la visibilità del dock di stato.",
       "statusDockVisible": "Mostra il dock di stato",
       "statusDockVisibleDesc": "Mostra il dock di stato nelle finestre desktop. La scelta viene mantenuta al riavvio di Obsidian.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "d376e912753dffb6c1bd849f848fbd75a918efb5949032e848a6b683a1907c1c"
+  "sourceVersion": "95c45202946b61b941a2b382fad5e7754687a870f15f45ddf8464353a3387a96"
 }

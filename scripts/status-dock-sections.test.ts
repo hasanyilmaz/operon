@@ -76,9 +76,9 @@ test('an old saved order needs no startup write and the automatic timer preferen
   assert.equal(fixture.canonicalAttempts, writes);
   assert.deepEqual(settings.statusDockSections, sections);
   assert.equal(settings.statusDockCreatorStartsTimer, undefined);
-  await storage.saveStatusDockCreatorStartsTimer(true);
+  await storage.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', true);
   assert.equal(fixture.canonicalAttempts, writes);
-  await storage.saveStatusDockCreatorStartsTimer(false);
+  await storage.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', false);
   assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), {
    ...pkg, ui: { ...pkg.ui, statusDock: { sections, creatorStartsTimer: false } },
   });
@@ -86,7 +86,7 @@ test('an old saved order needs no startup write and the automatic timer preferen
   assert.equal(restarted.getSettings().statusDockCreatorStartsTimer, false);
   assert.equal(fixture.canonicalAttempts, writes + 1);
   fixture.writeFault = 'throw-before';
-  await assert.rejects(restarted.saveStatusDockCreatorStartsTimer(true));
+  await assert.rejects(restarted.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', true));
   assert.equal(restarted.getSettings().statusDockCreatorStartsTimer, false);
  } finally { await fixture.dispose(); }
 });

@@ -2,9 +2,10 @@ import { normalizeStatusDockSections, type StatusDockSection } from '../types/st
 import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
 import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
+import type { FlowTimeTimerSettings } from '../systems/flow-time-controls';
 import type { KanbanPreset } from '../types/kanban';
 import { resolveKanbanAxes } from '../core/kanban-axis-model';
-import { normalizeTaskAfterCreateAction } from '../types/settings';
+import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize, normalizeTaskAfterCreateAction } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -851,20 +852,43 @@ export class OperonStorage {
 		});
 	}
 
+	async saveFlowTimeTimerSettings(expected: Partial<FlowTimeTimerSettings>, values: Partial<FlowTimeTimerSettings>): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			const canCommit = () => (
+				(expected.flowTimeSessionMinutes === undefined || this.settings.flowTimeSessionMinutes === expected.flowTimeSessionMinutes)
+				&& (expected.flowTimeMode === undefined || this.settings.flowTimeMode === expected.flowTimeMode)
+			);
+			const update = (current: OperonDataPackageV1): OperonDataPackageV1 => ({
+				...current,
+				settings: { ...current.settings, ...values },
+			});
+			if (this.tablePresetRecovery.health === 'degraded') {
+				await this.dataPackageStore.updateDataPackageCas(update, canCommit);
+			} else {
+				await this.dataPackageStore.updateDataPackage(update, canCommit);
+			}
+			// Preserve newer in-memory edits if one arrived during write verification.
+			for (const key of ['flowTimeMode', 'flowTimeSessionMinutes'] as const) {
+				if (values[key] !== undefined && this.settings[key] === expected[key]) Object.assign(this.settings, { [key]: values[key] });
+			}
+		});
+	}
+
 	/** A command with no explicit value inverts the latest committed visibility. */
 	saveStatusDockVisibility(visible?: boolean): Promise<void> {
 		return this.saveStatusDockBooleanPreference('statusDockVisible', visible);
 	}
 
-	saveStatusDockCreatorStartsTimer(enabled: boolean): Promise<void> {
-		return this.saveStatusDockBooleanPreference('statusDockCreatorStartsTimer', enabled);
+	saveStatusDockTimerPreference(key: 'statusDockCreatorStartsTimer' | 'statusDockShowSeconds' | 'statusDockShowTimerDial', enabled: boolean): Promise<void> {
+		return this.saveStatusDockBooleanPreference(key, enabled);
 	}
 
-	private async saveStatusDockBooleanPreference(key: 'statusDockVisible' | 'statusDockCreatorStartsTimer', value?: boolean): Promise<void> {
-		const field = key === 'statusDockVisible' ? 'visible' : 'creatorStartsTimer';
+	private async saveStatusDockBooleanPreference(key: 'statusDockVisible' | 'statusDockCreatorStartsTimer' | 'statusDockShowSeconds' | 'statusDockShowTimerDial', value?: boolean): Promise<void> {
+		const fields = { statusDockVisible: 'visible', statusDockCreatorStartsTimer: 'creatorStartsTimer', statusDockShowSeconds: 'showSeconds', statusDockShowTimerDial: 'showTimerDial' } as const;
+		const field = fields[key];
 		await this.enqueueSettingsTransaction(async () => {
 			const expected = this.settings[key];
-			const enabled = expected !== false;
+			const enabled = expected ?? (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer');
 			const next = value ?? !enabled;
 			if (next === enabled) return;
 			await this.dataPackageStore.updateDataPackageCas(current => {
@@ -873,6 +897,21 @@ export class OperonStorage {
 				return { ...current, ui: { ...current.ui, statusDock: { ...current.ui.statusDock, [field]: next } } };
 			}, () => this.settings[key] === expected);
 			this.settings[key] = next;
+		});
+	}
+
+	async saveStatusDockTimerDialSize(value: unknown): Promise<void> {
+		const size = normalizeStatusDockTimerDialSize(value);
+		if (size === undefined) throw new Error('Invalid Status Dock timer dial size');
+		await this.enqueueSettingsTransaction(async () => {
+			const expected = this.settings.statusDockTimerDialSize;
+			if ((expected ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE) === size) return;
+			const matches = () => this.settings.statusDockTimerDialSize === expected;
+			await this.dataPackageStore.updateDataPackageCas(pkg => {
+				if (normalizeStatusDockTimerDialSize(pkg.ui.statusDock?.timerDialSize) !== expected) throw new Error('Status Dock timer dial size changed on disk');
+				return { ...pkg, ui: { ...pkg.ui, statusDock: { ...pkg.ui.statusDock, timerDialSize: size } } };
+			}, matches);
+			if (matches()) this.settings.statusDockTimerDialSize = size;
 		});
 	}
 
@@ -1709,6 +1748,9 @@ export class OperonStorage {
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockCreatorStartsTimer === undefined) delete candidateInput.statusDockCreatorStartsTimer;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowSeconds === undefined) delete candidateInput.statusDockShowSeconds;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowTimerDial === undefined) delete candidateInput.statusDockShowTimerDial;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockTimerDialSize === undefined) delete candidateInput.statusDockTimerDialSize;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockVisible === undefined) delete candidateInput.statusDockVisible;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
@@ -1811,6 +1853,9 @@ export class OperonStorage {
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockCreatorStartsTimer')) delete this.settings.statusDockCreatorStartsTimer;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowSeconds')) delete this.settings.statusDockShowSeconds;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowTimerDial')) delete this.settings.statusDockShowTimerDial;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockTimerDialSize')) delete this.settings.statusDockTimerDialSize;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockVisible')) delete this.settings.statusDockVisible;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockClickAction')) delete this.settings.statusDockClickAction;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockSections')) delete this.settings.statusDockSections;

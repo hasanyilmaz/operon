@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "區段與順序",
       "statusDockSectionsDesc": "啟用區段並在狀態列中由左至右排列。空清單保持隱藏。",
       "statusDockSectionsSaveFailed": "無法儲存狀態列區段。",
+      "statusDockShowSeconds": "顯示秒數",
+      "statusDockShowSecondsDesc": "在狀態列的計時器中顯示秒數。",
+      "statusDockShowTimerDial": "顯示計時器錶盤",
+      "statusDockShowTimerDialDesc": "在狀態列的計時器上方顯示錶盤。",
+      "statusDockSwitchTimerMode": "切換到 {{mode}}",
+      "statusDockTimerDialSize": "計時器錶盤大小",
+      "statusDockTimerDialSizeDesc": "選擇狀態列計時器錶盤的大小。",
       "statusDockVisibilitySaveFailed": "無法儲存狀態列的顯示設定。",
       "statusDockVisible": "顯示狀態列",
       "statusDockVisibleDesc": "在桌面視窗中顯示狀態列。重新啟動 Obsidian 後會保留此設定。",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "211dff3a9ffe485ce1fb59282dc227808d624f500133c927b39406460ef2bce4"
+  "sourceVersion": "b07949ee69348309738255de70501d1feb6fad8090682ad9040c60bf5ec86b14"
 }

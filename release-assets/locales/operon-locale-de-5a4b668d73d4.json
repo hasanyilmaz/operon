@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Abschnitte und Reihenfolge",
       "statusDockSectionsDesc": "Aktiviere Abschnitte und ordne sie im Statusdock von links nach rechts an. Leere Listen bleiben ausgeblendet.",
       "statusDockSectionsSaveFailed": "Statusdock-Abschnitte konnten nicht gespeichert werden.",
+      "statusDockShowSeconds": "Sekunden anzeigen",
+      "statusDockShowSecondsDesc": "Sekunden in der Zeiterfassung im Statusdock anzeigen.",
+      "statusDockShowTimerDial": "Timer-Zifferblatt anzeigen",
+      "statusDockShowTimerDialDesc": "Zeigt das Timer-Zifferblatt über der Zeiterfassung im Statusdock an.",
+      "statusDockSwitchTimerMode": "Zu {{mode}} wechseln",
+      "statusDockTimerDialSize": "Größe des Timer-Zifferblatts",
+      "statusDockTimerDialSizeDesc": "Wähle die Größe des Timer-Zifferblatts im Statusdock.",
       "statusDockVisibilitySaveFailed": "Die Sichtbarkeit des Statusdocks konnte nicht gespeichert werden.",
       "statusDockVisible": "Statusdock anzeigen",
       "statusDockVisibleDesc": "Zeigt das Statusdock in Desktop-Fenstern an. Die Einstellung bleibt beim Neustart von Obsidian erhalten.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "6e7fea211e4a70334653189d367b95461cb0e49bddcce061ab166f7546a5e8bb"
+  "sourceVersion": "938e6f1bb4becb020174a3500af7b8c60b9fe5b6addc7b966a0bf5a8516859cd"
 }

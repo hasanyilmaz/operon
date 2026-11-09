@@ -16810,7 +16810,6 @@ body :is(
 
 .operon-flow-time-view {
 	--operon-flow-time-accent: var(--interactive-accent);
-	--operon-flow-time-major-color: color-mix(in srgb, var(--text-muted) 62%, transparent);
 	--operon-flow-time-control-radius: 8px;
 	--operon-flow-time-control-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
 	--operon-flow-time-control-hover-border: color-mix(in srgb, var(--operon-flow-time-accent) 34%, var(--background-modifier-border));
@@ -16978,11 +16977,11 @@ body :is(
 	cursor: default;
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-dial {
+.operon-flow-time-dial.is-editable {
 	cursor: grab;
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-dial:active {
+.operon-flow-time-dial.is-editable:active {
 	cursor: grabbing;
 }
 
@@ -16996,7 +16995,7 @@ body :is(
 }
 
 .operon-flow-time-ticks .is-major {
-	stroke: var(--operon-flow-time-major-color);
+	stroke: var(--operon-flow-time-major-color, color-mix(in srgb, var(--text-muted) 62%, transparent));
 	stroke-width: 3.5;
 }
 
@@ -17005,7 +17004,7 @@ body :is(
 	filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.08));
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-face {
+.operon-flow-time-dial.is-flowtime .operon-flow-time-face {
 	fill: color-mix(in srgb, var(--operon-flow-time-accent) 18%, var(--background-secondary));
 }
 
@@ -17014,7 +17013,7 @@ body :is(
 	opacity: 0.78;
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-wedge {
+.operon-flow-time-dial.is-flowtime .operon-flow-time-wedge {
 	fill: color-mix(in srgb, var(--operon-flow-time-accent) 68%, transparent);
 }
 
@@ -17024,7 +17023,7 @@ body :is(
 	stroke: color-mix(in srgb, var(--operon-flow-time-accent) 86%, black 6%);
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-dial.is-overtime .operon-flow-time-wedge {
+.operon-flow-time-dial.is-flowtime.is-overtime .operon-flow-time-wedge {
 	fill: color-mix(in srgb, var(--text-muted) 46%, transparent);
 }
 
@@ -17035,11 +17034,7 @@ body :is(
 	filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.16));
 }
 
-.operon-flow-time-view.is-flowtime .operon-flow-time-hand {
-	stroke: color-mix(in srgb, var(--operon-flow-time-accent) 86%, black 6%);
-}
-
-.operon-flow-time-view.is-flowtime .operon-flow-time-dial.is-overtime .operon-flow-time-hand {
+.operon-flow-time-dial.is-flowtime.is-overtime .operon-flow-time-hand {
 	stroke: color-mix(in srgb, var(--text-muted) 78%, transparent);
 }
 
@@ -17074,7 +17069,7 @@ body :is(
 	border-radius: 0;
 	appearance: none;
 	background: transparent;
-	color: var(--operon-flow-time-major-color);
+	color: var(--operon-flow-time-major-color, color-mix(in srgb, var(--text-muted) 62%, transparent));
 	font-size: 44px;
 	line-height: 1;
 	font-weight: 500;
@@ -37348,10 +37343,18 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	display: flex; align-items: flex-end; justify-content: center;
 	padding: 0 12px; pointer-events: none; box-sizing: border-box; max-width: 100%;
 }
-.operon-status-dock-slot[hidden], .operon-status-dock [hidden] { display: none; }
+.operon-status-dock-slot[hidden], .operon-status-dock [hidden], .operon-status-dock-dial[hidden] { display: none; }
+.operon-status-dock-dial {
+	position: fixed;
+	aspect-ratio: 1;
+	pointer-events: none;
+}
+.operon-status-dock-dial .operon-flow-time-dial { display: block; width: 100%; max-width: none; }
+.operon-status-dock-dial .operon-flow-time-dial.is-editable { pointer-events: auto; }
 .operon-status-dock {
 	--operon-status-dock-card-width: calc(40ch + 67px);
 	--operon-status-dock-inline-gap: 5px;
+	--operon-status-dock-action-width: 28px;
 	position: relative;
 	display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--operon-status-dock-inline-gap); max-width: 100%; width: max-content;
 	min-height: 44px; padding: 7px 9px;
@@ -37393,6 +37396,20 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock-next > .operon-status-dock-leading-icon { color: var(--interactive-accent); }
 .operon-status-dock-copy { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .operon-status-dock-time { display: block; flex: 0 0 auto; text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.operon-status-dock button.operon-status-dock-mode { padding-inline: 4px; }
+/* Let the current duration format reserve its own space in the dock font. */
+.operon-status-dock button.operon-status-dock-mode[data-duration-width] {
+	display: grid;
+	justify-content: stretch;
+	justify-items: end;
+}
+.operon-status-dock-mode[data-duration-width]::before,
+.operon-status-dock-mode-text { grid-area: 1 / 1; }
+.operon-status-dock-mode[data-duration-width]::before {
+	content: attr(data-duration-width);
+	visibility: hidden;
+}
+.operon-status-dock button.operon-status-dock-mode.is-flowtime { color: var(--interactive-accent); }
 .operon-status-dock-name {
 	display: block; max-width: calc(35ch + 12px); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	height: 28px; line-height: 28px; padding-inline: 6px; border-radius: 6px; box-sizing: border-box;
@@ -37400,9 +37417,8 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-status-dock-name .operon-compact-task-markdown { white-space: nowrap; }
 .operon-status-dock-timer-controls { display: flex; align-items: center; flex: 0 0 auto; }
-.operon-status-dock-selection-divider { order: -1; margin-inline: 6px; }
-.operon-status-dock.is-break .operon-status-dock-selection-divider { order: 0; }
-.operon-status-dock .operon-status-dock-action { flex: 0 0 28px; min-width: 28px; }
+.operon-status-dock .operon-status-dock-action { flex: 0 0 var(--operon-status-dock-action-width); min-width: var(--operon-status-dock-action-width); }
+.operon-status-dock .operon-status-dock-timer-controls > button { inline-size: var(--operon-status-dock-action-width); }
 .operon-status-dock .operon-status-dock-timer-action.is-running { color: var(--text-error); }
 .operon-status-dock .operon-status-dock-grip { cursor: grab; touch-action: none; user-select: none; color: var(--text-faint); }
 .operon-status-dock.is-dragging .operon-status-dock-grip { cursor: grabbing; }
@@ -37416,11 +37432,10 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 @media (max-width: 480px) {
 	.operon-status-dock-slot { padding-inline: 5px; }
-	.operon-status-dock { --operon-status-dock-inline-gap: 2px; padding-inline: 3px; }
+	.operon-status-dock { --operon-status-dock-inline-gap: 2px; --operon-status-dock-action-width: 22px; padding-inline: 3px; }
 	.operon-status-dock-copy { gap: 3px; }
 	.operon-status-dock-tracker { gap: 0; }
 	.operon-status-dock button { padding-inline: 0; gap: 2px; }
-	.operon-status-dock .operon-status-dock-action { flex-basis: 22px; min-width: 22px; }
 }
 
 /* Calendar Play replaces the leading glyph without covering the task name. */

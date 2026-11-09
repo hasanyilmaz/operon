@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Seções e ordem",
       "statusDockSectionsDesc": "Ative as seções e organize-as da esquerda para a direita no dock de status. Listas vazias permanecem ocultas.",
       "statusDockSectionsSaveFailed": "Não foi possível salvar as seções do dock de status.",
+      "statusDockShowSeconds": "Mostrar segundos",
+      "statusDockShowSecondsDesc": "Exibe os segundos no cronômetro do dock de status.",
+      "statusDockShowTimerDial": "Mostrar o mostrador do cronômetro",
+      "statusDockShowTimerDialDesc": "Mostra o mostrador acima do cronômetro no dock de status.",
+      "statusDockSwitchTimerMode": "Alternar para {{mode}}",
+      "statusDockTimerDialSize": "Tamanho do mostrador do cronômetro",
+      "statusDockTimerDialSizeDesc": "Escolha o tamanho do mostrador do cronômetro no dock de status.",
       "statusDockVisibilitySaveFailed": "Não foi possível salvar a visibilidade do dock de status.",
       "statusDockVisible": "Mostrar o dock de status",
       "statusDockVisibleDesc": "Mostra o dock de status nas janelas do aplicativo para computador. A preferência é mantida ao reiniciar o Obsidian.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "692bc24b9a631607934911f976059b5192c2d481eb23e83b10c6de9cd3477362"
+  "sourceVersion": "34c8156275abca5fcee52a7e047997c04ebb119571e59f84e8fa6a586f8d5278"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "セクションと順序",
       "statusDockSectionsDesc": "セクションを有効にし、ステータスドック内で左から右に並べます。空のリストは表示されません。",
       "statusDockSectionsSaveFailed": "ステータスドックのセクションを保存できませんでした。",
+      "statusDockShowSeconds": "秒を表示",
+      "statusDockShowSecondsDesc": "ステータスドックのタイマーに秒を表示します。",
+      "statusDockShowTimerDial": "タイマーダイヤルを表示",
+      "statusDockShowTimerDialDesc": "ステータスドックのタイマーの上にダイヤルを表示します。",
+      "statusDockSwitchTimerMode": "{{mode}}に切り替え",
+      "statusDockTimerDialSize": "タイマーダイヤルのサイズ",
+      "statusDockTimerDialSizeDesc": "ステータスドックのタイマーダイヤルのサイズを選択します。",
       "statusDockVisibilitySaveFailed": "ステータスドックの表示設定を保存できませんでした。",
       "statusDockVisible": "ステータスドックを表示",
       "statusDockVisibleDesc": "デスクトップウィンドウにステータスドックを表示します。この設定は Obsidian の再起動後も保持されます。",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "50b60412e0dce52ebf02af0276564a5c8201c1941a1e6d16c71ba4caa4351af2"
+  "sourceVersion": "01c44dcb2c74266aa78fd76d8e5a43a03c1385765ba8a5e3f5e2348739c49430"
 }

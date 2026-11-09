@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "Sections et ordre",
       "statusDockSectionsDesc": "Activez les sections et classez-les de gauche à droite dans le dock de statut. Les listes vides restent masquées.",
       "statusDockSectionsSaveFailed": "Impossible d’enregistrer les sections du dock de statut.",
+      "statusDockShowSeconds": "Afficher les secondes",
+      "statusDockShowSecondsDesc": "Affiche les secondes dans le chronomètre du dock d’état.",
+      "statusDockShowTimerDial": "Afficher le cadran du chronomètre",
+      "statusDockShowTimerDialDesc": "Affiche le cadran au-dessus du chronomètre dans le dock d’état.",
+      "statusDockSwitchTimerMode": "Passer à {{mode}}",
+      "statusDockTimerDialSize": "Taille du cadran",
+      "statusDockTimerDialSizeDesc": "Choisissez la taille du cadran du chronomètre dans le dock d’état.",
       "statusDockVisibilitySaveFailed": "Impossible d’enregistrer la visibilité du dock d’état.",
       "statusDockVisible": "Afficher le dock d’état",
       "statusDockVisibleDesc": "Affiche le dock d’état dans les fenêtres de bureau. Ce choix est conservé au redémarrage d’Obsidian.",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "07a6a54c088e8e48432da8bb4bd034f2c97d8f9a7d67509a0b32a028ec80d7f5"
+  "sourceVersion": "0d543393caf4bd60ce9536316cdc2eba672f6d3570f81dc4b3e6cf97c043eae4"
 }

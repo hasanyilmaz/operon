@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3807,
-  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
+  "keyCount": 3814,
+  "keyFingerprint": "74bffd9f6703b5615f4d9643a86af3afb0ad348a108fa786bbd32f7583e3d7ff",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2605,6 +2605,13 @@
       "statusDockSections": "分区和顺序",
       "statusDockSectionsDesc": "启用分区并在状态栏中从左到右排列。空列表保持隐藏。",
       "statusDockSectionsSaveFailed": "无法保存状态栏分区。",
+      "statusDockShowSeconds": "显示秒数",
+      "statusDockShowSecondsDesc": "在状态栏的计时器中显示秒数。",
+      "statusDockShowTimerDial": "显示计时器表盘",
+      "statusDockShowTimerDialDesc": "在状态栏的计时器上方显示表盘。",
+      "statusDockSwitchTimerMode": "切换到 {{mode}}",
+      "statusDockTimerDialSize": "计时器表盘大小",
+      "statusDockTimerDialSizeDesc": "选择状态栏计时器表盘的大小。",
       "statusDockVisibilitySaveFailed": "无法保存状态栏的显示设置。",
       "statusDockVisible": "显示状态栏",
       "statusDockVisibleDesc": "在桌面窗口中显示状态栏。重启 Obsidian 后会保留此设置。",
@@ -3852,5 +3859,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "071da4d66e9b6b53e39780500dbf9cd8c528208fc6b7bc5768c5221b9c9bcc23"
+  "sourceVersion": "e45ab95f411a7473f722a4350df2faba750f7116ff5e54d2bd191a9269f0a7ce"
 }

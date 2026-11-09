@@ -11,6 +11,9 @@ import type { IndexedTask } from '../src/types/fields';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import type { FlowTimeRenderedState } from '../src/systems/flow-time-optimistic';
 import { FlowTimeView } from '../src/ui/flow-time-view';
+import { FlowTimeControls } from '../src/systems/flow-time-controls';
+import { resolveFlowTimeDialState } from '../src/systems/flow-time-dial-state';
+import { bindFlowTimeDialDrag } from '../src/ui/flow-time-dial';
 import { WorkspaceLeaf } from 'obsidian';
 import { statusDockDocument } from './test-support/status-dock-dom';
 
@@ -86,6 +89,19 @@ function harness() {
 	const controller = new FlowTimeBreakController(dependencies);
 	const advance = (seconds: number) => { now += seconds * 1000; for (const tick of [...timers]) tick(); };
 	return { controller, dependencies, task, tasks, state, settings, timeTracker, calls, behavior, timers, listeners, emit, advance };
+}
+
+function createTarget(h: ReturnType<typeof harness>) {
+	return new FlowTimeControls({
+		getSettings: h.dependencies.getSettings,
+		timeTracker: h.timeTracker,
+		breakController: h.controller,
+		saveSettings: async (expected, values) => {
+			for (const [key, value] of Object.entries(expected)) assert.equal(h.settings[key as keyof typeof h.settings], value);
+			await h.dependencies.saveSettings();
+			Object.assign(h.settings, values);
+		},
+	});
 }
 
 const cases: Array<[string, () => Promise<void> | void]> = [];
@@ -232,6 +248,91 @@ test('sound is delivered once with multiple subscribers and without any open vie
 	assert.equal(firstTicks, 1); assert.equal(secondTicks, 3); assert.equal(h.calls.sound, 1); h.controller.destroy();
 });
 
+test('focus sound follows the active tracker with a hidden dock dial and no panel', () => {
+	const h = harness();
+	try {
+		h.settings.statusDockShowTimerDial = false;
+		h.settings.flowTimeSessionMinutes = 1;
+		h.state.active!.elapsedSeconds = 59;
+		h.emit('state');
+		const detachFirst = h.timeTracker.subscribe(() => {});
+		const detachSecond = h.timeTracker.subscribe(() => {});
+		h.emit('tick');
+		assert.equal(h.calls.sound, 0);
+		h.state.active!.elapsedSeconds = 60;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 1);
+		detachFirst(); detachSecond();
+		h.state.active!.elapsedSeconds = 61;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 1);
+		h.state.active = { ...h.state.active!, start: '2026-10-24T11:00:00', elapsedSeconds: 59 };
+		h.emit('state');
+		h.state.active.elapsedSeconds = 60;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 2);
+	} finally { h.controller.destroy(); }
+});
+
+test('switching mode arms a future focus boundary and does not replay an elapsed target', async () => {
+	const h = harness();
+	const controls = createTarget(h);
+	const unsubscribe = controls.subscribe(event => { if (event !== 'preview') h.controller.syncFocusSoundSettings(); });
+	try {
+		h.settings.flowTimeSessionMinutes = 1;
+		h.settings.flowTimeMode = 'tracktime';
+		h.state.active!.elapsedSeconds = 59;
+		h.emit('state');
+		await controls.setMode('flowtime');
+		h.state.active!.elapsedSeconds = 60;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 1);
+		await controls.setMode('tracktime');
+		h.state.active = { ...h.state.active!, start: '2026-10-24T11:00:00', elapsedSeconds: 59 };
+		h.emit('state');
+		h.state.active.elapsedSeconds = 60;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 1);
+		await controls.setMode('flowtime');
+		h.state.active.elapsedSeconds = 61;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 1);
+	} finally { unsubscribe(); controls.destroy(); h.controller.destroy(); }
+});
+
+test('focus previews and target or sound changes after zero do not play a retroactive alert', async () => {
+	const h = harness();
+	const controls = createTarget(h);
+	const unsubscribe = controls.subscribe(event => { if (event !== 'preview') h.controller.syncFocusSoundSettings(); });
+	try {
+		h.settings.flowTimeSessionMinutes = 2;
+		h.state.active!.elapsedSeconds = 90;
+		h.emit('state');
+		const shorter = controls.begin(() => {});
+		assert.ok(shorter);
+		shorter.preview(1);
+		h.emit('tick');
+		assert.equal(h.calls.sound, 0);
+		await shorter.commit();
+		h.emit('tick');
+		assert.equal(h.calls.sound, 0);
+		h.state.active!.elapsedSeconds = 119;
+		const longer = controls.begin(() => {});
+		assert.ok(longer);
+		longer.preview(2);
+		await longer.commit();
+		h.settings.flowTimePlayReminderSoundOnTargetReached = false;
+		h.controller.syncFocusSoundSettings();
+		h.state.active!.elapsedSeconds = 120;
+		h.emit('tick');
+		assert.equal(h.calls.sound, 0);
+		h.settings.flowTimePlayReminderSoundOnTargetReached = true;
+		h.controller.syncFocusSoundSettings();
+		h.emit('tick');
+		assert.equal(h.calls.sound, 0);
+	} finally { unsubscribe(); controls.destroy(); h.controller.destroy(); }
+});
+
 test('enabling sound or changing mode after zero never replays a missed boundary', async () => {
 	const h = harness(); h.settings.flowTimePlayReminderSoundOnTargetReached = false;
 	await h.controller.startBreak(); h.advance(60); h.settings.flowTimePlayReminderSoundOnTargetReached = true;
@@ -280,9 +381,10 @@ test('destroy during a pending stop cannot resurrect a break or schedule a ticke
 
 test('FlowTime views share a controller and closing a view does not end its break', async () => {
 	const h = harness(); let renders = 0;
+	const target = createTarget(h);
 	const createView = () => {
 		const view = new FlowTimeView(new WorkspaceLeaf(), { getGeneration: () => 0, getTask: (id: string) => h.tasks.get(id) } as never,
-			h.timeTracker as never, {} as never, h.controller);
+			h.timeTracker as never, {} as never, h.controller, target);
 		view.contentEl = statusDockDocument().doc.body;
 		view.render = () => { renders++; };
 		return view;
@@ -296,15 +398,181 @@ test('FlowTime views share a controller and closing a view does not end its brea
 	assert.equal(h.timers.size, 1); await second.onClose();
 	assert.ok(h.controller.getSnapshot().breakState); h.advance(60); assert.equal(h.calls.sound, 1);
 	const reopened = createView(); await reopened.onOpen();
-	assert.equal(readState(reopened).task?.operonId, h.task.operonId); await reopened.onClose();
+	assert.equal(readState(reopened).task?.operonId, h.task.operonId); await reopened.onClose(); target.destroy();
 	assert.equal(await h.controller.resumePending(), true); h.controller.destroy();
+});
+
+test('shared dial math preserves elapsed, countdown and overtime behavior', () => {
+	assert.deepEqual(resolveFlowTimeDialState('tracktime', 900, 1800), {
+		mode: 'tracktime', displaySeconds: 900, angleDegrees: 90, overtime: false,
+	});
+	assert.deepEqual(resolveFlowTimeDialState('flowtime', 900, 1800), {
+		mode: 'flowtime', displaySeconds: 900, angleDegrees: 90, overtime: false,
+	});
+	assert.deepEqual(resolveFlowTimeDialState('flowtime', 1800, 1800), {
+		mode: 'flowtime', displaySeconds: 0, angleDegrees: 0, overtime: false,
+	});
+	assert.deepEqual(resolveFlowTimeDialState('flowtime', 2700, 1800), {
+		mode: 'flowtime', displaySeconds: 900, angleDegrees: -90, overtime: true,
+	});
+});
+
+function dialPointerFixture(target: FlowTimeControls, rect = { left: 0, top: 0, width: 200, height: 200 }) {
+	const owner = new EventTarget();
+	const svg = Object.assign(new EventTarget(), {
+		ownerDocument: { defaultView: owner },
+		isConnected: true,
+		getBoundingClientRect: () => rect,
+		setPointerCapture() {},
+		hasPointerCapture: () => false,
+	});
+	const { cancelDrag: cancel } = bindFlowTimeDialDrag(svg as unknown as SVGSVGElement, {} as HTMLElement, target);
+	const pointer = (type: string, degrees: number, pointerId = 1) => {
+		const angle = (degrees - 90) * Math.PI / 180;
+		const event = Object.assign(new Event(type, { cancelable: true }), {
+			pointerId,
+			pointerType: 'mouse',
+			button: 0,
+			clientX: 100 + 80 * Math.cos(angle),
+			clientY: 100 + 80 * Math.sin(angle),
+		});
+		(type === 'pointerdown' || type === 'lostpointercapture' ? svg : owner).dispatchEvent(event);
+	};
+	return { pointer, owner, cancel };
+}
+
+test('two dial surfaces preview both directions, and only the owner commits once', async () => {
+	const h = harness();
+	h.settings.flowTimeSessionMinutes = 30;
+	const target = createTarget(h);
+	try {
+		const sidebar = dialPointerFixture(target);
+		const dock = dialPointerFixture(target);
+		const sidebarValues: number[] = [];
+		const dockValues: number[] = [];
+		target.subscribe(() => sidebarValues.push(target.minutes));
+		target.subscribe(() => dockValues.push(target.minutes));
+		sidebar.pointer('pointerdown', 350);
+		dock.pointer('pointerdown', 350);
+		dock.pointer('pointermove', 80);
+		assert.equal(target.minutes, 30);
+		sidebar.pointer('pointermove', 20, 2);
+		assert.equal(target.minutes, 30);
+		sidebar.pointer('pointermove', 20);
+		sidebar.pointer('pointermove', 80);
+		assert.deepEqual(sidebarValues, [35, 45]);
+		assert.deepEqual(dockValues, sidebarValues);
+		assert.equal(h.settings.flowTimeSessionMinutes, 30);
+		assert.equal(h.calls.save, 0);
+		sidebar.pointer('pointerup', 80);
+		sidebar.pointer('pointerup', 80);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(h.settings.flowTimeSessionMinutes, 45);
+		assert.equal(h.calls.save, 1);
+		dock.pointer('pointerdown', 270);
+		dock.pointer('pointermove', 180);
+		assert.equal(target.minutes, 30);
+		dock.pointer('pointerup', 180);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(h.settings.flowTimeSessionMinutes, 30);
+		assert.equal(h.calls.save, 2);
+		assert.deepEqual(sidebarValues, dockValues);
+	} finally { target.destroy(); h.controller.destroy(); }
+});
+
+for (const reason of ['Escape', 'pointercancel', 'lostpointercapture', 'blur', 'close', 'mode', 'session', 'break', 'settings'] as const) {
+	test(`dial cancels without a write on ${reason}`, async () => {
+		const h = harness();
+		const target = createTarget(h);
+		try {
+			const surface = dialPointerFixture(target);
+			surface.pointer('pointerdown', 0);
+			surface.pointer('pointermove', 90);
+			assert.equal(target.minutes, 40);
+			if (reason === 'Escape') {
+				const event = Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape' });
+				surface.owner.dispatchEvent(event);
+				assert.equal(event.defaultPrevented, true);
+			} else if (reason === 'pointercancel' || reason === 'lostpointercapture') surface.pointer(reason, 90);
+			else if (reason === 'blur') surface.owner.dispatchEvent(new Event('blur'));
+			else if (reason === 'close') surface.cancel();
+			else if (reason === 'mode') { h.settings.flowTimeMode = 'tracktime'; target.syncContext(); }
+			else if (reason === 'session') { h.state.active = null; h.emit('state'); }
+			else if (reason === 'settings') { h.settings.flowTimeSessionMinutes = 50; target.syncContext(); }
+			else {
+				assert.equal(await h.controller.startBreak(), true);
+				assert.equal(target.editable, false);
+				assert.equal(target.begin(() => {}), null);
+			}
+			surface.pointer('pointerup', 90);
+			assert.equal(target.minutes, reason === 'settings' ? 50 : 25);
+			assert.equal(h.calls.save, 0);
+		} finally { target.destroy(); h.controller.destroy(); }
+	});
+}
+
+for (const scenario of ['idle-default', 'idle-last', 'active', 'break', 'failure'] as const) {
+	test(`shared mode preserves the timer and the duration preference: ${scenario}`, async () => {
+		const h = harness();
+		const controls = createTarget(h);
+		try {
+			h.settings.flowTimeMode = 'tracktime';
+			h.settings.flowTimeSessionMinutes = 45;
+			h.settings.flowTimeDefaultSessionMinutes = 30;
+			h.settings.flowTimeUseLastSelectedDuration = scenario === 'idle-last';
+			h.behavior.saveError = scenario === 'failure';
+			if (scenario === 'break') assert.equal(await h.controller.startBreak(), true);
+			else if (scenario !== 'active') { h.state.active = null; h.emit('state'); }
+			const active = h.state.active;
+			const breakState = h.controller.getSnapshot().breakState;
+			const expectedMinutes = scenario === 'idle-default' || scenario === 'failure' ? 30 : 45;
+			const readings: Array<[string, number]> = [];
+			controls.subscribe(() => readings.push([controls.mode, controls.minutes]));
+			const saving = controls.setMode('flowtime');
+			assert.deepEqual(readings, [['flowtime', expectedMinutes]]);
+			assert.equal(h.settings.flowTimeMode, 'tracktime');
+			assert.equal(h.settings.flowTimeSessionMinutes, 45);
+			if (scenario === 'failure') await assert.rejects(saving, /settings failed/u);
+			else await saving;
+			assert.deepEqual(readings.at(-1), scenario === 'failure' ? ['tracktime', 45] : ['flowtime', expectedMinutes]);
+			assert.equal(h.calls.save, 1);
+			assert.equal(h.state.active, active);
+			assert.deepEqual(h.controller.getSnapshot().breakState, breakState);
+		} finally { controls.destroy(); h.controller.destroy(); }
+	});
+}
+
+test('failed target save restores both subscribers and releases the edit lock', async () => {
+	const h = harness();
+	const target = createTarget(h);
+	try {
+		const events: Array<[string, number]> = [];
+		const observe = (event: string) => events.push([event, target.minutes]);
+		target.subscribe(observe);
+		target.subscribe(event => observe(event));
+		const unchanged = target.begin(() => {});
+		await unchanged?.commit();
+		assert.equal(h.calls.save, 0);
+		events.length = 0;
+		const edit = target.begin(() => {});
+		assert.ok(edit);
+		edit.preview(45);
+		h.behavior.saveError = true;
+		const pending = edit.commit();
+		assert.equal(target.begin(() => {}), null);
+		await assert.rejects(pending, /settings failed/u);
+		assert.equal(h.calls.save, 1);
+		assert.equal(h.settings.flowTimeSessionMinutes, 25);
+		assert.deepEqual(events, [['preview', 45], ['preview', 45], ['preview', 25], ['preview', 25]]);
+		assert.ok(target.begin(() => {}));
+	} finally { target.destroy(); h.controller.destroy(); }
 });
 
 test('shared break wins over another view local selection and pending quick-create draft', async () => {
 	const h = harness();
 	const other = { ...h.task, operonId: 'local-selection' }; h.tasks.set(other.operonId, other);
 	const view = new FlowTimeView(new WorkspaceLeaf(), { getTask: (id: string) => h.tasks.get(id) } as never,
-		h.timeTracker as never, {} as never, h.controller);
+		h.timeTracker as never, {} as never, h.controller, {} as never);
 	const local = view as unknown as { pendingTaskId: string; pendingDraft: { description: string; start: string; startedAtMs: number }; getRenderedState(): FlowTimeRenderedState };
 	local.pendingTaskId = other.operonId;
 	local.pendingDraft = { description: 'Unfinished local draft', start: localNow(), startedAtMs: Date.now() };
@@ -374,7 +642,7 @@ for (const route of ['resume', 'selection', 'unassigned', 'duplicate'] as const)
 
 test('stopped-timer predicate and FlowTime icon distinguish selection from work and breaks', async () => {
 	const h = harness(), f = statusDockDocument();
-	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller);
+	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller, {} as never);
 	const globals = globalThis as typeof globalThis & { __operonTestSetIcon?: (target: HTMLElement, icon: string) => void };
 	const previous = globals.__operonTestSetIcon; globals.__operonTestSetIcon = (target, icon) => { target.dataset.icon = icon; };
 	let choices = 0; (view as any).selectWaitingTask = async () => { choices++; };
@@ -443,7 +711,7 @@ test('Cancel and closed owner preserve an active break', async () => {
 
 test('FlowTime waiting selection guards close/reopen and preserves local state on Cancel', async () => {
 	const h = harness(); await h.controller.startBreak(); h.controller.endBreak();
-	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller) as any;
+	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller, {} as never) as any;
 	view.unsubscribeBreak = () => {}; view.contentEl = { isConnected: true }; view.pendingTaskId = 'local'; view.pendingDraft = { description: 'draft' };
 	const original = h.controller.selectPendingTask.bind(h.controller); let guard!: () => boolean;
 	h.controller.selectPendingTask = async (_pick, source, canUse) => { assert.equal(source, 'flowtime'); guard = canUse!; assert.equal(guard(), true); return false; };
@@ -455,7 +723,7 @@ test('FlowTime waiting selection guards close/reopen and preserves local state o
 
 test('existing FlowTime task tile shares the waiting-task selection route and cannot bypass its lock', async () => {
 	const h = harness(); await h.controller.startBreak(); h.controller.endBreak();
-	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller) as any;
+	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller, {} as never) as any;
 	let picks = 0; view.selectWaitingTask = async () => { picks++; };
 	await view.selectTask(); assert.equal(picks, 1);
 	const gate = deferred(), selecting = h.controller.selectPendingTask(async () => { await gate.promise; return null; }, 'flowtime');
@@ -475,7 +743,7 @@ test('idle selection supports Cancel then a guarded task start without a previou
 
 test('closing FlowTime cleans up Finder tooltip bindings', async () => {
 	const h = harness(), f = statusDockDocument(); h.state.active = null;
-	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller) as any;
+	const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller, {} as never) as any;
 	view.contentEl = f.doc.body.createDiv(); view.renderBreakButton(view.contentEl, null);
 	const button = view.contentEl.children[0].children[0]; assert.equal(typeof button._operonHoverCleanup, 'function');
 	await view.onClose(); assert.equal(button._operonHoverCleanup, undefined);
@@ -522,7 +790,7 @@ for (const outcome of ['success', 'cancel', 'pick-error', 'start-false', 'start-
 });
 test('FlowTime break keeps coffee and exposes separated Finder and Creator with distinct callbacks', async () => {
  const h = harness(), f = statusDockDocument(); await h.controller.startBreak();
- const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller) as any;
+ const view = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.timeTracker as never, {} as never, h.controller, {} as never) as any;
  const globals = globalThis as typeof globalThis & { __operonTestSetIcon?: (target: HTMLElement, icon: string) => void }, previous = globals.__operonTestSetIcon;
  globals.__operonTestSetIcon = (target, icon) => { target.dataset.icon = icon; };
  try {

@@ -728,6 +728,7 @@ import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
 import { OperonStatusDock } from './src/ui/status-dock';
 import { FlowTimeBreakController } from './src/systems/flow-time-break';
+import { FlowTimeControls } from './src/systems/flow-time-controls';
 import { FormatConverter } from './src/systems/format-converter';
 import { FileTaskArchiver } from './src/systems/file-task-archiver';
 import { FileTaskPipelineMover } from './src/systems/file-task-pipeline-mover';
@@ -1829,6 +1830,7 @@ export default class OperonPlugin extends Plugin {
  private startupPreviousTasks = new Map<string, IndexedTask[]>();
 	private templatedFileTaskCreationCandidates = new Map<string, number>();
 	private flowTimeBreakController!: FlowTimeBreakController;
+	private flowTimeControls!: FlowTimeControls;
 	private statusDock: OperonStatusDock | null = null;
 	private trackerStatusBar: TimeTrackerStatusBar | null = null;
 	private upcomingStatusBar: UpcomingTasksStatusBar | null = null;
@@ -3350,6 +3352,7 @@ export default class OperonPlugin extends Plugin {
 			this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
 		);
 		this.reminderScheduler?.handleSettingsChanged();
+		this.flowTimeBreakController?.syncFocusSoundSettings();
 		const mobileNotifications = this.trackSettingsChangedPromise(
 			'mobile notifications snapshot settings reconciliation failed',
 			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
@@ -17019,6 +17022,15 @@ export default class OperonPlugin extends Plugin {
 				return () => owner.clearInterval(interval);
 			},
 		});
+		this.flowTimeControls = new FlowTimeControls({
+			getSettings: () => this.settings,
+			saveSettings: (expected, values) => this.storage.saveFlowTimeTimerSettings(expected, values),
+			timeTracker: this.timeTracker,
+			breakController: this.flowTimeBreakController,
+		});
+		this.register(this.flowTimeControls.subscribe(event => {
+			if (event !== 'preview') this.flowTimeBreakController.syncFocusSoundSettings();
+		}));
 		this.recurrenceService = new RecurrenceService(
 			this.app,
 			this.indexer,
@@ -17390,6 +17402,7 @@ export default class OperonPlugin extends Plugin {
 				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
+				flowTimeControls: this.flowTimeControls,
 				getSettings: () => this.settings,
 				sessionActions: {
 					openSession: (session, guard) => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve, guard)),
@@ -17722,6 +17735,7 @@ export default class OperonPlugin extends Plugin {
 		this.duplicateAlertStatusBarEl = null;
 		if (this.statusDock) this.removeChild(this.statusDock);
 		this.statusDock = null;
+		this.flowTimeControls?.destroy();
 		this.flowTimeBreakController?.destroy();
 		this.trackerStatusBar?.destroy();
 		this.upcomingStatusBar?.destroy();
@@ -17979,7 +17993,6 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					saveSettings: () => this.storage.saveSettings(),
-					playReminderSound: () => this.reminderDeliveryController?.playReminderSound() ?? Promise.resolve(),
 					createTaskForTracker: canUse => this.promptTrackerTaskCreation(canUse),
 					createInlineTaskFromQuickInput: (draft) => this.createInlineTaskFromCreatorDraftResult(draft),
 					shouldPromptForInlineTaskTarget: () => this.resolveEffectiveInlineTaskSaveMode() === 'ask-every-time',
@@ -17996,6 +18009,7 @@ export default class OperonPlugin extends Plugin {
 					hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 				},
 				this.flowTimeBreakController,
+				this.flowTimeControls,
 			)
 		);
 

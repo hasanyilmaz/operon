@@ -1,4 +1,5 @@
 import type { ReadingTaskRowCallbacks } from './reading-task-row';
+import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
@@ -1225,13 +1226,19 @@ export class OperonSettingsTab extends PluginSettingTab {
 			if (typeof value === 'boolean') await this.setStatusDockVisibility(value);
 			return;
 		}
-		if (key === 'statusDockCreatorStartsTimer') {
-			if (typeof value !== 'boolean') return;
+		if (key === 'statusDockCreatorStartsTimer' || key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial' || key === 'statusDockTimerDialSize') {
 			try {
-				await this.storage.saveStatusDockCreatorStartsTimer(value);
+				if (key === 'statusDockTimerDialSize') {
+					const size = STATUS_DOCK_TIMER_DIAL_SIZES.find(size => `${size}x` === value);
+					if (size === undefined) return;
+					await this.storage.saveStatusDockTimerDialSize(size);
+				} else {
+					if (typeof value !== 'boolean') return;
+					await this.storage.saveStatusDockTimerPreference(key, value);
+				}
 				this.refreshStatusDock?.();
 			} catch (error) {
-				console.error('Operon: Status Dock Task Creator preference save failed', error);
+				console.error('Operon: Status Dock timer preference save failed', error);
 				new Notice(t('settings', 'statusDockCreatorStartsTimerSaveFailed'));
 			} finally {
 				this.updateNativeSettingsDefinitions();
@@ -2097,6 +2104,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.buildStatusDockVisibilityDefinition(),
 				this.buildSettingsSearchSettingDefinition(entries, 'statusDockClickAction'),
 				this.buildSettingsSearchSettingDefinition(entries, 'statusDockCreatorStartsTimer'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockShowSeconds'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockShowTimerDial'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockTimerDialSize'),
 			]),
 		}, {
 			type: 'group', heading: t('settings', 'statusDockSections'),
@@ -3287,6 +3297,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private getDefaultSettingsSearchValue(key: OperonSettingSearchKey): unknown {
 		if (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer') return true;
+		if (key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial') return false;
+		if (key === 'statusDockTimerDialSize') return DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
 		if (key === 'statusDockClickAction') return 'source-and-editor';
 		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
 	}
@@ -3552,6 +3564,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'statusDockTimerDialSize') return `${normalizeStatusDockTimerDialSize(value) ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE}x`;
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return value === false ? 'collapsed' : 'expanded';
@@ -4028,6 +4041,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
    'new-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateFocusedTab' : 'fileTaskAfterCreateFocusedTab'),
    'background-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateBackgroundTab' : 'fileTaskAfterCreateBackgroundTab'),
   };
+		if (key === 'statusDockTimerDialSize') return Object.fromEntries(STATUS_DOCK_TIMER_DIAL_SIZES.map(size => [`${size}x`, `${size}×`]));
 		if (key === 'statusDockClickAction' || key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return {
 			source: t('settings', 'taskFinderResultSourceOnly'),
 			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
@@ -4925,13 +4939,22 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
 			onChange: settingsAsyncHandler('status dock preference save failed', value => this.setControlValue(key, value)),
 		}), key);
-		const creatorKey = 'statusDockCreatorStartsTimer';
+		for (const key of ['statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial'] as const) {
+			this.markSettingsSearchTarget(new Setting(dock)
+				.setName(t('settings', key)).setDesc(t('settings', key + 'Desc'))
+				.addToggle(toggle => toggle.setValue(this.getControlValue(key) === true).onChange(async value => {
+					await this.setControlValue(key, value);
+					toggle.setValue(this.getControlValue(key) === true);
+				})), key);
+		}
+		const sizeKey = 'statusDockTimerDialSize';
 		this.markSettingsSearchTarget(new Setting(dock)
-			.setName(t('settings', creatorKey)).setDesc(t('settings', 'statusDockCreatorStartsTimerDesc'))
-			.addToggle(toggle => toggle.setValue(this.getControlValue(creatorKey) === true).onChange(async value => {
-				await this.setControlValue(creatorKey, value);
-				toggle.setValue(this.getControlValue(creatorKey) === true);
-			})), creatorKey);
+			.setName(t('settings', sizeKey)).setDesc(t('settings', 'statusDockTimerDialSizeDesc'))
+			.addDropdown(dropdown => dropdown.addOptions(this.getSettingsSearchDropdownOptions(sizeKey))
+				.setValue(String(this.getControlValue(sizeKey))).onChange(async value => {
+					await this.setControlValue(sizeKey, value);
+					dropdown.setValue(String(this.getControlValue(sizeKey)));
+				})), sizeKey);
 		const sections = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSections'), t('settings', 'statusDockSectionsDesc'));
 		this.renderStatusDockSectionRows(sections);
 	}
