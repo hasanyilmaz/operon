@@ -52,7 +52,8 @@ function widget() {
 }
 
 function timeText(element: HTMLElement): string | null {
-	return (element.querySelector('.operon-status-dock-mode-text') ?? element).textContent;
+	const modeText = element.querySelector('.operon-status-dock-mode-text');
+	return modeText ? Array.from(modeText.children, child => child.textContent).join('') : element.textContent;
 }
 
 test('status dock displays titles when enabled and filename labels when disabled', () => {
@@ -355,16 +356,28 @@ test('keep-zero and countdown limits are preserved; hiding the setting cancels t
 });
 
 test('ticks retain the complete dock DOM and update only the elapsed/countdown values', () => {
-	const f = widget(); f.state.active!.elapsedSeconds = 29; f.dock.update(f.state);
+	const f = widget();
+	f.state.active!.elapsedSeconds = 5342;
+	f.state.settings.statusDockShowSeconds = true;
+	f.dock.update(f.state);
 	const mode = f.find('operon-status-dock-mode');
 	const accessibleId = mode.getAttribute('aria-labelledby');
 	assert.equal(mode.children.length, 1);
 	assert.equal(mode.children[0].className, 'operon-status-dock-mode-text');
 	const children = Array.from(f.dock.root.querySelectorAll('*'));
-	f.state.active!.elapsedSeconds++; f.state.upcoming.countdown = '02:34:56'; f.dock.update(f.state);
+	const [prefix, seconds] = mode.children[0].children;
+	assert.equal(prefix.textContent, '1h 29m ');
+	assert.equal(seconds.textContent, '02s');
+	const width = mode.dataset.durationWidth;
+	f.state.active!.elapsedSeconds += 3;
+	f.state.upcoming.countdown = '02:34:56';
+	f.dock.update(f.state);
 	assert.deepEqual(Array.from(f.dock.root.querySelectorAll('*')), children);
 	assert.equal(mode.getAttribute('aria-labelledby'), accessibleId);
-	assert.equal(timeText(mode), '30s'); f.dock.destroy();
+	assert.equal(mode.dataset.durationWidth, width);
+	assert.equal(prefix.textContent, '1h 29m ');
+	assert.equal(seconds.textContent, '05s');
+	assert.equal(timeText(mode), '1h 29m 05s'); f.dock.destroy();
 });
 
 test('dock layout stays compact independently of the timer mode button', () => {
@@ -546,11 +559,13 @@ test('single compact precision stays the same across window sizes and legacy mod
 
 test('Compact displays seconds below one minute for both clocks and minutes from 60 seconds', () => {
 	const f = widget(); const times = () => Array.from(f.dock.root.querySelectorAll<HTMLElement>('.operon-status-dock-time')).slice(0, 2).map(timeText);
-	for (const seconds of [0, 1, 29, 59, 60, 61, 119]) {
+	for (const seconds of [0, 2, 5, 29, 59, 60, 61, 119]) {
 		f.state.active!.elapsedSeconds = seconds;
 		f.state.upcoming.countdown = `00:${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-		f.dock.update(f.state); const expected = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
-		assert.deepEqual(times(), [expected, expected]);
+		f.dock.update(f.state);
+		const padded = String(seconds).padStart(2, '0');
+		const minutes = `${Math.floor(seconds / 60)}m`;
+		assert.deepEqual(times(), seconds < 60 ? [`${padded}s`, `${padded}s`] : [minutes, minutes]);
 	}
 	f.state.active = null; f.state.breakSeconds = 43; f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { start: new Date().toISOString() } as never };
 	f.dock.update(f.state); assert.equal(times()[0], '43s'); f.dock.destroy();
@@ -898,6 +913,9 @@ test('dock uses elapsed, countdown and overtime with optional seconds only on th
 		assert.ok(clock.dataset.durationWidth);
 		f.state.settings.statusDockShowSeconds = true;
 		f.dock.update(f.state); assert.equal(timeText(clock), '3m 23s');
+		active.elapsedSeconds = 185;
+		f.dock.update(f.state); assert.equal(timeText(clock), '3m 05s');
+		active.elapsedSeconds = 203;
 		f.state.timerSettings = { flowTimeMode: 'flowtime', flowTimeSessionMinutes: 7 };
 		f.dock.update(f.state); assert.equal(timeText(clock), '3m 37s');
 		active.elapsedSeconds = 623;
@@ -909,7 +927,7 @@ test('dock uses elapsed, countdown and overtime with optional seconds only on th
 		f.state.breakSeconds = 42;
 		f.dock.update(f.state); assert.equal(timeText(clock), '18s');
 		f.state.breakSeconds = 60;
-		f.dock.update(f.state); assert.equal(timeText(clock), '0s');
+		f.dock.update(f.state); assert.equal(timeText(clock), '00s');
 		f.state.breakSeconds = 83;
 		f.dock.update(f.state); assert.equal(timeText(clock), '+23s');
 		assert.ok(clock.dataset.durationWidth);
@@ -970,7 +988,7 @@ for (const rejection of [false, true]) test(`Stop restores the authoritative run
 test('Coffee previews a break immediately without mutating it and never flashes idle during the saved stop', async () => {
 	const h = feedbackHarness(); try {
 		h.updates.length = 0; const opening = h.clickCoffee();
-		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.coffee]), [['play', '0s', 'true'], ['play', '0s', 'true']]);
+		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.coffee]), [['play', '00s', 'true'], ['play', '00s', 'true']]);
 		assert.equal(h.controller.getSnapshot().breakState, null); assert.ok(h.state.active);
 		await Promise.resolve(); h.views[1].root.querySelector('.operon-status-dock-timer-controls').children[0].click();
 		h.resolve(true); await opening; assert.equal(h.state.stopCalls, 1); assert.ok(h.controller.getSnapshot().breakState);
@@ -1077,7 +1095,7 @@ test('idle and waiting dock use the mode label in place of the running number', 
 	waiting.click(); clock.click(); assert.deepEqual(f.calls, ['source-or-finder', 'mode']);
 	f.state.active = snapshot().active; f.dock.update(f.state); assert.equal(timeText(clock), '41m'); assert.equal((f.dock as any).icons.get(secondary), 'coffee');
 	f.state.active = null; f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { taskId: 'waiting', startMs: Date.now(), targetSeconds: 60 } }; f.dock.update(f.state);
-	assert.equal(timeText(clock), '0s'); f.dock.destroy();
+	assert.equal(timeText(clock), '00s'); f.dock.destroy();
 });
 
 for (const control of ['icon']) test(`idle Finder ${control} uses the common guarded selection and Cancel preserves idle`, async () => {
@@ -2111,7 +2129,7 @@ test('History keeps repeated and equal-time sessions distinct, routes exact edit
   f.tracking.add('first'); f.list.update({overdue:[],today:[]},sessions); f.list.toggle('history');
   assert.equal(f.panel.children.length,3);
   const rows=Array.from(f.panel.children) as any[];
-  assert.deepEqual(rows.map(row=>row.querySelector('.operon-status-dock-time').textContent),['1m 0s','1m 0s','1m 0s']);
+  assert.deepEqual(rows.map(row=>row.querySelector('.operon-status-dock-time').textContent),['1m 00s','1m 00s','1m 00s']);
   for(const row of rows){
    assert.ok(row.querySelector('.operon-status-dock-time').handlers.get('mouseenter')?.size);
    assert.equal(row.querySelector('.operon-status-dock-name').handlers.get('mouseenter')?.size ?? 0,0);

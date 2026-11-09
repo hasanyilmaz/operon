@@ -37401,13 +37401,18 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock button.operon-status-dock-mode[data-duration-width] {
 	display: grid;
 	justify-content: stretch;
-	justify-items: end;
+	justify-items: center;
 }
 .operon-status-dock-mode[data-duration-width]::before,
 .operon-status-dock-mode-text { grid-area: 1 / 1; }
 .operon-status-dock-mode[data-duration-width]::before {
 	content: attr(data-duration-width);
 	visibility: hidden;
+}
+.operon-status-dock-mode-seconds:not([hidden]) {
+	display: inline-block;
+	inline-size: 3ch;
+	text-align: center;
 }
 .operon-status-dock button.operon-status-dock-mode.is-flowtime { color: var(--interactive-accent); }
 .operon-status-dock-name {

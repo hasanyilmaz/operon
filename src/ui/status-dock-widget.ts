@@ -19,6 +19,7 @@ import { bindDescendantFocusVisible, cleanupDescendantFocusVisible } from './des
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { getTaskDisplayTitle } from '../core/task-display-title';
 import { createFlowTimeDial, resolveFlowTimeDialAccent } from './flow-time-dial';
+import { formatStatusDockSeconds } from './status-dock-duration';
 
 const DIAL_BASE_SIZE = 144;
 const DIAL_GAP = 8;
@@ -78,7 +79,8 @@ export class StatusDockWidget {
 	private readonly grip: HTMLButtonElement;
 	private readonly tracker: HTMLElement;
 	private readonly trackerTime: HTMLElement;
-	private readonly trackerTimeText: HTMLElement;
+	private readonly trackerTimePrefix: HTMLElement;
+	private readonly trackerTimeSeconds: HTMLElement;
 	private readonly trackerName: HTMLElement;
 	private readonly coffee: HTMLButtonElement;
 	private readonly breakFinder: HTMLButtonElement;
@@ -182,7 +184,9 @@ export class StatusDockWidget {
 		this.timerAction = button(this.tracker, 'operon-status-dock-action operon-status-dock-timer-action', actions.toggleTimer);
 		const tracker = reading(this.tracker, 'operon-status-dock-tracker-reading', null, actions.openTracker, true);
 		this.trackerTime = tracker.duration; this.trackerName = tracker.name;
-		this.trackerTimeText = this.trackerTime.createSpan('operon-status-dock-mode-text');
+		const timeText = this.trackerTime.createSpan('operon-status-dock-mode-text');
+		this.trackerTimePrefix = timeText.createSpan();
+		this.trackerTimeSeconds = timeText.createSpan('operon-status-dock-mode-seconds');
 		const controls = this.tracker.createDiv('operon-status-dock-timer-controls');
 		this.coffee = button(controls, 'operon-status-dock-action', actions.toggleBreak); this.icon(this.coffee, 'coffee');
 		this.breakFinder = button(controls, 'operon-status-dock-action operon-status-dock-break-finder', actions.findTask); this.icon(this.breakFinder, 'scan-search');
@@ -290,9 +294,12 @@ export class StatusDockWidget {
 		const nextModeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeTrackTime' : 'flowTimeModeFlowTime');
 		const running = !!active || !!breakState;
 		const precision = settings.statusDockShowSeconds || timer.displaySeconds < 60 ? 'seconds' : 'minutes';
-		const reading = formatDurationHuman(timer.displaySeconds, precision);
+		const reading = formatStatusDockSeconds(formatDurationHuman(timer.displaySeconds, precision));
 		const duration = `${timer.overtime ? '+' : ''}${reading}`;
-		text(this.trackerTimeText, running ? duration : modeLabel);
+		const showSeconds = running && precision === 'seconds';
+		this.trackerTimeSeconds.hidden = !showSeconds;
+		text(this.trackerTimeSeconds, showSeconds ? duration.slice(-3) : '');
+		text(this.trackerTimePrefix, showSeconds ? duration.slice(0, -3) : running ? duration : modeLabel);
 		if (running) {
 			const width = `${isFlowTime ? '+' : ''}${reading.replace(/\d+/gu, digits => '0'.repeat(Math.max(2, digits.length)))}`;
 			if (this.trackerTime.dataset.durationWidth !== width) this.trackerTime.dataset.durationWidth = width;
@@ -343,7 +350,7 @@ export class StatusDockWidget {
 		this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!.style.color = normalizeTaskFieldColor(future?.task.fieldValues.taskColor) ?? '';
 		this.icon(this.upcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(upcoming.task?.fieldValues.taskIcon) || getConfiguredKeyMappingIcon(current ? 'dateScheduled' : 'dateDue', settings.keyMappings) || (current ? 'calendar-clock' : 'calendar'));
 		this.icon(this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(future?.task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateDue', settings.keyMappings) || 'calendar');
-		const nextRemaining = humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true);
+		const nextRemaining = formatStatusDockSeconds(humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true));
 		text(this.nextTime, nextRemaining ?? ''); this.nextTime.hidden = nextRemaining === null;
 		const nextTitle = (future?.task
 			? getTaskDisplayTitle(future.task, settings.fileTaskDisplayTitleEnabled)
@@ -353,7 +360,7 @@ export class StatusDockWidget {
 			`${t('taskEditor', 'dockNextTask')}: ${nextTitle}${nextRemaining ? `, ${nextRemaining}` : ''}`);
 		if (!nextVisible) closeBoundOperonHoverTooltip(this.nextName);
 		const remaining = current ? null
-			: humanizeUpcomingCountdown(upcoming.countdown, upcoming.countdown?.startsWith('00:00:') === true);
+			: formatStatusDockSeconds(humanizeUpcomingCountdown(upcoming.countdown, upcoming.countdown?.startsWith('00:00:') === true));
 		text(this.upcomingTime, remaining ?? '');
 		this.upcomingTime.hidden = remaining === null;
 		const nextDescription = (upcoming.task
