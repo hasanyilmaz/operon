@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "Colore stato in {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamento al clic",
       "statusDockClickActionDesc": "Scegli cosa aprire facendo clic su un’attività monitorata o successiva nel dock.",
+      "statusDockCreatorStartsTimer": "Avvia il timer quando crei un’attività",
+      "statusDockCreatorStartsTimerDesc": "Avvia il tracciamento dell’attività creata dal dock di stato. Disattiva l’opzione per creare l’attività senza modificare il timer.",
+      "statusDockCreatorStartsTimerSaveFailed": "Impossibile salvare la preferenza del timer del dock di stato.",
       "statusDockGeneralSettings": "Impostazioni generali",
       "statusDockMove": "Sposta dock",
       "statusDockSection": "Dock di stato",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Descrizione dell'attività...",
       "details": "Dettagli",
       "dockCreateAndTrack": "Crea una nuova attività e avvia il monitoraggio del tempo",
+      "dockCreateOnly": "Crea una nuova attività",
       "dockNextTask": "Attività successiva",
       "dockSelectTask": "Seleziona o crea una nuova attività",
       "dockTaskCreatorTitle": "Creatore di attività",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f3bbbf08aa80157f256fdebc55ec0c8c4ce3d9a827acdfd8cf05eb1af1eb48bd"
+  "sourceVersion": "d376e912753dffb6c1bd849f848fbd75a918efb5949032e848a6b683a1907c1c"
 }

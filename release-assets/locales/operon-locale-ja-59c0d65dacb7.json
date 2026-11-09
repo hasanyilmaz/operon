@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "{{pipeline}} のステータスのカラー: {{status}}",
       "statusDockClickAction": "クリック時の動作",
       "statusDockClickActionDesc": "ドック内の計測中または次のタスクをクリックしたときに開く内容を選択します。",
+      "statusDockCreatorStartsTimer": "タスク作成時にタイマーを開始",
+      "statusDockCreatorStartsTimerDesc": "ステータスドックから作成したタスクの計測を開始します。オフにすると、タイマーを変更せずにタスクを作成します。",
+      "statusDockCreatorStartsTimerSaveFailed": "ステータスドックのタイマー設定を保存できませんでした。",
       "statusDockGeneralSettings": "一般設定",
       "statusDockMove": "ドックを移動",
       "statusDockSection": "ステータスドック",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "タスクの説明...",
       "details": "詳細",
       "dockCreateAndTrack": "新しいタスクを作成して時間計測を開始",
+      "dockCreateOnly": "新しいタスクを作成",
       "dockNextTask": "次のタスク",
       "dockSelectTask": "タスクを選択または新規作成",
       "dockTaskCreatorTitle": "タスク作成",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e23e88e20d71a34f13955442ca3b8ae4fdb30d827c96a4764bda3a6d42d934e8"
+  "sourceVersion": "50b60412e0dce52ebf02af0276564a5c8201c1941a1e6d16c71ba4caa4351af2"
 }

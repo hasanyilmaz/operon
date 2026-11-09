@@ -993,7 +993,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
 		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 		private readonly tasksConversionUi?: TasksConversionUiIntegration,
-		private readonly onStatusDockVisibilityChanged?: () => void,
+		private readonly refreshStatusDock?: () => void,
 		private readonly filterPreviewActivateDescription?: ReadingTaskRowCallbacks['activateDescription'],
 	) {
 		super(app, plugin);
@@ -1223,6 +1223,19 @@ export class OperonSettingsTab extends PluginSettingTab {
   }
 		if (key === 'statusDockVisible') {
 			if (typeof value === 'boolean') await this.setStatusDockVisibility(value);
+			return;
+		}
+		if (key === 'statusDockCreatorStartsTimer') {
+			if (typeof value !== 'boolean') return;
+			try {
+				await this.storage.saveStatusDockCreatorStartsTimer(value);
+				this.refreshStatusDock?.();
+			} catch (error) {
+				console.error('Operon: Status Dock Task Creator preference save failed', error);
+				new Notice(t('settings', 'statusDockCreatorStartsTimerSaveFailed'));
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
 			return;
 		}
 		if (key === 'statusDockClickAction' && typeof value === 'string') {
@@ -2083,6 +2096,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			items: this.compactSettingsSearchDefinitions([
 				this.buildStatusDockVisibilityDefinition(),
 				this.buildSettingsSearchSettingDefinition(entries, 'statusDockClickAction'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockCreatorStartsTimer'),
 			]),
 		}, {
 			type: 'group', heading: t('settings', 'statusDockSections'),
@@ -3272,7 +3286,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getDefaultSettingsSearchValue(key: OperonSettingSearchKey): unknown {
-		if (key === 'statusDockVisible') return true;
+		if (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer') return true;
 		if (key === 'statusDockClickAction') return 'source-and-editor';
 		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
 	}
@@ -3585,7 +3599,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	async setStatusDockVisibility(visible?: boolean): Promise<void> {
 		try {
 			await this.storage.saveStatusDockVisibility(visible);
-			this.onStatusDockVisibilityChanged?.();
+			this.refreshStatusDock?.();
 		} catch (error) {
 			console.error('Operon: status dock visibility save failed', error);
 			new Notice(t('settings', 'statusDockVisibilitySaveFailed'));
@@ -3625,6 +3639,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 private statusDockSectionLabel(id: StatusDockSectionId): string {
+  if (id === 'creator') return t('taskEditor', 'dockTaskCreatorTitle');
   return t('settings', 'statusDockSection_' + id);
  }
 
@@ -3641,7 +3656,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 
  private buildStatusDockSectionsDefinition(): SettingDefinition {
   return {
-   aliases: ['Status Dock', 'Overdue', 'Happens Today', 'Time Tracker', 'Ongoing Tasks', 'Upcoming Tasks', 'Pinned Tasks', 'Modified Tasks', 'Session History'],
+   aliases: ['Status Dock', 'Overdue', 'Happens Today', 'Time Tracker', 'Task Creator', 'Ongoing Tasks', 'Upcoming Tasks', 'Pinned Tasks', 'Modified Tasks', 'Session History'],
    name: t('settings', 'statusDockSections'),
    desc: t('settings', 'statusDockSectionsDesc'),
    render: (setting, group) => {
@@ -4910,6 +4925,13 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
 			onChange: settingsAsyncHandler('status dock preference save failed', value => this.setControlValue(key, value)),
 		}), key);
+		const creatorKey = 'statusDockCreatorStartsTimer';
+		this.markSettingsSearchTarget(new Setting(dock)
+			.setName(t('settings', creatorKey)).setDesc(t('settings', 'statusDockCreatorStartsTimerDesc'))
+			.addToggle(toggle => toggle.setValue(this.getControlValue(creatorKey) === true).onChange(async value => {
+				await this.setControlValue(creatorKey, value);
+				toggle.setValue(this.getControlValue(creatorKey) === true);
+			})), creatorKey);
 		const sections = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSections'), t('settings', 'statusDockSectionsDesc'));
 		this.renderStatusDockSectionRows(sections);
 	}

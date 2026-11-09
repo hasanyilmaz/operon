@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "{{pipeline}} 中的状态颜色：{{status}}",
       "statusDockClickAction": "点击行为",
       "statusDockClickActionDesc": "选择点击停靠栏中正在计时或即将开始的任务时打开的内容。",
+      "statusDockCreatorStartsTimer": "创建任务时启动计时器",
+      "statusDockCreatorStartsTimerDesc": "开始追踪从状态栏创建的任务。关闭此选项可在不改变计时器的情况下创建任务。",
+      "statusDockCreatorStartsTimerSaveFailed": "无法保存状态栏的计时器设置。",
       "statusDockGeneralSettings": "常规设置",
       "statusDockMove": "移动停靠栏",
       "statusDockSection": "状态栏",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "任务描述……",
       "details": "详情",
       "dockCreateAndTrack": "创建新任务并开始计时",
+      "dockCreateOnly": "创建新任务",
       "dockNextTask": "下一个任务",
       "dockSelectTask": "选择或创建新任务",
       "dockTaskCreatorTitle": "任务创建器",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "1d91fac30b2ffb5a0b90fa723b21b7b9e3bd871d1f71e0eb44008d3b4a83ea16"
+  "sourceVersion": "071da4d66e9b6b53e39780500dbf9cd8c528208fc6b7bc5768c5221b9c9bcc23"
 }

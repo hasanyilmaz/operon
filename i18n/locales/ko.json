@@ -927,6 +927,9 @@
 		"statusDockSections": "구역 및 순서",
 		"statusDockGeneralSettings": "일반 설정",
 		"settingsPageStatusDockDesc": "데스크톱 상태 Dock의 표시 여부, 클릭 동작 및 섹션 순서입니다.",
+		"statusDockCreatorStartsTimer": "작업을 만들 때 타이머 시작",
+		"statusDockCreatorStartsTimerDesc": "상태 Dock에서 만든 작업의 시간 추적을 시작합니다. 이 옵션을 끄면 타이머를 변경하지 않고 작업을 만듭니다.",
+		"statusDockCreatorStartsTimerSaveFailed": "상태 Dock 타이머 설정을 저장하지 못했습니다.",
 		"statusDockVisible": "상태 Dock 표시",
 		"statusDockVisibleDesc": "데스크톱 창에 상태 Dock을 표시합니다. Obsidian을 다시 시작해도 이 설정이 유지됩니다.",
 		"statusDockVisibilitySaveFailed": "상태 Dock 표시 설정을 저장하지 못했습니다.",
@@ -3283,6 +3286,7 @@
 		"dockSelectTask": "작업을 선택하거나 새로 만드세요",
 		"dockNextTask": "다음 작업",
 		"dockTaskCreatorTitle": "작업 생성기",
+		"dockCreateOnly": "새 작업 만들기",
 		"dockCreateAndTrack": "새 작업을 만들고 추적 시작"
 	},
 	"indexStats": {

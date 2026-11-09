@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "Statusfarbe in {{pipeline}}: {{status}}",
       "statusDockClickAction": "Klickverhalten",
       "statusDockClickActionDesc": "Wähle, was beim Klicken auf eine erfasste oder nächste Aufgabe im Status-Dock geöffnet wird.",
+      "statusDockCreatorStartsTimer": "Timer beim Erstellen einer Aufgabe starten",
+      "statusDockCreatorStartsTimerDesc": "Startet die Zeiterfassung für die im Statusdock erstellte Aufgabe. Ist die Einstellung aus, bleibt der Timer unverändert.",
+      "statusDockCreatorStartsTimerSaveFailed": "Die Timer-Einstellung des Statusdocks konnte nicht gespeichert werden.",
       "statusDockGeneralSettings": "Allgemeine Einstellungen",
       "statusDockMove": "Dock verschieben",
       "statusDockSection": "Statusdock",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Aufgabenbeschreibung…",
       "details": "Details",
       "dockCreateAndTrack": "Neue Aufgabe erstellen und Zeiterfassung starten",
+      "dockCreateOnly": "Neue Aufgabe erstellen",
       "dockNextTask": "Nächste Aufgabe",
       "dockSelectTask": "Aufgabe auswählen oder neu erstellen",
       "dockTaskCreatorTitle": "Aufgabenersteller",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "92f6472b4c0e6631d31f00a335a8f020b58576b19fe5d3761acb1076fdd28c50"
+  "sourceVersion": "6e7fea211e4a70334653189d367b95461cb0e49bddcce061ab166f7546a5e8bb"
 }

@@ -49,7 +49,7 @@ function widget() {
 test('status dock displays titles when enabled and filename labels when disabled', () => {
 	const task: IndexedTask = {
 		operonId: 'n000123', description: 'old-file', checkbox: 'open', tags: [],
-		fieldValues: { fileTaskDisplayTitle: 'Readable task title' },
+		fieldValues: { fileTaskDisplayTitle: 'Readable task title with details' },
 		primary: { filePath: 'old-file.md', lineNumber: 0, format: 'yaml' }, datetimeModified: '', tier: 'hot',
 	};
 	const { doc } = statusDockDocument();
@@ -58,8 +58,8 @@ test('status dock displays titles when enabled and filename labels when disabled
 		openCurrentTask() {}, openNextUpcoming() {}, openUpcoming() {}, openConflicts() {}, createTask() {},
 	}, error => { throw error; });
 	doc.body.appendChild(dock.slot);
-	const current = { ...task, operonId: 'current', fieldValues: { fileTaskDisplayTitle: 'Current title' } };
-	const next = { ...task, operonId: 'next', fieldValues: { fileTaskDisplayTitle: 'Next title' } };
+	const current = { ...task, operonId: 'current', fieldValues: { fileTaskDisplayTitle: 'Current task with a longer title' } };
+	const next = { ...task, operonId: 'next', fieldValues: { fileTaskDisplayTitle: 'Next task with a longer title' } };
 	const state: StatusDockSnapshot = {
 		settings: { ...DEFAULT_SETTINGS, trackerShowStatusBarTimer: true, upcomingShowStatusBar: true },
 		active: { operonId: task.operonId, start: '2026-10-26T10:00:00', elapsedSeconds: 60, task, isUnassigned: false },
@@ -75,7 +75,7 @@ test('status dock displays titles when enabled and filename labels when disabled
 			dock.update(state);
 			const labels = dock.root.querySelectorAll('.operon-status-dock-name');
 			const text = Array.from(labels, label => label.textContent).join('|');
-			for (const title of ['Readable task title', 'Current title', 'Next title']) assert.equal(text.includes(title), enabled);
+			for (const title of ['Readable task title with details', 'Current task with a longer title', 'Next task with a longer title']) assert.equal(text.includes(title), enabled);
 			assert.equal(text.includes('old-file'), !enabled);
 			for (const selector of ['.operon-status-dock-current', '.operon-status-dock-next']) {
 				const label = dock.root.querySelector(selector)?.querySelector<HTMLElement>('.operon-status-dock-name');
@@ -127,7 +127,7 @@ test('old/default backup selections omit absent dock preferences and retain expl
 });
 
 test('backup restore preflight handles absent and explicit dock preferences without inventing defaults', () => {
-	for (const preferences of [{}, { statusDockVisible: false, statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
+	for (const preferences of [{}, { statusDockCreatorStartsTimer: false, statusDockVisible: false, statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
 		const settings = migrateSettings({ ...DEFAULT_SETTINGS, ...preferences, dateDisplayFormat: 'DD/MM/YYYY' });
 		const exported = exportOperonSettingsBackupJsonV1({ settings,
 			source: { pluginVersion: '4.2.0', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
@@ -141,7 +141,7 @@ test('backup restore preflight handles absent and explicit dock preferences with
 		assert.equal(restored.ok, true, JSON.stringify(restored.diagnostics));
 		assert.ok(restored.restorePlan);
 		assert.equal(restored.restorePlan.candidateSettings.dateDisplayFormat, 'DD/MM/YYYY');
-		for (const key of ['statusDockVisible', 'statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
+		for (const key of ['statusDockCreatorStartsTimer', 'statusDockVisible', 'statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
 			assert.equal(restored.restorePlan.candidateSettings[key], settings[key]);
 			assert.equal(Object.prototype.hasOwnProperty.call(restored.restorePlan.candidateSettings, key),
 				Object.prototype.hasOwnProperty.call(settings, key));
@@ -402,11 +402,11 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 
 test('geometry matches pinned rows and uses 16px glyphs with bounded single-line names', () => {
 	const css = readFileSync('styles.css', 'utf8');
-	assert.match(css, /\.operon-status-dock \{[^}]*min-height: 44px; height: 44px; padding: 7px 9px/u);
+	assert.match(css, /\.operon-status-dock \{[^}]*min-height: 44px; padding: 7px 9px/u);
 	assert.match(css, /font-size: var\(--font-ui-small\); font-weight: 500; line-height: 1\.35/u);
 	assert.equal(css.includes('.operon-status-dock.is-detailed'), false);
 	assert.match(css, /\.operon-status-dock-action svg \{ width: 16px; height: 16px/u);
-	assert.match(css, /max-width: calc\(24ch \+ 12px\);[^}]*text-overflow: ellipsis/u);
+	assert.match(css, /max-width: calc\(35ch \+ 12px\);[^}]*text-overflow: ellipsis/u);
 	const source = readFileSync('main.ts', 'utf8');
 	assert.match(source, /if \(Platform.isDesktopApp\) \{\s*this.statusDock =/u);
 	assert.match(source, /this.statusDock\?\.setDuplicateAlert\(state, duplicateCount\)/u);
@@ -486,7 +486,7 @@ test('Compact displays seconds below one minute for both clocks and minutes from
 test('timer action replaces the decorative stopwatch and remains separate from source and coffee actions', () => {
 	const f = widget(); const tracker = f.find('operon-status-dock-tracker'); const timer = f.find('operon-status-dock-timer-action');
 	assert.equal(tracker.children[0], timer); assert.equal(f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-leading-icon'), null);
-	assert.equal(f.find('operon-status-dock-timer-controls').children.length, 4);
+	assert.equal(f.find('operon-status-dock-timer-controls').children.length, 3);
 	assert.equal(timer.classList.contains('is-running'), true); timer.click(); f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-name').click();
 	assert.deepEqual(f.calls, ['timer', 'source-or-finder']); f.state.active = null; f.dock.update(f.state);
 	assert.equal(timer.classList.contains('is-running'), false); f.dock.destroy();
@@ -796,6 +796,82 @@ for (const initial of ['idle', 'waiting', 'unassigned'] as const) test(`Creator 
   assert.equal(creates, 1); assert.equal(h.state.active?.operonId, 'created'); assert.equal(h.state.opened, 0);
  } finally { h.close(); }
 });
+for (const outcome of ['switch', 'cancel', 'newer-session'] as const) test(`Creator stays available with a running task timer: ${outcome}`, async () => {
+ const h = feedbackHarness();
+ try {
+  const original = h.state.active;
+  const newer = { ...snapshot().active!, start: 'newer' };
+  const createdTask = task('created', '2026-10-24');
+  const buttons = h.views.map(view => view.root.querySelector('.operon-status-dock-creator'));
+  assert.ok(buttons.every(button => !button.hidden && !button.disabled));
+
+  const deps = (h.dock as any).dependencies;
+  let switches = 0;
+  deps.createTrackerTask = async () => {
+   assert.equal(h.state.active, original, 'the timer keeps running while Creator is open');
+   if (outcome === 'cancel') return null;
+   h.tasks.set('created', createdTask);
+   if (outcome === 'newer-session') { h.state.active = newer; h.emit(); }
+   return 'created';
+  };
+  deps.startTimerForTask = async (id: string, canCommit: () => boolean) => {
+   assert.equal(id, 'created');
+   assert.equal(canCommit(), true);
+   h.state.active = newer;
+   assert.equal(canCommit(), false, 'a newer session must not be replaced');
+   h.state.active = null;
+   assert.equal(canCommit(), true, 'switching clears the old session before starting the new one');
+   h.state.active = { operonId: id, task: createdTask, start: 'new', elapsedSeconds: 0, isUnassigned: false };
+   assert.equal(canCommit(), true);
+   h.emit(); switches++;
+   return true;
+  };
+  buttons[0].click();
+  await (h.dock as any).action;
+  assert.equal(switches, outcome === 'switch' ? 1 : 0);
+  if (outcome === 'switch') assert.equal(h.state.active?.operonId, 'created');
+  else assert.equal(h.state.active, outcome === 'cancel' ? original : newer);
+  assert.equal(h.tasks.has('created'), outcome !== 'cancel');
+  h.views.forEach((view, index) => {
+   assert.equal(view.root.querySelector('.operon-status-dock-creator'), buttons[index]);
+   assert.equal(buttons[index].hidden, false);
+   assert.equal(buttons[index].disabled, false);
+  });
+ } finally { h.close(); }
+});
+
+for (const initial of ['idle', 'assigned', 'unassigned', 'break'] as const) test(`Creator with automatic tracking off leaves ${initial} unchanged`, async () => {
+ const h = feedbackHarness();
+ try {
+  if (initial === 'break') { h.resolve(true); await h.controller.startBreak(); }
+  else if (initial === 'idle') h.state.active = null;
+  else if (initial === 'unassigned') h.state.active = { operonId: null, task: null, start: 'unassigned', elapsedSeconds: 40, isUnassigned: true };
+  h.settings.statusDockCreatorStartsTimer = false;
+  h.settings.statusDockSections = normalizeStatusDockSections([{ id: 'tracker', enabled: false }]);
+  h.emit();
+  const active = h.state.active;
+  const breakState = h.controller.getSnapshot();
+  const stopCalls = h.state.stopCalls;
+  let created = 0;
+  (h.dock as any).dependencies.createTrackerTask = async (canUse: () => boolean) => {
+   assert.equal(canUse(), true);
+   created++;
+   return 'created';
+  };
+  const widget = h.views[0];
+  const button = widget.root.querySelector('.operon-status-dock-creator');
+  assert.equal(button.parentElement, widget.root);
+  assert.equal(button.hidden, false);
+  assert.equal(widget.tooltipKeys.get(button), JSON.stringify(['Task Creator', 'Create a new task']));
+  button.click(); await (h.dock as any).action;
+  assert.equal(created, 1);
+  assert.equal(h.state.active, active);
+  assert.deepEqual(h.controller.getSnapshot(), breakState);
+  assert.equal(h.state.startCalls, 0);
+  assert.equal(h.state.stopCalls, stopCalls);
+ } finally { h.close(); }
+});
+
 test('running unassigned timer offers Finder and Creator; Cancel retains its elapsed work', async () => {
  const h = feedbackHarness(); try {
   const original = { operonId: null, task: null, start: 'original', elapsedSeconds: 2460, isUnassigned: true };
@@ -815,7 +891,7 @@ for (const outcome of ['cancel', 'failed-start', 'superseded'] as const) test(`C
    if (outcome === 'superseded') { h.state.active = snapshot().active; h.emit(); }
    return 'created';
   };
-  const opening = (h.dock as any).createTaskForTimer(h.views[0].root);
+  const opening = (h.dock as any).createDockTask(h.views[0].root);
   await new Promise(resolve => setImmediate(resolve)); h.resolve(false); await opening;
   if (outcome !== 'superseded') assert.equal(h.state.active, original); else assert.equal(h.state.active?.operonId, 'active');
   assert.equal(h.tasks.has('created'), outcome !== 'cancel'); assert.equal(h.state.saved, 0); assert.equal(h.state.stopCalls, 0);
@@ -850,7 +926,8 @@ test('hiding break Finder and Creator closes their bound hover panels', () => {
  const finder = f.find('operon-status-dock-break-finder'), creator = f.find('operon-status-dock-creator'); let finderCloses = 0, creatorCloses = 0;
  finder._operonHoverClose = () => { finderCloses++; }; creator._operonHoverClose = () => { creatorCloses++; };
  f.state.breakSnapshot = { pendingTaskId: 'active', actionPending: false, breakState: null }; f.dock.update(f.state); assert.equal(finderCloses, 1);
- f.state.active = snapshot().active; f.dock.update(f.state); assert.equal(creatorCloses, 1); f.dock.destroy();
+ f.state.settings.statusDockSections = normalizeStatusDockSections(undefined).map(section => section.id === 'creator' ? { ...section, enabled: false } : section);
+ f.dock.update(f.state); assert.equal(creator.hidden, true); assert.equal(creatorCloses, 1); f.dock.destroy();
 });
 
 for (const expiry of ['keep', 'next'] as const) test(`desktop keeps expired current and advances next regardless of legacy expiry=${expiry}`, () => {
@@ -1566,7 +1643,7 @@ test('sections follow physical DOM order without rebuilding on ticks, and all-di
  f.state.settings.statusDockSections=normalizeStatusDockSections([{id:'upcoming',enabled:true},{id:'tracker',enabled:false}]);
  const before=JSON.stringify(f.state.active);f.dock.update(f.state);
  const roots=()=>Array.from(f.dock.root.children).filter((e:any)=>e.dataset.statusDockSection);
- assert.deepEqual(roots().map((e:any)=>e.dataset.statusDockSection),['upcoming','tracker','ongoing']);
+ assert.deepEqual(roots().map((e:any)=>e.dataset.statusDockSection),['upcoming','tracker','creator','ongoing']);
  const elements=roots();f.dock.update(f.state);assert.deepEqual(roots(),elements);
  assert.equal((f.dock as any).tracker.hidden,true);
  assert.equal(JSON.stringify(f.state.active),before);

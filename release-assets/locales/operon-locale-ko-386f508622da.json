@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "{{pipeline}}의 상태 색상: {{status}}",
       "statusDockClickAction": "클릭 동작",
       "statusDockClickActionDesc": "상태 dock에서 추적 중이거나 예정된 작업을 클릭할 때 열 항목을 선택합니다.",
+      "statusDockCreatorStartsTimer": "작업을 만들 때 타이머 시작",
+      "statusDockCreatorStartsTimerDesc": "상태 Dock에서 만든 작업의 시간 추적을 시작합니다. 이 옵션을 끄면 타이머를 변경하지 않고 작업을 만듭니다.",
+      "statusDockCreatorStartsTimerSaveFailed": "상태 Dock 타이머 설정을 저장하지 못했습니다.",
       "statusDockGeneralSettings": "일반 설정",
       "statusDockMove": "dock 이동",
       "statusDockSection": "상태 Dock",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "작업 설명...",
       "details": "상세",
       "dockCreateAndTrack": "새 작업을 만들고 추적 시작",
+      "dockCreateOnly": "새 작업 만들기",
       "dockNextTask": "다음 작업",
       "dockSelectTask": "작업을 선택하거나 새로 만드세요",
       "dockTaskCreatorTitle": "작업 생성기",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "19b2520e2be1135cc1c272aea3f9174d0dd41e37b1ebc31818299f695509324a"
+  "sourceVersion": "310d86498f0409d05907953057bd1978ad25bf83072e4b521ea94936c7a6b726"
 }

@@ -195,7 +195,7 @@ export class OperonStatusDock extends Component {
 			openTracker: anchor => this.openTracker(anchor),
 			toggleTimer: () => this.toggleTimer(),
 			toggleBreak: anchor => this.activateSecondaryAction(anchor),
-			createTask: anchor => this.createTaskForTimer(anchor),
+			createTask: anchor => this.createDockTask(anchor),
 			findTask: anchor => this.selectTaskForTimer(anchor),
 			openUpcoming: anchor => this.runAction(async () => {
 				const task = this.upcoming.getSnapshot().task;
@@ -334,13 +334,35 @@ export class OperonStatusDock extends Component {
   return this.scopeCache;
  }
 
-	private async createTaskForTimer(anchor: HTMLElement): Promise<void> {
+	private async createDockTask(anchor: HTMLElement): Promise<void> {
 		const canUse = () => !this.disposed && anchor.isConnected && !getOwnerWindow(anchor).closed;
 		await this.runAction(async () => {
+			if (this.dependencies.getSettings().statusDockCreatorStartsTimer === false) {
+				await this.dependencies.createTrackerTask(canUse);
+				return;
+			}
+			const { timeTracker, breakController } = this.dependencies;
+			const active = timeTracker.getActiveState();
 			let created: string | null = null;
-			const started = await this.dependencies.breakController.selectPendingTask(async () => {
-				created = await this.dependencies.createTrackerTask(canUse); return created;
-			}, 'status-bar', canUse);
+			const create = async () => {
+				created = await this.dependencies.createTrackerTask(canUse);
+				return created;
+			};
+			let started: boolean;
+			if (active?.operonId) {
+				const taskId = await create();
+				if (!taskId || !canUse()) return;
+				const isOriginal = (current: ActiveTrackerState | null) =>
+					current?.operonId === active.operonId && current?.start === active.start;
+				// Keep a newer session safe while Creator is open. The existing switch
+				// clears the old record before it allocates the new one.
+				started = isOriginal(timeTracker.getActiveState()) && await this.dependencies.startTimerForTask(taskId, () => {
+					const current = timeTracker.getActiveState();
+					return canUse() && (!current || isOriginal(current) || current.operonId === taskId);
+				});
+			} else {
+				started = await breakController.selectPendingTask(create, 'status-bar', canUse);
+			}
 			if (created && !started && canUse()) new Notice(t('notifications', 'creatorPostCreateFinalizeFailed'));
 		});
 	}

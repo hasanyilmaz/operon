@@ -11,9 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
 
+- **Task Creator** is now a separate Status Dock section, after Time Tracker by default. It stays available while a timer runs, and **Start timer when creating a task** lets you choose whether to start tracking the new task. **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title and wrap onto another row when they need more room.
+
 ### Validation
 
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
+- **179/179** Status Dock tests passed, along with strict lint, production build, and release guard.
 
 ## [4.6.0] - 2026-11-08
 

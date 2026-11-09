@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "Color del estado en {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamiento al hacer clic",
       "statusDockClickActionDesc": "Elige qué se abre al hacer clic en una tarea en seguimiento o próxima en el dock.",
+      "statusDockCreatorStartsTimer": "Iniciar el temporizador al crear una tarea",
+      "statusDockCreatorStartsTimerDesc": "Inicia el registro de tiempo de la tarea creada desde el dock de estado. Desactiva esta opción para crear la tarea sin cambiar el temporizador.",
+      "statusDockCreatorStartsTimerSaveFailed": "No se pudo guardar la preferencia del temporizador del dock de estado.",
       "statusDockGeneralSettings": "Ajustes generales",
       "statusDockMove": "Mover dock",
       "statusDockSection": "Dock de estado",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Descripción de la tarea...",
       "details": "Detalles",
       "dockCreateAndTrack": "Crear una tarea e iniciar el seguimiento del tiempo",
+      "dockCreateOnly": "Crear una tarea nueva",
       "dockNextTask": "Siguiente tarea",
       "dockSelectTask": "Seleccionar o crear una tarea",
       "dockTaskCreatorTitle": "Creador de tareas",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "8f29dc9e2f1209f65457029a7e5155a41063544be015cc33b54953e745ac0297"
+  "sourceVersion": "2ac470256f7381e70a22f3f55462abdf552956a13b6ab14ef9c82f14fe402c39"
 }

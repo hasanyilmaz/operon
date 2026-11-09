@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "Couleur du statut dans {{pipeline}} : {{status}}",
       "statusDockClickAction": "Comportement au clic",
       "statusDockClickActionDesc": "Choisissez ce qui s’ouvre lorsque vous cliquez sur une tâche suivie ou à venir dans le dock.",
+      "statusDockCreatorStartsTimer": "Démarrer le chronomètre à la création d’une tâche",
+      "statusDockCreatorStartsTimerDesc": "Démarre le suivi de la tâche créée depuis le dock d’état. Désactivez cette option pour créer la tâche sans modifier le chronomètre.",
+      "statusDockCreatorStartsTimerSaveFailed": "Impossible d’enregistrer le réglage du chronomètre du dock d’état.",
       "statusDockGeneralSettings": "Paramètres généraux",
       "statusDockMove": "Déplacer le dock",
       "statusDockSection": "Dock de statut",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Description de la tâche...",
       "details": "Détails",
       "dockCreateAndTrack": "Créer une tâche et démarrer le suivi du temps",
+      "dockCreateOnly": "Créer une tâche",
       "dockNextTask": "Tâche suivante",
       "dockSelectTask": "Sélectionner ou créer une tâche",
       "dockTaskCreatorTitle": "Créateur de tâches",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "cd83fc9cdb5ade7ae3575db06b89136327d385ebd29da919f364644449dc96e5"
+  "sourceVersion": "07a6a54c088e8e48432da8bb4bd034f2c97d8f9a7d67509a0b32a028ec80d7f5"
 }

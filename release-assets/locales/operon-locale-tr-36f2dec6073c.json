@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "{{pipeline}} içindeki durum rengi: {{status}}",
       "statusDockClickAction": "Tıklama davranışı",
       "statusDockClickActionDesc": "Status dock’ta takip edilen veya sıradaki göreve tıkladığınızda neyin açılacağını seçin.",
+      "statusDockCreatorStartsTimer": "Görev oluştururken sayacı başlat",
+      "statusDockCreatorStartsTimerDesc": "Durum Dock’undan oluşturulan görevin zaman takibini başlatır. Sayacı değiştirmeden görev oluşturmak için bu seçeneği kapatın.",
+      "statusDockCreatorStartsTimerSaveFailed": "Durum Dock’unun sayaç tercihi kaydedilemedi.",
       "statusDockGeneralSettings": "Genel Ayarlar",
       "statusDockMove": "Dock’u taşı",
       "statusDockSection": "Durum Dock’u",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Görev açıklaması...",
       "details": "Ayrıntılar",
       "dockCreateAndTrack": "Yeni görev oluştur ve zaman takibini başlat",
+      "dockCreateOnly": "Yeni görev oluştur",
       "dockNextTask": "Sıradaki görev",
       "dockSelectTask": "Bir görev seç veya yeni görev oluştur",
       "dockTaskCreatorTitle": "Görev Oluşturucu",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "f89979c29313ddb73eb917f7cbf94c6f22a45bb7976efdaa1a1fa1dc7a61c35c"
+  "sourceVersion": "24b95c9607f60ad6577aac10db38b21c2a45d40929f18d81cf2c8092f41d2042"
 }

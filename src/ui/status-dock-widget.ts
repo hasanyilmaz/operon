@@ -165,7 +165,9 @@ export class StatusDockWidget {
 		this.coffee = button(controls, 'operon-status-dock-action', actions.toggleBreak); this.icon(this.coffee, 'coffee');
 		this.selectionDivider = controls.createSpan('operon-status-dock-divider operon-status-dock-selection-divider'); this.selectionDivider.setAttribute('aria-hidden', 'true');
 		this.breakFinder = button(controls, 'operon-status-dock-action operon-status-dock-break-finder', actions.findTask); this.icon(this.breakFinder, 'scan-search');
-		this.creator = button(controls, 'operon-status-dock-action operon-status-dock-creator', actions.createTask); this.icon(this.creator, 'list-plus');
+		this.creator = button(this.root, 'operon-status-dock-action operon-status-dock-creator', actions.createTask);
+		this.creator.dataset.statusDockSection = 'creator';
+		this.icon(this.creator, 'list-plus');
 		this.taskArea = this.root.createDiv('operon-status-dock-task-area');
 		this.taskArea.dataset.statusDockSection = 'ongoing';
 		this.configureCalendarArea(this.taskArea, 'statusDockSection_ongoing');
@@ -229,8 +231,6 @@ export class StatusDockWidget {
   const nextVisible = isStatusDockSectionEnabled(sections, 'upcoming') && !!future;
   this.taskArea.hidden = !upcomingVisible;
   this.futureArea.hidden = !nextVisible;
-  this.root.classList.toggle('has-calendar-tasks', upcomingVisible || nextVisible);
-  this.root.classList.toggle('has-two-calendar-sections', upcomingVisible && nextVisible);
   this.updateCurrentTasks(ongoingEnabled ? ongoing : [], settings, sourceLabelForSettings(settings));
   this.nextUpcoming.hidden = !nextVisible;
 		const alertVisible = alert.state !== 'hidden';
@@ -270,8 +270,10 @@ export class StatusDockWidget {
 		this.selectionDivider.hidden = !choosing;
 		this.label(this.breakFinder, t('commands', 'openTaskFinder'), finderHint);
 		this.coffee.disabled = busy || (!choosing && !breakSnapshot.breakState && !active?.operonId);
-		this.creator.hidden = !choosing; this.creator.disabled = busy;
-		this.label(this.creator, t('taskEditor', 'dockTaskCreatorTitle'), t('taskEditor', 'dockCreateAndTrack'));
+		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
+		this.creator.hidden = !isStatusDockSectionEnabled(sections, 'creator');
+		this.creator.disabled = busy;
+		this.label(this.creator, t('taskEditor', 'dockTaskCreatorTitle'), t('taskEditor', creatorStartsTimer ? 'dockCreateAndTrack' : 'dockCreateOnly'));
 		if (primaryFinder) this.coffee.removeAttribute('aria-pressed');
 		else this.coffee.setAttribute('aria-pressed', String(!!breakSnapshot.breakState));
 		this.label(this.coffee, primaryFinder ? t('commands', 'openTaskFinder') : t('taskEditor', breakSnapshot.breakState ? 'flowTimeEndBreak' : 'flowTimeStartBreak'),
@@ -356,14 +358,13 @@ export class StatusDockWidget {
   }
   this.alertDivider.hidden = this.alert.hidden || !visible;
   this.root.classList.toggle('is-empty', !visible && this.alert.hidden);
-  this.root.classList.toggle('has-extra-task-lists', ['pinned', 'modified', 'history'].some(id => { const element = elements.get(id); return element && !element.hidden; }));
  }
 
 	closeTooltips(): void {
 		this.closeTrackerTooltips();
 		for (const { play } of this.calendarControls.values()) closeBoundOperonHoverTooltip(play);
 		for (const item of this.currentReadings.values()) closeBoundOperonHoverTooltip(item.name);
-		for (const el of [this.upcomingName, this.nextName, this.alert]) closeBoundOperonHoverTooltip(el);
+		for (const el of [this.upcomingName, this.nextName, this.creator, this.alert]) closeBoundOperonHoverTooltip(el);
 	}
 
 	private updateCalendarControl(button: HTMLElement, task: IndexedTask | null, snapshot: StatusDockSnapshot): void {
@@ -470,7 +471,7 @@ export class StatusDockWidget {
 
 	destroy(): void { this.stopDrag?.(); this.clearDragClick?.(); this.onPositionChanged = undefined; this.resizeObserver.disconnect(); cleanupOperonHoverTooltips(this.slot); cleanupDescendantFocusVisible(this.slot); this.slot.remove(); }
 	private closeTrackerTooltips(): void {
-		for (const el of [this.trackerName, this.coffee, this.breakFinder, this.creator, this.timerAction]) closeBoundOperonHoverTooltip(el);
+		for (const el of [this.trackerName, this.coffee, this.breakFinder, this.timerAction]) closeBoundOperonHoverTooltip(el);
 	}
 	private icon(el: HTMLElement, icon: string): void {
 		if (this.icons.get(el) === icon) return;
@@ -482,7 +483,7 @@ export class StatusDockWidget {
 	private name(el: HTMLElement, value: string, language: string): void {
 		const key = JSON.stringify([value, language]);
 		if (this.nameKeys.get(el) === key) return;
-		this.nameKeys.set(el, key); el.empty(); renderCompactTaskMarkdown(el, { value, mode: 'visual-only', maxCharacters: 24 });
+		this.nameKeys.set(el, key); el.empty(); renderCompactTaskMarkdown(el, { value, mode: 'visual-only', maxCharacters: 35 });
 	}
 	private label(el: HTMLElement, title: string, content?: string, accessible?: string): void {
   if (el.classList.contains('operon-status-dock-name')) {

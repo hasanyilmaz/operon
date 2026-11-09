@@ -339,6 +339,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('ui', 'interfaceLocationMap', 'locationPreviewMinZoom', 'settings', 'locationPreviewMinZoom', 'locationPreviewMinZoomDesc', 'number', ['location', 'map preview', 'minimum zoom']),
 	e('ui', 'interfaceLocationMap', 'locationPreviewMaxZoom', 'settings', 'locationPreviewMaxZoom', 'locationPreviewMaxZoomDesc', 'number', ['location', 'map preview', 'maximum zoom']),
 	e('ui', 'interfaceStatusDock', 'statusDockVisible', 'settings', 'statusDockVisible', 'statusDockVisibleDesc', 'toggle', ['status dock', 'show', 'hide', 'visibility']),
+	e('ui', 'interfaceStatusDock', 'statusDockCreatorStartsTimer', 'settings', 'statusDockCreatorStartsTimer', 'statusDockCreatorStartsTimerDesc', 'toggle', ['status dock', 'task creator', 'automatic timer', 'track time']),
 	e('ui', 'interfaceStatusDock', 'statusDockSections', 'settings', 'statusDockSections', 'statusDockSectionsDesc', 'render', ['status dock', 'sections', 'order', 'ongoing', 'upcoming', 'overdue', 'today', 'tracker']),
 	e('ui', 'interfaceStatusDock', 'statusDockClickAction', 'settings', 'statusDockClickAction', 'statusDockClickActionDesc', 'dropdown', ['status bar', 'dock', 'click', 'source', 'task editor', 'opening']),
 	e('ui', 'interfaceTweaks', 'workspaceTweaksBackgroundDimming', 'settings', 'workspaceTweaksBackgroundDimming', 'workspaceTweaksBackgroundDimmingDesc', 'dropdown', ['tweaks', 'background dimming', 'lightbox', 'opacity', 'backdrop', 'modal']),

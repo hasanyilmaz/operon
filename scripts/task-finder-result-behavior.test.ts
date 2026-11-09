@@ -269,11 +269,11 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
  assert.equal(host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0].heading, 'workspaceTweaksWorkspaceSection');
  if (desktop) {
   const dockEntries = entries.get('interfaceStatusDock');
-  assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockSections', 'ui.statusDockClickAction']);
+  assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockCreatorStartsTimer', 'ui.statusDockSections', 'ui.statusDockClickAction']);
   const page = host.buildSettingsSearchTabPage(tabs[1], dockEntries);
   assert.equal(page.name, 'statusDockSection');
   assert.deepEqual(page.items.map((group: any) => group.heading), ['statusDockGeneralSettings', 'statusDockSections']);
-  assert.deepEqual(page.items[0].items.map((item: any) => item.key), ['statusDockVisible', 'statusDockClickAction']);
+  assert.deepEqual(page.items[0].items.map((item: any) => item.key), ['statusDockVisible', 'statusDockClickAction', 'statusDockCreatorStartsTimer']);
   assert.deepEqual(page.items[1].items.map((item: any) => item.key), ['statusDockSections']);
  } else {
   assert.equal(entries.has('interfaceStatusDock'), false);

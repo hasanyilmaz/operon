@@ -4,7 +4,7 @@ import { DEFAULT_FILENAME_RULE, normalizeFilenameRule, type FilenameRule, type F
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
 import { cloneInlinePropertyDefinitions, validateInlinePropertyDefinitions } from '../core/inline-property-definitions';
-import { normalizeStatusDockSections, type StatusDockSection } from './status-dock-sections';
+import { normalizeStoredStatusDockSections, type StatusDockSection } from './status-dock-sections';
 import { normalizeTaskEditorSections, type TaskEditorSection } from './task-editor-sections';
 import { DEFAULT_TASK_CARD_SETTINGS, normalizeTaskCardSettings, type TaskCardSettings } from './task-card';
 /**
@@ -1654,6 +1654,7 @@ export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBe
 
 export interface OperonSettings extends TaskCardSettings {
 	/** Optional user choices: absence uses in-memory defaults without startup writes. */
+	statusDockCreatorStartsTimer?: boolean;
 	statusDockVisible?: boolean;
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
@@ -4508,9 +4509,11 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	if (typeof src.statusDockCreatorStartsTimer === 'boolean') out.statusDockCreatorStartsTimer = src.statusDockCreatorStartsTimer;
+	else delete out.statusDockCreatorStartsTimer;
 	if (typeof src.statusDockVisible === 'boolean') out.statusDockVisible = src.statusDockVisible;
 	else delete out.statusDockVisible;
-	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStatusDockSections(src.statusDockSections);
+	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStoredStatusDockSections(src.statusDockSections);
 	else delete out.statusDockSections;
 	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;
 	else delete out.statusDockClickAction;

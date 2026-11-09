@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "Cor do status em {{pipeline}}: {{status}}",
       "statusDockClickAction": "Comportamento ao clicar",
       "statusDockClickActionDesc": "Escolha o que abre ao clicar em uma tarefa em acompanhamento ou próxima no dock.",
+      "statusDockCreatorStartsTimer": "Iniciar o cronômetro ao criar uma tarefa",
+      "statusDockCreatorStartsTimerDesc": "Inicia o registro de tempo da tarefa criada pelo dock de status. Desative esta opção para criar a tarefa sem alterar o cronômetro.",
+      "statusDockCreatorStartsTimerSaveFailed": "Não foi possível salvar a preferência do cronômetro do dock de status.",
       "statusDockGeneralSettings": "Configurações gerais",
       "statusDockMove": "Mover dock",
       "statusDockSection": "Dock de status",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "Descrição da tarefa...",
       "details": "Detalhes",
       "dockCreateAndTrack": "Criar uma tarefa e iniciar o rastreamento de tempo",
+      "dockCreateOnly": "Criar uma tarefa",
       "dockNextTask": "Próxima tarefa",
       "dockSelectTask": "Selecionar ou criar uma tarefa",
       "dockTaskCreatorTitle": "Criador de tarefas",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f0ab09866849895e8729fd8f3205b4473ea928b0d0641f6bf718557d3bc0b0b6"
+  "sourceVersion": "692bc24b9a631607934911f976059b5192c2d481eb23e83b10c6de9cd3477362"
 }

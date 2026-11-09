@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3803,
-  "keyFingerprint": "8650d01d84885bdae3425a2746068d055379938002d531f3e3c584d4a979268b",
+  "keyCount": 3807,
+  "keyFingerprint": "e6bad3df870ee8fabb97c53c4fbb8d63af41b78f28b48e9bef1894ff4907fddc",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -2589,6 +2589,9 @@
       "statusColorAria": "{{pipeline}} 中的狀態顏色：{{status}}",
       "statusDockClickAction": "點擊行為",
       "statusDockClickActionDesc": "選擇點擊停靠列中正在計時或即將開始的任務時開啟的內容。",
+      "statusDockCreatorStartsTimer": "建立任務時啟動計時器",
+      "statusDockCreatorStartsTimerDesc": "開始追蹤從狀態列建立的任務。關閉此選項可在不變更計時器的情況下建立任務。",
+      "statusDockCreatorStartsTimerSaveFailed": "無法儲存狀態列的計時器設定。",
       "statusDockGeneralSettings": "一般設定",
       "statusDockMove": "移動停靠列",
       "statusDockSection": "狀態列",
@@ -3450,6 +3453,7 @@
       "descriptionPlaceholder": "任務描述……",
       "details": "詳情",
       "dockCreateAndTrack": "建立新任務並開始計時",
+      "dockCreateOnly": "建立新任務",
       "dockNextTask": "下一個任務",
       "dockSelectTask": "選擇或建立新任務",
       "dockTaskCreatorTitle": "任務建立器",
@@ -3848,5 +3852,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "15d5695e89af71ab26aee67c935ce4f31c4c8095d0cc540da6915a3ebec7d9ae"
+  "sourceVersion": "211dff3a9ffe485ce1fb59282dc227808d624f500133c927b39406460ef2bce4"
 }
