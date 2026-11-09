@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Task Creator** is now a separate Status Dock section, after Time Tracker by default. It stays available while a timer runs, and **Start timer when creating a task** lets you choose whether to start tracking the new task. **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title and wrap onto another row when they need more room.
 
-- Switch between **TrackTime** and **FlowTime** from the Status Dock timer, with the same mode reflected in the sidebar. The dock shows elapsed time, time remaining, or overtime in a compact reading. **Show seconds** adds seconds to the dock timer, and Finder and break controls sit together inside Time Tracker.
+- Switch between **TrackTime** and **FlowTime** from the Status Dock timer, with the same mode reflected in the sidebar. The dock shows elapsed time, time remaining, or overtime in a compact reading. **Show seconds** adds seconds to the dock timer, and Finder and break controls sit together inside Time Tracker. Hidden sections collapse so the spacing between visible controls stays consistent.
 
 ### Fixed
 

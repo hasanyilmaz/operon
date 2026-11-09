@@ -37375,7 +37375,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock button:disabled { opacity: .45; cursor: default; }
 .operon-status-dock button:not(:disabled):not(.operon-status-dock-grip) { cursor: pointer; }
 /* Fit task sections to their content and wrap whole sections when space runs out. */
-.operon-status-dock > :is(.operon-status-dock-task-area, .operon-status-dock-tracker) {
+.operon-status-dock > :is(.operon-status-dock-task-area, .operon-status-dock-tracker):not([hidden]) {
 	display: flex; align-items: center; flex: 0 1 auto; min-width: 0;
 	max-width: calc(100% - var(--operon-status-dock-inline-gap) - 1px); box-sizing: border-box;
 }
