@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Invalid reminder"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Add Property",
+		"propertyEditorConflict": "The source note changed while you were editing. Your draft was kept.",
+		"propertyEditorSaveFailed": "The properties could not be saved. Your draft was kept.",
+		"propertyEditorRequiresTask": "{{name}} requires a saved Operon task and cannot be edited in a normal note.",
+		"propertyEditorTitle": "Property Editor",
+		"showPropertyEditor": "Show property editor",
+		"hidePropertyEditor": "Hide property editor",
+		"propertyEditorEmpty": "No properties in this note.",
 		"textPickerCurrentValue": "Current value",
 		"creatorInlineTemplateProperties": "For inline tasks, properties from this template are added to the task. The template’s body text is not included.",
 		"creatorMetadataChanged": "Property rules changed. Reopen Task Creator to review them before creating.",

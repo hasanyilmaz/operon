@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added a **Property Editor** for regular Markdown notes in Lightbox. Edit properties in their file order with Operon’s field pickers and **Add Property**, with automatic saving that preserves unrelated edits and reports conflicting changes. The panel follows Task Editor’s layout preferences without turning the note into a task.
+
 - Added an optional **Time Tracker dial** to the Status Dock with sizes from **0.5× to 1.5×** in 0.1× steps and a soft backdrop that makes the dial easier to read over note text. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dial centers above the timer while it runs and temporarily hides while a task list or recent session card is open.
 
 - Added **Core Quick Switcher click behavior** under **Settings → Interface → Workspace Tweaks** on Obsidian Desktop 1.15.1. Click or press Enter to open File Tasks in the source Lightbox, the Task Editor, or both. Supported non-task files open in the source Lightbox when the setting is enabled. The switcher’s own behavior is the default.
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 - **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
 - **8/8** Core Quick Switcher tests passed, along with the full local Plugin checks and release guard. All four modes were verified with clicks and Enter in Obsidian Desktop 1.15.1.

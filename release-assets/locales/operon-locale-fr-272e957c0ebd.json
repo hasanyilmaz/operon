@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -3536,6 +3536,7 @@
       "groupFile": "Supplémentaire",
       "groupOverview": "Vue d’ensemble",
       "groupPlanning": "Planification",
+      "hidePropertyEditor": "Masquer l’éditeur de propriétés",
       "inlineTargetActive": "Fichier actif",
       "inlineTargetBelowParent": "Sous les cases de la tâche parente",
       "inlineTargetFrequent": "Utilisé fréquemment",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} cases à cocher",
       "progressDoneCount": "{{count}} terminées",
       "progressSubtasksCount": "{{count}} sous-tâches",
+      "propertyEditorAdd": "Ajouter une propriété",
+      "propertyEditorConflict": "La note source a changé pendant la modification. Votre brouillon a été conservé.",
+      "propertyEditorEmpty": "Cette note n’a aucune propriété.",
+      "propertyEditorRequiresTask": "{{name}} nécessite une tâche Operon enregistrée et ne peut pas être modifié dans une note ordinaire.",
+      "propertyEditorSaveFailed": "Impossible d’enregistrer les propriétés. Votre brouillon a été conservé.",
+      "propertyEditorTitle": "Éditeur de propriétés",
       "related": "Lié",
       "relatedPlaceholder": "[[Note de projet]]",
       "removeFileTaskMessage": "Cela déplace la tâche-fichier vers la corbeille d'Obsidian. Continuer ?",
@@ -3758,6 +3765,7 @@
       "showLess": "Afficher moins",
       "showMoreSubtasksMany": "Afficher {{count}} sous-tâches de plus",
       "showMoreSubtasksOne": "Afficher {{count}} sous-tâche de plus",
+      "showPropertyEditor": "Afficher l’éditeur de propriétés",
       "startDatePlaceholder": "Date de début",
       "startTracker": "Démarrer le suivi",
       "started": "Commencée",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b0091c2fb9e6e86d8b8521e4a6b8ca05a0416db30a66f290f895c6b8d1d35aca"
+  "sourceVersion": "837b0ed06709661a004d91afbd44132ab3dc90ab736eab2e6b2d346db1296283"
 }

@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Lembrete inválido"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Adicionar propriedade",
+		"propertyEditorConflict": "A nota de origem foi alterada durante a edição. O rascunho foi mantido.",
+		"propertyEditorSaveFailed": "Não foi possível salvar as propriedades. O rascunho foi mantido.",
+		"propertyEditorRequiresTask": "{{name}} requer uma tarefa Operon salva e não pode ser editado em uma nota comum.",
+		"propertyEditorTitle": "Editor de propriedades",
+		"showPropertyEditor": "Mostrar o editor de propriedades",
+		"hidePropertyEditor": "Ocultar o editor de propriedades",
+		"propertyEditorEmpty": "Esta nota não tem propriedades.",
 		"textPickerCurrentValue": "Valor atual",
 		"creatorInlineTemplateProperties": "Nas tarefas inline, as propriedades deste modelo são adicionadas à tarefa. O texto do corpo do modelo não é incluído.",
 		"creatorMetadataChanged": "As regras das propriedades mudaram. Reabra o Task Creator para revisá-las antes de criar.",

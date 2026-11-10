@@ -1,3 +1,4 @@
+import { isSupportedRawYamlPropertyValue } from './raw-yaml-property';
 import type { App } from 'obsidian';
 
 export type ObsidianPropertyTypeId =
@@ -41,4 +42,18 @@ function normalizeObsidianPropertyTypeId(value: unknown): ObsidianPropertyTypeId
 		|| value === 'tags'
 	) return value;
 	return null;
+}
+
+export function inferObsidianPropertyType(samples: readonly unknown[]): ObsidianPropertyTypeId {
+	const meaningful = samples.filter(value => (
+		value !== null
+		&& value !== undefined
+		&& value !== ''
+		&& isSupportedRawYamlPropertyValue(value)
+	));
+	if (meaningful.length === 0) return 'unknown';
+	if (meaningful.every(value => typeof value === 'boolean')) return 'checkbox';
+	if (meaningful.every(value => typeof value === 'number')) return 'number';
+	if (meaningful.every(value => Array.isArray(value))) return 'multitext';
+	return 'text';
 }

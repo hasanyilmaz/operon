@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Promemoria non valido"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Aggiungi proprietà",
+		"propertyEditorConflict": "La nota sorgente è cambiata durante la modifica. La bozza è stata conservata.",
+		"propertyEditorSaveFailed": "Impossibile salvare le proprietà. La bozza è stata conservata.",
+		"propertyEditorRequiresTask": "{{name}} richiede un’attività Operon salvata e non può essere modificato in una nota normale.",
+		"propertyEditorTitle": "Editor delle proprietà",
+		"showPropertyEditor": "Mostra l’editor delle proprietà",
+		"hidePropertyEditor": "Nascondi l’editor delle proprietà",
+		"propertyEditorEmpty": "Questa nota non ha proprietà.",
 		"textPickerCurrentValue": "Valore attuale",
 		"creatorInlineTemplateProperties": "Per le attività inline, le proprietà di questo modello vengono aggiunte all’attività. Il testo del corpo del modello non viene incluso.",
 		"creatorMetadataChanged": "Le regole delle proprietà sono cambiate. Riapri Task Creator per verificarle prima della creazione.",

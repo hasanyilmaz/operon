@@ -1,4 +1,7 @@
+import './property-editor-persistence.test';
+import './property-editor-shared.test';
 import './custom-field-candidates.test';
+import './property-editor.test';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -9,7 +12,9 @@ import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackag
 import { WriteQueue } from '../src/storage/write-queue';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { assertSettingsBackupCompatibilityRegistryExhaustive, getSettingsBackupCompatibilityForKey } from '../src/core/settings-backup-compatibility';
-import { resolveNativeLightboxLayout } from '../src/ui/native-lightbox-layout';
+import {  resolveNativeLightboxLayout } from '../src/ui/native-lightbox-layout';
+import { readPropertyEditorDocument } from '../src/core/property-editor-document';
+import type { KeyMapping } from '../src/types/settings';
 
 function methods(file: string, names: string[], dependencies: Record<string, unknown> = {}) {
  const source = readFileSync(file, 'utf8'), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
@@ -61,11 +66,15 @@ test('opening follows the newly resolved file after a task move',async()=>{
  const f=openingFixture();const moved={path:'Moved.md'};f.host.readTaskEditorSource=async()=>({file:moved,lineNumber:18,parsed:{},format:'inline'});
  await f.host.openTaskEditorFor(f.task,()=>{});assert.equal(f.stats().opened[2].file,moved);assert.equal(f.stats().opened[3].task.file,moved);
 });
-const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','setLocked','followSource'],{Notice:class{}});
+const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','togglePropertyEditor','removePropertyEditor','setLocked','followSource'],{
+ Notice:class{}, t: (_group: string, key: string) => key,
+});
 function controllerFixture(){const c=new Controller();Object.assign(c,{generation:0,disposed:false,locked:false,enabled:true,editorHidden:false,busy:false,
  binding:{},sizeBinding:{},shell:{querySelectorAll:()=>[],ownerDocument:{activeElement:null}},body:{empty(){}},panel:{},
- provider:{resolve:async(file:any)=>({file,operonId:file.id}),create:async()=>({destroy(){}}),confirmDiscard:async()=>false},
- layout(){},mount(task:any,content:any){this.descriptor=task;this.editor=content;},editor:null,
+ provider:{resolve:async(file:any)=>({file,operonId:file.id}),create:async()=>({destroy(){}}),confirmDiscard:async()=>false,
+  createProperties: (_host: unknown, _file: unknown, document: unknown) => ({ document, destroy(){}, root:{focus(){}}, closePicker(){} }),
+ },
+ layout(){},mount(task:any,content:any){this.descriptor=task;this.editor=content;},editor:null,propertyEditor:null,propertyFile:null,propertyHidden:true,
  });return c;}
 test('normal source refresh preserves an existing same-ID editor across mode changes and renames',async()=>{
  const c=controllerFixture(),file={id:'A',path:'new.md'},editor={destroy(){throw Error('must keep draft');}};
@@ -85,6 +94,96 @@ test('late editor creation after disposal is cleaned up without mounting',async(
 });
 test('source-only and manually hidden sessions resolve context without constructing an editor',async()=>{
  for(const config of [{enabled:false},{editorHidden:true}]){const c=controllerFixture();Object.assign(c,config);c.provider.create=()=>{throw Error('must stay hidden');};await c.refresh({view:{getViewType:()=> 'markdown',file:{id:'B'}}});assert.equal(c.editor,null);assert.equal(c.descriptor.operonId,'B');}
+});
+test('normal note properties keep physical YAML order, empty values, false, zero, and lists', () => {
+ const source = [
+  '\uFEFF---', '# Document order', 'Zeta: title', '10: ten', '"2": two', '"Key: detail": value',
+  'Blank:', 'Checked: false', 'Count: 0', 'Aliases:', '- "a: b"', '- "other"',
+  'Summary: |-', '  A paragraph', '  second line', '---', '- [ ] Inline task {{operonId:: inline01}}',
+ ].join('\r\n');
+ const result = readPropertyEditorDocument(source, []);
+ assert.deepEqual(result?.order, ['Zeta', '10', '2', 'Key: detail', 'Blank', 'Checked', 'Count', 'Aliases', 'Summary']);
+ assert.equal(result?.frontmatter.Blank, null);
+ assert.equal(result?.frontmatter.Checked, false);
+ assert.equal(result?.frontmatter.Count, 0);
+ assert.deepEqual(result?.frontmatter.Aliases, ['a: b', 'other']);
+ assert.equal(result?.frontmatter.Summary, 'A paragraph\nsecond line');
+});
+test('an absent or empty YAML document is a valid empty property list', () => {
+ for (const source of ['# Ordinary note', '---\n---\nSome text\n---\n', '---\n  # Comment\n---\nText']) {
+  assert.deepEqual(readPropertyEditorDocument(source, []), { order: [], frontmatter: {} });
+ }
+});
+test('uncertain identity, duplicate keys, and drawing frontmatter are unavailable', () => {
+ const mappings = [{ canonicalKey: 'operonId', visiblePropertyName: 'Task Key' }] as KeyMapping[];
+ for (const source of [
+  '---\noperonId: task0001\n---',
+  '---\n"Task Key":\n---',
+  '---\nexcalidraw-plugin: parsed\n---',
+  '---\nCount: 1\nCount: 2\n---',
+  '---\nCount: [1\n---',
+  '---\nCount: 1',
+ ]) assert.equal(readPropertyEditorDocument(source, mappings), null, source);
+});
+test('normal notes open with properties hidden and reset the panel on navigation', async () => {
+ const c = controllerFixture(), first = {path: 'First.md'}, next = {path: 'Next.md'};
+ const open = (file: unknown) => c.refresh({view: {getViewType: () => 'markdown', file}});
+ c.provider.resolve = async () => null;
+ c.provider.readProperties = async ({path}: {path: string}) => readPropertyEditorDocument(`---\nNote: ${path}\n---`, []);
+ await open(first);
+ assert.equal(c.propertyFile, first);
+ assert.equal(c.propertyEditor, null);
+ await c.toggleEditor();
+ assert.equal(c.propertyEditor.document.frontmatter.Note, 'First.md');
+ const panel = c.propertyEditor;
+ await c.toggleEditor();
+ assert.equal(c.propertyEditor, panel);
+ assert.equal(c.propertyHidden, true);
+ await open(next);
+ assert.equal(c.propertyEditor, null);
+ assert.equal(c.propertyFile, next);
+ await c.toggleEditor();
+ assert.equal(c.propertyEditor.document.frontmatter.Note, 'Next.md');
+});
+test('property draft blocks a transfer on failure and allows only an explicit close discard', async () => {
+ const c = controllerFixture();
+ let attempts = 0, discarded = 0, confirmations = 0;
+ c.propertyHidden = true;
+ c.propertyEditor = { prepareClose: async () => { attempts++; return false; }, discard: () => { discarded++; } };
+ c.provider.confirmDiscard = async () => { confirmations++; return true; };
+ assert.equal(await c.prepare(false), false);
+ assert.equal(confirmations, 0);
+ assert.equal(discarded, 0);
+ assert.equal(await c.prepare(true), true);
+ assert.equal(attempts, 2);
+ assert.equal(confirmations, 1);
+ assert.equal(discarded, 1);
+});
+test('unresolved explicit tasks never fall back to the property editor', async () => {
+ const c = controllerFixture(), file = {path: 'Inline.md'};
+ let propertyReads = 0;
+ c.explicit = {file, operonId: 'inline01'};
+ c.provider.resolve = async () => null;
+ c.provider.readProperties = async () => { propertyReads++; return readPropertyEditorDocument('', []); };
+ await c.refresh({view: {getViewType: () => 'markdown', file}});
+ assert.equal(propertyReads, 0);
+ assert.equal(c.propertyFile, null);
+ assert.equal(c.descriptor, null);
+});
+test('a property read that finishes after navigation cannot mount the previous note', async () => {
+ const c = controllerFixture(), first = {path: 'First.md'}, next = {path: 'Next.md'};
+ const open = (file: unknown) => c.refresh({view: {getViewType: () => 'markdown', file}});
+ const read = deferred<ReturnType<typeof readPropertyEditorDocument>>();
+ c.provider.resolve = async () => null;
+ c.provider.readProperties = async () => readPropertyEditorDocument('', []);
+ await open(first);
+ c.provider.readProperties = async (file: unknown) => file === first ? read.promise : readPropertyEditorDocument('', []);
+ const showing = c.toggleEditor();
+ await open(next);
+ read.resolve(readPropertyEditorDocument('---\nNote: First.md\n---', []));
+ await showing;
+ assert.equal(c.propertyFile, next);
+ assert.ok(!c.propertyEditor);
 });
 test('transition preparation uses existing save result and never opens a discard dialog',async()=>{
  const c=controllerFixture();c.provider.confirmDiscard=()=>{throw Error('no navigation dialog');};
@@ -260,4 +359,39 @@ for(const side of ['left','right'] as const)test(`one shared rail releases the u
  const result=resolveNativeLightboxLayout({viewport:{width:1200,height:900},markdown:{width:1100,height:750},companion:{width:600,height:400},side,margin:24,railWidth:52});
  assert.equal(result.markdown!.width,500);
  assert.equal(side==='right'?result.markdown!.left:1200-result.markdown!.left-result.markdown!.width,24);
+});
+
+function editorWidthFixture(side: 'left' | 'right', viewport: number, cssWidth: number, property = false) {
+ const values = new Map<string,string>([['width','900px']]);
+ const panel: any = {style:{removeProperty:(key:string)=>values.delete(key),setProperty:(key:string,value:string)=>values.set(key,value)},parentElement:null};
+ const body = {scrollHeight:200,parentElement:panel,querySelector:()=>null};
+ const owner = {innerWidth:viewport,innerHeight:1000,getComputedStyle:(el:unknown)=>({
+  width:el===panel ? values.get('width') ?? String(cssWidth) : '0',
+  getPropertyValue:(key:string)=>({'--operon-task-editor-main-column-width':'568px','--operon-task-editor-horizontal-padding':'40px'}[key] ?? ''),
+ })};
+ const Host=methods('src/ui/native-task-workspace.ts',['layout'],{resolveNativeLightboxLayout,refreshLightboxControls:()=>{},t:()=>''});
+ const host=new Host();Object.assign(host,{shell:{ownerDocument:{defaultView:owner}},isMarkdown:true,panel,body,editor:property?null:{},propertyEditor:property?{updateSourceLayout(){}}:null,
+  propertyHidden:false,enabled:true,editorHidden:false,markdownWanted:false,side,markdown:{style:{setProperty(){}}},showMarkdown:{},showEditor:{},showFileActions(){},labelToggle(){}});
+ return {host,values,owner};
+}
+for(const side of ['left','right'] as const)for(const [viewport,cssWidth] of [[1600,557],[800,608],[600,564]])test(`Task Editor ${side} at ${viewport}px retains its CSS width without a vacant source gutter`,()=>{
+ const f=editorWidthFixture(side,viewport,cssWidth);f.host.layout();
+ assert.equal(f.values.get('width'),`${Math.min(cssWidth,viewport-100)}px`);
+ assert.equal(f.host.compact,viewport<cssWidth+101);
+ f.host.markdownWanted=true;f.host.layout();
+ assert.equal(f.values.get('width'),`${Math.min(cssWidth,viewport-100)}px`);
+ assert.equal(f.host.markdownVisible,!f.host.compact);
+});
+for(const side of ['left','right'] as const)for(const [viewport,cssWidth] of [[1600,557],[800,608],[600,564]])test(`Property Editor ${side} at ${viewport}px matches Task Editor with source shown or hidden`,()=>{
+ const reference=editorWidthFixture(side,viewport,cssWidth), property=editorWidthFixture(side,viewport,cssWidth,true);
+ for(const wanted of [false,true]) {
+  reference.host.markdownWanted=wanted;property.host.markdownWanted=wanted;
+  reference.host.layout();property.host.layout();
+  assert.equal(property.values.get('width'),reference.values.get('width'));
+  assert.equal(property.host.compact,reference.host.compact);
+  assert.equal(property.host.markdownVisible,reference.host.markdownVisible);
+ }
+ const width=property.values.get('width');
+ property.host.width=40;property.host.layout();
+ assert.equal(property.values.get('width'),width,'source width adjustment does not resize the editor');
 });

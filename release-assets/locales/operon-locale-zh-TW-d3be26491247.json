@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -3536,6 +3536,7 @@
       "groupFile": "額外",
       "groupOverview": "概覽",
       "groupPlanning": "規劃",
+      "hidePropertyEditor": "隱藏屬性編輯器",
       "inlineTargetActive": "目前檔案",
       "inlineTargetBelowParent": "父任務核取方塊下方",
       "inlineTargetFrequent": "經常使用",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} 個核取方塊",
       "progressDoneCount": "{{count}} 個已完成",
       "progressSubtasksCount": "{{count}} 個子任務",
+      "propertyEditorAdd": "新增屬性",
+      "propertyEditorConflict": "編輯期間來源筆記已變更。草稿已保留。",
+      "propertyEditorEmpty": "此筆記沒有屬性。",
+      "propertyEditorRequiresTask": "{{name}} 需要已儲存的 Operon 任務，無法在一般筆記中編輯。",
+      "propertyEditorSaveFailed": "無法儲存屬性。草稿已保留。",
+      "propertyEditorTitle": "屬性編輯器",
       "related": "相關",
       "relatedPlaceholder": "[[專案筆記]]",
       "removeFileTaskMessage": "此操作會將該檔案任務移至 Obsidian 回收站。是否繼續？",
@@ -3758,6 +3765,7 @@
       "showLess": "收起",
       "showMoreSubtasksMany": "顯示另外 {{count}} 個子任務",
       "showMoreSubtasksOne": "顯示另外 {{count}} 個子任務",
+      "showPropertyEditor": "顯示屬性編輯器",
       "startDatePlaceholder": "開始日期",
       "startTracker": "啟動追蹤器",
       "started": "已開始",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "1839d629356f5ee0a277f0f5b9e14069681533f77dee805a624c7993ccc21a81"
+  "sourceVersion": "3919895f6fd69081cfba6455fb5341ce023f865091153470a5fccccf23656846"
 }

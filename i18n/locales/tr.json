@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Geçersiz hatırlatıcı"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Özellik ekle",
+		"propertyEditorConflict": "Siz düzenlerken kaynak not değişti. Taslağınız korundu.",
+		"propertyEditorSaveFailed": "Özellikler kaydedilemedi. Taslağınız korundu.",
+		"propertyEditorRequiresTask": "{{name}} kayıtlı bir Operon görevi gerektirir ve normal bir notta düzenlenemez.",
+		"propertyEditorTitle": "Özellik Düzenleyici",
+		"showPropertyEditor": "Özellik düzenleyiciyi göster",
+		"hidePropertyEditor": "Özellik düzenleyiciyi gizle",
+		"propertyEditorEmpty": "Bu notta özellik yok.",
 		"textPickerCurrentValue": "Mevcut değer",
 		"creatorInlineTemplateProperties": "Inline görevlerde bu şablonun özellikleri göreve eklenir. Şablonun gövde metni dahil edilmez.",
 		"creatorMetadataChanged": "Özellik kuralları değişti. Oluşturmadan önce incelemek için Task Creator’ı yeniden açın.",

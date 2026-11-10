@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3536,6 +3536,7 @@
       "groupFile": "Adicional",
       "groupOverview": "Resumen",
       "groupPlanning": "Planificación",
+      "hidePropertyEditor": "Ocultar el editor de propiedades",
       "inlineTargetActive": "Archivo activo",
       "inlineTargetBelowParent": "Debajo de las casillas de la tarea principal",
       "inlineTargetFrequent": "Usado con frecuencia",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} casillas",
       "progressDoneCount": "{{count}} hechas",
       "progressSubtasksCount": "{{count}} subtareas",
+      "propertyEditorAdd": "Añadir propiedad",
+      "propertyEditorConflict": "La nota de origen cambió durante la edición. Se conservó el borrador.",
+      "propertyEditorEmpty": "Esta nota no tiene propiedades.",
+      "propertyEditorRequiresTask": "{{name}} requiere una tarea de Operon guardada y no se puede editar en una nota normal.",
+      "propertyEditorSaveFailed": "No se pudieron guardar las propiedades. Se conservó el borrador.",
+      "propertyEditorTitle": "Editor de propiedades",
       "related": "Relacionado",
       "relatedPlaceholder": "[[Nota del proyecto]]",
       "removeFileTaskMessage": "Esto mueve la tarea de archivo a la papelera de Obsidian. ¿Continuar?",
@@ -3758,6 +3765,7 @@
       "showLess": "Mostrar menos",
       "showMoreSubtasksMany": "Mostrar {{count}} subtareas más",
       "showMoreSubtasksOne": "Mostrar {{count}} subtarea más",
+      "showPropertyEditor": "Mostrar el editor de propiedades",
       "startDatePlaceholder": "Fecha de inicio",
       "startTracker": "Iniciar rastreador",
       "started": "Iniciada",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "7125fcc80fdcf9d7db6f40e507581c3bdc1fbef59d9128dd454f5cebfeb1485b"
+  "sourceVersion": "d3421bded4102fffb47e4385dff6859cb9c594ccf91b038cf00913e01186c7b0"
 }

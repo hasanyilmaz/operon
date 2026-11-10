@@ -29,7 +29,7 @@ import { resolveKanbanAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
 import { deriveTaskFilename, sanitizeTaskFilename, filenameSuggestionAfterTitleEdit, type FileTaskRenameSuggestion } from './src/core/filename-rule';
 import { newFileTaskTitleFields } from './src/core/task-display-title';
-import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
+import { capturePropertyEditorMarkdown, createTaskEditorMarkdownSource, PropertyEditorSourceConflict, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
 import type { TaskMarkdownSource } from './src/core/task-markdown-source';
 import { SettingsWritesSuspendedError, isUnrecognizableCanonicalDataPackage } from './src/storage/operon-data-package-store';
@@ -60,6 +60,8 @@ import { nativeEditorPropertyTypes } from './src/core/task-editor-native-propert
 import { decodeVaultPropertyValue, encodeVaultPropertyValue, type VaultPropertyValue } from './src/core/vault-property-codec';
 import { hasFileTaskDisplayTitleMapping, readRawYamlPropertyExpectation } from './src/core/raw-yaml-property';
 import { readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches } from './src/core/file-task-property-draft';
+import { planPropertyEditorWrite, propertyEditorPreservesBody, readPropertyEditorDocument, type PropertyEditorChange } from './src/core/property-editor-document';
+import { resolvePropertyEditorField } from './src/core/property-editor-fields';
 import { resolveInlinePropertyDefinition } from './src/core/inline-property-definitions';
 import { findInlinePropertyTask, mergeInlineEditorSource, patchInlineProperties, readParsedInlinePropertyProjection, readInlinePropertyProjection, prepareMappedInlineProperties, type InlinePropertyChange } from './src/core/inline-property-source';
 import { rankInlineTaskTargets, type InlineTargetDestination } from './src/core/inline-task-targets';
@@ -263,6 +265,7 @@ import {
 import { TaskEditorModal, confirmTaskEditorDiscard, type TaskEditorSession } from './src/ui/task-editor-modal';
 import { getActiveLightboxShell } from './src/ui/lightbox';
 import { registerNativeTaskWorkspace } from './src/ui/native-task-workspace';
+import { NativePropertyEditor, type PropertyEditorSaveResult } from './src/ui/native-property-editor';
 import {
 	TaskCreatorDraft,
 	TaskCreatorModal,
@@ -28611,6 +28614,9 @@ export default class OperonPlugin extends Plugin {
 
 		const rawContent = await this.app.vault.cachedRead(file);
 		if ((canContinue && !canContinue()) || this.workflowNormalizationRenameTargets.has(filePath)) return;
+  const propertyWrite = this.propertyEditorWrittenSources.get(file);
+  if (propertyWrite?.path === filePath && propertyWrite.sources.has(rawContent)) return;
+  this.propertyEditorWrittenSources.delete(file);
 		const resolvesTemplatedFileTask = this.isTemplatedFileTaskCreationCandidate(filePath)
 			&& this.hasTemplatedFileTaskIdentity(rawContent);
 		const resolvedContent = resolvesTemplatedFileTask
@@ -37870,6 +37876,71 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+ private readonly propertyEditorWrittenSources = new WeakMap<TFile, { path: string; sources: Set<string> }>();
+
+ private async saveLightboxNoteProperties(file: TFile, changes: readonly PropertyEditorChange[], current: () => boolean): Promise<PropertyEditorSaveResult> {
+  const path = file.path;
+  const validTarget = (): boolean => current() && file.path === path && this.app.vault.getAbstractFileByPath(path) === file
+   && !this.isExcalidrawTaskSource(file) && this.indexer.resolveFileTaskIdForOpening(path) === null;
+  try {
+   return await this.writer.runExclusiveTaskMutation(async permit => {
+    if (!validTarget()) return { status: 'conflict' };
+    const mappings = this.settings.keyMappings;
+    const types = getNativePropertyIndex(this.app).getTypes();
+    const canCommit = (): boolean => validTarget() && this.settings.keyMappings === mappings && getNativePropertyIndex(this.app).getTypes() === types;
+    const ownWrite: { settle?: (committed: boolean) => void } = {};
+    const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path), text => {
+     const rebased = planPropertyEditorWrite(text, mappings, changes);
+     const baseline = readPropertyEditorDocument(text, mappings);
+     return rebased.status === 'ready' && baseline && !changes.some(({ name }) =>
+      resolvePropertyEditorField(name, baseline, mappings, types).reason
+      || resolvePropertyEditorField(name, rebased.properties, mappings, types).reason) ? rebased.text : null;
+    }, canCommit, (stored, next) => {
+     // A YAML-only edit is not a raw task edit. Protect only these exact bytes;
+     // dirty native body changes and subsequently diverging sources still normalize.
+     if (!propertyEditorPreservesBody(stored, next, mappings)) return;
+     const previous = this.propertyEditorWrittenSources.get(file);
+     const sources = new Set([next]);
+     if (previous?.path === path && previous.sources.has(stored)) sources.add(stored);
+     const receipt = { path, sources };
+     this.propertyEditorWrittenSources.set(file, receipt);
+     let settled = false;
+     ownWrite.settle = committed => {
+      if (settled) return;
+      settled = true;
+      if (this.propertyEditorWrittenSources.get(file) !== receipt) return;
+      if (committed) receipt.sources = new Set([next]);
+      else if (previous) this.propertyEditorWrittenSources.set(file, previous);
+      else this.propertyEditorWrittenSources.delete(file);
+     };
+     return ownWrite.settle;
+    });
+    const before = await source.read();
+    const plan = planPropertyEditorWrite(before, mappings, changes);
+    if (plan.status !== 'ready') return { status: plan.status };
+    const baseline = readPropertyEditorDocument(before, mappings);
+    if (!baseline || changes.some(({ name }) => resolvePropertyEditorField(name, baseline, mappings, types).reason
+     || resolvePropertyEditorField(name, plan.properties, mappings, types).reason)) return { status: 'unsupported' };
+    if (!canCommit()) return { status: 'conflict' };
+    // Even an idempotent disk result may need to update an open native buffer.
+    const result = await this.writer.withMarkdownSource(source, () =>
+     this.writer.applyExactMarkdownSourceMutation(path, before, plan.text, canCommit, permit, 'plugin'));
+    if (result.outcome !== 'committed') {
+     if (ownWrite.settle) {
+      const actual = await this.app.vault.read(file).catch(() => null);
+      if (actual !== null) ownWrite.settle(actual === plan.text);
+     }
+     return { status: result.outcome === 'failed' ? 'failed' : 'conflict' };
+    }
+    // TaskWriter may have recovered an acknowledgement the source adapter could not read.
+    ownWrite.settle?.(true);
+    if (plan.text !== source.stored) this.indexer.scheduleReindex(path);
+    if (source.nativeConflict) return { status: 'conflict' };
+    return { status: 'saved', properties: plan.properties };
+   });
+  } catch (error) { return { status: error instanceof PropertyEditorSourceConflict ? 'conflict' : 'failed' }; }
+ }
+
 	private registerCommands(): void {
   if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
   this.register(registerNativeTaskWorkspace(this.app, {
@@ -37881,6 +37952,20 @@ export default class OperonPlugin extends Plugin {
     const source = await this.readTaskEditorSource(task.operonId, undefined, openingTrace).catch(() => null);
     return source && source.filePath === file.path ? { operonId: task.operonId, file } : null;
    },
+   readProperties: async file => {
+    if (!Platform.isDesktopApp || file.extension !== 'md' || this.isExcalidrawTaskSource(file)
+     || this.indexer.resolveFileTaskIdForOpening(file.path) !== null) return null;
+    const path = file.path;
+    const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
+    const content = await source.read();
+    if (file.path !== path || this.app.vault.getAbstractFileByPath(path) !== file
+     || this.indexer.resolveFileTaskIdForOpening(path) !== null) return null;
+    return readPropertyEditorDocument(content, this.settings.keyMappings);
+   },
+   createProperties: (host, file, document) => new NativePropertyEditor(host, document, {
+    app: this.app, file, settings: () => this.settings, tasks: () => this.indexer.getAllTasks(),
+    save: (changes, current) => this.saveLightboxNoteProperties(file, changes, current),
+   }),
    locate: async operonId => {
     const source = await this.readTaskEditorSource(operonId).catch(() => null);
     return source ? { operonId, file: source.file, ...(source.format === 'inline' ? { line: source.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(source.parsed) } : {}) } : null;

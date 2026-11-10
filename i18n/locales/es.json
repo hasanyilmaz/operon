@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Recordatorio no válido"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Añadir propiedad",
+		"propertyEditorConflict": "La nota de origen cambió durante la edición. Se conservó el borrador.",
+		"propertyEditorSaveFailed": "No se pudieron guardar las propiedades. Se conservó el borrador.",
+		"propertyEditorRequiresTask": "{{name}} requiere una tarea de Operon guardada y no se puede editar en una nota normal.",
+		"propertyEditorTitle": "Editor de propiedades",
+		"showPropertyEditor": "Mostrar el editor de propiedades",
+		"hidePropertyEditor": "Ocultar el editor de propiedades",
+		"propertyEditorEmpty": "Esta nota no tiene propiedades.",
 		"textPickerCurrentValue": "Valor actual",
 		"creatorInlineTemplateProperties": "En las tareas inline, las propiedades de esta plantilla se añaden a la tarea. El texto del cuerpo de la plantilla no se incluye.",
 		"creatorMetadataChanged": "Las reglas de propiedades cambiaron. Vuelve a abrir Task Creator para revisarlas antes de crear.",

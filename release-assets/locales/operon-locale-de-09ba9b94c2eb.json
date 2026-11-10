@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3536,6 +3536,7 @@
       "groupFile": "Zusätzlich",
       "groupOverview": "Überblick",
       "groupPlanning": "Planung",
+      "hidePropertyEditor": "Eigenschafteneditor ausblenden",
       "inlineTargetActive": "Aktive Datei",
       "inlineTargetBelowParent": "Unter den Kontrollkästchen der übergeordneten Aufgabe",
       "inlineTargetFrequent": "Häufig verwendet",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} Kontrollkästchen",
       "progressDoneCount": "{{count}} erledigt",
       "progressSubtasksCount": "{{count}} Unteraufgaben",
+      "propertyEditorAdd": "Eigenschaft hinzufügen",
+      "propertyEditorConflict": "Die Quellnotiz wurde während der Bearbeitung geändert. Ihr Entwurf wurde beibehalten.",
+      "propertyEditorEmpty": "Diese Notiz hat keine Eigenschaften.",
+      "propertyEditorRequiresTask": "{{name}} erfordert eine gespeicherte Operon-Aufgabe und kann in einer normalen Notiz nicht bearbeitet werden.",
+      "propertyEditorSaveFailed": "Die Eigenschaften konnten nicht gespeichert werden. Ihr Entwurf wurde beibehalten.",
+      "propertyEditorTitle": "Eigenschafteneditor",
       "related": "Verwandt",
       "relatedPlaceholder": "[[Projekt-Notiz]]",
       "removeFileTaskMessage": "Dies verschiebt die Datei-Aufgabe in den Obsidian-Papierkorb. Fortfahren?",
@@ -3758,6 +3765,7 @@
       "showLess": "Weniger anzeigen",
       "showMoreSubtasksMany": "{{count}} weitere Unteraufgaben anzeigen",
       "showMoreSubtasksOne": "{{count}} weitere Unteraufgabe anzeigen",
+      "showPropertyEditor": "Eigenschafteneditor anzeigen",
       "startDatePlaceholder": "Startdatum",
       "startTracker": "Erfassung starten",
       "started": "Begonnen",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3944e9df8868664ac4b15d4379cb80067c9322c8e6ae3b18e4b88d8e4ec7be73"
+  "sourceVersion": "dcf92be99c184f7d13f871cb03c87b910b3eaed7b8fa21e8e9506b6b8ac0999e"
 }

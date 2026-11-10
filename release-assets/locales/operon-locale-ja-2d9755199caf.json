@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3536,6 +3536,7 @@
       "groupFile": "追加",
       "groupOverview": "概要",
       "groupPlanning": "計画",
+      "hidePropertyEditor": "プロパティエディターを非表示",
       "inlineTargetActive": "アクティブなファイル",
       "inlineTargetBelowParent": "親タスクのチェックボックスの下",
       "inlineTargetFrequent": "よく使用",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} チェックボックス",
       "progressDoneCount": "{{count}} 完了",
       "progressSubtasksCount": "{{count}} サブタスク",
+      "propertyEditorAdd": "プロパティを追加",
+      "propertyEditorConflict": "編集中に元のノートが変更されました。下書きは保持されています。",
+      "propertyEditorEmpty": "このノートにプロパティはありません。",
+      "propertyEditorRequiresTask": "{{name}} には保存済みの Operon タスクが必要です。通常のノートでは編集できません。",
+      "propertyEditorSaveFailed": "プロパティを保存できませんでした。下書きは保持されています。",
+      "propertyEditorTitle": "プロパティエディター",
       "related": "関連",
       "relatedPlaceholder": "[[プロジェクトノート]]",
       "removeFileTaskMessage": "ファイルタスクを Obsidian のゴミ箱に移動します。続行しますか？",
@@ -3758,6 +3765,7 @@
       "showLess": "表示を減らす",
       "showMoreSubtasksMany": "さらに {{count}} 件のサブタスクを表示",
       "showMoreSubtasksOne": "さらに {{count}} 件のサブタスクを表示",
+      "showPropertyEditor": "プロパティエディターを表示",
       "startDatePlaceholder": "開始日",
       "startTracker": "トラッカーを開始",
       "started": "開始",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "9af3a017c3b4e2d46f4d6d7fc1bcfd6d53c1c978de120a0096cb4d89b0224673"
+  "sourceVersion": "0ae6914d3c2d70b0aa99a5dbdf937257a41176599032c1af2e79b8f7b9629035"
 }

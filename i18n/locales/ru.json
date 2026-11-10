@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Недопустимое напоминание"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Добавить свойство",
+		"propertyEditorConflict": "Исходная заметка изменилась во время редактирования. Черновик сохранён.",
+		"propertyEditorSaveFailed": "Не удалось сохранить свойства. Черновик сохранён.",
+		"propertyEditorRequiresTask": "Для {{name}} нужна сохранённая задача Operon. Это свойство нельзя редактировать в обычной заметке.",
+		"propertyEditorTitle": "Редактор свойств",
+		"showPropertyEditor": "Показать редактор свойств",
+		"hidePropertyEditor": "Скрыть редактор свойств",
+		"propertyEditorEmpty": "У этой заметки нет свойств.",
 		"textPickerCurrentValue": "Текущее значение",
 		"creatorInlineTemplateProperties": "Для встроенных задач свойства этого шаблона добавляются в задачу. Основной текст шаблона не включается.",
 		"creatorMetadataChanged": "Правила свойств изменились. Откройте Task Creator заново и проверьте их перед созданием.",

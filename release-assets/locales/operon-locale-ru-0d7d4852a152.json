@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3536,6 +3536,7 @@
       "groupFile": "Дополнительно",
       "groupOverview": "Обзор",
       "groupPlanning": "Планирование",
+      "hidePropertyEditor": "Скрыть редактор свойств",
       "inlineTargetActive": "Активный файл",
       "inlineTargetBelowParent": "Под флажками родительской задачи",
       "inlineTargetFrequent": "Часто используемые",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} чекбоксов",
       "progressDoneCount": "выполнено {{count}}",
       "progressSubtasksCount": "{{count}} подзадач",
+      "propertyEditorAdd": "Добавить свойство",
+      "propertyEditorConflict": "Исходная заметка изменилась во время редактирования. Черновик сохранён.",
+      "propertyEditorEmpty": "У этой заметки нет свойств.",
+      "propertyEditorRequiresTask": "Для {{name}} нужна сохранённая задача Operon. Это свойство нельзя редактировать в обычной заметке.",
+      "propertyEditorSaveFailed": "Не удалось сохранить свойства. Черновик сохранён.",
+      "propertyEditorTitle": "Редактор свойств",
       "related": "Связанные",
       "relatedPlaceholder": "[[Заметка проекта]]",
       "removeFileTaskMessage": "Это переместит файловую задачу в корзину Obsidian. Продолжить?",
@@ -3758,6 +3765,7 @@
       "showLess": "Показать меньше",
       "showMoreSubtasksMany": "Показать ещё {{count}} подзадач",
       "showMoreSubtasksOne": "Показать ещё {{count}} подзадачу",
+      "showPropertyEditor": "Показать редактор свойств",
       "startDatePlaceholder": "Дата начала",
       "startTracker": "Запустить трекер",
       "started": "Начато",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "54784dd7a84e2e4b63dd9334c3986e8b04e1c56921d615383656aa2058ba733f"
+  "sourceVersion": "c482c1906878b27939fafcd376fdef9da699b07ca2ff557f6e26d5862ac659dd"
 }

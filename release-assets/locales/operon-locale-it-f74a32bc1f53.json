@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3536,6 +3536,7 @@
       "groupFile": "Aggiuntive",
       "groupOverview": "Panoramica",
       "groupPlanning": "Pianificazione",
+      "hidePropertyEditor": "Nascondi l’editor delle proprietà",
       "inlineTargetActive": "File attivo",
       "inlineTargetBelowParent": "Sotto le caselle della attività principale",
       "inlineTargetFrequent": "Usato di frequente",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} caselle di controllo",
       "progressDoneCount": "{{count}} completate",
       "progressSubtasksCount": "{{count}} sotto-attività",
+      "propertyEditorAdd": "Aggiungi proprietà",
+      "propertyEditorConflict": "La nota sorgente è cambiata durante la modifica. La bozza è stata conservata.",
+      "propertyEditorEmpty": "Questa nota non ha proprietà.",
+      "propertyEditorRequiresTask": "{{name}} richiede un’attività Operon salvata e non può essere modificato in una nota normale.",
+      "propertyEditorSaveFailed": "Impossibile salvare le proprietà. La bozza è stata conservata.",
+      "propertyEditorTitle": "Editor delle proprietà",
       "related": "Correlati",
       "relatedPlaceholder": "[[Nota del progetto]]",
       "removeFileTaskMessage": "Questo sposta l'attività-file nel cestino di Obsidian. Continuare?",
@@ -3758,6 +3765,7 @@
       "showLess": "Mostra meno",
       "showMoreSubtasksMany": "Mostra altre {{count}} sotto-attività",
       "showMoreSubtasksOne": "Mostra {{count}} altra sotto-attività",
+      "showPropertyEditor": "Mostra l’editor delle proprietà",
       "startDatePlaceholder": "Data di inizio",
       "startTracker": "Avvia monitoraggio",
       "started": "Iniziata",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "64e9ba5e13e066c617f14e374c0cedcd26bd53fa3194076fc20fc4508191d802"
+  "sourceVersion": "277e05b2db15d8284ca834b335ae4c0e25ba6001cf4945ad6c3ae0187d64cd99"
 }

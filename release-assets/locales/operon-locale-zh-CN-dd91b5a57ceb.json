@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3536,6 +3536,7 @@
       "groupFile": "附加",
       "groupOverview": "概览",
       "groupPlanning": "计划",
+      "hidePropertyEditor": "隐藏属性编辑器",
       "inlineTargetActive": "当前文件",
       "inlineTargetBelowParent": "父任务复选框下方",
       "inlineTargetFrequent": "经常使用",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} 个复选框",
       "progressDoneCount": "{{count}} 个已完成",
       "progressSubtasksCount": "{{count}} 个子任务",
+      "propertyEditorAdd": "添加属性",
+      "propertyEditorConflict": "编辑期间源笔记已更改。草稿已保留。",
+      "propertyEditorEmpty": "此笔记没有属性。",
+      "propertyEditorRequiresTask": "{{name}} 需要已保存的 Operon 任务，无法在普通笔记中编辑。",
+      "propertyEditorSaveFailed": "无法保存属性。草稿已保留。",
+      "propertyEditorTitle": "属性编辑器",
       "related": "相关",
       "relatedPlaceholder": "[[项目笔记]]",
       "removeFileTaskMessage": "此操作会将该文件任务移至 Obsidian 回收站。是否继续？",
@@ -3758,6 +3765,7 @@
       "showLess": "收起",
       "showMoreSubtasksMany": "显示另外 {{count}} 个子任务",
       "showMoreSubtasksOne": "显示另外 {{count}} 个子任务",
+      "showPropertyEditor": "显示属性编辑器",
       "startDatePlaceholder": "开始日期",
       "startTracker": "启动追踪器",
       "started": "已开始",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "3dc6100638a56625d365564df9ef673c0fcb2a03362945686e8a1d05605cdf77"
+  "sourceVersion": "8e6d51a9c45ab5f87036f4982deec5be08df982207bca966fc59e00359b754d8"
 }

@@ -2810,6 +2810,14 @@
 		"invalidReminder": "無効なリマインダー"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "プロパティを追加",
+		"propertyEditorConflict": "編集中に元のノートが変更されました。下書きは保持されています。",
+		"propertyEditorSaveFailed": "プロパティを保存できませんでした。下書きは保持されています。",
+		"propertyEditorRequiresTask": "{{name}} には保存済みの Operon タスクが必要です。通常のノートでは編集できません。",
+		"propertyEditorTitle": "プロパティエディター",
+		"showPropertyEditor": "プロパティエディターを表示",
+		"hidePropertyEditor": "プロパティエディターを非表示",
+		"propertyEditorEmpty": "このノートにプロパティはありません。",
 		"textPickerCurrentValue": "現在の値",
 		"creatorInlineTemplateProperties": "インラインタスクには、このテンプレートのプロパティが追加されます。テンプレートの本文は含まれません。",
 		"creatorMetadataChanged": "プロパティのルールが変更されました。作成前に Task Creator を開き直して確認してください。",

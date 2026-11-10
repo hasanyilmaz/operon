@@ -1,3 +1,4 @@
+import './editor-property-fields.test.mjs';
 import './task-editor-phone-desktop.test.mjs';
 import './task-editor-narrow-viewport.test.mjs';
 import assert from 'node:assert/strict';
@@ -51,7 +52,7 @@ test('Task Editor keeps Remove icon-only with its localized tooltip and unchange
 	);
 	const removeHandler = taskEditorSource.slice(
 		taskEditorSource.indexOf('\tprivate async handleRemoveTaskClick('),
-		taskEditorSource.indexOf('\n\tprivate renderIconControl('),
+		taskEditorSource.indexOf('\n\tprivate renderWorkflowFields('),
 	);
 	assert.doesNotMatch(removeControl, /unlink|convertToPlain/u);
 	assert.match(removeControl, /setAccessibleLabelWithoutTooltip\(button, t\('buttons', 'remove'\)\);/u);

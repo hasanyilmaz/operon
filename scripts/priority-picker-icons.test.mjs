@@ -44,7 +44,7 @@ test('arrow navigation and Enter preserve existing selection behavior',()=>{cons
 test('Clear preserves empty write and normal close',()=>{const f=setup();f.panel.children.find(x=>x.textContent==='repeatClear').fire('click');assert.deepEqual(f.writes,['']);assert.deepEqual(f.state(),{closed:1,cancelled:0});});
 test('Escape and external close never write',()=>{for(const external of [false,true]){const f=setup();if(external)f.close();else f.input.fire('keydown',{key:'Escape'});assert.deepEqual(f.writes,[]);assert.deepEqual(f.state(),{closed:1,cancelled:1});}});
 test('shared dispatcher and direct editor routes forward complete priority definitions',()=>{
- for(const file of ['src/ui/task-field-picker-dispatch.ts','src/ui/task-editor-content.ts']) {
+ for(const file of ['src/ui/task-field-picker-dispatch.ts','src/ui/task-editor-content.ts','src/ui/editor-property-fields.ts']) {
   const text=readFileSync(new URL(file,root),'utf8');const calls=[...text.matchAll(/showPriorityPicker\([^]*?priorities:\s*([^,]+),/g)];
   assert.ok(calls.length>0,file);for(const call of calls)assert.match(call[1],/(?:options|this)\.settings\.priorities/);
  }
@@ -58,5 +58,5 @@ test('shared priority dispatch preserves definitions, current value and commit c
  const open=new Function('showPriorityPicker',js+';return openTaskFieldPicker;')((_anchor,opts)=>{captured=opts;return close;});
  assert.equal(open({canonicalKey:'priority',currentFieldValues:{priority:'S'},settings:{priorities},onCommit:v=>writes.push(v)}),close);
  assert.equal(captured.priorities,priorities);assert.equal(captured.value,'S');captured.onSelect('S');captured.onClear();assert.deepEqual(writes,[{priority:'S'},{priority:''}]);
- for(const file of ['task-creator-modal','task-editor-content','compact-card-chips','live-preview-conceal','reading-task-row','embed-table-processor','table/operon-table-view'])assert.match(readFileSync(new URL('src/ui/'+file+'.ts',root),'utf8'),/openTaskFieldPicker\(\{/);
+ for(const file of ['task-creator-modal','editor-property-fields','compact-card-chips','live-preview-conceal','reading-task-row','embed-table-processor','table/operon-table-view'])assert.match(readFileSync(new URL('src/ui/'+file+'.ts',root),'utf8'),/openTaskFieldPicker\(\{/);
 });

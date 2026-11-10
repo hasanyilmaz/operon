@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3536,6 +3536,7 @@
       "groupFile": "Ek",
       "groupOverview": "Genel",
       "groupPlanning": "Planlama",
+      "hidePropertyEditor": "Özellik düzenleyiciyi gizle",
       "inlineTargetActive": "Aktif dosya",
       "inlineTargetBelowParent": "Üst görevin onay kutularından sonra",
       "inlineTargetFrequent": "Sık kullanılan",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} onay kutusu",
       "progressDoneCount": "{{count}} tamamlandı",
       "progressSubtasksCount": "{{count}} alt görev",
+      "propertyEditorAdd": "Özellik ekle",
+      "propertyEditorConflict": "Siz düzenlerken kaynak not değişti. Taslağınız korundu.",
+      "propertyEditorEmpty": "Bu notta özellik yok.",
+      "propertyEditorRequiresTask": "{{name}} kayıtlı bir Operon görevi gerektirir ve normal bir notta düzenlenemez.",
+      "propertyEditorSaveFailed": "Özellikler kaydedilemedi. Taslağınız korundu.",
+      "propertyEditorTitle": "Özellik Düzenleyici",
       "related": "İlişkili",
       "relatedPlaceholder": "[[Proje Notu]]",
       "removeFileTaskMessage": "Bu, dosya görevini Obsidian çöp kutusuna taşır. Devam edilsin mi?",
@@ -3758,6 +3765,7 @@
       "showLess": "Daha az göster",
       "showMoreSubtasksMany": "{{count}} alt görev daha göster",
       "showMoreSubtasksOne": "{{count}} alt görev daha göster",
+      "showPropertyEditor": "Özellik düzenleyiciyi göster",
       "startDatePlaceholder": "Başlangıç Tarihi",
       "startTracker": "Zaman takibini başlat",
       "started": "Başlangıç",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "6bf966a6d5899d02c664a52867e98b0ecde28147acfa3f933dfee715a87594b6"
+  "sourceVersion": "7284ddd9ae1b013c0108cbabe013111c189882d8061f9d9829d0bef1f6abd172"
 }

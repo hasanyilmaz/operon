@@ -1,8 +1,8 @@
 import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions, type InlinePropertyType } from './inline-property-definitions';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
 import { getManagedYamlAliases } from './yaml-fields';
-import { parseYaml } from 'obsidian';
 import { splitFrontmatterDocument } from './file-task-template-merge';
+import { readOrderedYamlProperties } from './ordered-yaml-properties';
 import { isSupportedRawYamlPropertyValue, isWritableRawYamlPropertyName, rawYamlPropertyExpectationsEqual, readRawYamlPropertyExpectation, type RawYamlPropertyExpectation, type RawYamlPropertyValue } from './raw-yaml-property';
 import type { KeyMapping } from '../types/settings';
 
@@ -18,22 +18,8 @@ export interface FileTaskPropertyChange {
 export function readFileTaskPropertyDocument(content: string): { frontmatter: Record<string, unknown>; order: string[]; body: string } | null {
  const { frontmatter, body } = splitFrontmatterDocument(content);
  if (frontmatter === null) return null;
- try {
-  const parsed: unknown = parseYaml(frontmatter + '\n');
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-  const values = parsed as Record<string, unknown>;
-  const order: string[] = [];
-  for (const line of frontmatter.split(/\r?\n/)) {
-   const match = line.match(/^((?:"(?:\\.|[^"])*"|'(?:''|[^'])*'|[^\s:#][^:]*)):(?:\s|$)/);
-   if (!match) continue;
-   const parsedKey: unknown = parseYaml(`${match[1]}: null`);
-   const key = parsedKey && typeof parsedKey === 'object' && !Array.isArray(parsedKey) ? Object.keys(parsedKey)[0] : null;
-   if (!key || order.includes(key)) return null;
-   order.push(key);
-  }
-  if (Object.keys(values).some(key => !order.includes(key))) return null;
-  return { frontmatter: values, order, body };
- } catch { return null; }
+ const document = readOrderedYamlProperties(frontmatter + '\n');
+ return document ? { ...document, body } : null;
 }
 
 export function canApplyFileTaskPropertyChanges(frontmatter: Record<string, unknown>, changes: readonly FileTaskPropertyChange[], mappings: readonly KeyMapping[], definitions?: InlinePropertyDefinitions): boolean {

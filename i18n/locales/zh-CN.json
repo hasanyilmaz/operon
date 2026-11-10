@@ -2810,6 +2810,14 @@
 		"invalidReminder": "无效提醒"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "添加属性",
+		"propertyEditorConflict": "编辑期间源笔记已更改。草稿已保留。",
+		"propertyEditorSaveFailed": "无法保存属性。草稿已保留。",
+		"propertyEditorRequiresTask": "{{name}} 需要已保存的 Operon 任务，无法在普通笔记中编辑。",
+		"propertyEditorTitle": "属性编辑器",
+		"showPropertyEditor": "显示属性编辑器",
+		"hidePropertyEditor": "隐藏属性编辑器",
+		"propertyEditorEmpty": "此笔记没有属性。",
 		"textPickerCurrentValue": "当前值",
 		"creatorInlineTemplateProperties": "对于行内任务，此模板的属性会添加到任务中，但不会包含模板正文。",
 		"creatorMetadataChanged": "属性规则已更改。请重新打开 Task Creator，在创建前检查。",

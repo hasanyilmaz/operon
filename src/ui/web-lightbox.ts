@@ -353,7 +353,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       await transition.catch(() => undefined);
       const ok = await prepare(reason !== 'transfer');
       poolText = null;
-      if (ok && reason !== 'transfer' && !companion?.deleted && !companion?.handle?.content.isEdited && nativeReady && leaf?.view.getViewType() === 'markdown') {
+      if (ok && reason !== 'transfer' && !companion?.deleted && !companion?.isEdited && nativeReady && leaf?.view.getViewType() === 'markdown') {
        const view = leaf.view as TextFileView;
        if (view.file && leaf.getViewState().state?.mode === initialMode) {
         const stored = await app.vault.read(view.file).catch(() => null);

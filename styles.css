@@ -37298,9 +37298,39 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
  max-height: 100%;
  overflow: hidden;
 }
+.operon-task-workspace > .operon-floating-panel {
+ box-sizing: border-box;
+}
 .operon-native-task-panel .operon-task-editor-main-panel {
  min-height: 0;
  overflow-y: auto;
+}
+.operon-property-editor-empty {
+ color: var(--text-muted);
+}
+.operon-property-editor .operon-property-editor-add {
+ align-self: flex-start;
+ box-sizing: border-box;
+ margin: 0;
+ padding-inline: 8px;
+}
+.operon-property-editor .operon-property-editor-add:is(:hover, :focus-visible, .is-picker-open) {
+ border-color: var(--operon-task-editor-accent, var(--interactive-accent));
+ box-shadow: inset 0 0 0 1px var(--operon-task-editor-accent, var(--interactive-accent));
+ outline: none;
+}
+.operon-task-editor.operon-property-editor .operon-editor-desktop-property-row:not(.is-automatic-property) .operon-editor-desktop-property-icon {
+ color: var(--operon-task-editor-accent, var(--interactive-accent));
+}
+.operon-property-editor .operon-property-editor-add svg {
+ width: 16px;
+ height: 16px;
+}
+.operon-property-editor .operon-property-editor-message {
+ color: var(--text-error);
+}
+.operon-property-editor :is(.operon-editor-desktop-property-group, .operon-property-editor-message, .operon-property-editor-empty)[hidden] {
+ display: none;
 }
 .operon-task-workspace > .is-markdown {
  position: absolute;

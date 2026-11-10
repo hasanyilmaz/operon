@@ -98,7 +98,7 @@ test('actual prepared Creator candidate callback queries the live shared pool on
 });
 test('actual Editor native picker receives shared suggestions while keeping mutations in the draft', () => {
  const f = fixture(); f.set(['111', '222']);
- const source = readFileSync('src/ui/task-editor-content.ts', 'utf8');
+ const source = readFileSync('src/ui/editor-property-fields.ts', 'utf8');
  const ast = ts.createSourceFile('editor.ts', source, ts.ScriptTarget.Latest, true);
  let method = '';
  function visit(node: ts.Node) { if (ts.isMethodDeclaration(node) && node.name.getText(ast) === 'openFilePropertyPicker') method = node.getText(ast); ts.forEachChild(node, visit); }
@@ -110,6 +110,7 @@ test('actual Editor native picker receives shared suggestions while keeping muta
  const host = new Host(); Object.assign(host, { app: f.app, settings: { keyMappings: f.mappings }, indexer: { getAllTasks: f.tasks }, propertyInteractionEpoch: 0,
   fileProperties: new Map([[f.name, { field: { type: 'text' }, value: '', baseline: { present: false } }]]),
   filePropertyRows: new Map([[f.name, { action, row: { querySelectorAll: () => [] } }]]),
+  getFilePropertyPickerOwner: (surface: { action: unknown }) => surface.action, confirmNewFileProperty: () => false,
   canEditFileProperty: () => true, setFilePropertyValue: (_name: string, value: unknown) => { draft = value; } });
  host.openFilePropertyPicker(f.name); assert.deepEqual(captured.candidates, ['111', '222']);
  assert.equal(draft, undefined); captured.onMutation({ kind: 'set', value: '111' }); assert.equal(draft, '111');

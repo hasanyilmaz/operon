@@ -94,6 +94,7 @@ export function openTableFilePropertyPicker(options: {
 	sessionKey?: string;
  preserveListValues?: boolean;
  nativeList?: boolean;
+ confirmList?: boolean;
  editListIndex?: number;
  onNativeOperation?: (operation: NativeListPickerOperation) => readonly (string | number)[];
  textEditRoute?: 'picker' | 'popover';
@@ -127,6 +128,7 @@ export function openTableFilePropertyPicker(options: {
 				? options.cellValue.rawValue
 				: [];
 			return showCustomListFieldPicker(options.anchor, {
+				confirmValues: options.confirmList,
     onNativeOperation: options.onNativeOperation,
 				...common,
 				app: options.app,

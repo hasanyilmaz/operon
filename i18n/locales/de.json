@@ -2810,6 +2810,14 @@
 		"invalidReminder": "Ungültige Erinnerung"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "Eigenschaft hinzufügen",
+		"propertyEditorConflict": "Die Quellnotiz wurde während der Bearbeitung geändert. Ihr Entwurf wurde beibehalten.",
+		"propertyEditorSaveFailed": "Die Eigenschaften konnten nicht gespeichert werden. Ihr Entwurf wurde beibehalten.",
+		"propertyEditorRequiresTask": "{{name}} erfordert eine gespeicherte Operon-Aufgabe und kann in einer normalen Notiz nicht bearbeitet werden.",
+		"propertyEditorTitle": "Eigenschafteneditor",
+		"showPropertyEditor": "Eigenschafteneditor anzeigen",
+		"hidePropertyEditor": "Eigenschafteneditor ausblenden",
+		"propertyEditorEmpty": "Diese Notiz hat keine Eigenschaften.",
 		"textPickerCurrentValue": "Aktueller Wert",
 		"creatorInlineTemplateProperties": "Bei Inline-Aufgaben werden die Eigenschaften dieser Vorlage zur Aufgabe hinzugefügt. Der Haupttext der Vorlage wird nicht übernommen.",
 		"creatorMetadataChanged": "Die Eigenschaftsregeln wurden geändert. Öffnen Sie Task Creator erneut, um sie vor dem Erstellen zu prüfen.",

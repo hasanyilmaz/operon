@@ -2810,6 +2810,14 @@
 		"invalidReminder": "無效提醒"
 	},
 	"taskEditor": {
+		"propertyEditorAdd": "新增屬性",
+		"propertyEditorConflict": "編輯期間來源筆記已變更。草稿已保留。",
+		"propertyEditorSaveFailed": "無法儲存屬性。草稿已保留。",
+		"propertyEditorRequiresTask": "{{name}} 需要已儲存的 Operon 任務，無法在一般筆記中編輯。",
+		"propertyEditorTitle": "屬性編輯器",
+		"showPropertyEditor": "顯示屬性編輯器",
+		"hidePropertyEditor": "隱藏屬性編輯器",
+		"propertyEditorEmpty": "此筆記沒有屬性。",
 		"textPickerCurrentValue": "目前值",
 		"creatorInlineTemplateProperties": "對於行內任務，此範本的屬性會新增至任務中，但不會包含範本正文。",
 		"creatorMetadataChanged": "屬性規則已變更。請重新開啟 Task Creator，在建立前檢查。",

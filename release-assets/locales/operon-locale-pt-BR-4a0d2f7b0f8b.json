@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3818,
-  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
+  "keyCount": 3826,
+  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -3536,6 +3536,7 @@
       "groupFile": "Adicional",
       "groupOverview": "Visão geral",
       "groupPlanning": "Planejamento",
+      "hidePropertyEditor": "Ocultar o editor de propriedades",
       "inlineTargetActive": "Arquivo ativo",
       "inlineTargetBelowParent": "Abaixo das caixas da tarefa principal",
       "inlineTargetFrequent": "Usado com frequência",
@@ -3586,6 +3587,12 @@
       "progressCheckboxesCount": "{{count}} caixas de seleção",
       "progressDoneCount": "{{count}} concluídas",
       "progressSubtasksCount": "{{count}} subtarefas",
+      "propertyEditorAdd": "Adicionar propriedade",
+      "propertyEditorConflict": "A nota de origem foi alterada durante a edição. O rascunho foi mantido.",
+      "propertyEditorEmpty": "Esta nota não tem propriedades.",
+      "propertyEditorRequiresTask": "{{name}} requer uma tarefa Operon salva e não pode ser editado em uma nota comum.",
+      "propertyEditorSaveFailed": "Não foi possível salvar as propriedades. O rascunho foi mantido.",
+      "propertyEditorTitle": "Editor de propriedades",
       "related": "Relacionado",
       "relatedPlaceholder": "[[Nota do Projeto]]",
       "removeFileTaskMessage": "Isso move a tarefa em arquivo para o lixo Obsidian. Continuar?",
@@ -3758,6 +3765,7 @@
       "showLess": "Mostrar menos",
       "showMoreSubtasksMany": "Mostrar mais {{count}} subtarefas",
       "showMoreSubtasksOne": "Mostrar mais {{count}} subtarefa",
+      "showPropertyEditor": "Mostrar o editor de propriedades",
       "startDatePlaceholder": "Data de início",
       "startTracker": "Iniciar rastreamento",
       "started": "Iniciado",
@@ -3863,5 +3871,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "61d57832e7d043ae729be4851dbc70bb9f5d633b814a2998d573a569acc3c081"
+  "sourceVersion": "627ddd466fab542f9b9f4ea6f32eea7d285c749983b166571be756007e26b8d8"
 }
