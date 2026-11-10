@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç. Obsidian Desktop 1.15.1’de kullanılabilir.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Normal kaydırma davranışını koruyarak Obsidian workspace genelindeki scrollbarları gizler.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Bu klasör zaten hariç tutulmuş.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Hariç klasör",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Klasör ara...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Yalnızca Operon dosya görevleri",
       "workspaceTweaksPropertiesSection": "Özellikler Paneli",
       "workspaceTweaksQuickSwitcherDefault": "Switcher varsayılanını kullan",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Yalnız Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Kaynak dosya + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Hariç klasörü kaldır",
       "workspaceTweaksShowScrollbars": "Kaydırma Çubuklarını Göster",
       "workspaceTweaksWorkspaceSection": "Çalışma Alanı Görünümü"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "7284ddd9ae1b013c0108cbabe013111c189882d8061f9d9829d0bef1f6abd172"
+  "sourceVersion": "cac2cce508448da1c861087488fd12bb48a931aab7f8a54d85440c77ae5546ef"
 }

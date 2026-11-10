@@ -271,7 +271,12 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
  const workspaceSettings = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0];
  assert.equal(workspaceSettings.heading, 'workspaceTweaksWorkspaceSection');
  const quickSwitcherKey = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
- assert.equal(workspaceSettings.items.some((item: any) => item.key === quickSwitcherKey), desktop);
+ assert.equal(workspaceSettings.items.some((item: any) => item.key === quickSwitcherKey), false);
+ const lightboxSettings = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[1];
+ assert.equal(lightboxSettings.heading, 'workspaceTweaksLightboxSection');
+ assert.deepEqual(lightboxSettings.items.map((item: any) => item.key), ['workspaceTweaksBackgroundDimming', ...(desktop ? [quickSwitcherKey] : [])]);
+ assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey)['source-and-editor'], 'workspaceTweaksQuickSwitcherSourceAndEditor');
+ assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey).editor, 'workspaceTweaksQuickSwitcherEditorOnly');
  if (desktop) {
   assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, undefined), 'default');
   assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'unsupported'), 'default');

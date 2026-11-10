@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Escolha como um clique simples ou Enter abre um arquivo existente no seletor rápido nativo. Disponível no Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Ocultar Barras de Rolagem",
       "workspaceTweaksHideScrollbarsDesc": "Oculta as barras de rolagem em todo o espaço de trabalho Obsidian mantendo o comportamento normal de rolagem.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Essa pasta já está excluída.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Pasta excluída",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Buscar pastas...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Apenas tarefas em arquivo Operon",
       "workspaceTweaksPropertiesSection": "Painel de propriedades",
       "workspaceTweaksQuickSwitcherDefault": "Usar o comportamento padrão do seletor",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Somente Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Arquivo de origem + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Remover pasta excluída",
       "workspaceTweaksShowScrollbars": "Mostrar barras de rolagem",
       "workspaceTweaksWorkspaceSection": "Aparência do espaço de trabalho"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "627ddd466fab542f9b9f4ea6f32eea7d285c749983b166571be756007e26b8d8"
+  "sourceVersion": "2e2de36564fc0d4c2fd7c125f26566988e921b7e03f9aabd5dfa00a4fea1d0a9"
 }

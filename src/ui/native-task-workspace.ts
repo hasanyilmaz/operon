@@ -247,6 +247,15 @@ export class NativeTaskWorkspace {
   } catch { new Notice('Could not open the task editor. The source is still open.'); }
   finally { this.busy = false; }
  }
+ async showProperties(file: TFile, showSource: boolean): Promise<boolean> {
+  if (this.disposed || this.locked || this.busy || this.propertyFile !== file) return false;
+  const generation = this.generation;
+  if (!this.propertyEditor || this.propertyHidden) await this.togglePropertyEditor(file);
+  if (this.disposed || generation !== this.generation || this.propertyFile !== file || !this.propertyEditor || this.propertyHidden) return false;
+  this.markdownWanted = showSource;
+  this.layout();
+  return true;
+ }
  private async togglePropertyEditor(file: TFile): Promise<void> {
   if (this.propertyEditor && !this.propertyHidden) {
    this.propertyHidden = true;

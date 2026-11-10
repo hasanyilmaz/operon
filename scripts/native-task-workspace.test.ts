@@ -66,7 +66,7 @@ test('opening follows the newly resolved file after a task move',async()=>{
  const f=openingFixture();const moved={path:'Moved.md'};f.host.readTaskEditorSource=async()=>({file:moved,lineNumber:18,parsed:{},format:'inline'});
  await f.host.openTaskEditorFor(f.task,()=>{});assert.equal(f.stats().opened[2].file,moved);assert.equal(f.stats().opened[3].task.file,moved);
 });
-const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','togglePropertyEditor','removePropertyEditor','setLocked','followSource'],{
+const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','togglePropertyEditor','showProperties','removePropertyEditor','setLocked','followSource'],{
  Notice:class{}, t: (_group: string, key: string) => key,
 });
 function controllerFixture(){const c=new Controller();Object.assign(c,{generation:0,disposed:false,locked:false,enabled:true,editorHidden:false,busy:false,
@@ -394,4 +394,37 @@ for(const side of ['left','right'] as const)for(const [viewport,cssWidth] of [[1
  const width=property.values.get('width');
  property.host.width=40;property.host.layout();
  assert.equal(property.values.get('width'),width,'source width adjustment does not resize the editor');
+});
+
+for (const showSource of [true, false]) test(`explicit normal-note opening shows properties with source=${showSource}`, async () => {
+ const c = controllerFixture(), file = {path: 'Note.md'}, next = {path: 'Next.md'};
+ c.provider.resolve = async () => null;
+ c.provider.readProperties = async () => readPropertyEditorDocument('---\nCount: 0\n---', []);
+ await c.refresh({view: {getViewType: () => 'markdown', file}});
+ assert.equal(await c.showProperties(file, showSource), true);
+ assert.equal(c.propertyHidden, false);
+ assert.equal(c.markdownWanted, showSource);
+ assert.equal(c.propertyEditor.document.frontmatter.Count, 0);
+ const panel = c.propertyEditor;
+ assert.equal(await c.showProperties(file, showSource), true);
+ assert.equal(c.propertyEditor, panel, 'opening is not a toggle');
+ await c.refresh({view: {getViewType: () => 'markdown', file: next}});
+ assert.equal(c.propertyEditor, null, 'next note starts with properties hidden');
+ assert.equal(c.markdownWanted, true);
+ assert.equal(await c.showProperties(file, false), false, 'stale target cannot hide the next source');
+});
+test('failed or superseded property opening leaves the source visible', async () => {
+ const c = controllerFixture(), file = {path: 'Note.md'};
+ c.propertyFile = file; c.markdownWanted = true;
+ c.provider.readProperties = async () => null;
+ assert.equal(await c.showProperties(file, false), false);
+ assert.equal(c.markdownWanted, true);
+ c.propertyFile = file;
+ const wait = deferred<any>(); c.provider.readProperties = () => wait.promise;
+ const opening = c.showProperties(file, false);
+ c.generation++;
+ wait.resolve(readPropertyEditorDocument('', []));
+ assert.equal(await opening, false);
+ assert.equal(c.propertyEditor, null);
+ assert.equal(c.markdownWanted, true);
 });

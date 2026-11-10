@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Wähle, wie ein normaler Klick oder die Eingabetaste eine vorhandene Datei im integrierten Quick Switcher öffnet. Verfügbar in Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Blendet Scrollbars im gesamten Obsidian-Workspace aus, während normales Scrollen erhalten bleibt.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Dieser Ordner ist bereits ausgeschlossen.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Ausgeschlossener Ordner",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Ordner suchen...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Nur Operon-Datei-Aufgaben",
       "workspaceTweaksPropertiesSection": "Eigenschaftenbereich",
       "workspaceTweaksQuickSwitcherDefault": "Standard des Quick Switchers verwenden",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Nur Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Quelldatei + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Ausgeschlossenen Ordner entfernen",
       "workspaceTweaksShowScrollbars": "Bildlaufleisten anzeigen",
       "workspaceTweaksWorkspaceSection": "Arbeitsbereich-Darstellung"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "dcf92be99c184f7d13f871cb03c87b910b3eaed7b8fa21e8e9506b6b8ac0999e"
+  "sourceVersion": "c32bb2acc11e3ef80514ce7e2c6c11c0696002cf5cb826dedf71b632f60f0ae7"
 }

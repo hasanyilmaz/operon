@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Choisissez comment un clic simple ou la touche Entrée ouvre un fichier existant dans le sélecteur rapide intégré. Disponible dans Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Masque les barres de défilement dans tout le workspace Obsidian tout en conservant le défilement normal.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Ce dossier est déjà exclu.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Dossier exclu",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Rechercher des dossiers...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Seulement les tâches-fichiers Operon",
       "workspaceTweaksPropertiesSection": "Panneau des propriétés",
       "workspaceTweaksQuickSwitcherDefault": "Utiliser le comportement du sélecteur",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Task / Property Editor uniquement",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Fichier source + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Retirer le dossier exclu",
       "workspaceTweaksShowScrollbars": "Afficher les barres de défilement",
       "workspaceTweaksWorkspaceSection": "Apparence de l’espace de travail"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "837b0ed06709661a004d91afbd44132ab3dc90ab736eab2e6b2d346db1296283"
+  "sourceVersion": "8e22798e814b8d8e4a3ecdf8724157540e4d84827aa5bd47ca319b2231009ea9"
 }

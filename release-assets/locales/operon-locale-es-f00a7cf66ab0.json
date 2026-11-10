@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Elige cómo se abre un archivo existente al hacer clic o pulsar Intro en el selector rápido integrado. Disponible en Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Ocultar barras de desplazamiento",
       "workspaceTweaksHideScrollbarsDesc": "Ocultar las barras de desplazamiento en todo el espacio de trabajo de Obsidian manteniendo el comportamiento normal de desplazamiento.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Esa carpeta ya está excluida.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Carpeta excluida",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Buscar carpetas...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Solo tareas de archivo de Operon",
       "workspaceTweaksPropertiesSection": "Panel de propiedades",
       "workspaceTweaksQuickSwitcherDefault": "Usar el comportamiento del selector",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Solo Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Archivo de origen + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Quitar carpeta excluida",
       "workspaceTweaksShowScrollbars": "Mostrar barras de desplazamiento",
       "workspaceTweaksWorkspaceSection": "Apariencia del espacio de trabajo"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d3421bded4102fffb47e4385dff6859cb9c594ccf91b038cf00913e01186c7b0"
+  "sourceVersion": "49a7409cf50b85a61d36f5f5f74a667f16c132dc9d1fded69b1a51ffa334ec96"
 }

@@ -155,7 +155,8 @@ test('file routing handles real File Tasks, normal notes, supported native files
 	assert.deepEqual(route('Task.md', 'source-and-editor'), { kind: 'editor', id: 'task-id', showSource: true });
 	assert.deepEqual(route('Task.md', 'editor'), { kind: 'editor', id: 'task-id', showSource: false });
 	for (const mode of ['source', 'source-and-editor', 'editor']) {
-		for (const path of ['Note with inline tasks.md', 'List.table', 'List.base']) assert.deepEqual(route(path, mode), { kind: 'source' });
+		assert.deepEqual(route('Note with inline tasks.md', mode), mode === 'source' ? { kind: 'source' } : { kind: 'properties', showSource: mode === 'source-and-editor' });
+		for (const path of ['List.table', 'List.base']) assert.deepEqual(route(path, mode), { kind: 'source' });
 		for (const path of ['Board.canvas', 'Drawing.md', 'Sketch.excalidraw.md', 'manual.pdf']) assert.equal(route(path, mode), null);
 	}
 	assert.equal(route('Conflict.md', 'editor'), null);

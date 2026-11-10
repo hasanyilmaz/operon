@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "选择在核心快速切换器中单击或按 Enter 时如何打开现有文件。适用于 Obsidian 桌面版 1.15.1。",
       "workspaceTweaksHideScrollbars": "隐藏滚动条",
       "workspaceTweaksHideScrollbarsDesc": "在整个 Obsidian 工作区隐藏滚动条，同时保持正常的滚动行为。",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "该文件夹已被排除。",
       "workspaceTweaksPropertiesExcludedFolderSearch": "排除的文件夹",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "搜索文件夹……",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "仅 Operon 文件任务",
       "workspaceTweaksPropertiesSection": "属性面板",
       "workspaceTweaksQuickSwitcherDefault": "使用切换器默认行为",
+      "workspaceTweaksQuickSwitcherEditorOnly": "仅 Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "源文件 + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "移除排除的文件夹",
       "workspaceTweaksShowScrollbars": "显示滚动条",
       "workspaceTweaksWorkspaceSection": "工作区外观"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "8e6d51a9c45ab5f87036f4982deec5be08df982207bca966fc59e00359b754d8"
+  "sourceVersion": "2680d459e95d2df29b394e6ce063b63d2366fab3b955463dc96cf9970391ff07"
 }

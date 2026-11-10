@@ -16,7 +16,7 @@ interface CoreQuickSwitcherOptions {
 	onOpenError: (error: unknown) => void;
 }
 
-type FileOpening = { kind: 'source' } | { kind: 'editor'; id: string; showSource: boolean };
+type FileOpening = { kind: 'source' } | { kind: 'properties'; showSource: boolean } | { kind: 'editor'; id: string; showSource: boolean };
 
 export function resolveCoreQuickSwitcherFileOpening(file: TFile, behavior: ActiveBehavior, context: {
 	isExcalidraw: (file: TFile) => boolean;
@@ -30,7 +30,7 @@ export function resolveCoreQuickSwitcherFileOpening(file: TFile, behavior: Activ
 	if (behavior === 'source') return { kind: 'source' };
 	const id = context.fileTaskId(file);
 	if (id === undefined) return null;
-	return id === null ? { kind: 'source' } : { kind: 'editor', id, showSource: behavior === 'source-and-editor' };
+	return id === null ? { kind: 'properties', showSource: behavior === 'source-and-editor' } : { kind: 'editor', id, showSource: behavior === 'source-and-editor' };
 }
 
 function isPlainSelection(event: unknown): boolean {

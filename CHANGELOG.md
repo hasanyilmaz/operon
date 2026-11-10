@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added an optional **Time Tracker dial** to the Status Dock with sizes from **0.5× to 1.5×** in 0.1× steps and a soft backdrop that makes the dial easier to read over note text. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dial centers above the timer while it runs and temporarily hides while a task list or recent session card is open.
 
-- Added **Core Quick Switcher click behavior** under **Settings → Interface → Workspace Tweaks** on Obsidian Desktop 1.15.1. Click or press Enter to open File Tasks in the source Lightbox, the Task Editor, or both. Supported non-task files open in the source Lightbox when the setting is enabled. The switcher’s own behavior is the default.
+- Added a **Lightbox** section under **Settings → Interface → Workspace Tweaks** for background dimming and **Core Quick Switcher click behavior**. On Obsidian Desktop 1.15.1, click or press Enter to open the source Lightbox, the matching editor, or both: File Tasks use **Task Editor**, and regular Markdown notes use **Property Editor**. Operon Table and Obsidian Base open in the source Lightbox when the setting is enabled. The switcher’s own behavior is the default.
 
 ### Improved
 
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 - **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
-- **8/8** Core Quick Switcher tests passed, along with the full local Plugin checks and release guard. All four modes were verified with clicks and Enter in Obsidian Desktop 1.15.1.
+- **8/8** Core Quick Switcher, **189/189** Lightbox and Property Editor, and **58/58** Task Finder and settings routing tests passed, along with local Plugin checks, production build, and release guard. Both editor modes were verified with regular Markdown notes and File Tasks in Obsidian.
 - **8/8** browser checks for Lightbox titles passed, along with strict lint and release guard. Table and Base titles were verified in Obsidian.
 
 ## [4.6.0] - 2026-11-08

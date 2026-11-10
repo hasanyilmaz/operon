@@ -24341,7 +24341,9 @@ export default class OperonPlugin extends Plugin {
 					return () => this.openEditorForId(opening.id, opening.showSource, anchor,
 						() => canOpen() && this.getQuickSwitcherFileTaskId(file) === opening.id);
 				}
-				return () => openFileLightbox(this.app, anchor, { file, subpath: '' }, canOpen);
+				return () => openFileLightbox(this.app, anchor, { file, subpath: '' },
+					() => canOpen() && (opening.kind !== 'properties' || this.getQuickSwitcherFileTaskId(file) === null),
+					opening.kind === 'properties' ? { showSource: opening.showSource } : undefined);
 			},
 			onOpenError: error => {
 				console.error('Operon: Core Quick Switcher opening failed', error);

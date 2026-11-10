@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "기본 빠른 전환기에서 일반 클릭 또는 Enter로 기존 파일을 여는 방식을 선택합니다. Obsidian Desktop 1.15.1에서 사용할 수 있습니다.",
       "workspaceTweaksHideScrollbars": "스크롤바 숨기기",
       "workspaceTweaksHideScrollbarsDesc": "정상 스크롤 동작을 유지하면서 Obsidian 작업 공간 전체의 스크롤바를 숨깁니다.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "이미 제외된 폴더입니다.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "제외 폴더",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "폴더 검색...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Operon 파일 작업만",
       "workspaceTweaksPropertiesSection": "속성 패널",
       "workspaceTweaksQuickSwitcherDefault": "전환기 기본 동작 사용",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Task / Property Editor만",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "원본 파일 + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "제외 폴더 제거",
       "workspaceTweaksShowScrollbars": "스크롤바 표시",
       "workspaceTweaksWorkspaceSection": "작업 공간 모양"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "5024d8801bce6ef91931cbce3af969725ae50cc8638b57850ca5caa357462e04"
+  "sourceVersion": "bbfeeff6a5ef4652808ffcf6087dcdb811224528088bf2682d7159f963e790e6"
 }

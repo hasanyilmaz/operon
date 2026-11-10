@@ -30,8 +30,8 @@ export function openWebLightbox(app: App, anchor: HTMLElement, url: string): boo
  return true;
 }
 
-export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean): void {
- if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file }, undefined, canOpen);
+export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean, properties?: { showSource: boolean }): void {
+ if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file }, undefined, canOpen, properties);
 }
 
 export function openTaskWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, initial: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {
@@ -277,7 +277,7 @@ function detachLightboxLeaf(app: App, detachedLeaf: WorkspaceLeaf, originalDetac
        finally { detachedLeaf.getViewState = getState; workspace.lastTabGroupStacked = stacked; }
 }
 
-function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {
+function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial, canOpen?: () => boolean, properties?: { showSource: boolean }): Promise<TaskEditorSession | null> {
  if (canOpen?.() === false) { initial?.content.destroy({ skipCloseSave: true }); return Promise.resolve(null); }
  let resolveOpened!: (handle: TaskEditorSession | null) => void;
  const opened = new Promise<TaskEditorSession | null>(resolve => { resolveOpened = resolve; });
@@ -398,6 +398,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
     let restoreMethods: (() => void) | null = null;
     let revealFrame: number | null = null;
     let settleReveal: (() => void) | null = null;
+    let propertiesOpened = false;
     const mount = async (first = false): Promise<void> => {
      if (!closed && ready && leaf) {
       companion?.resetGeometryForView(leaf.view.getViewType());
@@ -408,8 +409,11 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       const contextReady = companion?.refresh(leaf);
       if (endContext) void contextReady?.then(endContext, endContext);
       // A source-only view does not need task metadata to display its native body.
-      if (first && !initial) void contextReady?.catch(() => { if (!closed) unavailable(); });
+      if (first && !initial && !properties) void contextReady?.catch(() => { if (!closed) unavailable(); });
       else await contextReady;
+      if (first && properties && companion && isFile && !cancelled()) {
+       propertiesOpened = await companion.showProperties(target.file.file, properties.showSource);
+      }
       if (first && companion && !closed) {
        const endEditor = openingTrace?.span('editor-ready-wait');
        await companion.prepareInitialRender();
@@ -510,6 +514,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       await mount(!initial || initial.markdown);
       if (cancelled()) return;
       if (initial) companion?.handle?.content.applyInitialDescriptionFocus(canOpen);
+      else if (propertiesOpened) companion?.focusRetainedDraft();
       else if (isFile) focusLightboxSourceCaret(owned, target.file);
       markLightboxControlsReady(lightbox);
       openingTrace?.finish('ready');

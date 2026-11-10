@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Выберите, как открывается существующий файл обычным щелчком или клавишей Enter во встроенном быстром переключателе. Доступно в Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Скрыть полосы прокрутки",
       "workspaceTweaksHideScrollbarsDesc": "Скрыть полосы прокрутки во всём рабочем пространстве Obsidian, сохраняя обычное поведение прокрутки.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Эта папка уже исключена.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Исключённая папка",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Поиск папок...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Только файловые задачи Operon",
       "workspaceTweaksPropertiesSection": "Панель свойств",
       "workspaceTweaksQuickSwitcherDefault": "Использовать поведение переключателя по умолчанию",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Только Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "Исходный файл + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Удалить исключённую папку",
       "workspaceTweaksShowScrollbars": "Показать полосы прокрутки",
       "workspaceTweaksWorkspaceSection": "Оформление рабочего пространства"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "c482c1906878b27939fafcd376fdef9da699b07ca2ff557f6e26d5862ac659dd"
+  "sourceVersion": "093f54870c10a87ba06fe1e1a997bea20cda6ad5a6417020f6260344a8d05870"
 }

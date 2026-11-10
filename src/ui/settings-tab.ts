@@ -2144,9 +2144,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
 			heading: t('settings', 'workspaceTweaksWorkspaceSection'),
 			items: this.compactSettingsSearchDefinitions([hideScrollbars,
-    this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksBackgroundDimming'),
-				...(Platform.isDesktopApp ? [this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCoreQuickSwitcherOpenBehavior')] : []),
 				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCompactSidebarTabIcons')]),
+		}, {
+			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
+			heading: t('settings', 'workspaceTweaksLightboxSection'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksBackgroundDimming'),
+				...(Platform.isDesktopApp ? [this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCoreQuickSwitcherOpenBehavior')] : []),
+			]),
 		}, {
 			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
 			heading: t('settings', 'workspaceTweaksPropertiesSection'),
@@ -3877,8 +3882,8 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return {
 			default: t('settings', 'workspaceTweaksQuickSwitcherDefault'),
 			source: t('settings', 'taskFinderResultSourceOnly'),
-			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
-			editor: t('settings', 'taskFinderResultEditorOnly'),
+			'source-and-editor': t('settings', 'workspaceTweaksQuickSwitcherSourceAndEditor'),
+			editor: t('settings', 'workspaceTweaksQuickSwitcherEditorOnly'),
 		};
 		if (key === 'fileTaskFilenameRule') return {
 			same: t('settings', 'fileTaskFilenameRuleSame'),
@@ -5004,8 +5009,9 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			},
 		);
 
+  const lightboxSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'workspaceTweaksLightboxSection'));
   this.markSettingsSearchTarget(renderDropdownSetting({
-   containerEl: workspaceSection,
+   containerEl: lightboxSection,
    name: t('settings', 'workspaceTweaksBackgroundDimming'),
    desc: t('settings', 'workspaceTweaksBackgroundDimmingDesc'),
    value: String(this.settings.workspaceTweaksBackgroundDimming),
@@ -5016,7 +5022,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		if (Platform.isDesktopApp) {
 			const key = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
 			this.markSettingsSearchTarget(renderDropdownSetting({
-				containerEl: workspaceSection,
+				containerEl: lightboxSection,
 				name: t('settings', key),
 				desc: t('settings', 'workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc'),
 				value: this.getSettingsSearchDropdownValue(key, this.settings[key]),

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "標準クイックスイッチャーで通常のクリックや Enter を使って既存ファイルを開く方法を選択します。Obsidian Desktop 1.15.1 で利用できます。",
       "workspaceTweaksHideScrollbars": "スクロールバーを非表示",
       "workspaceTweaksHideScrollbarsDesc": "通常のスクロール動作を保ちつつ、Obsidian ワークスペース全体でスクロールバーを非表示にします。",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "そのフォルダーはすでに除外されています。",
       "workspaceTweaksPropertiesExcludedFolderSearch": "除外フォルダー",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "フォルダーを検索...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Operon ファイルタスクのみ",
       "workspaceTweaksPropertiesSection": "プロパティパネル",
       "workspaceTweaksQuickSwitcherDefault": "スイッチャーの既定の動作",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Task / Property Editorのみ",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "ソースファイル + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "除外フォルダーを削除",
       "workspaceTweaksShowScrollbars": "スクロールバーを表示",
       "workspaceTweaksWorkspaceSection": "ワークスペースの外観"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "0ae6914d3c2d70b0aa99a5dbdf937257a41176599032c1af2e79b8f7b9629035"
+  "sourceVersion": "af3f9aaeb1a2b8d9abf1a7831370fcd2ac17746fbc83b07c070a474c8fe9287c"
 }

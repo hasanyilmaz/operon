@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3826,
-  "keyFingerprint": "97b541062c34d36a4ad773c827b63e435fc64b3aa0ebc2e75e2a9fb7785ee980",
+  "keyCount": 3829,
+  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3053,6 +3053,7 @@
       "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Scegli come aprire un file esistente con un clic normale o Invio nel selettore rapido integrato. Disponibile in Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Nascondi barre di scorrimento",
       "workspaceTweaksHideScrollbarsDesc": "Nascondi le barre di scorrimento in tutta l'area di lavoro di Obsidian mantenendo il comportamento di scorrimento normale.",
+      "workspaceTweaksLightboxSection": "Lightbox",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Quella cartella è già esclusa.",
       "workspaceTweaksPropertiesExcludedFolderSearch": "Cartella esclusa",
       "workspaceTweaksPropertiesExcludedFolderSearchPlaceholder": "Cerca cartelle...",
@@ -3065,6 +3066,8 @@
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Solo attività-file Operon",
       "workspaceTweaksPropertiesSection": "Pannello delle proprietà",
       "workspaceTweaksQuickSwitcherDefault": "Usa il comportamento del selettore",
+      "workspaceTweaksQuickSwitcherEditorOnly": "Solo Task / Property Editor",
+      "workspaceTweaksQuickSwitcherSourceAndEditor": "File sorgente + Task / Property Editor",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Rimuovi cartella esclusa",
       "workspaceTweaksShowScrollbars": "Mostra barre di scorrimento",
       "workspaceTweaksWorkspaceSection": "Aspetto dello spazio di lavoro"
@@ -3871,5 +3874,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "277e05b2db15d8284ca834b335ae4c0e25ba6001cf4945ad6c3ae0187d64cd99"
+  "sourceVersion": "77df5f8b5fedd649307ccdddfc9b95e099c180d67e0077ae98f57fb526145b01"
 }
