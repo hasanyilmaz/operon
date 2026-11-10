@@ -25,11 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - FlowTime now plays the configured completion sound when a work session reaches zero, including when the sidebar is closed.
 
+- Fixed a blank gap appearing in **Operon Table Lightboxes** with themes that animate file titles on hover. File titles now stay visible in both **Table and Base Lightboxes**.
+
 ### Validation
 
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 - **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
 - **8/8** Core Quick Switcher tests passed, along with the full local Plugin checks and release guard. All four modes were verified with clicks and Enter in Obsidian Desktop 1.15.1.
+- **8/8** browser checks for Lightbox titles passed, along with strict lint and release guard. Table and Base titles were verified in Obsidian.
 
 ## [4.6.0] - 2026-11-08
 

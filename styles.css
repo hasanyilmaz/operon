@@ -35101,6 +35101,12 @@ body .operon-canvas-task-pool .operon-canvas-task-pool-meta button:hover { color
 .operon-lightbox-tabs > .workspace-tab-header-container { display: none; }
 .operon-lightbox-tabs > .workspace-tab-container { width: 100%; height: 100%; }
 
+/* Keep file titles visible without hover fades in Table and Base lightboxes. */
+.operon-lightbox-tabs > .workspace-tab-container > .workspace-leaf > .workspace-leaf-content:is([data-type="bases"], [data-type="operon-table-view"], [data-type="operon-table-file-view"]) > .view-header > .view-header-title-container {
+ opacity: 1;
+ transition: none;
+}
+
 /* Keep file-view framing explicit inside the isolated lightbox, not theme-dependent. */
 .operon-lightbox-tabs > .workspace-tab-container > .workspace-leaf > .workspace-leaf-content:is([data-type="bases"], [data-type="operon-table-view"], [data-type="operon-table-file-view"]) > .view-content {
  padding: var(--size-4-3, 12px);
