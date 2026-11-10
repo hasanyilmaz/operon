@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 import { TFile } from 'obsidian';
-import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
+import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
 import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { WriteQueue } from '../src/storage/write-queue';
@@ -247,7 +247,7 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
   'getDefaultSettingsSearchValue', 'getSettingsSearchDropdownValue', 'getSettingsSearchDropdownOptions', 'buildSettingsSearchTabPage', 'buildStatusDockSettingsItems', 'buildWorkspaceTweaksSettingsItems',
  ], {
   Platform: { isDesktopApp: desktop }, isTaskCardSetting, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
-  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize,
+  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior,
  });
  const host = Object.assign(new Host(), {
   settings: { ...DEFAULT_SETTINGS, upcomingShowStatusBar: false },
@@ -268,7 +268,15 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
  ]);
  assert.equal(entries.get('tasksUpcoming')?.some((entry: any) => entry.id === 'settings.upcomingShowStatusBar'), !desktop);
  assert.equal(entries.get('interfaceTweaks').some((entry: any) => entry.key?.startsWith('statusDock')), false);
- assert.equal(host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0].heading, 'workspaceTweaksWorkspaceSection');
+ const workspaceSettings = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0];
+ assert.equal(workspaceSettings.heading, 'workspaceTweaksWorkspaceSection');
+ const quickSwitcherKey = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
+ assert.equal(workspaceSettings.items.some((item: any) => item.key === quickSwitcherKey), desktop);
+ if (desktop) {
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, undefined), 'default');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'unsupported'), 'default');
+  assert.deepEqual(Object.keys(host.getSettingsSearchDropdownOptions(quickSwitcherKey)), ['default', 'source', 'source-and-editor', 'editor']);
+ }
  if (desktop) {
   const dockEntries = entries.get('interfaceStatusDock');
   assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockCreatorStartsTimer', 'ui.statusDockShowSeconds', 'ui.statusDockShowTimerDial', 'ui.statusDockTimerDialSize', 'ui.statusDockSections', 'ui.statusDockClickAction']);

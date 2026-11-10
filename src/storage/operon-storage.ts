@@ -1747,6 +1747,7 @@ export class OperonStorage {
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete candidateInput.workspaceTweaksCoreQuickSwitcherOpenBehavior;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockCreatorStartsTimer === undefined) delete candidateInput.statusDockCreatorStartsTimer;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowSeconds === undefined) delete candidateInput.statusDockShowSeconds;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowTimerDial === undefined) delete candidateInput.statusDockShowTimerDial;
@@ -1852,6 +1853,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockCreatorStartsTimer')) delete this.settings.statusDockCreatorStartsTimer;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowSeconds')) delete this.settings.statusDockShowSeconds;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowTimerDial')) delete this.settings.statusDockShowTimerDial;

@@ -1082,6 +1082,12 @@ export function normalizeTaskAfterCreateAction(value: unknown): TaskAfterCreateA
 
 export type TaskFinderResultBehavior = 'source' | 'source-and-editor' | 'editor';
 
+export type CoreQuickSwitcherOpenBehavior = 'default' | TaskFinderResultBehavior;
+export function normalizeCoreQuickSwitcherOpenBehavior(value: unknown): CoreQuickSwitcherOpenBehavior | undefined {
+	return value === 'default' || value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : undefined;
+}
+
+
 export function normalizeTaskFinderResultBehavior(value: unknown, fallback: TaskFinderResultBehavior): TaskFinderResultBehavior {
 	return value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : fallback;
 }
@@ -1900,6 +1906,7 @@ export interface OperonSettings extends TaskCardSettings {
 	/** If true, hide Obsidian workspace scrollbars while preserving scrolling. */
 	workspaceTweaksHideScrollbars: boolean;
 	workspaceTweaksBackgroundDimming: number;
+	workspaceTweaksCoreQuickSwitcherOpenBehavior?: CoreQuickSwitcherOpenBehavior;
 	workspaceTweaksLightboxSizes: LightboxSizes;
 	/** If true, collapse Obsidian Properties when opening matching notes. */
 	workspaceTweaksCollapseProperties: boolean;
@@ -4665,6 +4672,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterTaskShowPlainCheckboxAction = typeof src.filterTaskShowPlainCheckboxAction === 'boolean'
 		? src.filterTaskShowPlainCheckboxAction
 		: DEFAULT_SETTINGS.filterTaskShowPlainCheckboxAction;
+	const quickSwitcherBehavior = normalizeCoreQuickSwitcherOpenBehavior(src.workspaceTweaksCoreQuickSwitcherOpenBehavior);
+	if (quickSwitcherBehavior !== undefined) out.workspaceTweaksCoreQuickSwitcherOpenBehavior = quickSwitcherBehavior;
 	out.workspaceTweaksBackgroundDimming = normalizeBackgroundDimming(src.workspaceTweaksBackgroundDimming);
 	out.workspaceTweaksLightboxSizes = normalizeLightboxSizes(src.workspaceTweaksLightboxSizes);
 	out.workspaceTweaksHideScrollbars = typeof src.workspaceTweaksHideScrollbars === 'boolean'

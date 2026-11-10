@@ -1,5 +1,5 @@
 import type { ReadingTaskRowCallbacks } from './reading-task-row';
-import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
+import { normalizeCoreQuickSwitcherOpenBehavior, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
@@ -1268,6 +1268,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.updateNativeSettingsDefinitions();
 			return;
 		}
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') {
+			const behavior = normalizeCoreQuickSwitcherOpenBehavior(value);
+			if (!Platform.isDesktopApp || behavior === undefined) return;
+			try {
+				await this.storage.updateSettings({ workspaceTweaksCoreQuickSwitcherOpenBehavior: behavior });
+				this.applyPendingSettingsChange();
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
+			return;
+		}
 		const entry = this.findSettingsSearchEntryByKey(key);
 		if (!entry?.key) return;
 		if (isTaskCardSetting(entry.key)) { await this.saveTaskCardSetting(entry.key, value); return; }
@@ -1368,6 +1379,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const entriesByTab = new Map<OperonSettingsTabId, OperonSettingsSearchEntry[]>();
 		for (const entry of OPERON_SETTINGS_SEARCH_REGISTRY) {
    if (Platform.isDesktopApp && entry.key === 'upcomingShowStatusBar') continue;
+   if (!Platform.isDesktopApp && entry.key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') continue;
 			if (!this.isSettingsTabId(entry.tabId)) continue;
 			const tabEntries = entriesByTab.get(entry.tabId) ?? [];
 			tabEntries.push(entry);
@@ -2133,6 +2145,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			heading: t('settings', 'workspaceTweaksWorkspaceSection'),
 			items: this.compactSettingsSearchDefinitions([hideScrollbars,
     this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksBackgroundDimming'),
+				...(Platform.isDesktopApp ? [this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCoreQuickSwitcherOpenBehavior')] : []),
 				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCompactSidebarTabIcons')]),
 		}, {
 			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
@@ -3564,6 +3577,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return normalizeCoreQuickSwitcherOpenBehavior(value) ?? 'default';
 		if (key === 'statusDockTimerDialSize') return `${normalizeStatusDockTimerDialSize(value) ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE}x`;
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
@@ -3860,6 +3874,12 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return {
+			default: t('settings', 'workspaceTweaksQuickSwitcherDefault'),
+			source: t('settings', 'taskFinderResultSourceOnly'),
+			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
+			editor: t('settings', 'taskFinderResultEditorOnly'),
+		};
 		if (key === 'fileTaskFilenameRule') return {
 			same: t('settings', 'fileTaskFilenameRuleSame'),
 			kebab: t('settings', 'fileTaskFilenameRuleKebab'),
@@ -4992,6 +5012,18 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
    options: Object.entries(this.getSettingsSearchDropdownOptions('workspaceTweaksBackgroundDimming')).map(([value, label]) => ({value, label})),
    onChange: settingsAsyncHandler('settings background dimming change failed', value => this.setControlValue('workspaceTweaksBackgroundDimming', value)),
   }), 'workspaceTweaksBackgroundDimming');
+
+		if (Platform.isDesktopApp) {
+			const key = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
+			this.markSettingsSearchTarget(renderDropdownSetting({
+				containerEl: workspaceSection,
+				name: t('settings', key),
+				desc: t('settings', 'workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc'),
+				value: this.getSettingsSearchDropdownValue(key, this.settings[key]),
+				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+				onChange: settingsAsyncHandler('settings quick switcher behavior save failed', value => this.setControlValue(key, value)),
+			}), key);
+		}
 
 		const propertiesSection = renderNativeSettingsGroupedSection(
 			containerEl,

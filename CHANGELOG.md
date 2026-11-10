@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added an optional **Time Tracker dial** to the Status Dock with sizes from **0.5× to 1.5×** in 0.1× steps and a soft backdrop that makes the dial easier to read over note text. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dial centers above the timer while it runs and temporarily hides while a task list or recent session card is open.
 
+- Added **Core Quick Switcher click behavior** under **Settings → Interface → Workspace Tweaks** on Obsidian Desktop 1.15.1. Click or press Enter to open File Tasks in the source Lightbox, the Task Editor, or both. Supported non-task files open in the source Lightbox when the setting is enabled. The switcher’s own behavior is the default.
+
 ### Improved
 
 - **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
@@ -27,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 - **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
+- **8/8** Core Quick Switcher tests passed, along with the full local Plugin checks and release guard. All four modes were verified with clicks and Enter in Obsidian Desktop 1.15.1.
 
 ## [4.6.0] - 2026-11-08
 

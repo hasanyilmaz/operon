@@ -213,7 +213,7 @@ export function buildOperonSettingsBackupSelectedPatchV1(
 	for (const group of normalizeSelectedGroups(plan.selectedGroups)) {
 		const definition = SETTINGS_BACKUP_GROUPS.find(item => item.id === group);
 		for (const key of definition?.settingKeys ?? []) {
-			if ((key === 'propertyValuePool' || key === 'statusDockCreatorStartsTimer' || key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial' || key === 'statusDockTimerDialSize' || key === 'statusDockVisible' || key === 'statusDockSections' || key === 'statusDockClickAction' || key === 'statusDockMode' || key === 'statusDockAlignment') && plan.candidateSettings[key] === undefined) continue;
+			if ((key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior' || key === 'propertyValuePool' || key === 'statusDockCreatorStartsTimer' || key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial' || key === 'statusDockTimerDialSize' || key === 'statusDockVisible' || key === 'statusDockSections' || key === 'statusDockClickAction' || key === 'statusDockMode' || key === 'statusDockAlignment') && plan.candidateSettings[key] === undefined) continue;
 			if (key === 'contextualMenuActionOrder' && plan.candidateSettings[key] === undefined) {
 				patch.contextualMenuActionOrder = resolveContextualMenuActionOrder(undefined, plan.candidateSettings.contextualMenuActionAllowlist);
 				continue;

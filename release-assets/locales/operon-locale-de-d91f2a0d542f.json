@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "Klappt Obsidian Properties ein, wenn passende Notizen geöffnet werden; Scope und ausgeschlossene Ordner darunter steuern, wo es gilt.",
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Verschmälert die Tab-Kopfleisten der Seitenleisten und zeigt sie beim Darüberfahren vollständig. Nur auf dem Desktop.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Klickverhalten des integrierten Quick Switchers",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Wähle, wie ein normaler Klick oder die Eingabetaste eine vorhandene Datei im integrierten Quick Switcher öffnet. Verfügbar in Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Blendet Scrollbars im gesamten Obsidian-Workspace aus, während normales Scrollen erhalten bleibt.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Dieser Ordner ist bereits ausgeschlossen.",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "Wähle, ob Properties nur für Operon-Datei-Aufgaben oder für alle Notizen eingeklappt werden.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Nur Operon-Datei-Aufgaben",
       "workspaceTweaksPropertiesSection": "Eigenschaftenbereich",
+      "workspaceTweaksQuickSwitcherDefault": "Standard des Quick Switchers verwenden",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Ausgeschlossenen Ordner entfernen",
       "workspaceTweaksShowScrollbars": "Bildlaufleisten anzeigen",
       "workspaceTweaksWorkspaceSection": "Arbeitsbereich-Darstellung"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "19fde62b70d72a13fb010bc0192b30eaaef9f423405ac91d9d626359cdd442ee"
+  "sourceVersion": "3944e9df8868664ac4b15d4379cb80067c9322c8e6ae3b18e4b88d8e4ec7be73"
 }

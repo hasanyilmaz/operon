@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "일치하는 노트를 열면 Obsidian 속성을 접습니다. 아래 범위와 제외 폴더로 적용 위치를 설정하세요.",
       "workspaceTweaksCompactSidebarTabIcons": "간결한 사이드바 탭 아이콘",
       "workspaceTweaksCompactSidebarTabIconsDesc": "사이드 dock의 탭 아이콘과 헤더 영역을 좁히고, 마우스를 올리면 탭 영역 전체를 표시합니다. 데스크톱 전용입니다.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "기본 빠른 전환기 클릭 동작",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "기본 빠른 전환기에서 일반 클릭 또는 Enter로 기존 파일을 여는 방식을 선택합니다. Obsidian Desktop 1.15.1에서 사용할 수 있습니다.",
       "workspaceTweaksHideScrollbars": "스크롤바 숨기기",
       "workspaceTweaksHideScrollbarsDesc": "정상 스크롤 동작을 유지하면서 Obsidian 작업 공간 전체의 스크롤바를 숨깁니다.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "이미 제외된 폴더입니다.",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "Operon 파일 작업에서만 속성을 접을지 모든 노트에서 접을지 선택합니다.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Operon 파일 작업만",
       "workspaceTweaksPropertiesSection": "속성 패널",
+      "workspaceTweaksQuickSwitcherDefault": "전환기 기본 동작 사용",
       "workspaceTweaksRemovePropertiesExcludedFolder": "제외 폴더 제거",
       "workspaceTweaksShowScrollbars": "스크롤바 표시",
       "workspaceTweaksWorkspaceSection": "작업 공간 모양"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "45d6e8818ddc36b2706e9bce508fd16fe2fe142e006f7488d51f69f0d90c6a4b"
+  "sourceVersion": "ba6df7f7e35890484d9dbc5ed219c757ce9b7b32a2006a6ea1f487817d252d50"
 }

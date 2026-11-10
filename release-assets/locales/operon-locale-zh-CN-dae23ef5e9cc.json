@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "在匹配的笔记打开时折叠 Obsidian 属性；使用下方的范围和排除文件夹来控制其应用位置。",
       "workspaceTweaksCompactSidebarTabIcons": "紧凑侧边栏标签图标",
       "workspaceTweaksCompactSidebarTabIconsDesc": "缩窄侧栏标签页的图标和标题区域，悬停时显示完整区域。仅限桌面端。",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "核心快速切换器的点击行为",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "选择在核心快速切换器中单击或按 Enter 时如何打开现有文件。适用于 Obsidian 桌面版 1.15.1。",
       "workspaceTweaksHideScrollbars": "隐藏滚动条",
       "workspaceTweaksHideScrollbarsDesc": "在整个 Obsidian 工作区隐藏滚动条，同时保持正常的滚动行为。",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "该文件夹已被排除。",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "选择属性是仅对 Operon 文件任务折叠，还是对每个笔记都折叠。",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "仅 Operon 文件任务",
       "workspaceTweaksPropertiesSection": "属性面板",
+      "workspaceTweaksQuickSwitcherDefault": "使用切换器默认行为",
       "workspaceTweaksRemovePropertiesExcludedFolder": "移除排除的文件夹",
       "workspaceTweaksShowScrollbars": "显示滚动条",
       "workspaceTweaksWorkspaceSection": "工作区外观"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "985d7cb2cb457f1bd2aab34da5b23ff6095dc541690cf64cc18b617e7e56b277"
+  "sourceVersion": "3dc6100638a56625d365564df9ef673c0fcb2a03362945686e8a1d05605cdf77"
 }

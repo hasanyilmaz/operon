@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "在匹配的筆記開啟時摺疊 Obsidian 屬性；使用下方的範圍和排除資料夾來控制其應用位置。",
       "workspaceTweaksCompactSidebarTabIcons": "緊湊側邊欄標籤圖示",
       "workspaceTweaksCompactSidebarTabIconsDesc": "縮窄側欄分頁的圖示和標題區域，懸停時顯示完整區域。僅限桌面版。",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "核心快速切換器的點擊行為",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "選擇在核心快速切換器中點擊或按 Enter 時如何開啟現有檔案。適用於 Obsidian 桌面版 1.15.1。",
       "workspaceTweaksHideScrollbars": "隱藏捲軸",
       "workspaceTweaksHideScrollbarsDesc": "在整個 Obsidian 工作區隱藏捲軸，同時保持正常的滾動行為。",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "該資料夾已被排除。",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "選擇屬性是僅對 Operon 檔案任務摺疊，還是對每個筆記都摺疊。",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "僅 Operon 檔案任務",
       "workspaceTweaksPropertiesSection": "屬性面板",
+      "workspaceTweaksQuickSwitcherDefault": "使用切換器預設行為",
       "workspaceTweaksRemovePropertiesExcludedFolder": "移除排除的資料夾",
       "workspaceTweaksShowScrollbars": "顯示捲動條",
       "workspaceTweaksWorkspaceSection": "工作區外觀"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a69f2f6b358b0a1fede879fef56577711d04d3d68975e650d980b9c6b1bd5810"
+  "sourceVersion": "1839d629356f5ee0a277f0f5b9e14069681533f77dee805a624c7993ccc21a81"
 }

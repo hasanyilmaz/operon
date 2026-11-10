@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "Сворачивать свойства Obsidian при открытии подходящих заметок; используйте область и исключённые папки ниже, чтобы указать, где это применяется.",
       "workspaceTweaksCompactSidebarTabIcons": "Компактные значки вкладок боковой панели",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Сужает заголовки вкладок боковых панелей и раскрывает их при наведении. Только на компьютере.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Открытие из встроенного быстрого переключателя",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Выберите, как открывается существующий файл обычным щелчком или клавишей Enter во встроенном быстром переключателе. Доступно в Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Скрыть полосы прокрутки",
       "workspaceTweaksHideScrollbarsDesc": "Скрыть полосы прокрутки во всём рабочем пространстве Obsidian, сохраняя обычное поведение прокрутки.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Эта папка уже исключена.",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "Выберите, сворачивать ли свойства только для файловых задач Operon или для всех заметок.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Только файловые задачи Operon",
       "workspaceTweaksPropertiesSection": "Панель свойств",
+      "workspaceTweaksQuickSwitcherDefault": "Использовать поведение переключателя по умолчанию",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Удалить исключённую папку",
       "workspaceTweaksShowScrollbars": "Показать полосы прокрутки",
       "workspaceTweaksWorkspaceSection": "Оформление рабочего пространства"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "3fea101c5b485802afa8540b6220eb8bfd40c166c9c75e9e135b9d4b24d52d34"
+  "sourceVersion": "54784dd7a84e2e4b63dd9334c3986e8b04e1c56921d615383656aa2058ba733f"
 }

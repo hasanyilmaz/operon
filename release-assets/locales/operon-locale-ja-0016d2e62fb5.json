@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "一致するノートが開いたときに Obsidian のプロパティを折りたたみます。適用範囲は、以下の範囲と除外フォルダーで制御します。",
       "workspaceTweaksCompactSidebarTabIcons": "コンパクトなサイドバータブアイコン",
       "workspaceTweaksCompactSidebarTabIconsDesc": "サイドバーのタブ見出しを細くし、ホバーすると全体を表示します。デスクトップのみ。",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "標準クイックスイッチャーのクリック動作",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "標準クイックスイッチャーで通常のクリックや Enter を使って既存ファイルを開く方法を選択します。Obsidian Desktop 1.15.1 で利用できます。",
       "workspaceTweaksHideScrollbars": "スクロールバーを非表示",
       "workspaceTweaksHideScrollbarsDesc": "通常のスクロール動作を保ちつつ、Obsidian ワークスペース全体でスクロールバーを非表示にします。",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "そのフォルダーはすでに除外されています。",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "プロパティを Operon ファイルタスクのみで折りたたむか、すべてのノートで折りたたむかを選択します。",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Operon ファイルタスクのみ",
       "workspaceTweaksPropertiesSection": "プロパティパネル",
+      "workspaceTweaksQuickSwitcherDefault": "スイッチャーの既定の動作",
       "workspaceTweaksRemovePropertiesExcludedFolder": "除外フォルダーを削除",
       "workspaceTweaksShowScrollbars": "スクロールバーを表示",
       "workspaceTweaksWorkspaceSection": "ワークスペースの外観"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "0c8bee944715aecb9b8606ba78a332c98e40d030c771f5e24723b4960d09156f"
+  "sourceVersion": "9af3a017c3b4e2d46f4d6d7fc1bcfd6d53c1c978de120a0096cb4d89b0224673"
 }

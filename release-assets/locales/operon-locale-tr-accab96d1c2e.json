@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "Kapsama uyan notlar açıldığında Obsidian Properties bölümünü kapatır; nerede uygulanacağını aşağıdaki kapsam ve hariç klasörlerle belirleyebilirsin.",
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Yan panel sekme simgesi/başlık şeritlerini daraltın; üzerine gelince tüm sekme alanı açılır. Yalnızca masaüstünde.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Core Quick Switcher tıklama davranışı",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç. Obsidian Desktop 1.15.1’de kullanılabilir.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Normal kaydırma davranışını koruyarak Obsidian workspace genelindeki scrollbarları gizler.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Bu klasör zaten hariç tutulmuş.",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "Properties sadece Operon dosya görevlerinde mi yoksa tüm notlarda mı kapatılsın seç.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Yalnızca Operon dosya görevleri",
       "workspaceTweaksPropertiesSection": "Özellikler Paneli",
+      "workspaceTweaksQuickSwitcherDefault": "Switcher varsayılanını kullan",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Hariç klasörü kaldır",
       "workspaceTweaksShowScrollbars": "Kaydırma Çubuklarını Göster",
       "workspaceTweaksWorkspaceSection": "Çalışma Alanı Görünümü"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "0df9cae5b21e43a1b3fe37df86f469813832acfed7468e893c9e23e7da98b7c8"
+  "sourceVersion": "6bf966a6d5899d02c664a52867e98b0ecde28147acfa3f933dfee715a87594b6"
 }

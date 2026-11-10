@@ -83,6 +83,7 @@ import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodic
 import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
+import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
 import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
@@ -603,6 +604,8 @@ import {
 	getAppLocale,
 	getCommunityPlugin,
 	getExternalModifiedTimeFrontmatterPropertyNames,
+	getInternalPlugin,
+	isPluginEnabled,
 	isDailyNotesCoreAvailable,
 } from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
@@ -1759,6 +1762,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakPropertiesCollapseTimers: WindowTimeoutHandle[] = [];
 	private workspaceTweakPropertiesTargetEls = new Set<HTMLElement>();
 	private workspaceTweakBodyDocuments = new Set<Document>();
+	private coreQuickSwitcher: CoreQuickSwitcherIntegration | null = null;
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private taskCardEmbeds: TaskCardEmbeds | null = null;
  private kanbanPoolServices: KanbanPoolServices | null = null;
@@ -24310,7 +24314,38 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	private getQuickSwitcherFileTaskId(file: TFile): string | null | undefined {
+		if (this.taskCardIndexState !== 'ready' || this.indexer.getLiveReadAuthoritySnapshot().state !== 'verified') return undefined;
+		return this.indexer.resolveFileTaskIdForOpening(file.path);
+	}
+
 	private applyWorkspaceTweaks(): void {
+		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+		this.coreQuickSwitcher ??= new CoreQuickSwitcherIntegration(this.app, {
+			behavior: () => this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior,
+			prepareOpening: (file, behavior, anchor) => {
+				const opening = resolveCoreQuickSwitcherFileOpening(file, behavior, {
+					isExcalidraw: candidate => this.isExcalidrawTaskSource(candidate),
+					basesEnabled: () => isPluginEnabled(getInternalPlugin(this.app, 'bases')),
+					fileTaskId: candidate => this.getQuickSwitcherFileTaskId(candidate),
+				});
+				if (!opening) return null;
+				getLightboxOwnerLeaf(this.app, anchor.ownerDocument);
+				const path = file.path;
+				const canOpen = () => this.coreQuickSwitcher !== null && anchor.isConnected && !anchor.ownerDocument.defaultView?.closed
+					&& this.app.vault.getAbstractFileByPath(path) === file;
+				if (opening.kind === 'editor') {
+					return () => this.openEditorForId(opening.id, opening.showSource, anchor,
+						() => canOpen() && this.getQuickSwitcherFileTaskId(file) === opening.id);
+				}
+				return () => openFileLightbox(this.app, anchor, { file, subpath: '' }, canOpen);
+			},
+			onOpenError: error => {
+				console.error('Operon: Core Quick Switcher opening failed', error);
+				new Notice('Could not open this file in the lightbox. Please try again.');
+			},
+		});
+		this.coreQuickSwitcher.sync();
   updateDesktopBackdropDimming(this.settings.workspaceTweaksBackgroundDimming);
 		for (const doc of this.getWorkspaceTweakDocuments()) {
 			this.workspaceTweakBodyDocuments.add(doc);
@@ -24328,6 +24363,8 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private removeWorkspaceTweakBodyClasses(): void {
+		this.coreQuickSwitcher?.dispose();
+		this.coreQuickSwitcher = null;
   disposeDesktopBackdrops();
 		for (const doc of this.getWorkspaceTweakDocuments()) {
 			this.workspaceTweakBodyDocuments.add(doc);

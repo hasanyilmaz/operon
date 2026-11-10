@@ -2685,6 +2685,16 @@ export class OperonIndexer {
 		return undefined;
 	}
 
+	/** Return null for a normal note and undefined when this file's task identity is unsafe to open. */
+	resolveFileTaskIdForOpening(filePath: string): string | null | undefined {
+		const instance = this.getTaskInstance(this.buildInstanceKey(yamlLocation(filePath)));
+		if (!instance) return null;
+		const id = instance.operonId;
+		if (this.hasDuplicateOperonIdConflict(id) || this.isTaskSourceTransitionActive(id)) return undefined;
+		const task = this.getTask(id);
+		return task?.primary.format === 'yaml' && task.primary.filePath === filePath ? id : undefined;
+	}
+
 	getDescendantTaskSummary(operonId: string): DescendantTaskSummary {
 		const parentTask = this.tasks.get(operonId);
 		const stats = parentTask ? parseTaskStatsReadModel(parentTask.fieldValues) : null;

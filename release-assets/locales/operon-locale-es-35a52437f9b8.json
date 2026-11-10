@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3815,
-  "keyFingerprint": "3a5428cd846a2ceece6b5f343c69e6951440f8406c917f999c28372446922f84",
+  "keyCount": 3818,
+  "keyFingerprint": "6f9b8cde930c55f19503a7684a119a27eacb34afa5bb29a8bf0a541072e8fcbf",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3049,6 +3049,8 @@
       "workspaceTweaksCollapsePropertiesDesc": "Contraer las Properties de Obsidian cuando se abren notas coincidentes; usar el ámbito y las carpetas excluidas de abajo para controlar dónde se aplica.",
       "workspaceTweaksCompactSidebarTabIcons": "Iconos de pestaña compactos en la barra lateral",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Reduce las cabeceras de pestañas laterales y muestra el área completa al pasar el cursor. Solo en escritorio.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Comportamiento al hacer clic en el selector rápido integrado",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Elige cómo se abre un archivo existente al hacer clic o pulsar Intro en el selector rápido integrado. Disponible en Obsidian Desktop 1.15.1.",
       "workspaceTweaksHideScrollbars": "Ocultar barras de desplazamiento",
       "workspaceTweaksHideScrollbarsDesc": "Ocultar las barras de desplazamiento en todo el espacio de trabajo de Obsidian manteniendo el comportamiento normal de desplazamiento.",
       "workspaceTweaksPropertiesExcludedFolderAlreadyAdded": "Esa carpeta ya está excluida.",
@@ -3062,6 +3064,7 @@
       "workspaceTweaksPropertiesScopeDesc": "Elegir si las Properties se contraen solo para las tareas de archivo de Operon o para todas las notas.",
       "workspaceTweaksPropertiesScopeOperonFileTasks": "Solo tareas de archivo de Operon",
       "workspaceTweaksPropertiesSection": "Panel de propiedades",
+      "workspaceTweaksQuickSwitcherDefault": "Usar el comportamiento del selector",
       "workspaceTweaksRemovePropertiesExcludedFolder": "Quitar carpeta excluida",
       "workspaceTweaksShowScrollbars": "Mostrar barras de desplazamiento",
       "workspaceTweaksWorkspaceSection": "Apariencia del espacio de trabajo"
@@ -3860,5 +3863,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ffbb3f4d35ea625b1e5dbc115d3cec18643d4880c75250943d629bd00514a90a"
+  "sourceVersion": "7125fcc80fdcf9d7db6f40e507581c3bdc1fbef59d9128dd454f5cebfeb1485b"
 }
