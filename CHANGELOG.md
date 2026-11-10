@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Date** fields in Property Editor, Task Editor’s Additional section, and Operon Table now use the built-in Operon calendar with your week start and week number preferences. Selecting a day applies the date immediately.
+
 - **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
 
 - **Task Creator** is now a separate Status Dock section, after Time Tracker by default. It stays available while a timer runs, and **Start timer when creating a task** lets you choose whether to start tracking the new task. When automatic tracking is off, the unassigned timer prompts you to select a task. **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title and wrap onto another row when they need more room.
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- Date formatting (19/19), Lightbox and Property Editor (189/189), Table property tests, strict lint, and TypeScript for tracked files passed. The embedded calendar, week preferences, and date saving were verified in Obsidian.
 - **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
 - **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.

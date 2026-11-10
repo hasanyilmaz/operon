@@ -162,6 +162,10 @@ export function openTableFilePropertyPicker(options: {
 				app: options.app,
 				type: 'date',
 				dateDisplayFormat: options.settings.dateDisplayFormat,
+				dayPicker: {
+					weekStart: options.settings.calendarWeekStart,
+					showWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
+				},
 				value: normalizedValue,
 				onCommit: (_key, value) => options.onMutation({ kind: 'set', value }),
 			});
