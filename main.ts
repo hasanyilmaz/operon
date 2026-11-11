@@ -371,6 +371,7 @@ import {
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
 import { evaluateFilterSet } from './src/core/filter-evaluator';
+import { captureFilterFolderRenames } from './src/core/filter-folder-paths';
 import { structuredErrorV1 } from './src/agent-runtime/contracts/v1/primitives';
 import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
@@ -27874,6 +27875,25 @@ export default class OperonPlugin extends Plugin {
 		// File renamed/moved → update locations in index, then reindex
 		this.registerEvent(
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+				if (file instanceof TFolder) {
+					const active = () => this.agentRuntimeLifecycle.getPhase() !== 'unloading';
+					if (!active()) return;
+					const folderPaths = this.app.vault.getAllLoadedFiles()
+						.filter(entry => entry instanceof TFolder).map(entry => entry.path);
+					const renames = captureFilterFolderRenames(oldPath, file.path, folderPaths);
+					runAsyncAction('saved filter folder rename failed', async () => {
+						try {
+							if (await this.storage.renameSavedFilterFolders(renames, active) && active()) {
+								this.syncFilterSetsFromStore();
+								this.refreshViews();
+							}
+						} catch (error) {
+							if (active()) new Notice('Operon could not update saved filter paths. Check the folder conditions in your filters.');
+							throw error;
+						}
+					});
+					return;
+				}
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				this.startupFileEvents?.rename(oldPath, file.path);
     const previousTasks = this.startupPreviousTasks.get(oldPath);

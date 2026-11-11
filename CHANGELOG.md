@@ -27,12 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saved folder filters now follow unambiguous folder paths when a folder is moved or renamed, so matching tasks stay visible. ([#321](https://github.com/hasanyilmaz/operon/issues/321))
+
 - FlowTime now plays the configured completion sound when a work session reaches zero, including when the sidebar is closed.
 
 - Fixed a blank gap appearing in **Operon Table Lightboxes** with themes that animate file titles on hover. File titles now stay visible in both **Table and Base Lightboxes**.
 
 ### Validation
 
+- **17/17** settings reload and folder filter tests passed, along with local Plugin checks, production build, strict lint, and release guard. The folder move fixture retained its matching task after restart.
 - Date formatting (19/19), Lightbox and Property Editor (189/189), Table property tests, strict lint, and TypeScript for tracked files passed. The embedded calendar, week preferences, and date saving were verified in Obsidian.
 - **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.
 - Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.

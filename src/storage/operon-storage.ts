@@ -5,7 +5,7 @@ import { getNativePropertyIndex } from '../indexer/native-property-index';
 import type { FlowTimeTimerSettings } from '../systems/flow-time-controls';
 import type { KanbanPreset } from '../types/kanban';
 import { resolveKanbanAxes } from '../core/kanban-axis-model';
-import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize, normalizeTaskAfterCreateAction } from '../types/settings';
+import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize, normalizeTaskAfterCreateAction, normalizeFilterSet } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -26,6 +26,7 @@ import { PinnedCache } from './pinned-cache';
 import { RepeatSeriesStore } from './repeat-series-store';
 import { ExternalCalendarCacheStore } from './external-calendar-cache';
 import { FilterStore } from './filter-store';
+import { rewriteFilterFolderPaths } from '../core/filter-folder-paths';
 import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
@@ -757,6 +758,38 @@ export class OperonStorage {
 		const run = this.settingsSaveQueue.then(() => this.persistSettings(_options));
 		this.settingsSaveQueue = run.catch(() => {});
 		await run;
+	}
+
+	/** Retarget only saved filter conditions after an Obsidian folder rename. */
+	async renameSavedFilterFolders(renames: ReadonlyMap<string, string>, active: () => boolean): Promise<boolean> {
+		if (renames.size === 0) return false;
+		return this.enqueueSettingsTransaction(async () => {
+			if (!active()) return false;
+			const previous = this.dataPackageStore.getDataPackage().views.filters;
+			const itemsById = { ...previous.itemsById };
+			const expected = new Map<string, string>();
+			for (const [id, filter] of Object.entries(previous.itemsById)) {
+				const normalized = normalizeFilterSet(filter);
+				if (!normalized || normalized.id !== id) continue;
+				const updated = rewriteFilterFolderPaths(filter, renames);
+				if (updated === filter) continue;
+				const current = this.filterStore.getById(id);
+				const baseline = JSON.stringify(normalized);
+				if (JSON.stringify(current) !== baseline) throw new Error('Saved filter changed before folder rename could be applied');
+				expected.set(id, baseline);
+				itemsById[id] = updated;
+			}
+			if (expected.size === 0) return false;
+			const canCommit = () => active() && Array.from(expected).every(([id, baseline]) =>
+				JSON.stringify(this.filterStore.getById(id)) === baseline);
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				if (JSON.stringify(current.views.filters) !== JSON.stringify(previous)) throw new Error('Saved filters changed during folder rename');
+				return { ...current, views: { ...current.views, filters: { ...current.views.filters, itemsById } } };
+			}, canCommit);
+			this.filterStore.publishFolderRenames(expected.keys(), renames);
+			this.settings.filterSets = this.filterStore.getAll();
+			return true;
+		});
 	}
 
  /** Publish custom mapping and surface preferences only after one successful settings write. */

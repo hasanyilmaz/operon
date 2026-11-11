@@ -1,4 +1,5 @@
 import { App } from 'obsidian';
+import { rewriteFilterFolderPaths } from '../core/filter-folder-paths';
 import { FilterSet, normalizeFilterSet } from '../types/settings';
 import {
 	DYNAMIC_FILE_TASK_FILTER_ID,
@@ -76,6 +77,14 @@ export class FilterStore {
 	getById(filterId: string): FilterSet | null {
 		const filterSet = this.filters.get(filterId);
 		return filterSet ? cloneFilterSet(filterSet) : null;
+	}
+
+	/** Publish committed path changes without replacing unrelated pending edits. */
+	publishFolderRenames(ids: Iterable<string>, renames: ReadonlyMap<string, string>): void {
+		for (const id of ids) {
+			const filter = this.filters.get(id);
+			if (filter) this.filters.set(id, rewriteFilterFolderPaths(filter, renames));
+		}
 	}
 
 	setPackagePersistence(persist: (filters: OperonFiltersPackageV1) => Promise<void>): void {
