@@ -14,6 +14,10 @@ interface TypeManager {
 const queues = new WeakMap<App, Promise<unknown>>();
 const uncertain = new WeakSet<App>();
 
+/** A disk snapshot alone cannot prove that Obsidian's in-memory type write settled. */
+export function isCustomPropertyTypeWriteUncertain(app: App): boolean { return uncertain.has(app); }
+
+
 /** Serializes native type writes, including their related settings commit and rollback. */
 export function withCustomPropertyTypeWriteLock<T>(app: App, operation: () => Promise<T>): Promise<T> {
  const pending = (queues.get(app) ?? Promise.resolve()).then(operation, operation);

@@ -1,3 +1,4 @@
+import type { CustomKeySourceWriter } from '../ui/custom-key-empty-transaction';
 import { normalizeStatusDockSections, type StatusDockSection } from '../types/status-dock-sections';
 import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
 import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
@@ -792,11 +793,15 @@ export class OperonStorage {
 		});
 	}
 
+ private customKeySourceWriter: CustomKeySourceWriter | undefined;
+ setCustomKeySourceWriter(writer: CustomKeySourceWriter): void { this.customKeySourceWriter = writer; }
+
  /** Publish custom mapping and surface preferences only after one successful settings write. */
  async saveCustomKeyMapping(mapping: KeyMapping, options: {
   remove?: boolean;
   surfaces?: (settings: OperonSettings, mapping: KeyMapping) => void;
-  prepare?: (settings: OperonSettings) => Promise<CustomKeyReusePreparation | undefined>;
+  onCommittedWarning?: (message: string) => void;
+  prepare?: (settings: OperonSettings, writeSource?: CustomKeySourceWriter) => Promise<CustomKeyReusePreparation | undefined>;
  } = {}): Promise<void> {
   await this.enqueueSettingsTransaction(() => withCustomPropertyTypeWriteLock(this.app, async () => {
    const current = this.getSettings({ committedMappings: true });
@@ -814,12 +819,22 @@ export class OperonStorage {
    const settingsUnchanged = this.dataPackageStore.captureSettingsRollbackGuard();
    let prepared: CustomKeyReusePreparation | undefined;
    try {
-    prepared = options.remove ? undefined : await options.prepare?.(current);
+    prepared = options.remove ? undefined : await options.prepare?.(current, this.customKeySourceWriter);
     const canCommit = () => JSON.stringify(this.settings.keyMappings) === expectedMappings && JSON.stringify(this.settings.inlinePropertyDefinitions) === expectedDefinitions
      && [...submitted].every(([key,value]) => this.settings[key as keyof OperonSettings] === value) && (prepared?.isCurrent() ?? true);
     await this.persistSettings({ forceRecoveredWrite: true }, [], next.keyMappings, true, patch, canCommit, prepared?.definitions);
+    // A recovery-record failure must not turn a committed setting into a failed add.
+    try { await prepared?.complete?.(); }
+    catch (error) {
+     const message = `Custom property was saved, but its recovery record could not be completed: ${error instanceof Error ? error.message : String(error)}`;
+     if (options.onCommittedWarning) options.onCommittedWarning(message);
+     else console.warn(message);
+    }
    } catch (error) {
-    if (prepared && await settingsUnchanged()) await prepared.rollback();
+    if (prepared) {
+     if (await settingsUnchanged()) await prepared.rollback();
+     else await prepared.recordUncertainSettings?.();
+    }
     throw error;
    } finally { prepared?.dispose(); }
   }), true);

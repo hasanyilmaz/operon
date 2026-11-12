@@ -32,7 +32,7 @@ interface PropertyEditorSource {
  properties: PropertyEditorDocument;
 }
 
-function readPropertyEditorSource(content: string, mappings: KeyMapping[]): PropertyEditorSource | null {
+function readPropertyEditorSource(content: string, mappings: KeyMapping[], allowTaskIdentity = false): PropertyEditorSource | null {
  const bom = content.startsWith('\uFEFF') ? '\uFEFF' : '';
  const source = content.slice(bom.length);
  const opening = /^---[ \t]*(?:\r?\n|$)/u.exec(source);
@@ -50,7 +50,7 @@ function readPropertyEditorSource(content: string, mappings: KeyMapping[]): Prop
  if (!parsed) return null;
  const excluded = new Set([...getManagedYamlAliases('operonId', mappings), 'excalidraw-plugin'].map(name => name.toLowerCase()));
  const order = parsed.entries.map(entry => entry.name);
- if (order.some(name => excluded.has(name.toLowerCase()))) return null;
+ if (!allowTaskIdentity && order.some(name => excluded.has(name.toLowerCase()))) return null;
  const readonlyNames = new Set<string>();
  for (const [index, entry] of parsed.entries.entries()) {
   const end = parsed.entries[index + 1]?.start ?? yaml.length;
@@ -133,8 +133,31 @@ function encodePropertyValue(value: RawYamlPropertyValue, indent: string, newlin
 }
 
 export function planPropertyEditorWrite(content: string, mappings: KeyMapping[], changes: readonly PropertyEditorChange[]):
+ ReturnType<typeof planYamlPropertyWrite> {
+ return planYamlPropertyWrite(content, mappings, changes);
+}
+
+/** Custom-key reuse may normalize only empty existing values, including in File Tasks.
+ * Ordinary Property Editor admission remains unchanged. */
+export function planEmptyCustomKeyValues(content: string, names: ReadonlySet<string>):
+ ReturnType<typeof planYamlPropertyWrite> {
+ const source = readPropertyEditorSource(content, [], true);
+ if (!source) return { status: 'unsupported' };
+ if (source.properties.order.some(name => name.toLowerCase() === 'excalidraw-plugin')) return { status: 'unsupported' };
+ const matches = source.properties.order.filter(name => names.has(name.trim().toLowerCase()));
+ if (matches.length > 1) return { status: 'unsupported' };
+ const changes: PropertyEditorChange[] = [];
+ for (const name of matches) {
+  const value = source.properties.frontmatter[name];
+  if (source.properties.readonlyNames?.has(name) || !(value === null || value === '' || Array.isArray(value) && value.length === 0)) return { status: 'unsupported' };
+  changes.push({ name, expected: { present: true, value }, value: null });
+ }
+ return planYamlPropertyWrite(content, [], changes, true);
+}
+
+function planYamlPropertyWrite(content: string, mappings: KeyMapping[], changes: readonly PropertyEditorChange[], allowTaskIdentity = false):
  { status: 'ready'; text: string; properties: PropertyEditorDocument } | { status: 'conflict' | 'unsupported' } {
- const source = readPropertyEditorSource(content, mappings);
+ const source = readPropertyEditorSource(content, mappings, allowTaskIdentity);
  if (!source) return { status: 'unsupported' };
  const { properties: document, indent, newline } = source;
  const expectedOrder = [...document.order];
@@ -172,7 +195,7 @@ export function planPropertyEditorWrite(content: string, mappings: KeyMapping[],
   yaml += additions.join('');
   const text = source.fenced ? source.prefix + yaml + source.suffix
    : source.prefix + '---' + newline + yaml + '---' + newline + source.suffix;
-  const result = readPropertyEditorDocument(text, mappings);
+  const result = readPropertyEditorSource(text, mappings, allowTaskIdentity)?.properties;
   // Round-trip the whole mapping. This also catches YAML dependencies and any ambiguous formatting.
   if (!result || JSON.stringify(result.order) !== JSON.stringify(expectedOrder) || expectedOrder.some(name => {
    const changed = edits.get(name);

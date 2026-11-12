@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed recreating a deleted **custom key** with a different type when only empty YAML values remain. Confirmed conversion preserves property names, order, and comments; **Clear** behavior stays unchanged, and populated values remain protected.
+
 - Saved folder filters now follow unambiguous folder paths when a folder is moved or renamed, so matching tasks stay visible. ([#321](https://github.com/hasanyilmaz/operon/issues/321))
 
 - FlowTime now plays the configured completion sound when a work session reaches zero, including when the sidebar is closed.
@@ -35,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
+- **111/111** custom-key reuse tests passed, along with local Plugin checks, production build, strict lint, release guard, and code review. Recreating a List key as Text while retaining its empty YAML key was verified in Obsidian.
 - **17/17** settings reload and folder filter tests passed, along with local Plugin checks, production build, strict lint, and release guard. The folder move fixture retained its matching task after restart.
 - Date formatting (19/19), Lightbox and Property Editor (189/189), Table property tests, strict lint, and TypeScript for tracked files passed. The embedded calendar, week preferences, and date saving were verified in Obsidian.
 - **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.

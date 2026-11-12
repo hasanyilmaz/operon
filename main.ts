@@ -16941,8 +16941,15 @@ export default class OperonPlugin extends Plugin {
 				this.scheduleDuplicateConflictAlert(operonId);
 			},
 		});
-		this.storage.setMappingMutationCoordinator(operation => this.writer.runExclusiveTaskMutation(operation),
-			mappings => this.writer.updateKeyMappings(mappings));
+		let customKeyMutationPermit: TaskWriterExclusiveMutationPermit | undefined;
+		this.storage.setMappingMutationCoordinator(operation => this.writer.runExclusiveTaskMutation(async permit => {
+   customKeyMutationPermit = permit;
+   try { return await operation(); } finally { customKeyMutationPermit = undefined; }
+  }), mappings => this.writer.updateKeyMappings(mappings));
+  this.storage.setCustomKeySourceWriter((file, before, after, current) => {
+   if (!customKeyMutationPermit) throw new Error('Custom property source lease is unavailable');
+   return this.writeCustomKeyReuseSource(file, before, after, current, customKeyMutationPermit);
+  });
 		try {
 			await this.bindAgentRuntimeMutationGateway();
 		} catch (error) {
@@ -37897,6 +37904,30 @@ export default class OperonPlugin extends Plugin {
 			},
 		};
 	}
+
+ /** Settings owns the mapping lease; this writes only the approved empty YAML values. */
+ private async writeCustomKeyReuseSource(file: TFile, before: string, after: string, current: () => boolean, permit: TaskWriterExclusiveMutationPermit): Promise<void> {
+  const path = file.path;
+  const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
+  if (source.stored !== before || await source.read() !== before || !current()) throw new Error(`Property source changed: ${path}`);
+  const previous = this.propertyEditorWrittenSources.get(file);
+  const receipt = { path, sources: new Set([before, after]) };
+  this.propertyEditorWrittenSources.set(file, receipt);
+  try {
+   const result = await this.writer.withMarkdownSource(source, () => this.writer.applyExactMarkdownSourceMutation(path, before, after, current, permit, 'plugin'));
+   if (result.outcome !== 'committed' || source.nativeConflict) throw new Error(`Property source write or synchronization failed: ${path}`);
+   receipt.sources = new Set([after]);
+   this.indexer.scheduleReindex(path);
+  } catch (error) {
+   const actual = await this.app.vault.read(file).catch(() => null);
+   if (actual === after) receipt.sources = new Set([after]);
+   else if (actual === before) {
+    if (previous) this.propertyEditorWrittenSources.set(file, previous);
+    else this.propertyEditorWrittenSources.delete(file);
+   }
+   throw error;
+  }
+ }
 
  private readonly propertyEditorWrittenSources = new WeakMap<TFile, { path: string; sources: Set<string> }>();
 

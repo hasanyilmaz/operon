@@ -11971,7 +11971,18 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 				keyMappings: this.settings.keyMappings,
 				onSave: async mapping => {
      await this.storage.saveCustomKeyMapping(mapping, {
-      prepare: current => prepareCustomKeyTypeReuse(this.app, current, mapping, () => this.settings),
+      onCommittedWarning: message => { new Notice(message); },
+      prepare: (current, writeSource) => prepareCustomKeyTypeReuse(this.app, current, mapping, () => this.settings, {
+       writeSource,
+       confirm: (changes, previousTypes, nextType) => new Promise(resolve => {
+        scopeSettingsModal(new ConfirmActionModal(this.app, {
+         title: 'Change custom property type',
+         message: `${mapping.visiblePropertyName}: ${previousTypes.join(', ')} → ${nextType}. Empty values in ${changes.length} file(s) will become blank. Property names, order, and other values will be preserved.`,
+         confirmText: 'Change type', initialFocus: 'cancel',
+         detailsTable: changes.map(change => ({ label: change.path, before: 'Empty value', after: 'Blank property' })),
+        }, resolve), true).open();
+       }),
+      }),
       surfaces: (settings, added) => {
        if (added.type === 'checkbox') return;
        this.setCustomSurfaceMappingVisible(added, 'editor', added.showInEditor !== false, settings);
