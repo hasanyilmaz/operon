@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.7.0] - 2026-11-12
+
 ### New
 
 - Open **Property Editor** from **Show property editor** in a regular Markdown note’s Lightbox. Edit properties in file order with Operon’s pickers and **Add Property**. Autosave preserves unrelated edits and reports conflicts. The panel uses Task Editor’s layout preferences and keeps the note’s type.
