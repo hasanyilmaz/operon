@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const temp = await mkdtemp(path.join(tmpdir(), 'operon-task-workspace-test-'));
 try {
 	const outfile = path.join(temp, 'workspace.test.cjs');
-	await build({ entryPoints: [path.join(root, 'scripts/native-task-workspace.test.ts')], outfile, bundle: true, format: 'cjs', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
+	await build({ entryPoints: [path.join(root, 'scripts/native-task-workspace.test.ts')], outfile, bundle: true, format: 'cjs', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian-native-yaml.ts') } });
 	const result = spawnSync(process.execPath, ['--test', outfile], { stdio: 'inherit' });
 	if (result.error) throw result.error;
 	if (result.status !== 0) throw new Error(`Native task workspace tests failed: ${result.status ?? result.signal}`);

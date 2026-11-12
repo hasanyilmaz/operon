@@ -598,12 +598,13 @@ async function run(): Promise<void> {
 	equal(matchesTaskSearchQueryText('Before\nAfter\n\nFinal', 'after final'), true);
 	equal(matchesTaskSearchQueryText('Before\nAfter\n\nFinal', 'missing'), false);
 
-	const [taskEditorSource, noteActionSource, tooltipCss] = await Promise.all([
+	const [taskEditorSource, sharedFieldsSource, noteActionSource, tooltipCss] = await Promise.all([
 		readFile(path.join(process.cwd(), 'src/ui/task-editor-content.ts'), 'utf8'),
+		readFile(path.join(process.cwd(), 'src/ui/editor-property-fields.ts'), 'utf8'),
 		readFile(path.join(process.cwd(), 'src/ui/task-note-action.ts'), 'utf8'),
 		readFile(path.join(process.cwd(), 'styles.css'), 'utf8'),
 	]);
-	assert.match(taskEditorSource, /textPolicy: 'task-note'/u, 'desktop Notes must opt into multiline compact text');
+	assert.match(sharedFieldsSource, /textPolicy: 'task-note'/u, 'desktop Notes must opt into multiline compact text');
 	assert.match(taskEditorSource, /projectCompactTaskTextForEditing\(textarea\.value, 'task-note'\)/u, 'mobile Notes must preserve line breaks');
 	assert.match(taskEditorSource, /event\.key !== 'Enter' \|\| event\.shiftKey/u, 'mobile Notes must reserve new lines for Shift+Enter');
 	assert.match(noteActionSource, /textPolicy: 'task-note'/u, 'shared task-note popover must opt into multiline compact text');

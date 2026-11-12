@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Open **Property Editor** from **Show property editor** in a regular Markdown note’s Lightbox. Edit properties in file order with Operon’s pickers and **Add Property**. Autosave preserves unrelated edits and reports conflicts. The panel uses Task Editor’s layout preferences and keeps the note’s type.
+- Added an optional **Time Tracker dial** to Status Dock, sized **0.5× to 1.5×** in 0.1× steps, with a soft backdrop for readability. Drag the dock or sidebar dial to adjust the shared FlowTime target. The dock dial centers over the running timer and hides while a task list or recent session card is open.
+- The new **Lightbox** section under **Settings → Interface → Workspace Tweaks** groups background dimming and **Core Quick Switcher click behavior**. In Obsidian Desktop, click or press Enter to open the source Lightbox, the matching editor, or both. File Tasks use **Task Editor** and regular notes use **Property Editor**. **Source File + Task / Property Editor** is the default. Saved choices still apply, and **Use switcher default** restores Obsidian’s behavior. With Operon routing enabled, Tables and Bases open in the source Lightbox.
+
+### Improved
+
+- **Status Dock** has its own page below **Task Chips** in **Settings → Interface**. Use **General Settings** for visibility and click behavior and **Sections and Order** for layout. **Show Status Dock** and **Toggle status dock** share a preference that persists across restarts.
+- **Task Creator** has its own section after Time Tracker by default and stays available while the timer runs. **Start timer when creating a task** controls automatic tracking. With it off, an unassigned timer prompts you to select a task.
+- **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per title. Dock sections wrap as needed and hidden sections collapse to keep spacing even.
+- Switch between **TrackTime** and **FlowTime** from the dock timer, with the mode synced to the sidebar. Time Tracker groups Finder and break controls and centers elapsed time, remaining time, or overtime. **Show seconds** adds two-digit seconds without shifting hours or minutes.
+- **Date** fields in Property Editor, Task Editor’s Additional section, and Operon Table use the built-in calendar with your week start and week number preferences. Selecting a day applies it immediately.
+
+### Fixed
+
+- Fixed unexpected `stale-context` errors between consecutive Runtime writes by letting pending index updates from each write finish before reporting success. ([#245](https://github.com/hasanyilmaz/operon/issues/245))
+- Recreate a deleted **custom key** with a different type when only empty YAML values remain. Confirmed conversion preserves property names, order, and comments. **Clear** keeps its existing behavior and populated values remain protected.
+- Saved folder filters follow unambiguous folder paths after a move or rename, keeping matching tasks visible. ([#321](https://github.com/hasanyilmaz/operon/issues/321))
+- **FlowTime** plays the configured sound at the end of a work countdown, even with the sidebar closed.
+- Fixed gaps caused by hover-animated titles in **Operon Table Lightboxes**. File titles stay visible in **Table and Base Lightboxes**.
+
 ### Validation
+
+- Full local Plugin checks, production build, strict lint, release guard, and code review passed. Key workflows were verified in Obsidian.
 
 ## [4.6.0] - 2026-11-08
 

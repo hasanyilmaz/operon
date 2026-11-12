@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { withSettingsFixture } from './test-support/settings-preservation-harness';
 import { buildOperonDataPackageFromSettings, type OperonDataPackageV1 } from '../src/storage/operon-data-package';
-import { DEFAULT_SETTINGS } from '../src/types/settings';
+import { DEFAULT_SETTINGS, type FilterSet } from '../src/types/settings';
+import { captureFilterFolderRenames } from '../src/core/filter-folder-paths';
 import { createDefaultTablePreset } from '../src/types/table';
 import type { OperonStorage } from '../src/storage/operon-storage';
 
@@ -88,5 +89,129 @@ test('staged rollback retains the existing snapshot and recovery behavior', asyn
   const stage = owner.stageCanonicalDataPackageReload(data); assert.equal(stage.changed, true);
   stage.commit(); assert.notEqual(JSON.stringify(storage.getSettings()), before);
   stage.rollback(); assert.equal(JSON.stringify(storage.getSettings()), before);
+ });
+});
+
+const oldFolder = 'Test-321/External/ClientA';
+const newFolder = 'Test-321/Internal/ClientA';
+const folderCondition = { id: 'folder-321', field: 'folders', fieldType: 'folders', operator: 'isInFolderTree', value: oldFolder } as const;
+const folderRenames = captureFilterFolderRenames(oldFolder, newFolder, [newFolder, newFolder + '/Sub', oldFolder + '-old']);
+const folderFilter: FilterSet = {
+ id: 'filter-321', name: 'Saved folder filter', rootGroup: { id: 'root', logic: 'all', children: [
+  folderCondition,
+  { id: 'nested', logic: 'any', children: [
+   { ...folderCondition, id: 'sub', value: oldFolder + '/Sub' },
+   { ...folderCondition, id: 'neighbor', value: oldFolder + '-old' },
+   { id: 'text', field: 'description', fieldType: 'text', operator: 'contains', value: oldFolder },
+  ] },
+ ] },
+ conditions: [folderCondition], matchLogic: 'all', sorts: [{ field: 'description', order: 'desc' }],
+};
+
+test('folder move saves only the matching paths once and retains nested filters on restart', async () => {
+ await withSettingsFixture({ initialRaw: initialRaw(), table: false }, async fixture => {
+  const storage = fixture.createStorage(); await storage.initialize();
+  await storage.filters.upsert(folderFilter);
+  const before = fixture.package();
+  const writes = fixture.canonicalCommits;
+  assert.equal(await storage.renameSavedFilterFolders(folderRenames, () => true), true);
+  const expected = structuredClone(before);
+  const saved = expected.views.filters.itemsById[folderFilter.id];
+  const [root, nested] = saved.rootGroup.children;
+  assert.ok('value' in root && 'children' in nested && 'value' in nested.children[0]);
+  root.value = newFolder;
+  nested.children[0].value = newFolder + '/Sub';
+  saved.conditions[0].value = newFolder;
+  assert.deepEqual(fixture.package(), expected);
+  assert.equal(fixture.canonicalCommits - writes, 1);
+  assert.equal(storage.filters.getById(folderFilter.id)?.conditions[0].value, newFolder);
+  assert.equal(await storage.renameSavedFilterFolders(folderRenames, () => true), false);
+  assert.equal(fixture.canonicalCommits - writes, 1);
+  const restarted = fixture.createStorage(); await restarted.initialize();
+  assert.deepEqual(restarted.filters.getById(folderFilter.id), storage.filters.getById(folderFilter.id));
+ });
+});
+
+test('ambiguous suffixes and unrelated folder names do not retarget saved paths', () => {
+ const other = 'Another/' + oldFolder;
+ assert.equal(captureFilterFolderRenames(oldFolder, newFolder, [newFolder, other]).has(oldFolder.toLowerCase()), false);
+ assert.equal(captureFilterFolderRenames(oldFolder, newFolder, [newFolder, 'Another/' + newFolder]).size, 0);
+ assert.equal(folderRenames.has('clienta'), false);
+ assert.equal(folderRenames.has((oldFolder + '-old').toLowerCase()), false);
+});
+
+test('queued folder moves follow event order and skip writes for missing references', async () => {
+ await withSettingsFixture({ initialRaw: initialRaw(), table: false }, async fixture => {
+  const storage = fixture.createStorage(); await storage.initialize();
+  const attempts = fixture.canonicalAttempts;
+  assert.equal(await storage.renameSavedFilterFolders(folderRenames, () => true), false);
+  assert.equal(fixture.canonicalAttempts, attempts);
+  await storage.filters.upsert(folderFilter);
+  const finalFolder = 'Final/ClientA';
+  const finalRenames = captureFilterFolderRenames(newFolder, finalFolder, [finalFolder, finalFolder + '/Sub']);
+  assert.deepEqual(await Promise.all([
+   storage.renameSavedFilterFolders(folderRenames, () => true),
+   storage.renameSavedFilterFolders(finalRenames, () => true),
+  ]), [true, true]);
+  assert.equal(fixture.package().views.filters.itemsById[folderFilter.id].conditions[0].value, finalFolder);
+ });
+});
+
+for (const failure of ['write', 'concurrent edit'] as const) test(`folder rename protects the saved filter on ${failure}`, async () => {
+ await withSettingsFixture({ initialRaw: initialRaw(), table: false }, async fixture => {
+  const storage = fixture.createStorage(); await storage.initialize();
+  await storage.filters.upsert(folderFilter);
+  const before = fixture.raw();
+  let pendingEdit: Promise<void> | undefined;
+  if (failure === 'write') fixture.writeFault = 'throw-before';
+  else {
+   const process = fixture.adapter.process;
+   fixture.adapter.process = async (path, transform) => {
+    if (path === fixture.canonicalPath && !pendingEdit) {
+     pendingEdit = storage.filters.upsert({ ...folderFilter, name: 'Concurrent edit' });
+    }
+    return process(path, transform);
+   };
+  }
+  await assert.rejects(storage.renameSavedFilterFolders(folderRenames, () => true));
+  if (failure === 'write') assert.equal(fixture.raw(), before);
+  else {
+   await pendingEdit;
+   assert.equal(fixture.package().views.filters.itemsById[folderFilter.id].name, 'Concurrent edit');
+  }
+  assert.equal(storage.filters.getById(folderFilter.id)?.conditions[0].value, oldFolder);
+  assert.equal(fixture.package().views.filters.itemsById[folderFilter.id].conditions[0].value, oldFolder);
+ });
+});
+
+test('an external settings change is not overwritten by a folder rename', async () => {
+ await withSettingsFixture({ initialRaw: initialRaw(), table: false }, async fixture => {
+  const storage = fixture.createStorage(); await storage.initialize();
+  await storage.filters.upsert(folderFilter);
+  const external = fixture.package();
+  external.settings.language = 'de';
+  const bytes = JSON.stringify(external);
+  fixture.seed(fixture.canonicalPath, bytes);
+  const attempts = fixture.canonicalAttempts;
+  await assert.rejects(storage.renameSavedFilterFolders(folderRenames, () => true));
+  assert.equal(fixture.raw(), bytes);
+  assert.equal(fixture.canonicalAttempts, attempts);
+  assert.equal(storage.filters.getById(folderFilter.id)?.conditions[0].value, oldFolder);
+ });
+});
+
+test('a malformed unrelated filter entry is preserved during folder rename', async () => {
+ await withSettingsFixture({ initialRaw: initialRaw(), table: false }, async fixture => {
+  const storage = fixture.createStorage(); await storage.initialize();
+  await storage.filters.upsert(folderFilter);
+  const data = fixture.package();
+  data.views.filters.filterIds.push('malformed');
+  Object.assign(data.views.filters.itemsById, { malformed: null });
+  fixture.seed(fixture.canonicalPath, JSON.stringify(data));
+  await storage.reloadCanonicalSettingsPackage();
+  assert.equal(fixture.package().views.filters.itemsById.malformed, null);
+  assert.equal(await storage.renameSavedFilterFolders(folderRenames, () => true), true);
+  assert.equal(fixture.package().views.filters.itemsById.malformed, null);
+  assert.equal(fixture.package().views.filters.itemsById[folderFilter.id].conditions[0].value, newFolder);
  });
 });

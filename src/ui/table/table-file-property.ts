@@ -1,3 +1,4 @@
+import { inferObsidianPropertyType } from '../../core/property-type-registry';
 import type { NativePropertyReadOnlyReason } from '../../core/task-editor-native-properties';
 import { encodeVaultPropertyValue } from '../../core/vault-property-codec';
 import { App, TFile } from 'obsidian';
@@ -539,19 +540,7 @@ function createInferredTableFilePropertyTypeResolver(): TableFilePropertyTypeRes
 	};
 }
 
-function inferObsidianPropertyType(samples: readonly unknown[]): ObsidianPropertyTypeId {
-	const meaningful = samples.filter(value => (
-		value !== null
-		&& value !== undefined
-		&& value !== ''
-		&& isSupportedTableFilePropertyValue(value)
-	));
-	if (meaningful.length === 0) return 'unknown';
-	if (meaningful.every(value => typeof value === 'boolean')) return 'checkbox';
-	if (meaningful.every(value => typeof value === 'number')) return 'number';
-	if (meaningful.every(value => Array.isArray(value))) return 'multitext';
-	return 'text';
-}
+
 
 
 function compareTableFilePropertyFields(left: TableFilePropertyField, right: TableFilePropertyField): number {

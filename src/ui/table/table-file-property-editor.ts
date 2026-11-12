@@ -94,6 +94,7 @@ export function openTableFilePropertyPicker(options: {
 	sessionKey?: string;
  preserveListValues?: boolean;
  nativeList?: boolean;
+ confirmList?: boolean;
  editListIndex?: number;
  onNativeOperation?: (operation: NativeListPickerOperation) => readonly (string | number)[];
  textEditRoute?: 'picker' | 'popover';
@@ -127,6 +128,7 @@ export function openTableFilePropertyPicker(options: {
 				? options.cellValue.rawValue
 				: [];
 			return showCustomListFieldPicker(options.anchor, {
+				confirmValues: options.confirmList,
     onNativeOperation: options.onNativeOperation,
 				...common,
 				app: options.app,
@@ -160,6 +162,10 @@ export function openTableFilePropertyPicker(options: {
 				app: options.app,
 				type: 'date',
 				dateDisplayFormat: options.settings.dateDisplayFormat,
+				dayPicker: {
+					weekStart: options.settings.calendarWeekStart,
+					showWeekNumbers: options.settings.calendarSidebarShowWeekNumbers,
+				},
 				value: normalizedValue,
 				onCommit: (_key, value) => options.onMutation({ kind: 'set', value }),
 			});

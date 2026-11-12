@@ -49,6 +49,7 @@ export class StatusDockTaskList {
   toggleTimer: (id: string, canCommit: () => boolean) => Promise<unknown>;
   actions: StatusDockSessionActions;
   sessionCard: StatusDockSessionCard;
+  onVisibilityChange?: (visible: boolean) => void;
  }) {
   this.owner = getOwnerWindow(host) as DockOwnerWindow;
   this.controls = host.createDiv('operon-status-dock-scopes');
@@ -140,20 +141,25 @@ export class StatusDockTaskList {
   if (this.disposed) return;
   if (this.active === scope) { this.close(); return; }
   if (!(scope === 'history' ? this.history : this.scopes[scope]).length) return;
-  if (!this.active) this.queuedSession = this.options.sessionCard.takeSession() ?? this.queuedSession;
+  const wasOpen = this.active !== null;
+  if (!wasOpen) this.queuedSession = this.options.sessionCard.takeSession() ?? this.queuedSession;
   this.revision++; this.clearRows(); this.active = scope; this.panel.hidden = false;
-  this.panel.scrollTop = 0; this.update(this.scopes); this.position();
+  if (!wasOpen) this.options.onVisibilityChange?.(true);
+  this.panel.scrollTop = 0; this.update(this.scopes);
+  if (this.active) this.position();
  }
  showSession(session: TrackerSession): void {
   if (this.active) this.queuedSession = session;
   else { this.syncCardGutter(); this.options.sessionCard.show(session); }
  }
  close(showSession = true): void {
+  const wasOpen = this.active !== null;
   this.revision++; this.active = null; this.panel.hidden = true; this.clearRows();
   if (this.frame !== null) this.owner.cancelAnimationFrame(this.frame); this.frame = null;
   for (const button of this.buttons.values()) { button.setAttribute('aria-expanded', 'false'); button.classList.remove('is-active'); }
   const session = this.queuedSession; this.queuedSession = null;
   if (showSession && session && !this.disposed) this.options.sessionCard.show(session);
+  if (wasOpen) this.options.onVisibilityChange?.(false);
  }
  private readonly onClick = (event: MouseEvent): void => {
   if (!this.active || !(event.target instanceof this.owner.Node)) return;

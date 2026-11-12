@@ -8,22 +8,32 @@ import { t } from '../core/i18n';
 import { asHTMLElement } from '../core/dom-compat';
 import { humanizeUpcomingCountdown, type UpcomingTaskStatusSnapshot } from '../core/upcoming-task-status';
 import { canSelectFlowTimeTask, type FlowTimeBreakSnapshot } from '../systems/flow-time-break';
+import { getFlowTimeTargetSeconds, resolveFlowTimeDialState, type FlowTimeDialState } from '../systems/flow-time-dial-state';
+import type { FlowTimeControls, FlowTimeTimerSettings } from '../systems/flow-time-controls';
 import { formatDurationHuman } from '../systems/tracker-utils';
-import { resolveStatusDockClickAction, type OperonSettings } from '../types/settings';
+import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, resolveStatusDockClickAction, type OperonSettings } from '../types/settings';
 import type { ActiveTrackerState } from '../types/tracker';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips, closeBoundOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindDescendantFocusVisible, cleanupDescendantFocusVisible } from './descendant-focus-visible';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { getTaskDisplayTitle } from '../core/task-display-title';
+import { createFlowTimeDial, resolveFlowTimeDialAccent } from './flow-time-dial';
+import { formatStatusDockSeconds } from './status-dock-duration';
+
+const DIAL_BASE_SIZE = 144;
+const DIAL_GAP = 8;
+const DIAL_EDGE_INSET = 8;
 
 export type StatusDockAlert = { state: 'hidden' | 'conflict' | 'resolved'; count: number };
 export interface StatusDockSnapshot {
 	settings: OperonSettings;
+	timerSettings: FlowTimeTimerSettings;
 	active: ActiveTrackerState | null;
 	breakSnapshot: FlowTimeBreakSnapshot;
 	breakSeconds: number;
 	pendingDescription: string | null;
+	pendingTaskColor?: string;
 	upcoming: UpcomingTaskStatusSnapshot;
 	alert: StatusDockAlert;
 	actionPending: boolean;
@@ -32,6 +42,7 @@ export interface StatusDockActions {
 	findTask: (anchor: HTMLElement) => void | Promise<void>;
 	openTracker: (anchor: HTMLElement) => void | Promise<void>;
 	toggleTimer: () => void | Promise<void>;
+	toggleTimerMode: () => void | Promise<void>;
 	toggleBreak: (anchor: HTMLElement) => void | Promise<void>;
 	startTask: (taskId: string, anchor: HTMLElement) => void | Promise<void>;
 	openCurrentTask: (taskId: string, anchor: HTMLElement) => void | Promise<void>;
@@ -68,10 +79,11 @@ export class StatusDockWidget {
 	private readonly grip: HTMLButtonElement;
 	private readonly tracker: HTMLElement;
 	private readonly trackerTime: HTMLElement;
+	private readonly trackerTimePrefix: HTMLElement;
+	private readonly trackerTimeSeconds: HTMLElement;
 	private readonly trackerName: HTMLElement;
 	private readonly coffee: HTMLButtonElement;
 	private readonly breakFinder: HTMLButtonElement;
-	private readonly selectionDivider: HTMLElement;
 	private readonly creator: HTMLButtonElement;
 	private readonly timerAction: HTMLButtonElement;
 	private readonly taskArea: HTMLElement;
@@ -104,8 +116,17 @@ export class StatusDockWidget {
  private clearDragClick: (() => void) | null = null;
  onPositionChanged?: () => void;
 	private readonly resizeObserver: ResizeObserver;
+	private dialHost: HTMLElement | null = null;
+	private dial: ReturnType<typeof createFlowTimeDial> | null = null;
+	private dialLayoutFrame: number | null = null;
+	private readonly dialObstructions = new Set<'task-list' | 'session-card'>();
 
-	constructor(doc: Document, actions: StatusDockActions, onError: (error: unknown) => void) {
+	constructor(
+		doc: Document,
+		actions: StatusDockActions,
+		onError: (error: unknown) => void,
+		private readonly timerControls: Pick<FlowTimeControls, 'begin' | 'editable'>,
+	) {
 		this.slot = doc.win.createDiv(); this.slot.className = 'operon-status-dock-slot';
 		this.root = this.slot.createDiv('operon-status-dock');
 		this.root.setAttribute('role', 'toolbar');
@@ -123,7 +144,9 @@ export class StatusDockWidget {
 			const el = shell.createSpan(`operon-status-dock-reading ${cls}`);
 			if (icon) this.icon(el.createSpan('operon-status-dock-leading-icon'), icon);
 			const copy = el.createSpan('operon-status-dock-copy');
-			const duration = copy.createSpan('operon-status-dock-time');
+			const duration = plainable
+				? button(copy, 'operon-status-dock-time operon-status-dock-mode', actions.toggleTimerMode)
+				: copy.createSpan('operon-status-dock-time');
 			const name = copy.createSpan('operon-status-dock-name');
 			if (!plainable) { name.setAttribute('role', 'button'); name.tabIndex = 0; }
 			name.addEventListener('click', event => {
@@ -151,8 +174,8 @@ export class StatusDockWidget {
 			const directions: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 			const direction = directions[event.key];
 			if (event.key !== 'Home' && !direction) return;
-			event.preventDefault(); event.stopPropagation(); this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips();
-			if (event.key === 'Home') { this.position = null; this.root.style.removeProperty('transform'); this.onPositionChanged?.(); return; }
+			event.preventDefault(); event.stopPropagation(); this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips(); this.dial?.cancelDrag();
+			if (event.key === 'Home') { this.position = null; this.root.style.removeProperty('transform'); this.place(); return; }
 			const start = this.currentPosition(), step = event.shiftKey ? 1 : 10;
 			this.position = { x: start.x + direction[0] * step, y: start.y + direction[1] * step }; this.place();
 		});
@@ -161,11 +184,15 @@ export class StatusDockWidget {
 		this.timerAction = button(this.tracker, 'operon-status-dock-action operon-status-dock-timer-action', actions.toggleTimer);
 		const tracker = reading(this.tracker, 'operon-status-dock-tracker-reading', null, actions.openTracker, true);
 		this.trackerTime = tracker.duration; this.trackerName = tracker.name;
+		const timeText = this.trackerTime.createSpan('operon-status-dock-mode-text');
+		this.trackerTimePrefix = timeText.createSpan();
+		this.trackerTimeSeconds = timeText.createSpan('operon-status-dock-mode-seconds');
 		const controls = this.tracker.createDiv('operon-status-dock-timer-controls');
 		this.coffee = button(controls, 'operon-status-dock-action', actions.toggleBreak); this.icon(this.coffee, 'coffee');
-		this.selectionDivider = controls.createSpan('operon-status-dock-divider operon-status-dock-selection-divider'); this.selectionDivider.setAttribute('aria-hidden', 'true');
 		this.breakFinder = button(controls, 'operon-status-dock-action operon-status-dock-break-finder', actions.findTask); this.icon(this.breakFinder, 'scan-search');
-		this.creator = button(controls, 'operon-status-dock-action operon-status-dock-creator', actions.createTask); this.icon(this.creator, 'list-plus');
+		this.creator = button(this.root, 'operon-status-dock-action operon-status-dock-creator', actions.createTask);
+		this.creator.dataset.statusDockSection = 'creator';
+		this.icon(this.creator, 'list-plus');
 		this.taskArea = this.root.createDiv('operon-status-dock-task-area');
 		this.taskArea.dataset.statusDockSection = 'ongoing';
 		this.configureCalendarArea(this.taskArea, 'statusDockSection_ongoing');
@@ -193,11 +220,24 @@ export class StatusDockWidget {
 
 	setVisible(visible: boolean): void {
 		this.visible = visible; this.slot.hidden = !visible;
-		if (!visible) { this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips(); }
+		if (!visible) { this.hideDial(); this.stopDrag?.(); this.clearDragClick?.(); this.closeTooltips(); }
 		else this.place();
 	}
 
+	setDialObscured(source: 'task-list' | 'session-card', visible: boolean): void {
+		if (visible) {
+			this.dialObstructions.add(source);
+			this.hideDial();
+		} else if (this.dialObstructions.delete(source)) {
+			this.scheduleDialLayout();
+		}
+	}
+
 	setViewport(width: number, height: number, left: number, top: number): void {
+		const previous = this.viewport;
+		if (width !== previous.width || height !== previous.height || left !== previous.left || top !== previous.top) {
+			this.dial?.cancelDrag();
+		}
 		this.viewport = { width, height, left, top }; this.setWidth(width); this.place();
 	}
 
@@ -229,8 +269,6 @@ export class StatusDockWidget {
   const nextVisible = isStatusDockSectionEnabled(sections, 'upcoming') && !!future;
   this.taskArea.hidden = !upcomingVisible;
   this.futureArea.hidden = !nextVisible;
-  this.root.classList.toggle('has-calendar-tasks', upcomingVisible || nextVisible);
-  this.root.classList.toggle('has-two-calendar-sections', upcomingVisible && nextVisible);
   this.updateCurrentTasks(ongoingEnabled ? ongoing : [], settings, sourceLabelForSettings(settings));
   this.nextUpcoming.hidden = !nextVisible;
 		const alertVisible = alert.state !== 'hidden';
@@ -241,13 +279,40 @@ export class StatusDockWidget {
 		this.timerAction.classList.toggle('is-running', !!active);
 		this.root.classList.toggle('is-break', !!breakSnapshot.breakState);
 		this.root.classList.toggle('is-idle', !active && !breakSnapshot.breakState);
-		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '') || (active?.isUnassigned ? t('taskEditor', 'dockSelectTask')
-			: snapshot.pendingDescription || t('taskEditor', 'trackerIdleLabel'));
-		const elapsedSeconds = active?.elapsedSeconds ?? (breakSnapshot.breakState ? snapshot.breakSeconds : 0);
-		const elapsed = formatDurationHuman(elapsedSeconds, elapsedSeconds < 60 ? 'seconds' : 'minutes');
-		text(this.trackerTime, elapsed);
-		this.trackerTime.hidden = !active && !breakSnapshot.breakState;
+		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
+		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '')
+			|| (active?.isUnassigned ? t('taskEditor', creatorStartsTimer ? 'dockSelectTask' : 'dockSelectTaskOnly') : snapshot.pendingDescription ?? '');
+		const breakState = breakSnapshot.breakState;
+		const { flowTimeMode, flowTimeSessionMinutes } = snapshot.timerSettings;
+		const timer = resolveFlowTimeDialState(
+			flowTimeMode,
+			breakState ? snapshot.breakSeconds : active?.elapsedSeconds ?? 0,
+			breakState?.targetSeconds ?? getFlowTimeTargetSeconds(flowTimeSessionMinutes),
+		);
+		this.updateDial(snapshot, timer);
+		const isFlowTime = flowTimeMode === 'flowtime';
+		const modeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeFlowTime' : 'flowTimeModeTrackTime');
+		const nextModeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeTrackTime' : 'flowTimeModeFlowTime');
+		const running = !!active || !!breakState;
+		const precision = settings.statusDockShowSeconds || timer.displaySeconds < 60 ? 'seconds' : 'minutes';
+		const reading = formatStatusDockSeconds(formatDurationHuman(timer.displaySeconds, precision));
+		const duration = `${timer.overtime ? '+' : ''}${reading}`;
+		const showSeconds = running && precision === 'seconds';
+		this.trackerTimeSeconds.hidden = !showSeconds;
+		text(this.trackerTimeSeconds, showSeconds ? duration.slice(-3) : '');
+		text(this.trackerTimePrefix, showSeconds ? duration.slice(0, -3) : running ? duration : modeLabel);
+		if (running) {
+			const width = `${isFlowTime ? '+' : ''}${reading.replace(/\d+/gu, digits => '0'.repeat(Math.max(2, digits.length)))}`;
+			if (this.trackerTime.dataset.durationWidth !== width) this.trackerTime.dataset.durationWidth = width;
+		} else {
+			delete this.trackerTime.dataset.durationWidth;
+		}
+		this.trackerTime.classList.toggle('is-flowtime', isFlowTime);
+		const switchMode = t('settings', 'statusDockSwitchTimerMode', { mode: nextModeLabel });
+		const timerLabel = running ? `${modeLabel}, ${duration}. ${switchMode}` : `${modeLabel}. ${switchMode}`;
+		setAccessibleLabelWithoutTooltip(this.trackerTime, timerLabel, this.trackerTime.parentElement ?? undefined);
 		const hasTask = !!(active?.operonId || breakSnapshot.pendingTaskId);
+		this.trackerName.hidden = !description;
 		if (hasTask) this.name(this.trackerName, description, settings.language);
 		else { this.nameKeys.delete(this.trackerName); text(this.trackerName, description); }
 		const sourceLabel = sourceLabelForSettings(settings);
@@ -255,8 +320,8 @@ export class StatusDockWidget {
 		const finderHint = t('commands', 'trackDifferentTask');
 		if (hasTask) {
 			this.trackerName.setAttribute('role', 'button'); this.trackerName.tabIndex = 0;
-			this.label(this.trackerName, trackerAction, hasTask ? description : finderHint,
-			hasTask ? `${trackerAction}: ${this.trackerTime.hidden ? '' : elapsed + ', '}${description}` : `${trackerAction}: ${finderHint}`);
+			this.label(this.trackerName, trackerAction, description,
+				`${trackerAction}: ${running ? duration + ', ' : ''}${description}`);
 		} else {
 			this.trackerName.removeAttribute('role'); this.trackerName.removeAttribute('tabindex');
 			cleanupOperonHoverTooltips(this.trackerName); this.tooltipKeys.delete(this.trackerName);
@@ -267,11 +332,11 @@ export class StatusDockWidget {
 		const primaryFinder = choosing && !breakSnapshot.breakState;
 		this.icon(this.coffee, primaryFinder ? 'scan-search' : 'coffee');
 		this.breakFinder.hidden = !choosing || !breakSnapshot.breakState; this.breakFinder.disabled = busy;
-		this.selectionDivider.hidden = !choosing;
 		this.label(this.breakFinder, t('commands', 'openTaskFinder'), finderHint);
 		this.coffee.disabled = busy || (!choosing && !breakSnapshot.breakState && !active?.operonId);
-		this.creator.hidden = !choosing; this.creator.disabled = busy;
-		this.label(this.creator, t('taskEditor', 'dockTaskCreatorTitle'), t('taskEditor', 'dockCreateAndTrack'));
+		this.creator.hidden = !isStatusDockSectionEnabled(sections, 'creator');
+		this.creator.disabled = busy;
+		this.label(this.creator, t('taskEditor', 'dockTaskCreatorTitle'), t('taskEditor', creatorStartsTimer ? 'dockCreateAndTrack' : 'dockCreateOnly'));
 		if (primaryFinder) this.coffee.removeAttribute('aria-pressed');
 		else this.coffee.setAttribute('aria-pressed', String(!!breakSnapshot.breakState));
 		this.label(this.coffee, primaryFinder ? t('commands', 'openTaskFinder') : t('taskEditor', breakSnapshot.breakState ? 'flowTimeEndBreak' : 'flowTimeStartBreak'),
@@ -285,7 +350,7 @@ export class StatusDockWidget {
 		this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!.style.color = normalizeTaskFieldColor(future?.task.fieldValues.taskColor) ?? '';
 		this.icon(this.upcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(upcoming.task?.fieldValues.taskIcon) || getConfiguredKeyMappingIcon(current ? 'dateScheduled' : 'dateDue', settings.keyMappings) || (current ? 'calendar-clock' : 'calendar'));
 		this.icon(this.nextUpcoming.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, normalizeTaskIconValue(future?.task.fieldValues.taskIcon) || getConfiguredKeyMappingIcon('dateDue', settings.keyMappings) || 'calendar');
-		const nextRemaining = humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true);
+		const nextRemaining = formatStatusDockSeconds(humanizeUpcomingCountdown(future?.countdown ?? null, future?.countdown?.startsWith('00:00:') === true));
 		text(this.nextTime, nextRemaining ?? ''); this.nextTime.hidden = nextRemaining === null;
 		const nextTitle = (future?.task
 			? getTaskDisplayTitle(future.task, settings.fileTaskDisplayTitleEnabled)
@@ -295,7 +360,7 @@ export class StatusDockWidget {
 			`${t('taskEditor', 'dockNextTask')}: ${nextTitle}${nextRemaining ? `, ${nextRemaining}` : ''}`);
 		if (!nextVisible) closeBoundOperonHoverTooltip(this.nextName);
 		const remaining = current ? null
-			: humanizeUpcomingCountdown(upcoming.countdown, upcoming.countdown?.startsWith('00:00:') === true);
+			: formatStatusDockSeconds(humanizeUpcomingCountdown(upcoming.countdown, upcoming.countdown?.startsWith('00:00:') === true));
 		text(this.upcomingTime, remaining ?? '');
 		this.upcomingTime.hidden = remaining === null;
 		const nextDescription = (upcoming.task
@@ -356,14 +421,14 @@ export class StatusDockWidget {
   }
   this.alertDivider.hidden = this.alert.hidden || !visible;
   this.root.classList.toggle('is-empty', !visible && this.alert.hidden);
-  this.root.classList.toggle('has-extra-task-lists', ['pinned', 'modified', 'history'].some(id => { const element = elements.get(id); return element && !element.hidden; }));
+  this.scheduleDialLayout();
  }
 
 	closeTooltips(): void {
 		this.closeTrackerTooltips();
 		for (const { play } of this.calendarControls.values()) closeBoundOperonHoverTooltip(play);
 		for (const item of this.currentReadings.values()) closeBoundOperonHoverTooltip(item.name);
-		for (const el of [this.upcomingName, this.nextName, this.alert]) closeBoundOperonHoverTooltip(el);
+		for (const el of [this.upcomingName, this.nextName, this.creator, this.alert]) closeBoundOperonHoverTooltip(el);
 	}
 
 	private updateCalendarControl(button: HTMLElement, task: IndexedTask | null, snapshot: StatusDockSnapshot): void {
@@ -406,6 +471,65 @@ export class StatusDockWidget {
 		}
 	}
 
+	private updateDial(snapshot: StatusDockSnapshot, timer: FlowTimeDialState): void {
+		if (!this.isDialEnabled()) {
+			this.hideDial();
+			return;
+		}
+		if (!this.dial) {
+			this.dialHost = this.slot.createDiv('operon-status-dock-dial');
+			this.dialHost.hidden = true;
+			this.dial = createFlowTimeDial(this.dialHost, this.timerControls);
+			this.resizeObserver.observe(this.tracker);
+			this.resizeObserver.observe(this.trackerTime);
+		}
+		const taskColor = snapshot.active?.task?.fieldValues.taskColor ?? snapshot.pendingTaskColor;
+		this.dial.update(timer, resolveFlowTimeDialAccent(taskColor));
+	}
+
+	private shouldShowDial(): boolean {
+		return this.dialObstructions.size === 0 && this.isDialEnabled();
+	}
+
+	private isDialEnabled(): boolean {
+		return this.lastSnapshot?.settings.statusDockShowTimerDial === true && !this.slot.hidden && !this.tracker.hidden;
+	}
+
+	private hideDial(): void {
+		if (this.dialHost) this.dialHost.hidden = true;
+		this.dial?.cancelDrag();
+	}
+
+	private scheduleDialLayout(): void {
+		if (!this.dialHost || !this.shouldShowDial() || this.dialLayoutFrame !== null || this.dial?.isDragging()) return;
+		this.dialLayoutFrame = this.slot.ownerDocument.win.requestAnimationFrame(() => {
+			this.dialLayoutFrame = null;
+			this.positionDial();
+		});
+	}
+
+	private positionDial(): void {
+		const host = this.dialHost;
+		if (!host || !this.shouldShowDial() || this.dial?.isDragging()) return;
+		const viewport = this.viewport;
+		const root = this.root.getBoundingClientRect();
+		const snapshot = this.lastSnapshot;
+		const anchor = snapshot?.active || snapshot?.breakSnapshot.breakState ? this.trackerTime : this.tracker;
+		const anchorRect = anchor.getBoundingClientRect();
+		const scale = snapshot?.settings.statusDockTimerDialSize ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
+		const size = Math.floor(Math.min(DIAL_BASE_SIZE * scale, viewport.width - 2 * DIAL_EDGE_INSET, root.top - viewport.top - DIAL_GAP));
+		host.hidden = size <= 0;
+		if (host.hidden) return;
+		const preferredLeft = anchorRect.left + (anchorRect.width - size) / 2;
+		const left = Math.max(viewport.left + DIAL_EDGE_INSET,
+			Math.min(preferredLeft, viewport.left + viewport.width - size - DIAL_EDGE_INSET));
+		host.setCssProps({
+			left: `${left}px`,
+			top: `${root.top - size - DIAL_GAP}px`,
+			width: `${size}px`,
+		});
+	}
+
 	/** Window-local coordinates are deliberately never persisted. */
 	private currentPosition(): { x: number; y: number } {
 		const rect = this.root.getBoundingClientRect();
@@ -413,6 +537,7 @@ export class StatusDockWidget {
 	}
 
 	private place(): void {
+		this.scheduleDialLayout();
 		if (!this.position || this.slot.hidden || !this.viewport.width) { this.onPositionChanged?.(); return; }
 		const { width, height } = this.root.getBoundingClientRect();
 		// Retain a small edge inset whenever the window has room for it.
@@ -427,7 +552,7 @@ export class StatusDockWidget {
 
 	private startDrag(event: PointerEvent, owner: Window): void {
 		if (event.button !== 0 || event.isPrimary === false || this.stopDrag) return;
-		event.preventDefault(); event.stopPropagation(); this.closeTooltips();
+		event.preventDefault(); event.stopPropagation(); this.closeTooltips(); this.dial?.cancelDrag();
 		this.clearDragClick?.();
   const start = this.currentPosition(), previous = this.position, pointerId = event.pointerId;
   let moved = false, cancelled = false;
@@ -468,9 +593,17 @@ export class StatusDockWidget {
 		owner.addEventListener('keydown', key, true);
 	}
 
-	destroy(): void { this.stopDrag?.(); this.clearDragClick?.(); this.onPositionChanged = undefined; this.resizeObserver.disconnect(); cleanupOperonHoverTooltips(this.slot); cleanupDescendantFocusVisible(this.slot); this.slot.remove(); }
+	destroy(): void {
+		this.onPositionChanged = undefined;
+		this.setVisible(false);
+		if (this.dialLayoutFrame !== null) this.slot.ownerDocument.win.cancelAnimationFrame(this.dialLayoutFrame);
+		this.resizeObserver.disconnect();
+		cleanupOperonHoverTooltips(this.slot);
+		cleanupDescendantFocusVisible(this.slot);
+		this.slot.remove();
+	}
 	private closeTrackerTooltips(): void {
-		for (const el of [this.trackerName, this.coffee, this.breakFinder, this.creator, this.timerAction]) closeBoundOperonHoverTooltip(el);
+		for (const el of [this.trackerName, this.coffee, this.breakFinder, this.timerAction]) closeBoundOperonHoverTooltip(el);
 	}
 	private icon(el: HTMLElement, icon: string): void {
 		if (this.icons.get(el) === icon) return;
@@ -482,7 +615,7 @@ export class StatusDockWidget {
 	private name(el: HTMLElement, value: string, language: string): void {
 		const key = JSON.stringify([value, language]);
 		if (this.nameKeys.get(el) === key) return;
-		this.nameKeys.set(el, key); el.empty(); renderCompactTaskMarkdown(el, { value, mode: 'visual-only', maxCharacters: 24 });
+		this.nameKeys.set(el, key); el.empty(); renderCompactTaskMarkdown(el, { value, mode: 'visual-only', maxCharacters: 35 });
 	}
 	private label(el: HTMLElement, title: string, content?: string, accessible?: string): void {
   if (el.classList.contains('operon-status-dock-name')) {

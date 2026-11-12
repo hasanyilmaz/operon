@@ -1,4 +1,5 @@
 import type { ReadingTaskRowCallbacks } from './reading-task-row';
+import { resolveCoreQuickSwitcherOpenBehavior, normalizeCoreQuickSwitcherOpenBehavior, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
@@ -376,6 +377,7 @@ type OperonSettingsSecondaryTabId =
 	| 'viewsTables'
 	| 'viewsGantt'
 	| 'interfaceTaskChips'
+	| 'interfaceStatusDock'
 	| 'interfacePinnedDock'
 	| 'interfaceTaskFinder'
 	| 'interfaceContextMenu'
@@ -778,6 +780,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	viewsTables: { namespace: 'settings', key: 'tableSettingsDesc' },
 	viewsGantt: { namespace: 'settings', key: 'ganttSettingsDesc' },
 	interfaceTaskChips: { namespace: 'settings', key: 'settingsPageTaskChipsDesc' },
+	interfaceStatusDock: { namespace: 'settings', key: 'settingsPageStatusDockDesc' },
 	interfacePinnedDock: { namespace: 'settings', key: 'settingsPagePinnedDockDesc' },
 	interfaceTaskFinder: { namespace: 'settings', key: 'settingsPageTaskFinderDesc' },
 	interfaceContextMenu: { namespace: 'settings', key: 'settingsPageContextMenuDesc' },
@@ -941,6 +944,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		defaultPipelineName: string;
 		kanbanPipelineIds: Map<string, string | null>;
 	};
+	private readonly statusDockVisibilityToggles = new Set<ToggleComponent>();
 	private refreshTablesSettingsPage: (() => void) | null = null;
 	private activeNativeSettingsPage: {
 		tabId: OperonSettingsTabId;
@@ -990,6 +994,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		settingsBackupUiIntegration?: SettingsBackupUiIntegration,
 		reconcileParentTaskDateRanges?: () => Promise<ParentTaskDateRangeReconcileResult>,
 		private readonly tasksConversionUi?: TasksConversionUiIntegration,
+		private readonly refreshStatusDock?: () => void,
 		private readonly filterPreviewActivateDescription?: ReadingTaskRowCallbacks['activateDescription'],
 	) {
 		super(app, plugin);
@@ -1217,6 +1222,29 @@ export class OperonSettingsTab extends PluginSettingTab {
    this.updateNativeSettingsDefinitions();
    return;
   }
+		if (key === 'statusDockVisible') {
+			if (typeof value === 'boolean') await this.setStatusDockVisibility(value);
+			return;
+		}
+		if (key === 'statusDockCreatorStartsTimer' || key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial' || key === 'statusDockTimerDialSize') {
+			try {
+				if (key === 'statusDockTimerDialSize') {
+					const size = STATUS_DOCK_TIMER_DIAL_SIZES.find(size => `${size}x` === value);
+					if (size === undefined) return;
+					await this.storage.saveStatusDockTimerDialSize(size);
+				} else {
+					if (typeof value !== 'boolean') return;
+					await this.storage.saveStatusDockTimerPreference(key, value);
+				}
+				this.refreshStatusDock?.();
+			} catch (error) {
+				console.error('Operon: Status Dock timer preference save failed', error);
+				new Notice(t('settings', 'statusDockCreatorStartsTimerSaveFailed'));
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
+			return;
+		}
 		if (key === 'statusDockClickAction' && typeof value === 'string') {
 			await this.storage.saveStatusDockPreference(key, value);
 			this.notifySettingsChanged();
@@ -1238,6 +1266,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 			if (value === undefined || !readPropertyPoolPreferences(value).writable) throw new Error('Invalid Property Value Pool settings');
 			await this.storage.editPropertyValuePool({ kind: 'preferences', preferences: value as PropertyPoolPreferences }, this.settings.propertyValuePool);
 			this.updateNativeSettingsDefinitions();
+			return;
+		}
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') {
+			const behavior = normalizeCoreQuickSwitcherOpenBehavior(value);
+			if (!Platform.isDesktopApp || behavior === undefined) return;
+			try {
+				await this.storage.updateSettings({ workspaceTweaksCoreQuickSwitcherOpenBehavior: behavior });
+				this.applyPendingSettingsChange();
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
 			return;
 		}
 		const entry = this.findSettingsSearchEntryByKey(key);
@@ -1340,7 +1379,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const entriesByTab = new Map<OperonSettingsTabId, OperonSettingsSearchEntry[]>();
 		for (const entry of OPERON_SETTINGS_SEARCH_REGISTRY) {
    if (Platform.isDesktopApp && entry.key === 'upcomingShowStatusBar') continue;
-   if (!Platform.isDesktopApp && entry.key === 'statusDockSections') continue;
+   if (!Platform.isDesktopApp && entry.key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') continue;
 			if (!this.isSettingsTabId(entry.tabId)) continue;
 			const tabEntries = entriesByTab.get(entry.tabId) ?? [];
 			tabEntries.push(entry);
@@ -1368,6 +1407,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 		if (tab.id === 'interfaceColorPalette') {
 			return { type: 'page', name: pageName, desc, items: this.buildColorPaletteSettingsItems() };
+		}
+
+		if (tab.id === 'interfaceStatusDock') {
+			return { type: 'page', name: pageName, desc, items: this.buildStatusDockSettingsItems(entries) };
 		}
 
 		if (tab.id === 'interfaceTweaks') {
@@ -2066,6 +2109,24 @@ export class OperonSettingsTab extends PluginSettingTab {
 		] }];
 	}
 
+	private buildStatusDockSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
+		return [{
+			type: 'group', heading: t('settings', 'statusDockGeneralSettings'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildStatusDockVisibilityDefinition(),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockClickAction'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockCreatorStartsTimer'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockShowSeconds'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockShowTimerDial'),
+				this.buildSettingsSearchSettingDefinition(entries, 'statusDockTimerDialSize'),
+			]),
+		}, {
+			type: 'group', heading: t('settings', 'statusDockSections'),
+			cls: 'operon-status-dock-sections-settings',
+			items: [this.buildStatusDockSectionsDefinition()],
+		}];
+	}
+
 	private buildWorkspaceTweaksSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const hideScrollbars = this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksHideScrollbars');
 		if (hideScrollbars) {
@@ -2083,8 +2144,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
 			heading: t('settings', 'workspaceTweaksWorkspaceSection'),
 			items: this.compactSettingsSearchDefinitions([hideScrollbars,
-    this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksBackgroundDimming'),
 				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCompactSidebarTabIcons')]),
+		}, {
+			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
+			heading: t('settings', 'workspaceTweaksLightboxSection'),
+			items: this.compactSettingsSearchDefinitions([
+				this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksBackgroundDimming'),
+				...(Platform.isDesktopApp ? [this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksCoreQuickSwitcherOpenBehavior')] : []),
+			]),
 		}, {
 			type: 'group', cls: 'operon-workspace-tweaks-settings-group',
 			heading: t('settings', 'workspaceTweaksPropertiesSection'),
@@ -2094,15 +2161,6 @@ export class OperonSettingsTab extends PluginSettingTab {
 					? this.buildSettingsSearchSettingDefinition(entries, 'workspaceTweaksPropertiesScope') : null,
 			]),
 		}];
-		if (Platform.isDesktopApp) groups.splice(0, 0, {
-			type: 'group', heading: t('settings', 'statusDockSection'),
-			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'statusDockSection'),
-				'DOCS-152 Status Dock', 'operon-native-settings-declarative-docs-action--inline-heading')],
-			items: this.compactSettingsSearchDefinitions([
-				this.buildSettingsSearchSettingDefinition(entries, 'statusDockClickAction'),
-				this.buildStatusDockSectionsDefinition(),
-			]),
-		});
 		const folders = entries.find(entry => entry.id === 'ui.workspaceTweaksPropertiesExcludedFolders');
 		if (this.settings.workspaceTweaksCollapseProperties && folders) {
 			groups.push({ type: 'group', cls: 'operon-workspace-tweaks-settings-group',
@@ -3256,6 +3314,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getDefaultSettingsSearchValue(key: OperonSettingSearchKey): unknown {
+		if (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer') return true;
+		if (key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial') return false;
+		if (key === 'statusDockTimerDialSize') return DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
 		if (key === 'statusDockClickAction') return 'source-and-editor';
 		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
 	}
@@ -3521,6 +3582,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return resolveCoreQuickSwitcherOpenBehavior(value);
+		if (key === 'statusDockTimerDialSize') return `${normalizeStatusDockTimerDialSize(value) ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE}x`;
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {
 			return value === false ? 'collapsed' : 'expanded';
@@ -3565,7 +3628,50 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 
+	async setStatusDockVisibility(visible?: boolean): Promise<void> {
+		try {
+			await this.storage.saveStatusDockVisibility(visible);
+			this.refreshStatusDock?.();
+		} catch (error) {
+			console.error('Operon: status dock visibility save failed', error);
+			new Notice(t('settings', 'statusDockVisibilitySaveFailed'));
+		} finally {
+			const current = this.settings.statusDockVisible !== false;
+			for (const toggle of this.statusDockVisibilityToggles) {
+				if (toggle.toggleEl.isConnected) toggle.setValue(current);
+				else this.statusDockVisibilityToggles.delete(toggle);
+			}
+		}
+	}
+
+	private buildStatusDockVisibilityDefinition(): SettingDefinition {
+		return {
+			name: t('settings', 'statusDockVisible'),
+			desc: t('settings', 'statusDockVisibleDesc'),
+			aliases: ['Status Dock', 'Show dock', 'Hide dock'],
+			render: setting => {
+				const cleanupToggle = this.renderStatusDockVisibilityToggle(setting);
+				const title = t('settings', 'statusDockSection');
+				const cleanupDocs = attachDeclarativeSettingsPageTitleAction(setting.settingEl, title,
+					this.buildNativeSettingsDocsAction(title, 'DOCS-152 Status Dock').action);
+				return () => { cleanupToggle(); cleanupDocs?.(); };
+			},
+		};
+	}
+
+	private renderStatusDockVisibilityToggle(setting: Setting): () => void {
+		let mounted: ToggleComponent | undefined;
+		setting.addToggle(toggle => {
+			mounted = toggle;
+			this.statusDockVisibilityToggles.add(toggle);
+			toggle.setValue(this.getControlValue('statusDockVisible') === true)
+				.onChange(value => this.setControlValue('statusDockVisible', value));
+		});
+		return () => { if (mounted) this.statusDockVisibilityToggles.delete(mounted); };
+	}
+
 private statusDockSectionLabel(id: StatusDockSectionId): string {
+  if (id === 'creator') return t('taskEditor', 'dockTaskCreatorTitle');
   return t('settings', 'statusDockSection_' + id);
  }
 
@@ -3582,13 +3688,21 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 
  private buildStatusDockSectionsDefinition(): SettingDefinition {
   return {
-   aliases: ['Status Dock', 'Overdue', 'Happens Today', 'Time Tracker', 'Ongoing Tasks', 'Upcoming Tasks', 'Pinned Tasks', 'Modified Tasks', 'Session History'],
+   aliases: ['Status Dock', 'Overdue', 'Happens Today', 'Time Tracker', 'Task Creator', 'Ongoing Tasks', 'Upcoming Tasks', 'Pinned Tasks', 'Modified Tasks', 'Session History'],
    name: t('settings', 'statusDockSections'),
    desc: t('settings', 'statusDockSectionsDesc'),
-   render: setting => {
+   render: (setting, group) => {
     setting.settingEl.empty();
     setting.settingEl.removeClass('setting-item');
     this.renderStatusDockSectionRows(setting.settingEl);
+    const list = group.listEl;
+    if (!list.parentElement?.classList.contains('operon-status-dock-sections-settings')) return;
+    const description = list.win.createEl('p', {
+     cls: 'setting-item-description operon-status-dock-sections-description',
+     text: t('settings', 'statusDockSectionsDesc'),
+    });
+    list.before(description);
+    return () => description.remove();
    },
   };
  }
@@ -3596,7 +3710,6 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
  private renderStatusDockSectionRows(container: HTMLElement): void {
   const refresh = (): void => {
    container.empty();
-   new Setting(container).setName(t('settings', 'statusDockSections')).setDesc(t('settings', 'statusDockSectionsDesc')).setHeading();
    const sections = normalizeStatusDockSections(this.settings.statusDockSections)
     .filter(section => STATUS_DOCK_AVAILABLE_SECTION_IDS.includes(section.id));
    for (const [index, section] of sections.entries()) {
@@ -3766,6 +3879,12 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return {
+			default: t('settings', 'workspaceTweaksQuickSwitcherDefault'),
+			source: t('settings', 'taskFinderResultSourceOnly'),
+			'source-and-editor': t('settings', 'workspaceTweaksQuickSwitcherSourceAndEditor'),
+			editor: t('settings', 'workspaceTweaksQuickSwitcherEditorOnly'),
+		};
 		if (key === 'fileTaskFilenameRule') return {
 			same: t('settings', 'fileTaskFilenameRuleSame'),
 			kebab: t('settings', 'fileTaskFilenameRuleKebab'),
@@ -3947,6 +4066,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
    'new-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateFocusedTab' : 'fileTaskAfterCreateFocusedTab'),
    'background-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateBackgroundTab' : 'fileTaskAfterCreateBackgroundTab'),
   };
+		if (key === 'statusDockTimerDialSize') return Object.fromEntries(STATUS_DOCK_TIMER_DIAL_SIZES.map(size => [`${size}x`, `${size}×`]));
 		if (key === 'statusDockClickAction' || key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return {
 			source: t('settings', 'taskFinderResultSourceOnly'),
 			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
@@ -4298,6 +4418,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			{ id: 'viewsGantt', groupId: 'views', label: t('settings', 'tabGantt') },
 			{ id: 'viewsTaskCards', groupId: 'views', label: t('settings', 'taskCards') },
 			{ id: 'interfaceTaskChips', groupId: 'interface', label: t('settings', 'subtabTaskChips') },
+			...(Platform.isDesktopApp ? [{ id: 'interfaceStatusDock', groupId: 'interface', label: t('settings', 'statusDockSection') } as const] : []),
 			{ id: 'interfacePinnedDock', groupId: 'interface', label: t('settings', 'subtabPinnedDock') },
 			{ id: 'interfaceTaskFinder', groupId: 'interface', label: t('settings', 'subtabTaskFinder') },
 			{ id: 'interfaceContextMenu', groupId: 'interface', label: t('settings', 'subtabContextMenu') },
@@ -4328,6 +4449,8 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 
 		} else if (tabId === 'interfaceTaskEditor') {
 			this.renderInterfaceTaskEditorTab(contentEl);
+		} else if (tabId === 'interfaceStatusDock') {
+			this.renderStatusDockSettingsTab(contentEl);
 		} else if (tabId === 'interfaceTweaks') {
 			this.renderInterfaceTweaksTab(contentEl);
 		} else if (tabId === 'interfaceColorPalette') {
@@ -4338,6 +4461,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	hide(): void {
+		this.statusDockVisibilityToggles.clear();
 		for (const dispose of this.tasksConversionSettings.values()) dispose();
 		this.disposeReminderSoundPreview();
 		this.clearActiveNativeSettingsPage();
@@ -4830,19 +4954,37 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 
 	}
 
-	private renderInterfaceTweaksTab(containerEl: HTMLElement): void {
-		if (Platform.isDesktopApp) {
-			const dock = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSection'), undefined,
-				this.buildNativeSettingsDocsAction(t('settings', 'statusDockSection'), 'DOCS-152 Status Dock'));
-			for (const key of ['statusDockClickAction'] as const) this.markSettingsSearchTarget(renderDropdownSetting({
-				containerEl: dock, name: t('settings', key), desc: t('settings', key + 'Desc'),
-				value: String(this.getControlValue(key)),
-				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
-				onChange: settingsAsyncHandler('status dock preference save failed', value => this.setControlValue(key, value)),
-			}), key);
-			this.renderStatusDockSectionRows(dock.createDiv());
+	private renderStatusDockSettingsTab(containerEl: HTMLElement): void {
+		const dock = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockGeneralSettings'));
+		this.renderStatusDockVisibilityToggle(this.markSettingsSearchTarget(new Setting(dock)
+			.setName(t('settings', 'statusDockVisible')).setDesc(t('settings', 'statusDockVisibleDesc')), 'statusDockVisible'));
+		for (const key of ['statusDockClickAction'] as const) this.markSettingsSearchTarget(renderDropdownSetting({
+			containerEl: dock, name: t('settings', key), desc: t('settings', key + 'Desc'),
+			value: String(this.getControlValue(key)),
+			options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+			onChange: settingsAsyncHandler('status dock preference save failed', value => this.setControlValue(key, value)),
+		}), key);
+		for (const key of ['statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial'] as const) {
+			this.markSettingsSearchTarget(new Setting(dock)
+				.setName(t('settings', key)).setDesc(t('settings', key + 'Desc'))
+				.addToggle(toggle => toggle.setValue(this.getControlValue(key) === true).onChange(async value => {
+					await this.setControlValue(key, value);
+					toggle.setValue(this.getControlValue(key) === true);
+				})), key);
 		}
+		const sizeKey = 'statusDockTimerDialSize';
+		this.markSettingsSearchTarget(new Setting(dock)
+			.setName(t('settings', sizeKey)).setDesc(t('settings', 'statusDockTimerDialSizeDesc'))
+			.addDropdown(dropdown => dropdown.addOptions(this.getSettingsSearchDropdownOptions(sizeKey))
+				.setValue(String(this.getControlValue(sizeKey))).onChange(async value => {
+					await this.setControlValue(sizeKey, value);
+					dropdown.setValue(String(this.getControlValue(sizeKey)));
+				})), sizeKey);
+		const sections = renderNativeSettingsGroupedSection(containerEl, t('settings', 'statusDockSections'), t('settings', 'statusDockSectionsDesc'));
+		this.renderStatusDockSectionRows(sections);
+	}
 
+	private renderInterfaceTweaksTab(containerEl: HTMLElement): void {
 		const workspaceSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'workspaceTweaksWorkspaceSection'));
 		this.renderBoundToggleSetting(
 			workspaceSection,
@@ -4867,14 +5009,27 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			},
 		);
 
+  const lightboxSection = renderNativeSettingsGroupedSection(containerEl, t('settings', 'workspaceTweaksLightboxSection'));
   this.markSettingsSearchTarget(renderDropdownSetting({
-   containerEl: workspaceSection,
+   containerEl: lightboxSection,
    name: t('settings', 'workspaceTweaksBackgroundDimming'),
    desc: t('settings', 'workspaceTweaksBackgroundDimmingDesc'),
    value: String(this.settings.workspaceTweaksBackgroundDimming),
    options: Object.entries(this.getSettingsSearchDropdownOptions('workspaceTweaksBackgroundDimming')).map(([value, label]) => ({value, label})),
    onChange: settingsAsyncHandler('settings background dimming change failed', value => this.setControlValue('workspaceTweaksBackgroundDimming', value)),
   }), 'workspaceTweaksBackgroundDimming');
+
+		if (Platform.isDesktopApp) {
+			const key = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
+			this.markSettingsSearchTarget(renderDropdownSetting({
+				containerEl: lightboxSection,
+				name: t('settings', key),
+				desc: t('settings', 'workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc'),
+				value: this.getSettingsSearchDropdownValue(key, this.settings[key]),
+				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+				onChange: settingsAsyncHandler('settings quick switcher behavior save failed', value => this.setControlValue(key, value)),
+			}), key);
+		}
 
 		const propertiesSection = renderNativeSettingsGroupedSection(
 			containerEl,
@@ -11816,7 +11971,18 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 				keyMappings: this.settings.keyMappings,
 				onSave: async mapping => {
      await this.storage.saveCustomKeyMapping(mapping, {
-      prepare: current => prepareCustomKeyTypeReuse(this.app, current, mapping, () => this.settings),
+      onCommittedWarning: message => { new Notice(message); },
+      prepare: (current, writeSource) => prepareCustomKeyTypeReuse(this.app, current, mapping, () => this.settings, {
+       writeSource,
+       confirm: (changes, previousTypes, nextType) => new Promise(resolve => {
+        scopeSettingsModal(new ConfirmActionModal(this.app, {
+         title: 'Change custom property type',
+         message: `${mapping.visiblePropertyName}: ${previousTypes.join(', ')} → ${nextType}. Empty values in ${changes.length} file(s) will become blank. Property names, order, and other values will be preserved.`,
+         confirmText: 'Change type', initialFocus: 'cancel',
+         detailsTable: changes.map(change => ({ label: change.path, before: 'Empty value', after: 'Blank property' })),
+        }, resolve), true).open();
+       }),
+      }),
       surfaces: (settings, added) => {
        if (added.type === 'checkbox') return;
        this.setCustomSurfaceMappingVisible(added, 'editor', added.showInEditor !== false, settings);

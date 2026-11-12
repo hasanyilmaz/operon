@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normalizeStatusDockSections, STATUS_DOCK_SECTION_IDS, STATUS_DOCK_AVAILABLE_SECTION_IDS } from '../src/types/status-dock-sections';
 
-test('absent or invalid settings use the approved seven enabled sections', () => {
+test('absent or invalid settings use the eight enabled sections', () => {
  for (const value of [undefined, null, false, {}, 'tracker']) {
   assert.deepEqual(normalizeStatusDockSections(value), STATUS_DOCK_SECTION_IDS.map(id => ({ id, enabled: true })));
  }
@@ -14,9 +14,18 @@ test('normalization preserves explicit order and disabled choices without changi
  const before = JSON.stringify(input);
  const sections = normalizeStatusDockSections(input);
  assert.deepEqual(sections.slice(0, 2), [{ id: 'upcoming', enabled: false }, { id: 'tracker', enabled: true }]);
- assert.equal(sections.length, 7);
+ assert.equal(sections.length, 8);
  assert.deepEqual(normalizeStatusDockSections(sections), sections);
  assert.equal(JSON.stringify(input), before);
+});
+
+test('Creator defaults immediately after Tracker and keeps an explicitly saved position', () => {
+ const previous = [{ id: 'upcoming', enabled: false }, { id: 'tracker', enabled: false }, { id: 'ongoing', enabled: true }];
+ const resolved = normalizeStatusDockSections(previous);
+ assert.deepEqual(resolved.slice(0, 4), [previous[0], previous[1], { id: 'creator', enabled: true }, previous[2]]);
+ assert.deepEqual(normalizeStatusDockSections([{ id: 'creator', enabled: false }, ...previous]).slice(0, 4), [
+  { id: 'creator', enabled: false }, ...previous,
+ ]);
 });
 
 test('normalization produces independent values and preserves all-disabled state', () => {
@@ -51,6 +60,35 @@ test('explicit sections survive package and backup round trips without a general
  assert.equal('statusDockSections' in pkg.settings, false);
  assert.deepEqual(composeOperonSettingsFromDataPackage(pkg, DEFAULT_SETTINGS).statusDockSections, sections);
  assert.deepEqual(buildOperonSettingsBackupSelectedPatchV1({selectedGroups:['general'],candidateSettings:settings}).statusDockSections, sections);
+});
+
+test('an old saved order needs no startup write and the automatic timer preference persists separately', async () => {
+ const fixture = new SettingsPreservationHarness();
+ try {
+  await fixture.createStorage().initialize();
+  const pkg = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+  const sections = STATUS_DOCK_SECTION_IDS.filter(id => id !== 'creator').map(id => ({ id, enabled: id !== 'tracker' }));
+  pkg.ui.statusDock = { sections };
+  fixture.seed(fixture.canonicalPath, JSON.stringify(pkg));
+  const writes = fixture.canonicalAttempts;
+  const storage = fixture.createStorage(); await storage.initialize();
+  const settings = storage.getSettings();
+  assert.equal(fixture.canonicalAttempts, writes);
+  assert.deepEqual(settings.statusDockSections, sections);
+  assert.equal(settings.statusDockCreatorStartsTimer, undefined);
+  await storage.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', true);
+  assert.equal(fixture.canonicalAttempts, writes);
+  await storage.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', false);
+  assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), {
+   ...pkg, ui: { ...pkg.ui, statusDock: { sections, creatorStartsTimer: false } },
+  });
+  const restarted = fixture.createStorage(); await restarted.initialize();
+  assert.equal(restarted.getSettings().statusDockCreatorStartsTimer, false);
+  assert.equal(fixture.canonicalAttempts, writes + 1);
+  fixture.writeFault = 'throw-before';
+  await assert.rejects(restarted.saveStatusDockTimerPreference('statusDockCreatorStartsTimer', true));
+  assert.equal(restarted.getSettings().statusDockCreatorStartsTimer, false);
+ } finally { await fixture.dispose(); }
 });
 
 test('real storage saves narrowly, serializes edits and preserves an old mobile preference', async () => {

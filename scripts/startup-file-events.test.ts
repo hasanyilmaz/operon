@@ -116,6 +116,7 @@ function normalizationHarness() {
  h.settings = structuredClone(DEFAULT_SETTINGS);
  h.app = { workspace: { layoutReady: true }, vault: { getAbstractFileByPath: () => file,
   cachedRead: async () => { reads++; return content; }, modify: async (_file: TFile, value: string) => { content = value; } } };
+ h.propertyEditorWrittenSources = new WeakMap();
  h.tasksConversionOwnedSources = new Map(); h.tasksConversionSettledSources = new Map();
  h.workflowNormalizationInProgress = new Set(); h.workflowNormalizationPending = new Set();
  h.workflowNormalizationWaiters = new Map(); h.workflowNormalizationRenameTargets = new Map(); h.startupPreviousTasks = new Map();

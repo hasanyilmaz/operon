@@ -1,9 +1,10 @@
+import { isTaskCardSetting } from '../src/types/task-card';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 import { TFile } from 'obsidian';
-import { DEFAULT_SETTINGS, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
+import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, resolveCoreQuickSwitcherOpenBehavior, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
 import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { WriteQueue } from '../src/storage/write-queue';
@@ -235,38 +236,93 @@ for(const desktop of [false,true])for(const available of [false,true])test(`sing
  const source=readFileSync('main.ts','utf8'),ast=ts.createSourceFile('main.ts',source,ts.ScriptTarget.Latest,true);let registration:ts.CallExpression|undefined;
  const visit=(node:ts.Node)=>{if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='addCommand'&&node.arguments[0]&&ts.isObjectLiteralExpression(node.arguments[0])&&node.arguments[0].properties.some(p=>ts.isPropertyAssignment(p)&&p.name.getText(ast)==='id'&&ts.isStringLiteral(p.initializer)&&p.initializer.text==='toggle-status-dock')){assert.equal(registration,undefined);registration=node;}ts.forEachChild(node,visit);};visit(ast);assert.ok(registration);
  const code=ts.transpileModule(registration.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- let command:any,toggles=0;const host={statusDock:available?{toggleVisibility(){toggles++;}}:null,addCommand(value:unknown){command=value;}};
+ let command:any,toggles=0;const host={statusDock:available?{}:null,settingsTab:{async setStatusDockVisibility(){toggles++;}},addCommand(value:unknown){command=value;}};
  new Function('Platform','t',code).call(host,{isDesktopApp:desktop},(_ns:string,key:string)=>key);
  assert.equal(command.id,'toggle-status-dock');assert.equal(command.name,'toggleStatusDock');assert.equal(command.checkCallback(true),desktop&&available);assert.equal(toggles,0);assert.equal(command.checkCallback(false),desktop&&available);assert.equal(toggles,desktop&&available?1:0);
 });
 
-for (const desktop of [false, true]) test(`dock settings relocation preserves search identity and stored preferences: desktop=${desktop}`, () => {
- const Host = methods('src/ui/settings-tab.ts', ['getSettingsSearchEntriesByTab', 'buildWorkspaceTweaksSettingsItems'], {
-  Platform: { isDesktopApp: desktop }, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
+for (const desktop of [false, true]) test(`dock settings use their own searchable page on desktop: desktop=${desktop}`, () => {
+ const Host = methods('src/ui/settings-tab.ts', [
+  'getSettingsSearchEntriesByTab', 'getPrimarySettingsTabs', 'getSecondarySettingsTabs', 'isSettingsTabId',
+  'getDefaultSettingsSearchValue', 'getSettingsSearchDropdownValue', 'getSettingsSearchDropdownOptions', 'buildSettingsSearchTabPage', 'buildStatusDockSettingsItems', 'buildWorkspaceTweaksSettingsItems',
+ ], {
+  Platform: { isDesktopApp: desktop }, isTaskCardSetting, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
+  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, resolveCoreQuickSwitcherOpenBehavior,
  });
  const host = Object.assign(new Host(), {
   settings: { ...DEFAULT_SETTINGS, upcomingShowStatusBar: false },
-  isSettingsTabId: () => true,
+  isCalendarSidebarDefaultStateSettingKey: () => false,
+  getSettingsSearchTabPageName: (tab: { label: string }) => tab.label,
+  getSettingsSearchTabDescription: () => '',
+  buildStatusDockVisibilityDefinition: () => ({ key: 'statusDockVisible' }),
   buildStatusDockSectionsDefinition: () => ({ key: 'statusDockSections' }),
-  buildDeclarativeSettingsDocsButton: (_title: string, target: string) => ({ target }),
-  buildSettingsSearchSettingDefinition: (entries: any[], key: string) => { const entry = entries.find(entry => entry.key === key); return entry ? { ...entry } : undefined; },
+  buildSettingsSearchSettingDefinition: (entries: any[], key: string) => { const entry = entries.find(entry => entry.key === key); return entry ? { ...entry } : null; },
   compactSettingsSearchDefinitions: (items: any[]) => items.filter(Boolean),
  });
  const before = JSON.stringify(host.settings);
- const registryBefore = JSON.stringify(OPERON_SETTINGS_SEARCH_REGISTRY);
  const entries = host.getSettingsSearchEntriesByTab();
- const tabId = desktop ? 'interfaceTweaks' : 'tasksUpcoming';
- const settingKey = desktop ? 'statusDockSections' : 'upcomingShowStatusBar';
- const toggle = entries.get(tabId).find((entry: any) => entry.key === settingKey);
- assert.equal(toggle.id, desktop ? 'ui.statusDockSections' : 'settings.upcomingShowStatusBar');
- assert.equal([...entries.values()].flat().filter((entry: any) => entry.key === 'upcomingShowStatusBar').length, desktop ? 0 : 1);
- const groups = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'));
- assert.equal(groups[0].heading, desktop ? 'statusDockSection' : 'workspaceTweaksWorkspaceSection');
+ const tabs = host.getSecondarySettingsTabs().filter((tab: any) => tab.groupId === 'interface');
+ assert.deepEqual(tabs.map((tab: any) => tab.id), [
+  'interfaceTaskChips', ...(desktop ? ['interfaceStatusDock'] : []), 'interfacePinnedDock', 'interfaceTaskFinder',
+  'interfaceContextMenu', 'interfaceStateIcons', 'interfaceTaskEditor', 'interfaceLocationMap', 'interfaceTweaks', 'interfaceColorPalette',
+ ]);
+ assert.equal(entries.get('tasksUpcoming')?.some((entry: any) => entry.id === 'settings.upcomingShowStatusBar'), !desktop);
+ assert.equal(entries.get('interfaceTweaks').some((entry: any) => entry.key?.startsWith('statusDock')), false);
+ const workspaceSettings = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[0];
+ assert.equal(workspaceSettings.heading, 'workspaceTweaksWorkspaceSection');
+ const quickSwitcherKey = 'workspaceTweaksCoreQuickSwitcherOpenBehavior';
+ assert.equal(workspaceSettings.items.some((item: any) => item.key === quickSwitcherKey), false);
+ const lightboxSettings = host.buildWorkspaceTweaksSettingsItems(entries.get('interfaceTweaks'))[1];
+ assert.equal(lightboxSettings.heading, 'workspaceTweaksLightboxSection');
+ assert.deepEqual(lightboxSettings.items.map((item: any) => item.key), ['workspaceTweaksBackgroundDimming', ...(desktop ? [quickSwitcherKey] : [])]);
+ assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey)['source-and-editor'], 'workspaceTweaksQuickSwitcherSourceAndEditor');
+ assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey).editor, 'workspaceTweaksQuickSwitcherEditorOnly');
  if (desktop) {
-  assert.equal(groups[1].heading, 'workspaceTweaksWorkspaceSection');
-  assert.equal(groups[0].extraButtons[0].target, 'DOCS-152 Status Dock');
-  assert.deepEqual(groups[0].items.map((item: any) => item.key), ['statusDockClickAction', 'statusDockSections']);
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'default'), 'default');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, host.getDefaultSettingsSearchValue(quickSwitcherKey)), 'source-and-editor');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, undefined), 'source-and-editor');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'unsupported'), 'source-and-editor');
+  assert.deepEqual(Object.keys(host.getSettingsSearchDropdownOptions(quickSwitcherKey)), ['default', 'source', 'source-and-editor', 'editor']);
+ }
+ if (desktop) {
+  const dockEntries = entries.get('interfaceStatusDock');
+  assert.deepEqual(dockEntries.map((entry: any) => entry.id), ['ui.statusDockVisible', 'ui.statusDockCreatorStartsTimer', 'ui.statusDockShowSeconds', 'ui.statusDockShowTimerDial', 'ui.statusDockTimerDialSize', 'ui.statusDockSections', 'ui.statusDockClickAction']);
+  const page = host.buildSettingsSearchTabPage(tabs[1], dockEntries);
+  assert.equal(page.name, 'statusDockSection');
+  assert.deepEqual(page.items.map((group: any) => group.heading), ['statusDockGeneralSettings', 'statusDockSections']);
+  assert.deepEqual(page.items[0].items.map((item: any) => item.key), ['statusDockVisible', 'statusDockClickAction', 'statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial', 'statusDockTimerDialSize']);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockShowSeconds'), false);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockShowTimerDial'), false);
+  assert.equal(host.getDefaultSettingsSearchValue('statusDockTimerDialSize'), 1);
+  assert.equal(host.getSettingsSearchDropdownValue('statusDockTimerDialSize', 1.75), '1x');
+  assert.deepEqual(Object.values(host.getSettingsSearchDropdownOptions('statusDockTimerDialSize')), [
+   '0.5×', '0.6×', '0.7×', '0.8×', '0.9×', '1×', '1.1×', '1.2×', '1.3×', '1.4×', '1.5×',
+  ]);
+  assert.deepEqual(page.items[1].items.map((item: any) => item.key), ['statusDockSections']);
+ } else {
+  assert.equal(entries.has('interfaceStatusDock'), false);
  }
  assert.equal(JSON.stringify(host.settings), before);
- assert.equal(JSON.stringify(OPERON_SETTINGS_SEARCH_REGISTRY), registryBefore);
+});
+
+test('dock section explanation appears above the native card and is removed with its settings row', () => {
+ const Host = methods('src/ui/settings-tab.ts', ['buildStatusDockSectionsDefinition'], { t: (_ns: string, key: string) => key });
+ const host = new Host();
+ const row = { empty() {}, removeClass() {} };
+ const paragraph = { className: '', textContent: '', remove() { placement.splice(placement.indexOf(this), 1); } };
+ const list = {
+  parentElement: { classList: { contains: (cls: string) => cls === 'operon-status-dock-sections-settings' } },
+  win: { createEl: (tag: string, options: { cls: string; text: string }) => {
+   assert.equal(tag, 'p');
+   return Object.assign(paragraph, { className: options.cls, textContent: options.text });
+  } },
+  before: (element: typeof paragraph) => { placement.splice(placement.indexOf(list), 0, element); },
+ };
+ const placement: unknown[] = ['heading', list];
+ host.renderStatusDockSectionRows = (container: unknown) => assert.equal(container, row);
+ const cleanup = host.buildStatusDockSectionsDefinition().render({ settingEl: row }, { listEl: list });
+ assert.deepEqual(placement, ['heading', paragraph, list]);
+ assert.equal(paragraph.textContent, 'statusDockSectionsDesc');
+ cleanup();
+ assert.deepEqual(placement, ['heading', list]);
 });

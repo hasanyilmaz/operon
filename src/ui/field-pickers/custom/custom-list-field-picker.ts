@@ -13,6 +13,7 @@ export type NativeListPickerOperation = { kind: 'append'; values: (string | numb
 
 export interface CustomListFieldPickerOptions extends CustomFieldPickerBaseOptions<'list'> {
  preserveValues?: boolean;
+ confirmValues?: boolean;
  nativeValues?: readonly (string | number)[];
  editIndex?: number;
  onNativeOperation?: (operation: NativeListPickerOperation) => readonly (string | number)[];
@@ -75,6 +76,12 @@ export function showCustomListFieldPicker(
 	let matches: string[] = [];
 	let activeIndex = 0;
 	let loadedCount = 0;
+	const applyButton = options.confirmValues ? createButton(t('buttons', 'apply'), 'operon-floating-btn is-primary', actions) : null;
+	if (applyButton) actions.appendChild(applyButton);
+	applyButton?.addEventListener('click', () => {
+		commit();
+		close();
+	});
 
 	const operate = (operation: NativeListPickerOperation): boolean => {
   if (!options.onNativeOperation) return false;
@@ -84,12 +91,16 @@ export function showCustomListFieldPicker(
   } catch { input.setAttribute('aria-invalid', 'true'); }
   return true;
  };
- const persist = (): void => {
+ const commit = (): void => {
 		completed = true;
 		if (native) options.onCommitNativeValues?.(decodeVaultPropertyList(selectedValues.join('; ')));
   else if (options.onCommitValues) options.onCommitValues(options.canonicalKey, [...selectedValues]);
 		else options.onCommit(options.canonicalKey, selectedValues.join('; '));
 	};
+ const persist = (): void => {
+  if (applyButton) applyButton.disabled = selectedValues.length === 0;
+  else commit();
+ };
 
 	const getVisibleMatches = (): string[] => matches.slice(0, loadedCount);
 
@@ -293,6 +304,7 @@ export function showCustomListFieldPicker(
 	});
 
 	renderSelected();
+	if (applyButton) applyButton.disabled = selectedValues.length === 0;
 	updateMatches('');
 	requestFloatingInputFocus(input);
 	return close;

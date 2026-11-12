@@ -55,7 +55,7 @@ export type WorkspaceTweaksPackageSettings = Pick<
 	| 'workspaceTweaksPropertiesScope'
 	| 'workspaceTweaksPropertiesExcludedFolders'
 	| 'workspaceTweaksCompactSidebarTabIcons'
-> & Partial<Pick<OperonSettings, 'workspaceTweaksLightboxSizes'>>;
+> & Partial<Pick<OperonSettings, 'workspaceTweaksLightboxSizes' | 'workspaceTweaksCoreQuickSwitcherOpenBehavior'>>;
 
 export type OperonDataPackageOwnedSettingsKey =
 	| 'keyMappings'
@@ -71,6 +71,11 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof TaskUiPreferenceStoreSettings
 	| keyof TaskCreationProfileStoreSettings
 	| keyof WorkspaceTweaksPackageSettings
+	| 'statusDockCreatorStartsTimer'
+	| 'statusDockShowSeconds'
+	| 'statusDockShowTimerDial'
+	| 'statusDockTimerDialSize'
+	| 'statusDockVisible'
 	| 'statusDockSections'
 	| 'statusDockClickAction'
 	| 'statusDockMode'
@@ -103,6 +108,11 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'tableShowLineNumbers',
 	'tableShowTaskIcon',
 	'tableShowTaskDataTypeIcon',
+	'statusDockCreatorStartsTimer',
+	'statusDockShowSeconds',
+	'statusDockShowTimerDial',
+	'statusDockTimerDialSize',
+	'statusDockVisible',
 	'statusDockSections',
 	'statusDockClickAction',
 	'statusDockMode',
@@ -166,6 +176,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'filterTaskShowPlainCheckboxAction',
 	'workspaceTweaksHideScrollbars',
 	'workspaceTweaksBackgroundDimming',
+	'workspaceTweaksCoreQuickSwitcherOpenBehavior',
 	'workspaceTweaksLightboxSizes',
 	'workspaceTweaksCollapseProperties',
 	'workspaceTweaksPropertiesScope',
@@ -356,7 +367,7 @@ export interface OperonViewsPackageV1 {
 }
 
 export interface OperonUiPackageV1 {
-	statusDock?: { sections?: OperonSettings['statusDockSections']; clickAction?: OperonSettings['statusDockClickAction']; mode?: OperonSettings['statusDockMode']; alignment?: OperonSettings['statusDockAlignment'] };
+	statusDock?: { creatorStartsTimer?: boolean; showSeconds?: boolean; showTimerDial?: boolean; timerDialSize?: OperonSettings['statusDockTimerDialSize']; visible?: boolean; sections?: OperonSettings['statusDockSections']; clickAction?: OperonSettings['statusDockClickAction']; mode?: OperonSettings['statusDockMode']; alignment?: OperonSettings['statusDockAlignment'] };
 	propertyValuePool?: unknown;
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferencePackageSettings>;
@@ -560,6 +571,11 @@ export function composeOperonSettingsFromDataPackage(
 		taskCardShowSourceAction: dataPackage.ui.taskUiPreferences.taskCardShowSourceAction !== false,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.taskCreationProfile),
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.ui.workspaceTweaks),
+		statusDockCreatorStartsTimer: dataPackage.ui.statusDock?.creatorStartsTimer,
+		statusDockShowSeconds: dataPackage.ui.statusDock?.showSeconds,
+		statusDockShowTimerDial: dataPackage.ui.statusDock?.showTimerDial,
+		statusDockTimerDialSize: dataPackage.ui.statusDock?.timerDialSize,
+		statusDockVisible: dataPackage.ui.statusDock?.visible,
 		statusDockSections: dataPackage.ui.statusDock?.sections,
 		statusDockClickAction: dataPackage.ui.statusDock?.clickAction,
 		statusDockMode: dataPackage.ui.statusDock?.mode,
@@ -628,7 +644,12 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		ui: {
-			...(normalized.statusDockSections === undefined && normalized.statusDockClickAction === undefined && normalized.statusDockMode === undefined && normalized.statusDockAlignment === undefined ? {} : { statusDock: {
+			...(normalized.statusDockCreatorStartsTimer === undefined && normalized.statusDockShowSeconds === undefined && normalized.statusDockShowTimerDial === undefined && normalized.statusDockTimerDialSize === undefined && normalized.statusDockVisible === undefined && normalized.statusDockSections === undefined && normalized.statusDockClickAction === undefined && normalized.statusDockMode === undefined && normalized.statusDockAlignment === undefined ? {} : { statusDock: {
+				...(normalized.statusDockCreatorStartsTimer === undefined ? {} : { creatorStartsTimer: normalized.statusDockCreatorStartsTimer }),
+				...(normalized.statusDockShowSeconds === undefined ? {} : { showSeconds: normalized.statusDockShowSeconds }),
+				...(normalized.statusDockShowTimerDial === undefined ? {} : { showTimerDial: normalized.statusDockShowTimerDial }),
+				...(normalized.statusDockTimerDialSize === undefined ? {} : { timerDialSize: normalized.statusDockTimerDialSize }),
+				...(normalized.statusDockVisible === undefined ? {} : { visible: normalized.statusDockVisible }),
 				...(normalized.statusDockSections === undefined ? {} : { sections: cloneUnknown(normalized.statusDockSections) }),
 				...(normalized.statusDockClickAction === undefined ? {} : { clickAction: normalized.statusDockClickAction }),
 				...(normalized.statusDockMode === undefined ? {} : { mode: normalized.statusDockMode }),
@@ -747,6 +768,9 @@ export function buildOperonDataPackageFromSettings(
 				version: 1,
 				workspaceTweaksHideScrollbars: normalized.workspaceTweaksHideScrollbars,
 				workspaceTweaksBackgroundDimming: normalized.workspaceTweaksBackgroundDimming,
+				...(normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined ? {} : {
+					workspaceTweaksCoreQuickSwitcherOpenBehavior: normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior,
+				}),
 				...(Object.keys(normalized.workspaceTweaksLightboxSizes).length ? { workspaceTweaksLightboxSizes: cloneUnknown(normalized.workspaceTweaksLightboxSizes) } : {}),
 				workspaceTweaksCollapseProperties: normalized.workspaceTweaksCollapseProperties,
 				workspaceTweaksPropertiesScope: normalized.workspaceTweaksPropertiesScope,

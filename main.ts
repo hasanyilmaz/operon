@@ -29,7 +29,7 @@ import { resolveKanbanAxes } from './src/core/kanban-axis-model';
 import { beginLightboxOpeningTrace, installLightboxOpeningProbe, LIGHTBOX_PERF_ENABLED, type LightboxOpeningTrace } from './src/ui/lightbox-opening-perf';
 import { deriveTaskFilename, sanitizeTaskFilename, filenameSuggestionAfterTitleEdit, type FileTaskRenameSuggestion } from './src/core/filename-rule';
 import { newFileTaskTitleFields } from './src/core/task-display-title';
-import { createTaskEditorMarkdownSource, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
+import { capturePropertyEditorMarkdown, createTaskEditorMarkdownSource, PropertyEditorSourceConflict, readTaskEditorMarkdown } from './src/ui/task-editor-markdown-source';
 import { mergeTaskEditorSource, type TaskEditorSourceSnapshot } from './src/ui/task-editor-source-sync';
 import type { TaskMarkdownSource } from './src/core/task-markdown-source';
 import { SettingsWritesSuspendedError, isUnrecognizableCanonicalDataPackage } from './src/storage/operon-data-package-store';
@@ -60,6 +60,8 @@ import { nativeEditorPropertyTypes } from './src/core/task-editor-native-propert
 import { decodeVaultPropertyValue, encodeVaultPropertyValue, type VaultPropertyValue } from './src/core/vault-property-codec';
 import { hasFileTaskDisplayTitleMapping, readRawYamlPropertyExpectation } from './src/core/raw-yaml-property';
 import { readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches } from './src/core/file-task-property-draft';
+import { planPropertyEditorWrite, propertyEditorPreservesBody, readPropertyEditorDocument, type PropertyEditorChange } from './src/core/property-editor-document';
+import { resolvePropertyEditorField } from './src/core/property-editor-fields';
 import { resolveInlinePropertyDefinition } from './src/core/inline-property-definitions';
 import { findInlinePropertyTask, mergeInlineEditorSource, patchInlineProperties, readParsedInlinePropertyProjection, readInlinePropertyProjection, prepareMappedInlineProperties, type InlinePropertyChange } from './src/core/inline-property-source';
 import { rankInlineTaskTargets, type InlineTargetDestination } from './src/core/inline-task-targets';
@@ -83,6 +85,7 @@ import { applyPropertyPoolTask, propertyPoolExpectedFields, propertyPoolPeriodic
 import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
+import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
 import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
@@ -262,6 +265,7 @@ import {
 import { TaskEditorModal, confirmTaskEditorDiscard, type TaskEditorSession } from './src/ui/task-editor-modal';
 import { getActiveLightboxShell } from './src/ui/lightbox';
 import { registerNativeTaskWorkspace } from './src/ui/native-task-workspace';
+import { NativePropertyEditor, type PropertyEditorSaveResult } from './src/ui/native-property-editor';
 import {
 	TaskCreatorDraft,
 	TaskCreatorModal,
@@ -367,6 +371,7 @@ import {
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
 import { evaluateFilterSet } from './src/core/filter-evaluator';
+import { captureFilterFolderRenames } from './src/core/filter-folder-paths';
 import { structuredErrorV1 } from './src/agent-runtime/contracts/v1/primitives';
 import { getAvailableReminderRuleAnchors } from './src/core/reminder-rules';
 import { ReminderDeliveryController } from './src/systems/reminder-delivery';
@@ -603,6 +608,8 @@ import {
 	getAppLocale,
 	getCommunityPlugin,
 	getExternalModifiedTimeFrontmatterPropertyNames,
+	getInternalPlugin,
+	isPluginEnabled,
 	isDailyNotesCoreAvailable,
 } from './src/core/obsidian-app';
 import { InlineTaskSaveMode, resolveEffectiveInlineTaskSaveMode } from './src/core/inline-task-save-mode';
@@ -728,6 +735,7 @@ import { FlowTimeView, FLOW_TIME_VIEW_TYPE } from './src/ui/flow-time-view';
 import { TimeTrackerStatusBar } from './src/ui/time-tracker-status-bar';
 import { OperonStatusDock } from './src/ui/status-dock';
 import { FlowTimeBreakController } from './src/systems/flow-time-break';
+import { FlowTimeControls } from './src/systems/flow-time-controls';
 import { FormatConverter } from './src/systems/format-converter';
 import { FileTaskArchiver } from './src/systems/file-task-archiver';
 import { FileTaskPipelineMover } from './src/systems/file-task-pipeline-mover';
@@ -1758,6 +1766,7 @@ export default class OperonPlugin extends Plugin {
 	private workspaceTweakPropertiesCollapseTimers: WindowTimeoutHandle[] = [];
 	private workspaceTweakPropertiesTargetEls = new Set<HTMLElement>();
 	private workspaceTweakBodyDocuments = new Set<Document>();
+	private coreQuickSwitcher: CoreQuickSwitcherIntegration | null = null;
 	private embedFilterDeps: EmbedFilterDeps | null = null;
 	private taskCardEmbeds: TaskCardEmbeds | null = null;
  private kanbanPoolServices: KanbanPoolServices | null = null;
@@ -1829,6 +1838,7 @@ export default class OperonPlugin extends Plugin {
  private startupPreviousTasks = new Map<string, IndexedTask[]>();
 	private templatedFileTaskCreationCandidates = new Map<string, number>();
 	private flowTimeBreakController!: FlowTimeBreakController;
+	private flowTimeControls!: FlowTimeControls;
 	private statusDock: OperonStatusDock | null = null;
 	private trackerStatusBar: TimeTrackerStatusBar | null = null;
 	private upcomingStatusBar: UpcomingTasksStatusBar | null = null;
@@ -3350,6 +3360,7 @@ export default class OperonPlugin extends Plugin {
 			this.externalCalendarService?.applySettings(this.settings.externalCalendars) ?? Promise.resolve(),
 		);
 		this.reminderScheduler?.handleSettingsChanged();
+		this.flowTimeBreakController?.syncFocusSoundSettings();
 		const mobileNotifications = this.trackSettingsChangedPromise(
 			'mobile notifications snapshot settings reconciliation failed',
 			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
@@ -7465,6 +7476,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			reindexAffectedSources: async filePaths => {
 				await this.indexer.reindexCommittedMutationSources(filePaths, { notify: false });
+				await this.taskSourceModifyReconciler?.awaitReconciliations(filePaths);
 			},
 			settleAfterMutation: async requestId => {
 				await this.awaitAgentRuntimeSettlement({
@@ -16930,8 +16942,15 @@ export default class OperonPlugin extends Plugin {
 				this.scheduleDuplicateConflictAlert(operonId);
 			},
 		});
-		this.storage.setMappingMutationCoordinator(operation => this.writer.runExclusiveTaskMutation(operation),
-			mappings => this.writer.updateKeyMappings(mappings));
+		let customKeyMutationPermit: TaskWriterExclusiveMutationPermit | undefined;
+		this.storage.setMappingMutationCoordinator(operation => this.writer.runExclusiveTaskMutation(async permit => {
+   customKeyMutationPermit = permit;
+   try { return await operation(); } finally { customKeyMutationPermit = undefined; }
+  }), mappings => this.writer.updateKeyMappings(mappings));
+  this.storage.setCustomKeySourceWriter((file, before, after, current) => {
+   if (!customKeyMutationPermit) throw new Error('Custom property source lease is unavailable');
+   return this.writeCustomKeyReuseSource(file, before, after, current, customKeyMutationPermit);
+  });
 		try {
 			await this.bindAgentRuntimeMutationGateway();
 		} catch (error) {
@@ -17019,6 +17038,15 @@ export default class OperonPlugin extends Plugin {
 				return () => owner.clearInterval(interval);
 			},
 		});
+		this.flowTimeControls = new FlowTimeControls({
+			getSettings: () => this.settings,
+			saveSettings: (expected, values) => this.storage.saveFlowTimeTimerSettings(expected, values),
+			timeTracker: this.timeTracker,
+			breakController: this.flowTimeBreakController,
+		});
+		this.register(this.flowTimeControls.subscribe(event => {
+			if (event !== 'preview') this.flowTimeBreakController.syncFocusSoundSettings();
+		}));
 		this.recurrenceService = new RecurrenceService(
 			this.app,
 			this.indexer,
@@ -17371,6 +17399,7 @@ export default class OperonPlugin extends Plugin {
 			this.buildSettingsBackupUiIntegration(),
 			() => this.reconcileAllParentTaskDateRangesWhenSafe(),
 			{ mount: container => { const controller = this.getTasksBulkConversion(); if (!controller) return () => {}; const view = new TasksConversionSettings(this.app, container, controller); return () => view.dispose(); }, available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading' },
+			() => this.statusDock?.refresh(),
 			(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			);
 		this.addSettingTab(this.settingsTab);
@@ -17389,6 +17418,7 @@ export default class OperonPlugin extends Plugin {
 				toggleTaskTimer: (taskId, canCommit) => this.toggleTimerForTask(taskId, 'status-bar', canCommit),
 				startTimerForTask: (taskId, canCommit) => this.startTimerForTask(taskId, 'status-bar', undefined, canCommit),
 				indexer: this.indexer, timeTracker: this.timeTracker, breakController: this.flowTimeBreakController,
+				flowTimeControls: this.flowTimeControls,
 				getSettings: () => this.settings,
 				sessionActions: {
 					openSession: (session, guard) => new Promise<void>(resolve => this.openCalendarTrackedSessionEditor(session, resolve, guard)),
@@ -17721,6 +17751,7 @@ export default class OperonPlugin extends Plugin {
 		this.duplicateAlertStatusBarEl = null;
 		if (this.statusDock) this.removeChild(this.statusDock);
 		this.statusDock = null;
+		this.flowTimeControls?.destroy();
 		this.flowTimeBreakController?.destroy();
 		this.trackerStatusBar?.destroy();
 		this.upcomingStatusBar?.destroy();
@@ -17978,7 +18009,6 @@ export default class OperonPlugin extends Plugin {
 					getPipelines: () => this.settings.pipelines,
 					getSettings: () => this.settings,
 					saveSettings: () => this.storage.saveSettings(),
-					playReminderSound: () => this.reminderDeliveryController?.playReminderSound() ?? Promise.resolve(),
 					createTaskForTracker: canUse => this.promptTrackerTaskCreation(canUse),
 					createInlineTaskFromQuickInput: (draft) => this.createInlineTaskFromCreatorDraftResult(draft),
 					shouldPromptForInlineTaskTarget: () => this.resolveEffectiveInlineTaskSaveMode() === 'ask-every-time',
@@ -17995,6 +18025,7 @@ export default class OperonPlugin extends Plugin {
 					hasSubtasks: (taskId) => this.indexer.secondary.getChildIds(taskId).size > 0,
 				},
 				this.flowTimeBreakController,
+				this.flowTimeControls,
 			)
 		);
 
@@ -24295,7 +24326,40 @@ export default class OperonPlugin extends Plugin {
 		});
 	}
 
+	private getQuickSwitcherFileTaskId(file: TFile): string | null | undefined {
+		if (this.taskCardIndexState !== 'ready' || this.indexer.getLiveReadAuthoritySnapshot().state !== 'verified') return undefined;
+		return this.indexer.resolveFileTaskIdForOpening(file.path);
+	}
+
 	private applyWorkspaceTweaks(): void {
+		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+		this.coreQuickSwitcher ??= new CoreQuickSwitcherIntegration(this.app, {
+			behavior: () => this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior,
+			prepareOpening: (file, behavior, anchor) => {
+				const opening = resolveCoreQuickSwitcherFileOpening(file, behavior, {
+					isExcalidraw: candidate => this.isExcalidrawTaskSource(candidate),
+					basesEnabled: () => isPluginEnabled(getInternalPlugin(this.app, 'bases')),
+					fileTaskId: candidate => this.getQuickSwitcherFileTaskId(candidate),
+				});
+				if (!opening) return null;
+				getLightboxOwnerLeaf(this.app, anchor.ownerDocument);
+				const path = file.path;
+				const canOpen = () => this.coreQuickSwitcher !== null && anchor.isConnected && !anchor.ownerDocument.defaultView?.closed
+					&& this.app.vault.getAbstractFileByPath(path) === file;
+				if (opening.kind === 'editor') {
+					return () => this.openEditorForId(opening.id, opening.showSource, anchor,
+						() => canOpen() && this.getQuickSwitcherFileTaskId(file) === opening.id);
+				}
+				return () => openFileLightbox(this.app, anchor, { file, subpath: '' },
+					() => canOpen() && (opening.kind !== 'properties' || this.getQuickSwitcherFileTaskId(file) === null),
+					opening.kind === 'properties' ? { showSource: opening.showSource } : undefined);
+			},
+			onOpenError: error => {
+				console.error('Operon: Core Quick Switcher opening failed', error);
+				new Notice('Could not open this file in the lightbox. Please try again.');
+			},
+		});
+		this.coreQuickSwitcher.sync();
   updateDesktopBackdropDimming(this.settings.workspaceTweaksBackgroundDimming);
 		for (const doc of this.getWorkspaceTweakDocuments()) {
 			this.workspaceTweakBodyDocuments.add(doc);
@@ -24313,6 +24377,8 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private removeWorkspaceTweakBodyClasses(): void {
+		this.coreQuickSwitcher?.dispose();
+		this.coreQuickSwitcher = null;
   disposeDesktopBackdrops();
 		for (const doc of this.getWorkspaceTweakDocuments()) {
 			this.workspaceTweakBodyDocuments.add(doc);
@@ -27817,6 +27883,25 @@ export default class OperonPlugin extends Plugin {
 		// File renamed/moved → update locations in index, then reindex
 		this.registerEvent(
 			this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
+				if (file instanceof TFolder) {
+					const active = () => this.agentRuntimeLifecycle.getPhase() !== 'unloading';
+					if (!active()) return;
+					const folderPaths = this.app.vault.getAllLoadedFiles()
+						.filter(entry => entry instanceof TFolder).map(entry => entry.path);
+					const renames = captureFilterFolderRenames(oldPath, file.path, folderPaths);
+					runAsyncAction('saved filter folder rename failed', async () => {
+						try {
+							if (await this.storage.renameSavedFilterFolders(renames, active) && active()) {
+								this.syncFilterSetsFromStore();
+								this.refreshViews();
+							}
+						} catch (error) {
+							if (active()) new Notice('Operon could not update saved filter paths. Check the folder conditions in your filters.');
+							throw error;
+						}
+					});
+					return;
+				}
 				if (!(file instanceof TFile) || file.extension !== 'md') return;
 				this.startupFileEvents?.rename(oldPath, file.path);
     const previousTasks = this.startupPreviousTasks.get(oldPath);
@@ -28559,6 +28644,9 @@ export default class OperonPlugin extends Plugin {
 
 		const rawContent = await this.app.vault.cachedRead(file);
 		if ((canContinue && !canContinue()) || this.workflowNormalizationRenameTargets.has(filePath)) return;
+  const propertyWrite = this.propertyEditorWrittenSources.get(file);
+  if (propertyWrite?.path === filePath && propertyWrite.sources.has(rawContent)) return;
+  this.propertyEditorWrittenSources.delete(file);
 		const resolvesTemplatedFileTask = this.isTemplatedFileTaskCreationCandidate(filePath)
 			&& this.hasTemplatedFileTaskIdentity(rawContent);
 		const resolvedContent = resolvesTemplatedFileTask
@@ -37818,6 +37906,95 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+ /** Settings owns the mapping lease; this writes only the approved empty YAML values. */
+ private async writeCustomKeyReuseSource(file: TFile, before: string, after: string, current: () => boolean, permit: TaskWriterExclusiveMutationPermit): Promise<void> {
+  const path = file.path;
+  const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
+  if (source.stored !== before || await source.read() !== before || !current()) throw new Error(`Property source changed: ${path}`);
+  const previous = this.propertyEditorWrittenSources.get(file);
+  const receipt = { path, sources: new Set([before, after]) };
+  this.propertyEditorWrittenSources.set(file, receipt);
+  try {
+   const result = await this.writer.withMarkdownSource(source, () => this.writer.applyExactMarkdownSourceMutation(path, before, after, current, permit, 'plugin'));
+   if (result.outcome !== 'committed' || source.nativeConflict) throw new Error(`Property source write or synchronization failed: ${path}`);
+   receipt.sources = new Set([after]);
+   this.indexer.scheduleReindex(path);
+  } catch (error) {
+   const actual = await this.app.vault.read(file).catch(() => null);
+   if (actual === after) receipt.sources = new Set([after]);
+   else if (actual === before) {
+    if (previous) this.propertyEditorWrittenSources.set(file, previous);
+    else this.propertyEditorWrittenSources.delete(file);
+   }
+   throw error;
+  }
+ }
+
+ private readonly propertyEditorWrittenSources = new WeakMap<TFile, { path: string; sources: Set<string> }>();
+
+ private async saveLightboxNoteProperties(file: TFile, changes: readonly PropertyEditorChange[], current: () => boolean): Promise<PropertyEditorSaveResult> {
+  const path = file.path;
+  const validTarget = (): boolean => current() && file.path === path && this.app.vault.getAbstractFileByPath(path) === file
+   && !this.isExcalidrawTaskSource(file) && this.indexer.resolveFileTaskIdForOpening(path) === null;
+  try {
+   return await this.writer.runExclusiveTaskMutation(async permit => {
+    if (!validTarget()) return { status: 'conflict' };
+    const mappings = this.settings.keyMappings;
+    const types = getNativePropertyIndex(this.app).getTypes();
+    const canCommit = (): boolean => validTarget() && this.settings.keyMappings === mappings && getNativePropertyIndex(this.app).getTypes() === types;
+    const ownWrite: { settle?: (committed: boolean) => void } = {};
+    const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path), text => {
+     const rebased = planPropertyEditorWrite(text, mappings, changes);
+     const baseline = readPropertyEditorDocument(text, mappings);
+     return rebased.status === 'ready' && baseline && !changes.some(({ name }) =>
+      resolvePropertyEditorField(name, baseline, mappings, types).reason
+      || resolvePropertyEditorField(name, rebased.properties, mappings, types).reason) ? rebased.text : null;
+    }, canCommit, (stored, next) => {
+     // A YAML-only edit is not a raw task edit. Protect only these exact bytes;
+     // dirty native body changes and subsequently diverging sources still normalize.
+     if (!propertyEditorPreservesBody(stored, next, mappings)) return;
+     const previous = this.propertyEditorWrittenSources.get(file);
+     const sources = new Set([next]);
+     if (previous?.path === path && previous.sources.has(stored)) sources.add(stored);
+     const receipt = { path, sources };
+     this.propertyEditorWrittenSources.set(file, receipt);
+     let settled = false;
+     ownWrite.settle = committed => {
+      if (settled) return;
+      settled = true;
+      if (this.propertyEditorWrittenSources.get(file) !== receipt) return;
+      if (committed) receipt.sources = new Set([next]);
+      else if (previous) this.propertyEditorWrittenSources.set(file, previous);
+      else this.propertyEditorWrittenSources.delete(file);
+     };
+     return ownWrite.settle;
+    });
+    const before = await source.read();
+    const plan = planPropertyEditorWrite(before, mappings, changes);
+    if (plan.status !== 'ready') return { status: plan.status };
+    const baseline = readPropertyEditorDocument(before, mappings);
+    if (!baseline || changes.some(({ name }) => resolvePropertyEditorField(name, baseline, mappings, types).reason
+     || resolvePropertyEditorField(name, plan.properties, mappings, types).reason)) return { status: 'unsupported' };
+    if (!canCommit()) return { status: 'conflict' };
+    // Even an idempotent disk result may need to update an open native buffer.
+    const result = await this.writer.withMarkdownSource(source, () =>
+     this.writer.applyExactMarkdownSourceMutation(path, before, plan.text, canCommit, permit, 'plugin'));
+    if (result.outcome !== 'committed') {
+     if (ownWrite.settle) {
+      const actual = await this.app.vault.read(file).catch(() => null);
+      if (actual !== null) ownWrite.settle(actual === plan.text);
+     }
+     return { status: result.outcome === 'failed' ? 'failed' : 'conflict' };
+    }
+    // TaskWriter may have recovered an acknowledgement the source adapter could not read.
+    ownWrite.settle?.(true);
+    if (plan.text !== source.stored) this.indexer.scheduleReindex(path);
+    if (source.nativeConflict) return { status: 'conflict' };
+    return { status: 'saved', properties: plan.properties };
+   });
+  } catch (error) { return { status: error instanceof PropertyEditorSourceConflict ? 'conflict' : 'failed' }; }
+ }
+
 	private registerCommands(): void {
   if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
   this.register(registerNativeTaskWorkspace(this.app, {
@@ -37829,6 +38006,20 @@ export default class OperonPlugin extends Plugin {
     const source = await this.readTaskEditorSource(task.operonId, undefined, openingTrace).catch(() => null);
     return source && source.filePath === file.path ? { operonId: task.operonId, file } : null;
    },
+   readProperties: async file => {
+    if (!Platform.isDesktopApp || file.extension !== 'md' || this.isExcalidrawTaskSource(file)
+     || this.indexer.resolveFileTaskIdForOpening(file.path) !== null) return null;
+    const path = file.path;
+    const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
+    const content = await source.read();
+    if (file.path !== path || this.app.vault.getAbstractFileByPath(path) !== file
+     || this.indexer.resolveFileTaskIdForOpening(path) !== null) return null;
+    return readPropertyEditorDocument(content, this.settings.keyMappings);
+   },
+   createProperties: (host, file, document) => new NativePropertyEditor(host, document, {
+    app: this.app, file, settings: () => this.settings, tasks: () => this.indexer.getAllTasks(),
+    save: (changes, current) => this.saveLightboxNoteProperties(file, changes, current),
+   }),
    locate: async operonId => {
     const source = await this.readTaskEditorSource(operonId).catch(() => null);
     return source ? { operonId, file: source.file, ...(source.format === 'inline' ? { line: source.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(source.parsed) } : {}) } : null;
@@ -37897,7 +38088,7 @@ export default class OperonPlugin extends Plugin {
 			name: t('commands', 'toggleStatusDock'),
 			checkCallback: checking => {
 				if (!Platform.isDesktopApp || !this.statusDock) return false;
-				if (!checking) this.statusDock.toggleVisibility();
+				if (!checking) void this.settingsTab?.setStatusDockVisibility();
 				return true;
 			},
 		});

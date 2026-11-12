@@ -239,10 +239,11 @@ test('planning surfaces format presentation text but retain canonical date ident
 });
 
 test('Task Editor and Task Creator format labels without changing picker values', () => {
-	const editorSource = readFileSync('src/ui/task-editor-content.ts', 'utf8');
+	const editorSource = readFileSync('src/ui/editor-property-fields.ts', 'utf8');
+	const formatSource = readFileSync('src/ui/editor-property-format.ts', 'utf8');
 	const creatorSource = readFileSync('src/ui/task-creator-modal.ts', 'utf8');
 	assert.ok(editorSource.includes('formatUiDate(value, this.settings)'));
-	assert.ok(editorSource.includes('formatUiTaskDatetime(app, settings, value)'));
+	assert.ok(formatSource.includes('formatUiTaskDatetime(app, settings, value)'));
 	assert.ok(editorSource.includes("value: this.fieldValues[key]"));
 	assert.ok(creatorSource.includes('getFieldButtonDisplayValue(key)'));
 	assert.ok(creatorSource.includes('formatUiDate(rawValue, this.options.settings)'));

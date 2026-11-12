@@ -1,10 +1,8 @@
-import { getOwnerWindow } from '../core/dom-compat';
 import { getTaskIconActionLabel } from '../core/task-icon-action';
 import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
 import { t } from '../core/i18n';
 import { OperonIndexer } from '../indexer/indexer';
 import { TimeTracker } from '../systems/time-tracker';
-import { FlowTimeCompletionAlertTracker } from '../systems/flow-time-completion-alerts';
 import { FlowTimeBreakController, canSelectFlowTimeTask, type FlowTimeBreakState } from '../systems/flow-time-break';
 import {
 	FlowTimePendingDraft,
@@ -29,18 +27,18 @@ import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskC
 import type { ContextualMenuActionHandler } from '../core/contextual-menu-engine';
 import type { QuickInlineTaskCreationResult } from './task-creator-integrations';
 import type { TaskCreatorDraft } from './task-creator-modal';
-import { WindowIntervalHandle, clearWindowInterval, getOwnerDocument, setWindowInterval } from '../core/dom-compat';
+import { WindowIntervalHandle, clearWindowInterval, setWindowInterval } from '../core/dom-compat';
 import { asyncHandler, runAsyncAction } from '../core/async-action';
 import { enginePerfLog, enginePerfNow } from '../core/engine-perf';
 import { localNow } from '../core/local-time';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
+import { getFlowTimeTargetSeconds, resolveFlowTimeDialState } from '../systems/flow-time-dial-state';
+import type { FlowTimeControls } from '../systems/flow-time-controls';
+import { createFlowTimeDial, resolveFlowTimeDialAccent } from './flow-time-dial';
 
 export const FLOW_TIME_VIEW_TYPE = 'operon-flow-time';
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const FLOW_TIME_MINUTES_MIN = 1;
 
 interface FlowTimeViewCallbacks {
 	cycleStatus: (operonId: string) => Promise<void>;
@@ -48,7 +46,6 @@ interface FlowTimeViewCallbacks {
 	getPipelines: () => Pipeline[];
 	getSettings: () => OperonSettings;
 	saveSettings: () => Promise<void>;
-	playReminderSound: () => Promise<void>;
 	createTaskForTracker: (canUse: () => boolean) => Promise<string | null>;
 	createInlineTaskFromQuickInput: (draft: TaskCreatorDraft) => Promise<QuickInlineTaskCreationResult | null>;
 	shouldPromptForInlineTaskTarget: () => boolean;
@@ -58,17 +55,6 @@ interface FlowTimeViewCallbacks {
 	onContextualAction?: ContextualMenuActionHandler;
 	isTaskPinned?: (taskId: string) => boolean;
 	hasSubtasks?: (taskId: string) => boolean;
-}
-
-interface DialState {
-	mode: FlowTimeMode;
-	displaySeconds: number;
-	angleDegrees: number;
-	fillAngleDegrees: number;
-	clockwise: boolean;
-	overtime: boolean;
-	isRunning: boolean;
-	accentColor: string | null;
 }
 
 interface FlowTimeOptimisticTaskPatch extends OptimisticTaskPatchInput {
@@ -85,11 +71,8 @@ export class FlowTimeView extends ItemView {
 	private pendingTaskId: string | null = null;
 	private notifiedTargetKey: string | null = null;
 	private lastTargetReachedState: { activeStart: string; overtime: boolean } | null = null;
-	private readonly completionAlertTracker = new FlowTimeCompletionAlertTracker();
-	private lastFlowTimeSoundEnabled: boolean | null = null;
-	private lastFlowTimeSoundMode: FlowTimeMode | null = null;
-	private isDialDragging = false;
-	private cleanupDialDrag: (() => void) | null = null;
+	private dial: ReturnType<typeof createFlowTimeDial> | null = null;
+	private unsubscribeControls: (() => void) | null = null;
 	private get breakState(): FlowTimeBreakState | null {
 		return this.breakController.getSnapshot().breakState;
 	}
@@ -104,6 +87,7 @@ export class FlowTimeView extends ItemView {
 		timeTracker: TimeTracker,
 		callbacks: FlowTimeViewCallbacks,
 		private readonly breakController: FlowTimeBreakController,
+		private readonly timerControls: FlowTimeControls,
 	) {
 		super(leaf);
 		this.indexer = indexer;
@@ -124,6 +108,13 @@ export class FlowTimeView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		this.unsubscribeControls = this.timerControls.subscribe(event => {
+			if (event === 'mode') this.render();
+			else {
+				if (event === 'committed') this.syncTargetReachedStateAfterDurationChange(this.callbacks.getSettings());
+				this.updateLiveElements();
+			}
+		});
 		this.unsubscribeBreak = this.breakController.subscribe(event => {
 			if (event === 'tick') this.updateLiveElements();
 			else this.render();
@@ -140,7 +131,11 @@ export class FlowTimeView extends ItemView {
 
 	async onClose(): Promise<void> {
 		cleanupOperonHoverTooltips(this.contentEl);
-		this.finishDialDrag();
+		this.unsubscribeControls?.();
+		this.unsubscribeControls = null;
+		this.dial?.cancelDrag();
+		this.dial = null;
+		this.lastRenderSignature = null;
 		this.unsubscribeBreak?.();
 		this.unsubscribeBreak = null;
 		this.stopPendingDraftTicker();
@@ -151,8 +146,10 @@ export class FlowTimeView extends ItemView {
 	}
 
 	render(): void {
+		this.timerControls.syncContext();
 		const container = this.contentEl;
 		const settings = this.callbacks.getSettings();
+		const mode = this.timerControls.mode;
 		const renderedState = this.getRenderedState();
 		const { active, task } = renderedState;
 		const activeKey = active ? `${active.operonId ?? 'unassigned'}:${active.start}` : 'none';
@@ -165,8 +162,7 @@ export class FlowTimeView extends ItemView {
 			indexGeneration: this.indexer.getGeneration(),
 			settingsValues: [
 				String(this.breakController.getSnapshot().actionPending),
-				settings.flowTimeMode,
-				String(settings.flowTimeSessionMinutes),
+				mode,
 				String(settings.flowTimePauseMinutes),
 				String(settings.flowTimeUseLastSelectedDuration),
 				String(settings.flowTimeDefaultSessionMinutes),
@@ -196,18 +192,25 @@ export class FlowTimeView extends ItemView {
 
 		cleanupOperonHoverTooltips(container);
 		cleanupTaskContextualHoverMenus(container);
-		container.empty();
+		const dialWrap = this.dial ? container.querySelector<HTMLElement>('[data-role="dial-wrap"]') : null;
+		for (const child of Array.from(container.children)) {
+			if (child !== dialWrap) child.remove();
+		}
 		container.addClass('operon-flow-time-view');
-		container.classList.toggle('is-flowtime', settings.flowTimeMode === 'flowtime');
-		container.classList.toggle('is-tracktime', settings.flowTimeMode === 'tracktime');
+		container.classList.toggle('is-flowtime', mode === 'flowtime');
+		container.classList.toggle('is-tracktime', mode === 'tracktime');
 		container.classList.toggle('is-break', !!this.breakState);
 		container.classList.toggle('is-optimistic', renderedState.isOptimistic);
 		this.applyAccentColor(container, task);
 
-		this.renderModeBar(container, settings, active);
-		const dialWrap = container.createDiv('operon-flow-time-dial-wrap');
-		dialWrap.dataset.role = 'dial-wrap';
-		this.renderDial(dialWrap, this.buildDialState(settings, active, task));
+		const modeBar = this.renderModeBar(container, mode, active);
+		const wrap = dialWrap ?? container.createDiv('operon-flow-time-dial-wrap');
+		container.insertBefore(modeBar, wrap);
+		if (!dialWrap) {
+			this.dial?.cancelDrag();
+			wrap.dataset.role = 'dial-wrap';
+			this.dial = createFlowTimeDial(wrap, this.timerControls);
+		}
 		if (settings.flowTimeShowNumericTimer) {
 			this.renderTimeControls(container, settings);
 		}
@@ -215,11 +218,12 @@ export class FlowTimeView extends ItemView {
 		this.updateLiveElements();
 	}
 
-	private renderModeBar(container: HTMLElement, settings: OperonSettings, active: ReturnType<TimeTracker['getActiveState']>): void {
+	private renderModeBar(container: HTMLElement, mode: FlowTimeMode, active: ReturnType<TimeTracker['getActiveState']>): HTMLElement {
 		const row = container.createDiv('operon-flow-time-mode-row');
-		this.createModeButton(row, 'tracktime', settings.flowTimeMode === 'tracktime');
+		this.createModeButton(row, 'tracktime', mode === 'tracktime');
 		this.renderBreakButton(row, active);
-		this.createModeButton(row, 'flowtime', settings.flowTimeMode === 'flowtime');
+		this.createModeButton(row, 'flowtime', mode === 'flowtime');
+		return row;
 	}
 
 	private createModeButton(container: HTMLElement, mode: FlowTimeMode, active: boolean): void {
@@ -234,18 +238,7 @@ export class FlowTimeView extends ItemView {
 				'aria-pressed': String(active),
 			},
 		});
-		button.addEventListener('click', () => {
-			const settings = this.callbacks.getSettings();
-			if (settings.flowTimeMode === mode) return;
-			settings.flowTimeMode = mode;
-			const hasActiveTimer = !!this.timeTracker.getActiveState();
-			if (mode === 'flowtime' && !this.breakState && !hasActiveTimer) {
-				this.applyDefaultFlowTimeDuration();
-			}
-			this.lastRenderSignature = null;
-			runAsyncAction('flow time mode save failed', () => this.callbacks.saveSettings());
-			this.render();
-		});
+		button.addEventListener('click', asyncHandler('flow time mode save failed', () => this.timerControls.setMode(mode)));
 	}
 
 	private renderBreakButton(container: HTMLElement, active: ReturnType<TimeTracker['getActiveState']>): void {
@@ -508,26 +501,24 @@ export class FlowTimeView extends ItemView {
 		}
 	}
 
-	private updateLiveElements(redrawDial = true): void {
+	private updateLiveElements(): void {
 		const container = this.contentEl;
 		const settings = this.callbacks.getSettings();
 		const renderedState = this.getRenderedState();
 		const active = renderedState.active;
 		const task = renderedState.task;
-		const state = this.buildDialState(settings, active, task);
+		const breakState = this.breakState;
+		const state = resolveFlowTimeDialState(
+			this.timerControls.mode,
+			breakState ? this.breakController.getElapsedSeconds() : active?.elapsedSeconds ?? 0,
+			breakState?.targetSeconds ?? getFlowTimeTargetSeconds(this.timerControls.minutes),
+		);
 		container.classList.toggle('is-optimistic', renderedState.isOptimistic);
 		const taskBox = container.querySelector<HTMLElement>('.operon-flow-time-task-box');
 		taskBox?.classList.toggle('is-optimistic', renderedState.isOptimistic);
 		taskBox?.classList.toggle('is-pending-draft', !!renderedState.pendingDraft);
 		this.applyAccentColor(container, task);
-		const dialWrap = container.querySelector<HTMLElement>('[data-role="dial-wrap"]');
-		if (dialWrap) {
-			if (redrawDial && !this.isDialDragging) {
-				this.renderDial(dialWrap, state);
-			} else {
-				this.updateDialGeometry(dialWrap, state);
-			}
-		}
+		this.dial?.update(state, this.resolveAccentColor(task));
 
 		const timeText = container.querySelector<HTMLElement>('[data-role="time-text"]');
 		const overtimeLabel = container.querySelector<HTMLElement>('[data-role="overtime-label"]');
@@ -538,25 +529,6 @@ export class FlowTimeView extends ItemView {
 			overtimeLabel.setText(state.overtime ? t('taskEditor', 'flowTimeOvertime') : '');
 		}
 		this.notifyIfTargetReached(settings, active);
-		this.playReminderSoundIfTargetReached(settings, active);
-	}
-
-	private updateDialGeometry(container: HTMLElement, state: DialState): void {
-		container.style.setProperty('--operon-flow-time-accent', state.accentColor ?? 'var(--interactive-accent)');
-		const svg = container.querySelector<SVGSVGElement>('.operon-flow-time-dial');
-		const wedge = container.querySelector<SVGPathElement>('.operon-flow-time-wedge');
-		const hand = container.querySelector<SVGLineElement>('.operon-flow-time-hand');
-		if (svg) {
-			svg.classList.toggle('is-overtime', state.overtime);
-		}
-		if (wedge) {
-			wedge.setAttribute('d', this.describeWedge(120, 120, 70, 0, state.fillAngleDegrees, state.clockwise));
-		}
-		if (hand) {
-			const handEnd = this.pointOnCircle(120, 120, 96, state.angleDegrees);
-			hand.setAttribute('x2', String(handEnd.x));
-			hand.setAttribute('y2', String(handEnd.y));
-		}
 	}
 
 	private applyAccentColor(container: HTMLElement, task: IndexedTask | null): void {
@@ -566,153 +538,6 @@ export class FlowTimeView extends ItemView {
 		} else {
 			container.style.removeProperty('--operon-flow-time-accent');
 		}
-	}
-
-	private renderDial(container: HTMLElement, state: DialState): void {
-		container.empty();
-		container.style.setProperty('--operon-flow-time-accent', state.accentColor ?? 'var(--interactive-accent)');
-		const ownerDocument = getOwnerDocument(container);
-		const svg = ownerDocument.createElementNS(SVG_NS, 'svg');
-		svg.setAttribute('class', `operon-flow-time-dial${state.overtime ? ' is-overtime' : ''}`);
-		svg.setAttribute('viewBox', '0 0 240 240');
-		svg.setAttribute('role', 'img');
-		svg.setAttribute('aria-hidden', 'true');
-
-		const ticks = ownerDocument.createElementNS(SVG_NS, 'g');
-		ticks.setAttribute('class', 'operon-flow-time-ticks');
-		for (let i = 0; i < 60; i++) {
-			const major = i % 5 === 0;
-			const outer = this.pointOnCircle(120, 120, 106, i * 6);
-			const inner = this.pointOnCircle(120, 120, major ? 91 : 98, i * 6);
-			const line = ownerDocument.createElementNS(SVG_NS, 'line');
-			line.setAttribute('class', major ? 'is-major' : 'is-minor');
-			line.setAttribute('x1', String(inner.x));
-			line.setAttribute('y1', String(inner.y));
-			line.setAttribute('x2', String(outer.x));
-			line.setAttribute('y2', String(outer.y));
-			ticks.appendChild(line);
-		}
-		svg.appendChild(ticks);
-
-		const face = ownerDocument.createElementNS(SVG_NS, 'circle');
-		face.setAttribute('class', 'operon-flow-time-face');
-		face.setAttribute('cx', '120');
-		face.setAttribute('cy', '120');
-		face.setAttribute('r', '70');
-		svg.appendChild(face);
-
-		const wedge = ownerDocument.createElementNS(SVG_NS, 'path');
-		wedge.setAttribute('class', 'operon-flow-time-wedge');
-		wedge.setAttribute('d', this.describeWedge(120, 120, 70, 0, state.fillAngleDegrees, state.clockwise));
-		svg.appendChild(wedge);
-
-		const handEnd = this.pointOnCircle(120, 120, 96, state.angleDegrees);
-		const hand = ownerDocument.createElementNS(SVG_NS, 'line');
-		hand.setAttribute('class', 'operon-flow-time-hand');
-		hand.setAttribute('x1', '120');
-		hand.setAttribute('y1', '120');
-		hand.setAttribute('x2', String(handEnd.x));
-		hand.setAttribute('y2', String(handEnd.y));
-		svg.appendChild(hand);
-
-		const hubOuter = ownerDocument.createElementNS(SVG_NS, 'circle');
-		hubOuter.setAttribute('class', 'operon-flow-time-hub-outer');
-		hubOuter.setAttribute('cx', '120');
-		hubOuter.setAttribute('cy', '120');
-		hubOuter.setAttribute('r', '21');
-		svg.appendChild(hubOuter);
-
-		const hub = ownerDocument.createElementNS(SVG_NS, 'circle');
-		hub.setAttribute('class', 'operon-flow-time-hub');
-		hub.setAttribute('cx', '120');
-		hub.setAttribute('cy', '120');
-		hub.setAttribute('r', '15');
-		svg.appendChild(hub);
-
-		svg.addEventListener('pointerdown', (event) => this.handleDialPointer(event, svg));
-		container.appendChild(svg);
-
-	}
-
-	private buildDialState(
-		settings: OperonSettings,
-		active: ActiveTrackerState | null,
-		task: IndexedTask | null,
-	): DialState {
-		if (this.breakState) {
-			const elapsed = this.getBreakElapsedSeconds();
-			if (settings.flowTimeMode === 'tracktime') {
-				return this.buildForwardDialState(settings.flowTimeMode, elapsed, task, true);
-			}
-			return this.buildCountdownDialState(
-				settings.flowTimeMode,
-				elapsed,
-				this.breakState.targetSeconds,
-				task,
-			);
-		}
-		const elapsed = active ? active.elapsedSeconds : 0;
-		const targetSeconds = Math.max(60, settings.flowTimeSessionMinutes * 60);
-		if (settings.flowTimeMode === 'flowtime') {
-			return this.buildCountdownDialState(settings.flowTimeMode, elapsed, targetSeconds, task, !!active);
-		}
-
-		return this.buildForwardDialState(settings.flowTimeMode, elapsed, task, !!active);
-	}
-
-	private buildForwardDialState(
-		mode: FlowTimeMode,
-		elapsed: number,
-		task: IndexedTask | null,
-		isRunning: boolean,
-	): DialState {
-		const angle = this.secondsToForwardAngle(elapsed);
-		return {
-			mode,
-			displaySeconds: elapsed,
-			angleDegrees: angle,
-			fillAngleDegrees: angle,
-			clockwise: true,
-			overtime: false,
-			isRunning,
-			accentColor: this.resolveAccentColor(task),
-		};
-	}
-
-	private buildCountdownDialState(
-		mode: FlowTimeMode,
-		elapsed: number,
-		targetSeconds: number,
-		task: IndexedTask | null,
-		isRunning = true,
-	): DialState {
-		const remaining = targetSeconds - elapsed;
-		if (remaining < 0) {
-			const overtimeSeconds = Math.abs(remaining);
-			const angle = -this.secondsToForwardAngle(overtimeSeconds);
-			return {
-				mode,
-				displaySeconds: overtimeSeconds,
-				angleDegrees: angle,
-				fillAngleDegrees: angle,
-				clockwise: false,
-				overtime: true,
-				isRunning,
-				accentColor: this.resolveAccentColor(task),
-			};
-		}
-		const displaySeconds = Math.max(0, remaining);
-		const angle = this.secondsToForwardAngle(displaySeconds);
-		return {
-			mode,
-			displaySeconds,
-			angleDegrees: angle,
-			fillAngleDegrees: angle,
-			clockwise: true,
-			overtime: false,
-			isRunning,
-			accentColor: this.resolveAccentColor(task),
-		};
 	}
 
 	private async toggleTimerFromAction(): Promise<void> {
@@ -897,25 +722,6 @@ export class FlowTimeView extends ItemView {
 		this.pendingDraftTickerInterval = null;
 	}
 
-	private setSessionMinutes(minutes: number, persist = true, redraw = true): void {
-		const settings = this.callbacks.getSettings();
-		settings.flowTimeSessionMinutes = this.clampMinutes(minutes);
-		this.syncTargetReachedStateAfterDurationChange(settings);
-		this.lastRenderSignature = null;
-		if (persist) {
-			runAsyncAction('flow time duration save failed', () => this.callbacks.saveSettings());
-		}
-		if (redraw) {
-			this.render();
-		} else {
-			this.updateLiveElements(false);
-		}
-	}
-
-	private getBreakElapsedSeconds(): number {
-		return this.breakController.getElapsedSeconds();
-	}
-
 	private applyDefaultFlowTimeDuration(): boolean {
 		const settings = this.callbacks.getSettings();
 		if (!this.breakController.applyDefaultSessionDuration()) return false;
@@ -924,91 +730,13 @@ export class FlowTimeView extends ItemView {
 		return true;
 	}
 
-	private handleDialPointer(event: PointerEvent, svg: SVGSVGElement): void {
-		if (this.callbacks.getSettings().flowTimeMode !== 'flowtime') return;
-		if (event.pointerType === 'mouse' && event.button !== 0) return;
-		const ownerWindow = getOwnerWindow(svg);
-		event.preventDefault();
-		this.finishDialDrag(false);
-		this.isDialDragging = true;
-		let previousAngle = this.getPointerClockwiseAngle(event, svg);
-		let accumulatedDegrees = 0;
-		const startMinutes = this.callbacks.getSettings().flowTimeSessionMinutes;
-		const pointerId = event.pointerId;
-		try {
-			svg.setPointerCapture(pointerId);
-		} catch {
-			// Pointer capture is best-effort; cancel/blur cleanup below still guards stale drag state.
-		}
-		const update = (pointerEvent: PointerEvent) => {
-			if (pointerEvent.pointerId !== pointerId) return;
-   if (getOwnerWindow(svg) !== ownerWindow) { this.finishDialDrag(false); return; }
-			const angle = this.getPointerClockwiseAngle(pointerEvent, svg);
-			let delta = angle - previousAngle;
-			if (delta > 180) delta -= 360;
-			if (delta < -180) delta += 360;
-			previousAngle = angle;
-			accumulatedDegrees += delta;
-			this.setSessionMinutes(startMinutes + accumulatedDegrees / 6, false, false);
-		};
-		const onMove = (pointerEvent: PointerEvent) => update(pointerEvent);
-		const onEnd = (pointerEvent: PointerEvent) => {
-			if (pointerEvent.pointerId !== pointerId) return;
-   if (getOwnerWindow(svg) !== ownerWindow) { this.finishDialDrag(false); return; }
-			this.finishDialDrag();
-		};
-		const onBlur = () => this.finishDialDrag(getOwnerWindow(svg) === ownerWindow);
-  const stopMigration = this.contentEl.onWindowMigrated?.(() => { if (getOwnerWindow(svg) !== ownerWindow) this.finishDialDrag(false); });
-		this.cleanupDialDrag = () => {
-   stopMigration?.();
-			ownerWindow.removeEventListener('pointermove', onMove);
-			ownerWindow.removeEventListener('pointerup', onEnd);
-			ownerWindow.removeEventListener('pointercancel', onEnd);
-			ownerWindow.removeEventListener('blur', onBlur);
-			try {
-				if (svg.hasPointerCapture(pointerId)) {
-					svg.releasePointerCapture(pointerId);
-				}
-			} catch {
-				// Ignore capture release failures from detached SVGs.
-			}
-		};
-		ownerWindow.addEventListener('pointermove', onMove);
-		ownerWindow.addEventListener('pointerup', onEnd);
-		ownerWindow.addEventListener('pointercancel', onEnd);
-		ownerWindow.addEventListener('blur', onBlur);
-	}
-
-	private finishDialDrag(persist = true): void {
-		const cleanup = this.cleanupDialDrag;
-		if (!cleanup) {
-			this.isDialDragging = false;
-			return;
-		}
-		this.cleanupDialDrag = null;
-		cleanup();
-		this.isDialDragging = false;
-		if (persist) {
-			runAsyncAction('flow time dial save failed', () => this.callbacks.saveSettings());
-		}
-	}
-
-	private getPointerClockwiseAngle(event: PointerEvent, svg: SVGSVGElement): number {
-		const rect = svg.getBoundingClientRect();
-		const x = event.clientX - rect.left;
-		const y = event.clientY - rect.top;
-		const centerX = rect.width / 2;
-		const centerY = rect.height / 2;
-		return (Math.atan2(y - centerY, x - centerX) * 180 / Math.PI + 90 + 360) % 360;
-	}
-
 	private notifyIfTargetReached(settings: OperonSettings, active: ActiveTrackerState | null): void {
 		if (!active || settings.flowTimeMode !== 'flowtime') {
 			this.notifiedTargetKey = null;
 			this.lastTargetReachedState = null;
 			return;
 		}
-		const targetSeconds = Math.max(60, settings.flowTimeSessionMinutes * 60);
+		const targetSeconds = getFlowTimeTargetSeconds(settings.flowTimeSessionMinutes);
 		const elapsed = active.elapsedSeconds;
 		const isOvertime = elapsed >= targetSeconds;
 		const previous = this.lastTargetReachedState;
@@ -1031,57 +759,12 @@ export class FlowTimeView extends ItemView {
 		this.lastTargetReachedState = { activeStart, overtime: isOvertime };
 	}
 
-	private playReminderSoundIfTargetReached(settings: OperonSettings, active: ActiveTrackerState | null): void {
-		const enabled = settings.flowTimePlayReminderSoundOnTargetReached;
-		const modeChanged = this.lastFlowTimeSoundMode !== settings.flowTimeMode;
-		this.lastFlowTimeSoundMode = settings.flowTimeMode;
-		if (active) {
-			this.completionAlertTracker.reset('break');
-			if (settings.flowTimeMode !== 'flowtime') {
-				this.lastFlowTimeSoundEnabled = enabled;
-				this.completionAlertTracker.reset('focus');
-				return;
-			}
-			this.observeReminderSoundCompletion({
-				kind: 'focus',
-				occurrenceKey: active.start,
-				elapsedSeconds: active.elapsedSeconds,
-				targetSeconds: Math.max(60, settings.flowTimeSessionMinutes * 60),
-				enabled,
-			}, modeChanged);
-			return;
-		}
-
-		// Break sound belongs to the shared controller, including when no view is open.
-		this.completionAlertTracker.reset();
-		this.lastFlowTimeSoundEnabled = enabled;
-	}
-
-	private observeReminderSoundCompletion(input: {
-		kind: 'focus';
-		occurrenceKey: string;
-		elapsedSeconds: number;
-		targetSeconds: number;
-		enabled: boolean;
-	}, suppressAlert = false): void {
-		const soundEnabledChanged = this.lastFlowTimeSoundEnabled !== input.enabled;
-		this.lastFlowTimeSoundEnabled = input.enabled;
-		if (soundEnabledChanged || suppressAlert) {
-			this.completionAlertTracker.sync(input);
-			return;
-		}
-		if (!this.completionAlertTracker.observe(input)) return;
-		void this.callbacks.playReminderSound().catch(error => {
-			console.warn('Operon: FlowTime reminder sound playback failed unexpectedly', error);
-		});
-	}
-
 	private syncTargetReachedStateAfterDurationChange(settings: OperonSettings): void {
 		const active = this.timeTracker.getActiveState();
 		if (!active || settings.flowTimeMode !== 'flowtime') {
 			return;
 		}
-		const targetSeconds = Math.max(60, settings.flowTimeSessionMinutes * 60);
+		const targetSeconds = getFlowTimeTargetSeconds(settings.flowTimeSessionMinutes);
 		const elapsed = this.timeTracker.getActiveSessionSeconds(active.operonId ?? undefined);
 		const isOvertime = elapsed >= targetSeconds;
 		this.lastTargetReachedState = {
@@ -1091,13 +774,6 @@ export class FlowTimeView extends ItemView {
 		if (isOvertime) {
 			this.notifiedTargetKey = active.start;
 		}
-		this.completionAlertTracker.sync({
-			kind: 'focus',
-			occurrenceKey: active.start,
-			elapsedSeconds: elapsed,
-			targetSeconds,
-			enabled: settings.flowTimePlayReminderSoundOnTargetReached,
-		});
 	}
 
 	private getRenderedState(): FlowTimeRenderedState {
@@ -1157,51 +833,11 @@ export class FlowTimeView extends ItemView {
 	}
 
 	private resolveAccentColor(task: IndexedTask | null): string | null {
-		return this.normalizeTaskColor(task?.fieldValues['taskColor']) ?? null;
+		return resolveFlowTimeDialAccent(task?.fieldValues['taskColor']);
 	}
 
 	private resolveStatusColor(task: IndexedTask): string | null {
 		return resolveTaskStatusIconColorForTask(task, this.callbacks.getSettings());
-	}
-
-	private normalizeTaskColor(taskColor: string | undefined): string | null {
-		if (!taskColor) return null;
-		const trimmed = taskColor.trim();
-		if (!trimmed) return null;
-		return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-	}
-
-	private clampMinutes(minutes: number): number {
-		return Math.max(FLOW_TIME_MINUTES_MIN, Math.round(minutes));
-	}
-
-	private secondsToForwardAngle(seconds: number): number {
-		return ((Math.max(0, seconds) % 3600) / 3600) * 360;
-	}
-
-	private pointOnCircle(cx: number, cy: number, radius: number, angleDegrees: number): { x: number; y: number } {
-		const radians = (angleDegrees - 90) * Math.PI / 180;
-		return {
-			x: cx + radius * Math.cos(radians),
-			y: cy + radius * Math.sin(radians),
-		};
-	}
-
-	private describeWedge(cx: number, cy: number, radius: number, startAngle: number, endAngle: number, clockwise: boolean): string {
-		const normalizedDelta = clockwise
-			? ((endAngle - startAngle) % 360 + 360) % 360
-			: ((startAngle - endAngle) % 360 + 360) % 360;
-		if (normalizedDelta < 0.01) {
-			return `M ${cx} ${cy} L ${cx} ${cy - radius} Z`;
-		}
-		const adjustedEnd = normalizedDelta > 359.5
-			? (clockwise ? startAngle + 359.5 : startAngle - 359.5)
-			: endAngle;
-		const start = this.pointOnCircle(cx, cy, radius, startAngle);
-		const end = this.pointOnCircle(cx, cy, radius, adjustedEnd);
-		const largeArc = normalizedDelta > 180 ? '1' : '0';
-		const sweep = clockwise ? '1' : '0';
-		return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${end.x} ${end.y} Z`;
 	}
 
 	private formatClock(seconds: number): string {
