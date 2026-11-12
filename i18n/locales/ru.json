@@ -908,7 +908,7 @@
 		"workspaceTweaksBackgroundDimmingDesc": "Выберите начальное затемнение для предпросмотра и окон создания, поиска и редактирования задач Operon на компьютере. Каждый дополнительный слой добавляет 5 процентных пунктов, максимум 90%. Отдельные окна динамического фильтра подзадач также используют эту настройку.",
 		"workspaceTweaksBackgroundDimmingDefault": "50% — По умолчанию",
 		"workspaceTweaksCoreQuickSwitcherOpenBehavior": "Открытие из встроенного быстрого переключателя",
-		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Выберите, как открывается существующий файл обычным щелчком или клавишей Enter во встроенном быстром переключателе. Доступно в Obsidian Desktop 1.15.1.",
+		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Выберите, как открывается существующий файл обычным щелчком или клавишей Enter во встроенном быстром переключателе.",
 		"workspaceTweaksQuickSwitcherDefault": "Использовать поведение переключателя по умолчанию",
 		"workspaceTweaksQuickSwitcherSourceAndEditor": "Исходный файл + Task / Property Editor",
 		"workspaceTweaksQuickSwitcherEditorOnly": "Только Task / Property Editor",

@@ -117,17 +117,38 @@ test('modified gestures, new notes, bookmarks, stale files and foreign modal own
 	f.integration.dispose();
 });
 
-test('mobile, unverified version, and incompatible Core expose no hook', () => {
-	const f = fixture();
-	for (const version of ['1.15.0', '1.15.2', '1.16.0']) {
-		setTestApiVersion(version); f.integration.sync();
+test('compatible desktop Core handles click and Enter across Obsidian versions', () => {
+	for (const version of ['1.13.7', '1.15.0', '1.15.1', '1.15.2', '1.16.0']) {
+		const f = fixture();
+		setTestApiVersion(version);
+		f.integration.sync();
+		const modal = new f.CoreModal();
+		for (const event of [click, enter]) modal.onChooseSuggestion(f.result, event);
+		assert.deepEqual(f.calls.map(call => call.kind), ['operon', 'operon'], version);
+		f.integration.dispose();
 		assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
 	}
-	setTestApiVersion('1.15.1'); Platform.isDesktopApp = false; f.integration.sync();
+});
+
+test('mobile and incompatible Core expose no hook', () => {
+	const f = fixture();
+	Platform.isDesktopApp = false;
+	f.integration.sync();
 	assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
-	Platform.isDesktopApp = true; f.core.instance.QuickSwitcherModal = class {};
+
+	Platform.isDesktopApp = true;
+	f.core.instance.QuickSwitcherModal = class {};
 	f.integration.sync();
 	assert.equal(f.core.instance.QuickSwitcherModal.prototype.onChooseSuggestion, undefined);
+
+	Object.defineProperty(f.CoreModal.prototype, 'onChooseSuggestion', {
+		configurable: false, value: f.original,
+	});
+	f.core.instance.QuickSwitcherModal = f.CoreModal;
+	f.integration.sync();
+	assert.equal(new f.CoreModal().onChooseSuggestion(f.result, enter), 'core-result');
+	assert.deepEqual(f.calls.map(call => call.kind), ['native']);
+	f.integration.dispose();
 });
 
 test('unavailable preflight delegates; a failed claimed opening never opens a second file', async () => {

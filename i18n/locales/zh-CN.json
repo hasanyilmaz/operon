@@ -908,7 +908,7 @@
 		"workspaceTweaksBackgroundDimmingDesc": "选择桌面版 Operon 预览及任务创建、查找和编辑窗口的初始背景暗化程度。每增加一层提高5个百分点，最高90%。 独立的动态子任务筛选窗口也使用此设置。",
 		"workspaceTweaksBackgroundDimmingDefault": "50% — 默认",
 		"workspaceTweaksCoreQuickSwitcherOpenBehavior": "核心快速切换器的点击行为",
-		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "选择在核心快速切换器中单击或按 Enter 时如何打开现有文件。适用于 Obsidian 桌面版 1.15.1。",
+		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "选择在核心快速切换器中单击或按 Enter 时如何打开现有文件。",
 		"workspaceTweaksQuickSwitcherDefault": "使用切换器默认行为",
 		"workspaceTweaksQuickSwitcherSourceAndEditor": "源文件 + Task / Property Editor",
 		"workspaceTweaksQuickSwitcherEditorOnly": "仅 Task / Property Editor",

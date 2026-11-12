@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "Icone schede barra laterale compatte",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Riduce le intestazioni delle schede laterali e le mostra per intero al passaggio del mouse. Solo desktop.",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Apertura dal selettore rapido integrato",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Scegli come aprire un file esistente con un clic normale o Invio nel selettore rapido integrato. Disponibile in Obsidian Desktop 1.15.1.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Scegli come aprire un file esistente con un clic normale o Invio nel selettore rapido integrato.",
       "workspaceTweaksHideScrollbars": "Nascondi barre di scorrimento",
       "workspaceTweaksHideScrollbarsDesc": "Nascondi le barre di scorrimento in tutta l'area di lavoro di Obsidian mantenendo il comportamento di scorrimento normale.",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "77df5f8b5fedd649307ccdddfc9b95e099c180d67e0077ae98f57fb526145b01"
+  "sourceVersion": "99826f0648dbbfda068688eb7f0a548a3b890238fa07eaedd32ebf93b1e44725"
 }

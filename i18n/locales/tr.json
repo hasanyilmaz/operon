@@ -908,7 +908,7 @@
 		"workspaceTweaksBackgroundDimmingDesc": "Masaüstü Operon lightbox, Görev Oluşturucu, Bulucu ve Düzenleyici için başlangıç karartmasını seçin. Her ek katman 5 yüzde puan ekler; üst sınır %90’dır. Bağımsız Dinamik Alt Görev Filtresi pencereleri de bu ayarı kullanır.",
 		"workspaceTweaksBackgroundDimmingDefault": "%50 — Varsayılan",
 		"workspaceTweaksCoreQuickSwitcherOpenBehavior": "Core Quick Switcher tıklama davranışı",
-		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç. Obsidian Desktop 1.15.1’de kullanılabilir.",
+		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç.",
 		"workspaceTweaksQuickSwitcherDefault": "Switcher varsayılanını kullan",
 		"workspaceTweaksQuickSwitcherSourceAndEditor": "Kaynak dosya + Task / Property Editor",
 		"workspaceTweaksQuickSwitcherEditorOnly": "Yalnız Task / Property Editor",

@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "コンパクトなサイドバータブアイコン",
       "workspaceTweaksCompactSidebarTabIconsDesc": "サイドバーのタブ見出しを細くし、ホバーすると全体を表示します。デスクトップのみ。",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "標準クイックスイッチャーのクリック動作",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "標準クイックスイッチャーで通常のクリックや Enter を使って既存ファイルを開く方法を選択します。Obsidian Desktop 1.15.1 で利用できます。",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "標準クイックスイッチャーで通常のクリックや Enter を使って既存ファイルを開く方法を選択します。",
       "workspaceTweaksHideScrollbars": "スクロールバーを非表示",
       "workspaceTweaksHideScrollbarsDesc": "通常のスクロール動作を保ちつつ、Obsidian ワークスペース全体でスクロールバーを非表示にします。",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "af3f9aaeb1a2b8d9abf1a7831370fcd2ac17746fbc83b07c070a474c8fe9287c"
+  "sourceVersion": "1fbe58b4d025cf56499ad2818d0787ff188c3638006d5ca4996618527106aba3"
 }

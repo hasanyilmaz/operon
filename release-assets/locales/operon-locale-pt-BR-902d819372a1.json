@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "Ícones Compactos na Barra Lateral",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Reduz os cabeçalhos das abas laterais e mostra a área completa ao passar o mouse. Apenas no desktop.",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Comportamento ao clicar no seletor rápido nativo",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Escolha como um clique simples ou Enter abre um arquivo existente no seletor rápido nativo. Disponível no Obsidian Desktop 1.15.1.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Escolha como um clique simples ou Enter abre um arquivo existente no seletor rápido nativo.",
       "workspaceTweaksHideScrollbars": "Ocultar Barras de Rolagem",
       "workspaceTweaksHideScrollbarsDesc": "Oculta as barras de rolagem em todo o espaço de trabalho Obsidian mantendo o comportamento normal de rolagem.",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "2e2de36564fc0d4c2fd7c125f26566988e921b7e03f9aabd5dfa00a4fea1d0a9"
+  "sourceVersion": "712d65b9fb156aec08c2aacbeebb471f8041cebc0fe02c7e10f7939e83331cef"
 }

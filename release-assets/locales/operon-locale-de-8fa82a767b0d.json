@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Verschmälert die Tab-Kopfleisten der Seitenleisten und zeigt sie beim Darüberfahren vollständig. Nur auf dem Desktop.",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Klickverhalten des integrierten Quick Switchers",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Wähle, wie ein normaler Klick oder die Eingabetaste eine vorhandene Datei im integrierten Quick Switcher öffnet. Verfügbar in Obsidian Desktop 1.15.1.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Wähle, wie ein normaler Klick oder die Eingabetaste eine vorhandene Datei im integrierten Quick Switcher öffnet.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Blendet Scrollbars im gesamten Obsidian-Workspace aus, während normales Scrollen erhalten bleibt.",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c32bb2acc11e3ef80514ce7e2c6c11c0696002cf5cb826dedf71b632f60f0ae7"
+  "sourceVersion": "fbe2799ac91acb1e0a113ea1ae1fbaae6be8b70e0edebff28e1848cc0e9604aa"
 }

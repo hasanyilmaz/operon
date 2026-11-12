@@ -1,10 +1,9 @@
-import { Platform, TFile, apiVersion, type App } from 'obsidian';
+import { Platform, TFile, type App } from 'obsidian';
 import { asHTMLElement } from '../core/dom-compat';
 import { getInternalPlugin, isPluginEnabled } from '../core/obsidian-app';
 import { isRecord } from '../core/unknown-value';
 import { resolveCoreQuickSwitcherOpenBehavior, type CoreQuickSwitcherOpenBehavior } from '../types/settings';
 
-const CORE_SWITCHER_VERSION = '1.15.1';
 const CHOOSE_METHOD = 'onChooseSuggestion';
 
 type ActiveBehavior = Exclude<CoreQuickSwitcherOpenBehavior, 'default'>;
@@ -49,7 +48,7 @@ export class CoreQuickSwitcherIntegration {
 	sync(): void {
 		const { app, options } = this;
 		const mode = resolveCoreQuickSwitcherOpenBehavior(options.behavior());
-		const core = Platform.isDesktopApp && apiVersion === CORE_SWITCHER_VERSION && mode && mode !== 'default'
+		const core = Platform.isDesktopApp && mode && mode !== 'default'
 			? getInternalPlugin(app, 'switcher') : null;
 		const constructor = isRecord(core) && isRecord(core.instance) ? core.instance.QuickSwitcherModal : null;
 		const prototype: unknown = typeof constructor === 'function' ? constructor.prototype : null;

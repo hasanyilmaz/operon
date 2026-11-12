@@ -908,7 +908,7 @@
 		"workspaceTweaksBackgroundDimmingDesc": "Escolha o escurecimento inicial das prévias e do criador, localizador e editor de tarefas do Operon no desktop. Cada camada adiciona 5 pontos percentuais, até 90%. As janelas independentes do filtro dinâmico de subtarefas também usam esta configuração.",
 		"workspaceTweaksBackgroundDimmingDefault": "50% — Padrão",
 		"workspaceTweaksCoreQuickSwitcherOpenBehavior": "Comportamento ao clicar no seletor rápido nativo",
-		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Escolha como um clique simples ou Enter abre um arquivo existente no seletor rápido nativo. Disponível no Obsidian Desktop 1.15.1.",
+		"workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Escolha como um clique simples ou Enter abre um arquivo existente no seletor rápido nativo.",
 		"workspaceTweaksQuickSwitcherDefault": "Usar o comportamento padrão do seletor",
 		"workspaceTweaksQuickSwitcherSourceAndEditor": "Arquivo de origem + Task / Property Editor",
 		"workspaceTweaksQuickSwitcherEditorOnly": "Somente Task / Property Editor",

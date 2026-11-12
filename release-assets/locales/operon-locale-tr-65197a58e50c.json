@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "Compact Sidebar Tab Icons",
       "workspaceTweaksCompactSidebarTabIconsDesc": "Yan panel sekme simgesi/başlık şeritlerini daraltın; üzerine gelince tüm sekme alanı açılır. Yalnızca masaüstünde.",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "Core Quick Switcher tıklama davranışı",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç. Obsidian Desktop 1.15.1’de kullanılabilir.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "Core Quick Switcher’da mevcut bir dosyanın normal tıklama veya Enter ile nasıl açılacağını seç.",
       "workspaceTweaksHideScrollbars": "Hide Scrollbars",
       "workspaceTweaksHideScrollbarsDesc": "Normal kaydırma davranışını koruyarak Obsidian workspace genelindeki scrollbarları gizler.",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "cac2cce508448da1c861087488fd12bb48a931aab7f8a54d85440c77ae5546ef"
+  "sourceVersion": "8e94fe6f8472f997b5b5a332ce43b26c669d217985f963750bd9df69dfcfc6a7"
 }

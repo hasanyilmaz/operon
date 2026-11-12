@@ -6890,7 +6890,7 @@
       "Compact Sidebar Tab Icons",
       "Slim side dock tab icon/header strips and reveal the full tab area on hover. Desktop only.",
       "Core Quick Switcher click behavior",
-      "Choose how a normal click or Enter opens an existing file from Core Quick Switcher. Available on Obsidian Desktop 1.15.1.",
+      "Choose how a normal click or Enter opens an existing file from Core Quick Switcher.",
       "Hide Scrollbars",
       "Hide scrollbars across the Obsidian workspace while keeping normal scrolling behavior.",
       "Lightbox",

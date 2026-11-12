@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "緊湊側邊欄標籤圖示",
       "workspaceTweaksCompactSidebarTabIconsDesc": "縮窄側欄分頁的圖示和標題區域，懸停時顯示完整區域。僅限桌面版。",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "核心快速切換器的點擊行為",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "選擇在核心快速切換器中點擊或按 Enter 時如何開啟現有檔案。適用於 Obsidian 桌面版 1.15.1。",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "選擇在核心快速切換器中點擊或按 Enter 時如何開啟現有檔案。",
       "workspaceTweaksHideScrollbars": "隱藏捲軸",
       "workspaceTweaksHideScrollbarsDesc": "在整個 Obsidian 工作區隱藏捲軸，同時保持正常的滾動行為。",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "4bc6e10254f137478906420ba2429a283940da05195dee193ae77fdfe74c08f0"
+  "sourceVersion": "17038d246fa9de557b4b84f8a38b334821ff21da838bf6550b6c37c64dea147f"
 }

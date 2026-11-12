@@ -3050,7 +3050,7 @@
       "workspaceTweaksCompactSidebarTabIcons": "간결한 사이드바 탭 아이콘",
       "workspaceTweaksCompactSidebarTabIconsDesc": "사이드 dock의 탭 아이콘과 헤더 영역을 좁히고, 마우스를 올리면 탭 영역 전체를 표시합니다. 데스크톱 전용입니다.",
       "workspaceTweaksCoreQuickSwitcherOpenBehavior": "기본 빠른 전환기 클릭 동작",
-      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "기본 빠른 전환기에서 일반 클릭 또는 Enter로 기존 파일을 여는 방식을 선택합니다. Obsidian Desktop 1.15.1에서 사용할 수 있습니다.",
+      "workspaceTweaksCoreQuickSwitcherOpenBehaviorDesc": "기본 빠른 전환기에서 일반 클릭 또는 Enter로 기존 파일을 여는 방식을 선택합니다.",
       "workspaceTweaksHideScrollbars": "스크롤바 숨기기",
       "workspaceTweaksHideScrollbarsDesc": "정상 스크롤 동작을 유지하면서 Obsidian 작업 공간 전체의 스크롤바를 숨깁니다.",
       "workspaceTweaksLightboxSection": "Lightbox",
@@ -3874,5 +3874,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "bbfeeff6a5ef4652808ffcf6087dcdb811224528088bf2682d7159f963e790e6"
+  "sourceVersion": "6f2b463ab41dd0b9f0faa4d05e6c15cb13d039682d4e938e48d6e9f9acea6425"
 }
