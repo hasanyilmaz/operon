@@ -13,6 +13,14 @@ const RELEASE_NOTE_LIMIT = 5;
 
 export const OPERON_RELEASE_NOTES: OperonReleaseNote[] = [
 	{
+		version: "4.7.0",
+		date: "2026-11-12",
+		title: "Property Editor and FlowTime in Status Dock",
+		showOnUpdate: true,
+		bannerUrl: "operon-4-7-0-status-dock-timer-dial.png",
+		body: "Edit note properties beside your source and control FlowTime directly from the Status Dock.\n\n### Edit note properties in Lightbox\n\n- Open **Property Editor** beside a regular Markdown note. Edit properties in file order with Operon’s pickers, or use **Add Property**. Changes save automatically, and Operon flags conflicting edits.\n- When Operon’s **Core Quick Switcher** integration is active, click a result or press Enter to open the source and its editor by default. File Tasks use **Task Editor**, and regular notes use **Property Editor**. Choose another behavior under **Settings → Interface → Workspace Tweaks → Lightbox**.\n\n### Make the Status Dock yours\n\n- **Status Dock** has its own settings page under **Interface**. Show, hide, and reorder sections. The dock remembers your visibility preference across restarts.\n- Click the timer to switch between **TrackTime** and **FlowTime**. Drag the optional dial to adjust the shared FlowTime target from the dock or sidebar. The configured countdown sound can play with the sidebar closed.\n- Turn on **Show seconds** to see two-digit seconds without shifting hours or minutes. **Task Creator** stays available while the timer runs, and you can choose whether creating a task starts tracking it.\n\n### Everyday improvements and fixes\n\n- General **Date** properties use Operon’s embedded calendar and follow your week-start and week-number preferences.\n- Reuse a deleted **custom key** with a different type when only empty YAML values remain. Property names and their order are preserved.\n- Saved folder filters follow moves and renames when the destination is unambiguous. ([#321](https://github.com/hasanyilmaz/operon/issues/321))\n- **Table and Base** titles stay visible in Lightbox, preventing gaps caused by hover animations in Tables.\n- Fixed unexpected stale-context errors between consecutive Runtime writes. ([#245](https://github.com/hasanyilmaz/operon/issues/245))\n\n### New Docs\n\n- [[DOCS-154 Property Editor|Property Editor]]\n\n### Updated Docs\n\n- [[DOCS-151 Lightbox|Lightbox]]\n- [[DOCS-152 Status Dock|Status Dock]]\n- [[DOCS-035 FlowTime focus sessions|FlowTime]]\n- [[DOCS-098 Workspace Tweaks|Workspace Tweaks]]\n- [[DOCS-063 Date and time picker|Date and Time Picker]]\n- And 12 more updated docs.",
+	},
+	{
 		version: "4.6.0",
 		date: "2026-11-08",
 		title: "File Task Titles and Everyday Fixes",
