@@ -23,13 +23,13 @@ A Vault Property keeps its source name. Operon resolves built-in and configured 
 
 On an Inline Task, the values belong to that individual task line, not automatically to every task in the containing note. On a File Task, they come from the task note's frontmatter. Main and embedded Table property catalogs can include declared supported properties as well as properties found on tasks; an offered column does not mean every row has a value.
 
-Displaying an Operon Table column does not by itself add that property to the tasks. If a deleted custom key was only shown as a column, that display alone does not block recreating the name with a different type. Existing values, empty source properties, and dependent filters, sorts, groups, or summaries still matter. See [[DOCS-040 Custom keys|Custom keys]] for the full reuse rules.
+Displaying an Operon Table column leaves task properties as they are. Column display alone allows a deleted custom key to be recreated with a different type. Populated values and dependent filters, sorts, groups, or summaries can block the change. See [[DOCS-040 Custom keys#Reusing a deleted name|Custom keys]] for the checks on empty YAML values and the confirmation for file conversion.
 
 ## Types and read-only states
 
 Native editing supports **Text, List, Number, Checkbox, Date, and Date & time**. Assign the property type in Obsidian's Properties controls. Obsidian's `Multitext` declaration corresponds to List. Operon also preserves the interpretation needed to read existing inline values safely.
 
-Configured **Custom Keys** are an exception to manual type assignment: Operon fills missing Obsidian declarations when a new key is saved and for existing keys at startup. Separately assigned, incompatible Obsidian types are preserved. An explicit recreation of an unused deleted custom key may replace its retained type only after the checks in [[DOCS-040 Custom keys|Custom keys]]. Ordinary Vault Properties still need a declared type, and all values must remain compatible with it.
+Configured **Custom Keys** are an exception to manual type assignment: Operon fills missing Obsidian declarations when a new key is saved and for existing keys at startup. Separately assigned, incompatible Obsidian types are preserved. Recreating a deleted custom key with a different type can replace its retained type after the [[DOCS-040 Custom keys#Reusing a deleted name|reuse checks]] pass. Ordinary Vault Properties still need a declared type, and all values must remain compatible with it.
 
 | State | What it means |
 |---|---|

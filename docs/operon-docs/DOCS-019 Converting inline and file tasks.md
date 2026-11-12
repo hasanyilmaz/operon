@@ -11,7 +11,7 @@ A task's first shape is a starting point, not a verdict. When an inline task gro
 
 ## Promote an inline task to a file task
 
-When a task needs a body for sections, references, or subtasks, run **Edit or convert to file task** on the inline task. Operon creates a Markdown note in your file-task location, writes the task's fields into frontmatter, and keeps the original `operonId` so nothing downstream breaks. The note's body becomes the working space the inline line never had. See [[DOCS-013 File tasks|File tasks]].
+When a task needs a body for sections, references, or subtasks, place the cursor on its inline task line and run **Create file task** from the command palette. Operon creates a Markdown note in your file-task location, writes the task's fields into frontmatter, and keeps the original `operonId` so nothing downstream breaks. The note's body becomes the working space the inline line never had. See [[DOCS-013 File tasks|File tasks]].
 
 The filename derived from the description is no longer cut off at 100 characters, including when a numbered suffix is added to avoid an existing filename. Invalid filename characters are still removed, and filesystem filename limits still apply.
 

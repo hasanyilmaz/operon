@@ -51,7 +51,7 @@ Ongoing entries show their task names without a zero countdown or a **Now:** lab
 
 Hover over a task to reveal Play in place of its icon, then click the icon to start tracking. Clicking its name follows the dock’s shared **Click behavior** setting, whose default is **Source File + Task Editor**. Countdown text is not a click target. The task’s own icon takes priority; fallback icons use Scheduled for current tasks and Due for the next task. The Due icon does not change selection to use Due dates.
 
-The dock shows seconds below one minute and minutes for longer durations. The existing countdown range limit still applies; a hidden countdown does not remove the task name. Starting or stopping tracking does not change which task is scheduled next. Full controls, positioning, and visibility are covered in [[DOCS-152 Status Dock|Status Dock]].
+The dock’s upcoming-task countdown shows seconds below one minute and minutes for longer durations. **Show seconds** under Status Dock applies to Time Tracker. The existing countdown range limit still applies; a hidden countdown does not remove the task name. Starting or stopping tracking does not change which task is scheduled next. Full controls, positioning, and visibility are covered in [[DOCS-152 Status Dock|Status Dock]].
 
 ## Mobile status bar behavior
 
@@ -81,7 +81,7 @@ Open **Settings → Operon → Tasks → Upcoming Tasks**.
 
 ### Status Dock and mobile status bar
 
-On desktop, open **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Sections and Order** to show, hide, or reorder **Ongoing Tasks** and **Upcoming Tasks** independently. Both start enabled. **Click behavior** sits in the same Status Dock settings section. To show or hide the whole Dock, use **Toggle status dock** from the command palette.
+On desktop, open **Settings → Operon → Interface → Status Dock → Sections and Order** to show, hide, or reorder **Ongoing Tasks** and **Upcoming Tasks** independently. Both start enabled. **General Settings → Click behavior** controls what task names open. **Show Status Dock** and the **Toggle status dock** command share the saved visibility preference.
 
 On mobile, **Show next upcoming task in status bar**, **When countdown ends**, and **Status bar click action** live under **Tasks → Upcoming Tasks**. The latter two controls appear when the indicator is enabled. **Daily group order** appears when **Show all-day tasks** is enabled. Hidden controls retain their saved values.
 

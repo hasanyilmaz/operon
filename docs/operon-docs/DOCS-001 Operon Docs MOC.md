@@ -113,6 +113,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 ### Views and planning
 - [[DOCS-152 Status Dock|Status Dock]]: customizable desktop sections for time tracking, calendar tasks, task lists, and session history
 - [[DOCS-151 Lightbox|Lightbox]]: shared desktop previews, editable files, and window controls
+- [[DOCS-154 Property Editor|Property Editor]]: edit the properties of a regular Markdown note in Lightbox
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
 - [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]
 - [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool for Canvas, Excalidraw, and Kanban]]: find existing tasks and place them on a board or drawing
