@@ -103,7 +103,7 @@ test('Kanban UI writes full status and swimlane payloads without Runtime admissi
 test('Runtime mutation settlement forces fresh committed-source visibility', () => {
 	assert.match(
 		mainSource,
-		/reindexAffectedSources: async filePaths => \{\s*await this\.indexer\.reindexCommittedMutationSources\(filePaths, \{ notify: false \}\);\s*\}/u,
+		/reindexAffectedSources: async filePaths => \{\s*await this\.indexer\.reindexCommittedMutationSources\(filePaths, \{ notify: false \}\);\s*await this\.taskSourceModifyReconciler\?\.awaitReconciliations\(filePaths\);\s*\}/u,
 	);
 });
 

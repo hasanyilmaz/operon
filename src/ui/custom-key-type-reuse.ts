@@ -1,11 +1,12 @@
+import { planEmptyCustomKeyValues } from '../core/property-editor-document';
+import { backupCustomKeyReuse, type CustomKeySourceWriter, type CustomKeySourceChange } from './custom-key-empty-transaction';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import { parseYaml, type View, type App, type TFile } from 'obsidian';
 import type { KeyMapping, OperonSettings } from '../types/settings';
 import { cloneInlinePropertyDefinitions, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
-import { replaceUnusedCustomPropertyTypes } from '../core/custom-property-type-sync';
+import { isCustomPropertyTypeWriteUncertain, replaceUnusedCustomPropertyTypes } from '../core/custom-property-type-sync';
 import { loadPropertyTypeRegistry } from '../core/property-type-registry';
 import { extractFields } from '../core/parser';
-import { splitFrontmatterDocument } from '../core/file-task-template-merge';
 import { decodeFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { getNativeLightboxLeaves } from './native-lightbox-lifecycle';
 import { parseOperonTableFile } from '../storage/table-file';
@@ -17,11 +18,18 @@ export interface CustomKeyReusePreparation {
  isCurrent(): boolean;
  rollback(): Promise<void>;
  dispose(): void;
+ complete?(): Promise<void>;
+ recordUncertainSettings?(): Promise<void>;
+}
+export interface CustomKeyReuseOptions {
+ confirm?: (changes: readonly CustomKeySourceChange[], previousTypes: readonly string[], nextType: string) => Promise<boolean>;
+ writeSource?: CustomKeySourceWriter;
 }
 const identity = (name: string): string => name.trim().toLowerCase();
 
 /** References, including empty values, prevent reinterpreting an existing name. */
-export function customKeySourceUses(content: string, names: ReadonlySet<string>, json = false): boolean {
+export function customKeySourceUses(content: string, names: ReadonlySet<string>, json = false, allowEmptyYaml = false): boolean {
+ content = content.replace(/^\uFEFF/u, '');
  if (json) {
   const value: unknown = parseYaml(content);
   if (value && typeof value === 'object' && 'format' in value && value.format === OPERON_TABLE_FILE_FORMAT) {
@@ -30,8 +38,10 @@ export function customKeySourceUses(content: string, names: ReadonlySet<string>,
   }
   return customKeyReferences(value, names);
  }
- const document = splitFrontmatterDocument(content);
- if (/^---\r?\n/u.test(content) && document.frontmatter === null) throw new Error('Cannot verify property usage in incomplete frontmatter');
+ // Match the safe YAML writer's fence grammar, including empty frontmatter.
+ const fenced = /^---[ \t]*\r?\n((?:[\s\S]*?\r?\n)?)---[ \t]*(?:\r?\n|$)/u.exec(content);
+ const document = { frontmatter: fenced?.[1] ?? null };
+ if (/^---[ \t]*(?:\r?\n|$)/u.test(content) && document.frontmatter === null) throw new Error('Cannot verify property usage in incomplete frontmatter');
  if (document.frontmatter !== null) {
   let keys: string[];
   try {
@@ -71,7 +81,7 @@ export function customKeySourceUses(content: string, names: ReadonlySet<string>,
     }
    }
   }
-  if (keys.some(name => names.has(identity(name)))) return true;
+  if (keys.some(name => names.has(identity(name))) && (!allowEmptyYaml || planEmptyCustomKeyValues(content, names).status !== 'ready')) return true;
  }
  // Native Bases can also be embedded in Markdown, including templates and Canvas text.
  const fences = [...content.matchAll(/^ {0,3}(`{3,}|~{3,})base[^\n]*\r?\n([\s\S]*?)^ {0,3}\1[ \t]*\r?$/gmu)];
@@ -115,7 +125,7 @@ function customKeyTableReferences(preset: TablePreset, names: ReadonlySet<string
 }
 
 /** Only an explicit add may replace unused interpretation metadata. Never runs at startup/render. */
-export async function prepareCustomKeyTypeReuse(app: App, settings: OperonSettings, mapping: KeyMapping, getSettings: () => OperonSettings = () => settings): Promise<CustomKeyReusePreparation | undefined> {
+export async function prepareCustomKeyTypeReuse(app: App, settings: OperonSettings, mapping: KeyMapping, getSettings: () => OperonSettings = () => settings, options: CustomKeyReuseOptions = {}): Promise<CustomKeyReusePreparation | undefined> {
  const definitions = cloneInlinePropertyDefinitions(settings.inlinePropertyDefinitions);
  const names = new Set([mapping.canonicalKey, mapping.visiblePropertyName].filter(Boolean).map(identity));
  const types = await loadPropertyTypeRegistry(app);
@@ -165,30 +175,104 @@ export async function prepareCustomKeyTypeReuse(app: App, settings: OperonSettin
  const draftNames = JSON.stringify(index.draftPropertyNames());
  if (index.draftPropertyNames().some(name => names.has(name))) throw new Error('This property is still used in an open editor. Its type was preserved.');
  const files = app.vault.getFiles().filter(supported);
+ const paths = new Map(files.map(file => [file, file.path]));
  const stamps = new Map<TFile, string>(files.map(file => [file, JSON.stringify([file.path, file.stat.mtime, file.stat.size])]));
  let invalidated = false;
+ let writingFile: TFile | undefined;
  const changedSource = () => { invalidated = true; };
- const events = [app.vault.on('create', changedSource), app.vault.on('modify', changedSource), app.vault.on('delete', changedSource), app.vault.on('rename', changedSource)];
+ const modifiedSource = (file: TFile) => { if (file !== writingFile) invalidated = true; };
+ const events = [app.vault.on('create', changedSource), app.vault.on('modify', modifiedSource), app.vault.on('delete', changedSource), app.vault.on('rename', changedSource)];
  const dispose = () => { for (const event of events) app.vault.offref(event); };
  const current = () => !invalidated && JSON.stringify(references()) === beforeReferences && JSON.stringify(index.draftPropertyNames()) === draftNames
-  && files.every(file => app.vault.getAbstractFileByPath(file.path) === file && stamps.get(file) === JSON.stringify([file.path,file.stat.mtime,file.stat.size]))
+  && files.every(file => file.path === paths.get(file) && app.vault.getAbstractFileByPath(file.path) === file && stamps.get(file) === JSON.stringify([file.path,file.stat.mtime,file.stat.size]))
   && views().length === buffers.size && views().every(view => { const saved = buffers.get(view); return !!saved && saved.file === view.file && saved.deferred === isDeferredSource(view) && saved.content === readBuffer(view); });
  let native: Awaited<ReturnType<typeof replaceUnusedCustomPropertyTypes>> | undefined;
- const rollback = async () => { await native?.rollback(); };
+ const changes: CustomKeySourceChange[] = [];
+ const contents = new Map<TFile, string>();
+ const attempted: CustomKeySourceChange[] = [];
+ let backup: Awaited<ReturnType<typeof backupCustomKeyReuse>> | undefined;
+ const owns = (change: CustomKeySourceChange) => change.file.path === change.path && app.vault.getAbstractFileByPath(change.path) === change.file;
+ const refreshOwned = (change: CustomKeySourceChange, value: string) => {
+  stamps.set(change.file, JSON.stringify([change.file.path, change.file.stat.mtime, change.file.stat.size]));
+  for (const [view, saved] of buffers) if (saved.file === change.file) {
+   if (readBuffer(view).replace(/\r\n/gu, '\n') !== value.replace(/\r\n/gu, '\n')) throw new Error(`Open source changed: ${change.path}`);
+   saved.content = readBuffer(view);
+  }
+ };
+ const rollback = async () => {
+  const unresolved: string[] = [];
+  try { await native?.rollback(); } catch { unresolved.push('Obsidian property types'); }
+  const restoredTypes = await loadPropertyTypeRegistry(app).catch(() => null);
+  if (isCustomPropertyTypeWriteUncertain(app) || !restoredTypes || conflicts.some(([name]) => restoredTypes[name] !== types[name])) unresolved.push('Obsidian property types');
+  const canRestoreSources = unresolved.length === 0;
+  for (const change of [...attempted].reverse()) {
+   try {
+    if (!canRestoreSources || !owns(change)) throw new Error('File or type identity changed');
+    const actual = await app.vault.read(change.file);
+    if (actual === change.before) continue;
+    if (actual !== change.after || !options.writeSource) throw new Error('Source ownership changed');
+    await options.writeSource(change.file, change.after, change.before, () => owns(change));
+    refreshOwned(change, change.before);
+   } catch { unresolved.push(change.path); }
+  }
+  await backup?.record(unresolved.length ? 'recovery-required' : 'rolled-back', unresolved);
+  if (unresolved.length) throw new Error(`Custom property conversion needs recovery: ${unresolved.join(', ')}. Backup: ${backup?.path ?? 'unavailable'}`);
+ };
+ const verifySources = async () => {
+  if (!current()) throw new Error('Property sources changed during verification');
+  for (const [file, before] of contents) if (await app.vault.read(file) !== before) throw new Error(`Property source changed: ${file.path}`);
+  if (!current() || JSON.stringify(await loadPropertyTypeRegistry(app)) !== JSON.stringify(types)) throw new Error('Property sources or types changed during verification');
+ };
  try {
   for (const file of files) {
    if (invalidated) throw new Error('Property sources changed during verification');
    try {
-    if (customKeySourceUses(await app.vault.read(file), names, file.extension.toLowerCase() !== 'md')) throw new Error('This property is still used in a note or template. Its type was preserved.');
+    const content = await app.vault.read(file);
+    contents.set(file, content);
+    const markdown = file.extension.toLowerCase() === 'md';
+    if (customKeySourceUses(content, names, !markdown, markdown)) throw new Error('This property is still used in a note or template. Its type was preserved.');
+    if (markdown) {
+     const plan = planEmptyCustomKeyValues(content, names);
+     if (plan.status === 'ready' && plan.text !== content) changes.push({ file, path: file.path, before: content, after: plan.text });
+    }
    } catch (error) { throw new Error(`${error instanceof Error ? error.message : String(error)} — ${file.path}`); }
   }
-  for (const saved of buffers.values()) if (customKeySourceUses(saved.content, names, saved.json)) throw new Error('This property is still used in an open editor. Its type was preserved.');
+  for (const saved of buffers.values()) {
+   if (customKeySourceUses(saved.content, names, saved.json, !saved.json)) throw new Error('This property is still used in an open editor. Its type was preserved.');
+   if (!saved.json && customKeySourceUses(saved.content, names) && (!saved.file || saved.content.replace(/\r\n/gu, '\n') !== contents.get(saved.file)?.replace(/\r\n/gu, '\n'))) throw new Error('Save the open property source before changing its type.');
+  }
+  if (changes.length) {
+   if (!options.writeSource || !options.confirm) throw new Error('Empty property conversion is unavailable');
+   if (!await options.confirm(changes, [...new Set(changed.map(entry => entry.type))], mapping.type)) throw new Error('Custom property type change cancelled.');
+   await verifySources();
+   backup = await backupCustomKeyReuse(app, settings, types, changes);
+   await verifySources();
+   for (const change of changes) {
+    if (!current()) throw new Error('Property sources changed during conversion');
+    attempted.push(change);
+    writingFile = change.file;
+    try {
+     await options.writeSource(change.file, change.before, change.after, current);
+     if (!owns(change) || await app.vault.read(change.file) !== change.after) throw new Error(`Property write could not be verified: ${change.path}`);
+     refreshOwned(change, change.after);
+     contents.set(change.file, change.after);
+    } finally { writingFile = undefined; }
+   }
+   await backup.record('sources-written');
+  }
+  await verifySources();
   if (!current()) throw new Error('Property sources changed during verification');
   const verified = await loadPropertyTypeRegistry(app);
   if (!current() || JSON.stringify(verified) !== JSON.stringify(types)) throw new Error('Property types changed during verification');
   if (conflicts.length) native = await replaceUnusedCustomPropertyTypes(app, types, conflicts.map(([name]) => [name, expectedType]), current);
   for (const entry of definitions.entries) if (names.has(identity(entry.sourceName))) { entry.type = mapping.type; entry.encoding = 'vault-v1'; }
-  return { definitions, isCurrent: () => current() && (native?.isCurrent() ?? true), rollback, dispose };
+  return { definitions, isCurrent: () => current() && (native?.isCurrent() ?? true), rollback, dispose, complete: async () => { await backup?.record('committed'); }, recordUncertainSettings: async () => {
+   if (!backup) return;
+   const message = `Custom property conversion needs recovery: settings changed or could not be verified. Backup: ${backup.path}`;
+   try { await backup.record('recovery-required', ['Operon settings', 'Obsidian property types', ...attempted.map(change => change.path)]); }
+   catch { throw new Error(`${message}. Recovery record could not be updated.`); }
+   throw new Error(message);
+  } };
  } catch (error) {
   try { await rollback(); } finally { dispose(); }
   throw error;

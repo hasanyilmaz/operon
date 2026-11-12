@@ -2,8 +2,11 @@ import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import type { LightboxOpeningTrace } from './lightbox-opening-perf';
 import { Notice, setIcon, type App, type TFile, type WorkspaceLeaf } from 'obsidian';
 import { getLightboxProfileSize, saveLightboxProfileSize } from '../core/lightbox-size';
+import { t } from '../core/i18n';
+import type { PropertyEditorDocument } from '../core/property-editor-document';
 import { bindLightboxContent, getLightboxSizeStep, refreshLightboxControls, type LightboxContentTarget } from './lightbox';
 import { resolveNativeLightboxLayout, type LightboxRect } from './native-lightbox-layout';
+import type { NativePropertyEditor } from './native-property-editor';
 import { requestFloatingPanelCloseForRoot } from './field-pickers/common';
 import type { TaskEditorContent } from './task-editor-content';
 import type { TaskEditorSession } from './task-editor-modal';
@@ -12,6 +15,8 @@ export interface NativeTaskDescriptor { operonId: string; file: TFile; line?: nu
 export interface NativeTaskWorkspaceProvider {
  position?(): 'left' | 'right';
  resolve(file: TFile, explicitId?: string, openingTrace?: LightboxOpeningTrace): Promise<NativeTaskDescriptor | null>;
+ readProperties?(file: TFile): Promise<PropertyEditorDocument | null>;
+ createProperties?(host: HTMLElement, file: TFile, document: PropertyEditorDocument): NativePropertyEditor;
  locate(operonId: string): Promise<NativeTaskDescriptor | null>;
  create(task: NativeTaskDescriptor): Promise<TaskEditorContent | null>;
  confirmDiscard(): Promise<boolean>;
@@ -29,6 +34,9 @@ export interface NativeTaskWorkspaceInitial { task: NativeTaskDescriptor; conten
 export class NativeTaskWorkspace {
  private editor: TaskEditorContent | null = null;
  private descriptor: NativeTaskDescriptor | null = null;
+ private propertyFile: TFile | null = null;
+ private propertyEditor: NativePropertyEditor | null = null;
+ private propertyHidden = true;
  private currentFile: TFile | null = null;
  private explicit: NativeTaskDescriptor | null = null;
  private disposed = false;
@@ -103,6 +111,7 @@ export class NativeTaskWorkspace {
   win.addEventListener('resize', this.resize);
   shell.addEventListener('keydown', this.escape);
   this.panel.addEventListener('focusin', this.rememberEditorFocus);
+  this.panel.addEventListener('operon-property-content-changed', this.resize);
   this.markdown.addEventListener('focusin', this.rememberSourceFocus);
   this.panel.addEventListener('operon-editor-close', this.closeIntent);
   this.panel.addEventListener('operon-editor-source-location', this.sourceLocation);
@@ -135,6 +144,14 @@ export class NativeTaskWorkspace {
   this.layout();
   content.mountInto(this.body);
  }
+ private removePropertyEditor(): void {
+  if (!this.propertyEditor) return;
+  this.propertyEditor.destroy();
+  this.propertyEditor = null;
+  this.propertyHidden = true;
+  this.lastEditorFocus = null;
+  this.markdownWanted = true;
+ }
  resetGeometryForView(type: string): void {
   if (type !== this.lastViewType) {
    if (type !== 'markdown') for (const key of ['left', 'top', 'width', 'height']) this.markdown.style.removeProperty(key);
@@ -150,14 +167,27 @@ export class NativeTaskWorkspace {
    for (const key of ['left', 'top', 'width', 'height']) button.style.removeProperty(key);
   }
   const file = this.isMarkdown ? (view as { file?: TFile }).file ?? null : null;
+  if (this.propertyFile && this.propertyFile !== file) {
+   this.propertyFile = null;
+   this.removePropertyEditor();
+   this.layout();
+  }
   this.currentFile = file;
-  const task = file ? await this.provider.resolve(file, this.explicit?.file === file ? this.explicit.operonId : undefined, this.openingTrace) : null;
+  const explicitId = this.explicit?.file === file ? this.explicit.operonId : undefined;
+  const task = file ? await this.provider.resolve(file, explicitId, this.openingTrace) : null;
   if (this.disposed || generation !== this.generation) return;
+  const properties = file && !task && !explicitId && this.provider.readProperties
+   ? await this.provider.readProperties(file).catch(() => null) : null;
+  if (this.disposed || generation !== this.generation) return;
+  const retainDraft = !!file && this.propertyFile === file && this.propertyEditor?.isEdited;
+  this.propertyFile = properties || retainDraft ? file : null;
+  if (!this.propertyFile) this.removePropertyEditor();
   if (this.currentFile !== this.explicit?.file) this.explicit = null;
   if (task?.operonId !== this.descriptor?.operonId) {
    this.editor?.destroy({ skipCloseSave: true }); this.editor = null; this.body.empty();
   }
   this.descriptor = task;
+  if (properties) this.propertyEditor?.refresh(properties);
   if (task && this.enabled && !this.editorHidden && !this.editor) {
    const content = await this.provider.create(task).catch(() => { new Notice('Could not open the task editor. The source is still open.'); return null; });
    if (this.disposed || generation !== this.generation) { content?.destroy({ skipCloseSave: true }); return; }
@@ -185,7 +215,7 @@ export class NativeTaskWorkspace {
  }
  private async toggleMarkdown(): Promise<void> {
   if (this.locked || this.busy || this.disposed) return;
-  if (!this.markdownVisible && !await this.followSource()) return;
+  if (!this.markdownVisible && !this.propertyEditor && !await this.followSource()) return;
   if (this.disposed) return;
   this.markdownWanted = !this.markdownVisible;
   this.layout();
@@ -195,7 +225,9 @@ export class NativeTaskWorkspace {
   }
  }
  private async toggleEditor(): Promise<void> {
-  if (this.busy || this.locked || this.disposed || !this.descriptor) return;
+  if (this.busy || this.locked || this.disposed) return;
+  if (this.propertyFile) { await this.togglePropertyEditor(this.propertyFile); return; }
+  if (!this.descriptor) return;
   if (this.editorVisible) { this.editorHidden = true; this.layout(); return; }
   this.busy = true;
   const generation = this.generation;
@@ -215,11 +247,62 @@ export class NativeTaskWorkspace {
   } catch { new Notice('Could not open the task editor. The source is still open.'); }
   finally { this.busy = false; }
  }
+ async showProperties(file: TFile, showSource: boolean): Promise<boolean> {
+  if (this.disposed || this.locked || this.busy || this.propertyFile !== file) return false;
+  const generation = this.generation;
+  if (!this.propertyEditor || this.propertyHidden) await this.togglePropertyEditor(file);
+  if (this.disposed || generation !== this.generation || this.propertyFile !== file || !this.propertyEditor || this.propertyHidden) return false;
+  this.markdownWanted = showSource;
+  this.layout();
+  return true;
+ }
+ private async togglePropertyEditor(file: TFile): Promise<void> {
+  if (this.propertyEditor && !this.propertyHidden) {
+   this.propertyHidden = true;
+   this.propertyEditor.closePicker();
+   this.layout();
+   return;
+  }
+  this.busy = true;
+  const generation = this.generation;
+  try {
+   const properties = await this.provider.readProperties?.(file).catch(() => null);
+   if (this.disposed || generation !== this.generation || this.propertyFile !== file) return;
+   if (!properties && !this.propertyEditor?.isEdited) {
+    this.removePropertyEditor();
+    this.propertyFile = null;
+    this.layout();
+    new Notice(t('taskEditor', 'filePropertiesUnavailable'));
+    return;
+   }
+   if (properties) {
+    if (this.propertyEditor) this.propertyEditor.refresh(properties);
+    else this.propertyEditor = this.provider.createProperties?.(this.body, file, properties) ?? null;
+   }
+   if (!this.propertyEditor) return;
+   this.propertyHidden = false;
+   this.markdownWanted = true;
+   this.layout();
+   if (!this.shell.hidden && !this.shell.inert) this.propertyEditor.root.focus({ preventScroll: true });
+  } finally { this.busy = false; }
+ }
  setLocked(locked: boolean): void {
-  if (locked && !this.locked) this.generation++;
+  if (locked && !this.locked) {
+   this.generation++;
+   this.propertyEditor?.closePicker();
+  }
   this.locked = locked; this.panel.inert = locked || !this.editorVisible;
  }
  async prepare(allowDiscard = false): Promise<boolean> {
+  const properties = this.propertyEditor;
+  if (properties) {
+   const saved = await properties.prepareClose();
+   if (this.disposed || properties !== this.propertyEditor) return false;
+   if (saved) return true;
+   if (!allowDiscard || !await this.provider.confirmDiscard() || this.disposed || properties !== this.propertyEditor) return false;
+   properties.discard();
+   return true;
+  }
   if (this.forceDeleted || !this.editor) return true;
   const editor = this.editor;
   const outcome = await editor.prepareCloseSave();
@@ -240,6 +323,7 @@ export class NativeTaskWorkspace {
   else if (!this.showEditor.hidden) this.showEditor.focus({ preventScroll: true });
  }
  get deleted(): boolean { return this.forceDeleted; }
+ get isEdited(): boolean { return !!(this.editor?.isEdited || this.propertyEditor?.isEdited); }
  private fallbackRail(): LightboxRect {
   const rect = (this.markdownVisible ? this.markdown : this.panel).getBoundingClientRect();
   const width = this.shell.ownerDocument.defaultView!.innerWidth;
@@ -270,19 +354,24 @@ export class NativeTaskWorkspace {
    this.showFileActions(true);
    refreshLightboxControls(this.shell); return;
   }
-  const hasEditor = !!this.editor && this.enabled && !this.editorHidden;
+  const hasEditor = !!this.propertyEditor && !this.propertyHidden || !!this.editor && this.enabled && !this.editorHidden;
   const margin = Math.min(24, win.innerWidth / 8), railWidth = 52;
-  // Measure the same closed-panel CSS width before applying the workspace rectangle.
+  // Both editors use Task Editor's established CSS width and source-context threshold.
+  this.propertyEditor?.updateSourceLayout();
   this.panel.style.removeProperty('width');
-  const preferredWidth = Number.parseFloat(win.getComputedStyle(this.panel).width) || 608;
+  const style = win.getComputedStyle(this.panel);
+  const preferredWidth = Number.parseFloat(style.width) || 608;
+  const available = Math.max(0, win.innerWidth - 2 * margin - railWidth);
+  const mdSize = { width: this.width === undefined ? Math.min(1050, win.innerWidth * .9) : win.innerWidth * this.width / 100,
+   height: Math.min(win.innerHeight - 96, win.innerHeight * (this.height ?? 90) / 100) };
   this.compact = hasEditor && win.innerWidth < preferredWidth + railWidth + 2 * margin + 1;
   this.editorVisible = hasEditor;
   this.markdownVisible = !hasEditor || this.markdownWanted && !this.compact;
   this.showFileActions(this.markdownVisible);
   this.panel.hidden = !hasEditor; this.panel.inert = this.locked || !hasEditor;
   this.markdown.hidden = !this.markdownVisible; this.markdown.inert = !this.markdownVisible;
-  const mdSize = { width: this.width === undefined ? Math.min(1050, win.innerWidth * .9) : win.innerWidth * this.width / 100,
-   height: Math.min(win.innerHeight - 96, win.innerHeight * (this.height ?? 90) / 100) };
+  const editorWidth = Math.min(preferredWidth, available);
+  if (hasEditor) this.panel.style.width = `${editorWidth}px`;
   const main = this.body.querySelector<HTMLElement>('.operon-task-editor-main-panel');
   const content = main ?? this.body;
   const pixels = (value: string): number => Number.parseFloat(value) || 0;
@@ -309,7 +398,7 @@ export class NativeTaskWorkspace {
   }
   const result = resolveNativeLightboxLayout({ viewport: { width: win.innerWidth, height: win.innerHeight },
    markdown: this.markdownVisible ? mdSize : null,
-   companion: hasEditor ? { width: Math.min(preferredWidth, Math.max(0, win.innerWidth - 2 * margin - railWidth)), height: Math.min(naturalHeight || win.innerHeight * .8, win.innerHeight * (this.markdownVisible ? 1 : .8)) } : null,
+   companion: hasEditor ? { width: editorWidth, height: Math.min(naturalHeight || win.innerHeight * .8, win.innerHeight * (this.markdownVisible ? 1 : .8)) } : null,
    side: this.side, margin, railWidth, alignmentHeight: mdSize.height, markdownOuterRailWidth: hasEditor ? 0 : railWidth });
   const place = (element: HTMLElement, rect: LightboxRect | null): void => {
    if (!rect) return;
@@ -321,8 +410,10 @@ export class NativeTaskWorkspace {
   this.showMarkdown.hidden = !hasEditor;
   this.showMarkdown.disabled = this.compact;
   this.labelToggle(this.showMarkdown, this.compact ? 'Widen the window to show the source' : this.markdownVisible ? 'Hide source' : 'Show source');
-  this.showEditor.hidden = !this.descriptor || !this.markdownVisible;
-  this.labelToggle(this.showEditor, hasEditor ? 'Hide task editor' : 'Show task editor');
+  this.showEditor.hidden = this.propertyFile ? false : !this.descriptor || !this.markdownVisible;
+  this.labelToggle(this.showEditor, this.propertyFile
+   ? t('taskEditor', hasEditor ? 'hidePropertyEditor' : 'showPropertyEditor')
+   : hasEditor ? 'Hide task editor' : 'Show task editor');
   refreshLightboxControls(this.shell);
   } finally { endLayout?.(); }
  }
@@ -377,11 +468,13 @@ export class NativeTaskWorkspace {
   this.observer.disconnect(); this.shell.ownerDocument.defaultView?.removeEventListener('resize', this.resize);
   this.shell.removeEventListener('keydown', this.escape);
   this.panel.removeEventListener('focusin', this.rememberEditorFocus);
+  this.panel.removeEventListener('operon-property-content-changed', this.resize);
   this.markdown.removeEventListener('focusin', this.rememberSourceFocus);
   this.panel.removeEventListener('operon-editor-close', this.closeIntent);
   this.panel.removeEventListener('operon-editor-source-location', this.sourceLocation);
   this.panel.removeEventListener('operon-editor-escape-intent', this.escapeIntent);
   this.editor?.destroy({ skipCloseSave: true });
+  this.propertyEditor?.destroy();
   this.unbind(); this.panel.remove(); this.showMarkdown.remove(); this.showEditor.remove();
   const file = this.descriptor?.file ?? this.currentFile;
   if (file) void Promise.resolve(this.provider.closed(file.path)).catch(error => console.warn('Operon: workspace close refresh failed', error));

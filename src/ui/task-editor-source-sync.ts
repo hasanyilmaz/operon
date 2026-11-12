@@ -56,3 +56,4 @@ export function mergeTaskEditorSource(
 		sourceFields: latest.sourceFields,
 	};
 }
+export const TASK_EDITOR_AUTOSAVE_DELAY_MS = 2_000;

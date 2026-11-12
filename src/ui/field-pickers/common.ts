@@ -29,7 +29,7 @@ interface FloatingPanelRecord {
 }
 
 export interface FloatingHostOptions {
-	/** Opt-in for Filter Editor grouping/sorting: local coordinates clipped to the viewport. */
+	/** Fit the panel to the visible part of a surface using that surface's coordinates. */
 	fitToHostViewport?: boolean;
 	floatingHost?: HTMLElement;
 	floatingScrollHost?: HTMLElement | Window;
@@ -63,9 +63,11 @@ interface FloatingHostContext {
 	host: HTMLElement;
 	constrainToHost: boolean;
 	scrollHost: HTMLElement | Window;
+	fitToHostViewport?: boolean;
 }
 
 const activeFloatingPanels = new Set<FloatingPanelRecord>();
+const viewportFitWidths = new WeakMap<HTMLElement, { min: string; max: string }>();
 const FLOATING_RECT_ANCHOR_OWNER = Symbol('operon-floating-rect-anchor-owner');
 const FLOATING_RECT_CURRENT = Symbol('operon-floating-rect-current');
 export const MOBILE_PICKER_OPEN_EVENT = 'operon-mobile-picker-open';
@@ -255,6 +257,18 @@ function resolveRect(anchor: HTMLElement | DOMRect): DOMRect {
 }
 
 export function resolveSurfaceFloatingHostOptions(anchorEl: HTMLElement): FloatingHostOptions {
+	const propertyEditor = anchorEl.closest('.operon-property-editor');
+	const propertyWorkspace = asHTMLElement(propertyEditor?.closest('.operon-task-workspace'), anchorEl);
+	if (propertyWorkspace) {
+		// The short editor scroll area can clip the picker. Use the full Lightbox while
+		// following the trigger when the editor content scrolls.
+		return {
+			floatingHost: propertyWorkspace,
+			floatingScrollHost: asHTMLElement(anchorEl.closest('.operon-task-editor-main-panel'), anchorEl) ?? getOwnerWindow(propertyWorkspace),
+			constrainToFloatingHost: true,
+			fitToHostViewport: true,
+		};
+	}
 	const lightboxHost = asHTMLElement(anchorEl.closest('.operon-native-lightbox-host'), anchorEl);
 	if (lightboxHost) return { floatingHost: lightboxHost, floatingScrollHost: getOwnerWindow(lightboxHost), constrainToFloatingHost: true };
 	const pagePreviewHost = asHTMLElement(anchorEl.closest('.hover-popover, .popover.hover-popover'), anchorEl);
@@ -304,6 +318,7 @@ function resolveHostContext(anchor: HTMLElement | DOMRect, options: FloatingHost
 			host: surfaceOptions.floatingHost,
 			constrainToHost: true,
 			scrollHost: surfaceOptions.floatingScrollHost ?? ownerWindow,
+			fitToHostViewport: surfaceOptions.fitToHostViewport,
 		};
 	}
 
@@ -346,7 +361,7 @@ export function positionFloatingElement(
 ): void {
 	const anchorEl = asHTMLElement(anchor);
 	const rect = resolveRect(anchor);
-	const { host, constrainToHost } = resolveHostContext(anchor, options);
+	const { host, constrainToHost, fitToHostViewport } = resolveHostContext(anchor, options);
 	const hostWindow = getOwnerWindow(host);
 	const hostIsBody = host === getOwnerBody(host);
 	const margin = options.margin ?? 8;
@@ -369,7 +384,7 @@ export function positionFloatingElement(
 	const hostRect = useHostBounds
 		? host.getBoundingClientRect()
 		: new DOMRectCtor(0, 0, hostWindow.innerWidth, hostWindow.innerHeight);
-	const fit = useHostBounds && options.fitToHostViewport === true;
+	const fit = useHostBounds && (options.fitToHostViewport ?? fitToHostViewport) === true;
 	const scaleX = fit && host.offsetWidth ? hostRect.width / host.offsetWidth || 1 : 1;
 	const scaleY = fit && host.offsetHeight ? hostRect.height / host.offsetHeight || 1 : 1;
 	const originLeft = hostRect.left + (fit ? host.clientLeft * scaleX : 0);
@@ -387,7 +402,17 @@ export function positionFloatingElement(
 		panel.style.width = `${Math.round(options.matchWidth / scaleX)}px`;
 	}
 	if (fit) {
-		panel.style.maxWidth = `${Math.max(0, availableWidth - margin * 2)}px`;
+		// Viewport fitting may shrink the picker, but must not replace its own width cap.
+		// Restore authored inline limits before measuring so resize can grow it again.
+		const authored = viewportFitWidths.get(panel) ?? { min: panel.style.minWidth, max: panel.style.maxWidth };
+		viewportFitWidths.set(panel, authored);
+		panel.style.minWidth = authored.min;
+		panel.style.maxWidth = authored.max;
+		const computed = hostWindow.getComputedStyle(panel);
+		const minWidth = computed.minWidth, maxWidth = computed.maxWidth;
+		const viewportWidth = `${Math.max(0, availableWidth - margin * 2)}px`;
+		panel.style.minWidth = minWidth === 'auto' ? '0px' : `min(${minWidth}, ${viewportWidth})`;
+		panel.style.maxWidth = maxWidth === 'none' ? viewportWidth : `min(${maxWidth}, ${viewportWidth})`;
 	}
 	const panelWidth = panel.offsetWidth;
 	const panelHeight = panel.offsetHeight;
@@ -738,7 +763,10 @@ export function createFloatingPanel(
 			&& options.shouldHandleEscape?.(event) !== false
 			&& isTopMostFloatingPanel(record)
 		) {
-			if (panel.closest('.operon-native-lightbox-host')) { event.preventDefault(); event.stopPropagation(); }
+			if (panel.closest('.operon-native-lightbox-host, .operon-task-workspace > .operon-floating-panel')) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
 			requestClose('escape');
 		}
 	};

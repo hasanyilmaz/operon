@@ -17,6 +17,9 @@ import { buildOperonSettingsBackupSelectedPatchV1 } from '../src/core/settings-b
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
 import { preflightOperonSettingsBackupRestoreV1 } from '../src/core/settings-backup-preflight';
 import { humanizeUpcomingCountdown, UpcomingTaskStatusModel } from '../src/core/upcoming-task-status';
+import { WorkspaceLeaf } from 'obsidian';
+import { FlowTimeView } from '../src/ui/flow-time-view';
+import { FlowTimeControls } from '../src/systems/flow-time-controls';
 import { FlowTimeBreakController } from '../src/systems/flow-time-break';
 import { StatusDockWidget, type StatusDockSnapshot } from '../src/ui/status-dock-widget';
 import { OperonStatusDock, isStatusDockLeaf } from '../src/ui/status-dock';
@@ -24,7 +27,9 @@ import { NativeLightboxLifecycle } from '../src/ui/native-lightbox-lifecycle';
 import { statusDockDocument } from './test-support/status-dock-dom';
 import { SettingsPreservationHarness } from './test-support/settings-preservation-harness';
 import type { IndexedTask } from '../src/types/fields';
-import type { App, WorkspaceContainer, WorkspaceLeaf } from 'obsidian';
+import type { App, WorkspaceContainer } from 'obsidian';
+
+const flowTimeControls = { mode: 'tracktime' as const, minutes: 25, setMode: async () => {}, subscribe: () => () => {}, begin: () => null, editable: false };
 
 function task(id: string, date: string): IndexedTask {
 	return { operonId: id, description: 'Upcoming **task** with a long description', checkbox: 'open',
@@ -32,7 +37,7 @@ function task(id: string, date: string): IndexedTask {
 }
 function snapshot(): StatusDockSnapshot {
 	const activeTask = task('active', '2026-10-24T10:00:00');
-	return { settings: { ...DEFAULT_SETTINGS, trackerShowStatusBarTimer: true, upcomingShowStatusBar: true, upcomingCountdownDisplay: 'seconds' },
+	return { timerSettings: { ...DEFAULT_SETTINGS }, settings: { ...DEFAULT_SETTINGS, trackerShowStatusBarTimer: true, upcomingShowStatusBar: true, upcomingCountdownDisplay: 'seconds' },
 		active: { operonId: activeTask.operonId, start: 'start', elapsedSeconds: 2489, task: activeTask, isUnassigned: false },
 		breakSnapshot: { breakState: null, pendingTaskId: null, actionPending: false }, breakSeconds: 0, pendingDescription: null,
 		upcoming: { task: task('next', '2026-10-24T12:34:57'), countdown: '02:34:57', due: false },
@@ -40,27 +45,33 @@ function snapshot(): StatusDockSnapshot {
 }
 function widget() {
 	const f = statusDockDocument(); const calls: string[] = [];
-	const dock = new StatusDockWidget(f.doc, { openTracker: () => { calls.push('source-or-finder'); }, toggleTimer: () => { calls.push('timer'); },
-		startTask: (id: string) => { calls.push(`start:${id}`); }, findTask: () => { calls.push('finder'); }, toggleBreak: () => { calls.push('coffee'); }, createTask: () => { calls.push('create'); }, openCurrentTask: (id: string) => { calls.push(`current:${id}`); }, openNextUpcoming: () => { calls.push('next'); }, openUpcoming: () => { calls.push('upcoming'); }, openConflicts: () => { calls.push('conflicts'); } }, error => { throw error; });
+	const dock = new StatusDockWidget(f.doc, { openTracker: () => { calls.push('source-or-finder'); }, toggleTimer: () => { calls.push('timer'); }, toggleTimerMode: () => { calls.push('mode'); },
+		startTask: (id: string) => { calls.push(`start:${id}`); }, findTask: () => { calls.push('finder'); }, toggleBreak: () => { calls.push('coffee'); }, createTask: () => { calls.push('create'); }, openCurrentTask: (id: string) => { calls.push(`current:${id}`); }, openNextUpcoming: () => { calls.push('next'); }, openUpcoming: () => { calls.push('upcoming'); }, openConflicts: () => { calls.push('conflicts'); } }, error => { throw error; }, flowTimeControls);
 	f.doc.body.appendChild(dock.slot); const state = snapshot(); dock.setWidth(900); dock.update(state);
 	return { ...f, dock, state, calls, find: (cls: string): any => dock.root.querySelector(`.${cls}`) };
+}
+
+function timeText(element: HTMLElement): string | null {
+	const modeText = element.querySelector('.operon-status-dock-mode-text');
+	return modeText ? Array.from(modeText.children, child => child.textContent).join('') : element.textContent;
 }
 
 test('status dock displays titles when enabled and filename labels when disabled', () => {
 	const task: IndexedTask = {
 		operonId: 'n000123', description: 'old-file', checkbox: 'open', tags: [],
-		fieldValues: { fileTaskDisplayTitle: 'Readable task title' },
+		fieldValues: { fileTaskDisplayTitle: 'Readable task title with details' },
 		primary: { filePath: 'old-file.md', lineNumber: 0, format: 'yaml' }, datetimeModified: '', tier: 'hot',
 	};
 	const { doc } = statusDockDocument();
 	const dock = new StatusDockWidget(doc, {
-		findTask() {}, openTracker() {}, toggleTimer() {}, toggleBreak() {}, startTask() {},
+		findTask() {}, openTracker() {}, toggleTimer() {}, toggleTimerMode() {}, toggleBreak() {}, startTask() {},
 		openCurrentTask() {}, openNextUpcoming() {}, openUpcoming() {}, openConflicts() {}, createTask() {},
-	}, error => { throw error; });
+	}, error => { throw error; }, flowTimeControls);
 	doc.body.appendChild(dock.slot);
-	const current = { ...task, operonId: 'current', fieldValues: { fileTaskDisplayTitle: 'Current title' } };
-	const next = { ...task, operonId: 'next', fieldValues: { fileTaskDisplayTitle: 'Next title' } };
+	const current = { ...task, operonId: 'current', fieldValues: { fileTaskDisplayTitle: 'Current task with a longer title' } };
+	const next = { ...task, operonId: 'next', fieldValues: { fileTaskDisplayTitle: 'Next task with a longer title' } };
 	const state: StatusDockSnapshot = {
+		timerSettings: DEFAULT_SETTINGS,
 		settings: { ...DEFAULT_SETTINGS, trackerShowStatusBarTimer: true, upcomingShowStatusBar: true },
 		active: { operonId: task.operonId, start: '2026-10-26T10:00:00', elapsedSeconds: 60, task, isUnassigned: false },
 		breakSnapshot: { breakState: null, pendingTaskId: null, actionPending: false }, breakSeconds: 0, pendingDescription: null,
@@ -75,7 +86,7 @@ test('status dock displays titles when enabled and filename labels when disabled
 			dock.update(state);
 			const labels = dock.root.querySelectorAll('.operon-status-dock-name');
 			const text = Array.from(labels, label => label.textContent).join('|');
-			for (const title of ['Readable task title', 'Current title', 'Next title']) assert.equal(text.includes(title), enabled);
+			for (const title of ['Readable task title with details', 'Current task with a longer title', 'Next task with a longer title']) assert.equal(text.includes(title), enabled);
 			assert.equal(text.includes('old-file'), !enabled);
 			for (const selector of ['.operon-status-dock-current', '.operon-status-dock-next']) {
 				const label = dock.root.querySelector(selector)?.querySelector<HTMLElement>('.operon-status-dock-name');
@@ -127,7 +138,7 @@ test('old/default backup selections omit absent dock preferences and retain expl
 });
 
 test('backup restore preflight handles absent and explicit dock preferences without inventing defaults', () => {
-	for (const preferences of [{}, { statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
+	for (const preferences of [{}, { statusDockCreatorStartsTimer: false, statusDockVisible: false, statusDockMode: 'detailed', statusDockAlignment: 'left', statusDockClickAction: 'editor' }]) {
 		const settings = migrateSettings({ ...DEFAULT_SETTINGS, ...preferences, dateDisplayFormat: 'DD/MM/YYYY' });
 		const exported = exportOperonSettingsBackupJsonV1({ settings,
 			source: { pluginVersion: '4.2.0', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
@@ -141,12 +152,46 @@ test('backup restore preflight handles absent and explicit dock preferences with
 		assert.equal(restored.ok, true, JSON.stringify(restored.diagnostics));
 		assert.ok(restored.restorePlan);
 		assert.equal(restored.restorePlan.candidateSettings.dateDisplayFormat, 'DD/MM/YYYY');
-		for (const key of ['statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
+		for (const key of ['statusDockCreatorStartsTimer', 'statusDockVisible', 'statusDockMode', 'statusDockAlignment', 'statusDockClickAction'] as const) {
 			assert.equal(restored.restorePlan.candidateSettings[key], settings[key]);
 			assert.equal(Object.prototype.hasOwnProperty.call(restored.restorePlan.candidateSettings, key),
 				Object.prototype.hasOwnProperty.call(settings, key));
 		}
 	}
+});
+
+test('visibility persists across initialization and serializes command toggles without unrelated writes', async () => {
+	const fixture = new SettingsPreservationHarness();
+	try {
+		const storage = fixture.createStorage(); await storage.initialize();
+		const before = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		const writes = fixture.canonicalAttempts;
+		assert.equal(storage.getSettings().statusDockVisible, undefined);
+		await storage.saveStatusDockVisibility(true);
+		assert.equal(fixture.canonicalAttempts, writes);
+		await storage.saveStatusDockVisibility(false);
+		const saved = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, visible: false } } });
+		const restarted = fixture.createStorage(); await restarted.initialize();
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		const writesAfterRestart = fixture.canonicalAttempts;
+		fixture.writeFault = 'throw-before';
+		await assert.rejects(restarted.saveStatusDockVisibility());
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
+		fixture.writeFault = 'none';
+		await Promise.all([restarted.saveStatusDockVisibility(), restarted.saveStatusDockVisibility()]);
+		assert.equal(restarted.getSettings().statusDockVisible, false);
+		assert.equal(fixture.canonicalAttempts, writesAfterRestart + 3);
+		delete saved.ui.statusDock.visible;
+		fixture.seed(fixture.canonicalPath, JSON.stringify(saved));
+		const externalWrites = fixture.canonicalAttempts;
+		await assert.rejects(restarted.saveStatusDockVisibility());
+		assert.equal(fixture.canonicalAttempts, externalWrites);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
+		await restarted.reloadCanonicalSettingsPackage();
+		assert.equal(restarted.getSettings().statusDockVisible, undefined);
+	} finally { await fixture.dispose(); }
 });
 
 test('canonical reload clears removed choices before the next explicit save', async () => {
@@ -178,6 +223,67 @@ test('real storage writes only explicit preferences and preserves notes and unre
 		assert.deepEqual(after.ui.statusDock, { mode: 'detailed', alignment: 'left' });
 		delete after.ui.statusDock; assert.deepEqual(after, before);
 		assert.equal(settings.statusDockMode, 'detailed'); assert.equal(settings.statusDockAlignment, 'left');
+	} finally { await fixture.dispose(); }
+});
+
+test('Show seconds defaults off without writes and persists independently through reload and backups', async () => {
+	const fixture = new SettingsPreservationHarness();
+	try {
+		const storage = fixture.createStorage(); await storage.initialize();
+		const before = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		const writes = fixture.canonicalAttempts;
+		const settings = storage.getSettings();
+		assert.equal(settings.statusDockShowSeconds, undefined);
+		assert.equal(buildOperonSettingsBackupSelectedPatchV1({ selectedGroups: ['general'], candidateSettings: settings }).statusDockShowSeconds, undefined);
+		await storage.saveStatusDockTimerPreference('statusDockShowSeconds', false);
+		assert.equal(fixture.canonicalAttempts, writes);
+		await storage.saveStatusDockTimerPreference('statusDockShowSeconds', true);
+		const saved = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, showSeconds: true } } });
+		const reopened = fixture.createStorage(); await reopened.initialize();
+		assert.equal(fixture.canonicalAttempts, writes + 1);
+		assert.equal(reopened.getSettings().statusDockShowSeconds, true);
+		const patch = buildOperonSettingsBackupSelectedPatchV1({ selectedGroups: ['general'], candidateSettings: reopened.getSettings() });
+		assert.equal(patch.statusDockShowSeconds, true);
+		await reopened.saveStatusDockTimerPreference('statusDockShowSeconds', false);
+		assert.equal(reopened.getSettings().statusDockShowSeconds, false);
+		assert.equal(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)).ui.statusDock.showSeconds, false);
+		delete saved.ui.statusDock.showSeconds;
+		fixture.seed(fixture.canonicalPath, JSON.stringify(saved));
+		await reopened.reloadCanonicalSettingsPackage();
+		assert.equal(reopened.getSettings().statusDockShowSeconds, undefined);
+	} finally { await fixture.dispose(); }
+});
+
+test('dial choices preserve old packages, round-trip independently, and reject invalid sizes', async () => {
+	const fixture = new SettingsPreservationHarness();
+	try {
+		const storage = fixture.createStorage(); await storage.initialize();
+		const before = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		const writes = fixture.canonicalAttempts;
+		assert.equal(storage.getSettings().statusDockShowTimerDial, undefined);
+		assert.equal(storage.getSettings().statusDockTimerDialSize, undefined);
+		assert.equal(migrateSettings({ statusDockTimerDialSize: 1.2 }).statusDockTimerDialSize, 1.2);
+		for (const retiredSize of [1.25, 1.75, 2]) {
+			assert.equal(migrateSettings({ statusDockTimerDialSize: retiredSize }).statusDockTimerDialSize, undefined);
+		}
+		await storage.saveStatusDockTimerPreference('statusDockShowTimerDial', false);
+		await storage.saveStatusDockTimerDialSize(1);
+		await assert.rejects(storage.saveStatusDockTimerDialSize(3), /invalid/iu);
+		assert.equal(fixture.canonicalAttempts, writes);
+		await storage.saveStatusDockTimerPreference('statusDockShowTimerDial', true);
+		await storage.saveStatusDockTimerDialSize(0.7);
+		const saved = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		assert.deepEqual(saved, { ...before, ui: { ...before.ui, statusDock: { ...before.ui.statusDock, showTimerDial: true, timerDialSize: 0.7 } } });
+		const reopened = fixture.createStorage(); await reopened.initialize();
+		assert.equal(fixture.canonicalAttempts, writes + 2);
+		const patch = buildOperonSettingsBackupSelectedPatchV1({ selectedGroups: ['general'], candidateSettings: reopened.getSettings() });
+		assert.equal(patch.statusDockShowTimerDial, true);
+		assert.equal(patch.statusDockTimerDialSize, 0.7);
+		fixture.writeFault = 'throw-before';
+		await assert.rejects(reopened.saveStatusDockTimerDialSize(1.4));
+		assert.equal(reopened.getSettings().statusDockTimerDialSize, 0.7);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), saved);
 	} finally { await fixture.dispose(); }
 });
 
@@ -253,16 +359,33 @@ test('keep-zero and countdown limits are preserved; hiding the setting cancels t
 });
 
 test('ticks retain the complete dock DOM and update only the elapsed/countdown values', () => {
-	const f = widget(); f.state.active!.elapsedSeconds = 29; f.dock.update(f.state);
+	const f = widget();
+	f.state.active!.elapsedSeconds = 5342;
+	f.state.settings.statusDockShowSeconds = true;
+	f.dock.update(f.state);
+	const mode = f.find('operon-status-dock-mode');
+	const accessibleId = mode.getAttribute('aria-labelledby');
+	assert.equal(mode.children.length, 1);
+	assert.equal(mode.children[0].className, 'operon-status-dock-mode-text');
 	const children = Array.from(f.dock.root.querySelectorAll('*'));
-	f.state.active!.elapsedSeconds++; f.state.upcoming.countdown = '02:34:56'; f.dock.update(f.state);
+	const [prefix, seconds] = mode.children[0].children;
+	assert.equal(prefix.textContent, '1h 29m ');
+	assert.equal(seconds.textContent, '02s');
+	const width = mode.dataset.durationWidth;
+	f.state.active!.elapsedSeconds += 3;
+	f.state.upcoming.countdown = '02:34:56';
+	f.dock.update(f.state);
 	assert.deepEqual(Array.from(f.dock.root.querySelectorAll('*')), children);
-	assert.equal(f.find('operon-status-dock-time').textContent, '30s'); f.dock.destroy();
+	assert.equal(mode.getAttribute('aria-labelledby'), accessibleId);
+	assert.equal(mode.dataset.durationWidth, width);
+	assert.equal(prefix.textContent, '1h 29m ');
+	assert.equal(seconds.textContent, '05s');
+	assert.equal(timeText(mode), '1h 29m 05s'); f.dock.destroy();
 });
 
-test('one compact mode ignores legacy mode and alignment without exposing a mode button', () => {
+test('dock layout stays compact independently of the timer mode button', () => {
 	const f = widget(); f.state.settings.statusDockMode = 'detailed'; f.state.settings.statusDockAlignment = 'right'; f.dock.update(f.state);
-	assert.equal(f.dock.root.classList.contains('is-detailed'), false); assert.equal(f.find('operon-status-dock-mode'), null);
+	assert.equal(f.dock.root.classList.contains('is-detailed'), false); assert.equal(f.find('operon-status-dock-mode').tagName, 'BUTTON');
 	assert.equal(f.dock.slot.dataset.alignment, undefined); f.dock.setWidth(280);
 	assert.equal(f.dock.root.classList.contains('is-detailed'), false); f.dock.destroy();
 });
@@ -319,7 +442,7 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 		on: (name: string, callback: (...args: unknown[]) => void) => { events.set(name, callback); return { dispose: () => events.delete(name) }; },
 		onLayoutReady: (callback: () => void) => callback() };
 	const app = { workspace } as unknown as App; const settings = { ...DEFAULT_SETTINGS, statusDockMode: 'detailed' as const, upcomingShowStatusBar: false }; let starts = 0;
-	const dock = new OperonStatusDock(app, { toggleTaskTimer: async () => true, indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
+	const dock = new OperonStatusDock(app, { flowTimeControls, toggleTaskTimer: async () => true, indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
 		timeTracker: { getActiveState: () => null, getTransitionState: () => null, subscribe: () => () => {}, startUnassigned: async () => { starts++; return true; } } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: null, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, subscribe: () => () => {} } as never,
 		getSettings: () => settings, startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
@@ -330,6 +453,11 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 	const original = main.doc.body.querySelector('.operon-status-dock');
 	const slot = main.doc.body.querySelector('.operon-status-dock-slot') as HTMLElement;
 	assert.equal(slot.style.width, '1000px'); assert.equal(slot.style.left, '10px'); assert.equal(slot.style.bottom, '42px');
+	const popoutSlot = popout.doc.body.querySelector('.operon-status-dock-slot') as HTMLElement;
+	Object.assign(settings, { statusDockVisible: false }); dock.refresh();
+	assert.ok(slot.hidden && popoutSlot.hidden);
+	Object.assign(settings, { statusDockVisible: true }); dock.refresh();
+	assert.ok(!slot.hidden && !popoutSlot.hidden);
 	Object.defineProperty(a.host, 'clientWidth', { value: 100 }); dock.refresh(); assert.equal(slot.style.width, '1000px');
 	viewport.width = 280; viewportEvents.get('resize')?.(); assert.equal(original?.classList.contains('is-detailed'), false);
 	assert.equal(settings.statusDockMode, 'detailed'); viewport.width = 1000; viewportEvents.get('resize')?.();
@@ -363,11 +491,11 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 
 test('geometry matches pinned rows and uses 16px glyphs with bounded single-line names', () => {
 	const css = readFileSync('styles.css', 'utf8');
-	assert.match(css, /\.operon-status-dock \{[^}]*min-height: 44px; height: 44px; padding: 7px 9px/u);
+	assert.match(css, /\.operon-status-dock \{[^}]*min-height: 44px; padding: 7px 9px/u);
 	assert.match(css, /font-size: var\(--font-ui-small\); font-weight: 500; line-height: 1\.35/u);
 	assert.equal(css.includes('.operon-status-dock.is-detailed'), false);
 	assert.match(css, /\.operon-status-dock-action svg \{ width: 16px; height: 16px/u);
-	assert.match(css, /max-width: calc\(24ch \+ 12px\);[^}]*text-overflow: ellipsis/u);
+	assert.match(css, /max-width: calc\(35ch \+ 12px\);[^}]*text-overflow: ellipsis/u);
 	const source = readFileSync('main.ts', 'utf8');
 	assert.match(source, /if \(Platform.isDesktopApp\) \{\s*this.statusDock =/u);
 	assert.match(source, /this.statusDock\?\.setDuplicateAlert\(state, duplicateCount\)/u);
@@ -398,7 +526,7 @@ test('native tooltip attributes stay absent and append-only icon updates never a
 test('dock source clicks retain the clicked owner anchor and idle selection starts only a current task', async () => {
 	const f = statusDockDocument(); const settings = { ...DEFAULT_SETTINGS }; let active: StatusDockSnapshot['active'] = snapshot().active;
 	let pending: string | null = null; let transition: any = null; let selected: string | null = 'chosen'; let picks = 0, starts = 0; const opened: Array<[string, HTMLElement, string]> = [];
-	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
+	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { flowTimeControls, toggleTaskTimer: async () => true,
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => active, getTransitionState: () => transition } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: pending, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, selectPendingTask: async (pick: () => Promise<string | null>) => { const before = active, id = await pick(); if (!id || active !== before) return false; starts++; return true; } } as never,
@@ -424,7 +552,7 @@ test('dock source clicks retain the clicked owner anchor and idle selection star
 });
 
 test('single compact precision stays the same across window sizes and legacy mode settings', () => {
-	const f = widget(); const times = () => Array.from(f.dock.root.querySelectorAll('.operon-status-dock-time')).slice(0, 2).map(el => el.textContent);
+	const f = widget(); const times = () => Array.from(f.dock.root.querySelectorAll<HTMLElement>('.operon-status-dock-time')).slice(0, 2).map(timeText);
 	for (const width of [900, 280, 900]) {
 		f.state.settings.statusDockMode = 'detailed'; f.dock.setWidth(width); f.dock.update(f.state);
 		assert.deepEqual(times(), ['41m', '2h 34m']);
@@ -433,12 +561,14 @@ test('single compact precision stays the same across window sizes and legacy mod
 });
 
 test('Compact displays seconds below one minute for both clocks and minutes from 60 seconds', () => {
-	const f = widget(); const times = () => Array.from(f.dock.root.querySelectorAll('.operon-status-dock-time')).slice(0, 2).map(el => el.textContent);
-	for (const seconds of [0, 1, 29, 59, 60, 61, 119]) {
+	const f = widget(); const times = () => Array.from(f.dock.root.querySelectorAll<HTMLElement>('.operon-status-dock-time')).slice(0, 2).map(timeText);
+	for (const seconds of [0, 2, 5, 29, 59, 60, 61, 119]) {
 		f.state.active!.elapsedSeconds = seconds;
 		f.state.upcoming.countdown = `00:${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-		f.dock.update(f.state); const expected = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
-		assert.deepEqual(times(), [expected, expected]);
+		f.dock.update(f.state);
+		const padded = String(seconds).padStart(2, '0');
+		const minutes = `${Math.floor(seconds / 60)}m`;
+		assert.deepEqual(times(), seconds < 60 ? [`${padded}s`, `${padded}s`] : [minutes, minutes]);
 	}
 	f.state.active = null; f.state.breakSeconds = 43; f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { start: new Date().toISOString() } as never };
 	f.dock.update(f.state); assert.equal(times()[0], '43s'); f.dock.destroy();
@@ -447,7 +577,7 @@ test('Compact displays seconds below one minute for both clocks and minutes from
 test('timer action replaces the decorative stopwatch and remains separate from source and coffee actions', () => {
 	const f = widget(); const tracker = f.find('operon-status-dock-tracker'); const timer = f.find('operon-status-dock-timer-action');
 	assert.equal(tracker.children[0], timer); assert.equal(f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-leading-icon'), null);
-	assert.equal(f.find('operon-status-dock-timer-controls').children.length, 4);
+	assert.equal(f.find('operon-status-dock-timer-controls').children.length, 2);
 	assert.equal(timer.classList.contains('is-running'), true); timer.click(); f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-name').click();
 	assert.deepEqual(f.calls, ['timer', 'source-or-finder']); f.state.active = null; f.dock.update(f.state);
 	assert.equal(timer.classList.contains('is-running'), false); f.dock.destroy();
@@ -521,7 +651,7 @@ test('real click preference saves preserve unrelated data; failures and stale sa
 test('tracking and upcoming route all three click choices with their owner anchor and hold the action lock', async () => {
 	const f = statusDockDocument(), settings = { ...DEFAULT_SETTINGS }; const opened: unknown[] = [];
 	let release!: () => void, gate = Promise.resolve();
-	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
+	const dock = new OperonStatusDock({ workspace: { containerEl: f.doc.body } } as unknown as App, { flowTimeControls, toggleTaskTimer: async () => true,
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => snapshot().active, getTransitionState: () => null } as never,
 		breakController: { getSnapshot: () => snapshot().breakSnapshot, getElapsedSeconds: () => 0 } as never,
@@ -549,8 +679,8 @@ test('drag grip has an accessible name with no hover tooltip bindings', () => {
 });
 
 
-function feedbackHarness() {
-	const document = statusDockDocument(), settings = { ...DEFAULT_SETTINGS };
+function feedbackHarness(statusDockVisible?: boolean) {
+	const document = statusDockDocument(), settings = { ...DEFAULT_SETTINGS, statusDockVisible };
 	const tasks = new Map([['active', snapshot().active!.task!]]);
 	const state = { active: snapshot().active, transition: null as any, stopCalls: 0, startCalls: 0, saved: 0, opened: 0, failWithError: false };
 	const listeners = new Set<(event: any) => void>();
@@ -581,7 +711,11 @@ function feedbackHarness() {
 			state.transition = null; emit(); return true;
 		}, playReminderSound: async () => {}, scheduleTick: () => () => {},
 	});
-	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, { toggleTaskTimer: async () => true,
+	const timerControls = new FlowTimeControls({
+		getSettings: () => settings, timeTracker: tracker as never, breakController: controller,
+		saveSettings: async (_expected, values) => { Object.assign(settings, values); },
+	});
+	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, { flowTimeControls: timerControls, toggleTaskTimer: async () => true,
 		indexer: { getTask: id => tasks.get(id), getAllTasks: () => [], getGeneration: () => 1 }, timeTracker: tracker as never,
 		breakController: controller, getSettings: () => settings,
 		startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {},
@@ -589,25 +723,254 @@ function feedbackHarness() {
 	// Trap any accidental legacy panel-opening call while exercising real timer actions.
 	(dock as any).dependencies.openFlowTime = async () => { state.opened++; };
 	const views: any[] = [], updates: StatusDockSnapshot[] = [];
-	for (const owner of [document, statusDockDocument()]) {
+	const owners = [document, statusDockDocument()];
+	for (const owner of owners) {
 		const container = { doc: owner.doc, win: owner.doc.defaultView };
 		const context = (dock as any).createWindow(container); owner.doc.body.appendChild(context.widget.slot);
 		const update = context.widget.update.bind(context.widget); context.widget.update = (value: StatusDockSnapshot) => { updates.push(value); update(value); };
 		(dock as any).windows.set(container, context); views.push(context.widget);
 	}
 	const refresh = () => (dock as any).renderWidgets();
-	const unsubscribeTracker = tracker.subscribe(refresh), unsubscribeBreak = controller.subscribe(refresh); refresh();
+	const unsubscribeTracker = tracker.subscribe(refresh), unsubscribeBreak = controller.subscribe(refresh);
+	const unsubscribeControls = timerControls.subscribe(refresh); refresh();
 	const read = () => views.map(widget => { const action = widget.root.querySelector('.operon-status-dock-timer-action'), coffee = widget.root.querySelector('.operon-status-dock-timer-controls').children[0];
-		return { glyph: widget.icons.get(action), time: widget.root.querySelector('.operon-status-dock-time').textContent, coffee: coffee.getAttribute('aria-pressed'), disabled: action.disabled }; });
-	return { dock, controller, tracker, state, settings, tasks, updates, views, read, reset, resolve: (success: boolean) => finish(success), emit,
+		return { glyph: widget.icons.get(action), time: timeText(widget.root.querySelector('.operon-status-dock-time')), coffee: coffee.getAttribute('aria-pressed'), disabled: action.disabled }; });
+	return { dock, controller, tracker, timerControls, state, settings, tasks, updates, views, owners, read, reset, resolve: (success: boolean) => finish(success), emit,
 		clickCoffee: () => { views[0].root.querySelector('.operon-status-dock-timer-controls').children[0].click(); return (dock as any).action as Promise<void>; },
-		close: () => { dock.onunload(); controller.destroy(); unsubscribeTracker(); unsubscribeBreak(); } };
+		close: () => { dock.onunload(); unsubscribeControls(); timerControls.destroy(); controller.destroy(); unsubscribeTracker(); unsubscribeBreak(); } };
 }
+
+test('dial uses the tracker center, keeps the dock top clear, and fits each viewport', () => {
+	const f = widget();
+	try {
+		f.state.active = null;
+		const tracker = f.find('operon-status-dock-tracker');
+		f.dock.root.getBoundingClientRect = () => ({ left: 100, top: 500, width: 400, height: 95 } as DOMRect);
+		tracker.getBoundingClientRect = () => ({ left: 230, top: 550, width: 200, height: 28 } as DOMRect);
+		f.dock.setViewport(900, 700, 0, 0);
+		assert.equal(f.dock.slot.querySelector('.operon-status-dock-dial'), null);
+		f.state.settings.statusDockShowTimerDial = true;
+		f.dock.update(f.state); f.flush();
+		const host = f.dock.slot.querySelector<HTMLElement>('.operon-status-dock-dial')!;
+		const bounds = () => ['left', 'top', 'width'].map(key => host.style.getPropertyValue(key));
+		assert.deepEqual(bounds(), ['258px', '348px', '144px']);
+		for (const [scale, size] of [[0.5, 72], [0.6, 86], [0.7, 100], [0.8, 115], [0.9, 129], [1.1, 158], [1.2, 172], [1.3, 187], [1.4, 201], [1.5, 216]] as const) {
+			f.state.settings.statusDockTimerDialSize = scale;
+			f.dock.update(f.state); f.flush();
+			assert.deepEqual(bounds(), [`${330 - size / 2}px`, `${492 - size}px`, `${size}px`]);
+		}
+		// Simulate the dock having moved and wrapped in a narrow pop-out viewport.
+		f.dock.root.getBoundingClientRect = () => ({ left: 30, top: 125, width: 140, height: 110 } as DOMRect);
+		tracker.getBoundingClientRect = () => ({ left: 30, top: 190, width: 30, height: 28 } as DOMRect);
+		f.dock.setViewport(160, 240, 20, 30); f.flush();
+		assert.deepEqual(bounds(), ['28px', '30px', '87px']);
+		f.state.settings.statusDockSections = normalizeStatusDockSections(undefined).map(section =>
+			section.id === 'tracker' ? { ...section, enabled: false } : section);
+		f.dock.update(f.state); f.flush(); assert.equal(host.hidden, true);
+		f.state.settings.statusDockSections = undefined;
+		f.dock.update(f.state); f.flush(); assert.equal(host.hidden, false);
+		f.dock.setVisible(false); assert.equal(host.hidden, true);
+		f.dock.setVisible(true); f.flush(); assert.equal(host.hidden, false);
+		f.state.settings.statusDockShowTimerDial = false;
+		f.dock.update(f.state); f.flush(); assert.equal(host.hidden, true);
+	} finally { f.dock.destroy(); }
+});
+
+test('dial centers on the timer button border during work and breaks, and on the tracker when idle', () => {
+	const f = widget();
+	try {
+		f.dock.root.getBoundingClientRect = () => ({ top: 500 } as DOMRect);
+		f.find('operon-status-dock-tracker').getBoundingClientRect = () => ({ left: 230, width: 200 } as DOMRect);
+		f.find('operon-status-dock-mode').getBoundingClientRect = () => ({ left: 245, width: 64 } as DOMRect);
+		f.dock.setViewport(900, 700, 0, 0);
+		f.state.settings.statusDockShowTimerDial = true;
+		f.state.settings.statusDockShowSeconds = true;
+		f.state.active!.elapsedSeconds = 599;
+		f.dock.update(f.state); f.flush();
+		const dial = f.dock.slot.querySelector<HTMLElement>('.operon-status-dock-dial')!;
+		const left = () => dial.style.getPropertyValue('left');
+		assert.equal(left(), '205px');
+		f.state.active!.elapsedSeconds = 600;
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '205px');
+		f.state.active = null;
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { taskId: 'active', startMs: 0, targetSeconds: 60 } };
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '205px');
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: null };
+		f.dock.update(f.state); f.flush();
+		assert.equal(left(), '258px');
+	} finally { f.dock.destroy(); }
+});
+
+function sendDialPointer(surface: ReturnType<typeof statusDockDocument>, dial: any, type: string, degrees: number): void {
+	const angle = (degrees - 90) * Math.PI / 180;
+	const event = {
+		pointerId: 1, pointerType: 'mouse', button: 0,
+		clientX: 100 + 80 * Math.cos(angle), clientY: 100 + 80 * Math.sin(angle),
+		preventDefault() {},
+	};
+	if (type === 'pointerdown') for (const callback of dial.handlers.get(type)) callback(event);
+	else surface.emitWindow(type, event);
+}
+
+test('actual sidebar and two dock dials preview and commit 30 to 45 minutes from either surface', async () => {
+	const h = feedbackHarness();
+	const panel = statusDockDocument();
+	const sidebar = new FlowTimeView(new WorkspaceLeaf(), { getGeneration: () => 1, getTask: (id: string) => h.tasks.get(id) } as never,
+		h.tracker as never, { getSettings: () => h.settings } as never, h.controller, h.timerControls);
+	sidebar.contentEl = panel.doc.body;
+	(sidebar as any).renderTaskBox = () => {};
+	const rect = { left: 0, top: 0, width: 200, height: 200 };
+	try {
+		h.state.active!.elapsedSeconds = 0;
+		h.settings.flowTimeMode = 'flowtime';
+		h.settings.flowTimeSessionMinutes = 30;
+		h.settings.statusDockShowTimerDial = true;
+		const firstTimer = h.views[0].root.querySelector('.operon-status-dock-mode');
+		for (const view of h.views) {
+			view.root.getBoundingClientRect = () => ({ left: 50, top: 500, width: 500, height: 40 });
+			view.root.querySelector('.operon-status-dock-mode').getBoundingClientRect = () => ({ left: 150, width: 64 });
+			view.setViewport(900, 700, 0, 0);
+		}
+		h.emit();
+		h.owners.forEach(owner => owner.flush());
+		await sidebar.onOpen();
+		const dockDials = h.views.map(view => view.slot.querySelector('.operon-flow-time-dial'));
+		const panelDial = panel.doc.body.querySelector('.operon-flow-time-dial');
+		const dials = [panelDial, ...dockDials];
+		for (const dial of dials) dial.getBoundingClientRect = () => rect;
+		assert.ok(dials.every(dial => dial.classList.contains('is-editable')));
+		const readPanel = () => panel.doc.body.querySelector('[data-role="time-text"]').textContent;
+		const check = (minutes: number) => {
+			assert.equal(readPanel(), `${minutes}:00`);
+			assert.deepEqual(h.read().map(view => view.time), [`${minutes}m`, `${minutes}m`]);
+			const hands = dials.map(dial => dial.querySelector('.operon-flow-time-hand'));
+			const coordinates = hands.map(hand => [hand.getAttribute('x2'), hand.getAttribute('y2')]);
+			assert.deepEqual(coordinates[0], coordinates[1]); assert.deepEqual(coordinates[1], coordinates[2]);
+		};
+		for (const [surface, dial] of [[h.owners[0], dockDials[0]], [panel, panelDial]] as const) {
+			h.settings.flowTimeSessionMinutes = 30; h.emit(); check(30);
+			sendDialPointer(surface, dial, 'pointerdown', 180);
+			sendDialPointer(surface, dial, 'pointermove', 270);
+			check(45); assert.equal(h.settings.flowTimeSessionMinutes, 30);
+			sendDialPointer(surface, dial, 'pointerup', 270);
+			await new Promise(resolve => setImmediate(resolve));
+			check(45); assert.equal(h.settings.flowTimeSessionMinutes, 45);
+		}
+		const host = h.views[0].slot.querySelector('.operon-status-dock-dial');
+		h.owners[0].flush();
+		const left = host.style.getPropertyValue('left');
+		sendDialPointer(h.owners[0], dockDials[0], 'pointerdown', 270);
+		sendDialPointer(h.owners[0], dockDials[0], 'pointermove', 180);
+		check(30);
+		firstTimer.getBoundingClientRect = () => ({ left: 250, width: 64 });
+		h.emit(); h.owners[0].flush();
+		assert.equal(host.style.getPropertyValue('left'), left);
+		h.views[0].setViewport(850, 700, 0, 0); h.owners[0].flush();
+		check(45);
+		assert.notEqual(host.style.getPropertyValue('left'), left);
+		sendDialPointer(h.owners[0], dockDials[0], 'pointerup', 180);
+		assert.equal(h.settings.flowTimeSessionMinutes, 45);
+		h.resolve(true);
+		assert.equal(await h.controller.startBreak(), true);
+		assert.ok(dials.every(dial => !dial.classList.contains('is-editable')));
+	} finally { await sidebar.onClose(); h.close(); }
+});
+
+test('actual dock and sidebar mode controls update all surfaces in both directions', async () => {
+	const h = feedbackHarness();
+	const sidebar = new FlowTimeView(new WorkspaceLeaf(), {} as never, h.tracker as never, {} as never, h.controller, h.timerControls);
+	const panel = statusDockDocument();
+	sidebar.contentEl = panel.doc.body;
+	const modes: string[] = [];
+	sidebar.render = () => { modes.push(h.timerControls.mode); };
+	try {
+		await sidebar.onOpen();
+		const tracker = h.state.active;
+		const dockButton = h.views[0].root.querySelector('.operon-status-dock-mode');
+		dockButton.click();
+		assert.equal(modes.at(-1), 'flowtime');
+		assert.deepEqual(h.read().map(view => view.time), ['+16m', '+16m']);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(h.settings.flowTimeMode, 'flowtime');
+		(sidebar as any).createModeButton(panel.doc.body, 'tracktime', false);
+		panel.doc.body.querySelector('.operon-flow-time-mode-button').click();
+		assert.equal(modes.at(-1), 'tracktime');
+		assert.deepEqual(h.read().map(view => view.time), ['41m', '41m']);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(h.settings.flowTimeMode, 'tracktime');
+		assert.equal(h.state.active, tracker);
+	} finally { await sidebar.onClose(); h.close(); }
+});
+
+test('dock uses elapsed, countdown and overtime with optional seconds only on the tracker', () => {
+	const f = widget();
+	const clock = f.find('operon-status-dock-mode');
+	const upcoming = f.find('operon-status-dock-next').querySelector('.operon-status-dock-time');
+	try {
+		const upcomingDuration = upcoming.textContent;
+		const active = f.state.active!;
+		active.elapsedSeconds = 203;
+		f.dock.update(f.state); assert.equal(timeText(clock), '3m');
+		assert.ok(clock.dataset.durationWidth);
+		f.state.settings.statusDockShowSeconds = true;
+		f.dock.update(f.state); assert.equal(timeText(clock), '3m 23s');
+		active.elapsedSeconds = 185;
+		f.dock.update(f.state); assert.equal(timeText(clock), '3m 05s');
+		active.elapsedSeconds = 203;
+		f.state.timerSettings = { flowTimeMode: 'flowtime', flowTimeSessionMinutes: 7 };
+		f.dock.update(f.state); assert.equal(timeText(clock), '3m 37s');
+		active.elapsedSeconds = 623;
+		f.dock.update(f.state); assert.equal(timeText(clock), '+3m 23s');
+		f.state.settings.statusDockShowSeconds = false;
+		f.dock.update(f.state); assert.equal(timeText(clock), '+3m');
+		f.state.active = null;
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { taskId: 'waiting', startMs: 0, targetSeconds: 60 } };
+		f.state.breakSeconds = 42;
+		f.dock.update(f.state); assert.equal(timeText(clock), '18s');
+		f.state.breakSeconds = 60;
+		f.dock.update(f.state); assert.equal(timeText(clock), '00s');
+		f.state.breakSeconds = 83;
+		f.dock.update(f.state); assert.equal(timeText(clock), '+23s');
+		assert.ok(clock.dataset.durationWidth);
+		f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: null };
+		f.dock.update(f.state);
+		assert.equal(clock.dataset.durationWidth, undefined);
+		assert.equal(upcoming.textContent, upcomingDuration);
+	} finally { f.dock.destroy(); }
+});
+
+test('tracker reserves space for the displayed duration units and keeps the same digit slots across ticks', () => {
+	const f = widget();
+	try {
+		const clock = f.find('operon-status-dock-mode');
+		const active = f.state.active!;
+		for (const [seconds, showSeconds, label] of [
+			[9, true, '00s'], [10, true, '00s'], [59, false, '00s'],
+			[599, true, '00m 00s'], [600, true, '00m 00s'],
+			[599, false, '00m'], [600, false, '00m'],
+			[3600, false, '00h 00m'], [3600, true, '00h 00m 00s'],
+			[360000, true, '000h 00m 00s'],
+		] as const) {
+			active.elapsedSeconds = seconds;
+			f.state.settings.statusDockShowSeconds = showSeconds;
+			f.dock.update(f.state);
+			assert.equal(clock.dataset.durationWidth, label);
+		}
+		f.state.timerSettings = { flowTimeMode: 'flowtime', flowTimeSessionMinutes: 30 };
+		for (const elapsed of [1799, 1800, 1801]) {
+			active.elapsedSeconds = elapsed;
+			f.dock.update(f.state);
+			assert.equal(clock.dataset.durationWidth, '+00s');
+		}
+	} finally { f.dock.destroy(); }
+});
 
 test('Stop updates every dock before saving and commits without opening FlowTime', async () => {
 	const h = feedbackHarness(); try {
 		const active = h.state.active; const opening = (h.dock as any).toggleTimer();
-		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.disabled]), [['play', '0s', true], ['play', '0s', true]]);
+		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.disabled]), [['play', 'TrackTime', true], ['play', 'TrackTime', true]]);
 		assert.equal(h.state.active, active); assert.equal(h.state.saved, 0); assert.equal(h.state.opened, 0);
 		await Promise.resolve(); await (h.dock as any).toggleTimer(); assert.equal(h.state.stopCalls, 1);
 		h.resolve(true); await opening; assert.equal(h.state.saved, 1); assert.equal(h.state.opened, 0);
@@ -628,7 +991,7 @@ for (const rejection of [false, true]) test(`Stop restores the authoritative run
 test('Coffee previews a break immediately without mutating it and never flashes idle during the saved stop', async () => {
 	const h = feedbackHarness(); try {
 		h.updates.length = 0; const opening = h.clickCoffee();
-		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.coffee]), [['play', '0s', 'true'], ['play', '0s', 'true']]);
+		assert.deepEqual(h.read().map(v => [v.glyph, v.time, v.coffee]), [['play', '00s', 'true'], ['play', '00s', 'true']]);
 		assert.equal(h.controller.getSnapshot().breakState, null); assert.ok(h.state.active);
 		await Promise.resolve(); h.views[1].root.querySelector('.operon-status-dock-timer-controls').children[0].click();
 		h.resolve(true); await opening; assert.equal(h.state.stopCalls, 1); assert.ok(h.controller.getSnapshot().breakState);
@@ -722,16 +1085,20 @@ test('a failed Finder start restores the old waiting task and Finder control', a
 });
 
 
-test('stopped dock hides elapsed time and idle Finder uses the same description as the idle reading', () => {
+test('idle and waiting dock use the mode label in place of the running number', () => {
 	const f = widget(); f.state.active = null; f.dock.update(f.state);
 	const clock = f.find('operon-status-dock-time'), secondary = f.find('operon-status-dock-timer-controls').children[0];
-	assert.equal(clock.hidden, true); assert.equal((f.dock as any).icons.get(secondary), 'scan-search'); assert.equal(secondary.disabled, false);
+	assert.equal(timeText(clock), 'TrackTime'); assert.equal((f.dock as any).icons.get(secondary), 'scan-search'); assert.equal(secondary.disabled, false);
 	const hint = JSON.stringify(['Task Finder', 'Track a different task']);
 	assert.equal((f.dock as any).tooltipKeys.get(secondary), hint); assert.equal((f.dock as any).tooltipKeys.has(f.find('operon-status-dock-tracker-reading')), false);
-	f.state.breakSnapshot = { ...f.state.breakSnapshot, pendingTaskId: 'waiting' }; f.dock.update(f.state); assert.equal(clock.hidden, true);
-	f.state.active = snapshot().active; f.dock.update(f.state); assert.equal(clock.hidden, false); assert.equal((f.dock as any).icons.get(secondary), 'coffee');
+	f.state.breakSnapshot = { ...f.state.breakSnapshot, pendingTaskId: 'waiting' }; f.state.pendingDescription = 'Waiting task'; f.dock.update(f.state);
+	assert.equal(timeText(clock), 'TrackTime');
+	const waiting = f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-name');
+	assert.equal(waiting.textContent, 'Waiting task');
+	waiting.click(); clock.click(); assert.deepEqual(f.calls, ['source-or-finder', 'mode']);
+	f.state.active = snapshot().active; f.dock.update(f.state); assert.equal(timeText(clock), '41m'); assert.equal((f.dock as any).icons.get(secondary), 'coffee');
 	f.state.active = null; f.state.breakSnapshot = { ...f.state.breakSnapshot, breakState: { taskId: 'waiting', startMs: Date.now(), targetSeconds: 60 } }; f.dock.update(f.state);
-	assert.equal(clock.hidden, false); f.dock.destroy();
+	assert.equal(timeText(clock), '00s'); f.dock.destroy();
 });
 
 for (const control of ['icon']) test(`idle Finder ${control} uses the common guarded selection and Cancel preserves idle`, async () => {
@@ -757,6 +1124,82 @@ for (const initial of ['idle', 'waiting', 'unassigned'] as const) test(`Creator 
   assert.equal(creates, 1); assert.equal(h.state.active?.operonId, 'created'); assert.equal(h.state.opened, 0);
  } finally { h.close(); }
 });
+for (const outcome of ['switch', 'cancel', 'newer-session'] as const) test(`Creator stays available with a running task timer: ${outcome}`, async () => {
+ const h = feedbackHarness();
+ try {
+  const original = h.state.active;
+  const newer = { ...snapshot().active!, start: 'newer' };
+  const createdTask = task('created', '2026-10-24');
+  const buttons = h.views.map(view => view.root.querySelector('.operon-status-dock-creator'));
+  assert.ok(buttons.every(button => !button.hidden && !button.disabled));
+
+  const deps = (h.dock as any).dependencies;
+  let switches = 0;
+  deps.createTrackerTask = async () => {
+   assert.equal(h.state.active, original, 'the timer keeps running while Creator is open');
+   if (outcome === 'cancel') return null;
+   h.tasks.set('created', createdTask);
+   if (outcome === 'newer-session') { h.state.active = newer; h.emit(); }
+   return 'created';
+  };
+  deps.startTimerForTask = async (id: string, canCommit: () => boolean) => {
+   assert.equal(id, 'created');
+   assert.equal(canCommit(), true);
+   h.state.active = newer;
+   assert.equal(canCommit(), false, 'a newer session must not be replaced');
+   h.state.active = null;
+   assert.equal(canCommit(), true, 'switching clears the old session before starting the new one');
+   h.state.active = { operonId: id, task: createdTask, start: 'new', elapsedSeconds: 0, isUnassigned: false };
+   assert.equal(canCommit(), true);
+   h.emit(); switches++;
+   return true;
+  };
+  buttons[0].click();
+  await (h.dock as any).action;
+  assert.equal(switches, outcome === 'switch' ? 1 : 0);
+  if (outcome === 'switch') assert.equal(h.state.active?.operonId, 'created');
+  else assert.equal(h.state.active, outcome === 'cancel' ? original : newer);
+  assert.equal(h.tasks.has('created'), outcome !== 'cancel');
+  h.views.forEach((view, index) => {
+   assert.equal(view.root.querySelector('.operon-status-dock-creator'), buttons[index]);
+   assert.equal(buttons[index].hidden, false);
+   assert.equal(buttons[index].disabled, false);
+  });
+ } finally { h.close(); }
+});
+
+for (const initial of ['idle', 'assigned', 'unassigned', 'break'] as const) test(`Creator with automatic tracking off leaves ${initial} unchanged`, async () => {
+ const h = feedbackHarness();
+ try {
+  if (initial === 'break') { h.resolve(true); await h.controller.startBreak(); }
+  else if (initial === 'idle') h.state.active = null;
+  else if (initial === 'unassigned') h.state.active = { operonId: null, task: null, start: 'unassigned', elapsedSeconds: 40, isUnassigned: true };
+  h.settings.statusDockCreatorStartsTimer = false;
+  h.settings.statusDockSections = normalizeStatusDockSections([{ id: 'tracker', enabled: false }]);
+  h.emit();
+  const active = h.state.active;
+  const breakState = h.controller.getSnapshot();
+  const stopCalls = h.state.stopCalls;
+  let created = 0;
+  (h.dock as any).dependencies.createTrackerTask = async (canUse: () => boolean) => {
+   assert.equal(canUse(), true);
+   created++;
+   return 'created';
+  };
+  const widget = h.views[0];
+  const button = widget.root.querySelector('.operon-status-dock-creator');
+  assert.equal(button.parentElement, widget.root);
+  assert.equal(button.hidden, false);
+  assert.equal(widget.tooltipKeys.get(button), JSON.stringify(['Task Creator', 'Create a new task']));
+  button.click(); await (h.dock as any).action;
+  assert.equal(created, 1);
+  assert.equal(h.state.active, active);
+  assert.deepEqual(h.controller.getSnapshot(), breakState);
+  assert.equal(h.state.startCalls, 0);
+  assert.equal(h.state.stopCalls, stopCalls);
+ } finally { h.close(); }
+});
+
 test('running unassigned timer offers Finder and Creator; Cancel retains its elapsed work', async () => {
  const h = feedbackHarness(); try {
   const original = { operonId: null, task: null, start: 'original', elapsedSeconds: 2460, isUnassigned: true };
@@ -776,7 +1219,7 @@ for (const outcome of ['cancel', 'failed-start', 'superseded'] as const) test(`C
    if (outcome === 'superseded') { h.state.active = snapshot().active; h.emit(); }
    return 'created';
   };
-  const opening = (h.dock as any).createTaskForTimer(h.views[0].root);
+  const opening = (h.dock as any).createDockTask(h.views[0].root);
   await new Promise(resolve => setImmediate(resolve)); h.resolve(false); await opening;
   if (outcome !== 'superseded') assert.equal(h.state.active, original); else assert.equal(h.state.active?.operonId, 'active');
   assert.equal(h.tasks.has('created'), outcome !== 'cancel'); assert.equal(h.state.saved, 0); assert.equal(h.state.stopCalls, 0);
@@ -798,9 +1241,10 @@ for (const action of ['finder', 'creator'] as const) for (const outcome of ['suc
   assert.equal(h.state.saved, 1); assert.equal(h.state.opened, 0);
  } finally { h.close(); }
 });
-test('selection divider is visible only with Finder/Creator and coffee keeps its break action', async () => {
- const f = widget(); const divider = f.find('operon-status-dock-selection-divider');
- assert.equal(divider.hidden, true); f.state.active = null; f.dock.update(f.state); assert.equal(divider.hidden, false);
+test('Finder and coffee share one tracker group without a divider and keep their own actions', () => {
+ const f = widget(); const controls = f.find('operon-status-dock-timer-controls');
+ assert.deepEqual(controls.children.map((child: HTMLElement) => child.tagName), ['BUTTON', 'BUTTON']);
+ f.state.active = null; f.dock.update(f.state); assert.equal(controls.children[1].hidden, true);
  f.state.breakSnapshot = { pendingTaskId: 'active', actionPending: false, breakState: { taskId: 'active', startMs: 1, targetSeconds: 60 } }; f.dock.update(f.state);
  const finder = f.find('operon-status-dock-break-finder'); assert.equal(finder.hidden, false); finder.click(); f.find('operon-status-dock-timer-controls').children[0].click();
  assert.deepEqual(f.calls, ['finder', 'coffee']); f.dock.destroy();
@@ -811,7 +1255,8 @@ test('hiding break Finder and Creator closes their bound hover panels', () => {
  const finder = f.find('operon-status-dock-break-finder'), creator = f.find('operon-status-dock-creator'); let finderCloses = 0, creatorCloses = 0;
  finder._operonHoverClose = () => { finderCloses++; }; creator._operonHoverClose = () => { creatorCloses++; };
  f.state.breakSnapshot = { pendingTaskId: 'active', actionPending: false, breakState: null }; f.dock.update(f.state); assert.equal(finderCloses, 1);
- f.state.active = snapshot().active; f.dock.update(f.state); assert.equal(creatorCloses, 1); f.dock.destroy();
+ f.state.settings.statusDockSections = normalizeStatusDockSections(undefined).map(section => section.id === 'creator' ? { ...section, enabled: false } : section);
+ f.dock.update(f.state); assert.equal(creator.hidden, true); assert.equal(creatorCloses, 1); f.dock.destroy();
 });
 
 for (const expiry of ['keep', 'next'] as const) test(`desktop keeps expired current and advances next regardless of legacy expiry=${expiry}`, () => {
@@ -842,6 +1287,10 @@ test('taskless reading is plain, while assigned tasks retain keyboard and source
   reading.click(); assert.equal(f.calls.length,0);
  }
  assert.equal(f.find('operon-status-dock-name').textContent,'Select or create a new task');
+ f.state.settings.statusDockCreatorStartsTimer = false; f.dock.update(f.state);
+ assert.equal(reading.textContent, 'Select a new task');
+ f.state.settings.statusDockCreatorStartsTimer = true; f.dock.update(f.state);
+ assert.equal(reading.textContent, 'Select or create a new task');
  f.state.active=snapshot().active; f.dock.update(f.state); assert.equal(reading.getAttribute('role'),'button'); reading.click(); assert.deepEqual(f.calls,['source-or-finder']);
  for(const key of ['Enter',' ']) reading.handlers.get('keydown').forEach((handler:any)=>handler({key,preventDefault(){},stopPropagation(){}}));
  assert.equal(f.calls.length,3); f.dock.destroy();
@@ -945,14 +1394,22 @@ for(const behavior of ['source','editor','source-and-editor']as const)test(`each
  assert.deepEqual(opened,[`a:${behavior}`,`b:${behavior}`]);}finally{h.close();}
 });
 
-test('dock toggle affects every window and new windows without touching timer, settings or task data',()=>{
- const h=feedbackHarness();try{
- const settings=JSON.stringify(h.settings),active=h.state.active,roots=h.views.map(w=>w.root);assert.ok(h.views.every(w=>!w.slot.hidden));
- h.dock.toggleVisibility();assert.ok(h.views.every(w=>w.slot.hidden));h.state.active!.elapsedSeconds++;h.emit();assert.ok(h.views.every(w=>w.slot.hidden));
- const f=statusDockDocument(),context=(h.dock as any).createWindow({doc:f.doc,win:f.doc.defaultView});f.doc.body.appendChild(context.widget.slot);context.widget.update(snapshot());assert.equal(context.widget.slot.hidden,true);context.dispose();
- h.dock.toggleVisibility();assert.ok(h.views.every(w=>!w.slot.hidden));assert.deepEqual(h.views.map(w=>w.root),roots);assert.equal(h.state.active,active);assert.equal(h.state.stopCalls,0);assert.equal(h.state.startCalls,0);assert.equal(h.state.saved,0);assert.equal(h.state.opened,0);assert.equal(JSON.stringify(h.settings),settings);
- const fresh=feedbackHarness();try{assert.ok(fresh.views.every(w=>!w.slot.hidden));}finally{fresh.close();}
- }finally{h.close();}
+test('stored visibility affects every dock window, including windows opened later', () => {
+	const h = feedbackHarness(false);
+	try {
+		const active = h.state.active, roots = h.views.map(w => w.root);
+		assert.ok(h.views.every(w => w.slot.hidden));
+		h.state.active!.elapsedSeconds++; h.emit();
+		assert.ok(h.views.every(w => w.slot.hidden));
+		const f = statusDockDocument(), context = (h.dock as any).createWindow({ doc: f.doc, win: f.doc.defaultView });
+		f.doc.body.appendChild(context.widget.slot); context.widget.update(snapshot());
+		assert.equal(context.widget.slot.hidden, true); context.dispose();
+		h.settings.statusDockVisible = true; (h.dock as any).applyVisibility();
+		assert.ok(h.views.every(w => !w.slot.hidden));
+		assert.deepEqual(h.views.map(w => w.root), roots);
+		assert.equal(h.state.active, active);
+		assert.equal(h.state.stopCalls + h.state.startCalls + h.state.saved + h.state.opened, 0);
+	} finally { h.close(); }
 });
 test('hiding a widget closes dock tooltips and cancels dragging while keeping its DOM',()=>{
  const f=widget(),root=f.dock.root;let closed=0,dragStopped=0;f.find('operon-status-dock-tracker-reading').querySelector('.operon-status-dock-name')._operonHoverClose=()=>{closed++;};(f.dock as any).stopDrag=()=>{dragStopped++;(f.dock as any).stopDrag=null;};
@@ -1065,12 +1522,15 @@ test('dock Task Creator tooltip explains creation plus tracking without changing
 });
 
 
-test('durations and reading wrappers are passive; names open tasks without hover tooltips', () => {
+test('only the tracker duration switches mode and task names remain separate actions', () => {
 	const f = widget();
 	for (const cls of ['operon-status-dock-tracker-reading', 'operon-status-dock-upcoming']) {
 		const reading = f.find(cls), time = reading.querySelector('.operon-status-dock-time'), name = reading.querySelector('.operon-status-dock-name');
-		reading.click(); time.click(); assert.equal(f.calls.length, 0);
-		for (const plain of [reading, time]) {
+		const tracker = cls === 'operon-status-dock-tracker-reading';
+		reading.click(); assert.deepEqual(f.calls, []);
+		time.click(); assert.deepEqual(f.calls, tracker ? ['mode'] : []); f.calls.length = 0;
+		if (tracker) assert.match(f.doc.getElementById(time.getAttribute('aria-labelledby')).textContent, /Switch to FlowTime/u);
+		for (const plain of tracker ? [reading] : [reading, time]) {
 			assert.equal(plain.getAttribute('role'), null); assert.equal(plain.getAttribute('aria-labelledby'), null);
 			assert.equal((f.dock as any).tooltipKeys.has(plain), false);
 			assert.equal(plain.handlers?.get('keydown')?.size ?? 0, 0);
@@ -1303,6 +1763,44 @@ function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Pr
  return { ...f, host, list, panel, controls, tasks, calls, settings, tracking, hold: (session: TrackerSession) => { held = session; } };
 }
 
+test('dock dial stays hidden during task lists and queued session cards, then returns in place', () => {
+ const f = widget();
+ const task = scopedTask('card', {});
+ const session = historySessions(task)[0];
+ const actions = { openTask: async () => {}, openSession: async () => {}, clickIcon: async () => {},
+  contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false };
+ let now = 0;
+ f.doc.defaultView.performance = { now: () => now };
+ f.doc.defaultView.queueMicrotask = queueMicrotask;
+ f.dock.root.getBoundingClientRect = () => ({ left: 100, top: 500, right: 600, bottom: 544, width: 500, height: 44 } as DOMRect);
+ f.find('operon-status-dock-tracker').getBoundingClientRect = () => ({ left: 180, width: 180 });
+ const card = new StatusDockSessionCard(f.dock.root, {
+  getSettings: () => f.state.settings, getTask: () => task, getSessions: () => [session], isTracking: () => false,
+  actions, onVisibilityChange: visible => f.dock.setDialObscured('session-card', visible),
+ });
+ const list = new StatusDockTaskList(f.dock.root, {
+  getSettings: () => f.state.settings, getTask: () => task, isTracking: () => false, toggleTimer: async () => {},
+  sessionCard: card, actions, onVisibilityChange: visible => f.dock.setDialObscured('task-list', visible),
+ });
+ try {
+  f.state.settings.statusDockShowTimerDial = true;
+  f.dock.setViewport(900, 700, 0, 0); f.dock.update(f.state); f.flush();
+  const dial = f.dock.slot.querySelector<HTMLElement>('.operon-status-dock-dial')!;
+  const position = dial.style.getPropertyValue('left');
+  assert.equal(dial.hidden, false);
+  list.update({ overdue: [], today: [], pinned: [task] }, [session]);
+  list.toggle('pinned'); assert.equal(dial.hidden, true);
+  list.toggle('history'); f.flush(); assert.equal(dial.hidden, true);
+  list.showSession(session); list.close(); f.flush(); assert.equal(dial.hidden, true);
+  now = 10_000; f.flush(); f.flush();
+  assert.equal(dial.hidden, false);
+  assert.equal(dial.style.getPropertyValue('left'), position);
+  list.showSession(session); assert.equal(dial.hidden, true);
+  f.state.settings.statusDockShowTimerDial = false; f.dock.update(f.state);
+  card.clear(); f.flush(); assert.equal(dial.hidden, true);
+ } finally { list.destroy(); card.destroy(); f.dock.destroy(); }
+});
+
 test('dock scopes reuse Finder dates, exclude terminal tasks, deduplicate and sort closest first', () => {
  const today = localToday(); const now = new Date(`${today}T12:00:00`);
  const tasks = [scopedTask('far', {dateDue: '2000-01-01'}), scopedTask('near', {dateScheduled: '2020-01-01'}),
@@ -1519,7 +2017,7 @@ test('sections follow physical DOM order without rebuilding on ticks, and all-di
  f.state.settings.statusDockSections=normalizeStatusDockSections([{id:'upcoming',enabled:true},{id:'tracker',enabled:false}]);
  const before=JSON.stringify(f.state.active);f.dock.update(f.state);
  const roots=()=>Array.from(f.dock.root.children).filter((e:any)=>e.dataset.statusDockSection);
- assert.deepEqual(roots().map((e:any)=>e.dataset.statusDockSection),['upcoming','tracker','ongoing']);
+ assert.deepEqual(roots().map((e:any)=>e.dataset.statusDockSection),['upcoming','tracker','creator','ongoing']);
  const elements=roots();f.dock.update(f.state);assert.deepEqual(roots(),elements);
  assert.equal((f.dock as any).tracker.hidden,true);
  assert.equal(JSON.stringify(f.state.active),before);
@@ -1613,7 +2111,7 @@ test('Dock uses the real pinned query and invalidates only on relevant source ch
  const indexer={getAllTasks:()=>{reads++;return tasks;},getTask:(id:string)=>tasks.find(t=>t.operonId===id),getGeneration:()=>generation};
  const settings=storage.getSettings();
  const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
- indexer,getSettings:()=>settings,getPinnedTasks:()=>getPinnedTasksForDisplay(indexer as never,storage.pinned,settings.priorities,settings.pinnedTaskSortMode),getPinnedGeneration:()=>storage.pinned.getGeneration(),
+ flowTimeControls,indexer,getSettings:()=>settings,getPinnedTasks:()=>getPinnedTasksForDisplay(indexer as never,storage.pinned,settings.priorities,settings.pinnedTaskSortMode),getPinnedGeneration:()=>storage.pinned.getGeneration(),
  timeTracker:{} as never,breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
  const scopes=()=> (dock as any).getTaskScopes();
  try {
@@ -1638,7 +2136,7 @@ test('History keeps repeated and equal-time sessions distinct, routes exact edit
   f.tracking.add('first'); f.list.update({overdue:[],today:[]},sessions); f.list.toggle('history');
   assert.equal(f.panel.children.length,3);
   const rows=Array.from(f.panel.children) as any[];
-  assert.deepEqual(rows.map(row=>row.querySelector('.operon-status-dock-time').textContent),['1m 0s','1m 0s','1m 0s']);
+  assert.deepEqual(rows.map(row=>row.querySelector('.operon-status-dock-time').textContent),['1m 00s','1m 00s','1m 00s']);
   for(const row of rows){
    assert.ok(row.querySelector('.operon-status-dock-time').handlers.get('mouseenter')?.size);
    assert.equal(row.querySelector('.operon-status-dock-name').handlers.get('mouseenter')?.size ?? 0,0);
@@ -1705,7 +2203,7 @@ test('Dock History shares tracker order and caches across second ticks while inv
  const f=statusDockDocument(),settings=structuredClone(DEFAULT_SETTINGS);let generation=1,reads=0;
  const sessions=historySessions(scopedTask('same',{}));
  const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
- indexer:{getAllTasks:()=>[],getTask:()=>undefined,getGeneration:()=>generation},getSettings:()=>settings,
+ flowTimeControls,indexer:{getAllTasks:()=>[],getTask:()=>undefined,getGeneration:()=>generation},getSettings:()=>settings,
  timeTracker:{getHistory:()=>{reads++;return [{sessions:sessions.slice(0,2)},{sessions:sessions.slice(2)}];}} as never,
  breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
  try{

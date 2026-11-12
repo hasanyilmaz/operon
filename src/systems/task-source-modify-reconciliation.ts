@@ -26,6 +26,8 @@ interface PendingTaskSourceReconciliation<TTimer> {
 export class TaskSourceModifyReconciler<TTimer> {
 	private readonly suppressUntilByPath = new Map<string, number>();
 	private readonly pendingByPath = new Map<string, PendingTaskSourceReconciliation<TTimer>>();
+	private readonly runningByPath = new Map<string, number>();
+	private readonly waitersByPath = new Map<string, Set<() => void>>();
 	private destroyed = false;
 
 	constructor(private readonly options: TaskSourceModifyReconcilerOptions<TTimer>) {}
@@ -48,7 +50,7 @@ export class TaskSourceModifyReconciler<TTimer> {
 		}
 		this.suppressUntilByPath.delete(filePath);
 		this.cancelPending(filePath);
-		this.runReconciliation(filePath, 'immediate');
+		void this.runReconciliation(filePath, 'immediate');
 		return 'immediate';
 	}
 
@@ -64,12 +66,14 @@ export class TaskSourceModifyReconciler<TTimer> {
 			this.suppressUntilByPath.set(newPath, Math.max(oldSuppression, newSuppression));
 		}
 		if (hadPending) this.scheduleDeferred(newPath);
+		this.resolveWaitersIfIdle(oldPath);
 	}
 
 	handleDelete(filePath: string): void {
 		if (!filePath) return;
 		this.cancelPending(filePath);
 		this.suppressUntilByPath.delete(filePath);
+		this.resolveWaitersIfIdle(filePath);
 	}
 
 	destroy(): void {
@@ -80,6 +84,20 @@ export class TaskSourceModifyReconciler<TTimer> {
 		}
 		this.pendingByPath.clear();
 		this.suppressUntilByPath.clear();
+		this.runningByPath.clear();
+		for (const path of this.waitersByPath.keys()) this.resolveWaitersIfIdle(path);
+	}
+
+	/** Join source watcher work already scheduled for committed paths. */
+	async awaitReconciliations(filePaths: readonly string[]): Promise<void> {
+		const pending: Promise<void>[] = [];
+		for (const filePath of new Set(filePaths)) {
+			if (!this.pendingByPath.has(filePath) && !this.runningByPath.has(filePath)) continue;
+			const waiters = this.waitersByPath.get(filePath) ?? new Set<() => void>();
+			this.waitersByPath.set(filePath, waiters);
+			pending.push(new Promise<void>(resolve => { waiters.add(resolve); }));
+		}
+		await Promise.all(pending);
 	}
 
 	getSuppressionRemainingMs(filePath: string): number {
@@ -102,7 +120,7 @@ export class TaskSourceModifyReconciler<TTimer> {
 				return;
 			}
 			this.suppressUntilByPath.delete(filePath);
-			this.runReconciliation(filePath, 'deferred');
+			void this.runReconciliation(filePath, 'deferred');
 		}, Math.max(0, dueAt - this.options.now()));
 		this.pendingByPath.set(filePath, { timer, dueAt });
 	}
@@ -114,12 +132,31 @@ export class TaskSourceModifyReconciler<TTimer> {
 		this.pendingByPath.delete(filePath);
 	}
 
-	private runReconciliation(
+	private async runReconciliation(
 		filePath: string,
 		mode: TaskSourceModifyReconciliationMode,
-	): void {
-		void this.options.reconcile(filePath, mode).catch(error => {
+	): Promise<void> {
+		this.runningByPath.set(filePath, (this.runningByPath.get(filePath) ?? 0) + 1);
+		try {
+			await this.options.reconcile(filePath, mode);
+		} catch (error) {
 			this.options.onError?.(filePath, error);
-		});
+		} finally {
+			const remaining = (this.runningByPath.get(filePath) ?? 1) - 1;
+			if (remaining > 0) {
+				this.runningByPath.set(filePath, remaining);
+			} else {
+				this.runningByPath.delete(filePath);
+			}
+			this.resolveWaitersIfIdle(filePath);
+		}
+	}
+
+	private resolveWaitersIfIdle(filePath: string): void {
+		if (this.pendingByPath.has(filePath) || this.runningByPath.has(filePath)) return;
+		const waiters = this.waitersByPath.get(filePath);
+		if (!waiters) return;
+		this.waitersByPath.delete(filePath);
+		for (const resolve of waiters) resolve();
 	}
 }

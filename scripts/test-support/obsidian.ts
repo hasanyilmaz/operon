@@ -211,6 +211,9 @@ export class Setting {
 	}
 }
 
+export let apiVersion = '';
+export function setTestApiVersion(version: string): void { apiVersion = version; }
+
 export const Platform = {
 	isMacOS: false,
 	isMobile: false,

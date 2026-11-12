@@ -1,10 +1,12 @@
+import type { CustomKeySourceWriter } from '../ui/custom-key-empty-transaction';
 import { normalizeStatusDockSections, type StatusDockSection } from '../types/status-dock-sections';
 import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
 import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
+import type { FlowTimeTimerSettings } from '../systems/flow-time-controls';
 import type { KanbanPreset } from '../types/kanban';
 import { resolveKanbanAxes } from '../core/kanban-axis-model';
-import { normalizeTaskAfterCreateAction } from '../types/settings';
+import { DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, normalizeStatusDockTimerDialSize, normalizeTaskAfterCreateAction, normalizeFilterSet } from '../types/settings';
 import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sync';
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -25,6 +27,7 @@ import { PinnedCache } from './pinned-cache';
 import { RepeatSeriesStore } from './repeat-series-store';
 import { ExternalCalendarCacheStore } from './external-calendar-cache';
 import { FilterStore } from './filter-store';
+import { rewriteFilterFolderPaths } from '../core/filter-folder-paths';
 import { PipelineStore, PipelineStoreSettings } from './pipeline-store';
 import { CalendarPresetStore, CalendarPresetStoreSettings } from './calendar-preset-store';
 import { KanbanPresetStore, KanbanPresetStoreSettings } from './kanban-preset-store';
@@ -758,11 +761,47 @@ export class OperonStorage {
 		await run;
 	}
 
+	/** Retarget only saved filter conditions after an Obsidian folder rename. */
+	async renameSavedFilterFolders(renames: ReadonlyMap<string, string>, active: () => boolean): Promise<boolean> {
+		if (renames.size === 0) return false;
+		return this.enqueueSettingsTransaction(async () => {
+			if (!active()) return false;
+			const previous = this.dataPackageStore.getDataPackage().views.filters;
+			const itemsById = { ...previous.itemsById };
+			const expected = new Map<string, string>();
+			for (const [id, filter] of Object.entries(previous.itemsById)) {
+				const normalized = normalizeFilterSet(filter);
+				if (!normalized || normalized.id !== id) continue;
+				const updated = rewriteFilterFolderPaths(filter, renames);
+				if (updated === filter) continue;
+				const current = this.filterStore.getById(id);
+				const baseline = JSON.stringify(normalized);
+				if (JSON.stringify(current) !== baseline) throw new Error('Saved filter changed before folder rename could be applied');
+				expected.set(id, baseline);
+				itemsById[id] = updated;
+			}
+			if (expected.size === 0) return false;
+			const canCommit = () => active() && Array.from(expected).every(([id, baseline]) =>
+				JSON.stringify(this.filterStore.getById(id)) === baseline);
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				if (JSON.stringify(current.views.filters) !== JSON.stringify(previous)) throw new Error('Saved filters changed during folder rename');
+				return { ...current, views: { ...current.views, filters: { ...current.views.filters, itemsById } } };
+			}, canCommit);
+			this.filterStore.publishFolderRenames(expected.keys(), renames);
+			this.settings.filterSets = this.filterStore.getAll();
+			return true;
+		});
+	}
+
+ private customKeySourceWriter: CustomKeySourceWriter | undefined;
+ setCustomKeySourceWriter(writer: CustomKeySourceWriter): void { this.customKeySourceWriter = writer; }
+
  /** Publish custom mapping and surface preferences only after one successful settings write. */
  async saveCustomKeyMapping(mapping: KeyMapping, options: {
   remove?: boolean;
   surfaces?: (settings: OperonSettings, mapping: KeyMapping) => void;
-  prepare?: (settings: OperonSettings) => Promise<CustomKeyReusePreparation | undefined>;
+  onCommittedWarning?: (message: string) => void;
+  prepare?: (settings: OperonSettings, writeSource?: CustomKeySourceWriter) => Promise<CustomKeyReusePreparation | undefined>;
  } = {}): Promise<void> {
   await this.enqueueSettingsTransaction(() => withCustomPropertyTypeWriteLock(this.app, async () => {
    const current = this.getSettings({ committedMappings: true });
@@ -780,12 +819,22 @@ export class OperonStorage {
    const settingsUnchanged = this.dataPackageStore.captureSettingsRollbackGuard();
    let prepared: CustomKeyReusePreparation | undefined;
    try {
-    prepared = options.remove ? undefined : await options.prepare?.(current);
+    prepared = options.remove ? undefined : await options.prepare?.(current, this.customKeySourceWriter);
     const canCommit = () => JSON.stringify(this.settings.keyMappings) === expectedMappings && JSON.stringify(this.settings.inlinePropertyDefinitions) === expectedDefinitions
      && [...submitted].every(([key,value]) => this.settings[key as keyof OperonSettings] === value) && (prepared?.isCurrent() ?? true);
     await this.persistSettings({ forceRecoveredWrite: true }, [], next.keyMappings, true, patch, canCommit, prepared?.definitions);
+    // A recovery-record failure must not turn a committed setting into a failed add.
+    try { await prepared?.complete?.(); }
+    catch (error) {
+     const message = `Custom property was saved, but its recovery record could not be completed: ${error instanceof Error ? error.message : String(error)}`;
+     if (options.onCommittedWarning) options.onCommittedWarning(message);
+     else console.warn(message);
+    }
    } catch (error) {
-    if (prepared && await settingsUnchanged()) await prepared.rollback();
+    if (prepared) {
+     if (await settingsUnchanged()) await prepared.rollback();
+     else await prepared.recordUncertainSettings?.();
+    }
     throw error;
    } finally { prepared?.dispose(); }
   }), true);
@@ -848,6 +897,69 @@ export class OperonStorage {
 				if (!canCommit()) return;
 				throw error;
 			}
+		});
+	}
+
+	async saveFlowTimeTimerSettings(expected: Partial<FlowTimeTimerSettings>, values: Partial<FlowTimeTimerSettings>): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			const canCommit = () => (
+				(expected.flowTimeSessionMinutes === undefined || this.settings.flowTimeSessionMinutes === expected.flowTimeSessionMinutes)
+				&& (expected.flowTimeMode === undefined || this.settings.flowTimeMode === expected.flowTimeMode)
+			);
+			const update = (current: OperonDataPackageV1): OperonDataPackageV1 => ({
+				...current,
+				settings: { ...current.settings, ...values },
+			});
+			if (this.tablePresetRecovery.health === 'degraded') {
+				await this.dataPackageStore.updateDataPackageCas(update, canCommit);
+			} else {
+				await this.dataPackageStore.updateDataPackage(update, canCommit);
+			}
+			// Preserve newer in-memory edits if one arrived during write verification.
+			for (const key of ['flowTimeMode', 'flowTimeSessionMinutes'] as const) {
+				if (values[key] !== undefined && this.settings[key] === expected[key]) Object.assign(this.settings, { [key]: values[key] });
+			}
+		});
+	}
+
+	/** A command with no explicit value inverts the latest committed visibility. */
+	saveStatusDockVisibility(visible?: boolean): Promise<void> {
+		return this.saveStatusDockBooleanPreference('statusDockVisible', visible);
+	}
+
+	saveStatusDockTimerPreference(key: 'statusDockCreatorStartsTimer' | 'statusDockShowSeconds' | 'statusDockShowTimerDial', enabled: boolean): Promise<void> {
+		return this.saveStatusDockBooleanPreference(key, enabled);
+	}
+
+	private async saveStatusDockBooleanPreference(key: 'statusDockVisible' | 'statusDockCreatorStartsTimer' | 'statusDockShowSeconds' | 'statusDockShowTimerDial', value?: boolean): Promise<void> {
+		const fields = { statusDockVisible: 'visible', statusDockCreatorStartsTimer: 'creatorStartsTimer', statusDockShowSeconds: 'showSeconds', statusDockShowTimerDial: 'showTimerDial' } as const;
+		const field = fields[key];
+		await this.enqueueSettingsTransaction(async () => {
+			const expected = this.settings[key];
+			const enabled = expected ?? (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer');
+			const next = value ?? !enabled;
+			if (next === enabled) return;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				const stored = current.ui.statusDock?.[field];
+				if ((typeof stored === 'boolean' ? stored : undefined) !== expected) throw new Error('Status dock preference changed on disk');
+				return { ...current, ui: { ...current.ui, statusDock: { ...current.ui.statusDock, [field]: next } } };
+			}, () => this.settings[key] === expected);
+			this.settings[key] = next;
+		});
+	}
+
+	async saveStatusDockTimerDialSize(value: unknown): Promise<void> {
+		const size = normalizeStatusDockTimerDialSize(value);
+		if (size === undefined) throw new Error('Invalid Status Dock timer dial size');
+		await this.enqueueSettingsTransaction(async () => {
+			const expected = this.settings.statusDockTimerDialSize;
+			if ((expected ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE) === size) return;
+			const matches = () => this.settings.statusDockTimerDialSize === expected;
+			await this.dataPackageStore.updateDataPackageCas(pkg => {
+				if (normalizeStatusDockTimerDialSize(pkg.ui.statusDock?.timerDialSize) !== expected) throw new Error('Status Dock timer dial size changed on disk');
+				return { ...pkg, ui: { ...pkg.ui, statusDock: { ...pkg.ui.statusDock, timerDialSize: size } } };
+			}, matches);
+			if (matches()) this.settings.statusDockTimerDialSize = size;
 		});
 	}
 
@@ -1683,6 +1795,12 @@ export class OperonStorage {
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete candidateInput.workspaceTweaksCoreQuickSwitcherOpenBehavior;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockCreatorStartsTimer === undefined) delete candidateInput.statusDockCreatorStartsTimer;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowSeconds === undefined) delete candidateInput.statusDockShowSeconds;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockShowTimerDial === undefined) delete candidateInput.statusDockShowTimerDial;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockTimerDialSize === undefined) delete candidateInput.statusDockTimerDialSize;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockVisible === undefined) delete candidateInput.statusDockVisible;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
 				const candidateSettings = migrateSettings(candidateInput);
@@ -1783,6 +1901,12 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockCreatorStartsTimer')) delete this.settings.statusDockCreatorStartsTimer;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowSeconds')) delete this.settings.statusDockShowSeconds;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowTimerDial')) delete this.settings.statusDockShowTimerDial;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockTimerDialSize')) delete this.settings.statusDockTimerDialSize;
+		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockVisible')) delete this.settings.statusDockVisible;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockClickAction')) delete this.settings.statusDockClickAction;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockSections')) delete this.settings.statusDockSections;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;

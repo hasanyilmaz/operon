@@ -4,7 +4,7 @@ import { DEFAULT_FILENAME_RULE, normalizeFilenameRule, type FilenameRule, type F
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
 import { cloneInlinePropertyDefinitions, validateInlinePropertyDefinitions } from '../core/inline-property-definitions';
-import { normalizeStatusDockSections, type StatusDockSection } from './status-dock-sections';
+import { normalizeStoredStatusDockSections, type StatusDockSection } from './status-dock-sections';
 import { normalizeTaskEditorSections, type TaskEditorSection } from './task-editor-sections';
 import { DEFAULT_TASK_CARD_SETTINGS, normalizeTaskCardSettings, type TaskCardSettings } from './task-card';
 /**
@@ -1082,6 +1082,17 @@ export function normalizeTaskAfterCreateAction(value: unknown): TaskAfterCreateA
 
 export type TaskFinderResultBehavior = 'source' | 'source-and-editor' | 'editor';
 
+export type CoreQuickSwitcherOpenBehavior = 'default' | TaskFinderResultBehavior;
+export function normalizeCoreQuickSwitcherOpenBehavior(value: unknown): CoreQuickSwitcherOpenBehavior | undefined {
+	return value === 'default' || value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : undefined;
+}
+
+/** Missing preferences use both panels without rewriting existing settings packages. */
+export function resolveCoreQuickSwitcherOpenBehavior(value: unknown): CoreQuickSwitcherOpenBehavior {
+	return normalizeCoreQuickSwitcherOpenBehavior(value) ?? 'source-and-editor';
+}
+
+
 export function normalizeTaskFinderResultBehavior(value: unknown, fallback: TaskFinderResultBehavior): TaskFinderResultBehavior {
 	return value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : fallback;
 }
@@ -1652,8 +1663,20 @@ export function resolveStatusDockAlignment(value: unknown): StatusDockAlignment 
 
 export function resolveStatusDockClickAction(value: unknown): TaskFinderResultBehavior { return normalizeTaskFinderResultBehavior(value, 'source-and-editor'); }
 
+export const STATUS_DOCK_TIMER_DIAL_SIZES = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5] as const;
+export const DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE = 1;
+export type StatusDockTimerDialSize = typeof STATUS_DOCK_TIMER_DIAL_SIZES[number];
+export function normalizeStatusDockTimerDialSize(value: unknown): StatusDockTimerDialSize | undefined {
+	return STATUS_DOCK_TIMER_DIAL_SIZES.find(size => size === value);
+}
+
 export interface OperonSettings extends TaskCardSettings {
 	/** Optional user choices: absence uses in-memory defaults without startup writes. */
+	statusDockCreatorStartsTimer?: boolean;
+	statusDockShowSeconds?: boolean;
+	statusDockShowTimerDial?: boolean;
+	statusDockTimerDialSize?: StatusDockTimerDialSize;
+	statusDockVisible?: boolean;
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
 	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
@@ -1888,6 +1911,7 @@ export interface OperonSettings extends TaskCardSettings {
 	/** If true, hide Obsidian workspace scrollbars while preserving scrolling. */
 	workspaceTweaksHideScrollbars: boolean;
 	workspaceTweaksBackgroundDimming: number;
+	workspaceTweaksCoreQuickSwitcherOpenBehavior?: CoreQuickSwitcherOpenBehavior;
 	workspaceTweaksLightboxSizes: LightboxSizes;
 	/** If true, collapse Obsidian Properties when opening matching notes. */
 	workspaceTweaksCollapseProperties: boolean;
@@ -4507,7 +4531,18 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
-	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStatusDockSections(src.statusDockSections);
+	if (typeof src.statusDockCreatorStartsTimer === 'boolean') out.statusDockCreatorStartsTimer = src.statusDockCreatorStartsTimer;
+	else delete out.statusDockCreatorStartsTimer;
+	if (typeof src.statusDockShowSeconds === 'boolean') out.statusDockShowSeconds = src.statusDockShowSeconds;
+	else delete out.statusDockShowSeconds;
+	if (typeof src.statusDockShowTimerDial === 'boolean') out.statusDockShowTimerDial = src.statusDockShowTimerDial;
+	else delete out.statusDockShowTimerDial;
+	const statusDockTimerDialSize = normalizeStatusDockTimerDialSize(src.statusDockTimerDialSize);
+	if (statusDockTimerDialSize !== undefined) out.statusDockTimerDialSize = statusDockTimerDialSize;
+	else delete out.statusDockTimerDialSize;
+	if (typeof src.statusDockVisible === 'boolean') out.statusDockVisible = src.statusDockVisible;
+	else delete out.statusDockVisible;
+	if (src.statusDockSections !== undefined) out.statusDockSections = normalizeStoredStatusDockSections(src.statusDockSections);
 	else delete out.statusDockSections;
 	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;
 	else delete out.statusDockClickAction;
@@ -4642,6 +4677,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	out.filterTaskShowPlainCheckboxAction = typeof src.filterTaskShowPlainCheckboxAction === 'boolean'
 		? src.filterTaskShowPlainCheckboxAction
 		: DEFAULT_SETTINGS.filterTaskShowPlainCheckboxAction;
+	const quickSwitcherBehavior = normalizeCoreQuickSwitcherOpenBehavior(src.workspaceTweaksCoreQuickSwitcherOpenBehavior);
+	if (quickSwitcherBehavior !== undefined) out.workspaceTweaksCoreQuickSwitcherOpenBehavior = quickSwitcherBehavior;
 	out.workspaceTweaksBackgroundDimming = normalizeBackgroundDimming(src.workspaceTweaksBackgroundDimming);
 	out.workspaceTweaksLightboxSizes = normalizeLightboxSizes(src.workspaceTweaksLightboxSizes);
 	out.workspaceTweaksHideScrollbars = typeof src.workspaceTweaksHideScrollbars === 'boolean'

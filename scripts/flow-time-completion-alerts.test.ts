@@ -8,6 +8,7 @@ import { SETTINGS_BACKUP_GROUPS } from '../src/core/settings-backup-compatibilit
 import { DEFAULT_SETTINGS, migrateSettings } from '../src/types/settings';
 import { ReminderDeliveryController } from '../src/systems/reminder-delivery';
 import { TFile } from 'obsidian';
+import { SettingsPreservationHarness } from './test-support/settings-preservation-harness';
 
 let assertions = 0;
 
@@ -27,8 +28,36 @@ function observe(
 	return tracker.observe({ kind, occurrenceKey, elapsedSeconds, targetSeconds, enabled });
 }
 
+async function testTargetStorage(): Promise<void> {
+	const fixture = new SettingsPreservationHarness();
+	try {
+		const storage = fixture.createStorage();
+		await storage.initialize();
+		const before = JSON.parse(await fixture.adapter.read(fixture.canonicalPath));
+		const writes = fixture.canonicalAttempts;
+		const previous = storage.getSettings().flowTimeSessionMinutes;
+		fixture.writeFault = 'throw-before';
+		await assert.rejects(storage.saveFlowTimeTimerSettings({ flowTimeSessionMinutes: previous }, { flowTimeSessionMinutes: 45 }));
+		equal(storage.getSettings().flowTimeSessionMinutes, previous);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), before);
+		fixture.writeFault = 'none';
+		await storage.saveFlowTimeTimerSettings({ flowTimeSessionMinutes: previous }, { flowTimeSessionMinutes: 45 });
+		equal(storage.getSettings().flowTimeSessionMinutes, 45);
+		equal(fixture.canonicalAttempts, writes + 2);
+		assert.deepEqual(JSON.parse(await fixture.adapter.read(fixture.canonicalPath)), {
+			...before, settings: { ...before.settings, flowTimeSessionMinutes: 45 },
+		});
+		await assert.rejects(storage.saveFlowTimeTimerSettings({ flowTimeSessionMinutes: previous }, { flowTimeSessionMinutes: 60 }));
+		equal(fixture.canonicalAttempts, writes + 2);
+		const reopened = fixture.createStorage();
+		await reopened.initialize();
+		equal(reopened.getSettings().flowTimeSessionMinutes, 45);
+	} finally { await fixture.dispose(); }
+}
+
 async function run(): Promise<void> {
 	await runFlowTimeBreakTests();
+	await testTargetStorage();
 	const missing = migrateSettings({});
 	equal(missing.flowTimePlayReminderSoundOnTargetReached, false, 'missing setting defaults to silent FlowTime completion');
 	equal(
@@ -136,16 +165,18 @@ async function run(): Promise<void> {
 		readFile(path.join(pluginRoot, 'i18n/locales/en.json'), 'utf8'),
 		readFile(path.join(pluginRoot, 'src/systems/flow-time-break.ts'), 'utf8'),
 	]);
-	assert.match(flowTimeSource, /this\.notifyIfTargetReached\(settings, active\);\s*this\.playReminderSoundIfTargetReached\(settings, active\);/u, 'notice and sound paths remain independent');
-	assert.match(breakSource, /kind: 'break'/u, 'shared FlowTime break uses the sound-boundary tracker');
-	assert.doesNotMatch(flowTimeSource.match(/private playReminderSoundIfTargetReached[\s\S]*?(?=\n\tprivate )/u)?.[0] ?? '', /new Notice\(/u, 'break sound path never creates a notice');
+	assert.match(flowTimeSource, /this\.notifyIfTargetReached\(settings, active\);/u, 'sidebar retains the separate visual notice');
+	assert.doesNotMatch(flowTimeSource, /playReminderSound/u, 'sidebar views do not own sound playback');
+	assert.match(breakSource, /kind: 'focus'/u, 'the shared controller tracks focus sound');
+	assert.match(breakSource, /kind: 'break'/u, 'the shared controller tracks break sound');
+	assert.doesNotMatch(breakSource, /new Notice\(/u, 'sound delivery does not create a visual notice');
 	assert.match(settingsSource, /flowTimePlayReminderSoundOnTargetReached/u, 'FlowTime settings render the sound toggle');
 	assert.match(settingsRegistrySource, /flowTimePlayReminderSoundOnTargetReached/u, 'settings search indexes the sound toggle');
 	assert.match(mainSource, /playReminderSound: \(\) => this\.reminderDeliveryController\?\.playReminderSound\(\)/u, 'FlowTime receives the shared ReminderDeliveryController callback');
 	assert.match(reminderSource, /async playReminderSound\(\): Promise<void>/u, 'ReminderDeliveryController exposes the shared sound channel');
 	assert.match(englishLocale, /"flowTimePlayReminderSoundOnTargetReached": "Play reminder sound when FlowTime reaches zero"/u, 'English setting title matches the approved copy');
 	assert.match(englishLocale, /"flowTimePlayReminderSoundOnTargetReachedDesc": "Play the audio file selected under Reminders → Reminder sound when a FlowTime session or break reaches zero\."/u, 'English setting description names the Reminder sound source');
-	assertions += 9;
+	assertions += 11;
 
 	console.log(`FlowTime completion alert tests passed: ${assertions} assertions`);
 }

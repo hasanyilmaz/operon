@@ -7,6 +7,7 @@ import { formatDurationHuman } from '../systems/tracker-utils';
 import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
+import { formatStatusDockSeconds } from './status-dock-duration';
 
 export function statusDockSessionKey(session: TrackerSession): string {
  return JSON.stringify([session.operonId, session.start, session.end, session.sessionIndex]);
@@ -21,7 +22,7 @@ export function renderStatusDockTaskTitle(name: HTMLElement, task: IndexedTask, 
 }
 
 export function renderStatusDockSessionDuration(duration: HTMLElement, session: TrackerSession, placement: () => 'auto' | 'above'): void {
- const value = formatDurationHuman(session.durationSeconds, 'seconds');
+ const value = formatStatusDockSeconds(formatDurationHuman(session.durationSeconds, 'seconds'));
  duration.setText(value);
  setAccessibleLabelWithoutTooltip(duration, `${t('taskEditor', 'editSession')}: ${value}`);
  cleanupOperonHoverTooltips(duration);

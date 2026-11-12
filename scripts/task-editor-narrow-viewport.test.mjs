@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 const source = readFileSync(new URL('../src/ui/task-editor-content.ts', import.meta.url), 'utf8');
+const layoutSource = readFileSync(new URL('../src/ui/editor-source-layout.ts', import.meta.url), 'utf8').replace(/^import .*;$/mu, '').replace('export function', 'function');
 const ast = ts.createSourceFile('editor.ts', source, ts.ScriptTarget.Latest, true);
 const editorClass = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'TaskEditorContent');
 const methods = ['isWideSourceContextViewport', 'registerSourceContextViewportListener', 'unregisterSourceContextViewportListener'].map(name => editorClass.members.find(node => node.name?.getText(ast) === name).getText(ast)).join('\n');
@@ -19,7 +20,7 @@ function fixture(wide, visible = false) {
   paddingLeft: '0px', paddingRight: '0px', borderLeftWidth: '1px', borderRightWidth: '1px', maxWidth: 'none',
  } };
  const root = { closest: () => modal, ownerDocument: { defaultView: owner }, style: { paddingLeft: '20px', paddingRight: '20px' } };
- const code = ts.transpileModule('class TaskEditorContent { ' + methods + ' }', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+ const code = ts.transpileModule(layoutSource + '\nclass TaskEditorContent { ' + methods + ' }', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  let disconnected = false; let observeCallback;
  const Observer = class { constructor(callback) { observeCallback = callback; } observe() {} disconnect() { disconnected = true; } };
  owner.ResizeObserver = Observer;
@@ -212,4 +213,38 @@ test('retired panel has no constructor, timers or controls; shared editors remai
  assert.ok(source.includes('createCompactMarkdownEditorSurface'));
  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
  for (const selector of ['.operon-task-editor-file-panel', '.operon-editor-core-panel-toggle', '.operon-task-editor-title-file-toggle', '.operon-task-editor-file-bases-preview']) assert.equal(css.includes(selector), false, selector);
+});
+
+const floatingSource = readFileSync(new URL('../src/ui/field-pickers/common.ts', import.meta.url), 'utf8');
+const floatingAst = ts.createSourceFile('floating.ts', floatingSource, ts.ScriptTarget.Latest, true);
+const floatingPosition = floatingAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'positionFloatingElement').getText(floatingAst).replace('export function', 'function');
+function pickerWidthFixture(fit = true, authored = {}) {
+ const body = {}, host = { clientWidth: 1400, clientHeight: 700, offsetWidth: 1400, offsetHeight: 700, clientLeft: 0, clientTop: 0, scrollLeft: 0, scrollTop: 0,
+  getBoundingClientRect: () => ({ left: 0, top: 0, width: host.clientWidth, height: host.clientHeight }),
+ };
+ const owner = { innerWidth: 1600, innerHeight: 900, getComputedStyle: panel => ({ minWidth: panel.style.minWidth || '180px', maxWidth: panel.style.maxWidth || '360px' }) };
+ const anchor = { left: 20, top: 30, bottom: 50 };
+ const panel = { style: { minWidth: '', maxWidth: '', ...authored }, offsetWidth: 360, offsetHeight: 200 };
+ const globals = { asHTMLElement: () => null, resolveRect: () => anchor,
+  resolveHostContext: () => ({ host, constrainToHost: true, fitToHostViewport: fit }), getOwnerWindow: () => owner, getOwnerBody: () => body,
+  getMobilePickerSurfaceContext: () => null, viewportFitWidths: new WeakMap(), DOMRect: class {},
+ };
+ const position = new Function(...Object.keys(globals), ts.transpileModule(floatingPosition, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText + ';return positionFloatingElement;')(...Object.values(globals));
+ return { panel, resize(width) { host.clientWidth = host.offsetWidth = width; position(panel, anchor); }, position: () => position(panel, anchor) };
+}
+test('Property Editor picker keeps its own CSS cap and can shrink then regrow with the viewport', () => {
+ const f = pickerWidthFixture();f.position();
+ assert.equal(f.panel.style.maxWidth, 'min(360px, 1384px)');
+ f.resize(150);assert.equal(f.panel.style.maxWidth, 'min(360px, 134px)');assert.equal(f.panel.style.minWidth, 'min(180px, 134px)');
+ f.resize(1400);assert.equal(f.panel.style.maxWidth, 'min(360px, 1384px)');assert.equal(f.panel.style.minWidth, 'min(180px, 1384px)');
+});
+test('Property Editor picker preserves an explicit picker width limit across repeated positioning', () => {
+ const f = pickerWidthFixture(true, { maxWidth: '440px', minWidth: '220px' });f.position();f.resize(500);f.resize(1400);
+ assert.equal(f.panel.style.maxWidth, 'min(440px, 1384px)');assert.equal(f.panel.style.minWidth, 'min(220px, 1384px)');
+});
+test('Task Editor and other non-fitting picker hosts retain their existing inline width rules', () => {
+ for (const authored of [{}, { maxWidth: '440px', minWidth: '220px' }]) {
+  const f = pickerWidthFixture(false, authored);f.position();f.resize(150);f.resize(1400);
+  assert.equal(f.panel.style.maxWidth, authored.maxWidth ?? '');assert.equal(f.panel.style.minWidth, authored.minWidth ?? '');
+ }
 });

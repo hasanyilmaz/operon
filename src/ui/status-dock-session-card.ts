@@ -51,6 +51,7 @@ export class StatusDockSessionCard {
   getSessions: (id: string) => TrackerSession[];
   isTracking: (id: string) => boolean;
   actions: StatusDockSessionActions;
+  onVisibilityChange?: (visible: boolean) => void;
  }) {
   this.owner = getOwnerWindow(host);
   this.el = host.createDiv('operon-status-dock-session-card'); this.el.hidden = true;
@@ -65,6 +66,7 @@ export class StatusDockSessionCard {
   this.session = session; this.lifetime = new StatusDockSessionLifetime(this.owner.performance.now());
   this.host.classList.add('has-session-feedback');
   this.el.hidden = false; this.refresh(); this.position(); this.tick();
+  if (!this.el.hidden) this.options.onVisibilityChange?.(true);
  }
  refresh(): void {
   if (!this.session || this.disposed) return;
@@ -139,11 +141,13 @@ export class StatusDockSessionCard {
  }
  takeSession(): TrackerSession | null { const session = this.session; this.clear(); return session; }
  clear(): void {
+  const wasVisible = !this.el.hidden;
   this.host.classList.remove('has-session-feedback');
   this.revision++; this.session = null; this.lifetime = null; this.signature = ''; this.busy = 0; this.hover = false;
   if (this.timer !== null) this.owner.clearTimeout(this.timer); this.timer = null;
   hideTaskContextualHoverMenu(true, this.el); cleanupTaskContextualHoverMenus(this.el);
   cleanupOperonHoverTooltips(this.el); this.el.empty(); this.el.hidden = true;
+  if (wasVisible) this.options.onVisibilityChange?.(false);
  }
  destroy(): void { this.disposed = true; this.clear(); this.el.remove(); }
 }

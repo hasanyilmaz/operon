@@ -11,6 +11,7 @@ import { canSelectFlowTimeTask, type FlowTimeBreakController } from '../systems/
 import { resolveStatusDockClickAction, type OperonSettings, type TaskFinderResultBehavior } from '../types/settings';
 import { UpcomingTaskStatusModel } from '../core/upcoming-task-status';
 import { getOwnerWindow } from '../core/dom-compat';
+import type { FlowTimeControls } from '../systems/flow-time-controls';
 import { resolveFlowTimeRenderedState } from '../systems/flow-time-optimistic';
 import type { ActiveTrackerState } from '../types/tracker';
 import { getNativeLightboxLeaves } from './native-lightbox-lifecycle';
@@ -26,6 +27,7 @@ interface StatusDockDependencies {
 	indexer: Pick<OperonIndexer, 'getTask' | 'getAllTasks' | 'getGeneration'>;
 	timeTracker: TimeTracker;
 	breakController: FlowTimeBreakController;
+	flowTimeControls: Pick<FlowTimeControls, 'mode' | 'minutes' | 'setMode' | 'subscribe' | 'begin' | 'editable'>;
  startHistoryTimer?: (id: string, canCommit: () => boolean) => Promise<boolean>;
  getPinnedTasks?: () => IndexedTask[];
  getPinnedGeneration?: () => number;
@@ -63,7 +65,7 @@ export class OperonStatusDock extends Component {
 	private alert: StatusDockAlert = { state: 'hidden', count: 0 };
 	private refreshTimer: number | null = null;
 	private disposed = false;
-	private visible = true;
+	private visible: boolean;
 	private scopeCacheKey = '';
 	private scopeCache: StatusDockTaskScopes = { overdue: [], today: [] };
  private historyCacheKey = '';
@@ -75,6 +77,7 @@ export class OperonStatusDock extends Component {
 
 	constructor(private readonly app: App, private readonly dependencies: StatusDockDependencies) {
 		super();
+		this.visible = dependencies.getSettings().statusDockVisible !== false;
 		this.owner = getOwnerWindow(app.workspace.containerEl);
 		this.upcoming = new UpcomingTaskStatusModel(dependencies.indexer, () => {
    const settings = dependencies.getSettings();
@@ -95,6 +98,7 @@ export class OperonStatusDock extends Component {
 		});
 		if (unsubscribeSessions) this.register(unsubscribeSessions);
 		this.register(this.dependencies.breakController.subscribe(() => this.renderWidgets()));
+		this.register(this.dependencies.flowTimeControls.subscribe(() => this.renderWidgets()));
 		this.registerEvent(workspace.on('active-leaf-change', leaf => {
 			if (leaf && isStatusDockLeaf(this.app, leaf)) this.recent.set(leaf.getContainer(), leaf);
 			this.scheduleReconcile();
@@ -117,13 +121,15 @@ export class OperonStatusDock extends Component {
 
 	refresh(): void {
 		if (this.disposed) return;
+		this.applyVisibility();
 		this.upcoming.refresh();
 		this.reconcile();
 	}
 
-	toggleVisibility(): void {
-		if (this.disposed) return;
-		this.visible = !this.visible;
+	private applyVisibility(): void {
+		const visible = this.dependencies.getSettings().statusDockVisible !== false;
+		if (this.visible === visible) return;
+		this.visible = visible;
 		for (const { widget, sessionCard, taskList } of this.windows.values()) {
 			widget.setVisible(this.visible);
 			if (!this.visible) { taskList?.close(false); sessionCard?.clear(); }
@@ -187,12 +193,14 @@ export class OperonStatusDock extends Component {
 	}
 
 	private createWindow(container: WorkspaceContainer): DockWindow {
+		const { flowTimeControls } = this.dependencies;
 		const widget = new StatusDockWidget(container.doc, {
 			startTask: (taskId, anchor) => this.startCalendarTask(taskId, anchor),
 			openTracker: anchor => this.openTracker(anchor),
 			toggleTimer: () => this.toggleTimer(),
+			toggleTimerMode: () => flowTimeControls.setMode(flowTimeControls.mode === 'flowtime' ? 'tracktime' : 'flowtime'),
 			toggleBreak: anchor => this.activateSecondaryAction(anchor),
-			createTask: anchor => this.createTaskForTimer(anchor),
+			createTask: anchor => this.createDockTask(anchor),
 			findTask: anchor => this.selectTaskForTimer(anchor),
 			openUpcoming: anchor => this.runAction(async () => {
 				const task = this.upcoming.getSnapshot().task;
@@ -207,10 +215,11 @@ export class OperonStatusDock extends Component {
 				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
 			}),
 			openConflicts: this.dependencies.openConflicts,
-		}, error => { console.warn('Operon: status dock action failed', error); new Notice(t('notifications', 'taskSaveFailed')); });
+		}, error => { console.warn('Operon: status dock action failed', error); new Notice(t('notifications', 'taskSaveFailed')); }, flowTimeControls);
 		widget.setVisible(this.visible);
 		const context: DockWindow = { widget, host: null, leaf: null, dispose: () => {} };
 		if (this.dependencies.sessionActions) context.sessionCard = new StatusDockSessionCard(widget.root, {
+			onVisibilityChange: visible => widget.setDialObscured('session-card', visible),
 			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
 			getSessions: id => this.dependencies.timeTracker.getTaskSessions(id),
 			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), actions: {
@@ -219,6 +228,7 @@ export class OperonStatusDock extends Component {
 			},
 		});
 		if (this.dependencies.sessionActions && context.sessionCard) context.taskList = new StatusDockTaskList(widget.root, {
+			onVisibilityChange: visible => widget.setDialObscured('task-list', visible),
 			getSettings: this.dependencies.getSettings, getTask: id => this.dependencies.indexer.getTask(id),
 			isSessionCurrent: session => this.getHistorySnapshot().some(current => statusDockSessionKey(current) === statusDockSessionKey(session)),
    startHistoryTimer: (id, guard) => this.runAction(async () => { await this.dependencies.startHistoryTimer?.(id, guard); }),
@@ -291,9 +301,14 @@ export class OperonStatusDock extends Component {
 		const breakSnapshot = dependencies.breakController.getSnapshot();
 		const settings = dependencies.getSettings();
 		const pendingTask = breakSnapshot.pendingTaskId ? dependencies.indexer.getTask(breakSnapshot.pendingTaskId) : null;
-		const state = { settings, active: dependencies.timeTracker.getActiveState(), breakSnapshot,
+		const timerSettings = {
+			flowTimeMode: dependencies.flowTimeControls.mode,
+			flowTimeSessionMinutes: dependencies.flowTimeControls.minutes,
+		};
+		const state = { settings, timerSettings, active: dependencies.timeTracker.getActiveState(), breakSnapshot,
 			breakSeconds: dependencies.breakController.getElapsedSeconds(),
 			pendingDescription: pendingTask ? getTaskDisplayTitle(pendingTask, settings.fileTaskDisplayTitleEnabled) : null,
+			pendingTaskColor: pendingTask?.fieldValues.taskColor,
 			upcoming: this.upcoming.getSnapshot(), alert: this.alert, actionPending: this.action !== null };
 		return this.presentation?.(state) ?? state;
 	}
@@ -331,13 +346,35 @@ export class OperonStatusDock extends Component {
   return this.scopeCache;
  }
 
-	private async createTaskForTimer(anchor: HTMLElement): Promise<void> {
+	private async createDockTask(anchor: HTMLElement): Promise<void> {
 		const canUse = () => !this.disposed && anchor.isConnected && !getOwnerWindow(anchor).closed;
 		await this.runAction(async () => {
+			if (this.dependencies.getSettings().statusDockCreatorStartsTimer === false) {
+				await this.dependencies.createTrackerTask(canUse);
+				return;
+			}
+			const { timeTracker, breakController } = this.dependencies;
+			const active = timeTracker.getActiveState();
 			let created: string | null = null;
-			const started = await this.dependencies.breakController.selectPendingTask(async () => {
-				created = await this.dependencies.createTrackerTask(canUse); return created;
-			}, 'status-bar', canUse);
+			const create = async () => {
+				created = await this.dependencies.createTrackerTask(canUse);
+				return created;
+			};
+			let started: boolean;
+			if (active?.operonId) {
+				const taskId = await create();
+				if (!taskId || !canUse()) return;
+				const isOriginal = (current: ActiveTrackerState | null) =>
+					current?.operonId === active.operonId && current?.start === active.start;
+				// Keep a newer session safe while Creator is open. The existing switch
+				// clears the old record before it allocates the new one.
+				started = isOriginal(timeTracker.getActiveState()) && await this.dependencies.startTimerForTask(taskId, () => {
+					const current = timeTracker.getActiveState();
+					return canUse() && (!current || isOriginal(current) || current.operonId === taskId);
+				});
+			} else {
+				started = await breakController.selectPendingTask(create, 'status-bar', canUse);
+			}
 			if (created && !started && canUse()) new Notice(t('notifications', 'creatorPostCreateFinalizeFailed'));
 		});
 	}
@@ -397,7 +434,7 @@ export class OperonStatusDock extends Component {
 			const breakState = kind === 'break' && taskId
 				? { taskId, startMs: now, targetSeconds: Math.max(60, state.settings.flowTimePauseMinutes * 60) } : null;
 			const pendingTaskId = kind === 'break' ? taskId ?? null : kind === 'end-break' ? before.pendingTaskId : null;
-			return { ...state, active: rendered.active, breakSnapshot: { ...next, breakState, pendingTaskId }, breakSeconds: 0,
+			return { ...state, active: rendered.active, breakSnapshot: { ...next, breakState, pendingTaskId }, breakSeconds: 0, pendingTaskColor: task?.fieldValues.taskColor,
 				pendingDescription: pendingTaskId && task ? getTaskDisplayTitle(task, state.settings.fileTaskDisplayTitleEnabled) : null };
 		};
 	}
