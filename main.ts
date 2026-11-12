@@ -7476,6 +7476,7 @@ export default class OperonPlugin extends Plugin {
 			},
 			reindexAffectedSources: async filePaths => {
 				await this.indexer.reindexCommittedMutationSources(filePaths, { notify: false });
+				await this.taskSourceModifyReconciler?.awaitReconciliations(filePaths);
 			},
 			settleAfterMutation: async requestId => {
 				await this.awaitAgentRuntimeSettlement({

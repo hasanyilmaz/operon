@@ -1941,49 +1941,53 @@ test('temporal receipt persistence failure keeps same-plan recovery write-free',
 	assert.equal(persistCount, 1, 'pre-commit recovery refusal must not attempt another receipt write');
 });
 
-test('temporal apply refuses repeat-series revision drift before commit', async () => {
-	const prepared = temporalPreparation('series-stale-context');
-	let sampledRevision = revision;
-	let commitCount = 0;
-	const receiptStore = {
-		health: async () => ({ healthy: true }),
-		lookup: async () => null,
-		persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
-	} as unknown as IndexedDbMutationReceiptStoreV1;
-	const gateway = new RuntimeMutationGatewayV1({
-		isReady: () => true,
-		sampleContextRevision: () => sampledRevision,
-		prepareCreation: async () => prepared,
-		commitCreation: async () => {
-			commitCount += 1;
-			return { status: 'failed', groups: [], remainingGroupIds: [] };
-		},
-		reindexAffectedSources: async () => undefined,
-		settleAfterMutation: async () => undefined,
-		reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
-		verifyCreatedTasks: async () => false,
-		receiptStore: () => receiptStore,
-		vaultIdentityHash: async () => 'e'.repeat(64),
-		nowEpochMs: () => Date.parse('2026-07-24T08:01:00.000Z'),
-		randomId: () => 'temporal-stale-context-plan',
+for (const drift of ['repeat-series', 'RAM index'] as const) {
+	test(`apply refuses ${drift} revision drift before commit`, async () => {
+		const prepared = temporalPreparation('series-stale-context');
+		let sampledRevision = revision;
+		let commitCount = 0;
+		const receiptStore = {
+			health: async () => ({ healthy: true }),
+			lookup: async () => null,
+			persist: async () => ({ expiredDeleted: 0, overflowDeleted: 0, retained: 1 }),
+		} as unknown as IndexedDbMutationReceiptStoreV1;
+		const gateway = new RuntimeMutationGatewayV1({
+			isReady: () => true,
+			sampleContextRevision: () => sampledRevision,
+			prepareCreation: async () => prepared,
+			commitCreation: async () => {
+				commitCount += 1;
+				return { status: 'failed', groups: [], remainingGroupIds: [] };
+			},
+			reindexAffectedSources: async () => undefined,
+			settleAfterMutation: async () => undefined,
+			reconcileCreatedHierarchy: async () => ({ ok: true, resourceRevisions: [] }),
+			verifyCreatedTasks: async () => false,
+			receiptStore: () => receiptStore,
+			vaultIdentityHash: async () => 'e'.repeat(64),
+			nowEpochMs: () => Date.parse('2026-07-24T08:01:00.000Z'),
+			randomId: () => 'temporal-stale-context-plan',
+		});
+		const preview = await gateway.preview(request);
+		assert.equal(preview.ok, true);
+		if (!preview.ok) return;
+		sampledRevision = drift === 'repeat-series'
+			? { ...revision, repeatSeriesRevision: revision.repeatSeriesRevision + 1 }
+			: { ...revision, index: { ...revision.index, ramGeneration: revision.index.ramGeneration + 1 } };
+		const result = await gateway.apply({
+			contractVersion: 1,
+			requestId: 'temporal-stale-context-apply',
+			kind: 'mutation-apply',
+			plan: preview.plan,
+			authorization: { basis: 'user-explicit-request' },
+			idempotencyKey: request.idempotencyKey,
+			acknowledgements: [],
+		});
+		assert.equal(result.status, 'failed');
+		assert.equal(result.error?.code, 'stale-context');
+		assert.equal(commitCount, 0);
 	});
-	const preview = await gateway.preview(request);
-	assert.equal(preview.ok, true);
-	if (!preview.ok) return;
-	sampledRevision = { ...revision, repeatSeriesRevision: revision.repeatSeriesRevision + 1 };
-	const result = await gateway.apply({
-		contractVersion: 1,
-		requestId: 'temporal-stale-context-apply',
-		kind: 'mutation-apply',
-		plan: preview.plan,
-		authorization: { basis: 'user-explicit-request' },
-		idempotencyKey: request.idempotencyKey,
-		acknowledgements: [],
-	});
-	assert.equal(result.status, 'failed');
-	assert.equal(result.error?.code, 'stale-context');
-	assert.equal(commitCount, 0);
-});
+}
 
 for (const stateFailure of ['missing', 'corrupt'] as const) {
 	test(`temporal ${stateFailure} repeat-series postflight is fenced from replay`, async () => {

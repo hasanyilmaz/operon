@@ -6,6 +6,7 @@ import { TFile } from 'obsidian';
 import { OperonIndexer } from '../src/indexer/indexer';
 import { TaskSourceModifyReconciler } from '../src/systems/task-source-modify-reconciliation';
 import { DEFAULT_SETTINGS, type OperonSettings } from '../src/types/settings';
+import { runtimeTransactionPort } from './agent-runtime/mutation/transaction-id-fixture';
 
 interface FakeTimer {
 	readonly id: number;
@@ -121,6 +122,26 @@ test('rename transfers pending work while delete and destroy cancel it', async (
 	assert.equal(harness.reconciliations.length, 1);
 });
 
+test('committed source waits ignore unrelated work and release on delete or unload', async () => {
+	const { clock, reconciler } = createSchedulerHarness();
+	reconciler.markInternalWrite('Unrelated.md');
+	reconciler.handleModify('Unrelated.md');
+	await reconciler.awaitReconciliations(['Committed.md']);
+	assert.equal(clock.pendingCount(), 1);
+
+	reconciler.markInternalWrite('Committed.md');
+	reconciler.handleModify('Committed.md');
+	const deleted = reconciler.awaitReconciliations(['Committed.md']);
+	reconciler.handleDelete('Committed.md');
+	await deleted;
+	assert.equal(clock.pendingCount(), 1);
+
+	const unloaded = reconciler.awaitReconciliations(['Unrelated.md']);
+	reconciler.destroy();
+	await unloaded;
+	assert.equal(clock.pendingCount(), 0);
+});
+
 function createIndexerHarness(initialContent: string) {
 	const filePath = 'Tasks.md';
 	const content = { value: initialContent };
@@ -152,6 +173,61 @@ function createIndexerHarness(initialContent: string) {
 		indexer: new OperonIndexer(app as never, storage as never),
 	};
 }
+
+test('Runtime reindex waits for the delayed modify of the committed source before returning', async () => {
+	const source = (type: string) => `---\noperonId: yaml001\nstatus: Project.Inbox\ntaskType: ${type}\n---\nTask body`;
+	const harness = createIndexerHarness(source('Before'));
+	const clock = new FakeClock();
+	const reconciled: string[] = [];
+	const reconciler = new TaskSourceModifyReconciler({
+		suppressionMs: 750,
+		settleDelayMs: 25,
+		now: () => clock.now,
+		setTimer: clock.setTimer,
+		clearTimer: clock.clearTimer,
+		reconcile: async filePath => {
+			reconciled.push(filePath);
+			if (filePath === harness.filePath) await harness.indexer.forceReindexFilePathAfterMutation(filePath);
+		},
+	});
+	await harness.indexer.fullReindex();
+	const reindexCommitted = runtimeTransactionPort('reindexAffectedSources', {}, {
+		indexer: harness.indexer,
+		taskSourceModifyReconciler: reconciler,
+	});
+	const changeSource = (type: string) => {
+		harness.content.value = source(type);
+		harness.file.stat.mtime += 1;
+		harness.file.stat.size = harness.content.value.length;
+	};
+
+	for (const [index, type] of ['First', 'Second'].entries()) {
+		const start = clock.now;
+		reconciler.markInternalWrite(harness.filePath);
+		changeSource(type);
+		assert.equal(reconciler.handleModify(harness.filePath), 'deferred');
+		let published = false;
+		const postflight = reindexCommitted([harness.filePath]).then(() => { published = true; });
+		await harness.indexer.awaitRamSettlement();
+		await clock.advanceTo(start + 774);
+		await new Promise<void>(resolve => setImmediate(resolve));
+		assert.equal(published, false, 'Runtime must not acknowledge a write with its modify still pending');
+		await clock.advanceTo(start + 775);
+		await postflight;
+		assert.equal(reconciled.length, index + 1);
+		assert.equal(harness.indexer.getTask('yaml001')?.fieldValues.taskType, type);
+		const revisionAfterApply = harness.indexer.getGeneration();
+		await clock.advanceTo(start + 1_600);
+		assert.equal(harness.indexer.getGeneration(), revisionAfterApply, 'The next plan keeps the same RAM revision');
+	}
+
+	const sealedGeneration = harness.indexer.getGeneration();
+	changeSource('External edit');
+	assert.equal(reconciler.handleModify(harness.filePath), 'immediate');
+	await harness.indexer.awaitRamSettlement();
+	assert.ok(harness.indexer.getGeneration() > sealedGeneration, 'An external edit still invalidates the earlier RAM revision');
+	assert.equal(harness.indexer.getTask('yaml001')?.fieldValues.taskType, 'External edit');
+});
 
 async function verifyDeferredSourceChange(input: {
 	readonly initialContent: string;

@@ -9,42 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added a **Property Editor** for regular Markdown notes in Lightbox. Edit properties in their file order with Operon’s field pickers and **Add Property**, with automatic saving that preserves unrelated edits and reports conflicting changes. The panel follows Task Editor’s layout preferences without turning the note into a task.
-
-- Added an optional **Time Tracker dial** to the Status Dock with sizes from **0.5× to 1.5×** in 0.1× steps and a soft backdrop that makes the dial easier to read over note text. In FlowTime, drag either the dock or sidebar dial to adjust the shared target. The dial centers above the timer while it runs and temporarily hides while a task list or recent session card is open.
-
-- Added a **Lightbox** section under **Settings → Interface → Workspace Tweaks** for background dimming and **Core Quick Switcher click behavior**. On Obsidian Desktop 1.15.1, click or press Enter to open the source Lightbox, the matching editor, or both: File Tasks use **Task Editor**, and regular Markdown notes use **Property Editor**. Operon Table and Obsidian Base open in the source Lightbox when the setting is enabled. The default is **Source File + Task / Property Editor**. Existing saved preferences still apply.
+- Open **Property Editor** from **Show property editor** in a regular Markdown note’s Lightbox. Edit properties in file order with Operon’s pickers and **Add Property**. Autosave preserves unrelated edits and reports conflicts. The panel uses Task Editor’s layout preferences and keeps the note’s type.
+- Added an optional **Time Tracker dial** to Status Dock, sized **0.5× to 1.5×** in 0.1× steps, with a soft backdrop for readability. Drag the dock or sidebar dial to adjust the shared FlowTime target. The dock dial centers over the running timer and hides while a task list or recent session card is open.
+- The new **Lightbox** section under **Settings → Interface → Workspace Tweaks** groups background dimming and **Core Quick Switcher click behavior**. On Obsidian Desktop 1.15.1, click or press Enter to open the source Lightbox, the matching editor, or both. File Tasks use **Task Editor** and regular notes use **Property Editor**. **Source File + Task / Property Editor** is the default. Saved choices still apply, and **Use switcher default** restores Obsidian’s behavior. With Operon routing enabled, Tables and Bases open in the source Lightbox.
 
 ### Improved
 
-- **Date** fields in Property Editor, Task Editor’s Additional section, and Operon Table now use the built-in Operon calendar with your week start and week number preferences. Selecting a day applies the date immediately.
-
-- **Status Dock** now has its own page under **Settings → Interface**, directly below **Task Chips**. Use **General Settings** for visibility and click behavior and **Sections and Order** to arrange the dock. The **Show Status Dock** setting and **Toggle status dock** command share a visibility preference that survives Obsidian restarts.
-
-- **Task Creator** is now a separate Status Dock section, after Time Tracker by default. It stays available while a timer runs, and **Start timer when creating a task** lets you choose whether to start tracking the new task. When automatic tracking is off, the unassigned timer prompts you to select a task. **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title and wrap onto another row when they need more room.
-
-- Switch between **TrackTime** and **FlowTime** from the Status Dock timer, with the same mode reflected in the sidebar. The dock shows elapsed time, time remaining, or overtime in a compact, centered reading. **Show seconds** adds two-digit seconds in a fixed-width space so hours and minutes stay in place as the timer ticks. Finder and break controls sit together inside Time Tracker. Hidden sections collapse so the spacing between visible controls stays consistent.
+- **Status Dock** has its own page below **Task Chips** in **Settings → Interface**. Use **General Settings** for visibility and click behavior and **Sections and Order** for layout. **Show Status Dock** and **Toggle status dock** share a preference that persists across restarts.
+- **Task Creator** has its own section after Time Tracker by default and stays available while the timer runs. **Start timer when creating a task** controls automatic tracking. With it off, an unassigned timer prompts you to select a task.
+- **Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per title. Dock sections wrap as needed and hidden sections collapse to keep spacing even.
+- Switch between **TrackTime** and **FlowTime** from the dock timer, with the mode synced to the sidebar. Time Tracker groups Finder and break controls and centers elapsed time, remaining time, or overtime. **Show seconds** adds two-digit seconds without shifting hours or minutes.
+- **Date** fields in Property Editor, Task Editor’s Additional section, and Operon Table use the built-in calendar with your week start and week number preferences. Selecting a day applies it immediately.
 
 ### Fixed
 
-- Fixed recreating a deleted **custom key** with a different type when only empty YAML values remain. Confirmed conversion preserves property names, order, and comments; **Clear** behavior stays unchanged, and populated values remain protected.
-
-- Saved folder filters now follow unambiguous folder paths when a folder is moved or renamed, so matching tasks stay visible. ([#321](https://github.com/hasanyilmaz/operon/issues/321))
-
-- FlowTime now plays the configured completion sound when a work session reaches zero, including when the sidebar is closed.
-
-- Fixed a blank gap appearing in **Operon Table Lightboxes** with themes that animate file titles on hover. File titles now stay visible in both **Table and Base Lightboxes**.
+- Fixed unexpected `stale-context` errors between consecutive Runtime writes by letting pending index updates from each write finish before reporting success. ([#245](https://github.com/hasanyilmaz/operon/issues/245))
+- Recreate a deleted **custom key** with a different type when only empty YAML values remain. Confirmed conversion preserves property names, order, and comments. **Clear** keeps its existing behavior and populated values remain protected.
+- Saved folder filters follow unambiguous folder paths after a move or rename, keeping matching tasks visible. ([#321](https://github.com/hasanyilmaz/operon/issues/321))
+- **FlowTime** plays the configured sound at the end of a work countdown, even with the sidebar closed.
+- Fixed gaps caused by hover-animated titles in **Operon Table Lightboxes**. File titles stay visible in **Table and Base Lightboxes**.
 
 ### Validation
 
-- **111/111** custom-key reuse tests passed, along with local Plugin checks, production build, strict lint, release guard, and code review. Recreating a List key as Text while retaining its empty YAML key was verified in Obsidian.
-- **17/17** settings reload and folder filter tests passed, along with local Plugin checks, production build, strict lint, and release guard. The folder move fixture retained its matching task after restart.
-- Date formatting (19/19), Lightbox and Property Editor (189/189), Table property tests, strict lint, and TypeScript for tracked files passed. The embedded calendar, week preferences, and date saving were verified in Obsidian.
-- **186/186** Lightbox and Property Editor tests and **103/103** Task Editor, shared-field, and layout tests passed, along with full local Plugin checks, production build, release guard, and code review. Property Editor and unchanged Task Editor behavior were verified in Obsidian.
-- Local Plugin checks and release guard passed, including **58/58** Task Finder and settings routing tests.
-- **188/188** Status Dock tests passed, along with strict lint, production build, and release guard.
-- **9/9** Core Quick Switcher, **189/189** Lightbox and Property Editor, and **58/58** Task Finder and settings routing tests passed, along with local Plugin checks, production build, and release guard. Both editor modes were verified with regular Markdown notes and File Tasks in Obsidian. The new default was verified in Obsidian.
-- **8/8** browser checks for Lightbox titles passed, along with strict lint and release guard. Table and Base titles were verified in Obsidian.
+- Full local Plugin checks, production build, strict lint, release guard, and code review passed. Key workflows were verified in Obsidian.
 
 ## [4.6.0] - 2026-11-08
 
