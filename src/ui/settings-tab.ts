@@ -1,5 +1,5 @@
 import type { ReadingTaskRowCallbacks } from './reading-task-row';
-import { normalizeCoreQuickSwitcherOpenBehavior, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
+import { resolveCoreQuickSwitcherOpenBehavior, normalizeCoreQuickSwitcherOpenBehavior, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize } from '../types/settings';
 import { normalizeStatusDockSections, STATUS_DOCK_AVAILABLE_SECTION_IDS, type StatusDockSection, type StatusDockSectionId } from '../types/status-dock-sections';
 import { kanbanAxisSummary } from './kanban/kanban-axis-labels';
 import { cloneKanbanAxesPayload } from '../core/kanban-axis-model';
@@ -3582,7 +3582,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
-		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return normalizeCoreQuickSwitcherOpenBehavior(value) ?? 'default';
+		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return resolveCoreQuickSwitcherOpenBehavior(value);
 		if (key === 'statusDockTimerDialSize') return `${normalizeStatusDockTimerDialSize(value) ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE}x`;
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
 		if (this.isCalendarSidebarDefaultStateSettingKey(key)) {

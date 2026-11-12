@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 import { TFile } from 'obsidian';
-import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
+import { DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, resolveCoreQuickSwitcherOpenBehavior, migrateSettings, normalizeTaskFinderResultBehavior } from '../src/types/settings';
 import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { WriteQueue } from '../src/storage/write-queue';
@@ -247,7 +247,7 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
   'getDefaultSettingsSearchValue', 'getSettingsSearchDropdownValue', 'getSettingsSearchDropdownOptions', 'buildSettingsSearchTabPage', 'buildStatusDockSettingsItems', 'buildWorkspaceTweaksSettingsItems',
  ], {
   Platform: { isDesktopApp: desktop }, isTaskCardSetting, OPERON_SETTINGS_SEARCH_REGISTRY, t: (_ns: string, key: string) => key,
-  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior,
+  settingsBackupT: (key: string) => key, DEFAULT_SETTINGS, DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE, STATUS_DOCK_TIMER_DIAL_SIZES, normalizeStatusDockTimerDialSize, normalizeCoreQuickSwitcherOpenBehavior, resolveCoreQuickSwitcherOpenBehavior,
  });
  const host = Object.assign(new Host(), {
   settings: { ...DEFAULT_SETTINGS, upcomingShowStatusBar: false },
@@ -278,8 +278,10 @@ for (const desktop of [false, true]) test(`dock settings use their own searchabl
  assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey)['source-and-editor'], 'workspaceTweaksQuickSwitcherSourceAndEditor');
  assert.equal(host.getSettingsSearchDropdownOptions(quickSwitcherKey).editor, 'workspaceTweaksQuickSwitcherEditorOnly');
  if (desktop) {
-  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, undefined), 'default');
-  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'unsupported'), 'default');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'default'), 'default');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, host.getDefaultSettingsSearchValue(quickSwitcherKey)), 'source-and-editor');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, undefined), 'source-and-editor');
+  assert.equal(host.getSettingsSearchDropdownValue(quickSwitcherKey, 'unsupported'), 'source-and-editor');
   assert.deepEqual(Object.keys(host.getSettingsSearchDropdownOptions(quickSwitcherKey)), ['default', 'source', 'source-and-editor', 'editor']);
  }
  if (desktop) {

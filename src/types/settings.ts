@@ -1087,6 +1087,11 @@ export function normalizeCoreQuickSwitcherOpenBehavior(value: unknown): CoreQuic
 	return value === 'default' || value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : undefined;
 }
 
+/** Missing preferences use both panels without rewriting existing settings packages. */
+export function resolveCoreQuickSwitcherOpenBehavior(value: unknown): CoreQuickSwitcherOpenBehavior {
+	return normalizeCoreQuickSwitcherOpenBehavior(value) ?? 'source-and-editor';
+}
+
 
 export function normalizeTaskFinderResultBehavior(value: unknown, fallback: TaskFinderResultBehavior): TaskFinderResultBehavior {
 	return value === 'source' || value === 'source-and-editor' || value === 'editor' ? value : fallback;

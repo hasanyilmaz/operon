@@ -62,7 +62,7 @@ function fixture(behavior = 'source') {
 test('passive mode adds no hook, active changes apply immediately and passive/unload restore Core', () => {
 	const f = fixture();
 	const modal = new f.CoreModal();
-	for (const value of [undefined, 'default']) {
+	for (const value of ['default']) {
 		f.state.behavior = value; f.integration.sync();
 		assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
 	}
@@ -75,6 +75,20 @@ test('passive mode adds no hook, active changes apply immediately and passive/un
 	assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
 	f.state.behavior = 'source'; f.integration.sync(); f.integration.dispose();
 	assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
+});
+
+test('missing preference opens source and editor on click and Enter without saving a preference', () => {
+ const f = fixture(); f.state.behavior = undefined; f.integration.sync();
+ const modal = new f.CoreModal();
+ for (const event of [click, enter]) modal.onChooseSuggestion(f.result, event);
+ assert.equal(f.calls.length, 2);
+ assert.ok(f.calls.every(call => call.kind === 'operon' && call.mode === 'source-and-editor'));
+ assert.equal(f.state.behavior, undefined);
+ f.state.behavior = 'default';
+ modal.onChooseSuggestion(f.result, enter);
+ assert.equal(f.calls.at(-1).kind, 'native');
+ f.integration.sync(); assert.equal(f.CoreModal.prototype.onChooseSuggestion, f.original);
+ f.integration.dispose();
 });
 
 test('modified gestures, new notes, bookmarks, stale files and foreign modal owners delegate once', () => {

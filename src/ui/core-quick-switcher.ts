@@ -2,7 +2,7 @@ import { Platform, TFile, apiVersion, type App } from 'obsidian';
 import { asHTMLElement } from '../core/dom-compat';
 import { getInternalPlugin, isPluginEnabled } from '../core/obsidian-app';
 import { isRecord } from '../core/unknown-value';
-import type { CoreQuickSwitcherOpenBehavior } from '../types/settings';
+import { resolveCoreQuickSwitcherOpenBehavior, type CoreQuickSwitcherOpenBehavior } from '../types/settings';
 
 const CORE_SWITCHER_VERSION = '1.15.1';
 const CHOOSE_METHOD = 'onChooseSuggestion';
@@ -48,7 +48,7 @@ export class CoreQuickSwitcherIntegration {
 
 	sync(): void {
 		const { app, options } = this;
-		const mode = options.behavior();
+		const mode = resolveCoreQuickSwitcherOpenBehavior(options.behavior());
 		const core = Platform.isDesktopApp && apiVersion === CORE_SWITCHER_VERSION && mode && mode !== 'default'
 			? getInternalPlugin(app, 'switcher') : null;
 		const constructor = isRecord(core) && isRecord(core.instance) ? core.instance.QuickSwitcherModal : null;
@@ -62,7 +62,7 @@ export class CoreQuickSwitcherIntegration {
 		const original = descriptor.value as (this: unknown, result: unknown, event: unknown) => unknown;
 		let enabled = true;
 		const choose = function (this: unknown, result: unknown, event: unknown): unknown {
-			const current = options.behavior();
+			const current = resolveCoreQuickSwitcherOpenBehavior(options.behavior());
 			let opening: Opening | null = null;
 			if (enabled && current && current !== 'default' && isPluginEnabled(core)
 				&& isRecord(this) && this.app === app && isPlainSelection(event)
