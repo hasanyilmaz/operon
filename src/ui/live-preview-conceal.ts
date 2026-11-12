@@ -273,6 +273,8 @@ export class TaskIconWidget extends WidgetType {
 		bindInvalidLivePreviewTaskActions(button, this.task, this.callbacks);
 		button.setAttribute('role', 'button');
 		button.setAttribute('tabindex', '0');
+		// The icon replaces the list bullet, so let Outliner (vslinko/obsidian-outliner) use it as the drag handle.
+		button.setAttribute('data-outliner-drag-handle', '');
 
 		const fieldValues = getFieldValues(this.task, this.indexedTask);
 		const iconColor = resolveTaskStatusIconColor(
