@@ -47,7 +47,7 @@ Preview width and height are adjusted separately on the lightbox itself and reme
 
 ### Core Quick Switcher click behavior
 
-On **Obsidian Desktop 1.15.1**, this setting controls a normal click or Enter on an existing file or alias in Obsidian’s Core Quick Switcher. Choose how supported Markdown files open:
+On **Obsidian Desktop**, this setting controls a normal click or Enter on an existing file or alias in Obsidian’s Core Quick Switcher. Choose how supported Markdown files open:
 
 | Option | Opens |
 |---|---|
@@ -58,7 +58,7 @@ On **Obsidian Desktop 1.15.1**, this setting controls a normal click or Enter on
 
 File Tasks use [[DOCS-021 Task Editor|Task Editor]]. Regular Markdown notes use [[DOCS-154 Property Editor|Property Editor]]. With Operon routing enabled, Table files and enabled Bases open in the source Lightbox. Saved choices take precedence over the default.
 
-Modifier shortcuts, unsupported results, and other Obsidian versions use Obsidian’s own behavior. See [[DOCS-151 Lightbox#Open a file from Core Quick Switcher|Lightbox]] for the opening rules.
+Obsidian handles modifier shortcuts and unsupported results. It also handles the selection when Operon cannot connect to Core Quick Switcher. See [[DOCS-151 Lightbox#Open a file from Core Quick Switcher|Lightbox]] for the opening rules.
 
 ## Properties Panel
 

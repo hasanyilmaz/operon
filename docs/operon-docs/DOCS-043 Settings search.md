@@ -33,7 +33,7 @@ Search for these labels to reach the individual controls:
 | File task results | Interface → Task Finder → Result Behavior | Source, editor, or both when selecting a File task result |
 | Inline task results | Interface → Task Finder → Result Behavior | The independent opening choice for an Inline task result |
 | Lightbox background dimming | Interface → Workspace Tweaks → Lightbox | The shared background darkness preference |
-| Core Quick Switcher click behavior | Interface → Workspace Tweaks → Lightbox | What a normal click or Enter opens on Obsidian Desktop 1.15.1 |
+| Core Quick Switcher click behavior | Interface → Workspace Tweaks → Lightbox | What a normal click or Enter opens on Obsidian Desktop |
 | Show Status Dock | Interface → Status Dock → General Settings | The saved desktop dock visibility |
 | Sections and Order | Interface → Status Dock | Which dock sections are enabled and where they appear |
 | Use mobile Task Editor on phones | Mobile → Task Editor | The phone editor layout, without changing tablet or desktop layout selection |

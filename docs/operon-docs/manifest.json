@@ -219,8 +219,8 @@
     },
     {
       "path": "DOCS-043 Settings search.md",
-      "sha256": "1e27c6eb185603181fbfe60c79a2ff2861da539c16df34215ff8e6f5d1b36f9d",
-      "bytes": 6827
+      "sha256": "40d315dd0cb1517a9c6f2e87a36e8ae8cb2b648639e4bfe8b6b00cb91f46e442",
+      "bytes": 6820
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
@@ -494,8 +494,8 @@
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
-      "sha256": "143bf244fdc855f237525dd660ee71706e0621ce61408269e6b8c487fa5f8e1e",
-      "bytes": 8678
+      "sha256": "ef831bf3007d5c97574ab6101372196375c14dbfaf2b864563e148a2eccfe4d6",
+      "bytes": 8713
     },
     {
       "path": "DOCS-099 State Icons.md",
@@ -759,8 +759,8 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "865da7de98be18a2fb460fb79fa66850483ab3845f5c4713b333692297e99dcb",
-      "bytes": 20835
+      "sha256": "2af041ea7f6bc21f44e7ef7bae5a9c4961bec7a603747a3b978ca00d66329d45",
+      "bytes": 20828
     },
     {
       "path": "DOCS-152 Status Dock.md",
@@ -774,9 +774,9 @@
     },
     {
       "path": "DOCS-154 Property Editor.md",
-      "sha256": "fdeda7285e27b711ca52dd07760c9f8cffc94e93fcfe7c738339f5b4d8e22810",
-      "bytes": 2750
+      "sha256": "9f61205ee249c30f7d4b9b2ab293f3825e48ccd469dba4469dd482d5482df692",
+      "bytes": 2743
     }
   ],
-  "generatedAt": "2026-11-12T11:53:59.882Z"
+  "generatedAt": "2026-11-12T12:28:09.110Z"
 }

@@ -14,7 +14,7 @@ Updated: 2026-11-12T12:42:01+01:00
 1. Open the note in a desktop Lightbox.
 2. Choose **Show property editor** on the control rail. Use **Show source** or **Hide source** to choose whether the Markdown body is alongside it.
 
-The panel follows **Task Editor position** under **Settings → Operon → Interface → Task Editor → Layout and opening**. On Obsidian Desktop 1.15.1, an eligible Core Quick Switcher result can open Property Editor directly when the selected opening option includes the editor. See [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Core Quick Switcher click behavior]].
+The panel follows **Task Editor position** under **Settings → Operon → Interface → Task Editor → Layout and opening**. On Obsidian Desktop, an eligible Core Quick Switcher result can open Property Editor directly when the selected opening option includes the editor. See [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Core Quick Switcher click behavior]].
 
 ## Property Editor and Task Editor
 

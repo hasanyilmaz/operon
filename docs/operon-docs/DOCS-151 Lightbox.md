@@ -70,7 +70,7 @@ These are specific navigation controls, not a change to every file link or task 
 
 ## Open a file from Core Quick Switcher
 
-On **Obsidian Desktop 1.15.1**, click or press Enter on an existing file or alias in Core Quick Switcher. The default opens the source alongside **Task Editor** for a File Task or **Property Editor** for an eligible regular Markdown note. Choose a different opening mode under **Settings → Operon → Interface → Workspace Tweaks → Lightbox → Core Quick Switcher click behavior**. [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Workspace Tweaks]] lists the four options.
+On **Obsidian Desktop**, click or press Enter on an existing file or alias in Core Quick Switcher. The default opens the source alongside **Task Editor** for a File Task or **Property Editor** for an eligible regular Markdown note. Choose a different opening mode under **Settings → Operon → Interface → Workspace Tweaks → Lightbox → Core Quick Switcher click behavior**. [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Workspace Tweaks]] lists the four options.
 
 In the Operon opening modes, Tables and enabled Bases open in the source Lightbox. Obsidian handles modifier shortcuts, unsupported results, and openings where Operon cannot determine the file’s task identity for the requested editor.
 
