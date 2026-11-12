@@ -54,6 +54,8 @@ This grammar fails closed. An unrecognized English phrase such as `next Tuesday`
 
 If you would rather see the month, the picker also shows a calendar grid. Move by month or year, click a day, and use **Today** to jump to the current day or **Clear** to empty the field. Typing and clicking are two ways into the same control; use whichever is faster for the date you want.
 
+For a supported Vault Property of type **Date**, the calendar appears inside the picker in [[DOCS-154 Property Editor|Property Editor]], [[DOCS-021 Task Editor#Additional properties|Task Editor Additional]], and [[DOCS-115 File task property columns|Operon Table]]. The grid follows **Week start** and **Calendar sidebar week numbers** under **Settings → Operon → Views → Calendar**. Selecting a day applies the value immediately and uses that surface’s normal save behavior.
+
 > **MEDIA-DOCS-063-2:** The calendar grid in the date picker, with Today and Clear actions.
 
 ![MEDIA-DOCS-063-2 - Date picker calendar grid](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-063-2.png)

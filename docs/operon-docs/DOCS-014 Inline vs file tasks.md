@@ -30,19 +30,19 @@ Both are real Operon tasks. Both have an `operonId`, both appear in every view, 
 
 ## The same task, both shapes
 
-Here is one task, "Write the quarterly report," written each way. The fields carry the same meaning; only the container changes. Both use the `{{operonId}}` template variable, so pasting either one mints a real id. See [[DOCS-061 operonId template variables|operonId template variables]].
+Both examples show the same task, "Write the quarterly report," with the same fields and the seven-character ID `abc1234`. When creating a new task from an example, use the `{{operonId}}` template variable to generate a fresh ID. See [[DOCS-061 operonId template variables|operonId template variables]].
 
 As an **inline task**, one line in a note:
 
 ```md
-- [ ] Write the quarterly report {{operonId:: {{operonId}}}} {{status:: Project.InProgress}} {{priority:: A}} {{dateDue:: 2026-06-30}}
+- [ ] Write the quarterly report {{operonId:: abc1234}} {{status:: Project.InProgress}} {{priority:: A}} {{dateDue:: 2026-06-30}}
 ```
 
 As a **file task**, a note whose frontmatter holds the same fields and whose body is free for the work:
 
 ```yaml
 ---
-operonId: {{operonId}}
+operonId: abc1234
 Status: Project.InProgress
 Priority: A
 dateDue: 2026-06-30
@@ -60,7 +60,7 @@ Move a task from inline to a file when you notice the signs:
 - It is growing real subtasks, not just a quick checklist.
 - It repeats with the same structure every time.
 
-When that happens, run **Create file task** on the line, or **Edit or convert to file task**. Operon carries the task's identity and fields forward. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
+To convert the inline task, place the cursor on its line and run **Create file task** from the command palette. Operon carries the task's identity and fields forward. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 
 ## When to shrink back
 

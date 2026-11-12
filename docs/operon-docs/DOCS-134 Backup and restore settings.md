@@ -33,9 +33,12 @@ The backup also includes these independent opening preferences:
 
 - [[DOCS-021 Task Editor|Task Editor]] position, which also sets the control-rail side on other desktop lightboxes, and its separate File/Inline source-opening toggles.
 - [[DOCS-027 Task Finder|Task Finder]] Result Behavior for File and Inline results. Restoring these choices does not merge them with the general Task Editor toggles.
+- **Core Quick Switcher click behavior** under [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Workspace Tweaks → Lightbox]].
 - The phone's **Use mobile Task Editor on phones** choice, together with the editor's section, property, and compact mobile toolbar preferences.
 
-Restored opening preferences apply to newly opened workspaces or Finder selections. An already open workspace keeps its position and opening choices. The backup includes saved preferences, but not open panels, unsaved drafts, selections, scroll positions, or undo history.
+The backup also includes saved [[DOCS-152 Status Dock|Status Dock]] visibility, click behavior, section order, and the Task Creator and timer display preferences.
+
+Restored opening preferences apply to new workspaces and subsequent Finder or Quick Switcher selections. An already open workspace keeps its position and opening choices. The backup includes saved preferences, but not open panels, unsaved drafts, selections, scroll positions, or undo history.
 
 [[DOCS-040 Custom keys|Custom key]] definitions include their configured icons and visibility preferences. Retained property interpretation information may remain in the backup after a custom key is deleted, so existing inline values can still be understood. Keeping that information does not by itself put a deleted, unused field back into Creator or Additional. Restore still validates incompatible definitions and does not convert the values in your notes.
 

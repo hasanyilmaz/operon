@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "22aced5f1dba498837c4ebe3511bcde7fa94481a926ad518096137566785f598",
-      "bytes": 12611
+      "sha256": "346f9b1b14d6df386bc942f6065a4d99a119cd510caba44bbce14d98d242a92d",
+      "bytes": 12718
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -74,8 +74,8 @@
     },
     {
       "path": "DOCS-014 Inline vs file tasks.md",
-      "sha256": "19675a5c489c2bcc18df97c6cfd59afe4c514930d7e06d5969739ebdc7934408",
-      "bytes": 3355
+      "sha256": "1685f09c8952dafd7b0cf59835c9a46dfa71b559db3e70d6b7274438690170ad",
+      "bytes": 3378
     },
     {
       "path": "DOCS-015 Task identity and operonId.md",
@@ -99,8 +99,8 @@
     },
     {
       "path": "DOCS-019 Converting inline and file tasks.md",
-      "sha256": "1c50a4d89a0d19f4951e2ceb20d2e410b0f10e64437327094311fa6244e97df2",
-      "bytes": 7484
+      "sha256": "56351219b8da4a7e661b03d4605711616f61cafa2f647703d26f6c7776c5fe83",
+      "bytes": 7523
     },
     {
       "path": "DOCS-020 Task Creator.md",
@@ -114,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "cae1adad1105c8b969b276a787b38c147ff60d576a31aed05a36df0569c98228",
-      "bytes": 8402
+      "sha256": "1c9ebd0eea5515b848e9a307251451ced25da8a311cccab80f9970795facb5aa",
+      "bytes": 8486
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -174,13 +174,13 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "7e1e56e9330cd8ec26bd8205ef8bd7f78e79aec7cc510eeb70cad48b582bef29",
-      "bytes": 8790
+      "sha256": "a8f1c8b6d1d4c22f95c674890d06a9e7612773dd6928d56f63f7ccb7c5860d49",
+      "bytes": 8989
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
-      "sha256": "afc380fb86646b805ad1e8d29ed3083ad9d3b0d6b0fc4cecf0e80dac0598d50c",
-      "bytes": 7197
+      "sha256": "64ea4082c5a4306414cc92d94b249b9e1d5013303b4f438f4b4641170f6acea2",
+      "bytes": 7414
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
@@ -204,8 +204,8 @@
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "1955365ebac04615fb23c0e92d86b333d30afce9631c9839c87e54a7c2c83c4e",
-      "bytes": 13878
+      "sha256": "92adea6f99547a5fb0f330450fe2f082f9143faedfdfacccc1d3f15512fa0e04",
+      "bytes": 14111
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -219,8 +219,8 @@
     },
     {
       "path": "DOCS-043 Settings search.md",
-      "sha256": "d343ef8b0830750b5d5b505cbba7e03ca85622ce5eb199710a8c3a16aff61a1b",
-      "bytes": 6442
+      "sha256": "1e27c6eb185603181fbfe60c79a2ff2861da539c16df34215ff8e6f5d1b36f9d",
+      "bytes": 6827
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
@@ -319,8 +319,8 @@
     },
     {
       "path": "DOCS-063 Date and time picker.md",
-      "sha256": "6ab2e4ef55a28a30ebfc9c58a2b6891cda92c3a84a38fa0594dc43d9e3499390",
-      "bytes": 9040
+      "sha256": "723982ce2d33b7d5d38967bcb602e64fb9ca06fae8e2a631498512c436f0e9e3",
+      "bytes": 9525
     },
     {
       "path": "DOCS-064 Recurrence picker.md",
@@ -369,8 +369,8 @@
     },
     {
       "path": "DOCS-073 Filter conditions and operators.md",
-      "sha256": "bba1e785d9c936f5d670f165e202e5d681117fc9a048489d17a40a2f7f884297",
-      "bytes": 14087
+      "sha256": "fdfe29ea99a81f6e3c9fb0bd466a00cb085a50cd7db2f93f121f55bedec2f49d",
+      "bytes": 14506
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
@@ -494,8 +494,8 @@
     },
     {
       "path": "DOCS-098 Workspace Tweaks.md",
-      "sha256": "f047b4cf4847a1e73ab8d27fba000aa23aecc528531ff1c6cfa65d3638a62e08",
-      "bytes": 8201
+      "sha256": "143bf244fdc855f237525dd660ee71706e0621ce61408269e6b8c487fa5f8e1e",
+      "bytes": 8678
     },
     {
       "path": "DOCS-099 State Icons.md",
@@ -579,8 +579,8 @@
     },
     {
       "path": "DOCS-115 File task property columns.md",
-      "sha256": "59712a9f81918b74572fa42e92f2b1fc88bb8469bcf1db567f1eccd0cee4dd8a",
-      "bytes": 11543
+      "sha256": "97d3607f8c003b49315c4161ec7be147d63b29c7a1b89833c216e0bc24c83e9c",
+      "bytes": 11558
     },
     {
       "path": "DOCS-116 Reminders.md",
@@ -624,8 +624,8 @@
     },
     {
       "path": "DOCS-124 Troubleshooting and recovery.md",
-      "sha256": "c5c699b6cc303b9a5ed14752e0cda8bbf890b2f0a9645fedf16789144d708cb2",
-      "bytes": 14164
+      "sha256": "568dcd9a5f3c9b6e9abecf92633f9fe7f247285082f95c47ec005531c4a3166f",
+      "bytes": 14658
     },
     {
       "path": "DOCS-125 CLI contract and discovery reference.md",
@@ -674,8 +674,8 @@
     },
     {
       "path": "DOCS-134 Backup and restore settings.md",
-      "sha256": "7df210059112d463d7b340df5bb328762d13853e732934e9e20660b65df3a7e9",
-      "bytes": 8819
+      "sha256": "a0763e3e433051ce58ca288563f714e2d11b38ae103a87173cdf7b2932bf087c",
+      "bytes": 9147
     },
     {
       "path": "DOCS-135 Convert task to plain.md",
@@ -704,8 +704,8 @@
     },
     {
       "path": "DOCS-140 Upcoming Tasks.md",
-      "sha256": "6d1a725712081d03185ebac7e7386bf371c3535457090f0574893f2373017aff",
-      "bytes": 9352
+      "sha256": "7e879a6862fdd0823267d73aadfb0bcd4013de3b22b372d1e9aa7b6b550053cf",
+      "bytes": 9438
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
@@ -759,19 +759,24 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "242f7a9dc94999726f581af8d71c08080661789178561b7b11357fb6e2687ca0",
-      "bytes": 19849
+      "sha256": "865da7de98be18a2fb460fb79fa66850483ab3845f5c4713b333692297e99dcb",
+      "bytes": 20835
     },
     {
       "path": "DOCS-152 Status Dock.md",
-      "sha256": "d88a32cff1eb83744da29bdf5603287da6cf194fcf2662855bad9e47b7027fac",
-      "bytes": 14495
+      "sha256": "2d004c695def16ca18813866085fe91ba178a6d1bf986066756b82a73052d012",
+      "bytes": 15633
     },
     {
       "path": "DOCS-153 Kanban presets.md",
       "sha256": "e3ddd664c53f593906ee8e9d944ab0b11970a123fb34e6c40d2256e2516640f3",
       "bytes": 9839
+    },
+    {
+      "path": "DOCS-154 Property Editor.md",
+      "sha256": "fdeda7285e27b711ca52dd07760c9f8cffc94e93fcfe7c738339f5b4d8e22810",
+      "bytes": 2750
     }
   ],
-  "generatedAt": "2026-11-07T23:09:01.371Z"
+  "generatedAt": "2026-11-12T11:53:59.882Z"
 }

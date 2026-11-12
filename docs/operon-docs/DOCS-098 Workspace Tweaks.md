@@ -1,5 +1,5 @@
 ---
-Notes: Status Dock settings and workspace appearance preferences
+Notes: Lightbox opening, background dimming, and workspace appearance preferences
 Icon: sliders-horizontal
 Color: "#ca8a04"
 Updated: 2026-11-05T01:07:15+01:00
@@ -7,18 +7,13 @@ Updated: 2026-11-05T01:07:15+01:00
 
 # Workspace Tweaks
 
-**Workspace Tweaks** groups the desktop Status Dock controls with preferences for lightbox dimming, scrollbars, sidebar tabs, and the Properties panel.
+**Workspace Tweaks** groups preferences for workspace appearance, Lightbox, and Obsidian’s Properties panel.
 
 ## Where it lives
 
-Open **Settings → Operon → Interface → Workspace Tweaks**. On desktop, **Status Dock** comes first, followed by **Workspace Appearance** and **Properties Panel**. The **Properties Excluded Folders** section and collapse-scope control appear when **Collapse Properties by Default** is enabled.
+Open **Settings → Operon → Interface → Workspace Tweaks** for **Workspace Appearance**, **Lightbox**, and **Properties Panel**. **Properties Excluded Folders** and the collapse scope appear when **Collapse Properties by Default** is enabled.
 
-## Status Dock
-
-- **Click behavior** chooses what opens when you click a task name in the Dock or its lists. The default is **Source File + Task Editor**. You can also choose **Source File Only** or **Task Editor Only**.
-- **Sections and Order** controls which sections appear and where they sit. All seven start enabled. Use a toggle to hide a section and the arrows to move it. The top row in Settings is the leftmost section in the Dock. **Ongoing Tasks** and **Upcoming Tasks** have separate toggles.
-
-Use the help button beside **Status Dock** to open the [[DOCS-152 Status Dock|Status Dock guide]].
+For dock controls, open the separate **Interface → Status Dock** page. See the [[DOCS-152 Status Dock|Status Dock guide]].
 
 ## Workspace Appearance
 
@@ -32,21 +27,38 @@ Slims the tab header strips in the left and right side docks down to a narrow ba
 
 This one applies on the desktop app. On mobile, where the side docks behave differently, it has no effect.
 
+## Lightbox
+
 ### Lightbox background dimming
 
 Choose the starting darkness behind desktop Operon lightboxes and Task Creator, Task Finder, Task Editor, and the standalone Dynamic Subtasks Filter modal. The dropdown offers:
 
 **10% · 20% · 30% · 35% · 40% · 45% · 50% — Default · 55% · 60% · 65% · 70% · 80% · 90%**
 
-New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. The **Moon/Sun** controls at the bottom of a lightbox's side rail step through these same dimming levels and save the preference here: Moon darkens, Sun lightens. The rail follows **Task Editor position** for newly opened desktop lightboxes, including other content types. The dimming buttons appear while the source or preview is visible, not when only the Task Editor is shown. There is no numeric indicator beside the preview; this dropdown shows the saved starting level.
+New users, or settings with no valid saved value, start at **50%**. Existing valid preferences are preserved. Changes apply to open surfaces without a reload. The **Moon/Sun** controls at the bottom of a lightbox's side rail step through these same dimming levels and save the preference here: Moon darkens, Sun lightens. The rail follows **Task Editor position** for newly opened desktop lightboxes, including other content types. The dimming buttons appear while the source or preview is visible. There is no numeric indicator beside the preview; this dropdown shows the saved starting level.
 
 Each additional included surface adds **5 percentage points**, capped at **90%**. Starting at 50%, three nested surfaces use 50%, 55%, then 60%. Starting at 80%, they use 80%, 85%, then 90%; further layers stay at 90%. Only the top included backdrop paints the calculated darkness, so overlapping backgrounds do not multiply it. Closing a layer restores the previous level, and each window keeps its own stack.
 
-Markdown and Task Editor side by side count as **one level**, not two. Opening another task editor or preview above them adds one level; hiding or showing a panel within the current workspace adds none. The lower level stays visible but does not receive input until the upper level closes.
+Markdown alongside Task Editor or Property Editor counts as **one level**. Opening a child editor or preview adds one level. Showing or hiding a panel keeps the current level. The lower level stays visible but does not receive input until the upper level closes.
 
 This includes web, Markdown, Base, Table, and media lightboxes. It does not count mobile surfaces, small media hover previews, Page Preview, pickers, the Editor's Subtasks popover, embedded filters, or other native modals. Blur is not added.
 
 Preview width and height are adjusted separately on the lightbox itself and remembered by content type; they do not add another Settings menu or change the dimming steps. See [[DOCS-151 Lightbox|Lightbox]] for size profiles, controls, pointer/keyboard visibility, and nested-view behavior.
+
+### Core Quick Switcher click behavior
+
+On **Obsidian Desktop 1.15.1**, this setting controls a normal click or Enter on an existing file or alias in Obsidian’s Core Quick Switcher. Choose how supported Markdown files open:
+
+| Option | Opens |
+|---|---|
+| **Use switcher default** | The switcher’s own opening behavior |
+| **Source File Only** | The source Lightbox |
+| **Source File + Task / Property Editor** | The source and the matching editor. This is the default. |
+| **Task / Property Editor Only** | The matching editor on its own |
+
+File Tasks use [[DOCS-021 Task Editor|Task Editor]]. Regular Markdown notes use [[DOCS-154 Property Editor|Property Editor]]. With Operon routing enabled, Table files and enabled Bases open in the source Lightbox. Saved choices take precedence over the default.
+
+Modifier shortcuts, unsupported results, and other Obsidian versions use Obsidian’s own behavior. See [[DOCS-151 Lightbox#Open a file from Core Quick Switcher|Lightbox]] for the opening rules.
 
 ## Properties Panel
 
@@ -73,7 +85,7 @@ Pick **Only Operon file tasks** to keep the tidy-up focused on your task notes a
 
 A list of folders whose notes are **excluded from automatic Properties collapsing**, even when the collapse tweak is on. Operon leaves their current panel state alone; it does not force a closed panel open. This is the override for places where you actively edit frontmatter and want the panel in view, such as a templates folder or an area you are actively curating. Add a folder with the folder search, and remove it again from the list. An excluded folder wins regardless of the scope above. These exceptions only control Properties-panel collapsing; they do not exclude tasks from the index. Task-index exclusions are configured separately under **Tasks → File Tasks → Excluded folders**.
 
-These collapse preferences are separate from the body-only Markdown view in a [[DOCS-151 Lightbox|lightbox]]. That view hides Properties and the opening YAML block within the preview; open a normal Obsidian tab to edit them directly. The lightbox's presentation does not change these collapse preferences or the same file's normal tab.
+These collapse preferences are separate from the body-only Markdown view in a [[DOCS-151 Lightbox|lightbox]]. That view hides native Properties and the opening YAML block within the preview. Use [[DOCS-154 Property Editor|Property Editor]] for eligible regular notes or open a normal Obsidian tab to edit raw YAML. The lightbox's presentation does not change these collapse preferences or the same file's normal tab.
 
 ## What these tweaks do not do
 
@@ -97,7 +109,7 @@ Background dimming starts at **50%** for a new or missing preference. The other 
 
 ## Settings
 
-Find the Dock, appearance, and Properties controls through [[DOCS-043 Settings search|Settings search]].
+Find appearance, Lightbox, and Properties controls through [[DOCS-043 Settings search|Settings search]].
 
 ## Related
 

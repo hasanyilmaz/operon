@@ -27,15 +27,18 @@ Search for these labels to reach the individual controls:
 
 | Search label | Page and section | What it changes |
 |---|---|---|
-| Task Editor position | Interface → Task Editor → Layout and opening | Left/right placement for new desktop task workspaces and the control rails on other lightboxes |
+| Task Editor position | Interface → Task Editor → Layout and opening | Side of the editor and control rail in new desktop Lightboxes, including Property Editor |
 | Open source with file task editor | Interface → Task Editor → Layout and opening | Whether normal File task editor openings include the source |
 | Open source with inline task editor | Interface → Task Editor → Layout and opening | Whether normal Inline task editor openings include the source |
 | File task results | Interface → Task Finder → Result Behavior | Source, editor, or both when selecting a File task result |
 | Inline task results | Interface → Task Finder → Result Behavior | The independent opening choice for an Inline task result |
-| Lightbox background dimming | Interface → Workspace Tweaks → Workspace Appearance | The shared background darkness preference |
+| Lightbox background dimming | Interface → Workspace Tweaks → Lightbox | The shared background darkness preference |
+| Core Quick Switcher click behavior | Interface → Workspace Tweaks → Lightbox | What a normal click or Enter opens on Obsidian Desktop 1.15.1 |
+| Show Status Dock | Interface → Status Dock → General Settings | The saved desktop dock visibility |
+| Sections and Order | Interface → Status Dock | Which dock sections are enabled and where they appear |
 | Use mobile Task Editor on phones | Mobile → Task Editor | The phone editor layout, without changing tablet or desktop layout selection |
 
-Task Finder's two dropdowns are separate from Task Editor's two source-opening toggles. Search and direct page navigation edit the same preferences. Opening choices apply to subsequent openings; dimming can update open surfaces. For defaults and scope, see [[DOCS-021 Task Editor|Task Editor]], [[DOCS-027 Task Finder|Task Finder]], [[DOCS-098 Workspace Tweaks|Workspace Tweaks]], and [[DOCS-101 Mobile General|Mobile General]].
+Task Finder, Task Editor, and Core Quick Switcher each have their own opening preferences. Search and direct page navigation edit the same preferences. Opening choices apply to subsequent openings; dimming can update open surfaces. For defaults and scope, see [[DOCS-021 Task Editor|Task Editor]], [[DOCS-027 Task Finder|Task Finder]], [[DOCS-098 Workspace Tweaks|Workspace Tweaks]], [[DOCS-152 Status Dock|Status Dock]], and [[DOCS-101 Mobile General|Mobile General]].
 
 ## What a result targets
 

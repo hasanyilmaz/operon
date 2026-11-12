@@ -15,29 +15,30 @@ The **Status Dock** brings time tracking, calendar tasks, task lists, session hi
 
 ## Show, hide, and position the dock
 
-The dock starts visible near the bottom center of each desktop window with a main workspace tab. It is positioned within the window viewport, so scrolling a note does not move it. It is not inserted into sidebars or lightbox content; opening a lightbox does not remove the dock behind it.
+The dock is visible by default near the bottom center of each desktop window with a main workspace tab. It is positioned within the window viewport, so scrolling a note does not move it. It is not inserted into sidebars or lightbox content; opening a lightbox does not remove the dock behind it.
 
 Drag the **six-dot handle** to move it. With the handle focused, arrow keys move it and **Home** resets its position. The dock stays within the available window bounds. Position is temporary: restarting Obsidian restores the centered default.
 
-Run **Operon: Toggle status dock** from the command palette to hide or show it across windows. This changes visibility only; it does not stop a timer or end a break. There is no separate Settings visibility switch. Restarting Obsidian makes the dock visible again.
+Use **Show Status Dock** under **Settings → Operon → Interface → Status Dock → General Settings**, or run **Operon: Toggle status dock** from the command palette. Both change the same visibility preference across windows, and your choice survives an Obsidian restart. A running timer or break continues when the dock is hidden.
 
-In a narrow window, controls can wrap to a second row. The Status Dock is desktop-only. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] for the mobile Status Bar.
+In a narrow window, whole sections wrap onto additional rows. Hidden sections collapse to keep the spacing even. The Status Dock is desktop-only. See [[DOCS-140 Upcoming Tasks|Upcoming Tasks]] for the mobile Status Bar.
 
 ## Choose and arrange sections
 
-Open **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Sections and Order**. Turn each section on or off and use the arrows to move it. The settings list runs from top to bottom in the same order that the Dock runs from left to right. All seven sections start enabled.
+Open **Settings → Operon → Interface → Status Dock → Sections and Order**. The Status Dock page is below **Task Chips**. Turn sections on or off and use the arrows to arrange them from left to right. All eight start enabled.
 
 | Default position | Section | What it shows |
 | --- | --- | --- |
 | 1 | Overdue & Happens Today | Two task lists with a shared visibility setting |
-| 2 | Time Tracker | Timer, break, Task Finder, and Task Creator controls |
-| 3 | Ongoing Tasks | Timed calendar tasks in progress, or the retained task after its countdown ends |
-| 4 | Upcoming Tasks | The next future timed task |
-| 5 | Pinned Tasks | Tasks in your active pinned group |
-| 6 | Modified Tasks | Recently modified tasks |
-| 7 | Session History | Recently recorded time sessions |
+| 2 | Time Tracker | Play/Stop, timer mode and reading, Task Finder, and break controls |
+| 3 | Task Creator | Create a task and optionally start tracking it |
+| 4 | Ongoing Tasks | Timed calendar tasks in progress, or the retained task after its countdown ends |
+| 5 | Upcoming Tasks | The next future timed task |
+| 6 | Pinned Tasks | Tasks in your active pinned group |
+| 7 | Modified Tasks | Recently modified tasks |
+| 8 | Session History | Recently recorded time sessions |
 
-An empty list hides its icon. Hiding Time Tracker leaves any running timer or break active. The drag handle and duplicate-ID warnings sit outside the section order. Use the command palette toggle to control visibility of the whole Dock.
+An empty list hides its icon. Hiding Time Tracker leaves any running timer or break active. The drag handle and duplicate-ID warnings sit outside the section order.
 
 ## Track time and take a break
 
@@ -45,13 +46,17 @@ The tracking section contains **Play or Stop**, the timer, the task name, and co
 
 | State | Available actions |
 |---|---|
-| No timer and no waiting task | Play starts an unassigned timer. Task Finder and Task Creator let you choose or create a task to track. |
-| An unassigned timer is running | Stop ends the timer. Task Finder and Task Creator let you attach a task through the tracking flow. |
-| A task is being tracked | Stop finishes and saves the work session. Coffee records the current work session and starts a break without opening FlowTime. |
-| A break is active | Play starts a new work session for the waiting task. Coffee ends the break without restarting work. Finder and Creator let you start a different task instead. |
-| A break has ended and a task is waiting | Play resumes that task in a new session. Finder and Creator let you choose a different task. |
+| No timer and no waiting task | Play starts an unassigned timer. Finder lets you choose a task to track. |
+| An unassigned timer is running | Stop ends the timer. Use Finder to select a task. |
+| A task is being tracked | Stop saves the work session. Coffee records the session and starts a break. |
+| A break is active | Play starts a new work session for the waiting task. Coffee ends the break and leaves the task waiting. Finder lets you start a different task. |
+| A break has ended and a task is waiting | Play resumes that task in a new session. Finder lets you choose a different task. |
 
-The Task Finder tooltip is **Track a different task**. Task Creator uses **Create a new task and start tracking**. During a break, successfully choosing or creating a task ends the break and starts tracking that task; cancelling the picker or Creator leaves the current state in place.
+### Create a task from the dock
+
+**Task Creator** has its own section and stays available while a timer runs. **Start timer when creating a task** under **General Settings** is on by default. Successful tracking of the new task can switch the active timer or end a break. Turn the setting off to create the task while keeping the current timer or break as it is.
+
+The Creator tooltip shows **Create a new task and start tracking** or **Create a new task**, according to this setting. Finder shows **Track a different task**. Cancelling Finder or Creator leaves the current tracking state in place.
 
 The dock and [[DOCS-035 FlowTime focus sessions|FlowTime]] share the same break. Closing the FlowTime panel does not end it. Restarting Obsidian or reloading Operon clears the temporary break and waiting task, while saved work sessions remain recorded. Existing FlowTime break duration and notification preferences apply.
 
@@ -59,9 +64,17 @@ Controls respond immediately while session saving completes. A failed save does 
 
 ## Read the timer
 
-Durations below one minute show seconds, such as **29s**. Longer durations use minutes, such as **41m** or **2h 34m**. The next-task countdown uses the same compact format. The dock does not change duration formatting in other views.
+Click the **TrackTime** or **FlowTime** label when idle, or the timer reading while it runs, to switch modes. The dock and the FlowTime panel share the selected mode. TrackTime counts up. FlowTime shows time remaining, then marks overtime with **+**. Click an assigned task name separately to open it using **Click behavior**.
 
-An idle or waiting timer has no **0s** label. Without an assigned task, **Track time** or **Select or create a new task** is plain text. Use the Finder or Creator icon beside it. The timer and countdown values in the bar do not open a task or show its opening tooltip. The separate recent-session card has a clickable duration, described below.
+**Show seconds** in **General Settings** is off by default. The Time Tracker still shows seconds below one minute, such as **09s**. Turn it on to keep two-digit seconds visible in longer readings, such as **41m 09s**. Hours and minutes stay in place as the seconds tick. Upcoming-task countdowns retain their compact display.
+
+An unassigned timer prompts **Select or create a new task** when Creator starts tracking automatically, or **Select a new task** when it does not. Use Finder to pick the task. Click the duration on the separate recent-session card to edit that saved session.
+
+### Show the timer dial
+
+**Show timer dial** is off by default. Turn it on in **General Settings** to display the dial above Time Tracker. **Timer dial size** ranges from **0.5×** to **1.5×** in **0.1×** steps and defaults to **1×**. The dial centers over the running timer and temporarily hides while a dock list or recent-session card is open.
+
+With FlowTime selected, drag the dock or sidebar dial to adjust the shared focus target while idle or working. During a break, the dial displays the break timer.
 
 ## Overdue and Happens Today lists
 
@@ -134,11 +147,11 @@ Each task uses its own icon when configured. Otherwise the current-task icon fal
 
 Hover over a calendar task to reveal **Play** in place of its icon. Click that icon to start tracking the task, including an upcoming task you want to begin early. Click the task name to use the opening preference below. These are separate actions; the name does not become a timer-start button.
 
-Long task names are shortened with an ellipsis. Clickable controls show a hand pointer on hover.
+**Time Tracker**, **Ongoing Tasks**, and **Upcoming Tasks** show up to 35 characters per task title. Longer titles are shortened with an ellipsis.
 
 ## Choose what task-name clicks open
 
-Go to **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Click behavior**. Choose:
+Go to **Settings → Operon → Interface → Status Dock → General Settings → Click behavior**. Choose:
 
 - **Source File Only**
 - **Source File + Task Editor** — the default

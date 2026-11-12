@@ -25,13 +25,13 @@ The menu reflects the task you opened it for. Stop checks that the same task and
 
 On desktop, the [[DOCS-152 Status Dock|Status Dock]] shows Play/Stop and the active task across main workspace tabs when its **Time Tracker** section is enabled. Play/Stop does not automatically open FlowTime. Coffee finishes the current work session and starts a break shared with FlowTime. Play resumes the waiting task in a new session; ending the break alone does not restart work.
 
-When idle, during a break, after a break, or while tracking without an assigned task, the available Finder and Creator controls let you choose or create a task to track. Calendar-task icons in the dock reveal Play on hover, while task-name clicks follow the dock’s source/editor opening preference.
+Use Finder to choose a task when the tracker is idle, unassigned, or has a task waiting during or after a break. The separate **Task Creator** section stays available while a timer runs. Its **Start timer when creating a task** setting controls whether the new task starts tracking. Click the mode label or timer reading to switch between TrackTime and FlowTime. Calendar-task icons reveal Play on hover, and clicking a task name follows the dock’s source/editor opening preference.
 
 The Dock also offers task lists for **Overdue**, **Happens Today**, **Pinned Tasks**, and **Modified Tasks** when those lists have entries and their sections are enabled. Hover over a task card to reveal its Play/Stop control. Using it keeps the list open.
 
 A newly saved task session produces a temporary card while the dock is visible. Click its duration to open **Edit session**. The card waits while a Dock list is open; clicking elsewhere on the dock closes the list and runs the chosen action. See [[DOCS-053 Time session history|Time session history]] for other editing entry points.
 
-Use **Toggle status dock** to hide or show this surface without stopping tracking. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+Use **Show Status Dock** or **Toggle status dock** to change the saved visibility preference while tracking continues. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 
 ## Track across devices
 
@@ -103,7 +103,7 @@ Open the **Time Session History** panel to see and edit the sessions you have tr
 
 Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
 
-On desktop, use **Settings → Operon → Interface → Workspace Tweaks → Status Dock → Sections and Order** to show, hide, or move **Time Tracker**. Hiding that section leaves any running timer or break active. On mobile, use the native status-bar timer preference where available.
+On desktop, use **Settings → Operon → Interface → Status Dock → Sections and Order** to show, hide, or move **Time Tracker**. Hiding that section leaves any running timer or break active. On mobile, use the native status-bar timer preference where available.
 
 To choose where the contextual action appears, use **Interface → Context Menu**. The single **Start Timer** row controls both Start and Stop appearances, their order, and their allowed surfaces; there is no separate Stop Timer setting. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 

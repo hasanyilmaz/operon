@@ -156,6 +156,8 @@ A few conditions test a task's place in the system rather than a single field va
 
 These let a filter say "anything under this project," "only pinned work," or "only tasks in the DOCS serial group," not just field comparisons.
 
+When you move or rename a folder in Obsidian, a saved **is in folder tree** condition follows it when the condition stores the exact old vault-relative path and both the old and new paths identify a single folder. This also covers saved conditions targeting subfolders of the moved folder. If the condition uses a shortened or ambiguous path, select the intended folder again in the filter editor and save the filter.
+
 ## FAQ
 
 **Why are some operators missing for my field?** Choices depend on both the field and its property type. Tracked time and Trackers use the focused sets described above.

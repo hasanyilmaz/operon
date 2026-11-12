@@ -35,12 +35,14 @@ The usual causes are Obsidian not running, the Runtime still settling right afte
 
 A refusal means a request failed closed on purpose. Match the cause to the fix:
 
-- **Stale revision:** the task changed after your preview. Preview again and re-apply.
+- **Stale revision (`stale-context`):** the task or its context changed after preview. When apply was refused before writing, read the current state and preview again before applying.
 - **Changed vault identity:** the profile no longer matches its vault. See "Vault moved" below.
 - **Unconfirmed destructive action:** deletion (`DELETE`), file-to-inline conversion (`CONVERT`), removing a recorded timer session (`REMOVE`), and a gated inline relocation (`MOVE`) each need a fresh, target-bound confirmation. Confirm against the exact target with the token the command asks for.
 - **Raw apply payload:** apply goes through a sealed plan reference, not a raw request. Preview to get a plan, then apply that.
 
-None of these are retried by force; each is fixed by addressing the cause.
+Address the cause before applying again.
+
+For consecutive writes, wait for each successful apply before previewing the next change. The Runtime waits for pending index updates on the files it just wrote before reporting success, which avoids a false `stale-context` on the next operation. A genuine external change can still make a preview stale. For an uncertain outcome, use the same-plan recovery steps below. ([#245](https://github.com/hasanyilmaz/operon/issues/245))
 
 ## A command was not recognized
 

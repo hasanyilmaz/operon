@@ -24,7 +24,7 @@ When you add a custom field, you give it:
 
 The field now has a defined identity and type. It is written as `{{your-key:: value}}` on an inline task and as frontmatter on a file task, and Operon reads it consistently across both.
 
-When you save a new custom key, Operon also assigns its chosen type in Obsidian if no explicit type exists. Existing custom keys receive missing type assignments automatically when Operon starts; no extra action is needed. A separately assigned, incompatible Obsidian type is preserved. Reusing a deleted custom key with a different type has the narrower checks described below. Property types apply across the vault, while existing note values stay unchanged.
+When you save a new custom key, Operon also assigns its chosen type in Obsidian if no explicit type exists. Existing custom keys receive missing type assignments automatically when Operon starts; no extra action is needed. A separately assigned, incompatible Obsidian type is preserved. Reusing a deleted custom key with a different type has the narrower checks described below. Property types apply across the vault. If recreating a deleted key requires updating empty YAML values, Operon asks for confirmation first.
 
 For example, with two custom keys `client` (Text) and `effort` (Number), an inline task carries them alongside the built-in fields:
 
@@ -104,13 +104,15 @@ Values left in the source may be exposed through [[DOCS-115 File task property c
 
 You can add the same name again with the **same type**, reusing the retained interpretation, provided no active name or type conflict exists. Deletion does not permanently reserve the name.
 
-Using a **different type** requires proving that the old canonical key and visible property name are unused. Operon checks normal notes, inline fields, templates, dependent filters and presets, and open unsaved sources or editor drafts. An existing property with an empty value still counts as usage. Sorting, grouping, summaries, and Base property or formula references can also depend on the old interpretation.
+When you add the name with a **different type**, Operon checks the old canonical key and visible property name in notes, inline fields, templates, filters, presets, Base definitions, and open drafts. It can replace retained type information when these checks pass. Populated values, inline usage, and references in filters, sorts, groups, summaries, or Base formulas can block the change.
 
-Merely displaying the field as a column in an **Operon Table** does not block reuse, including a saved Table preset or `.table` file. That exemption is only for column display: a filter, sort, group, or summary using the field still counts as a dependency. A blank-looking Table cell may represent an existing empty property, so it is not proof that the name is unused. This exemption does not extend to native Base definitions.
+An empty YAML value in safely readable Markdown can stay in place. This includes a blank property such as `client:`, YAML `null`, an empty string `""`, and an empty list `[]`. Values like `false`, `0`, whitespace inside quotes, and `{}` count as populated.
 
-If the name is unused and the old declarations still match the deleted Operon definition, the explicit Add operation can replace that retained type information. Existing note values are never converted automatically. A separately assigned Obsidian type, an unreadable or ambiguous source, or a source change during verification prevents the type change.
+If a file needs conversion, review the old and new types and the affected files in **Change custom property type**. Confirming turns eligible empty strings and lists into blank values while preserving keys, order, and comments. Already blank values stay in place. Cancelling leaves the files and type unchanged. This applies when adding the definition again. **Clear** keeps its usual behavior.
 
-An unrelated open tab does not by itself block reuse. Deferred tabs without a live editor buffer are checked through their saved sources, while actual unsaved property content remains part of verification. Unexpanded template values do not automatically block reuse when their property names can be safely identified; a matching property still counts as usage, even with an empty value. Incomplete or ambiguous frontmatter can still prevent verification.
+Displaying the field as a column in an **Operon Table** is allowed, including in a saved preset or `.table` file. Using that column in a filter, sort, group, or summary still counts as a dependency. Check the source if a cell looks blank, since the display alone does not establish whether a stored value is empty. Native Base references are also checked.
+
+A separately assigned incompatible Obsidian type, an unreadable or ambiguous source, or a change during verification can stop the operation. An unrelated open tab is fine. Operon checks saved sources for deferred tabs and checks relevant unsaved changes in open editors. It can inspect safely identifiable template keys, but a template value it cannot verify as empty can still block reuse.
 
 This deeper check runs when reusing a name with a different type, not each time you open an editor. If it reports a remaining reference, review that reference or recreate the field with its original compatible type.
 
@@ -128,7 +130,7 @@ A shared index is not a promise of identical picker, chip, filter, or swimlane s
 
 **What happens to my data if I delete the field?** Nothing is deleted from your files. Values and retained type information remain. Recreating a compatible definition can restore managed access; changing the type requires the usage checks above.
 
-**I only added a Table column. Can I reuse the name?** Yes, column display alone is not a dependency. Actual properties, even empty ones, and filters, sorting, grouping, or summaries can still prevent a different-type recreation.
+**I only added a Table column. Can I reuse the name?** Yes. Column display alone allows reuse. Populated values and dependencies such as filters, sorting, grouping, or summaries can still prevent a different-type recreation. Empty YAML values follow the checks above.
 
 ## Settings
 
