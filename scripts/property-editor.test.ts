@@ -37,6 +37,17 @@ test('editing and appending retain YAML key formatting, inline comments, CRLF an
  assert.deepEqual(result.properties.order, ['First', 'Second', 'Last']);
 });
 
+test('editing preserves quoted YAML keys with escapes and whitespace before the colon', () => {
+ const name = 'quoted "key" ' + '\\!'.repeat(8);
+ const key = JSON.stringify(name);
+ const content = '---\n' + key + ' : old # keep\nNext: unchanged\n---\nBody\n';
+ const result = planPropertyEditorWrite(content, [], [change(name, 'old', 'new')]);
+ assert.equal(result.status, 'ready');
+ if (result.status !== 'ready') return;
+ assert.equal(result.text, content.replace(' : old # keep', ' : new # keep'));
+ assert.deepEqual(result.properties.order, [name, 'Next']);
+});
+
 test('first confirmed property preserves the body, while empty addition cannot create frontmatter', () => {
  const body = '\uFEFF# Body\r\n- [ ] Inline task {{operonId:: sample1}}\r\n';
  assert.deepEqual(planPropertyEditorWrite(body, [], [change('Count', undefined, null)]), { status: 'ready', text: body, properties: read(body) });

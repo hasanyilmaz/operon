@@ -29,7 +29,7 @@ export function inspectOrderedYamlProperties(source: string): {
    if (!raw.startsWith(indent)) continue;
    const line = raw.slice(indent.length);
    if (/^-(?:\s|$)/u.test(line)) continue;
-   const match = line.match(/^((?:"(?:\\.|[^"])*"|'(?:''|[^'])*'|[^\s:#][^:]*)):(?:\s|$)/u);
+   const match = line.match(/^((?:"(?:\\.|[^"\\])*"|'(?:''|[^'])*'|[^\s:#][^:]*)):(?:\s|$)/u);
    if (!match) continue;
    const parsedKey: unknown = parseYaml(`${match[1]}: null`);
    const key = parsedKey && typeof parsedKey === 'object' && !Array.isArray(parsedKey) ? Object.keys(parsedKey)[0] : null;
