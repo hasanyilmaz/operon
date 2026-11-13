@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "無法自動應用的篩選條件",
       "materializationUnsupportedLogic": "「{{logic}}」分組內的條件無法自動應用。",
       "materializationUpdates": "將被更改",
+      "miniCalendarClickAction": "點擊行為",
+      "miniCalendarClickActionDesc": "選擇點擊日期或週數時開啟的內容。檔案任務使用任務編輯器，其他筆記使用屬性編輯器。在行動裝置上，筆記會在一般 Obsidian 檢視中開啟。",
+      "miniCalendarOpenWeek": "開啟 {{week}} 週：{{title}}",
+      "miniCalendarTitle": "迷你日曆",
       "mobileAddTask": "將任務新增到所選日期",
       "mobileAgendaEmptyDay": "沒有專案",
       "mobileControls": "日曆控制元件",
@@ -325,6 +329,7 @@
       "openFilterView": "Operon 篩選檢視",
       "openFlowTime": "開啟 FlowTime 面板",
       "openKanban": "Operon 看板",
+      "openMiniCalendar": "開啟迷你日曆",
       "openMobileCalendar": "開啟行動版日曆",
       "openMobileKanban": "開啟行動版看板",
       "openOperonTable": "Operon 表格",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "無法將該行轉換為行內任務",
       "linkCopied": "連結已複製到剪貼簿",
       "markdownLinkCopied": "Markdown 連結已複製到剪貼簿",
+      "miniCalendarEditorUnavailable": "無法驗證任務身分。將開啟來源檔案。",
+      "miniCalendarNoteUnavailable": "無法找到或建立筆記。請檢查日記或週記設定。",
+      "miniCalendarOpenFailed": "無法開啟此筆記。請重試。",
       "moveInlineTaskFailed": "移動行內任務失敗。",
       "moveInlineTaskRequiresInlineSource": "請選擇要移動的行內任務。",
       "moveInlineTaskTargetRequiresBlankLine": "移動行內任務前，請將游標置於空行上。",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "17038d246fa9de557b4b84f8a38b334821ff21da838bf6550b6c37c64dea147f"
+  "sourceVersion": "a393c5df3b7a0e5bd90ded95a914cb9805fa79e1458d284733a67e1ed1a239f4"
 }

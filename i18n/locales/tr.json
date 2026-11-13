@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "Mini takvimi aç",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool’u aç",
 		"openExcalidrawTaskPool": "Excalidraw Görev Havuzunu aç",
 		"createTaskInExcalidraw": "Excalidraw’da görev oluştur",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} görev {{period}} güncellendi"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "Bu not açılamadı. Lütfen tekrar deneyin.",
+		"miniCalendarNoteUnavailable": "Not bulunamadı veya oluşturulamadı. Günlük veya haftalık not ayarlarınızı kontrol edin.",
+		"miniCalendarEditorUnavailable": "Görev kimliği doğrulanamadı. Kaynak dosya açılıyor.",
 		"trackerStateChanged": "Zamanlayıcı değişti veya durumu doğrulanamadı. Güncel durumunu kontrol edip yeniden deneyin.",
 		"createdInlineTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
 		"createdFileTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Task Editor’ı aç · Kaynağı yeni sekmede açmak için Cmd/Ctrl+tıkla"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "Tıklama davranışı",
+		"miniCalendarClickActionDesc": "Bir güne veya hafta numarasına tıkladığınızda ne açılacağını seçin. Dosya görevleri Task Editor, diğer notlar Property Editor kullanır. Mobilde notlar normal Obsidian görünümünde açılır.",
+		"miniCalendarOpenWeek": "{{week}} haftasını aç: {{title}}",
+		"miniCalendarTitle": "Mini Takvim",
 		"title": "Operon Takvim",
 		"presetsNotConfigured": "Takvim ön ayarları yapılandırılmamış.",
 		"toggleToToolbar": "Araç çubuğu",

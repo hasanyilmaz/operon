@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "自動的に適用できないフィルター条件",
       "materializationUnsupportedLogic": "「{{logic}}」グループ内の条件は自動的に適用できません。",
       "materializationUpdates": "変更されます",
+      "miniCalendarClickAction": "クリック時の動作",
+      "miniCalendarClickActionDesc": "日付や週番号をクリックしたときに開く画面を選択します。ファイルタスクにはタスクエディター、その他のノートにはプロパティエディターを使います。モバイルでは通常のObsidianビューでノートを開きます。",
+      "miniCalendarOpenWeek": "週 {{week}} を開く: {{title}}",
+      "miniCalendarTitle": "ミニカレンダー",
       "mobileAddTask": "選択した日にタスクを追加",
       "mobileAgendaEmptyDay": "項目なし",
       "mobileControls": "カレンダー操作",
@@ -325,6 +329,7 @@
       "openFilterView": "Operon フィルタービュー",
       "openFlowTime": "FlowTime パネルを開く",
       "openKanban": "Operon カンバン",
+      "openMiniCalendar": "ミニカレンダーを開く",
       "openMobileCalendar": "モバイルカレンダーを開く",
       "openMobileKanban": "モバイルカンバンを開く",
       "openOperonTable": "Operon テーブル",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "行をインラインタスクに変換できませんでした",
       "linkCopied": "リンクをクリップボードにコピーしました",
       "markdownLinkCopied": "Markdown リンクをクリップボードにコピーしました",
+      "miniCalendarEditorUnavailable": "タスクの識別情報を確認できませんでした。ソースファイルを開きます。",
+      "miniCalendarNoteUnavailable": "ノートを検索または作成できませんでした。デイリーまたはウィークリーノートの設定を確認してください。",
+      "miniCalendarOpenFailed": "このノートを開けませんでした。もう一度お試しください。",
       "moveInlineTaskFailed": "インラインタスクの移動に失敗しました。",
       "moveInlineTaskRequiresInlineSource": "移動するインラインタスクを選択してください。",
       "moveInlineTaskTargetRequiresBlankLine": "インラインタスクを移動する前に、空の行にカーソルを置いてください。",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "1fbe58b4d025cf56499ad2818d0787ff188c3638006d5ca4996618527106aba3"
+  "sourceVersion": "b6e2996ebfcdae15b2f167c7023e605d3ec0d31729f8063194004ed6b3cc4101"
 }

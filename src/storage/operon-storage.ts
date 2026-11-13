@@ -996,6 +996,22 @@ export class OperonStorage {
 		});
 	}
 
+	/** Explicit Mini Calendar preference changes; publish only after the narrow CAS succeeds. */
+	async saveMiniCalendarClickAction(value: string): Promise<void> {
+		const allowed = ['source', 'source-and-editor', 'editor'];
+		if (!allowed.includes(value)) throw new Error('Invalid Mini Calendar click behavior');
+		await this.enqueueSettingsTransaction(async () => {
+			const expected = this.settings.miniCalendarClickAction;
+			const matches = () => this.settings.miniCalendarClickAction === expected;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				const stored = current.settings.miniCalendarClickAction;
+				if ((allowed.includes(stored ?? '') ? stored : undefined) !== expected) throw new Error('Mini Calendar preference changed on disk');
+				return { ...current, settings: { ...current.settings, miniCalendarClickAction: value as NonNullable<OperonSettings['miniCalendarClickAction']> } };
+			}, matches);
+			this.settings.miniCalendarClickAction = value as NonNullable<OperonSettings['miniCalendarClickAction']>;
+		});
+	}
+
 	async saveLightboxSize(profile: LightboxSizeProfile, axis: LightboxSizeAxis, value: number): Promise<void> {
   await this.enqueueSettingsTransaction(async () => {
    const sizes = normalizeLightboxSizes(this.settings.workspaceTweaksLightboxSizes);
@@ -1803,6 +1819,7 @@ export class OperonStorage {
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockVisible === undefined) delete candidateInput.statusDockVisible;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockClickAction === undefined) delete candidateInput.statusDockClickAction;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.miniCalendarClickAction === undefined) delete candidateInput.miniCalendarClickAction;
 				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
@@ -1901,6 +1918,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (normalized.miniCalendarClickAction === undefined) delete this.settings.miniCalendarClickAction;
 		if (normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockCreatorStartsTimer')) delete this.settings.statusDockCreatorStartsTimer;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockShowSeconds')) delete this.settings.statusDockShowSeconds;

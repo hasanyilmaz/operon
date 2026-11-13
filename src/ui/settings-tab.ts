@@ -1245,6 +1245,14 @@ export class OperonSettingsTab extends PluginSettingTab {
 			}
 			return;
 		}
+		if (key === 'miniCalendarClickAction' && typeof value === 'string') {
+			try {
+				await this.storage.saveMiniCalendarClickAction(value);
+				this.notifySettingsChanged();
+			} finally { this.updateNativeSettingsDefinitions(); }
+			return;
+		}
+
 		if (key === 'statusDockClickAction' && typeof value === 'string') {
 			await this.storage.saveStatusDockPreference(key, value);
 			this.notifySettingsChanged();
@@ -1711,6 +1719,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['touchControls', ['calendarTouchDragLongPressMs', 'calendarTouchDragCancelDistancePx', 'calendarTouchTimeGridTaskMoveEnabled'], render, ['DOCS-060 Calendar layout toolbar and sidebar']],
 			['viewPresets', ['calendarDefaultPresetId', 'calendarPresets'], render, ['DOCS-029 Calendar presets and time grid', 'DOCS-060 Calendar layout toolbar and sidebar']],
 			['calendarSidebarSettings', ['calendarSidebarWidthPx', 'calendarSidebarShowWeekNumbers', 'calendarSidebarCalendarsDefaultExpanded', 'calendarSidebarTaskPoolDefaultExpanded'], render, ['DOCS-060 Calendar layout toolbar and sidebar', 'DOCS-095 Calendar Task Pool']],
+			['miniCalendarTitle', ['miniCalendarClickAction'], render],
 			['externalCalendarsTitle', ['externalCalendars'], render, ['DOCS-048 External calendars']],
 		], entries, t('settings', 'tabCalendar'), 'DOCS-028 Calendar overview',
 			key => key === 'externalCalendarsTitle' ? t('settings', key) : t('calendar', key),
@@ -3317,7 +3326,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer') return true;
 		if (key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial') return false;
 		if (key === 'statusDockTimerDialSize') return DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
-		if (key === 'statusDockClickAction') return 'source-and-editor';
+		if (key === 'statusDockClickAction' || key === 'miniCalendarClickAction') return 'source-and-editor';
 		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
 	}
 
@@ -3425,7 +3434,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule({ preset: value });
 		if (key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return normalizeTaskFinderResultBehavior(value, DEFAULT_SETTINGS[key]);
-		if (key === 'statusDockClickAction') return normalizeTaskFinderResultBehavior(value, 'source-and-editor');
+		if (key === 'statusDockClickAction' || key === 'miniCalendarClickAction') return normalizeTaskFinderResultBehavior(value, 'source-and-editor');
   if (key === 'taskEditorPosition') return value === 'left' ? 'left' : 'right';
 		if (key === 'calendarAutoScrollPastRatio' || key === 'calendarTimeGridScale') {
 			const options: readonly number[] = key === 'calendarAutoScrollPastRatio'
@@ -4067,6 +4076,12 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
    'background-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateBackgroundTab' : 'fileTaskAfterCreateBackgroundTab'),
   };
 		if (key === 'statusDockTimerDialSize') return Object.fromEntries(STATUS_DOCK_TIMER_DIAL_SIZES.map(size => [`${size}x`, `${size}×`]));
+		if (key === 'miniCalendarClickAction') return {
+			source: t('settings', 'taskFinderResultSourceOnly'),
+			'source-and-editor': t('settings', 'workspaceTweaksQuickSwitcherSourceAndEditor'),
+			editor: t('settings', 'workspaceTweaksQuickSwitcherEditorOnly'),
+		};
+
 		if (key === 'statusDockClickAction' || key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return {
 			source: t('settings', 'taskFinderResultSourceOnly'),
 			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
@@ -7954,6 +7969,20 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	private renderCalendarSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'miniCalendarClickAction') {
+			let control: DropdownComponent | undefined;
+			this.markSettingsSearchTarget(renderDropdownSetting({
+				containerEl, configure: dropdown => { control = dropdown; }, name: t('calendar', 'miniCalendarClickAction'), desc: t('calendar', 'miniCalendarClickActionDesc'),
+				value: String(this.getControlValue(key)),
+				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+				onChange: settingsAsyncHandler('Mini Calendar preference save failed', async value => {
+					try { await this.setControlValue(key, value); }
+					finally { control?.setValue(String(this.getControlValue(key))); this.applyPendingSettingsChange(); }
+				}),
+			}), key);
+			return;
+		}
+
 		if (key === 'calendarDefaultPresetId') {
 			this.renderBoundDropdownSetting(containerEl, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
 				value: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',

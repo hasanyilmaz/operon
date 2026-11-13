@@ -31,7 +31,12 @@ export function openWebLightbox(app: App, anchor: HTMLElement, url: string): boo
 }
 
 export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean, properties?: { showSource: boolean }): void {
- if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file }, undefined, canOpen, properties);
+ void openFileLightboxAsync(app, anchor, file, canOpen, properties);
+}
+
+/** Await readiness when an opening owns a cancellation token (for example Mini Calendar). */
+export function openFileLightboxAsync(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean, properties?: { showSource: boolean }): Promise<TaskEditorSession | null> {
+ return Platform.isDesktopApp ? openNativeLightbox(app, anchor, { file }, undefined, canOpen, properties) : Promise.resolve(null);
 }
 
 export function openTaskWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, initial: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {

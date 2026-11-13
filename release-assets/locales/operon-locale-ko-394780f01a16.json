@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "자동 적용할 수 없는 필터 조건",
       "materializationUnsupportedLogic": "\"{{logic}}\" 그룹 안의 조건은 자동 적용할 수 없습니다.",
       "materializationUpdates": "변경 예정",
+      "miniCalendarClickAction": "클릭 동작",
+      "miniCalendarClickActionDesc": "날짜나 주 번호를 클릭할 때 열 화면을 선택합니다. 파일 작업은 작업 편집기를, 다른 노트는 속성 편집기를 사용합니다. 모바일에서는 일반 Obsidian 보기로 노트를 엽니다.",
+      "miniCalendarOpenWeek": "{{week}} 주 열기: {{title}}",
+      "miniCalendarTitle": "미니 캘린더",
       "mobileAddTask": "선택한 날짜에 작업 추가",
       "mobileAgendaEmptyDay": "항목 없음",
       "mobileControls": "캘린더 컨트롤",
@@ -325,6 +329,7 @@
       "openFilterView": "Operon 필터 보기",
       "openFlowTime": "FlowTime 패널 열기",
       "openKanban": "Operon 칸반",
+      "openMiniCalendar": "미니 캘린더 열기",
       "openMobileCalendar": "모바일 캘린더 열기",
       "openMobileKanban": "모바일 칸반 열기",
       "openOperonTable": "Operon 테이블",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "줄을 인라인 작업으로 변환하지 못했습니다",
       "linkCopied": "링크를 클립보드에 복사했습니다",
       "markdownLinkCopied": "마크다운 링크를 클립보드에 복사했습니다",
+      "miniCalendarEditorUnavailable": "작업 식별 정보를 확인할 수 없습니다. 소스 파일을 엽니다.",
+      "miniCalendarNoteUnavailable": "노트를 찾거나 만들 수 없습니다. 일간 또는 주간 노트 설정을 확인하세요.",
+      "miniCalendarOpenFailed": "이 노트를 열 수 없습니다. 다시 시도하세요.",
       "moveInlineTaskFailed": "인라인 작업 이동에 실패했습니다.",
       "moveInlineTaskRequiresInlineSource": "이동할 인라인 작업을 선택하세요.",
       "moveInlineTaskTargetRequiresBlankLine": "인라인 작업을 이동하기 전에 빈 줄에 커서를 놓으세요.",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "6f2b463ab41dd0b9f0faa4d05e6c15cb13d039682d4e938e48d6e9f9acea6425"
+  "sourceVersion": "3cf80987a29e22714f1b8d646dd24070c517f1dc1fea0257ac81bd2d40385c08"
 }

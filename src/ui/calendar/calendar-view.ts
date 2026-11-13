@@ -1,5 +1,6 @@
+import { renderMiniCalendar, renderCalendarDateNavigation, shiftCalendarMonth, calendarWeekNumber, createToolbarIconButton } from './mini-calendar';
 import { taskDescriptionOpening } from '../task-text-link-opening';
-import { calendarNavigationLabels, showCalendarMonthPicker } from './calendar-month-picker';
+import { showCalendarMonthPicker } from './calendar-month-picker';
 import { registerFilterDayRefresh } from '../../core/filter-day-refresh';
 import { getScopedTrackerSessions, getTimeScopedFieldValues } from '../../core/time-scope-values';
 import { usesTrackedOn } from '../../core/tracked-on-filter';
@@ -7464,7 +7465,7 @@ export class CalendarView extends ItemView {
 			if (child !== retainedWrapper) { cleanupOperonHoverTooltips(child as HTMLElement); child.remove(); }
 		}
 		const header = container.createDiv('operon-calendar-sidebar-header');
-		this.createToolbarIconButton(
+		createToolbarIconButton(
 			header,
 			['panel-left'],
 			() => {
@@ -7665,125 +7666,22 @@ export class CalendarView extends ItemView {
 	}
 
 	private renderMiniMonth(container: HTMLElement, state: CalendarLeafState, preset: CalendarRenderPreset): void {
-		const monthCard = container.createDiv('operon-calendar-sidebar-month');
-		const anchorDate = state.anchorDate;
-		const anchorDateObject = this.parseDateKey(anchorDate) ?? this.parseDateKey(localToday()) ?? new Date();
-		const navRow = monthCard.createDiv('operon-calendar-sidebar-month-nav');
-		const shiftAnchorMonth = (delta: number): void => {
-			const base = this.parseDateKey(this.ensureState().anchorDate) ?? this.parseDateKey(localToday()) ?? new Date();
-			const year = base.getFullYear();
-			const month = base.getMonth();
-			const day = base.getDate();
-			const targetMonthBase = new Date(year, month + delta, 1, 12, 0, 0, 0);
-			const targetMonthLastDay = new Date(targetMonthBase.getFullYear(), targetMonthBase.getMonth() + 1, 0).getDate();
-			const nextAnchor = new Date(targetMonthBase.getFullYear(), targetMonthBase.getMonth(), Math.min(day, targetMonthLastDay), 12, 0, 0, 0);
-			void this.updateLeafState({
-				...this.ensureState(),
-				anchorDate: this.formatDateKey(nextAnchor),
-			});
-		};
-		this.createToolbarIconButton(
-			navRow,
-			['step-back'],
-			() => shiftAnchorMonth(-1),
-			t('calendar', 'previousMonth'),
-			t('calendar', 'previousMonth'),
-			'operon-calendar-sidebar-month-nav-button',
-		);
-		this.renderCalendarDateNavigation(navRow, state, preset, true);
-		this.createToolbarIconButton(
-			navRow,
-			['step-forward'],
-			() => shiftAnchorMonth(1),
-			t('calendar', 'nextMonth'),
-			t('calendar', 'nextMonth'),
-			'operon-calendar-sidebar-month-nav-button',
-		);
-
 		const settings = this.getSettings();
-		const showWeekNumbers = settings.calendarSidebarShowWeekNumbers;
-		const weekdayRow = monthCard.createDiv('operon-calendar-sidebar-month-weekdays');
-		weekdayRow.classList.toggle('has-week-numbers', showWeekNumbers);
-		if (showWeekNumbers) {
-			weekdayRow.createDiv({
-				text: 'W',
-				cls: 'operon-calendar-sidebar-month-weeknum-header',
-			});
-		}
-		const weekdayFormatter = new Intl.DateTimeFormat(getAppLocale(this.app), { weekday: 'short' });
-		const weekdayOrder = settings.calendarWeekStart === 'sunday'
-			? [0, 1, 2, 3, 4, 5, 6]
-			: [1, 2, 3, 4, 5, 6, 0];
-		for (const weekdayIndex of weekdayOrder) {
-			const weekdayDate = new Date(2026, 2, 1 + weekdayIndex);
-			const weekdayLabel = weekdayFormatter.format(weekdayDate).replace('.', '');
-			const normalizedWeekdayLabel = weekdayLabel
-				? weekdayLabel.charAt(0).toUpperCase() + weekdayLabel.slice(1).toLowerCase()
-				: weekdayLabel;
-			const weekdayEl = weekdayRow.createDiv({
-				text: normalizedWeekdayLabel,
-				cls: 'operon-calendar-sidebar-month-weekday',
-			});
-			weekdayEl.classList.toggle('is-weekend', weekdayIndex === 0 || weekdayIndex === 6);
-		}
-
-		const grid = monthCard.createDiv('operon-calendar-sidebar-month-grid');
-		grid.classList.toggle('has-week-numbers', showWeekNumbers);
-		const monthStart = new Date(anchorDateObject.getFullYear(), anchorDateObject.getMonth(), 1, 12, 0, 0, 0);
-		const monthStartWeekday = monthStart.getDay();
-		const weekStartOffset = settings.calendarWeekStart === 'sunday'
-			? monthStartWeekday
-			: (monthStartWeekday + 6) % 7;
-		const gridStart = new Date(monthStart);
-		gridStart.setDate(gridStart.getDate() - weekStartOffset);
-		const today = localToday();
-
-		for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
-				const weekStartDate = new Date(gridStart);
-				weekStartDate.setDate(gridStart.getDate() + weekIndex * 7);
-				if (showWeekNumbers) {
-					grid.createDiv({
-						text: String(this.getCalendarWeekNumber(weekStartDate, settings.calendarWeekStart)),
-						cls: 'operon-calendar-sidebar-month-weeknum',
-					});
-			}
-			for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-				const current = new Date(weekStartDate);
-				current.setDate(weekStartDate.getDate() + dayOffset);
-				const dateKey = this.formatDateKey(current);
-				const button = grid.createEl('button', {
-					text: String(current.getDate()),
-					cls: 'operon-calendar-sidebar-month-day',
-					attr: { type: 'button' },
-				});
-				button.classList.toggle('is-weekend', current.getDay() === 0 || current.getDay() === 6);
-				button.classList.toggle('is-outside-month', current.getMonth() !== anchorDateObject.getMonth());
-				button.classList.toggle('is-anchor', dateKey === anchorDate);
-				button.classList.toggle('is-today', dateKey === today);
-				button.addEventListener('click', () => {
-					void this.updateLeafState({
-						...this.ensureState(),
-						anchorDate: dateKey,
-					});
-				});
-			}
-		}
-	}
-
-	private getCalendarWeekNumber(date: Date, weekStart: 'monday' | 'sunday'): number {
-		if (weekStart === 'monday') {
-			const current = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-			const day = current.getUTCDay() || 7;
-			current.setUTCDate(current.getUTCDate() + 4 - day);
-			const yearStart = new Date(Date.UTC(current.getUTCFullYear(), 0, 1));
-			return Math.ceil((((current.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-		}
-		const current = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
-		const yearStart = new Date(current.getFullYear(), 0, 1, 12, 0, 0, 0);
-		const offset = yearStart.getDay();
-		const firstWeekStart = new Date(yearStart);
-		firstWeekStart.setDate(yearStart.getDate() - offset);
-		return Math.floor((current.getTime() - firstWeekStart.getTime()) / (7 * 86400000)) + 1;
+		renderMiniCalendar(container, {
+			dateKey: state.anchorDate,
+			today: localToday(),
+			locale: getAppLocale(this.app),
+			dateDisplayFormat: settings.dateDisplayFormat,
+			weekStart: settings.calendarWeekStart,
+			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+			onToday: () => { void this.handleTodayButtonClick(this.ensureState(), preset); },
+			onChooseMonth: anchor => this.openCalendarMonthPicker(anchor),
+			onShiftMonth: delta => {
+				const current = this.ensureState();
+				void this.updateLeafState({ ...current, anchorDate: shiftCalendarMonth(current.anchorDate, delta) });
+			},
+			onSelectDate: anchorDate => { void this.updateLeafState({ ...this.ensureState(), anchorDate }); },
+		});
 	}
 
 	private renderWeekLabelForDayHeader(container: HTMLElement, dateKey: string): void {
@@ -7792,7 +7690,7 @@ export class CalendarView extends ItemView {
 		const date = this.parseDateKey(dateKey);
 		if (!date || !this.isCalendarWeekStartDate(date, settings.calendarWeekStart)) return;
 		container.createDiv({
-			text: `W${this.getCalendarWeekNumber(date, settings.calendarWeekStart)}`,
+			text: `W${calendarWeekNumber(date, settings.calendarWeekStart)}`,
 			cls: 'operon-calendar-day-header-week-label',
 		});
 	}
@@ -8999,7 +8897,7 @@ export class CalendarView extends ItemView {
 		const navGroup = toolbar.createDiv('operon-calendar-toolbar-center');
 		const controlsGroup = toolbar.createDiv('operon-calendar-toolbar-end');
 
-		this.createToolbarIconButton(
+		createToolbarIconButton(
 			titleGroup,
 			['panel-left'],
 			() => {
@@ -9025,17 +8923,17 @@ export class CalendarView extends ItemView {
 		const presetSpanDays = preset.surfaceType === 'multiWeek'
 			? Math.max(7, Math.max(1, preset.weekCount || 2) * 7)
 			: Math.max(1, preset.dayCount);
-		if (!weekly) this.createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
+		if (!weekly) createToolbarIconButton(navGroup, ['step-back', 'step-back'], () => {
 			void this.shiftCalendarAnchorByDays(-presetSpanDays);
 		}, t('calendar', 'previousSpan'), t('calendar', 'previousSpanTooltip'));
-		this.createToolbarIconButton(navGroup, ['step-back'], () => {
+		createToolbarIconButton(navGroup, ['step-back'], () => {
 			void this.shiftCalendarAnchorByDays(weekly ? -7 : -1, weekly);
 		}, t('calendar', weekly ? 'previousWeek' : 'previousDay'), t('calendar', weekly ? 'previousWeek' : 'previousDayTooltip'));
 		this.renderCalendarDateNavigation(navGroup, state, preset, false);
-		this.createToolbarIconButton(navGroup, ['step-forward'], () => {
+		createToolbarIconButton(navGroup, ['step-forward'], () => {
 			void this.shiftCalendarAnchorByDays(weekly ? 7 : 1, weekly);
 		}, t('calendar', weekly ? 'nextWeek' : 'nextDay'), t('calendar', weekly ? 'nextWeek' : 'nextDayTooltip'));
-		if (!weekly) this.createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
+		if (!weekly) createToolbarIconButton(navGroup, ['step-forward', 'step-forward'], () => {
 			void this.shiftCalendarAnchorByDays(presetSpanDays);
 		}, t('calendar', 'nextSpan'), t('calendar', 'nextSpanTooltip'));
 
@@ -9046,35 +8944,31 @@ export class CalendarView extends ItemView {
 	}
 
 	private renderCalendarDateNavigation(container: HTMLElement, state: CalendarLeafState, preset: CalendarRenderPreset, sidebar: boolean): void {
-		const labels = calendarNavigationLabels(state.anchorDate, this.getSettings().dateDisplayFormat, getAppLocale(this.app));
-		const group = container.createDiv('operon-calendar-date-navigation');
-		group.classList.toggle('is-year-first', labels.yearFirst);
-		const year = group.createEl('button', { text: labels.year, cls: 'operon-calendar-toolbar-button operon-calendar-year-button', attr: {
-			type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-label': `${t('buttons', 'choose')}: ${labels.full}`,
-		} });
-		const date = group.createEl('button', { text: labels.date, cls: `operon-calendar-toolbar-button operon-calendar-date-button${sidebar ? ' operon-calendar-sidebar-month-nav-today' : ''}`, attr: { type: 'button', 'aria-label': labels.full } });
-		if (!labels.yearFirst) group.insertBefore(date, year);
-		bindOperonHoverTooltip(date, { content: t('calendar', 'mobileGoToToday'), taskColor: null });
-		bindOperonHoverTooltip(year, { content: labels.full, taskColor: null });
-		date.addEventListener('click', () => { void this.handleTodayButtonClick(this.ensureState(), preset); });
-		year.addEventListener('click', event => {
-			event.preventDefault();
-			event.stopPropagation();
-			const wasOpen = this.activeMonthPickerAnchor === year;
-			this.closeActivePresetPicker();
-			if (wasOpen) return;
-			this.activeMonthPickerAnchor = year;
-			year.setAttribute('aria-expanded', 'true');
-			this.activeMonthPickerClose = showCalendarMonthPicker(year, {
-				dateKey: this.ensureState().anchorDate,
-				locale: getAppLocale(this.app),
-				onSelect: anchorDate => { void this.updateLeafState({ anchorDate }); },
-				onClose: () => {
-					this.activeMonthPickerClose = null;
-					this.activeMonthPickerAnchor = null;
-					if (year.isConnected) { year.setAttribute('aria-expanded', 'false'); year.focus({ preventScroll: true }); }
-				},
-			});
+		renderCalendarDateNavigation(container, {
+			dateKey: state.anchorDate,
+			dateDisplayFormat: this.getSettings().dateDisplayFormat,
+			locale: getAppLocale(this.app),
+			sidebar,
+			onToday: () => { void this.handleTodayButtonClick(this.ensureState(), preset); },
+			onChooseMonth: anchor => this.openCalendarMonthPicker(anchor),
+		});
+	}
+
+	private openCalendarMonthPicker(year: HTMLButtonElement): void {
+		const wasOpen = this.activeMonthPickerAnchor === year;
+		this.closeActivePresetPicker();
+		if (wasOpen) return;
+		this.activeMonthPickerAnchor = year;
+		year.setAttribute('aria-expanded', 'true');
+		this.activeMonthPickerClose = showCalendarMonthPicker(year, {
+			dateKey: this.ensureState().anchorDate,
+			locale: getAppLocale(this.app),
+			onSelect: anchorDate => { void this.updateLeafState({ anchorDate }); },
+			onClose: () => {
+				this.activeMonthPickerClose = null;
+				this.activeMonthPickerAnchor = null;
+				if (year.isConnected) { year.setAttribute('aria-expanded', 'false'); year.focus({ preventScroll: true }); }
+			},
 		});
 	}
 
@@ -9210,30 +9104,6 @@ export class CalendarView extends ItemView {
 			total += Math.max(rectWidth, naturalWidth);
 		}
 		return total + Math.max(0, children.length - 1) * 8;
-	}
-
-	private createToolbarIconButton(
-		container: HTMLElement,
-		icons: string[],
-		onClick: () => void,
-		ariaLabel: string,
-		title?: string,
-		extraClass?: string,
-	): HTMLButtonElement {
-			const button = container.createEl('button', {
-				cls: `operon-calendar-toolbar-button is-icon-only${extraClass ? ` ${extraClass}` : ''}`,
-				attr: {
-					type: 'button',
-				},
-			});
-		for (const iconName of icons) {
-			const iconWrap = button.createSpan({ cls: 'operon-calendar-toolbar-icon' });
-				setIcon(iconWrap, iconName);
-			}
-			setAccessibleLabelWithoutTooltip(button, ariaLabel);
-			if (title) bindOperonHoverTooltip(button, { content: title, taskColor: null });
-		button.addEventListener('click', onClick);
-		return button;
 	}
 
 	private renderDayHeaders(

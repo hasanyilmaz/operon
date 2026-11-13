@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "開啟迷你日曆",
 		"openExcalidrawPropertyPool": "開啟 Excalidraw Property Pool",
 		"openExcalidrawTaskPool": "開啟 Excalidraw 任務池",
 		"createTaskInExcalidraw": "在 Excalidraw 中建立任務",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "在{{period}}內修改了 {{shown}} / {{total}} 個任務"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "無法開啟此筆記。請重試。",
+		"miniCalendarNoteUnavailable": "無法找到或建立筆記。請檢查日記或週記設定。",
+		"miniCalendarEditorUnavailable": "無法驗證任務身分。將開啟來源檔案。",
 		"trackerStateChanged": "計時器已變更或無法驗證。請檢查其目前狀態後再試一次。",
 		"createdInlineTaskOpenFailed": "任務已建立，但無法開啟其檢視。",
 		"createdFileTaskOpenFailed": "任務已建立，但無法開啟其檢視。",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "開啟 Task Editor · Cmd/Ctrl+點擊在新分頁中開啟來源"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "點擊行為",
+		"miniCalendarClickActionDesc": "選擇點擊日期或週數時開啟的內容。檔案任務使用任務編輯器，其他筆記使用屬性編輯器。在行動裝置上，筆記會在一般 Obsidian 檢視中開啟。",
+		"miniCalendarOpenWeek": "開啟 {{week}} 週：{{title}}",
+		"miniCalendarTitle": "迷你日曆",
 		"title": "Operon 日曆",
 		"presetsNotConfigured": "未配置日曆預設。",
 		"toggleToToolbar": "切換到工具欄",

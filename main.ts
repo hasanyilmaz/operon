@@ -1,3 +1,6 @@
+import type { MiniCalendarNoteRequest } from './src/ui/calendar/mini-calendar-notes';
+import { resolveFileLightboxOpening } from './src/ui/file-lightbox-opening';
+import { MiniCalendarView, MINI_CALENDAR_VIEW_TYPE, openMiniCalendar } from './src/ui/calendar/mini-calendar-view';
 import { resolveStatusValue, resolvePriorityValue } from './src/agent-runtime/runtime/task-creation-adapter';
 import { createRoutedCreationMutationGatewayV1 } from './src/agent-runtime/extensions/task-creation-v1/mutation-gateway';
 import type { ExecutableRoutedCreationPlanV1, RoutedTaskCreationApplyRequestV1, RoutedTaskCreationMutationResultV1, RoutedTaskCreationPreviewRequestV1, RoutedTaskCreationPreviewResultV1, RoutedCreationEvidenceV1 } from './src/agent-runtime/extensions/task-creation-v1/contracts';
@@ -86,7 +89,7 @@ import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
 import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
-import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, lightboxFileState } from './src/ui/web-lightbox';
+import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -17827,6 +17830,10 @@ export default class OperonPlugin extends Plugin {
 	 * Register workspace views and floating dock.
 	 */
 	private registerViews(): void {
+		this.registerView(MINI_CALENDAR_VIEW_TYPE, leaf => new MiniCalendarView(leaf, () => this.settings, undefined, request => this.openMiniCalendarNote(request), error => {
+			console.error('Operon: Mini Calendar note opening failed', error);
+			new Notice(t('notifications', 'miniCalendarOpenFailed'));
+		}));
 		const openEditorForId = (operonId: string) => this.openEditorForId(operonId);
 		const openTaskSourceInNewTab = (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); };
 		const replaceActiveManualOrder = async (orderedTaskIds: string[]): Promise<void> => {
@@ -21681,6 +21688,60 @@ export default class OperonPlugin extends Plugin {
 		await this.app.workspace.getLeaf(false).openFile(dailyNote);
 	}
 
+	private async openMiniCalendarNote(request: MiniCalendarNoteRequest): Promise<void> {
+		const { kind, dateKey, anchor, isCurrent } = request;
+		if (!isCurrent()) return;
+		const behavior = this.settings.miniCalendarClickAction ?? 'source-and-editor';
+		const resolved = await this.resolveOrCreatePeriodicNoteResult(kind, dateKey, undefined, isCurrent, undefined, isCurrent);
+		if (!isCurrent()) return;
+		const file = resolved.file;
+		if (!(file instanceof TFile)) {
+			if (!resolved.noticeShown) new Notice(t('notifications', 'miniCalendarNoteUnavailable'));
+			return;
+		}
+		const path = file.path;
+		let openingReady = false;
+		const canOpen = () => (openingReady || isCurrent()) && this.app.vault.getAbstractFileByPath(path) === file && file.path === path;
+		if (!Platform.isDesktopApp) {
+			if (canOpen()) await this.app.workspace.getLeaf(false).openFile(file);
+			return;
+		}
+		let identity: string | null | undefined;
+		if (behavior !== 'source') {
+			// A new File Task must reach the index before choosing its editor. Verify
+			// current source too: an excluded or stale task must never become Properties.
+			await this.indexer.reindexFilePath(path, { notify: false });
+			if (!canOpen()) return;
+			try {
+				const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
+				const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
+				const indexedId = this.getQuickSwitcherFileTaskId(file);
+				identity = scanned.yamlTask ? (indexedId === scanned.yamlTask.operonId ? indexedId : undefined)
+					: indexedId === null ? null : undefined;
+			} catch { identity = undefined; }
+		}
+		if (!canOpen()) return;
+		const opening = resolveFileLightboxOpening(file, behavior, {
+			isExcalidraw: candidate => this.isExcalidrawTaskSource(candidate),
+			basesEnabled: () => false,
+			fileTaskId: () => identity,
+		});
+		if (!opening) {
+			new Notice(t('notifications', 'miniCalendarEditorUnavailable'));
+			await openFileLightboxAsync(this.app, anchor, { file, subpath: '' }, canOpen);
+		} else if (opening.kind === 'editor') {
+			await this.openEditorForId(opening.id, opening.showSource, anchor,
+				() => canOpen() && this.getQuickSwitcherFileTaskId(file) === opening.id);
+		} else {
+			await openFileLightboxAsync(this.app, anchor, { file, subpath: '' },
+				() => canOpen() && (opening.kind !== 'properties' || this.getQuickSwitcherFileTaskId(file) === null),
+				opening.kind === 'properties' ? { showSource: opening.showSource } : undefined);
+		}
+		// Cancellation owns initial opening only. A retained dirty Lightbox must
+		// still reveal its source after the user declines a later replacement.
+		if (isCurrent()) openingReady = true;
+	}
+
 	private async handleCreatePeriodicNoteCommand(kind: PeriodicNoteKind): Promise<void> {
 		const kindLabel = kind === 'weekly'
 			? t('settings', 'fileTaskWeeklyNotes')
@@ -21714,6 +21775,7 @@ export default class OperonPlugin extends Plugin {
 		prepared?: PreparedPeriodicNotePlan,
 		canCommit?: () => boolean | Promise<boolean>,
 		acceptFile?: (file: TFile) => boolean,
+		shouldNotify?: () => boolean,
 	): Promise<ResolvedPeriodicNoteFile> {
 		const unavailable = {
 			file: null,
@@ -21726,6 +21788,7 @@ export default class OperonPlugin extends Plugin {
 			noticeShown: false,
 		};
 		const resolvedConfig = await this.resolveEffectivePeriodicNoteConfig(kind);
+		if (shouldNotify?.() === false) return unavailable;
 		if (!resolvedConfig.available) {
 			if (kind === 'weekly' && resolvedConfig.reason === 'operon-disabled') {
 				new Notice(t('notifications', 'weeklyNotesManagementDisabled'));
@@ -21763,8 +21826,10 @@ export default class OperonPlugin extends Plugin {
 				? result.status === 'created'
 				: result.error.recoveryRequired;
 			if (!result.ok) {
-				console.error(`Operon: periodic ${kind} note creation failed`, result.error);
-				this.showPeriodicNoteCreationError(kind, result.error);
+				if (result.error.recoveryRequired || shouldNotify?.() !== false) {
+					console.error(`Operon: periodic ${kind} note creation failed`, result.error);
+					this.showPeriodicNoteCreationError(kind, result.error);
+				}
 				return { ...unavailable, noticeShown: true };
 			}
 			const file = this.app.vault.getAbstractFileByPath(result.path);
@@ -27078,6 +27143,9 @@ export default class OperonPlugin extends Plugin {
 		preserveKanbanViewport = false,
 		allowCalendarStatusReconcile = false,
 	): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(MINI_CALENDAR_VIEW_TYPE)) {
+			if (leaf.view instanceof MiniCalendarView) leaf.view.render();
+		}
 		this.refreshViewsCallCount++;
 		const startedAt = perfNow();
 		const engineStartedAt = perfContext ? enginePerfNow() : 0;
@@ -38511,6 +38579,12 @@ export default class OperonPlugin extends Plugin {
 						runAsyncAction('open flow time command failed', () => this.openFlowTimeView());
 					},
 				});
+
+			this.addCommand({
+				id: 'open-mini-calendar',
+				name: t('commands', 'openMiniCalendar'),
+				callback: () => runAsyncAction('open mini calendar failed', () => openMiniCalendar(this.app.workspace)),
+			});
 
 			this.addCommand({
 				id: 'open-calendar-view',

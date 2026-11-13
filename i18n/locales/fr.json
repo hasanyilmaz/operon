@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "Ouvrir le mini calendrier",
 		"openExcalidrawPropertyPool": "Ouvrir Excalidraw Property Pool",
 		"openExcalidrawTaskPool": "Ouvrir le réservoir de tâches Excalidraw",
 		"createTaskInExcalidraw": "Créer une tâche dans Excalidraw",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tâches modifiées pendant {{period}}"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "Impossible d’ouvrir cette note. Veuillez réessayer.",
+		"miniCalendarNoteUnavailable": "Impossible de trouver ou de créer la note. Vérifiez les paramètres des notes quotidiennes ou hebdomadaires.",
+		"miniCalendarEditorUnavailable": "L’identité de la tâche n’a pas pu être vérifiée. Ouverture du fichier source.",
 		"trackerStateChanged": "Le minuteur a changé ou son état n’a pas pu être vérifié. Vérifiez son état actuel et réessayez.",
 		"createdInlineTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
 		"createdFileTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Ouvrir Task Editor · Cmd/Ctrl-clic ouvre la source dans un nouvel onglet"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "Comportement au clic",
+		"miniCalendarClickActionDesc": "Choisissez ce qui s’ouvre en cliquant sur un jour ou un numéro de semaine. Les tâches de fichier utilisent l’éditeur de tâches, les autres notes l’éditeur de propriétés. Sur mobile, les notes s’ouvrent dans la vue normale d’Obsidian.",
+		"miniCalendarOpenWeek": "Ouvrir la semaine {{week}} : {{title}}",
+		"miniCalendarTitle": "Mini calendrier",
 		"title": "Calendrier Operon",
 		"presetsNotConfigured": "Les préréglages de calendrier ne sont pas configurés.",
 		"toggleToToolbar": "Basculer vers la barre d'outils",

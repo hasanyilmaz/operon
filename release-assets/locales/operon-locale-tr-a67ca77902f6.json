@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "Otomatik uygulanamayan filtre koşulları",
       "materializationUnsupportedLogic": "\"{{logic}}\" grupları içindeki koşullar otomatik uygulanamaz.",
       "materializationUpdates": "Değişecek",
+      "miniCalendarClickAction": "Tıklama davranışı",
+      "miniCalendarClickActionDesc": "Bir güne veya hafta numarasına tıkladığınızda ne açılacağını seçin. Dosya görevleri Task Editor, diğer notlar Property Editor kullanır. Mobilde notlar normal Obsidian görünümünde açılır.",
+      "miniCalendarOpenWeek": "{{week}} haftasını aç: {{title}}",
+      "miniCalendarTitle": "Mini Takvim",
       "mobileAddTask": "Seçili güne görev ekle",
       "mobileAgendaEmptyDay": "Öğe yok",
       "mobileControls": "Takvim kontrolleri",
@@ -325,6 +329,7 @@
       "openFilterView": "Operon Filtre Görünümü'nü aç",
       "openFlowTime": "FlowTime panelini aç",
       "openKanban": "Operon Kanban'ı aç",
+      "openMiniCalendar": "Mini takvimi aç",
       "openMobileCalendar": "Mobil Takvimi aç",
       "openMobileKanban": "Mobil Kanban'ı aç",
       "openOperonTable": "Operon Table'ı aç",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "Bu satır, satır içi göreve dönüştürülemedi",
       "linkCopied": "Link panoya kopyalandı",
       "markdownLinkCopied": "Markdown link panoya kopyalandı",
+      "miniCalendarEditorUnavailable": "Görev kimliği doğrulanamadı. Kaynak dosya açılıyor.",
+      "miniCalendarNoteUnavailable": "Not bulunamadı veya oluşturulamadı. Günlük veya haftalık not ayarlarınızı kontrol edin.",
+      "miniCalendarOpenFailed": "Bu not açılamadı. Lütfen tekrar deneyin.",
       "moveInlineTaskFailed": "Satır içi görev taşınamadı.",
       "moveInlineTaskRequiresInlineSource": "Taşımak için bir satır içi görev seç.",
       "moveInlineTaskTargetRequiresBlankLine": "Satır içi görev taşımadan önce imleci boş bir satıra yerleştir.",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "8e94fe6f8472f997b5b5a332ce43b26c669d217985f963750bd9df69dfcfc6a7"
+  "sourceVersion": "c6e2e7772cdec5e72305d1be314f4d8de95a374b7942a85aa11a2a29cc4d2538"
 }

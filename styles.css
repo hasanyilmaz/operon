@@ -18685,6 +18685,7 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	width: 100%;
 }
 
+.operon-mini-calendar-view .operon-calendar-toolbar-button,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button {
 	border-color: color-mix(in srgb, var(--background-modifier-border) 82%, transparent);
 	background: transparent;
@@ -18692,7 +18693,9 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	box-shadow: none;
 }
 
+.operon-mini-calendar-view .operon-calendar-toolbar-button:hover,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button:hover,
+.operon-mini-calendar-view .operon-calendar-toolbar-button:focus-visible,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-toolbar-button:focus-visible {
 	border-color: color-mix(in srgb, var(--interactive-accent) 78%, var(--background-modifier-border));
 	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
@@ -18743,6 +18746,7 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	color: color-mix(in srgb, var(--text-muted) 72%, var(--interactive-accent));
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day {
 	height: 28px;
 	border-radius: 8px;
@@ -18753,27 +18757,33 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	cursor: pointer;
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-weekend,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-weekend {
 	background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
 	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day:hover,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:hover,
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day:focus-visible,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:focus-visible {
 	border-color: var(--interactive-accent);
 	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
 	outline: none;
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-outside-month,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-outside-month {
 	color: var(--text-faint);
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-today,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-today {
 	color: var(--text-accent);
 	border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-anchor,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-anchor {
 	background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	border-color: var(--interactive-accent);
@@ -37630,3 +37640,27 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-kanban-pool-draggable .operon-canvas-task-pool-status { touch-action: pan-y; }
 
 .operon-kanban-card.is-property-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+
+.operon-mini-calendar-view {
+	padding: 12px;
+	min-width: 0;
+	overflow: auto;
+}
+
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum {
+	padding: 0;
+	min-width: 0;
+	height: 28px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+}
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:hover,
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:focus-visible {
+	border-color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+	color: var(--text-normal);
+	outline: none;
+}

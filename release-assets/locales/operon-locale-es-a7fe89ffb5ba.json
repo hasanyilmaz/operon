@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "Condiciones de filtro que no se pueden aplicar automáticamente",
       "materializationUnsupportedLogic": "Las condiciones dentro de los grupos \"{{logic}}\" no se pueden aplicar automáticamente.",
       "materializationUpdates": "Cambiará",
+      "miniCalendarClickAction": "Comportamiento al hacer clic",
+      "miniCalendarClickActionDesc": "Elige qué se abre al pulsar un día o número de semana. Las tareas de archivo usan el editor de tareas; las demás notas, el editor de propiedades. En móvil, las notas se abren en la vista normal de Obsidian.",
+      "miniCalendarOpenWeek": "Abrir semana {{week}}: {{title}}",
+      "miniCalendarTitle": "Mini calendario",
       "mobileAddTask": "Añadir tarea al día seleccionado",
       "mobileAgendaEmptyDay": "Sin elementos",
       "mobileControls": "Controles del calendario",
@@ -325,6 +329,7 @@
       "openFilterView": "Vista de filtros de Operon",
       "openFlowTime": "Abrir el panel de FlowTime",
       "openKanban": "Kanban de Operon",
+      "openMiniCalendar": "Abrir mini calendario",
       "openMobileCalendar": "Abrir calendario móvil",
       "openMobileKanban": "Abrir Kanban móvil",
       "openOperonTable": "Tabla de Operon",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "No se pudo convertir la línea en una tarea en línea",
       "linkCopied": "Enlace copiado al portapapeles",
       "markdownLinkCopied": "Enlace markdown copiado al portapapeles",
+      "miniCalendarEditorUnavailable": "No se pudo verificar la identidad de la tarea. Se abrirá el archivo fuente.",
+      "miniCalendarNoteUnavailable": "No se pudo encontrar o crear la nota. Revisa los ajustes de notas diarias o semanales.",
+      "miniCalendarOpenFailed": "No se pudo abrir esta nota. Inténtalo de nuevo.",
       "moveInlineTaskFailed": "No se pudo mover la tarea en línea.",
       "moveInlineTaskRequiresInlineSource": "Elegir una tarea en línea para mover.",
       "moveInlineTaskTargetRequiresBlankLine": "Colocar el cursor en una línea vacía antes de mover una tarea en línea.",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "361b1797fe1aba19b38cacebcf4230ffbae1672db768e02ab5b6cf712eff231b"
+  "sourceVersion": "039e7411fada5c69c5fb3b6fe72270a7be755f98edcffbfffe265efa22bbff06"
 }

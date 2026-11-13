@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "ミニカレンダーを開く",
 		"openExcalidrawPropertyPool": "Excalidraw Property Poolを開く",
 		"openExcalidrawTaskPool": "Excalidrawタスクプールを開く",
 		"createTaskInExcalidraw": "Excalidrawでタスクを作成",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{period}}に変更されたタスク {{shown}} / {{total}} 件"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "このノートを開けませんでした。もう一度お試しください。",
+		"miniCalendarNoteUnavailable": "ノートを検索または作成できませんでした。デイリーまたはウィークリーノートの設定を確認してください。",
+		"miniCalendarEditorUnavailable": "タスクの識別情報を確認できませんでした。ソースファイルを開きます。",
 		"trackerStateChanged": "タイマーが変更されたか、状態を確認できませんでした。現在の状態を確認して、もう一度お試しください。",
 		"createdInlineTaskOpenFailed": "タスクは作成されましたが、表示を開けませんでした。",
 		"createdFileTaskOpenFailed": "タスクは作成されましたが、そのビューを開けませんでした。",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Task Editor を開く · Cmd/Ctrl+クリックでソースを新しいタブに開く"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "クリック時の動作",
+		"miniCalendarClickActionDesc": "日付や週番号をクリックしたときに開く画面を選択します。ファイルタスクにはタスクエディター、その他のノートにはプロパティエディターを使います。モバイルでは通常のObsidianビューでノートを開きます。",
+		"miniCalendarOpenWeek": "週 {{week}} を開く: {{title}}",
+		"miniCalendarTitle": "ミニカレンダー",
 		"title": "Operon カレンダー",
 		"presetsNotConfigured": "カレンダープリセットが設定されていません。",
 		"toggleToToolbar": "ツールバーに切り替え",

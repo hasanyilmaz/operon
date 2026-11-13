@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "Открыть мини-календарь",
 		"openExcalidrawPropertyPool": "Открыть Excalidraw Property Pool",
 		"openExcalidrawTaskPool": "Открыть пул задач Excalidraw",
 		"createTaskInExcalidraw": "Создать задачу в Excalidraw",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "Показано {{shown}} / {{total}} задач, изменённых за {{period}}"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "Не удалось открыть заметку. Повторите попытку.",
+		"miniCalendarNoteUnavailable": "Не удалось найти или создать заметку. Проверьте настройки ежедневных или еженедельных заметок.",
+		"miniCalendarEditorUnavailable": "Не удалось проверить идентификатор задачи. Открывается исходный файл.",
 		"trackerStateChanged": "Таймер изменился или его состояние не удалось проверить. Проверьте текущее состояние и повторите попытку.",
 		"createdInlineTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
 		"createdFileTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Открыть Task Editor · Cmd/Ctrl-щелчок открывает источник в новой вкладке"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "Действие при нажатии",
+		"miniCalendarClickActionDesc": "Выберите, что открывать при нажатии на день или номер недели. Для файлов-задач используется редактор задач, для остальных заметок — редактор свойств. На мобильном устройстве заметки открываются в обычном представлении Obsidian.",
+		"miniCalendarOpenWeek": "Открыть неделю {{week}}: {{title}}",
+		"miniCalendarTitle": "Мини-календарь",
 		"title": "Календарь Operon",
 		"presetsNotConfigured": "Пресеты календаря не настроены.",
 		"toggleToToolbar": "Переключить на панель инструментов",

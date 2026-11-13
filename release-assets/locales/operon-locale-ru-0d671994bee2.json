@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "Условия фильтра, которые нельзя применить автоматически",
       "materializationUnsupportedLogic": "Условия внутри групп «{{logic}}» нельзя применить автоматически.",
       "materializationUpdates": "Будет изменено",
+      "miniCalendarClickAction": "Действие при нажатии",
+      "miniCalendarClickActionDesc": "Выберите, что открывать при нажатии на день или номер недели. Для файлов-задач используется редактор задач, для остальных заметок — редактор свойств. На мобильном устройстве заметки открываются в обычном представлении Obsidian.",
+      "miniCalendarOpenWeek": "Открыть неделю {{week}}: {{title}}",
+      "miniCalendarTitle": "Мини-календарь",
       "mobileAddTask": "Добавить задачу к выбранному дню",
       "mobileAgendaEmptyDay": "Нет элементов",
       "mobileControls": "Управление календарём",
@@ -325,6 +329,7 @@
       "openFilterView": "Представление фильтра Operon",
       "openFlowTime": "Открыть панель FlowTime",
       "openKanban": "Канбан Operon",
+      "openMiniCalendar": "Открыть мини-календарь",
       "openMobileCalendar": "Открыть мобильный календарь",
       "openMobileKanban": "Открыть мобильную канбан-доску",
       "openOperonTable": "Таблица Operon",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "Не удалось преобразовать строку во встроенную задачу",
       "linkCopied": "Ссылка скопирована в буфер обмена",
       "markdownLinkCopied": "Ссылка Markdown скопирована в буфер обмена",
+      "miniCalendarEditorUnavailable": "Не удалось проверить идентификатор задачи. Открывается исходный файл.",
+      "miniCalendarNoteUnavailable": "Не удалось найти или создать заметку. Проверьте настройки ежедневных или еженедельных заметок.",
+      "miniCalendarOpenFailed": "Не удалось открыть заметку. Повторите попытку.",
       "moveInlineTaskFailed": "Не удалось переместить встроенную задачу.",
       "moveInlineTaskRequiresInlineSource": "Выберите встроенную задачу для перемещения.",
       "moveInlineTaskTargetRequiresBlankLine": "Перед перемещением встроенной задачи поместите курсор на пустую строку.",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "dc7982e3dc772da7abfcd8e9baf3eae822b71ad21e9fadc0f165ef2c71f49b1e"
+  "sourceVersion": "72cc764daae1b609b20d6a39abc8ffbe54ec3619a1be0fee4195c3852db3bdae"
 }

@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "Abrir mini calendário",
 		"openExcalidrawPropertyPool": "Abrir Excalidraw Property Pool",
 		"openExcalidrawTaskPool": "Abrir o conjunto de tarefas do Excalidraw",
 		"createTaskInExcalidraw": "Criar tarefa no Excalidraw",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} tarefas modificadas: {{period}}"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "Não foi possível abrir esta nota. Tente novamente.",
+		"miniCalendarNoteUnavailable": "Não foi possível encontrar ou criar a nota. Verifique as configurações de notas diárias ou semanais.",
+		"miniCalendarEditorUnavailable": "Não foi possível verificar a identidade da tarefa. Abrindo o arquivo fonte.",
 		"trackerStateChanged": "O temporizador mudou ou não pôde ser verificado. Confira o estado atual e tente novamente.",
 		"createdInlineTaskOpenFailed": "A tarefa foi criada, mas não foi possível abrir sua visualização.",
 		"createdFileTaskOpenFailed": "A tarefa foi criada, mas não foi possível abrir sua visualização.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Abrir Task Editor · Cmd/Ctrl-clique abre a origem em uma nova aba"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "Comportamento ao clicar",
+		"miniCalendarClickActionDesc": "Escolha o que abrir ao clicar em um dia ou número de semana. Tarefas de arquivo usam o editor de tarefas; outras notas, o editor de propriedades. No celular, as notas abrem na visualização normal do Obsidian.",
+		"miniCalendarOpenWeek": "Abrir semana {{week}}: {{title}}",
+		"miniCalendarTitle": "Mini calendário",
 		"title": "Calendário Operon",
 		"presetsNotConfigured": "As predefinições de calendário não estão configuradas.",
 		"toggleToToolbar": "Alternar para a barra de ferramentas",

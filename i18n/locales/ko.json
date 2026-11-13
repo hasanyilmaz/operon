@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "미니 캘린더 열기",
 		"openExcalidrawPropertyPool": "Excalidraw 속성 풀 열기",
 		"openExcalidrawTaskPool": "Excalidraw 작업 풀 열기",
 		"createTaskInExcalidraw": "Excalidraw에서 작업 만들기",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{period}} 동안 수정된 작업 {{total}}개 중 {{shown}}개"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "이 노트를 열 수 없습니다. 다시 시도하세요.",
+		"miniCalendarNoteUnavailable": "노트를 찾거나 만들 수 없습니다. 일간 또는 주간 노트 설정을 확인하세요.",
+		"miniCalendarEditorUnavailable": "작업 식별 정보를 확인할 수 없습니다. 소스 파일을 엽니다.",
 		"trackerStateChanged": "타이머가 변경되었거나 상태를 확인할 수 없습니다. 현재 상태를 확인한 후 다시 시도하세요.",
 		"createdInlineTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
 		"createdFileTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "작업 편집기 열기 · Cmd/Ctrl+클릭으로 원본을 새 탭에서 열기"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "클릭 동작",
+		"miniCalendarClickActionDesc": "날짜나 주 번호를 클릭할 때 열 화면을 선택합니다. 파일 작업은 작업 편집기를, 다른 노트는 속성 편집기를 사용합니다. 모바일에서는 일반 Obsidian 보기로 노트를 엽니다.",
+		"miniCalendarOpenWeek": "{{week}} 주 열기: {{title}}",
+		"miniCalendarTitle": "미니 캘린더",
 		"title": "Operon 캘린더",
 		"presetsNotConfigured": "설정된 캘린더 프리셋이 없습니다.",
 		"toggleToToolbar": "도구 모음으로 전환",

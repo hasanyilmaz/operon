@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3829,
-  "keyFingerprint": "150facca65fc1af8defc5f2bbcffbc9ad9d875c6c71fd99b9bde80d28e7340be",
+  "keyCount": 3837,
+  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -157,6 +157,10 @@
       "materializationUnsupportedConditions": "Filterbedingungen, die nicht automatisch angewendet werden können",
       "materializationUnsupportedLogic": "Bedingungen innerhalb von „{{logic}}“-Gruppen können nicht automatisch angewendet werden.",
       "materializationUpdates": "Wird geändert",
+      "miniCalendarClickAction": "Klickverhalten",
+      "miniCalendarClickActionDesc": "Wähle, was beim Klick auf einen Tag oder eine Wochennummer geöffnet wird. Datei-Aufgaben verwenden den Aufgaben-Editor, andere Notizen den Eigenschaften-Editor. Mobil öffnen sich Notizen in der normalen Obsidian-Ansicht.",
+      "miniCalendarOpenWeek": "Woche {{week}} öffnen: {{title}}",
+      "miniCalendarTitle": "Mini-Kalender",
       "mobileAddTask": "Aufgabe zum ausgewählten Tag hinzufügen",
       "mobileAgendaEmptyDay": "Keine Elemente",
       "mobileControls": "Kalender-Steuerung",
@@ -325,6 +329,7 @@
       "openFilterView": "Operon-Filteransicht",
       "openFlowTime": "FlowTime-Panel öffnen",
       "openKanban": "Operon-Kanban",
+      "openMiniCalendar": "Mini-Kalender öffnen",
       "openMobileCalendar": "Mobilen Kalender öffnen",
       "openMobileKanban": "Mobiles Kanban öffnen",
       "openOperonTable": "Operon Table",
@@ -960,6 +965,9 @@
       "lineToInlineTaskFailed": "Zeile konnte nicht in eine Inline-Aufgabe umgewandelt werden",
       "linkCopied": "Link in die Zwischenablage kopiert",
       "markdownLinkCopied": "Markdown-Link in die Zwischenablage kopiert",
+      "miniCalendarEditorUnavailable": "Die Aufgabenidentität konnte nicht bestätigt werden. Die Quelldatei wird geöffnet.",
+      "miniCalendarNoteUnavailable": "Die Notiz konnte nicht gefunden oder erstellt werden. Prüfe die Einstellungen für tägliche oder wöchentliche Notizen.",
+      "miniCalendarOpenFailed": "Diese Notiz konnte nicht geöffnet werden. Bitte erneut versuchen.",
       "moveInlineTaskFailed": "Inline-Aufgabe konnte nicht verschoben werden.",
       "moveInlineTaskRequiresInlineSource": "Wähle eine Inline-Aufgabe zum Verschieben.",
       "moveInlineTaskTargetRequiresBlankLine": "Setze den Cursor auf eine leere Zeile, bevor du eine Inline-Aufgabe verschiebst.",
@@ -3874,5 +3882,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "fbe2799ac91acb1e0a113ea1ae1fbaae6be8b70e0edebff28e1848cc0e9604aa"
+  "sourceVersion": "c761eb05260ab060f584d145e9cf80c96aeb81b898820407e7fb0b332c40b878"
 }

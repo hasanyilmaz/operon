@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openMiniCalendar": "Mini-Kalender öffnen",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool öffnen",
 		"openExcalidrawTaskPool": "Excalidraw-Aufgabenpool öffnen",
 		"createTaskInExcalidraw": "Aufgabe in Excalidraw erstellen",
@@ -149,6 +150,9 @@
 		"taskFinderRecentModifiedCountShown": "{{shown}} / {{total}} in den {{period}} geänderte Aufgaben"
 	},
 	"notifications": {
+		"miniCalendarOpenFailed": "Diese Notiz konnte nicht geöffnet werden. Bitte erneut versuchen.",
+		"miniCalendarNoteUnavailable": "Die Notiz konnte nicht gefunden oder erstellt werden. Prüfe die Einstellungen für tägliche oder wöchentliche Notizen.",
+		"miniCalendarEditorUnavailable": "Die Aufgabenidentität konnte nicht bestätigt werden. Die Quelldatei wird geöffnet.",
 		"trackerStateChanged": "Der Timer wurde geändert oder konnte nicht überprüft werden. Prüfe seinen aktuellen Zustand und versuche es erneut.",
 		"createdInlineTaskOpenFailed": "Die Aufgabe wurde erstellt, aber ihre Ansicht konnte nicht geöffnet werden.",
 		"createdFileTaskOpenFailed": "Die Aufgabe wurde erstellt, ihre Ansicht konnte jedoch nicht geöffnet werden.",
@@ -2498,6 +2502,10 @@
 		"taskCard_open": "Task Editor öffnen · Cmd/Strg-Klick öffnet die Quelle in einem neuen Tab"
 	},
 	"calendar": {
+		"miniCalendarClickAction": "Klickverhalten",
+		"miniCalendarClickActionDesc": "Wähle, was beim Klick auf einen Tag oder eine Wochennummer geöffnet wird. Datei-Aufgaben verwenden den Aufgaben-Editor, andere Notizen den Eigenschaften-Editor. Mobil öffnen sich Notizen in der normalen Obsidian-Ansicht.",
+		"miniCalendarOpenWeek": "Woche {{week}} öffnen: {{title}}",
+		"miniCalendarTitle": "Mini-Kalender",
 		"title": "Operon-Kalender",
 		"presetsNotConfigured": "Kalender-Voreinstellungen sind nicht konfiguriert.",
 		"toggleToToolbar": "Zur Symbolleiste umschalten",
