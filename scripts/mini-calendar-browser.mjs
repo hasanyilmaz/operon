@@ -1,3 +1,4 @@
+import { assertMiniCalendarGeometry } from './test-support/mini-calendar-geometry.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -63,6 +64,7 @@ try {
    window.view = new Subject.MiniCalendarView({ app, contentEl: root, containerEl: root }, () => settings, () => new Date(2026, 10, 13, 12), async request => { opened.push({kind: request.kind, date: request.dateKey}); });
    await view.onOpen();
   });
+  await assertMiniCalendarGeometry(page);
   const geometry = await page.evaluate(() => {
    const root = document.getElementById('panel');
    const rect = root.getBoundingClientRect();

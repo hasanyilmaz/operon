@@ -18747,6 +18747,7 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 }
 
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day,
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day {
 	height: 28px;
 	border-radius: 8px;
@@ -18763,8 +18764,10 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
 }
 
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:hover,
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day:hover,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:hover,
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:focus-visible,
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day:focus-visible,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:focus-visible {
 	border-color: var(--interactive-accent);
@@ -18774,6 +18777,11 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-outside-month,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-outside-month {
+	color: var(--text-faint);
+}
+
+.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day.is-muted-month:not(.is-anchor):not(.is-today),
+.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day.is-muted-month:not(.is-anchor):not(.is-today) .operon-mini-month-label {
 	color: var(--text-faint);
 }
 
@@ -37647,22 +37655,26 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	overflow: auto;
 }
 
+.operon-mini-calendar-view .operon-calendar-sidebar-month-weekdays.has-week-numbers,
+.operon-mini-calendar-view .operon-calendar-sidebar-month-grid.has-week-numbers {
+	grid-template-columns: repeat(8, minmax(0, 1fr));
+}
 .operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum {
-	padding: 0;
-	min-width: 0;
-	height: 28px;
-	border: 1px solid transparent;
-	border-radius: 8px;
-	background: transparent;
-	box-shadow: none;
+	color: var(--text-faint);
+}
+.operon-mini-calendar-view .operon-calendar-sidebar-month-weeknum-header {
+	font-size: 11px;
+	font-weight: 400;
 	color: var(--text-muted);
 }
-.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:hover,
-.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:focus-visible {
-	border-color: var(--interactive-accent);
-	background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
-	color: var(--text-normal);
-	outline: none;
+.operon-mini-calendar-view .operon-calendar-sidebar-month-day,
+.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	padding: 0;
+	box-sizing: border-box;
 }
 
 /* Standalone Mini Calendar: fixed header above a bounded week viewport. */
@@ -37701,22 +37713,14 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	height: 36px;
 	min-height: 36px;
 	box-sizing: border-box;
-}
-.operon-mini-calendar-view .operon-mini-calendar-week .operon-calendar-sidebar-month-day {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 1px 0;
 	line-height: 16px;
 }
+.operon-mini-day-number { display: block; }
 .operon-mini-month-label {
 	display: block;
-	height: 10px;
 	max-width: 100%;
 	overflow: hidden;
-	font-size: 9px;
-	line-height: 10px;
+	font-size: var(--font-ui-smaller);
 	color: var(--text-accent);
 	white-space: nowrap;
 	text-overflow: ellipsis;
@@ -37736,5 +37740,4 @@ body.is-mobile .operon-mini-calendar-view .operon-calendar-toolbar-button { heig
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-nav { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 4px; }
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-weekdays,
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-grid { gap: 6px 2px; }
-	.operon-mini-calendar-view .has-week-numbers { grid-template-columns: 24px repeat(7, minmax(0, 1fr)); }
 }

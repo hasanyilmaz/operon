@@ -1,3 +1,4 @@
+import { assertMiniCalendarGeometry } from './test-support/mini-calendar-geometry.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -79,6 +80,30 @@ try {
    await view.onOpen();
   });
   await settle(page);
+  await assertMiniCalendarGeometry(page, true);
+  if (width === 320 && height === 480) {
+   // Month tones stay anchored to the real current month across navigation and year boundaries.
+   const tone = date => page.locator(`[data-date-key="${date}"]`).evaluate(button => ({
+    color: getComputedStyle(button.firstElementChild).color,
+    week: getComputedStyle(document.querySelector('[data-week-date]')).color,
+   }));
+   for (const [date, muted] of [['2026-11-02', false], ['2026-12-01', true], ['2027-01-04', false],
+    ['2027-02-01', true], ['2027-02-06', true], ['2027-03-02', false], ['2027-12-02', true], ['2028-01-03', false]]) {
+    await page.evaluate(date => view.navigate(date), date); await settle(page);
+    const selected = await tone(date); assert.notEqual(selected.color, selected.week, `selected ${date}`);
+    await page.evaluate(() => view.selectDate('2027-01-13')); await settle(page);
+    const result = await tone(date); assert.equal(result.color === result.week, muted, date);
+   }
+   await page.evaluate(() => { view.navigate('2027-02-02'); view.selectDate('2027-01-13'); }); await settle(page);
+   const before = await state(page);
+   await page.evaluate(() => { window.toneCell = document.querySelector('[data-date-key="2027-02-02"]'); now = new Date(2027, 1, 1, 12); view.render(); }); await settle(page);
+   const updated = await tone('2027-02-02'); assert.notEqual(updated.color, updated.week);
+   assert.equal(await page.evaluate(() => toneCell === document.querySelector('[data-date-key="2027-02-02"]')), true);
+   assert.equal((await state(page)).top, before.top);
+   assert.equal((await state(page)).selected, '2027-01-13');
+   await page.evaluate(() => { now = new Date(2027, 0, 13, 12); view.navigate('2027-01-13'); }); await settle(page);
+   assert.equal((await state(page)).opened, 0);
+  }
   let current = await state(page);
   assert.equal(current.center, '2027-01-11'); assert.ok(Math.abs(current.todayOffset) < 1, JSON.stringify(current));
   assert.equal(current.selected, '2027-01-13'); assert.equal(current.reference, '2027-01-13');
@@ -128,6 +153,10 @@ try {
   // Labeling and week-start preference do not change note identity.
   await page.evaluate(()=>{view.navigate('2027-02-01');}); await settle(page);
   assert.equal(await page.locator('[data-date-key="2027-02-01"] .operon-mini-month-label').textContent(),'Feb');
+  assert.equal(await page.locator('[data-date-key="2027-02-01"] .operon-mini-day-number').count(),0);
+  await page.locator('[data-date-key="2027-02-01"] .operon-mini-month-label').click();
+  assert.equal(await page.evaluate(()=>opened.at(-1).dateKey),'2027-02-01');
+  assert.equal(await page.evaluate(()=>opened.at(-1).kind),'daily');
   assert.equal(await page.locator('.is-outside-month').count(),0);
   await page.evaluate(()=>{settings.calendarWeekStart='sunday';view.render();}); await settle(page);
   const febWeek = page.locator('[data-week-date="2027-02-01"]'); await febWeek.focus(); await page.keyboard.press('Enter');

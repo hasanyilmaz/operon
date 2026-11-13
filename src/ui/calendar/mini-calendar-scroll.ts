@@ -1,5 +1,5 @@
 import { cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
-import { renderMiniCalendarWeek, type MiniCalendarOptions } from './mini-calendar';
+import { isMutedMiniCalendarMonth, renderMiniCalendarWeek, type MiniCalendarOptions } from './mini-calendar';
 
 const DAY = 86400000;
 const WINDOW_WEEKS = 1024;
@@ -87,6 +87,7 @@ export class MiniCalendarScroller {
 			for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('[data-date-key]'))) {
 				button.classList.toggle('is-anchor', button.dataset.dateKey === (options.selectedDate ?? options.dateKey));
 				button.classList.toggle('is-today', button.dataset.dateKey === options.today);
+				button.classList.toggle('is-muted-month', isMutedMiniCalendarMonth(button.dataset.dateKey!, options.today));
 			}
 		}
 		this.updateReference();

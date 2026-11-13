@@ -131,6 +131,11 @@ export function renderMiniCalendarHeader(container: HTMLElement, options: MiniCa
 	return navigation;
 }
 
+/** An even number of months per year keeps this alternation stable across year boundaries. */
+export function isMutedMiniCalendarMonth(dateKey: string, today: string): boolean {
+	return (Number(dateKey.split('-')[1]) - Number(today.split('-')[1])) % 2 !== 0;
+}
+
 export function renderMiniCalendarWeek(container: HTMLElement, weekStartDate: Date, options: MiniCalendarOptions, continuous = false): void {
 	const fullDate = continuous ? new Intl.DateTimeFormat(options.locale, { dateStyle: 'full' }) : null;
 	const monthLabel = continuous ? new Intl.DateTimeFormat(options.locale, { month: 'short' }) : null;
@@ -143,7 +148,6 @@ export function renderMiniCalendarWeek(container: HTMLElement, weekStartDate: Da
 			const button = container.createEl('button', { text: note.label, cls: 'operon-calendar-sidebar-month-weeknum',
 				attr: { type: 'button', 'data-week-date': dateKey, 'data-mini-calendar-focus': `week-${dateKey}` } });
 			setAccessibleLabelWithoutTooltip(button, note.description);
-			bindOperonHoverTooltip(button, { content: note.description, taskColor: null });
 			button.addEventListener('click', () => options.weekNote?.select(dateKey));
 		} else {
 			container.createDiv({ text: String(calendarWeekNumber(weekStartDate, options.weekStart)), cls: 'operon-calendar-sidebar-month-weeknum' });
@@ -160,13 +164,14 @@ export function renderMiniCalendarWeek(container: HTMLElement, weekStartDate: Da
 		});
 		if (continuous) {
 			button.textContent = '';
-			button.createSpan({ cls: 'operon-mini-month-label', text: current.getDate() === 1 ? monthLabel!.format(current) : '' });
-			button.createSpan({ text: String(current.getDate()) });
+			if (current.getDate() === 1) button.createSpan({ cls: 'operon-mini-month-label', text: monthLabel!.format(current), attr: { 'aria-hidden': 'true' } });
+			else button.createSpan({ cls: 'operon-mini-day-number', text: String(current.getDate()) });
 			setAccessibleLabelWithoutTooltip(button, fullDate!.format(current));
 		}
 		if (continuous || options.boundedDates) button.disabled = current.getFullYear() < 1 || current.getFullYear() > 9999;
 		button.classList.toggle('is-weekend', current.getDay() === 0 || current.getDay() === 6);
 		button.classList.toggle('is-outside-month', !continuous && current.getMonth() !== parseDateKey(options.dateKey)?.getMonth());
+		button.classList.toggle('is-muted-month', continuous && isMutedMiniCalendarMonth(dateKey, options.today));
 		button.classList.toggle('is-anchor', dateKey === (options.selectedDate ?? options.dateKey));
 		button.classList.toggle('is-today', dateKey === options.today);
 		button.addEventListener('click', () => options.onSelectDate(dateKey));
