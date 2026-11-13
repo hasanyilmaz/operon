@@ -1,0 +1,212 @@
+import { cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
+import { renderMiniCalendarWeek, type MiniCalendarOptions } from './mini-calendar';
+
+const DAY = 86400000;
+const WINDOW_WEEKS = 1024;
+
+/** Calendar-day ordinals avoid local DST durations and JavaScript's years 0–99 shorthand. */
+export function miniCalendarDay(key: string): number {
+	const [year, month, day] = key.split('-').map(Number);
+	const date = new Date(0);
+	date.setUTCFullYear(year, month - 1, day);
+	date.setUTCHours(0, 0, 0, 0);
+	return Math.floor(date.getTime() / DAY);
+}
+export function miniCalendarDate(day: number): string {
+	const date = new Date(day * DAY);
+	return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+export const MINI_CALENDAR_MIN_DAY = miniCalendarDay('0001-01-01');
+export const MINI_CALENDAR_MAX_DAY = miniCalendarDay('9999-12-31');
+export function miniCalendarWeekStart(day: number, start: 'monday' | 'sunday'): number {
+	const weekday = new Date(day * DAY).getUTCDay();
+	return day - (start === 'sunday' ? weekday : (weekday + 6) % 7);
+}
+export interface MiniCalendarScrollPosition { week: number; fraction: number }
+
+/** A bounded native scroll runway, with only the visible weeks and one viewport on each side in the DOM. */
+export class MiniCalendarScroller {
+	readonly element: HTMLElement;
+	private readonly canvas: HTMLElement;
+	private readonly win: Window;
+	private readonly rows = new Map<number, HTMLElement>();
+	private readonly firstWeek: number;
+	private readonly totalWeeks: number;
+	private readonly resizeObserver: ResizeObserver;
+	private windowStart = 0;
+	private readonly windowCount: number;
+	private pitch = 42;
+	private height = 0;
+	private position: MiniCalendarScrollPosition;
+	private expectedScroll: number | null = null;
+	private frame: number | null = null;
+	private settleTimer: number | null = null;
+	private pointerCount = 0;
+	private disposed = false;
+
+	constructor(container: HTMLElement, private options: MiniCalendarOptions,
+		private readonly onReference: (date: string) => void,
+		private readonly onUserScroll: () => void, position?: MiniCalendarScrollPosition) {
+		this.win = container.ownerDocument.defaultView!;
+		this.firstWeek = miniCalendarWeekStart(MINI_CALENDAR_MIN_DAY, options.weekStart);
+		this.totalWeeks = Math.floor((MINI_CALENDAR_MAX_DAY - this.firstWeek) / 7) + 1;
+		this.windowCount = Math.min(WINDOW_WEEKS, this.totalWeeks);
+		this.position = position ?? { week: miniCalendarWeekStart(miniCalendarDay(options.dateKey), options.weekStart), fraction: 0.5 };
+		this.element = container.createDiv({ cls: 'operon-mini-calendar-scroll', attr: { tabindex: '-1' } });
+		this.canvas = this.element.createDiv('operon-mini-calendar-scroll-canvas');
+		this.rebase();
+		this.draw();
+		this.resizeObserver = new (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver(() => this.measure());
+		this.resizeObserver.observe(this.element);
+		const row = this.rows.values().next().value as HTMLElement | undefined;
+		if (row) this.resizeObserver.observe(row);
+		this.element.addEventListener('scroll', this.onScroll, { passive: true });
+		this.element.addEventListener('pointerdown', this.pointerDown, { passive: true });
+		this.win.addEventListener('pointerup', this.pointerUp);
+		this.win.addEventListener('pointercancel', this.pointerUp);
+		this.win.addEventListener('blur', this.pointerReset);
+		this.measure();
+	}
+
+	private index(): number { return Math.max(0, Math.min(this.totalWeeks - 1, Math.round((this.position.week - this.firstWeek) / 7))); }
+	private padding(): number { return Math.max(0, (this.height - this.pitch) / 2); }
+	private rebase(): void { this.windowStart = Math.max(0, Math.min(this.totalWeeks - this.windowCount, this.index() - Math.floor(this.windowCount / 2))); }
+	private targetTop(): number { return this.padding() + (this.index() - this.windowStart + this.position.fraction) * this.pitch - this.height / 2; }
+
+	getPosition(): MiniCalendarScrollPosition { return { ...this.position }; }
+
+	center(date: string): void {
+		this.position = { week: miniCalendarWeekStart(miniCalendarDay(date), this.options.weekStart), fraction: 0.5 };
+		this.rebase();
+		this.restore();
+	}
+
+	update(options: MiniCalendarOptions): void {
+		this.options = options;
+		for (const row of this.rows.values()) {
+			for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('[data-date-key]'))) {
+				button.classList.toggle('is-anchor', button.dataset.dateKey === (options.selectedDate ?? options.dateKey));
+				button.classList.toggle('is-today', button.dataset.dateKey === options.today);
+			}
+		}
+		this.updateReference();
+	}
+
+	private measure(): void {
+		if (this.disposed || this.element.clientHeight <= 0 || this.element.clientWidth <= 0) return;
+		const row = this.rows.values().next().value as HTMLElement | undefined;
+		const pitch = row?.getBoundingClientRect().height || this.pitch;
+		const height = this.element.clientHeight;
+		if (Math.abs(pitch - this.pitch) < 0.1 && height === this.height) return;
+		this.pitch = pitch;
+		this.height = height;
+		this.restore();
+	}
+
+	private restore(): void {
+		this.draw();
+		this.element.scrollTop = Math.max(0, this.targetTop());
+		this.expectedScroll = this.element.scrollTop;
+		this.updateReference();
+	}
+
+	private readonly onScroll = (): void => {
+		if (this.disposed || !this.height) return;
+		if (this.expectedScroll !== null && Math.abs(this.element.scrollTop - this.expectedScroll) < 1) {
+			this.expectedScroll = null;
+			return;
+		}
+		this.expectedScroll = null;
+		this.capturePosition();
+		this.onUserScroll();
+		if (this.frame === null) this.frame = this.win.requestAnimationFrame(() => {
+			this.frame = null;
+			this.capturePosition();
+			this.draw();
+			this.updateReference();
+		});
+		this.scheduleSettle();
+	};
+
+	private capturePosition(): void {
+		const coordinate = (this.element.scrollTop + this.height / 2 - this.padding()) / this.pitch;
+		const localIndex = Math.floor(coordinate);
+		const index = Math.max(0, Math.min(this.totalWeeks - 1, this.windowStart + localIndex));
+		this.position = { week: this.firstWeek + index * 7, fraction: coordinate - localIndex };
+	}
+	private updateReference(): void {
+		const selected = miniCalendarDay(this.options.selectedDate ?? this.options.dateKey);
+		const offset = selected - miniCalendarWeekStart(selected, this.options.weekStart);
+		this.onReference(miniCalendarDate(Math.max(MINI_CALENDAR_MIN_DAY, Math.min(MINI_CALENDAR_MAX_DAY, this.position.week + offset))));
+	}
+
+	private readonly pointerDown = (): void => { this.pointerCount++; };
+	private readonly pointerUp = (): void => { this.pointerCount = Math.max(0, this.pointerCount - 1); this.scheduleSettle(); };
+	private readonly pointerReset = (): void => { this.pointerCount = 0; this.scheduleSettle(); };
+	private scheduleSettle(): void {
+		if (this.settleTimer !== null) this.win.clearTimeout(this.settleTimer);
+		this.settleTimer = this.win.setTimeout(() => {
+			this.settleTimer = null;
+			if (this.pointerCount || this.disposed || !this.height) return;
+			const offset = this.index() - this.windowStart;
+			if (offset > this.windowCount / 4 && offset < this.windowCount * 3 / 4) return;
+			const previous = this.windowStart;
+			this.rebase();
+			if (previous !== this.windowStart) this.restore();
+		}, 160);
+	}
+
+	private draw(): void {
+		const count = Math.max(1, Math.ceil(this.height / this.pitch));
+		const center = this.index();
+		const start = Math.max(this.windowStart, center - Math.ceil(count * 1.5));
+		const end = Math.min(this.windowStart + this.windowCount, center + Math.ceil(count * 1.5) + 1);
+		const active = this.element.ownerDocument.activeElement;
+		for (const [index, row] of this.rows) {
+			if (index >= start && index < end) continue;
+			if (row.contains(active)) this.element.focus({ preventScroll: true });
+			cleanupOperonHoverTooltips(row);
+			this.resizeObserver?.unobserve(row);
+			row.remove();
+			this.rows.delete(index);
+		}
+		this.canvas.style.height = `${this.windowCount * this.pitch + this.padding() * 2}px`;
+		const top = this.targetTop();
+		let before = this.canvas.firstElementChild;
+		for (let index = start; index < end; index++) {
+			let row = this.rows.get(index);
+			if (!row) {
+				row = this.canvas.createDiv('operon-mini-calendar-week operon-calendar-sidebar-month-grid');
+				row.classList.toggle('has-week-numbers', this.options.showWeekNumbers);
+				row.dataset.weekStart = miniCalendarDate(this.firstWeek + index * 7);
+				const date = new Date(0);
+				const utc = new Date((this.firstWeek + index * 7) * DAY);
+				date.setFullYear(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
+				date.setHours(12, 0, 0, 0);
+				renderMiniCalendarWeek(row, date, this.options, true);
+				this.rows.set(index, row);
+				this.resizeObserver?.observe(row);
+			}
+			const y = this.padding() + (index - this.windowStart) * this.pitch;
+			row.style.top = `${y}px`;
+			const visible = this.height > 0 && y + this.pitch > top + 0.5 && y < top + this.height - 0.5;
+			for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('button'))) button.tabIndex = visible && !button.disabled ? 0 : -1;
+			// Keep DOM/tab order chronological when scrolling back into earlier weeks.
+			if (row !== before) this.canvas.insertBefore(row, before);
+			before = row.nextElementSibling;
+		}
+	}
+
+	dispose(): void {
+		this.disposed = true;
+		this.resizeObserver.disconnect();
+		if (this.frame !== null) this.win.cancelAnimationFrame(this.frame);
+		if (this.settleTimer !== null) this.win.clearTimeout(this.settleTimer);
+		this.element.removeEventListener('scroll', this.onScroll);
+		this.element.removeEventListener('pointerdown', this.pointerDown);
+		this.win.removeEventListener('pointerup', this.pointerUp);
+		this.win.removeEventListener('pointercancel', this.pointerUp);
+		this.win.removeEventListener('blur', this.pointerReset);
+		cleanupOperonHoverTooltips(this.element);
+	}
+}

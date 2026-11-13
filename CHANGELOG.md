@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates.
+- **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks and small month labels. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
 - Choose what Mini Calendar opens under **Settings → Calendar View → Mini Calendar → Click behavior**: the source file, **Task / Property Editor**, or both in a Lightbox. File Tasks use Task Editor and regular notes use Property Editor; mobile opens notes in the normal file view.
 
 ### Validation
 
-- Passed **85/85** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **6/6** mouse/touch browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
+- Passed **87/87** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **42/42** Chromium/WebKit browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
 
 ## [4.7.0] - 2026-11-12
 

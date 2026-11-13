@@ -16,6 +16,8 @@ export interface CalendarDateNavigationOptions {
 
 export interface MiniCalendarOptions extends Omit<CalendarDateNavigationOptions, 'sidebar'> {
 	today: string;
+	selectedDate?: string;
+	boundedDates?: boolean;
 	weekStart: 'monday' | 'sunday';
 	showWeekNumbers: boolean;
 	onShiftMonth: (delta: number) => void;
@@ -23,16 +25,23 @@ export interface MiniCalendarOptions extends Omit<CalendarDateNavigationOptions,
 	weekNote?: { describe: (monday: string) => { label: string; description: string }; select: (monday: string) => void };
 }
 
-export function shiftCalendarMonth(dateKey: string, delta: number): string {
+export function shiftCalendarMonth(dateKey: string, delta: number, bounded = false): string {
 	const date = parseDateKey(dateKey);
 	if (!date) return dateKey;
+	if (bounded) {
+		const [year, month] = dateKey.split('-').map(Number);
+		const index = year * 12 + month - 1 + delta;
+		const nextYear = Math.floor(index / 12);
+		if (nextYear < 1 || nextYear > 9999) return dateKey;
+		return calendarMonthTarget(dateKey, nextYear, index % 12);
+	}
 	const target = new Date(date.getFullYear(), date.getMonth() + delta, 1, 12);
 	const targetKey = calendarMonthTarget(formatDateKey(date).padStart(10, '0'), target.getFullYear(), target.getMonth());
 	target.setDate(Number(targetKey.slice(-2)));
 	return formatDateKey(target);
 }
 
-export function renderCalendarDateNavigation(container: HTMLElement, options: CalendarDateNavigationOptions): void {
+export function renderCalendarDateNavigation(container: HTMLElement, options: CalendarDateNavigationOptions): { update(dateKey: string): void } {
 	const labels = calendarNavigationLabels(options.dateKey, options.dateDisplayFormat, options.locale);
 	const group = container.createDiv('operon-calendar-date-navigation');
 	group.classList.toggle('is-year-first', labels.yearFirst);
@@ -49,6 +58,14 @@ export function renderCalendarDateNavigation(container: HTMLElement, options: Ca
 		event.stopPropagation();
 		options.onChooseMonth(year);
 	});
+	return { update(dateKey) {
+		const next = calendarNavigationLabels(dateKey, options.dateDisplayFormat, options.locale);
+		year.textContent = next.year;
+		date.textContent = next.date;
+		setAccessibleLabelWithoutTooltip(year, `${t('buttons', 'choose')}: ${next.full}`);
+		setAccessibleLabelWithoutTooltip(date, next.full);
+		bindOperonHoverTooltip(year, { content: next.full, taskColor: null });
+	} };
 }
 
 export function renderMiniCalendar(container: HTMLElement, options: MiniCalendarOptions): void {
@@ -56,12 +73,37 @@ export function renderMiniCalendar(container: HTMLElement, options: MiniCalendar
 	const anchorDate = options.dateKey;
 	const anchorDateObject = parseDateKey(anchorDate) ?? parseDateKey(options.today);
 	if (!anchorDateObject) return;
-	const navRow = monthCard.createDiv('operon-calendar-sidebar-month-nav');
+	if (options.boundedDates) {
+		const [year, month, day] = anchorDate.split('-').map(Number);
+		anchorDateObject.setFullYear(year, month - 1, day);
+	}
+	renderMiniCalendarHeader(monthCard, options);
+	const showWeekNumbers = options.showWeekNumbers;
+	const grid = monthCard.createDiv('operon-calendar-sidebar-month-grid');
+	grid.classList.toggle('has-week-numbers', showWeekNumbers);
+	const monthStart = new Date(anchorDateObject.getFullYear(), anchorDateObject.getMonth(), 1, 12, 0, 0, 0);
+	if (options.boundedDates) monthStart.setFullYear(anchorDateObject.getFullYear(), anchorDateObject.getMonth(), 1);
+	const monthStartWeekday = monthStart.getDay();
+	const weekStartOffset = options.weekStart === 'sunday'
+		? monthStartWeekday
+		: (monthStartWeekday + 6) % 7;
+	const gridStart = new Date(monthStart);
+	gridStart.setDate(gridStart.getDate() - weekStartOffset);
+
+	for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
+		const weekStartDate = new Date(gridStart);
+		weekStartDate.setDate(gridStart.getDate() + weekIndex * 7);
+		renderMiniCalendarWeek(grid, weekStartDate, options);
+	}
+}
+
+export function renderMiniCalendarHeader(container: HTMLElement, options: MiniCalendarOptions): { update(dateKey: string): void } {
+	const navRow = container.createDiv('operon-calendar-sidebar-month-nav');
 	createToolbarIconButton(navRow, ['step-back'], () => options.onShiftMonth(-1), t('calendar', 'previousMonth'), t('calendar', 'previousMonth'), 'operon-calendar-sidebar-month-nav-button');
-	renderCalendarDateNavigation(navRow, { ...options, sidebar: true });
+	const navigation = renderCalendarDateNavigation(navRow, { ...options, sidebar: true });
 	createToolbarIconButton(navRow, ['step-forward'], () => options.onShiftMonth(1), t('calendar', 'nextMonth'), t('calendar', 'nextMonth'), 'operon-calendar-sidebar-month-nav-button');
 	const showWeekNumbers = options.showWeekNumbers;
-	const weekdayRow = monthCard.createDiv('operon-calendar-sidebar-month-weekdays');
+	const weekdayRow = container.createDiv('operon-calendar-sidebar-month-weekdays');
 	weekdayRow.classList.toggle('has-week-numbers', showWeekNumbers);
 	if (showWeekNumbers) {
 		weekdayRow.createDiv({
@@ -86,50 +128,48 @@ export function renderMiniCalendar(container: HTMLElement, options: MiniCalendar
 		weekdayEl.classList.toggle('is-weekend', weekdayIndex === 0 || weekdayIndex === 6);
 	}
 
-	const grid = monthCard.createDiv('operon-calendar-sidebar-month-grid');
-	grid.classList.toggle('has-week-numbers', showWeekNumbers);
-	const monthStart = new Date(anchorDateObject.getFullYear(), anchorDateObject.getMonth(), 1, 12, 0, 0, 0);
-	const monthStartWeekday = monthStart.getDay();
-	const weekStartOffset = options.weekStart === 'sunday'
-		? monthStartWeekday
-		: (monthStartWeekday + 6) % 7;
-	const gridStart = new Date(monthStart);
-	gridStart.setDate(gridStart.getDate() - weekStartOffset);
-	const today = options.today;
+	return navigation;
+}
 
-	for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
-		const weekStartDate = new Date(gridStart);
-		weekStartDate.setDate(gridStart.getDate() + weekIndex * 7);
-		if (showWeekNumbers) {
-			if (options.weekNote) {
-				const monday = new Date(weekStartDate);
-				if (options.weekStart === 'sunday') monday.setDate(monday.getDate() + 1);
-				const dateKey = formatDateKey(monday);
-				const note = options.weekNote.describe(dateKey);
-				const button = grid.createEl('button', { text: note.label, cls: 'operon-calendar-sidebar-month-weeknum',
-					attr: { type: 'button', 'data-week-date': dateKey } });
-				setAccessibleLabelWithoutTooltip(button, note.description);
-				bindOperonHoverTooltip(button, { content: note.description, taskColor: null });
-				button.addEventListener('click', () => options.weekNote?.select(dateKey));
-			} else {
-				grid.createDiv({ text: String(calendarWeekNumber(weekStartDate, options.weekStart)), cls: 'operon-calendar-sidebar-month-weeknum' });
-			}
+export function renderMiniCalendarWeek(container: HTMLElement, weekStartDate: Date, options: MiniCalendarOptions, continuous = false): void {
+	const fullDate = continuous ? new Intl.DateTimeFormat(options.locale, { dateStyle: 'full' }) : null;
+	const monthLabel = continuous ? new Intl.DateTimeFormat(options.locale, { month: 'short' }) : null;
+	if (options.showWeekNumbers) {
+		if (options.weekNote) {
+			const monday = new Date(weekStartDate);
+			if (options.weekStart === 'sunday') monday.setDate(monday.getDate() + 1);
+			const dateKey = (continuous || options.boundedDates) ? formatDateKey(monday).padStart(10, '0') : formatDateKey(monday);
+			const note = options.weekNote.describe(dateKey);
+			const button = container.createEl('button', { text: note.label, cls: 'operon-calendar-sidebar-month-weeknum',
+				attr: { type: 'button', 'data-week-date': dateKey, 'data-mini-calendar-focus': `week-${dateKey}` } });
+			setAccessibleLabelWithoutTooltip(button, note.description);
+			bindOperonHoverTooltip(button, { content: note.description, taskColor: null });
+			button.addEventListener('click', () => options.weekNote?.select(dateKey));
+		} else {
+			container.createDiv({ text: String(calendarWeekNumber(weekStartDate, options.weekStart)), cls: 'operon-calendar-sidebar-month-weeknum' });
 		}
-		for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-			const current = new Date(weekStartDate);
-			current.setDate(weekStartDate.getDate() + dayOffset);
-			const dateKey = formatDateKey(current);
-			const button = grid.createEl('button', {
-				text: String(current.getDate()),
-				cls: 'operon-calendar-sidebar-month-day',
-				attr: { type: 'button', 'data-date-key': dateKey },
-			});
-			button.classList.toggle('is-weekend', current.getDay() === 0 || current.getDay() === 6);
-			button.classList.toggle('is-outside-month', current.getMonth() !== anchorDateObject.getMonth());
-			button.classList.toggle('is-anchor', dateKey === anchorDate);
-			button.classList.toggle('is-today', dateKey === today);
-			button.addEventListener('click', () => options.onSelectDate(dateKey));
+	}
+	for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+		const current = new Date(weekStartDate);
+		current.setDate(weekStartDate.getDate() + dayOffset);
+		const dateKey = (continuous || options.boundedDates) ? formatDateKey(current).padStart(10, '0') : formatDateKey(current);
+		const button = container.createEl('button', {
+			text: String(current.getDate()),
+			cls: 'operon-calendar-sidebar-month-day',
+			attr: { type: 'button', 'data-date-key': dateKey, 'data-mini-calendar-focus': dateKey },
+		});
+		if (continuous) {
+			button.textContent = '';
+			button.createSpan({ cls: 'operon-mini-month-label', text: current.getDate() === 1 ? monthLabel!.format(current) : '' });
+			button.createSpan({ text: String(current.getDate()) });
+			setAccessibleLabelWithoutTooltip(button, fullDate!.format(current));
 		}
+		if (continuous || options.boundedDates) button.disabled = current.getFullYear() < 1 || current.getFullYear() > 9999;
+		button.classList.toggle('is-weekend', current.getDay() === 0 || current.getDay() === 6);
+		button.classList.toggle('is-outside-month', !continuous && current.getMonth() !== parseDateKey(options.dateKey)?.getMonth());
+		button.classList.toggle('is-anchor', dateKey === (options.selectedDate ?? options.dateKey));
+		button.classList.toggle('is-today', dateKey === options.today);
+		button.addEventListener('click', () => options.onSelectDate(dateKey));
 	}
 }
 

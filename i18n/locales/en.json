@@ -2502,6 +2502,10 @@
 		"taskCard_open": "Open Task Editor · Cmd/Ctrl-click to open the source in a new tab"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "View mode",
+		"miniCalendarViewModeDesc": "Show a scrollable stream of weeks or a fixed month. Applies only to the Mini Calendar sidebar.",
+		"miniCalendarContinuous": "Continuous weeks",
+		"miniCalendarMonth": "Month",
 		"miniCalendarClickAction": "Click behavior",
 		"miniCalendarClickActionDesc": "Choose what opens when you click a day or week number. File Tasks use Task Editor; other notes use Property Editor. On mobile, notes open in the normal Obsidian view.",
 		"miniCalendarOpenWeek": "Open week {{week}}: {{title}}",

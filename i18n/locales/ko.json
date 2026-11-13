@@ -2502,6 +2502,10 @@
 		"taskCard_open": "작업 편집기 열기 · Cmd/Ctrl+클릭으로 원본을 새 탭에서 열기"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "보기 모드",
+		"miniCalendarViewModeDesc": "연속으로 스크롤되는 주 또는 고정된 월을 표시합니다. 사이드바 미니 캘린더에만 적용됩니다.",
+		"miniCalendarContinuous": "연속 주 보기",
+		"miniCalendarMonth": "월",
 		"miniCalendarClickAction": "클릭 동작",
 		"miniCalendarClickActionDesc": "날짜나 주 번호를 클릭할 때 열 화면을 선택합니다. 파일 작업은 작업 편집기를, 다른 노트는 속성 편집기를 사용합니다. 모바일에서는 일반 Obsidian 보기로 노트를 엽니다.",
 		"miniCalendarOpenWeek": "{{week}} 주 열기: {{title}}",

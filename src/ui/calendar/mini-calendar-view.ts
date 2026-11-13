@@ -1,13 +1,15 @@
+import { bindMiniCalendarInput } from './mini-calendar-input';
+import { MiniCalendarScroller, miniCalendarDay, miniCalendarWeekStart } from './mini-calendar-scroll';
 import { miniCalendarWeek, MiniCalendarNoteOpener, type MiniCalendarNoteRequest } from './mini-calendar-notes';
 import { ItemView, type Workspace, type WorkspaceLeaf } from 'obsidian';
 import { t } from '../../core/i18n';
 import { toLocalDate } from '../../core/local-time';
 import { getAppLocale } from '../../core/obsidian-app';
 import type { OperonSettings } from '../../types/settings';
-import { cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
+import { cleanupOperonHoverTooltips, closeBoundOperonHoverTooltips } from '../operon-hover-tooltip';
 import { closeFloatingPanelsForRoot } from '../field-pickers/common';
 import { showCalendarMonthPicker } from './calendar-month-picker';
-import { renderMiniCalendar, shiftCalendarMonth } from './mini-calendar';
+import { renderMiniCalendar, renderMiniCalendarHeader, shiftCalendarMonth, type MiniCalendarOptions } from './mini-calendar';
 
 export const MINI_CALENDAR_VIEW_TYPE = 'operon-mini-calendar';
 const pendingOpenings = new WeakMap<Workspace, Promise<void>>();
@@ -37,6 +39,10 @@ export async function openMiniCalendar(workspace: Workspace): Promise<void> {
 
 export class MiniCalendarView extends ItemView {
 	private anchorDate = '';
+	private navigationDate = '';
+	private scroller: MiniCalendarScroller | null = null;
+	private dateNavigation: { update(date: string): void } | null = null;
+	private input: ReturnType<typeof bindMiniCalendarInput> | null = null;
 	private signature: string | null = null;
 	private closed = true;
 	private closeMonthPicker: (() => void) | null = null;
@@ -62,7 +68,7 @@ export class MiniCalendarView extends ItemView {
 	async onOpen(): Promise<void> {
 		this.dispose();
 		this.closed = false;
-		this.anchorDate = toLocalDate(this.clock());
+		this.anchorDate = this.navigationDate = toLocalDate(this.clock());
 		this.signature = null;
 		this.contentEl.addClass('operon-mini-calendar-view');
 		this.contentEl.tabIndex = -1;
@@ -89,30 +95,49 @@ export class MiniCalendarView extends ItemView {
 		const settings = this.getSettings();
 		const today = toLocalDate(this.clock());
 		const locale = getAppLocale(this.app);
-		const signature = JSON.stringify([this.anchorDate, today, locale, settings.language,
-			settings.dateDisplayFormat, settings.calendarWeekStart, settings.calendarSidebarShowWeekNumbers, settings.weeklyNoteFormat, this.getDisplayText()]);
-		if (signature === this.signature) return;
+		const continuous = settings.miniCalendarViewMode !== 'month';
+		const signature = JSON.stringify([continuous ? null : this.navigationDate, continuous ? null : this.anchorDate, continuous ? null : today, locale, settings.language,
+			settings.dateDisplayFormat, settings.calendarWeekStart, settings.calendarSidebarShowWeekNumbers, settings.weeklyNoteFormat, continuous, this.getDisplayText()]);
+		const options: MiniCalendarOptions = {
+			boundedDates: true, dateKey: this.navigationDate, selectedDate: this.anchorDate, today, locale,
+			dateDisplayFormat: settings.dateDisplayFormat, weekStart: settings.calendarWeekStart,
+			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
+			onToday: () => this.navigate(toLocalDate(this.clock())),
+			onShiftMonth: delta => {
+				const target = shiftCalendarMonth(this.navigationDate, delta, true).padStart(10, '0');
+				if (target.length === 10 && target >= '0001-01-01' && target <= '9999-12-31') this.navigate(target);
+			},
+			onSelectDate: date => { this.selectDate(date); this.noteOpener.request('daily', date, this.contentEl); },
+			weekNote: { describe: monday => miniCalendarWeek(monday, this.getSettings().weeklyNoteFormat),
+				select: monday => this.noteOpener.request('weekly', monday, this.contentEl) },
+			onChooseMonth: anchor => this.openMonthPicker(anchor),
+		};
+		if (signature === this.signature) { this.scroller?.update(options); return; }
+		// Month mode still refreshes its selected/today marks without changing its reference month.
 		const root = this.contentEl;
 		const active = root.ownerDocument.activeElement;
 		const controls = Array.from(root.querySelectorAll<HTMLButtonElement>('button'));
 		const focused = controls.find(button => button === active) ?? this.monthPickerAnchor;
 		const focusKey = focused?.dataset.miniCalendarFocus;
 		const restoreFocus = root.contains(active) || this.monthPickerAnchor !== null;
+		const oldPosition = this.scroller?.getPosition();
+		this.scroller?.dispose();
+		this.scroller = null;
 		this.closePicker();
 		cleanupOperonHoverTooltips(root);
 		root.empty();
-		renderMiniCalendar(root, {
-			dateKey: this.anchorDate, today, locale,
-			dateDisplayFormat: settings.dateDisplayFormat,
-			weekStart: settings.calendarWeekStart,
-			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
-			onToday: () => { this.noteOpener.invalidate(); this.selectDate(toLocalDate(this.clock())); },
-			onShiftMonth: delta => { this.noteOpener.invalidate(); this.selectDate(shiftCalendarMonth(this.anchorDate, delta)); },
-			onSelectDate: date => { this.selectDate(date); this.noteOpener.request('daily', date, this.contentEl); },
-			weekNote: { describe: monday => miniCalendarWeek(monday, settings.weeklyNoteFormat),
-				select: monday => this.noteOpener.request('weekly', monday, this.contentEl) },
-			onChooseMonth: anchor => this.openMonthPicker(anchor),
-		});
+		root.classList.toggle('is-continuous', continuous);
+		if (continuous) {
+			this.dateNavigation = renderMiniCalendarHeader(root, options);
+			const position = oldPosition ? { ...oldPosition, week: miniCalendarWeekStart(miniCalendarDay(this.navigationDate), settings.calendarWeekStart) } : undefined;
+			this.scroller = new MiniCalendarScroller(root, options, date => {
+				this.navigationDate = date;
+				this.dateNavigation?.update(date);
+			}, () => this.input?.scrolled(), position);
+		} else {
+			this.dateNavigation = null;
+			renderMiniCalendar(root, options);
+		}
 		const nextControls = Array.from(root.querySelectorAll<HTMLButtonElement>('button'));
 		nextControls.forEach((button, index) => {
 			button.dataset.miniCalendarFocus = button.dataset.dateKey ?? (button.dataset.weekDate ? `week-${button.dataset.weekDate}` : undefined)
@@ -129,7 +154,15 @@ export class MiniCalendarView extends ItemView {
 	private selectDate(date: string): void {
 		if (date !== this.anchorDate) this.noteOpener.invalidate();
 		this.anchorDate = date;
+		if (!this.scroller) this.navigationDate = date;
 		this.render();
+	}
+
+	private navigate(date: string): void {
+		this.noteOpener.invalidate();
+		this.anchorDate = this.navigationDate = date;
+		this.render();
+		this.scroller?.center(date);
 	}
 
 	private openMonthPicker(anchor: HTMLButtonElement): void {
@@ -139,8 +172,8 @@ export class MiniCalendarView extends ItemView {
 		this.monthPickerAnchor = anchor;
 		anchor.setAttribute('aria-expanded', 'true');
 		this.closeMonthPicker = showCalendarMonthPicker(anchor, {
-			dateKey: this.anchorDate, locale: getAppLocale(this.app),
-			onSelect: date => this.selectDate(date),
+			dateKey: this.navigationDate, locale: getAppLocale(this.app),
+			onSelect: date => this.navigate(date),
 			onClose: () => {
 				this.closeMonthPicker = null;
 				this.monthPickerAnchor = null;
@@ -172,6 +205,13 @@ export class MiniCalendarView extends ItemView {
 
 	private bindWindowListeners(): void {
 		this.stopWindowListeners?.();
+		this.input?.dispose();
+		this.input = bindMiniCalendarInput(this.contentEl, () => {
+			this.noteOpener.invalidate();
+			this.closePicker();
+			closeBoundOperonHoverTooltips(this.contentEl);
+			if (!this.contentEl.contains(this.contentEl.ownerDocument.activeElement)) this.focusCalendar();
+		});
 		const doc = this.contentEl.ownerDocument;
 		const win = doc.defaultView;
 		this.timerWindow = win;
@@ -195,6 +235,10 @@ export class MiniCalendarView extends ItemView {
 	}
 
 	private dispose(): void {
+		this.scroller?.dispose();
+		this.scroller = null;
+		this.input?.dispose();
+		this.input = null;
 		this.noteOpener.invalidate();
 		this.stopMigration?.();
 		this.stopMigration = null;

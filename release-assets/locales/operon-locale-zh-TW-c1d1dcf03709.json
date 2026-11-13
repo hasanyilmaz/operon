@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -159,8 +159,12 @@
       "materializationUpdates": "將被更改",
       "miniCalendarClickAction": "點擊行為",
       "miniCalendarClickActionDesc": "選擇點擊日期或週數時開啟的內容。檔案任務使用任務編輯器，其他筆記使用屬性編輯器。在行動裝置上，筆記會在一般 Obsidian 檢視中開啟。",
+      "miniCalendarContinuous": "連續週檢視",
+      "miniCalendarMonth": "月",
       "miniCalendarOpenWeek": "開啟 {{week}} 週：{{title}}",
       "miniCalendarTitle": "迷你日曆",
+      "miniCalendarViewMode": "檢視模式",
+      "miniCalendarViewModeDesc": "顯示可連續捲動的週或固定月份。僅適用於側邊欄迷你日曆。",
       "mobileAddTask": "將任務新增到所選日期",
       "mobileAgendaEmptyDay": "沒有專案",
       "mobileControls": "日曆控制元件",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a393c5df3b7a0e5bd90ded95a914cb9805fa79e1458d284733a67e1ed1a239f4"
+  "sourceVersion": "f227976b22ebc5a505a122f6641abae1b6a829f1c3f1c038b0f82d0deb130778"
 }

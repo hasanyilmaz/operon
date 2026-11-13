@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -159,8 +159,12 @@
       "materializationUpdates": "Wird geändert",
       "miniCalendarClickAction": "Klickverhalten",
       "miniCalendarClickActionDesc": "Wähle, was beim Klick auf einen Tag oder eine Wochennummer geöffnet wird. Datei-Aufgaben verwenden den Aufgaben-Editor, andere Notizen den Eigenschaften-Editor. Mobil öffnen sich Notizen in der normalen Obsidian-Ansicht.",
+      "miniCalendarContinuous": "Fortlaufende Wochen",
+      "miniCalendarMonth": "Monat",
       "miniCalendarOpenWeek": "Woche {{week}} öffnen: {{title}}",
       "miniCalendarTitle": "Mini-Kalender",
+      "miniCalendarViewMode": "Ansichtsmodus",
+      "miniCalendarViewModeDesc": "Eine fortlaufende Wochenansicht oder einen festen Monat anzeigen. Gilt nur für die Mini-Kalender-Seitenleiste.",
       "mobileAddTask": "Aufgabe zum ausgewählten Tag hinzufügen",
       "mobileAgendaEmptyDay": "Keine Elemente",
       "mobileControls": "Kalender-Steuerung",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "c761eb05260ab060f584d145e9cf80c96aeb81b898820407e7fb0b332c40b878"
+  "sourceVersion": "5e05c00bdbfe2aa7e4265ac94c28033443a4b39dbbba2d88f84a66d9c0f14210"
 }

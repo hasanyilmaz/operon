@@ -2502,6 +2502,10 @@
 		"taskCard_open": "Task Editor を開く · Cmd/Ctrl+クリックでソースを新しいタブに開く"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "表示モード",
+		"miniCalendarViewModeDesc": "週を連続スクロールで表示するか、固定の月を表示します。サイドバーのミニカレンダーにのみ適用されます。",
+		"miniCalendarContinuous": "連続する週",
+		"miniCalendarMonth": "月",
 		"miniCalendarClickAction": "クリック時の動作",
 		"miniCalendarClickActionDesc": "日付や週番号をクリックしたときに開く画面を選択します。ファイルタスクにはタスクエディター、その他のノートにはプロパティエディターを使います。モバイルでは通常のObsidianビューでノートを開きます。",
 		"miniCalendarOpenWeek": "週 {{week}} を開く: {{title}}",

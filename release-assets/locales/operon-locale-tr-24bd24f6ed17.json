@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -159,8 +159,12 @@
       "materializationUpdates": "Değişecek",
       "miniCalendarClickAction": "Tıklama davranışı",
       "miniCalendarClickActionDesc": "Bir güne veya hafta numarasına tıkladığınızda ne açılacağını seçin. Dosya görevleri Task Editor, diğer notlar Property Editor kullanır. Mobilde notlar normal Obsidian görünümünde açılır.",
+      "miniCalendarContinuous": "Sürekli haftalar",
+      "miniCalendarMonth": "Ay",
       "miniCalendarOpenWeek": "{{week}} haftasını aç: {{title}}",
       "miniCalendarTitle": "Mini Takvim",
+      "miniCalendarViewMode": "Görünüm modu",
+      "miniCalendarViewModeDesc": "Kaydırılabilir haftaları veya sabit bir ayı göster. Yalnızca Mini Calendar kenar çubuğu için geçerlidir.",
       "mobileAddTask": "Seçili güne görev ekle",
       "mobileAgendaEmptyDay": "Öğe yok",
       "mobileControls": "Takvim kontrolleri",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "c6e2e7772cdec5e72305d1be314f4d8de95a374b7942a85aa11a2a29cc4d2538"
+  "sourceVersion": "04983f4bb17db3b6492f58c2153ae8d2785c5f48158acebd3fe8f77a83d36e1b"
 }

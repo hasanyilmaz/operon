@@ -37664,3 +37664,77 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	color: var(--text-normal);
 	outline: none;
 }
+
+/* Standalone Mini Calendar: fixed header above a bounded week viewport. */
+.operon-mini-calendar-view.is-continuous {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	height: 100%;
+	min-height: 0;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+.operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-nav,
+.operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-weekdays { flex: 0 0 auto; }
+.operon-mini-calendar-scroll {
+	flex: 1 1 0;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	overscroll-behavior-y: contain;
+	overflow-anchor: none;
+	touch-action: pan-y pinch-zoom;
+	scrollbar-width: none;
+}
+.operon-mini-calendar-scroll::-webkit-scrollbar { display: none; }
+.operon-mini-calendar-scroll-canvas { position: relative; }
+.operon-mini-calendar-view .operon-mini-calendar-week {
+	position: absolute;
+	width: 100%;
+	gap: 0 6px;
+	padding-bottom: 6px;
+	box-sizing: border-box;
+}
+.operon-mini-calendar-view .operon-mini-calendar-week .operon-calendar-sidebar-month-day,
+.operon-mini-calendar-view .operon-mini-calendar-week .operon-calendar-sidebar-month-weeknum {
+	height: 36px;
+	min-height: 36px;
+	box-sizing: border-box;
+}
+.operon-mini-calendar-view .operon-mini-calendar-week .operon-calendar-sidebar-month-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 1px 0;
+	line-height: 16px;
+}
+.operon-mini-month-label {
+	display: block;
+	height: 10px;
+	max-width: 100%;
+	overflow: hidden;
+	font-size: 9px;
+	line-height: 10px;
+	color: var(--text-accent);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.operon-mini-calendar-view .operon-calendar-date-button { min-width: 0; }
+.operon-mini-calendar-scroll:focus-visible { outline: 1px solid var(--interactive-accent); outline-offset: -1px; }
+body.is-mobile .operon-mini-calendar-view .operon-calendar-sidebar-month-day,
+body.is-mobile .operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum,
+body.is-mobile .operon-mini-calendar-view .operon-calendar-toolbar-button { height: 44px; min-height: 44px; }
+@media (any-pointer: coarse) {
+	.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day,
+	.operon-mini-calendar-view.is-continuous button.operon-calendar-sidebar-month-weeknum,
+	.operon-mini-calendar-view .operon-calendar-sidebar-month-day,
+	.operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum,
+	.operon-mini-calendar-view .operon-calendar-toolbar-button { height: 44px; min-height: 44px; }
+	.operon-mini-calendar-view { padding: 8px; }
+	.operon-mini-calendar-view .operon-calendar-sidebar-month-nav { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 4px; }
+	.operon-mini-calendar-view .operon-calendar-sidebar-month-weekdays,
+	.operon-mini-calendar-view .operon-calendar-sidebar-month-grid { gap: 6px 2px; }
+	.operon-mini-calendar-view .has-week-numbers { grid-template-columns: 24px repeat(7, minmax(0, 1fr)); }
+}

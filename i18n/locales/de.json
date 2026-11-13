@@ -2502,6 +2502,10 @@
 		"taskCard_open": "Task Editor öffnen · Cmd/Strg-Klick öffnet die Quelle in einem neuen Tab"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "Ansichtsmodus",
+		"miniCalendarViewModeDesc": "Eine fortlaufende Wochenansicht oder einen festen Monat anzeigen. Gilt nur für die Mini-Kalender-Seitenleiste.",
+		"miniCalendarContinuous": "Fortlaufende Wochen",
+		"miniCalendarMonth": "Monat",
 		"miniCalendarClickAction": "Klickverhalten",
 		"miniCalendarClickActionDesc": "Wähle, was beim Klick auf einen Tag oder eine Wochennummer geöffnet wird. Datei-Aufgaben verwenden den Aufgaben-Editor, andere Notizen den Eigenschaften-Editor. Mobil öffnen sich Notizen in der normalen Obsidian-Ansicht.",
 		"miniCalendarOpenWeek": "Woche {{week}} öffnen: {{title}}",

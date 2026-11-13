@@ -2502,6 +2502,10 @@
 		"taskCard_open": "Task Editor’ı aç · Kaynağı yeni sekmede açmak için Cmd/Ctrl+tıkla"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "Görünüm modu",
+		"miniCalendarViewModeDesc": "Kaydırılabilir haftaları veya sabit bir ayı göster. Yalnızca Mini Calendar kenar çubuğu için geçerlidir.",
+		"miniCalendarContinuous": "Sürekli haftalar",
+		"miniCalendarMonth": "Ay",
 		"miniCalendarClickAction": "Tıklama davranışı",
 		"miniCalendarClickActionDesc": "Bir güne veya hafta numarasına tıkladığınızda ne açılacağını seçin. Dosya görevleri Task Editor, diğer notlar Property Editor kullanır. Mobilde notlar normal Obsidian görünümünde açılır.",
 		"miniCalendarOpenWeek": "{{week}} haftasını aç: {{title}}",

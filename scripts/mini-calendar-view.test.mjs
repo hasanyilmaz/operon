@@ -25,6 +25,7 @@ await build({
    export const setIcon = () => {};
    export const t = (section, key) => key;
    export const getAppLocale = app => app.locale;
+   export const closeBoundOperonHoverTooltips = () => {};
    export const cleanupOperonHoverTooltips = root => { root.tooltipCleanups = (root.tooltipCleanups ?? 0) + 1; };
    export const bindOperonHoverTooltip = () => {};
    export const setAccessibleLabelWithoutTooltip = (el, label) => el.setAttribute('aria-label', label);
@@ -95,7 +96,7 @@ function document() {
 async function fixture() {
  const doc = document();
  let now = new Date(2026, 10, 13, 12);
- const settings = { dateDisplayFormat: 'YYYY-MM-DD', calendarWeekStart: 'monday', calendarSidebarShowWeekNumbers: true, language: 'en' };
+ const settings = { miniCalendarViewMode: 'month', dateDisplayFormat: 'YYYY-MM-DD', calendarWeekStart: 'monday', calendarSidebarShowWeekNumbers: true, language: 'en' };
  const leaf = { app: { locale: 'en-US' }, contentEl: new Element(doc), containerEl: new Element(doc) };
  const opened = [];
  const view = new MiniCalendarView(leaf, () => settings, () => new Date(now), async request => { opened.push(request); });

@@ -2502,6 +2502,10 @@
 		"taskCard_open": "打开 Task Editor · Cmd/Ctrl+点击在新标签页中打开来源"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "视图模式",
+		"miniCalendarViewModeDesc": "显示可连续滚动的周或固定月份。仅适用于侧边栏迷你日历。",
+		"miniCalendarContinuous": "连续周视图",
+		"miniCalendarMonth": "月",
 		"miniCalendarClickAction": "点击行为",
 		"miniCalendarClickActionDesc": "选择点击日期或周数时打开的内容。文件任务使用任务编辑器，其他笔记使用属性编辑器。在移动设备上，笔记在普通 Obsidian 视图中打开。",
 		"miniCalendarOpenWeek": "打开 {{week}} 周：{{title}}",

@@ -1345,11 +1345,12 @@ test('Mini Calendar preference follows other view preferences in General backup 
  const harness = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
  const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
  assert.equal(current.miniCalendarClickAction, undefined);
- const source = clone(current); source.miniCalendarClickAction = 'editor';
+ const source = clone(current); source.miniCalendarClickAction = 'editor'; source.miniCalendarViewMode = 'month';
  const { sourceJson, plan } = await createPlan(harness.storage, source, ['general']);
  const applied = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
  assert.ok(applied.status === 'success' || applied.status === 'success-with-migrations');
  assert.equal(harness.storage.getSettings().miniCalendarClickAction, 'editor');
+ assert.equal(harness.storage.getSettings().miniCalendarViewMode, 'month');
  const token = applied.receipt?.recovery.undoTokenId;
  const receipt = applied.receipt?.receiptId;
  assert.ok(token && receipt);
@@ -1358,6 +1359,7 @@ test('Mini Calendar preference follows other view preferences in General backup 
  assert.equal(harness.storage.getSettings().miniCalendarClickAction, undefined);
  const snapshot = await harness.storage.captureCommittedSettingsBackupSnapshot();
  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.settings, 'miniCalendarClickAction'), false);
+ assert.equal(Object.prototype.hasOwnProperty.call(snapshot.settings, 'miniCalendarViewMode'), false);
  assert.equal(snapshot.settings.language, current.language);
  harness.storage.destroy();
 });

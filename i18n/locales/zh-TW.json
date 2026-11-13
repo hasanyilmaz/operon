@@ -2502,6 +2502,10 @@
 		"taskCard_open": "開啟 Task Editor · Cmd/Ctrl+點擊在新分頁中開啟來源"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "檢視模式",
+		"miniCalendarViewModeDesc": "顯示可連續捲動的週或固定月份。僅適用於側邊欄迷你日曆。",
+		"miniCalendarContinuous": "連續週檢視",
+		"miniCalendarMonth": "月",
 		"miniCalendarClickAction": "點擊行為",
 		"miniCalendarClickActionDesc": "選擇點擊日期或週數時開啟的內容。檔案任務使用任務編輯器，其他筆記使用屬性編輯器。在行動裝置上，筆記會在一般 Obsidian 檢視中開啟。",
 		"miniCalendarOpenWeek": "開啟 {{week}} 週：{{title}}",

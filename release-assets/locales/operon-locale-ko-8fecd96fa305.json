@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -159,8 +159,12 @@
       "materializationUpdates": "변경 예정",
       "miniCalendarClickAction": "클릭 동작",
       "miniCalendarClickActionDesc": "날짜나 주 번호를 클릭할 때 열 화면을 선택합니다. 파일 작업은 작업 편집기를, 다른 노트는 속성 편집기를 사용합니다. 모바일에서는 일반 Obsidian 보기로 노트를 엽니다.",
+      "miniCalendarContinuous": "연속 주 보기",
+      "miniCalendarMonth": "월",
       "miniCalendarOpenWeek": "{{week}} 주 열기: {{title}}",
       "miniCalendarTitle": "미니 캘린더",
+      "miniCalendarViewMode": "보기 모드",
+      "miniCalendarViewModeDesc": "연속으로 스크롤되는 주 또는 고정된 월을 표시합니다. 사이드바 미니 캘린더에만 적용됩니다.",
       "mobileAddTask": "선택한 날짜에 작업 추가",
       "mobileAgendaEmptyDay": "항목 없음",
       "mobileControls": "캘린더 컨트롤",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "3cf80987a29e22714f1b8d646dd24070c517f1dc1fea0257ac81bd2d40385c08"
+  "sourceVersion": "26b344298a7c26e2e4223bfdf0efa15db97721fe81a9189fb303feef8a3bc5ad"
 }

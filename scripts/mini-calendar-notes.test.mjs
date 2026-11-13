@@ -165,7 +165,7 @@ test('Settings Search exposes the Mini Calendar group, default, and three editor
  assert.equal(entry.tabId, 'viewsCalendar'); assert.equal(entry.control, 'dropdown');
  ui.buildTaskSettingsGroups = sections => sections;
  const groups = ui.buildCalendarSettingsItems([entry]);
- assert.deepEqual(groups.find(group => group[0] === 'miniCalendarTitle')[1], ['miniCalendarClickAction']);
+ assert.deepEqual(groups.find(group => group[0] === 'miniCalendarTitle')[1], ['miniCalendarViewMode', 'miniCalendarClickAction']);
  assert.equal(ui.getDefaultSettingsSearchValue('miniCalendarClickAction'), 'source-and-editor');
  const choices = ui.getSettingsSearchDropdownOptions('miniCalendarClickAction');
  assert.deepEqual(Object.keys(choices), ['source', 'source-and-editor', 'editor']);
@@ -200,4 +200,43 @@ test('a ready editor retains its source-toggle guard after a rejected replacemen
  f.subject.openEditorForId = async (id, source, anchor, canOpen) => { guard = canOpen; await gate.promise; };
  const pending = f.subject.openMiniCalendarNote(f.request); await tick();
  current = false; gate.resolve(); await pending; assert.equal(guard(), false);
+});
+
+test('view mode defaults stay in memory; mode and click behavior save independently and roll back failures', async () => {
+ const f = new SettingsPreservationHarness();
+ try {
+  const storage = f.createStorage(); await storage.initialize();
+  const read = async () => JSON.parse(await f.adapter.read(f.canonicalPath));
+  const initial = await read(), attempts = f.canonicalAttempts;
+  const restarted = f.createStorage(); await restarted.initialize();
+  assert.equal(f.canonicalAttempts, attempts);
+  assert.equal(Object.hasOwn(initial.settings, 'miniCalendarViewMode'), false);
+  assert.equal(migrateSettings({ ...DEFAULT_SETTINGS, miniCalendarViewMode: 'invalid' }).miniCalendarViewMode, undefined);
+  await assert.rejects(storage.saveMiniCalendarViewMode('invalid'));
+  assert.equal(f.canonicalAttempts, attempts);
+  await Promise.all([storage.saveMiniCalendarViewMode('month'), storage.saveMiniCalendarClickAction('editor')]);
+  const saved = await read();
+  assert.equal(saved.settings.miniCalendarViewMode, 'month'); assert.equal(saved.settings.miniCalendarClickAction, 'editor');
+  const unchanged = structuredClone(saved); delete unchanged.settings.miniCalendarViewMode; delete unchanged.settings.miniCalendarClickAction;
+  assert.deepEqual(unchanged, initial);
+  await restarted.reloadCanonicalSettingsPackage(); assert.equal(restarted.getSettings().miniCalendarViewMode, 'month');
+  f.writeFault = 'throw-before'; await assert.rejects(storage.saveMiniCalendarViewMode('continuous'));
+  assert.equal(storage.getSettings().miniCalendarViewMode, 'month'); assert.equal((await read()).settings.miniCalendarViewMode, 'month');
+  f.writeFault = 'none'; await storage.saveMiniCalendarViewMode('continuous');
+  assert.equal((await read()).settings.miniCalendarViewMode, 'continuous');
+  const missing = await read(); delete missing.settings.miniCalendarViewMode;
+  f.seed(f.canonicalPath, JSON.stringify(missing)); await restarted.reloadCanonicalSettingsPackage();
+  assert.equal(restarted.getSettings().miniCalendarViewMode, undefined);
+ } finally { await f.dispose(); }
+});
+test('view mode Settings Search shares the default, options and failure-safe storage route', async () => {
+ const ui = new SettingsSubject();
+ assert.equal(ui.getDefaultSettingsSearchValue('miniCalendarViewMode'), 'continuous');
+ assert.deepEqual(Object.keys(ui.getSettingsSearchDropdownOptions('miniCalendarViewMode')), ['continuous', 'month']);
+ assert.equal(OPERON_SETTINGS_SEARCH_REGISTRY.find(entry => entry.key === 'miniCalendarViewMode').control, 'dropdown');
+ const calls = [];
+ ui.storage = { saveMiniCalendarViewMode: async value => { calls.push(value); throw new Error('save failed'); } };
+ ui.notifySettingsChanged = () => calls.push('refresh'); ui.updateNativeSettingsDefinitions = () => calls.push('definitions');
+ await assert.rejects(ui.setControlValue('miniCalendarViewMode', 'month'));
+ assert.deepEqual(calls, ['month', 'definitions']);
 });

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -159,8 +159,12 @@
       "materializationUpdates": "Sera modifié",
       "miniCalendarClickAction": "Comportement au clic",
       "miniCalendarClickActionDesc": "Choisissez ce qui s’ouvre en cliquant sur un jour ou un numéro de semaine. Les tâches de fichier utilisent l’éditeur de tâches, les autres notes l’éditeur de propriétés. Sur mobile, les notes s’ouvrent dans la vue normale d’Obsidian.",
+      "miniCalendarContinuous": "Semaines continues",
+      "miniCalendarMonth": "Mois",
       "miniCalendarOpenWeek": "Ouvrir la semaine {{week}} : {{title}}",
       "miniCalendarTitle": "Mini calendrier",
+      "miniCalendarViewMode": "Mode d’affichage",
+      "miniCalendarViewModeDesc": "Afficher des semaines à défilement continu ou un mois fixe. Concerne uniquement le mini-calendrier latéral.",
       "mobileAddTask": "Ajouter une tâche au jour sélectionné",
       "mobileAgendaEmptyDay": "Aucun élément",
       "mobileControls": "Commandes du calendrier",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "41cd1470e90848ac54cea9ac8737fda52e84321bc38c2457987ca4c7a542a8a8"
+  "sourceVersion": "d322ddef422b142dccd12ddb5339961b5e061c6f1f3671c7321481be48e2c112"
 }

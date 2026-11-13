@@ -2502,6 +2502,10 @@
 		"taskCard_open": "Abrir Task Editor · Cmd/Ctrl-clique abre a origem em uma nova aba"
 	},
 	"calendar": {
+		"miniCalendarViewMode": "Modo de exibição",
+		"miniCalendarViewModeDesc": "Mostra semanas com rolagem contínua ou um mês fixo. Aplica-se apenas ao minicalendário da barra lateral.",
+		"miniCalendarContinuous": "Semanas contínuas",
+		"miniCalendarMonth": "Mês",
 		"miniCalendarClickAction": "Comportamento ao clicar",
 		"miniCalendarClickActionDesc": "Escolha o que abrir ao clicar em um dia ou número de semana. Tarefas de arquivo usam o editor de tarefas; outras notas, o editor de propriedades. No celular, as notas abrem na visualização normal do Obsidian.",
 		"miniCalendarOpenWeek": "Abrir semana {{week}}: {{title}}",

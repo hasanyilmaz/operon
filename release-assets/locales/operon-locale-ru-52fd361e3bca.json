@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3837,
-  "keyFingerprint": "94a12b50908ed1de4d9d1062aef21409b07945b058d601191e29424739e8b127",
+  "keyCount": 3841,
+  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -159,8 +159,12 @@
       "materializationUpdates": "Будет изменено",
       "miniCalendarClickAction": "Действие при нажатии",
       "miniCalendarClickActionDesc": "Выберите, что открывать при нажатии на день или номер недели. Для файлов-задач используется редактор задач, для остальных заметок — редактор свойств. На мобильном устройстве заметки открываются в обычном представлении Obsidian.",
+      "miniCalendarContinuous": "Непрерывные недели",
+      "miniCalendarMonth": "Месяц",
       "miniCalendarOpenWeek": "Открыть неделю {{week}}: {{title}}",
       "miniCalendarTitle": "Мини-календарь",
+      "miniCalendarViewMode": "Режим отображения",
+      "miniCalendarViewModeDesc": "Показывать непрерывно прокручиваемые недели или фиксированный месяц. Только для мини-календаря на боковой панели.",
       "mobileAddTask": "Добавить задачу к выбранному дню",
       "mobileAgendaEmptyDay": "Нет элементов",
       "mobileControls": "Управление календарём",
@@ -3882,5 +3886,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "72cc764daae1b609b20d6a39abc8ffbe54ec3619a1be0fee4195c3852db3bdae"
+  "sourceVersion": "47e559dfc5dffe2b6ffd003811c4281105303775db7990cf40a7d95bbab13898"
 }

@@ -56,7 +56,7 @@ try {
   });
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   await page.evaluate(async () => {
-   window.settings = { language: 'en', dateDisplayFormat: 'YYYY-MM-DD', calendarWeekStart: 'monday', calendarSidebarShowWeekNumbers: true };
+   window.settings = { miniCalendarViewMode: 'month', language: 'en', dateDisplayFormat: 'YYYY-MM-DD', calendarWeekStart: 'monday', calendarSidebarShowWeekNumbers: true };
    const root = document.getElementById('panel');
    window.app = { locale: 'en-US' };
    window.opened = [];

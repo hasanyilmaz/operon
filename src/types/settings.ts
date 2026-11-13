@@ -1680,6 +1680,7 @@ export interface OperonSettings extends TaskCardSettings {
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
 	miniCalendarClickAction?: TaskFinderResultBehavior;
+	miniCalendarViewMode?: 'continuous' | 'month';
 	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
 	statusDockMode?: StatusDockMode;
 	statusDockAlignment?: StatusDockAlignment;
@@ -4549,6 +4550,8 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	else delete out.statusDockClickAction;
 	if (src.miniCalendarClickAction === 'source' || src.miniCalendarClickAction === 'source-and-editor' || src.miniCalendarClickAction === 'editor') out.miniCalendarClickAction = src.miniCalendarClickAction;
 	else delete out.miniCalendarClickAction;
+	if (src.miniCalendarViewMode === 'continuous' || src.miniCalendarViewMode === 'month') out.miniCalendarViewMode = src.miniCalendarViewMode;
+	else delete out.miniCalendarViewMode;
 	if (src.statusDockMode === 'compact' || src.statusDockMode === 'detailed') out.statusDockMode = src.statusDockMode;
 	else delete out.statusDockMode;
 	if (src.statusDockAlignment === 'left' || src.statusDockAlignment === 'center' || src.statusDockAlignment === 'right') out.statusDockAlignment = src.statusDockAlignment;
