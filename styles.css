@@ -37681,7 +37681,8 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-mini-calendar-view.is-continuous {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 5px;
+	padding-top: 0;
 	height: 100%;
 	min-height: 0;
 	box-sizing: border-box;
@@ -37689,6 +37690,10 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-nav,
 .operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-weekdays { flex: 0 0 auto; }
+.operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-nav {
+	padding-top: 5px;
+	margin-bottom: 5px;
+}
 .operon-mini-calendar-scroll {
 	flex: 1 1 0;
 	min-height: 0;
