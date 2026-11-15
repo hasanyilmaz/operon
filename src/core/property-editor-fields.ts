@@ -3,6 +3,7 @@ import { inferObsidianPropertyType } from './property-type-registry';
 import { CANONICAL_KEYS, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 import { isRetiredKeyMapping, type KeyMapping } from '../types/settings';
 import { getManagedYamlAliases } from './yaml-fields';
+import { splitTaskListValue } from './task-field-patch';
 import { nativePropertyValueReadOnlyReason, type NativePropertyReadOnlyReason } from './task-editor-native-properties';
 import type { InlinePropertyType } from './inline-property-definitions';
 import type { PropertyEditorDocument } from './property-editor-document';
@@ -21,6 +22,13 @@ export interface PropertyEditorField {
  mapping?: KeyMapping;
  reason?: NativePropertyReadOnlyReason;
  taskOnly?: boolean;
+}
+
+/** Project a legacy scalar into the picker while keeping the original YAML for conflict checks. */
+export function propertyEditorPickerValue(field: PropertyEditorField, value: unknown): unknown {
+ if (field.mapping?.canonicalKey === 'contexts' && field.type === 'list' && typeof value === 'string'
+  && !/[\r\n]/u.test(value) && splitTaskListValue(value)[0] === value) return [value];
+ return value;
 }
 
 function propertyType(type: string): InlinePropertyType | undefined {
@@ -53,7 +61,7 @@ export function resolvePropertyEditorField(
  if (matching.length > 1 || document.order.some(key => key !== name && aliases.has(key.toLowerCase()))
   || declared.some(([, raw]) => propertyType(raw) !== type)) return { ...field, reason: 'type-conflict' };
  if (!type) return { ...field, reason: declared.length ? 'unsupported' : 'automatic' };
- const value = document.frontmatter[name];
+ const value = propertyEditorPickerValue(field, document.frontmatter[name]);
  const stringList = builtinListNames.has(lower) || mapping?.canonicalKey === 'contexts';
  const reason = stringList && Array.isArray(value) && value.some(item => typeof item !== 'string')
   ? 'type-conflict' : nativePropertyValueReadOnlyReason(value, type);

@@ -11,6 +11,7 @@ import { resolveReverseWorkflowFromTerminalDate, resolveWorkflowStatus } from '.
 import { parseRepeatRule } from '../src/core/repeat-rule';
 import { deriveCountModeRepeatEndFromFieldValues, splitTaskListValue } from '../src/core/task-field-patch';
 import { localToday } from '../src/core/local-time';
+import { readYamlFields } from '../src/core/yaml-fields';
 
 const mappings = DEFAULT_SETTINGS.keyMappings;
 const name = (key: string) => mappings.find(item => item.canonicalKey === key)?.visiblePropertyName ?? key;
@@ -60,6 +61,44 @@ test('Property adapter keeps YAML order, empty values, false, zero and mixed lis
  const changes = a.changes({...a.values,'custom:list': '"02"; 3; "a; b"; [[Note]]'},a.tags);
  assert.deepEqual(changes, [{name:'Mixed',value:['02',3,'a; b','[[Note]]']}]);
 });
+test('Mapped contexts project legacy text and YAML lists to the same picker selection', () => {
+ const keyMappings = mappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+ const link = '[[2026-W46]]';
+ for (const value of [link, [link]]) {
+  const properties = document({ Up: value });
+  const fileTaskFields = readYamlFields({ ...properties.frontmatter, operonId: 'fixture' }, keyMappings);
+  const editor = new PropertyEditorAdapter(properties, keyMappings, { Up: 'multitext' });
+  assert.equal(editor.fields.get('Up')?.reason, undefined);
+  assert.deepEqual(splitTaskListValue(editor.values.contexts), [link]);
+  assert.equal(editor.values.contexts, fileTaskFields.contexts);
+  assert.deepEqual(editor.changes(editor.values, editor.tags), []);
+  assert.equal(properties.frontmatter.Up, value);
+ }
+});
+
+test('Mapped contexts retain conflict guards for ambiguous values, types and aliases', () => {
+ const keyMappings = mappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+ const link = '[[2026-W46]]';
+ for (const value of [5, true, { link }, ['first', 2], 'first; second', 'first\nsecond', ' padded ']) {
+  const editor = new PropertyEditorAdapter(document({ Up: value }), keyMappings, { Up: 'multitext' });
+  assert.ok(editor.fields.get('Up')?.reason, JSON.stringify(value));
+  assert.equal(editor.values.contexts, undefined);
+ }
+ const wrongType = new PropertyEditorAdapter(document({ Up: link }), keyMappings, { Up: 'text' });
+ assert.equal(wrongType.fields.get('Up')?.reason, 'type-conflict');
+ const duplicate = new PropertyEditorAdapter(document({ Up: link, contexts: [link] }), keyMappings, { Up: 'multitext' });
+ assert.equal(duplicate.fields.get('Up')?.reason, 'type-conflict');
+ const ambiguousMapping = new PropertyEditorAdapter(document({ Up: link }), [
+  ...keyMappings,
+  { ...keyMappings.find(mapping => mapping.canonicalKey === 'contexts')!, canonicalKey: 'custom:up', isSystem: false },
+ ], { Up: 'multitext' });
+ assert.equal(ambiguousMapping.fields.get('Up')?.reason, 'type-conflict');
+ const protectedField = new PropertyEditorAdapter({ ...document({ Up: link }), readonlyNames: new Set(['Up']) }, keyMappings, { Up: 'multitext' });
+ assert.equal(protectedField.fields.get('Up')?.reason, 'unavailable');
+ const otherList = new PropertyEditorAdapter(document({ Other: link }), keyMappings, { Other: 'multitext' });
+ assert.equal(otherList.fields.get('Other')?.reason, 'type-conflict');
+});
+
 test('Related is a mapped reference field even when internal; identity and task mutations remain unavailable', () => {
  const a = adapter({[name('related')]:['[[Twitter]]','[[Tesla]]'], [name('operonId')]:'secret', [name('activeTracker')]:'2026-11-10T10:00'});
  assert.equal(a.fields.get(name('related'))?.reason,undefined);

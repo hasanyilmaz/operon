@@ -9,6 +9,7 @@ import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from '../operon-ho
 import {
 	applyTablePresetFieldAliases,
 	buildTableGroupSortFieldCatalog,
+	resolveTableFieldIcon,
 	type TableTaskField,
 } from './table-field-catalog';
 import { buildTableFieldPickerOptions, getTableFieldPickerLabel } from './table-field-picker-options';
@@ -39,7 +40,7 @@ export function showTableGroupSortPopover(options: TableGroupSortPopoverOptions)
 	const catalog = applyTablePresetFieldAliases(
 		buildTableGroupSortFieldCatalog(options.settings, options.additionalFields ?? [], preservedKeys),
 		options.preset.columns,
-	);
+	).map(field => ({ ...field, get icon() { return resolveTableFieldIcon(field, options.settings); } }));
 	const supportedKeys = new Set(catalog.map(field => field.key));
 	let draft = normalizeTablePresetForEditing(options.preset);
 	const { panel, close: closePanel } = createFloatingPanel(

@@ -13,6 +13,8 @@ interface SettingsIconPickerModalOptions {
 	query?: string;
 	onSelect: (value: string) => void | Promise<void>;
 	onClear?: () => void | Promise<void>;
+	onSaveError?: (error: unknown) => void;
+	onClose?: () => void;
 }
 
 const COLUMN_COUNT = 7;
@@ -46,6 +48,8 @@ export class SettingsIconPickerModal extends Modal {
 	private activeIndex = 0;
 	private loadedCount = PAGE_SIZE;
 	private readonly currentValue: string;
+	private saving = false;
+	private closed = false;
 
 	constructor(app: App, options: SettingsIconPickerModalOptions) {
 		super(app);
@@ -58,6 +62,13 @@ export class SettingsIconPickerModal extends Modal {
 		this.modalEl.addClass('operon-settings-icon-picker-modal');
 		this.titleEl.setText(this.options.title ?? t('settings', 'settingsIconPickerTitle'));
 		this.render();
+	}
+
+	onClose(): void {
+		this.closed = true;
+		this.inputEl = this.gridEl = this.countEl = this.emptyEl = null;
+		this.contentEl.empty();
+		this.options.onClose?.();
 	}
 
 	private render(): void {
@@ -217,10 +228,6 @@ export class SettingsIconPickerModal extends Modal {
 				event.preventDefault();
 				void this.selectIcon(iconId);
 			});
-			item.addEventListener('mousedown', event => {
-				event.preventDefault();
-				void this.selectIcon(iconId);
-			});
 
 			gridEl.appendChild(item);
 			if (absoluteIndex === this.activeIndex) activeItemEl = item;
@@ -268,14 +275,28 @@ export class SettingsIconPickerModal extends Modal {
 		return true;
 	}
 
-	private async selectIcon(iconId: string): Promise<void> {
-		await this.options.onSelect(normalizeTaskIconValue(iconId));
-		this.close();
+	private selectIcon(iconId: string): Promise<void> {
+		return this.save(() => this.options.onSelect(normalizeTaskIconValue(iconId)));
 	}
 
-	private async clearSelection(): Promise<void> {
-		await this.options.onClear?.();
-		this.close();
+	private clearSelection(): Promise<void> {
+		return this.save(() => this.options.onClear?.());
+	}
+
+	private async save(action: () => void | Promise<void>): Promise<void> {
+		if (this.saving || this.closed) return;
+		this.saving = true;
+		this.contentEl.setAttribute('aria-busy', 'true');
+		try {
+			await action();
+			if (!this.closed) this.close();
+		} catch (error) {
+			if (this.options.onSaveError) this.options.onSaveError(error);
+			else console.error('Operon: Settings icon save failed', error);
+		} finally {
+			this.saving = false;
+			this.contentEl.removeAttribute('aria-busy');
+		}
 	}
 }
 

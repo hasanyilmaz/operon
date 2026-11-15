@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -327,6 +327,7 @@
       "openCalendar": "Operon カレンダー",
       "openCanvasPropertyValuePool": "Canvas プロパティ値プールを開く",
       "openCanvasTaskPool": "Canvas タスクプールを開く",
+      "openCurrentFileEditor": "現在のファイルのタスク／プロパティエディターを開く",
       "openDuplicateOperonIdManager": "重複 operonId マネージャーを開く",
       "openExcalidrawPropertyPool": "Excalidraw Property Poolを開く",
       "openExcalidrawTaskPool": "Excalidrawタスクプールを開く",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "変換するリスト項目を選択してください。",
       "convertSelectionToOperonTasksSingleSelection": "変換する連続した1つのリスト範囲を選択してください。",
       "convertSelectionToOperonTasksSummary": "{{converted}} 項目を変換し、{{linked}} 件のサブタスクをリンクし、{{skipped}} 行をスキップしました。",
+      "convertedEditorUnavailable": "ファイルは変換されました。タスクエディターはまだ準備中です。",
       "createdFileTaskOpenFailed": "タスクは作成されましたが、そのビューを開けませんでした。",
       "createdInlineTaskOpenFailed": "タスクは作成されましたが、表示を開けませんでした。",
       "creatorFileTaskCreateFailed": "作成画面からファイルタスクを作成できませんでした。",
       "creatorPostCreateFinalizeFailed": "タスクは作成されましたが、後続のセットアップに失敗しました。",
+      "currentFileEditorUnavailable": "現在のファイルをエディターで開くための確認ができませんでした。",
       "currentLineAlreadyOperonInlineTask": "現在の行はすでに Operon インラインタスクです。",
       "currentLineNotPlainCheckbox": "現在の行はプレーンなチェックボックスタスクではありません。",
       "currentLineNotSupportedTasksEmoji": "現在の行はサポートされている Tasks 絵文字タスクではありません。",
@@ -2371,6 +2374,9 @@
       "projectSerials": "プロジェクトシリアル",
       "projectSerialsDesc": "親タスクツリー用の読み取り専用の表示シリアルを定義します。実際の operonId は変更されません。プレフィックスは1〜5文字の ASCII 文字を使用し、大文字小文字は保持されます。ダッシュは自動です。文字と数字は、ダッシュを除いて常に合計7文字になります。ネストされたシリアルは親のシリアルより優先され、生成される番号は自動的かつ永続的で、手動では編集できません。",
       "projectSerialsEmpty": "プロジェクトシリアルはまだありません。",
+      "propertyIconChange": "{{name}} のアイコンを変更",
+      "propertyIconSaveFailed": "{{name}} のアイコンを保存できませんでした。",
+      "propertyIconUnavailable": "プロパティ {{name}} を特定できませんでした。アイコンの選択画面を開き直してください。",
       "propertyPoolAddFavorite": "お気に入りに追加",
       "propertyPoolAllValues": "すべての値",
       "propertyPoolAlreadyPresent": "すでに存在します。",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "アイコン",
       "taskCreatorToolbarTooltip_taskImage": "タスク画像",
       "taskCreatorToolbarTooltip_taskType": "タスクタイプ",
+      "taskEditorAddSection": "セクションを追加",
       "taskEditorFileShowSource": "ファイルタスクの編集時にソースを開く",
       "taskEditorFileShowSourceDesc": "デスクトップでファイルタスクを開く際、エディターの横にソースを表示します。",
       "taskEditorInlineShowSource": "インラインタスクの編集時にソースを開く",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "デスクトップで新しく開く作業領域の位置を選択します。既存の作業領域の位置は変わりません。 他のライトボックスの操作ボタンも選択した側に配置されます。",
       "taskEditorPositionLeft": "左",
       "taskEditorPositionRight": "右",
+      "taskEditorRemoveProperty": "プロパティをセクションから外す",
+      "taskEditorRemoveSection": "セクションを削除",
+      "taskEditorRemoveSectionConfirm": "{{name}} を削除しますか？プロパティは「{{additional}}」に戻ります。",
+      "taskEditorSectionName": "セクション名",
       "taskEditorSections": "セクションと順序",
-      "taskEditorSectionsDesc": "Task Editorのセクション名と順序を変更します。名前を空にすると既定の名前に戻ります。デスクトップのレイアウトに適用されます。",
+      "taskEditorSectionsDesc": "タスクエディターとプロパティエディターのセクション、プロパティの割り当て、コマンドの順序を設定します。",
       "taskEditorSectionsSaveFailed": "Task Editorのセクションを保存できませんでした。",
       "taskEditorUseMobileLayout": "スマートフォンでモバイル版Task Editorを使用",
       "taskEditorUseMobileLayoutDesc": "オンの場合、スマートフォンではモバイルレイアウトとその設定を使用します。オフの場合はデスクトップレイアウトとその設定を使用します。次回Task Editorを開いたときに適用され、タブレットやデスクトップには影響しません。",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "ジンク",
       "colorToneStrip": "カラートーンストリップ",
       "contexts": "コンテキスト",
+      "convertNoteToFileTask": "Operon のファイルタスクに変換",
       "convertToPlainBlocked": "まず、次の Operon の関連付けまたはタスク状態を削除してください: {{items}}。",
       "convertToPlainBlockerActiveTimer": "実行中のタイマー",
       "convertToPlainBlockerBlockedBy": "ブロック元の依存関係",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "830f07e1723eae780391cbe3c7f58462ec672a4bd6536451b52a0865894dea41"
+  "sourceVersion": "8ba6022df8038607c5a24617e9a933b0bed09aebd538932ccbaaddd285850306"
 }

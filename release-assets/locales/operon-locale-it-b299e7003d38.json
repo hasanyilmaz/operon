@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -327,6 +327,7 @@
       "openCalendar": "Calendario Operon",
       "openCanvasPropertyValuePool": "Apri raccolta valori delle proprietà Canvas",
       "openCanvasTaskPool": "Apri raccolta attività Canvas",
+      "openCurrentFileEditor": "Apri l’editor delle attività o delle proprietà del file corrente",
       "openDuplicateOperonIdManager": "Apri gestore operonId duplicati",
       "openExcalidrawPropertyPool": "Apri Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Apri il pool attività Excalidraw",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "Seleziona gli elementi dell'elenco da convertire.",
       "convertSelectionToOperonTasksSingleSelection": "Seleziona un unico intervallo continuo dell'elenco da convertire.",
       "convertSelectionToOperonTasksSummary": "Convertiti {{converted}} elementi, collegate {{linked}} sotto-attività, ignorate {{skipped}} righe.",
+      "convertedEditorUnavailable": "File convertito. L’editor delle attività non è ancora pronto.",
       "createdFileTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la relativa vista.",
       "createdInlineTaskOpenFailed": "L’attività è stata creata, ma non è stato possibile aprire la sua vista.",
       "creatorFileTaskCreateFailed": "Creazione dell'attività-file dal creatore non riuscita.",
       "creatorPostCreateFinalizeFailed": "L'attività è stata creata, ma la configurazione successiva non è riuscita.",
+      "currentFileEditorUnavailable": "Impossibile verificare il file corrente per aprirlo nell’editor.",
       "currentLineAlreadyOperonInlineTask": "La riga attuale è già un'attività in linea Operon.",
       "currentLineNotPlainCheckbox": "La riga attuale non è una semplice attività con casella di controllo.",
       "currentLineNotSupportedTasksEmoji": "La riga attuale non è un'attività emoji Tasks supportata.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "Serie di progetto",
       "projectSerialsDesc": "Definisci serie visive di sola lettura per un albero di attività principale. Il vero operonId non cambia. I prefissi usano 1-5 lettere ASCII e mantengono le maiuscole/minuscole originali; il trattino è automatico. Lettere e numeri totalizzano sempre 7 caratteri, escluso il trattino. Le serie annidate prevalgono sulle serie principali e i numeri generati sono automatici, persistenti e non modificabili manualmente.",
       "projectSerialsEmpty": "Ancora nessuna serie di progetto.",
+      "propertyIconChange": "Cambia l’icona di {{name}}",
+      "propertyIconSaveFailed": "Impossibile salvare l’icona di {{name}}.",
+      "propertyIconUnavailable": "Impossibile identificare la proprietà {{name}}. Riapri il selettore di icone.",
       "propertyPoolAddFavorite": "Aggiungi ai preferiti",
       "propertyPoolAllValues": "Tutti i valori",
       "propertyPoolAlreadyPresent": "Già presente.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Icona",
       "taskCreatorToolbarTooltip_taskImage": "Immagine attività",
       "taskCreatorToolbarTooltip_taskType": "Tipo di attività",
+      "taskEditorAddSection": "Aggiungi sezione",
       "taskEditorFileShowSource": "Apri la sorgente con l’editor delle attività file",
       "taskEditorFileShowSourceDesc": "Mostra la sorgente accanto all’editor quando apri un’attività file sul desktop.",
       "taskEditorInlineShowSource": "Apri la sorgente con l’editor delle attività inline",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "Scegli il lato dei nuovi spazi desktop. Gli spazi aperti mantengono la propria posizione. Anche le barre dei controlli delle altre lightbox seguono il lato scelto.",
       "taskEditorPositionLeft": "Sinistra",
       "taskEditorPositionRight": "Destra",
+      "taskEditorRemoveProperty": "Rimuovi la proprietà dalla sezione",
+      "taskEditorRemoveSection": "Rimuovi sezione",
+      "taskEditorRemoveSectionConfirm": "Rimuovere {{name}}? Le sue proprietà torneranno in {{additional}}.",
+      "taskEditorSectionName": "Nome della sezione",
       "taskEditorSections": "Sezioni e ordine",
-      "taskEditorSectionsDesc": "Rinomina e riordina le sezioni di Task Editor. Lascia vuoto un nome per ripristinare quello predefinito. Si applica al layout desktop.",
+      "taskEditorSectionsDesc": "Organizza le sezioni, assegna le proprietà e ordina i comandi degli editor di attività e proprietà.",
       "taskEditorSectionsSaveFailed": "Impossibile salvare le sezioni di Task Editor.",
       "taskEditorUseMobileLayout": "Usa Task Editor mobile sui telefoni",
       "taskEditorUseMobileLayoutDesc": "Se attivo, i telefoni usano il layout mobile e le relative impostazioni. Se disattivo, usano il layout desktop e le relative impostazioni. Si applica alla prossima apertura di Task Editor; tablet e computer non sono interessati.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "Zinco",
       "colorToneStrip": "Barra delle tonalità di colore",
       "contexts": "Contesti",
+      "convertNoteToFileTask": "Converti in attività file di Operon",
       "convertToPlainBlocked": "Rimuovi prima queste relazioni di Operon o questi stati dell’attività: {{items}}.",
       "convertToPlainBlockerActiveTimer": "Timer attivo",
       "convertToPlainBlockerBlockedBy": "Bloccata da",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "521aa87d87e47f6bec8dca7dc523cfd095be75e40d657efa036cd64cc7af83b4"
+  "sourceVersion": "642764d85b2cff1ab9ce738d3387dbb77618fa51e95eb66c9058d5e81ee8c7d4"
 }

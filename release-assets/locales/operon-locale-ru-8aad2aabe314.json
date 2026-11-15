@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -327,6 +327,7 @@
       "openCalendar": "Календарь Operon",
       "openCanvasPropertyValuePool": "Открыть пул значений свойств Canvas",
       "openCanvasTaskPool": "Открыть пул задач Canvas",
+      "openCurrentFileEditor": "Открыть редактор задач или свойств текущего файла",
       "openDuplicateOperonIdManager": "Открыть менеджер дублирующихся operonId",
       "openExcalidrawPropertyPool": "Открыть Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Открыть пул задач Excalidraw",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "Выделите элементы списка для преобразования.",
       "convertSelectionToOperonTasksSingleSelection": "Выделите один непрерывный диапазон списка для преобразования.",
       "convertSelectionToOperonTasksSummary": "Преобразовано элементов: {{converted}}, связано подзадач: {{linked}}, пропущено строк: {{skipped}}.",
+      "convertedEditorUnavailable": "Файл преобразован. Редактор задач ещё не готов.",
       "createdFileTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
       "createdInlineTaskOpenFailed": "Задача создана, но открыть её представление не удалось.",
       "creatorFileTaskCreateFailed": "Не удалось создать файловую задачу из конструктора.",
       "creatorPostCreateFinalizeFailed": "Задача создана, но последующая настройка не удалась.",
+      "currentFileEditorUnavailable": "Не удалось проверить текущий файл перед открытием в редакторе.",
       "currentLineAlreadyOperonInlineTask": "Текущая строка уже является встроенной задачей Operon.",
       "currentLineNotPlainCheckbox": "Текущая строка не является обычным чекбоксом.",
       "currentLineNotSupportedTasksEmoji": "Текущая строка не является поддерживаемой задачей Tasks с эмодзи.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "Серийные номера проекта",
       "projectSerialsDesc": "Определите визуальные серийные номера только для чтения для дерева родительской задачи. Реальный operonId не изменяется. Префиксы используют 1–5 ASCII-букв с сохранением регистра; дефис добавляется автоматически. Буквы и цифры всегда составляют 7 символов без учёта дефиса. Вложенные серийные номера имеют приоритет над родительскими, а сгенерированные номера автоматические, постоянные и не редактируются вручную.",
       "projectSerialsEmpty": "Серийных номеров проекта пока нет.",
+      "propertyIconChange": "Изменить значок свойства {{name}}",
+      "propertyIconSaveFailed": "Не удалось сохранить значок свойства {{name}}.",
+      "propertyIconUnavailable": "Не удалось определить свойство {{name}}. Заново откройте выбор значка.",
       "propertyPoolAddFavorite": "Добавить в избранное",
       "propertyPoolAllValues": "Все значения",
       "propertyPoolAlreadyPresent": "Уже добавлено.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Значок",
       "taskCreatorToolbarTooltip_taskImage": "Изображение задачи",
       "taskCreatorToolbarTooltip_taskType": "Тип задачи",
+      "taskEditorAddSection": "Добавить раздел",
       "taskEditorFileShowSource": "Открывать исходник с редактором файловой задачи",
       "taskEditorFileShowSourceDesc": "Показывать исходник рядом с редактором при открытии файловой задачи на компьютере.",
       "taskEditorInlineShowSource": "Открывать исходник с редактором встроенной задачи",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "Выберите сторону для новых рабочих областей на компьютере. Открытые области сохраняют положение. Панели управления других лайтбоксов также располагаются с выбранной стороны.",
       "taskEditorPositionLeft": "Слева",
       "taskEditorPositionRight": "Справа",
+      "taskEditorRemoveProperty": "Убрать свойство из раздела",
+      "taskEditorRemoveSection": "Удалить раздел",
+      "taskEditorRemoveSectionConfirm": "Удалить «{{name}}»? Свойства вернутся в раздел «{{additional}}».",
+      "taskEditorSectionName": "Название раздела",
       "taskEditorSections": "Разделы и порядок",
-      "taskEditorSectionsDesc": "Переименуйте и упорядочьте разделы Task Editor. Оставьте имя пустым для восстановления имени по умолчанию. Применяется к настольной версии.",
+      "taskEditorSectionsDesc": "Настройте разделы, размещение свойств и порядок команд в редакторах задач и свойств.",
       "taskEditorSectionsSaveFailed": "Не удалось сохранить разделы Task Editor.",
       "taskEditorUseMobileLayout": "Использовать мобильный Task Editor на телефонах",
       "taskEditorUseMobileLayoutDesc": "Если включено, телефоны используют мобильный интерфейс и его настройки. Если выключено — интерфейс для компьютера и его настройки. Изменение применяется при следующем открытии Task Editor; планшеты и компьютеры не затрагиваются.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "Цинковый",
       "colorToneStrip": "Полоса оттенков цвета",
       "contexts": "Контексты",
+      "convertNoteToFileTask": "Преобразовать в файловую задачу Operon",
       "convertToPlainBlocked": "Сначала удалите следующие связи Operon или состояния задачи: {{items}}.",
       "convertToPlainBlockerActiveTimer": "Активный таймер",
       "convertToPlainBlockerBlockedBy": "Блокирующие зависимости",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "47e559dfc5dffe2b6ffd003811c4281105303775db7990cf40a7d95bbab13898"
+  "sourceVersion": "63125fef5d49922d7d67f5b60658d53f8cf8064b074e06255e9a170857415bfe"
 }

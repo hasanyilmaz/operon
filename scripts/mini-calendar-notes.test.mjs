@@ -11,8 +11,9 @@ const root = path.resolve(import.meta.dirname, '..');
 const directory = await mkdtemp(path.join(tmpdir(), 'operon-mini-notes-'));
 after(() => rm(directory, { recursive: true, force: true }));
 const main = readFileSync(path.join(root, 'main.ts'), 'utf8');
-const start = main.indexOf('private async openMiniCalendarNote(');
-const method = main.slice(start, main.indexOf('private async handleCreatePeriodicNoteCommand(', start));
+const mainAst = ts.createSourceFile('main.ts', main, ts.ScriptTarget.Latest, true);
+const method = mainAst.statements.filter(ts.isClassDeclaration).flatMap(node => [...node.members])
+ .find(member => member.name?.getText(mainAst) === 'openMiniCalendarNote').getText(mainAst);
 const settingsSource = ts.createSourceFile('settings.ts', readFileSync(path.join(root, 'src/ui/settings-tab.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
 const settingsClass = settingsSource.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonSettingsTab');
 const settingsMethods = ['isCalendarSidebarDefaultStateSettingKey', 'getDefaultSettingsSearchValue', 'getSettingsSearchDropdownOptions', 'buildCalendarSettingsItems', 'setControlValue'].map(name => settingsClass.members.find(member => member.name?.getText(settingsSource) === name).getText(settingsSource)).join('\n');

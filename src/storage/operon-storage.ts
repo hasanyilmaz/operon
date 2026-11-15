@@ -1,5 +1,8 @@
 import type { CustomKeySourceWriter } from '../ui/custom-key-empty-transaction';
 import { normalizeStatusDockSections, type StatusDockSection } from '../types/status-dock-sections';
+import { propertyIconEditMatches, type PropertyIconEdit } from '../core/property-icons';
+import { normalizeTaskIconValue, normalizeVaultPropertyIcons, vaultPropertyIconKey } from '../core/task-icon-value';
+import { normalizeTaskEditorSections, type TaskEditorSection } from '../types/task-editor-sections';
 import { preserveKanbanOrderForAxisEdit } from '../systems/kanban-axis-state';
 import { createKanbanPropertyAccess } from '../core/kanban-axis-properties';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
@@ -978,6 +981,66 @@ export class OperonStorage {
   });
  }
 
+ async saveTaskEditorSections(change: (current: TaskEditorSection[], mappings: readonly KeyMapping[]) => TaskEditorSection[]): Promise<void> {
+  await this.enqueueSettingsTransaction(async () => {
+   const current = normalizeTaskEditorSections(this.settings.taskEditorSections);
+   const expected = JSON.stringify(current);
+   const next = normalizeTaskEditorSections(change(current, this.settings.keyMappings));
+   if (JSON.stringify(next) === expected) return;
+   const same = (sections: unknown) => JSON.stringify(normalizeTaskEditorSections(sections)) === expected;
+   await this.dataPackageStore.updateDataPackageCas(pkg => {
+    const preferences = pkg.ui.taskUiPreferences;
+    if (!same(preferences.taskEditorSections)) throw new Error('Task Editor sections changed on disk');
+    return { ...pkg, ui: { ...pkg.ui, taskUiPreferences: { ...preferences, taskEditorSections: next } } };
+   }, () => same(this.settings.taskEditorSections));
+   this.settings.taskEditorSections = next;
+  });
+ }
+
+	async savePropertyIcon(edit: PropertyIconEdit, iconValue: string): Promise<boolean> {
+		const icon = normalizeTaskIconValue(iconValue) || edit.defaultIcon || '';
+		const ref = edit.ref;
+		const matches = () => propertyIconEditMatches(this.settings, edit);
+		const updateMapping = (mapping: KeyMapping): KeyMapping => {
+			return { ...mapping, icon };
+		};
+		const updateVaultIcons = (icons: OperonSettings['vaultPropertyIcons'], name: string): Record<string, string> => {
+			const entries = icons && typeof icons === 'object' && !Array.isArray(icons) ? Object.entries(icons) : [];
+			const updated = entries.filter(([key]) => vaultPropertyIconKey(key) !== name);
+			if (icon) updated.push([name, icon]);
+			return Object.fromEntries(updated);
+		};
+		return this.enqueueSettingsTransaction(async () => {
+			if (!matches()) throw new Error('Property icon target changed before save');
+			if (icon === edit.icon) return false;
+			await this.dataPackageStore.updateDataPackageCas(pkg => {
+				const taxonomy = pkg.taxonomy;
+				const mappings = [...taxonomy.keyMappings.system, ...taxonomy.keyMappings.custom];
+				const preferences = pkg.ui.taskUiPreferences;
+				const vaultPropertyIcons = normalizeVaultPropertyIcons(preferences.vaultPropertyIcons);
+				if (!propertyIconEditMatches({ keyMappings: mappings, vaultPropertyIcons }, edit)) {
+					throw new Error('Property icon target changed on disk');
+				}
+				if (ref.kind === 'vault') {
+					const next = { ...preferences, vaultPropertyIcons: updateVaultIcons(preferences.vaultPropertyIcons, ref.name) };
+					return { ...pkg, ui: { ...pkg.ui, taskUiPreferences: next } };
+				}
+				const keyMappings = { ...taxonomy.keyMappings };
+				for (const group of ['system', 'custom'] as const) {
+					keyMappings[group] = keyMappings[group].map(mapping => mapping.canonicalKey === ref.key ? updateMapping(mapping) : mapping);
+				}
+				return { ...pkg, taxonomy: { ...taxonomy, keyMappings } };
+			}, matches);
+			if (ref.kind === 'vault') {
+				this.settings.vaultPropertyIcons = updateVaultIcons(this.settings.vaultPropertyIcons, ref.name);
+			} else {
+				this.settings.keyMappings = this.settings.keyMappings.map(mapping => mapping.canonicalKey === ref.key ? updateMapping(mapping) : mapping);
+				this.keyMappingStore.loadFromPackage(this.dataPackageStore.getDataPackage().taxonomy.keyMappings);
+			}
+			return true;
+		}, ref.kind === 'mapped');
+	}
+
  /** Explicit dock/settings actions only; serialized, narrow CAS with no optimistic mutation. */
 	async saveStatusDockPreference(key: 'statusDockMode' | 'statusDockAlignment' | 'statusDockClickAction', value: string): Promise<void> {
 		const field = key === 'statusDockClickAction' ? 'clickAction' : key === 'statusDockMode' ? 'mode' : 'alignment';
@@ -1827,6 +1890,7 @@ export class OperonStorage {
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockSections === undefined) delete candidateInput.statusDockSections;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.miniCalendarClickAction === undefined) delete candidateInput.miniCalendarClickAction;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.miniCalendarViewMode === undefined) delete candidateInput.miniCalendarViewMode;
+				if (entry.selectedGroups.includes('general') && entry.previousSettings.vaultPropertyIcons === undefined) delete candidateInput.vaultPropertyIcons;
 				const candidateSettings = migrateSettings(candidateInput);
 				const candidatePackage = projectOperonSettingsBackupApplyDataPackageV1(currentPackage, candidateSettings);
 				staged = this.stageCanonicalDataPackageReload(candidatePackage);
@@ -1925,6 +1989,7 @@ export class OperonStorage {
 	}
 
 	private applySettingsInPlace(normalized: OperonSettings): void {
+		if (normalized.vaultPropertyIcons === undefined) delete this.settings.vaultPropertyIcons;
 		if (normalized.miniCalendarViewMode === undefined) delete this.settings.miniCalendarViewMode;
 		if (normalized.miniCalendarClickAction === undefined) delete this.settings.miniCalendarClickAction;
 		if (normalized.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete this.settings.workspaceTweaksCoreQuickSwitcherOpenBehavior;

@@ -18,6 +18,7 @@ export const notices:string[]=[];
 export class Notice { constructor(message:string) { notices.push(message); } }
 export class TFile { extension='md'; constructor(public path:string){} }
 export const setIcon=()=>{};
+export const getIcon=()=>null;
 export const prepareFuzzySearch=(query:string)=>(text:string)=>{const at=text.toLowerCase().indexOf(query.toLowerCase());return at<0?null:{score:100-at};};
 export class Modal {
  modalEl:any; titleEl:any; contentEl:any;

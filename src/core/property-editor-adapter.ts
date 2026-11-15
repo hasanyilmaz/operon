@@ -1,6 +1,6 @@
 import type { KeyMapping } from '../types/settings';
 import type { PropertyEditorDocument } from './property-editor-document';
-import { resolvePropertyEditorField, type PropertyEditorField } from './property-editor-fields';
+import { propertyEditorPickerValue, resolvePropertyEditorField, type PropertyEditorField } from './property-editor-fields';
 import { isEmptyFilePropertyValue, readRawYamlPropertyExpectation, type RawYamlPropertyValue } from './raw-yaml-property';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 import { splitTaskListValue } from './task-field-patch';
@@ -20,7 +20,7 @@ export class PropertyEditorAdapter {
    if (!field.mapping || field.reason) continue;
    const key = field.mapping.canonicalKey;
    try {
-    const encoded = this.encode(field, document.frontmatter[name]);
+    const encoded = this.encode(field, propertyEditorPickerValue(field, document.frontmatter[name]));
     if (key === 'tags') this.tags.push(...splitTaskListValue(encoded));
     else this.values[key] = encoded;
    } catch { field.reason = 'type-conflict'; }

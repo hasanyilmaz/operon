@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -327,6 +327,7 @@
       "openCalendar": "Operon 캘린더",
       "openCanvasPropertyValuePool": "Canvas 속성값 풀 열기",
       "openCanvasTaskPool": "Canvas 작업 풀 열기",
+      "openCurrentFileEditor": "현재 파일의 작업 또는 속성 편집기 열기",
       "openDuplicateOperonIdManager": "중복 operonId 관리자 열기",
       "openExcalidrawPropertyPool": "Excalidraw 속성 풀 열기",
       "openExcalidrawTaskPool": "Excalidraw 작업 풀 열기",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "변환할 목록 항목을 선택하세요.",
       "convertSelectionToOperonTasksSingleSelection": "변환할 연속된 목록 범위 하나를 선택하세요.",
       "convertSelectionToOperonTasksSummary": "항목 {{converted}}개를 변환하고 하위 작업 {{linked}}개를 연결했으며 {{skipped}}줄을 건너뛰었습니다.",
+      "convertedEditorUnavailable": "파일을 변환했습니다. 작업 편집기가 아직 준비되지 않았습니다.",
       "createdFileTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
       "createdInlineTaskOpenFailed": "작업은 생성되었지만 해당 보기를 열 수 없습니다.",
       "creatorFileTaskCreateFailed": "작업 생성기에서 파일 작업을 만들지 못했습니다.",
       "creatorPostCreateFinalizeFailed": "작업은 생성되었지만 후속 설정에 실패했습니다.",
+      "currentFileEditorUnavailable": "편집기에서 열기 위해 현재 파일을 확인하지 못했습니다.",
       "currentLineAlreadyOperonInlineTask": "현재 줄은 이미 Operon 인라인 작업입니다.",
       "currentLineNotPlainCheckbox": "현재 줄은 일반 체크박스 작업이 아닙니다.",
       "currentLineNotSupportedTasksEmoji": "현재 줄은 지원되는 Tasks 이모지 작업이 아닙니다.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "프로젝트 일련번호",
       "projectSerialsDesc": "상위 작업 트리에 읽기 전용 표시용 일련번호를 정의합니다. 실제 operonId는 변경되지 않습니다. 접두사는 ASCII 영문자 1~5개이며 대소문자를 유지하고 하이픈은 자동으로 추가됩니다. 하이픈을 제외한 문자와 숫자의 합은 항상 7자입니다. 중첩 일련번호가 상위 일련번호보다 우선하며, 생성된 번호는 자동으로 유지되고 수동으로 편집할 수 없습니다.",
       "projectSerialsEmpty": "프로젝트 일련번호가 없습니다.",
+      "propertyIconChange": "{{name}} 아이콘 변경",
+      "propertyIconSaveFailed": "{{name}}의 아이콘을 저장할 수 없습니다.",
+      "propertyIconUnavailable": "{{name}} 속성을 확인할 수 없습니다. 아이콘 선택기를 다시 여세요.",
       "propertyPoolAddFavorite": "즐겨찾기 추가",
       "propertyPoolAllValues": "모든 값",
       "propertyPoolAlreadyPresent": "이미 있습니다.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "아이콘",
       "taskCreatorToolbarTooltip_taskImage": "작업 이미지",
       "taskCreatorToolbarTooltip_taskType": "작업 유형",
+      "taskEditorAddSection": "섹션 추가",
       "taskEditorFileShowSource": "파일 작업 편집기와 원본 함께 열기",
       "taskEditorFileShowSourceDesc": "데스크톱에서 파일 작업을 열 때 편집기 옆에 원본을 표시합니다.",
       "taskEditorInlineShowSource": "인라인 작업 편집기와 원본 함께 열기",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "새 데스크톱 작업 공간이 열릴 방향을 선택합니다. 열린 작업 공간의 위치는 유지됩니다. 다른 라이트박스 제어 레일도 선택한 방향을 따릅니다.",
       "taskEditorPositionLeft": "왼쪽",
       "taskEditorPositionRight": "오른쪽",
+      "taskEditorRemoveProperty": "섹션에서 속성 제거",
+      "taskEditorRemoveSection": "섹션 제거",
+      "taskEditorRemoveSectionConfirm": "{{name}}을(를) 제거하시겠습니까? 속성은 {{additional}} 섹션으로 돌아갑니다.",
+      "taskEditorSectionName": "섹션 이름",
       "taskEditorSections": "구역 및 순서",
-      "taskEditorSectionsDesc": "작업 편집기 구역의 이름과 순서를 변경합니다. 이름을 비우면 기본값으로 복원됩니다. 데스크톱 레이아웃에 적용됩니다.",
+      "taskEditorSectionsDesc": "작업 편집기와 속성 편집기의 섹션, 속성 배치 및 명령 순서를 설정합니다.",
       "taskEditorSectionsSaveFailed": "작업 편집기 구역을 저장하지 못했습니다.",
       "taskEditorUseMobileLayout": "휴대폰에서 모바일 작업 편집기 사용",
       "taskEditorUseMobileLayoutDesc": "활성화하면 휴대폰에서 모바일 레이아웃과 설정을 사용하며, 비활성화하면 데스크톱 레이아웃과 설정을 사용합니다. 다음에 작업 편집기를 열 때 적용되며 태블릿과 데스크톱에는 영향을 주지 않습니다.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "아연색",
       "colorToneStrip": "색조 띠",
       "contexts": "컨텍스트",
+      "convertNoteToFileTask": "Operon 파일 작업으로 변환",
       "convertToPlainBlocked": "먼저 다음 Operon 관계 또는 작업 상태를 제거하세요: {{items}}.",
       "convertToPlainBlockerActiveTimer": "활성 타이머",
       "convertToPlainBlockerBlockedBy": "선행 의존 관계",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "26b344298a7c26e2e4223bfdf0efa15db97721fe81a9189fb303feef8a3bc5ad"
+  "sourceVersion": "5c6b4f18525ecdcdad0a859ab01846cea36a518c4ef6486576b969450329ecef"
 }

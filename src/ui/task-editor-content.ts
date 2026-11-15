@@ -7,7 +7,8 @@ import type { TaskMarkdownSource } from '../core/task-markdown-source';
 import { type VaultPropertyValue } from '../core/vault-property-codec';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import { normalizeTaskCardSettings } from '../types/task-card';
-import { normalizeTaskEditorSections, type TaskEditorSectionId } from '../types/task-editor-sections';
+import type { TaskEditorSectionId } from '../types/task-editor-sections';
+import { resolveTaskEditorLayout, type TaskEditorLayout } from '../core/task-editor-layout';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
 import { bindEditorInteractionState } from './editor-interaction-state';
 import type { EditorFileProperty } from "./editor-property-fields";
@@ -15,7 +16,7 @@ import { DESKTOP_CORE_FIELDS, EditorPropertyFields } from './editor-property-fie
 import { areStringArraysEqual, formatTaskEditorDatetime, normalizeListValues } from './editor-property-format';
 import { renderFileTaskRenameControls } from './file-task-rename-callout';
 import type { LightboxOpeningTrace } from './lightbox-opening-perf';
-import { taskEditorSectionDefaultLabel } from './task-editor-section-label';
+import { createCompactEditorWorkflow, createEditorPropertyGroup, createEditorSectionHosts, createEditorTextSection, createEditorTitle, editorSectionLabel } from './editor-sections-layout';
 import { mergeTaskEditorSource, TASK_EDITOR_AUTOSAVE_DELAY_MS, taskEditorChangedKeys, type TaskEditorSourceIntent, type TaskEditorSourceSnapshot, type TaskEditorSourceState } from './task-editor-source-sync';
 import { buildTaskWikilinkOverlayLink } from './task-wikilink-overlay-insertion';
 export { scheduleTaskEditorReminderFocus } from './editor-property-format';
@@ -56,6 +57,7 @@ import { splitFrontmatterDocument } from '../core/file-task-template-merge';
 import { t } from '../core/i18n';
 import { generateOperonId, generateRepeatSeriesId, isValidOperonId } from '../core/id-generator';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { bindPropertyIcon } from './property-icon-presentation';
 import { localNow, localToday } from '../core/local-time';
 import {
 getManagedTaskFieldType,
@@ -134,7 +136,7 @@ import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker
 import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
-import { cleanupOperonHoverTooltips, closeBoundOperonHoverTooltip } from './operon-hover-tooltip';
+import { cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { showPlainCheckboxPopover } from './plain-checkbox-popover';
 import { getManagedTaskDataFieldPicker } from './task-data-field-picker';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
@@ -402,13 +404,6 @@ function isTaskEditorSaveCommit(value: TaskEditorSaveCallbackResult): value is T
 		&& Object.values(state.fieldValues).every(fieldValue => typeof fieldValue === 'string');
 }
 
-export const TASK_EDITOR_DESKTOP_GROUPS = [
-	{ key: 'overview', fields: ['taskType', 'taskIcon', 'taskColor', 'status', 'priority', 'taskImage', 'taskGallery'] },
-	{ key: 'planning', fields: ['dateStarted', 'dateDue', 'repeat', 'reminderDatetimes', 'reminderRules'] },
-	{ key: 'activity', fields: ['assignees', 'location', 'dateScheduled', 'datetimeStart', 'estimate', 'datetimeEnd', 'dateCompleted', 'dateCancelled'] },
-	{ key: 'connections', fields: ['contexts', 'tags', 'links', 'parentTask', 'subtasks', 'blockedBy', 'blocking'] },
-] as const;
-
 export class TaskEditorContent extends EditorPropertyFields {
  protected prepareRepeatIdentityPatch(patch: Record<string, string | string[]>): void {
   if (typeof patch.repeat === 'string' && parseRepeatRule(patch.repeat) && !this.fieldValues['repeatSeriesId']) {
@@ -515,7 +510,8 @@ export class TaskEditorContent extends EditorPropertyFields {
  private nativePropertyTypes: Record<string, InlinePropertyType> = {};
  protected filePropertyRows: Map<string, { row: HTMLElement; value: HTMLElement; action: HTMLButtonElement }> = new Map();
  private filePropertyRoot: HTMLElement | null = null;
- private filePropertyActions: HTMLElement | null = null;
+ private desktopLayout: TaskEditorLayout | null = null;
+ private desktopPropertyGroups = new Map<TaskEditorSectionId, ReturnType<typeof createEditorPropertyGroup>>();
  protected additionalPropertyAdd: HTMLButtonElement | null = null;
  private additionalPropertyKeys: readonly string[] = [];
  private filePropertyGeneration = 0;
@@ -762,19 +758,6 @@ export class TaskEditorContent extends EditorPropertyFields {
 		}
 		this.initialDescriptionFocusTimers = [];
 	}
-
-	private readonly touchPointerHandler = (event: PointerEvent): void => {
-		if (!this.usesTouchDesktopLayout || !this.rootEl) return;
-		const mode = event.pointerType === 'mouse' ? 'mouse' : 'touch';
-		if (this.rootEl.dataset.editorInput === mode) return;
-		this.rootEl.dataset.editorInput = mode;
-		if (mode === 'touch') {
-			for (const target of [this.rootEl, ...Array.from(this.rootEl.querySelectorAll<HTMLElement>('*'))]) closeBoundOperonHoverTooltip(target);
-		}
-	};
-	private readonly touchKeyboardHandler = (event: KeyboardEvent): void => {
-		if (this.usesTouchDesktopLayout && this.rootEl && ['Tab', 'Enter', ' '].includes(event.key)) this.rootEl.dataset.editorInput = 'keyboard';
-	};
 
 	private focusDescriptionField(selectAll = this.selectDescriptionOnMount): boolean {
 		if (this.isPhone && this.mobilePickerOpenDepth > 0) return false;
@@ -1029,31 +1012,16 @@ export class TaskEditorContent extends EditorPropertyFields {
 	}
 
 	private desktopSectionLabel(id: TaskEditorSectionId): string {
-		return this.settings.taskEditorSections?.find(section => section.id === id)?.name.trim() || taskEditorSectionDefaultLabel(id);
+		return editorSectionLabel(this.desktopLayout?.sections ?? this.settings.taskEditorSections, id);
 	}
 
 	private renderTaskEditorBody(container: HTMLElement): void {
 		const progressState = this.getProgressSectionState();
-		// Title
-		const titleRow = container.createDiv('operon-task-editor-title-row');
-		titleRow.createDiv('operon-task-editor-title-side is-left');
-		titleRow.createEl('h3', {
-			text: this.isNewTask ? t('modals', 'newTask') : t('modals', 'editTask'),
-			cls: 'operon-task-editor-title',
-		});
-		titleRow.createDiv('operon-task-editor-title-side is-right');
-
-		const sections = container.createDiv('operon-task-editor-section-layout');
-		this.workflowRowsEl = sections;
-		const hosts = new Map<TaskEditorSectionId, HTMLElement>();
-		for (const section of normalizeTaskEditorSections(this.settings.taskEditorSections)) {
-			const host = sections.createDiv('operon-task-editor-section-host');
-			host.dataset.editorSection = section.id;
-			host.toggleClass('is-section-disabled', section.enabled === false);
-			hosts.set(section.id, host);
-		}
-		// Create hosts in display/tab order, then initialize dependent controls in their existing order.
-		const host = (id: TaskEditorSectionId): HTMLElement => hosts.get(id)!;
+		createEditorTitle(container, this.isNewTask ? t('modals', 'newTask') : t('modals', 'editTask'));
+		this.desktopLayout = resolveTaskEditorLayout(this.settings.taskEditorSections, this.settings.keyMappings);
+		const { root, host } = createEditorSectionHosts(container, this.desktopLayout.sections);
+		this.workflowRowsEl = root;
+		// Initialize dependent controls after creating their hosts in display and tab order.
 		for (const id of ['description', 'notes'] as const) {
 			host(id).addClass('operon-task-editor-primary-fields');
 			this.renderDescriptionNoteSection(host(id), id);
@@ -1061,7 +1029,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.observeCompactTextEditorWidths();
 		host('stats').addClass('operon-task-editor-primary-fields');
 		this.renderTimeSummarySection(host('stats'), progressState);
-		this.renderDesktopPropertyGroups(host);
+		this.renderDesktopPropertyGroups(host, this.desktopLayout);
 		this.renderDetailsSection(host('sessions'));
 
 		// Actions bar
@@ -1962,10 +1930,6 @@ export class TaskEditorContent extends EditorPropertyFields {
 		container.toggleClass('operon-task-editor-mobile', this.usesMobileLayout);
 		container.toggleClass('operon-task-editor-phone-desktop', this.isPhone && !this.usesMobileLayout);
 		container.toggleClass('operon-task-editor-touch-desktop', this.usesTouchDesktopLayout);
-		if (this.usesTouchDesktopLayout) container.dataset.editorInput = 'touch';
-		this.rootEl?.removeEventListener('pointerdown', this.touchPointerHandler, true);
-		this.rootEl?.removeEventListener('pointermove', this.touchPointerHandler, true);
-		this.rootEl?.removeEventListener('keydown', this.touchKeyboardHandler, true);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.rootEl?.removeEventListener('compositionstart', this.sourceCompositionStart, true);
@@ -1979,12 +1943,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			container.addEventListener('focusout', this.sourceInteractionEnd);
 			container.addEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.sourceInteractionEnd);
 		}
-		this.cleanupInteractionState = bindEditorInteractionState(container);
-		if (this.usesTouchDesktopLayout) {
-			container.addEventListener('pointerdown', this.touchPointerHandler, true);
-			container.addEventListener('pointermove', this.touchPointerHandler, true);
-			container.addEventListener('keydown', this.touchKeyboardHandler, true);
-		}
+		this.cleanupInteractionState = bindEditorInteractionState(container, this.usesTouchDesktopLayout);
 		container.addEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
 		container.addEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.schedulingDraftRefreshers.clear();
@@ -2230,7 +2189,8 @@ export class TaskEditorContent extends EditorPropertyFields {
   this.filePropertyCleanup?.();
   this.filePropertyCleanup = null;
   this.filePropertyRoot = null;
-  this.filePropertyActions = null;
+  this.desktopLayout = null;
+  this.desktopPropertyGroups.clear();
   this.additionalPropertyAdd = null;
   this.additionalPropertyKeys = [];
   this.filePropertyGeneration++;
@@ -2274,9 +2234,6 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.clearMobileCoreToolbarState();
 		this.mainPanelEl = null;
 		this.shellEl = null;
-		this.rootEl?.removeEventListener('pointerdown', this.touchPointerHandler, true);
-		this.rootEl?.removeEventListener('pointermove', this.touchPointerHandler, true);
-		this.rootEl?.removeEventListener('keydown', this.touchKeyboardHandler, true);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_OPEN_EVENT, this.mobilePickerOpenHandler);
 		this.rootEl?.removeEventListener(TASK_EDITOR_MOBILE_PICKER_CLOSE_EVENT, this.mobilePickerCloseHandler);
 		this.rootEl = null;
@@ -2331,30 +2288,14 @@ export class TaskEditorContent extends EditorPropertyFields {
 	}
 
 	private renderDescriptionNoteSection(container: HTMLElement, id: 'description' | 'notes'): void {
-		const section = container.createDiv('operon-editor-text-fields');
-
+		const { group, header } = createEditorTextSection(container, id, this.desktopSectionLabel(id));
 		if (id === 'description') {
-			const descriptionGroup = section.createDiv('operon-editor-text-field-group is-description');
-			const descriptionHeader = descriptionGroup.createDiv('operon-editor-desktop-group-header');
-			descriptionHeader.createEl('h6', {
-				cls: 'operon-editor-core-title-badge operon-editor-text-field-title operon-editor-desktop-group-title',
-				text: this.desktopSectionLabel('description'),
-			});
-			const descriptionActions = descriptionHeader.createDiv('operon-task-editor-workflow-actions operon-editor-description-actions');
-			this.renderQuickFinishButton(descriptionActions);
-			this.renderProjectSerialControl(descriptionActions);
-			this.renderCopyOperonIdButton(descriptionActions);
-			this.renderDescription(descriptionGroup, false);
-
-		} else {
-			const notesGroup = section.createDiv('operon-editor-text-field-group is-notes');
-			const notesHeader = notesGroup.createDiv('operon-editor-desktop-group-header');
-			notesHeader.createEl('h6', {
-				cls: 'operon-editor-core-title-badge operon-editor-text-field-title operon-editor-desktop-group-title',
-				text: this.desktopSectionLabel('notes'),
-			});
-			this.renderNote(notesGroup, false);
-		}
+			const actions = header.createDiv('operon-task-editor-workflow-actions operon-editor-description-actions');
+			this.renderQuickFinishButton(actions);
+			this.renderProjectSerialControl(actions);
+			this.renderCopyOperonIdButton(actions);
+			this.renderDescription(group, false);
+		} else this.renderNote(group, false);
 	}
 
 	private renderDescription(container: HTMLElement, showLabel = true): void {
@@ -2744,7 +2685,8 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.refreshStatsCounters = () => { if (!this.disposed && summary.isConnected) render(this.getProgressSectionState()); };
 	}
 
-	private renderDesktopPropertyGroups(host: (id: TaskEditorSectionId) => HTMLElement): void {
+	private renderDesktopPropertyGroups(host: (id: TaskEditorSectionId) => HTMLElement, layout: TaskEditorLayout): void {
+		this.desktopPropertyGroups.clear();
 		const container = host('commands');
 		const commands = container.createDiv('operon-editor-group operon-editor-desktop-commands');
 		const header = commands.createDiv('operon-editor-desktop-group-header');
@@ -2753,24 +2695,30 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.renderCoreActionButtons(actions);
 		this.renderRemoveControl(actions);
 
-		const propertyHost = (id: TaskEditorSectionId): HTMLElement => {
+		const commandsById = new Map(Array.from(actions.children, node => [(node as HTMLElement).dataset.editorCommand, node]));
+		for (const id of layout.commandOrder) {
+			const node = commandsById.get(id);
+			if (node) actions.appendChild(node);
+		}
+
+		const items = this.getRenderableWorkflowPickerItems().filter(item => !this.isNativeCustomProperty(item.key));
+		const keys = new Set([...items.map(item => item.key), ...DESKTOP_CORE_FIELDS]);
+		const placed = new Map<TaskEditorSectionId, Array<{ key: string; rank: number }>>();
+		for (const key of keys) {
+			const { section, rank } = layout.position({ kind: 'mapped', key });
+			const group = placed.get(section) ?? [];
+			group.push({ key, rank });
+			placed.set(section, group);
+		}
+		for (const { id } of layout.groups) {
 			const root = host(id);
 			root.addClass('operon-editor-desktop-properties', 'operon-task-editor-workflow-values');
-			return root;
-		};
-		const items = this.getRenderableWorkflowPickerItems().filter(item => !this.isNativeCustomProperty(item.key));
-		const available = new Set(items.map(item => item.key));
-		const assigned = new Set<string>();
-		for (const group of TASK_EDITOR_DESKTOP_GROUPS) {
-			const keys = group.fields.filter(key => {
-				assigned.add(key);
-				return DESKTOP_CORE_FIELDS.has(key) || available.has(key);
-			});
-			this.renderDesktopPropertyGroup(propertyHost(group.key), group.key, keys);
+			const fields = placed.get(id) ?? [];
+			fields.sort((left, right) => left.rank - right.rank);
+			this.desktopPropertyGroups.set(id, this.renderDesktopPropertyGroup(root, id, fields));
+			if (id === 'additional') this.additionalPropertyKeys = fields.map(field => field.key);
 		}
-		this.additionalPropertyKeys = items.filter(item => !assigned.has(item.key)).map(item => item.key);
-		const additional = this.renderDesktopPropertyGroup(propertyHost('additional'), 'additional', this.additionalPropertyKeys);
-  this.mountDesktopFileProperties(additional);
+		this.mountDesktopFileProperties(this.desktopPropertyGroups.get('additional')!.group);
 		this.refreshDesktopPropertyRows();
 	}
 
@@ -2862,7 +2810,7 @@ export class TaskEditorContent extends EditorPropertyFields {
    this.fileProperties = next;
    this.filePropertyUnavailable = false;
    if (this.fileBodyContext) this.fileBodyContext.filePath = task.primary.filePath;
-   if (!same || root.children.length === 0 || JSON.stringify([...this.filePropertyRows.keys()]) !== JSON.stringify([...next.keys()])) {
+   if (!same || JSON.stringify([...this.filePropertyRows.keys()]) !== JSON.stringify([...next.keys()])) {
     if (this.closeFilePropertyAddPicker || (this.filePropertyPickerName && next.has(this.filePropertyPickerName))) {
      // Keep the active picker and its uncommitted input. Structural changes wait for close.
      for (const [name, surface] of this.filePropertyRows) {
@@ -2894,6 +2842,13 @@ export class TaskEditorContent extends EditorPropertyFields {
   surface.action.hidden = !populated && !entry.baseline?.present && !entry.inline?.present && !entry.headerSelected;
  }
 
+ private placeDesktopPropertyElement(host: HTMLElement, element: HTMLElement, rank: number, headerCount: number, tail: Element | null = null): void {
+  element.dataset.editorPropertyRank = String(rank);
+  const before = Array.from(host.children).slice(headerCount).find(sibling => sibling !== element
+   && (sibling === tail || Number((sibling as HTMLElement).dataset.editorPropertyRank ?? Infinity) > rank));
+  if (before) host.insertBefore(element, before);
+ }
+
  private renderDesktopFileProperties(root: HTMLElement): void {
   const activeElement = root.ownerDocument.activeElement;
 
@@ -2902,27 +2857,34 @@ export class TaskEditorContent extends EditorPropertyFields {
   const focusedValue = focusedEntry?.[1].value.contains(activeElement) ?? false;
   this.closeFilePropertyPicker?.();
   this.closeFilePropertyAddPicker?.();
+  for (const { row, action } of this.filePropertyRows.values()) {
+   cleanupOperonHoverTooltips(row); row.remove();
+   cleanupOperonHoverTooltips(action); action.remove();
+  }
   cleanupOperonHoverTooltips(root); root.empty();
-  for (const { action } of this.filePropertyRows.values()) { cleanupOperonHoverTooltips(action); action.remove(); }
   this.filePropertyRows.clear();
-  this.refreshDesktopPropertyGroupState(root);
-  const actions = this.filePropertyActions;
-  if (!actions) return;
-  const group = root;
-  if (this.filePropertyUnavailable) group.createDiv({ text: t('taskEditor', 'filePropertiesUnavailable'), cls: 'operon-editor-desktop-file-warning' });
+  const layout = this.desktopLayout;
+  if (!layout) return;
+  if (this.filePropertyUnavailable) root.createDiv({ text: t('taskEditor', 'filePropertiesUnavailable'), cls: 'operon-editor-desktop-file-warning' });
   for (const [name, entry] of this.fileProperties) {
+   const { section, rank } = layout.position(layout.referenceForName(name));
+   const target = this.desktopPropertyGroups.get(section) ?? this.desktopPropertyGroups.get('additional')!;
+   const group = rank === Infinity ? root : target.group;
+   const { actions } = target;
    const action = actions.createEl('button', { cls: 'operon-task-editor-workflow-action-button', attr: { type: 'button' } });
-   if (this.additionalPropertyAdd) actions.insertBefore(action, this.additionalPropertyAdd);
-   setIcon(action, entry.field.icon); setAccessibleLabelWithoutTooltip(action, name);
+   this.placeDesktopPropertyElement(actions, action, rank, 0, section === 'additional' ? this.additionalPropertyAdd : null);
+   setAccessibleLabelWithoutTooltip(action, name);
    action.disabled = !this.canEditFileProperty(entry);
    this.bindEditorHoverTooltip(action, { content: name, taskColor: () => this.getThemeColor() });
    action.addEventListener('click', () => this.openFilePropertyPicker(name));
-   const { row, label, value } = this.createPropertyRow(group, entry.field.key, name, entry.field.icon, entry.field.type === 'list');
+   const { row, label, value } = this.createPropertyRow(group, entry.field.key, name, () => this.resolveNativePropertyIcon(name, entry.field.type), entry.field.type === 'list');
+   if (group !== root) this.placeDesktopPropertyElement(group, row, rank, 1);
    value.addClass('operon-editor-picker-selected', 'operon-editor-custom-field-selection-row');
    this.filePropertyRows.set(name, { row, value, action });
    this.bindDesktopPropertyInteraction(row, label, value, () => this.openFilePropertyPicker(name, undefined, 'picker', label), () => this.openFilePropertyPicker(name, undefined, 'popover', value), () => { const current = this.fileProperties.get(name); return !!current && this.canEditFileProperty(current); });
    this.refreshFilePropertyValue(name);
   }
+  for (const { group } of this.desktopPropertyGroups.values()) this.refreshDesktopPropertyGroupState(group);
   if (focusedName) {
    const restored = this.filePropertyRows.get(focusedName);
    const valueTarget = restored?.row.hidden ? null : restored?.value.querySelector<HTMLElement>('[tabindex="0"]') ?? restored?.value;
@@ -3021,15 +2983,14 @@ export class TaskEditorContent extends EditorPropertyFields {
   });
  }
 
-	private renderDesktopPropertyGroup(root: HTMLElement, key: TaskEditorSectionId, keys: readonly string[]): HTMLElement {
-		const group = root.createDiv('operon-editor-group operon-task-editor-workflow-surface operon-editor-desktop-property-group');
-		group.dataset.propertyGroup = key;
-		const header = group.createDiv('operon-editor-desktop-group-header');
-		header.createDiv({ text: this.desktopSectionLabel(key), cls: 'operon-editor-core-title-badge operon-editor-desktop-group-title' });
-		const actions = header.createDiv('operon-task-editor-workflow-actions');
-		this.renderWorkflowPickerActions(actions, keys.map(field => ({ key: field, visible: true })), false);
+	private renderDesktopPropertyGroup(root: HTMLElement, key: TaskEditorSectionId, fields: readonly { key: string; rank: number }[]) {
+		const { group, actions } = createEditorPropertyGroup(root, key, this.desktopSectionLabel(key));
+		this.renderWorkflowPickerActions(actions, fields.map(field => ({ key: field.key, visible: true })), false);
+		for (const field of fields) {
+			const action = this.workflowActionButtons.get(field.key);
+			if (action) action.dataset.editorPropertyRank = String(field.rank);
+		}
 		if (key === 'additional') {
-			this.filePropertyActions = actions;
 			const add = actions.createEl('button', { cls: 'operon-task-editor-workflow-action-button operon-editor-file-property-add', attr: { type: 'button' } });
 			setIcon(add, 'plus');
 			setAccessibleLabelWithoutTooltip(add, t('taskEditor', 'addFileProperty'));
@@ -3038,8 +2999,9 @@ export class TaskEditorContent extends EditorPropertyFields {
 			add.addEventListener('click', () => this.openFilePropertyAddPicker(add));
 		}
 
-		for (const field of keys) {
-			const { row, label, value } = this.createPropertyRow(group, field, this.getWorkflowPickerLabel(field), this.resolveWorkflowPickerIcon(field), this.isListProperty(field));
+		for (const { key: field, rank } of fields) {
+			const { row, label, value } = this.createPropertyRow(group, field, this.getWorkflowPickerLabel(field), () => this.resolveWorkflowPickerIcon(field), this.isListProperty(field));
+			row.dataset.editorPropertyRank = String(rank);
 			const core = DESKTOP_CORE_FIELDS.has(field);
 			this.desktopPropertyRows.set(field, { row, value, core, signature: '' });
 			this.bindDesktopPropertyInteraction(row, label, value, () => this.openWorkflowPickerFromAction(field, label), () => this.openDesktopPropertyValue(field, value, label), () => field !== 'datetimeEnd' || !!this.fieldValues['datetimeStart']);
@@ -3056,7 +3018,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			}
 		}
 		this.refreshDesktopPropertyGroupState(group);
-		return group;
+		return { group, actions };
 	}
 
 	protected refreshDesktopPropertyGroupState(container: HTMLElement): void {
@@ -3288,6 +3250,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 				cls: 'operon-editor-core-action-btn operon-editor-core-scrollbars-action',
 				attr: { type: 'button' },
 			});
+			button.dataset.editorCommand = 'scrollbars';
 			setIcon(button, 'mouse');
 			let tooltip = '';
 			const refresh = () => {
@@ -3336,6 +3299,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			attr: { type: 'button' },
 		});
 
+		pinBtn.dataset.editorCommand = 'pin';
 		const renderPin = () => {
 			pinBtn.empty();
 			const icon = getIcon('pin');
@@ -3363,6 +3327,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			cls: 'operon-editor-core-action-btn operon-editor-core-checkbox-popover-action',
 			attr: { type: 'button' },
 		});
+		checkboxBtn.dataset.editorCommand = 'checkboxes';
 		setIcon(checkboxBtn, 'layout-list');
 		setAccessibleLabelWithoutTooltip(checkboxBtn, checkboxLabel);
 		this.bindTaskEditorTooltip(checkboxBtn, checkboxLabel);
@@ -3379,6 +3344,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 				type: 'button',
 			},
 		});
+		subtaskBtn.dataset.editorCommand = 'subtask';
 		const subtaskIcon = getIcon(resolveSubtaskActionIconForKind(this.subtaskActionKind)) ?? getIcon('plus');
 		if (subtaskIcon) subtaskBtn.appendChild(subtaskIcon);
 		else subtaskBtn.setText('+');
@@ -3394,6 +3360,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 				cls: 'operon-editor-core-action-btn operon-editor-core-inline-subtask-action',
 				attr: { type: 'button' },
 			});
+			inlineButton.dataset.editorCommand = 'inlineSubtask';
 			setIcon(inlineButton, resolveSubtaskActionIconForKind('inline'));
 			setAccessibleLabelWithoutTooltip(inlineButton, inlineLabel);
 			this.bindTaskEditorTooltip(inlineButton, inlineLabel);
@@ -3458,15 +3425,9 @@ export class TaskEditorContent extends EditorPropertyFields {
 		const items = this.getRenderableWorkflowPickerItems();
 		if (items.length === 0) return;
 
-		const section = container.createDiv('operon-editor-group operon-task-editor-workflow-surface');
-		const header = section.createDiv('operon-task-editor-workflow-header');
-		header.createDiv({
-			text: t('settings', 'taskEditorWorkflowPickers'),
-			cls: 'operon-editor-core-title-badge operon-task-editor-workflow-title',
-		});
-
-		this.workflowActionsEl = section.createDiv('operon-task-editor-workflow-actions');
-		this.workflowRowsEl = section.createDiv('operon-task-editor-workflow-values');
+		const { actions, rows } = createCompactEditorWorkflow(container, t('settings', 'taskEditorWorkflowPickers'));
+		this.workflowActionsEl = actions;
+		this.workflowRowsEl = rows;
 		this.renderWorkflowPickerActions(this.workflowActionsEl, items);
 		this.renderFilledWorkflowPickers(this.workflowRowsEl, items);
 	}
@@ -3563,12 +3524,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 	private setWorkflowActionButtonIcon(button: HTMLButtonElement, key: string): void {
 		button.empty();
 		const iconWrap = button.createSpan('operon-task-editor-workflow-action-icon');
-		const icon = this.resolveWorkflowPickerIcon(key);
-		if (icon) {
-			setIcon(iconWrap, icon);
-			return;
-		}
-		iconWrap.addClass('operon-task-editor-workflow-action-icon-placeholder');
+		bindPropertyIcon(iconWrap, () => this.resolveWorkflowPickerIcon(key));
 	}
 
 	protected getWorkflowActionFocusTarget(key: string): HTMLButtonElement | null | undefined {
@@ -3893,6 +3849,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			attr: { type: 'button' },
 		});
 
+		button.dataset.editorCommand = 'tracker';
 		const refresh = () => {
 			const operonId = this.getCurrentOperonId();
 			const isRunning = !!operonId && this.timeTracker.isTimerRunning(operonId);
@@ -4175,7 +4132,9 @@ export class TaskEditorContent extends EditorPropertyFields {
 		if (!this.existingTask || !this.onRequestDelete) return;
 
 		const control = this.createInlineField(container, '');
-		control.parentElement?.addClass('operon-editor-remove-field');
+		const removeRow = control.parentElement;
+		removeRow?.addClass('operon-editor-remove-field');
+		if (removeRow) removeRow.dataset.editorCommand = 'remove';
 
 		const button = control.createEl('button', {
 			cls: 'operon-editor-core-action-btn operon-editor-core-danger-btn operon-editor-picker-button',
@@ -4261,7 +4220,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		setting.settingEl.addClass('operon-dependency-setting', 'operon-editor-inline-picker-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, label, {
-			leadingIcon: this.resolveTaskSelectionIcon(fieldKey),
+			leadingIcon: () => this.resolveTaskSelectionIcon(fieldKey),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-task-selection-row');
 		const currentTaskId = this.fieldValues['operonId'] ?? this.existingTask?.operonId ?? '';
@@ -4355,7 +4314,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		setting.settingEl.addClass('operon-dependency-setting', 'operon-editor-inline-picker-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'subtasks'), {
-			leadingIcon: this.resolveTaskSelectionIcon('subtasks'),
+			leadingIcon: () => this.resolveTaskSelectionIcon('subtasks'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-task-selection-row');
 
@@ -4456,7 +4415,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		setting.settingEl.addClass('operon-editor-parent-setting', 'operon-editor-inline-picker-setting');
 		const parentStack = setting.controlEl.createDiv('operon-editor-picker-stack operon-editor-picker-stack--single');
 		const parentAnchor = this.createPickerAnchor(parentStack, t('taskEditor', 'parentTask'), {
-			leadingIcon: this.resolveTaskSelectionIcon('parentTask'),
+			leadingIcon: () => this.resolveTaskSelectionIcon('parentTask'),
 		});
 		const parentSelectedWrap = parentStack.createDiv('operon-editor-picker-selected operon-editor-task-selection-row');
 		const currentTaskId = this.fieldValues['operonId'] ?? this.existingTask?.operonId ?? '';

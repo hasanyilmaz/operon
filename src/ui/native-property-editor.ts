@@ -1,12 +1,13 @@
+import { bindPropertyIcon } from './property-icon-presentation';
 import { isWideEditorSourceViewport } from './editor-source-layout';
-import { Notice, setIcon, type App, type TFile } from 'obsidian';
+import { Notice, Platform, setIcon, type App, type TFile } from 'obsidian';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { PropertyEditorDraft } from '../core/property-editor-draft';
 import { PropertyEditorAdapter } from '../core/property-editor-adapter';
 import { inferVaultPropertyEditorTypes, type PropertyEditorField } from '../core/property-editor-fields';
-import type { PropertyEditorChange, PropertyEditorDocument } from '../core/property-editor-document';
+import { planPropertyEditorWrite, type PropertyEditorChange, type PropertyEditorDocument } from '../core/property-editor-document';
 import { isEmptyFilePropertyValue, readRawYamlPropertyExpectation, type RawYamlPropertyValue } from '../core/raw-yaml-property';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import type { IndexedTask, ParsedTask } from '../types/fields';
@@ -17,6 +18,10 @@ import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-fiel
 import { getManagedTaskDataFieldPicker } from './task-data-field-picker';
 import type { CompactMarkdownEditorSurface } from './compact-markdown-editor-surface';
 import type { TaskEditorFileBodyContext } from './task-editor-content';
+import type { TaskEditorSectionId } from '../types/task-editor-sections';
+import { resolveTaskEditorLayout, type TaskEditorLayout } from '../core/task-editor-layout';
+import { createCompactEditorWorkflow, createEditorPropertyGroup, createEditorSectionHosts, createEditorTextSection, createEditorTitle, editorSectionLabel } from './editor-sections-layout';
+import { bindEditorInteractionState } from './editor-interaction-state';
 import { hasFloatingPanelForRoot, requestFloatingPanelCloseForRoot, resolveSurfaceFloatingHostOptions } from './field-pickers/common';
 import { showSearchableFieldPicker } from './field-pickers/searchable-field-picker';
 import { cleanupOperonHoverTooltips } from './operon-hover-tooltip';
@@ -31,14 +36,17 @@ export interface NativePropertyEditorOptions {
  file: TFile;
  settings(): OperonSettings;
  tasks(): IndexedTask[];
- save(changes: readonly PropertyEditorChange[], current: () => boolean): Promise<PropertyEditorSaveResult>;
+ canConvert?(): boolean;
+ convert?(): Promise<void>;
+ save(changes: readonly PropertyEditorChange[], current: () => boolean, expectedSource?: string): Promise<PropertyEditorSaveResult>;
 }
 
-/** Flat layout host; all field presentation and interaction belongs to EditorPropertyFields. */
+/** YAML draft and save lifecycle for the shared editor layout. */
 export class NativePropertyEditor extends EditorPropertyFields {
  readonly root: HTMLElement;
- private readonly rows: HTMLElement;
- private readonly empty: HTMLElement;
+ private readonly groups = new Map<TaskEditorSectionId, { group: HTMLElement; actions?: HTMLElement }>();
+ private readonly sectionLayout: TaskEditorLayout;
+ private readonly stopInteraction: () => void;
  private readonly add: HTMLButtonElement;
  private readonly message: HTMLElement;
  private readonly draft: PropertyEditorDraft;
@@ -51,6 +59,8 @@ export class NativePropertyEditor extends EditorPropertyFields {
  protected disposed = false;
  private readonly win: Window;
  private rendering = false;
+ private conversionCommitted = false;
+ private autosavePaused = false;
  private pendingRefresh = false;
  private readonly interactionObserver: MutationObserver;
  private readonly settleRefresh = () => {
@@ -66,7 +76,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
  private readonly clearAddingOnRowClick = (event: Event): void => {
   if ((event.target as HTMLElement).closest('[data-property-name]')) this.adding = null;
  };
- private readonly surfaces = new Map<string, { row: HTMLElement; label: HTMLButtonElement; value: HTMLElement; shared: boolean; signature: string }>();
+ private readonly surfaces = new Map<string, { row: HTMLElement; label: HTMLButtonElement; value: HTMLElement; shared: boolean; signature: string; action?: HTMLButtonElement; key: string }>();
  private readonly schedulingRefreshers = new Set<() => void>();
  private adding: string | null = null;
  private closeAddPicker: (() => void) | null = null;
@@ -84,9 +94,9 @@ export class NativePropertyEditor extends EditorPropertyFields {
  protected readonly onApplyEstimateReallocation = null;
  protected refreshEstimateReallocationControl = null;
  protected readonly readSource = undefined;
- protected readonly isPhone = false;
- protected readonly usesMobileLayout = false;
- protected readonly usesTouchDesktopLayout = false;
+ protected readonly isPhone = Platform.isPhone;
+ protected readonly usesMobileLayout: boolean;
+ protected readonly usesTouchDesktopLayout: boolean;
  protected inlineCompletionMode = DEFAULT_INLINE_REPEAT_COMPLETION_MODE;
  protected noteCompactEditor: CompactMarkdownEditorSurface | null = null;
  protected noteCompactHostEl: HTMLElement | null = null;
@@ -114,6 +124,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
   super();
   this.draft = new PropertyEditorDraft(document);
   this.adapter = this.makeAdapter();
+  this.sectionLayout = resolveTaskEditorLayout(this.settings.taskEditorSections, this.settings.keyMappings);
   this.win = getOwnerWindow(host);
   const title = t('taskEditor', 'propertyEditorTitle');
   this.root = this.rootEl = host;
@@ -124,17 +135,56 @@ export class NativePropertyEditor extends EditorPropertyFields {
   this.shellEl = this.root.createDiv('operon-task-editor-shell');
   this.mainPanelEl = this.shellEl.createDiv('operon-task-editor-main-panel');
   const main = this.mainPanelEl;
-  const titleRow = main.createDiv('operon-task-editor-title-row');
-  titleRow.createDiv('operon-task-editor-title-side is-left');
-  titleRow.createEl('h3', { cls: 'operon-task-editor-title', text: title });
-  titleRow.createDiv('operon-task-editor-title-side is-right');
+  this.usesMobileLayout = this.isPhone && this.settings.taskEditorUseMobileLayout;
+  this.usesTouchDesktopLayout = !this.usesMobileLayout && (this.isPhone || Platform.isTablet);
+  host.toggleClass('operon-task-editor-mobile', this.usesMobileLayout);
+  host.toggleClass('operon-task-editor-phone-desktop', this.isPhone && !this.usesMobileLayout);
+  host.toggleClass('operon-task-editor-touch-desktop', this.usesTouchDesktopLayout);
+  this.stopInteraction = bindEditorInteractionState(host, this.usesTouchDesktopLayout);
+  createEditorTitle(main, title);
   this.message = main.createDiv({ cls: 'operon-property-editor-message', attr: { role: 'status' } });
   this.message.hidden = true;
-  this.empty = main.createDiv({ cls: 'operon-property-editor-empty', text: t('taskEditor', 'propertyEditorEmpty') });
-  this.rows = this.workflowRowsEl = main.createDiv('operon-editor-desktop-properties operon-task-editor-workflow-values').createDiv('operon-editor-group operon-task-editor-workflow-surface operon-editor-desktop-property-group');
-  this.add = this.additionalPropertyAdd = main.createEl('button', { cls: 'operon-property-editor-add operon-editor-picker-button', attr: { type: 'button' } });
-  setIcon(this.add.createSpan(), 'plus');
-  this.add.createSpan({ text: t('taskEditor', 'propertyEditorAdd') });
+  const layout = this.usesMobileLayout ? null : createEditorSectionHosts(main, this.sectionLayout.sections);
+  const compact = layout ? null : main.createDiv('operon-task-editor-mobile-body');
+  this.workflowRowsEl = layout?.root ?? compact!;
+  const label = (id: TaskEditorSectionId) => editorSectionLabel(this.sectionLayout.sections, id);
+  if (layout) for (const target of Array.from(layout.root.children)) (target as HTMLElement).hidden = true;
+  const compactPrimary = compact?.createDiv('operon-task-editor-mobile-primary');
+  const textHost = (id: 'description' | 'notes') => {
+   const target = layout?.host(id) ?? compactPrimary!;
+   if (layout) target.addClass('operon-task-editor-primary-fields');
+   return target;
+  };
+  if (options.canConvert?.() && options.convert) {
+   const target = textHost('description');
+   target.hidden = false;
+   const { group } = createEditorTextSection(target, 'description', label('description'));
+   const convert = group.createEl('button', { text: t('taskEditor', 'convertNoteToFileTask'), cls: 'operon-editor-picker-button', attr: { type: 'button' } });
+   convert.addEventListener('click', () => {
+    if (convert.disabled || !options.canConvert?.() || !options.convert) return;
+    convert.disabled = true;
+    void options.convert().finally(() => {
+     if (!this.disposed) { convert.disabled = this.conversionCommitted || !options.canConvert?.(); if (!convert.disabled) convert.focus({ preventScroll: true }); }
+    });
+   });
+  }
+  this.groups.set('notes', createEditorTextSection(textHost('notes'), 'notes', label('notes')));
+  if (layout) {
+   for (const { id } of this.sectionLayout.groups) {
+    const target = layout.host(id);
+    target.addClass('operon-editor-desktop-properties', 'operon-task-editor-workflow-values');
+    this.groups.set(id, createEditorPropertyGroup(target, id, label(id)));
+   }
+  } else {
+   const surface = createCompactEditorWorkflow(compact!.createDiv('operon-task-editor-mobile-workflow'), t('settings', 'taskEditorWorkflowPickers'));
+   this.groups.set('additional', { group: surface.rows, actions: surface.actions });
+  }
+  const actions = this.groups.get('additional')!.actions!;
+  this.add = this.additionalPropertyAdd = actions.createEl('button', { cls: 'operon-task-editor-workflow-action-button operon-editor-file-property-add', attr: { type: 'button' } });
+  setIcon(this.add, 'plus');
+  const addLabel = t('taskEditor', 'addFileProperty');
+  setAccessibleLabelWithoutTooltip(this.add, addLabel);
+  this.bindEditorHoverTooltip(this.add, { content: addLabel, taskColor: () => this.getThemeColor() });
   this.add.addEventListener('click', () => this.openAddPicker());
   this.onPropertyContentChanged = () => this.root.dispatchEvent(new CustomEvent('operon-property-content-changed', { bubbles: true }));
   this.interactionObserver = new (this.win as Window & { MutationObserver: typeof MutationObserver }).MutationObserver(() => this.settleRefresh());
@@ -153,6 +203,11 @@ export class NativePropertyEditor extends EditorPropertyFields {
  }
 
  get isEdited(): boolean { return this.draft.edited; }
+ setConversionCommitted(): void {
+  this.conversionCommitted = true;
+  this.closePicker(false);
+  this.mainPanelEl.inert = true;
+ }
  private makeAdapter(): PropertyEditorAdapter { return new PropertyEditorAdapter(this.draft.properties, this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), this.inferredTypes ??= inferVaultPropertyEditorTypes(this.app)); }
  private hydrate(): void {
   this.adapter = this.makeAdapter();
@@ -183,34 +238,50 @@ export class NativePropertyEditor extends EditorPropertyFields {
   try {
    const document = this.draft.properties;
    this.applyThemeColor();
-   this.rows.hidden = !document.order.length;
-   this.empty.hidden = !!document.order.length;
+   const positions = new Map<HTMLElement, number>();
    for (const [name, surface] of this.surfaces) {
     if (document.order.includes(name)) continue;
-    cleanupOperonHoverTooltips(surface.row); surface.row.remove(); this.surfaces.delete(name);
-    const key = this.field(name).mapping?.canonicalKey;
-    if (key) this.desktopPropertyRows.delete(key);
-    this.filePropertyRows.delete(name); this.fileProperties.delete(name);
+    this.removeSurface(name, surface);
    }
-   for (const name of document.order) {
-    const field = this.field(name), key = field.mapping?.canonicalKey ?? name;
+   const actionPositions = new Map<HTMLElement, number>();
+   const order = document.order.map(name => {
+    const field = this.field(name);
+    const { section, rank } = this.sectionLayout.position(this.sectionLayout.referenceForName(name));
+    const id = field.mapping?.canonicalKey === 'note' ? 'notes' : this.usesMobileLayout ? 'additional' : section;
+    return { name, field, id, rank };
+   });
+   if (!this.usesMobileLayout) order.sort((a, b) => a.rank - b.rank);
+   for (const { name, field, id } of order) {
+    const key = field.mapping?.canonicalKey ?? name;
     const shared = this.usesSharedControl(field);
+    const { group, actions } = this.groups.get(id)!;
     let surface = this.surfaces.get(name);
     // Mapping/type changes may switch a row to the shared read-only representation.
-    if (surface && surface.shared !== shared) {
-     requestFloatingPanelCloseForRoot(surface.row, 'escape');
-     cleanupOperonHoverTooltips(surface.row); surface.row.remove(); this.surfaces.delete(name);
-     this.desktopPropertyRows.delete(key); this.filePropertyRows.delete(name); surface = undefined;
+    if (surface && (surface.shared !== shared || surface.key !== key)) {
+     this.removeSurface(name, surface);
+     surface = undefined;
     }
     if (!surface) {
      const native = this.nativePropertyField(name, field.type);
-     const built = this.createPropertyRow(this.rows, shared ? key : native.key, name, shared ? this.resolveWorkflowPickerIcon(key) : native.icon, field.type === 'list');
-     surface = { ...built, shared, signature: '' }; surface.row.dataset.propertyName = name;
+     const label = shared && key === 'contexts' ? this.getWorkflowPickerLabel(key) : name;
+     const icon = () => shared ? this.resolveWorkflowPickerIcon(key) : this.resolveNativePropertyIcon(name, field.type);
+     const built = this.createPropertyRow(group, shared ? key : native.key, label, icon, field.type === 'list');
+     if (shared && key === 'note') built.row.addClass('operon-property-editor-note-row');
+     const action = actions?.createEl('button', { cls: 'operon-task-editor-workflow-action-button', attr: { type: 'button' } });
+     if (action) {
+      if (this.add.parentElement === actions) actions.insertBefore(action, this.add);
+      bindPropertyIcon(action, icon);
+      setAccessibleLabelWithoutTooltip(action, label);
+      this.bindEditorHoverTooltip(action, { content: label, taskColor: () => this.getThemeColor() });
+     }
+     surface = { ...built, shared, signature: '', action, key };
+     surface.row.dataset.propertyName = name;
      this.surfaces.set(name, surface);
      if (shared) {
       const core = DESKTOP_CORE_FIELDS.has(key);
       this.desktopPropertyRows.set(key, { row: surface.row, value: surface.value, core, signature: '' });
-      this.workflowActionButtons.set(key, surface.label);
+      this.workflowActionButtons.set(key, action ?? surface.label);
+      action?.addEventListener('click', () => this.openWorkflowPickerFromAction(key, action));
       this.bindDesktopPropertyInteraction(surface.row, surface.label, surface.value,
        () => key === 'note' ? this.noteCompactEditor?.focusEnd() : this.openWorkflowPickerFromAction(key, surface!.label),
        () => key === 'note' ? this.noteCompactEditor?.focusEnd() : this.openDesktopPropertyValue(key, surface!.value, surface!.label),
@@ -221,10 +292,9 @@ export class NativePropertyEditor extends EditorPropertyFields {
        for (const input of Array.from(surface.value.querySelectorAll('input'))) setAccessibleLabelWithoutTooltip(input, name);
       }
      } else {
-      // The action lives in the header in Task Editor; a flat list uses its existing row label as the anchor.
-      const action = this.add.ownerDocument.win.createEl('button');
-      this.filePropertyRows.set(name, { ...built, action });
-      action.hidden = true;
+      const propertyAction = action ?? built.label;
+      this.filePropertyRows.set(name, { ...built, action: propertyAction });
+      action?.addEventListener('click', () => this.openFilePropertyPicker(name, undefined, 'picker', action));
       this.bindDesktopPropertyInteraction(surface.row, surface.label, surface.value,
        () => this.openFilePropertyPicker(name, undefined, 'picker', surface!.label),
        () => this.openFilePropertyPicker(name, undefined, 'popover', surface!.value),
@@ -237,6 +307,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
      const populated = this.hasWorkflowPickerValue(key);
      this.refreshDesktopPropertyIcon(key, surface.row, populated);
      surface.label.disabled = key === 'datetimeEnd' && !this.fieldValues.datetimeStart;
+     if (surface.action) surface.action.disabled = surface.label.disabled;
      const clear = surface.value.querySelector<HTMLButtonElement>('.operon-editor-value-clear');
      if (clear) { clear.hidden = !populated; clear.parentElement?.toggleClass('has-visible-clear', populated); }
      if (!DESKTOP_CORE_FIELDS.has(key) && surface.signature !== signature && !surface.value.querySelector('.is-picker-open') && !surface.value.contains(this.root.ownerDocument.activeElement)) {
@@ -261,13 +332,46 @@ export class NativePropertyEditor extends EditorPropertyFields {
       }
      }
     }
-    // Reorder only when necessary: moving focused DOM nodes would drop editor/picker focus.
-    const position = document.order.indexOf(name);
-    if (this.rows.children[position] !== surface.row) this.rows.insertBefore(surface.row, this.rows.children[position] ?? null);
+    if (this.usesMobileLayout) {
+     surface.row.toggleClass('has-compact-picker', !!surface.value.querySelector('.operon-editor-picker-anchor'));
+    }
+    const position = positions.get(group) ?? (this.usesMobileLayout && id !== 'notes' ? 0 : 1);
+    if (group.children[position] !== surface.row) group.insertBefore(surface.row, group.children[position] ?? null);
+    positions.set(group, position + 1);
+    if (actions && surface.action) {
+     const actionPosition = actionPositions.get(actions) ?? 0;
+     if (actions.children[actionPosition] !== surface.action) actions.insertBefore(surface.action, actions.children[actionPosition] ?? null);
+     actionPositions.set(actions, actionPosition + 1);
+    }
+   }
+   for (const [id, { group }] of this.groups) {
+    const hidden = id !== 'additional' && !positions.has(group);
+    group.hidden = hidden;
+    const host = group.closest<HTMLElement>('.operon-task-editor-section-host');
+    if (host) host.hidden = hidden;
    }
    this.refreshSchedulingDraftControls();
   } finally { this.fieldValues = valuesBeforeRender; this.tags = tagsBeforeRender; this.rendering = false; this.mainPanelEl.scrollTop = scroll; }
   this.notifyPropertyContentChanged();
+ }
+
+ private removeSurface(name: string, surface: { row: HTMLElement; action?: HTMLButtonElement; key: string; shared: boolean }): void {
+  requestFloatingPanelCloseForRoot(surface.row, 'escape');
+  if (surface.action) {
+   requestFloatingPanelCloseForRoot(surface.action, 'escape');
+   cleanupOperonHoverTooltips(surface.action);
+   surface.action.remove();
+  }
+  cleanupOperonHoverTooltips(surface.row);
+  surface.row.remove();
+  this.surfaces.delete(name);
+  if (surface.shared) {
+   this.desktopPropertyRows.delete(surface.key);
+   this.workflowActionButtons.delete(surface.key);
+   if (surface.key === 'note') { this.noteCompactEditor?.destroy(); this.noteCompactEditor = null; }
+  }
+  this.filePropertyRows.delete(name);
+  this.fileProperties.delete(name);
  }
 
  markEdited(): void {
@@ -348,13 +452,13 @@ export class NativePropertyEditor extends EditorPropertyFields {
  protected confirmNewFileProperty(entry: EditorFileProperty): boolean { return entry.pending === true; }
  protected getFilePropertyPickerOwner(): HTMLElement { return this.root; }
  protected hasDesktopPropertyRules(): boolean { return true; }
- protected shouldCloseWorkflowPickerOnSelect(): boolean { return !!this.adding && !this.draft.properties.order.includes(this.adding); }
- protected syncFilePropertyRowVisibility(_entry: EditorFileProperty, surface: { row: HTMLElement; action: HTMLButtonElement }): void { surface.row.hidden = false; surface.action.hidden = true; }
+ protected shouldCloseWorkflowPickerOnSelect(): boolean { return this.isPhone || !!this.adding && !this.draft.properties.order.includes(this.adding); }
+ protected syncFilePropertyRowVisibility(_entry: EditorFileProperty, surface: { row: HTMLElement; action: HTMLButtonElement }): void { surface.row.hidden = false; }
  protected registerSchedulingDraftRefresher(refresh: () => void): void { this.schedulingRefreshers.add(refresh); }
  protected refreshSchedulingDraftControls(): void { for (const refresh of this.schedulingRefreshers) refresh(); }
  protected refreshWorkflowActionButtonStates(): void { this.applyThemeColor(); }
  protected refreshWorkflowPickerSurfaceValues(): void { this.render(); }
- protected refreshMobileCoreButtons(): void { /* This host is desktop-only. */ }
+ protected refreshMobileCoreButtons(): void { /* Plain notes have no task toolbar. */ }
  protected async refreshTaskSource(): Promise<void> { this.render(); }
  protected async refreshDesktopFileProperties(): Promise<void> { this.render(); }
  protected getCompactTextSourcePath(): string { return this.options.file.path; }
@@ -388,20 +492,20 @@ export class NativePropertyEditor extends EditorPropertyFields {
 
  private scheduleSave(): void {
   this.cancelTimer();
-  if (!this.isEdited || this.disposed) return;
+  if (!this.isEdited || this.disposed || this.autosavePaused) return;
   this.timer = this.win.setTimeout(() => {
    this.timer = null;
    if (!this.saving) void this.persist();
   }, Math.max(0, this.nextSaveAt - Date.now()));
  }
 
- private persist(): Promise<boolean> {
+ private persist(expectedSource?: string): Promise<boolean> {
   if (this.saving) return this.saving;
   if (!this.isEdited) return Promise.resolve(true);
   const sent = this.draft.snapshot();
   for (const change of sent) this.submitted.add(change.name);
   this.saving = (async () => {
-   const result = await this.options.save(sent, () => !this.disposed).catch((): PropertyEditorSaveResult => ({ status: 'failed' }));
+   const result = await this.options.save(sent, () => !this.disposed, expectedSource).catch((): PropertyEditorSaveResult => ({ status: 'failed' }));
    this.submitted.clear();
    this.saving = null;
    if (this.disposed) return false;
@@ -413,14 +517,36 @@ export class NativePropertyEditor extends EditorPropertyFields {
     if (this.isEdited && this.timer === null) this.scheduleSave();
     return true;
    }
-   const text = t('taskEditor', result.status === 'conflict' ? 'propertyEditorConflict'
-    : result.status === 'unsupported' ? 'filePropertiesUnavailable' : 'propertyEditorSaveFailed');
-   if (this.message.hidden || this.message.textContent !== text) new Notice(text);
-   this.message.textContent = text;
-   this.message.hidden = false;
+   this.showSaveFailure(result.status);
    return false;
   })();
   return this.saving;
+ }
+
+ private showSaveFailure(status: Exclude<PropertyEditorSaveResult['status'], 'saved'>): void {
+  const text = t('taskEditor', status === 'conflict' ? 'propertyEditorConflict'
+   : status === 'unsupported' ? 'filePropertiesUnavailable' : 'propertyEditorSaveFailed');
+  if (this.message.hidden || this.message.textContent !== text) new Notice(text);
+  this.message.textContent = text;
+  this.message.hidden = false;
+ }
+
+ async pauseAutosave(): Promise<boolean> {
+  this.autosavePaused = true;
+  this.closePicker(false);
+  this.cancelTimer();
+  return this.saving ?? true;
+ }
+
+ resumeAutosave(): void {
+  this.autosavePaused = false;
+  if (this.message.hidden) this.scheduleSave();
+ }
+
+ async prepareConversion(before: string): Promise<string | null> {
+  const plan = planPropertyEditorWrite(before, this.settings.keyMappings, this.draft.snapshot());
+  if (plan.status !== 'ready') { this.showSaveFailure(plan.status); return null; }
+  return await this.persist(before) && !this.isEdited ? plan.text : null;
  }
 
  async prepareClose(): Promise<boolean> {
@@ -444,6 +570,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
  destroy(): void {
   this.disposed = true;
   this.interactionObserver.disconnect();
+  this.stopInteraction?.();
   this.root.removeEventListener('focusout', this.sourceFocusout);
   this.root.removeEventListener('click', this.clearAddingOnRowClick, true);
   this.closePicker();
@@ -452,8 +579,8 @@ export class NativePropertyEditor extends EditorPropertyFields {
   cleanupOperonHoverTooltips(this.root);
   this.root.closest('.operon-task-editor-modal')?.classList.remove('operon-task-editor-modal-source-wide', 'operon-task-editor-modal-has-source-context');
   this.root.empty();
-  this.root.removeClass('operon-task-editor', 'operon-property-editor');
-  for (const attribute of ['role', 'tabindex', 'aria-labelledby', 'data-operon-accessible-label-id']) this.root.removeAttribute(attribute);
+  this.root.removeClass('operon-task-editor', 'operon-property-editor', 'operon-task-editor-mobile', 'operon-task-editor-phone-desktop', 'operon-task-editor-touch-desktop');
+  for (const attribute of ['role', 'tabindex', 'aria-labelledby', 'data-operon-accessible-label-id', 'data-editor-input']) this.root.removeAttribute(attribute);
   this.root.style.removeProperty('--operon-task-editor-accent');
  }
 }

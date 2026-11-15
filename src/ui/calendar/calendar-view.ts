@@ -49,6 +49,7 @@ import {
 	resolveAnchoredAllDayMoveRange,
 } from './all-day-drag';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import { bindPropertyIcon } from '../property-icon-presentation';
 import { t, getCurrentLang } from '../../core/i18n';
 import { getAppLocale } from '../../core/obsidian-app';
 import { getNormalFilterSets, isSpecialDynamicFilterSet } from '../../core/dynamic-file-task-filter';
@@ -8267,16 +8268,13 @@ export class CalendarView extends ItemView {
 	): void {
 		const settings = this.getSettings();
 		const label = settings.keyMappings.find(mapping => mapping.canonicalKey === fieldKey)?.visiblePropertyName?.trim() || fieldKey;
-		const iconName = getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey];
 		const displayValue = formatUiDate(fieldValue, settings);
 		const indicator = container.createSpan('operon-calendar-sidebar-task-pool-date-indicator');
 		bindOperonHoverTooltip(indicator, {
 			content: `${label} ${displayValue}`,
 			taskColor: null,
 		});
-		if (iconName) {
-			setIcon(indicator, iconName);
-		}
+		bindPropertyIcon(indicator, () => getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey]);
 		setAccessibleLabelWithoutTooltip(indicator, `${label} ${displayValue}`);
 	}
 
@@ -8287,7 +8285,6 @@ export class CalendarView extends ItemView {
 	): void {
 		const settings = this.getSettings();
 		const label = settings.keyMappings.find(mapping => mapping.canonicalKey === fieldKey)?.visiblePropertyName?.trim() || fieldKey;
-		const iconName = getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey];
 		const h = Math.floor(seconds / 3600);
 		const m = Math.floor((seconds % 3600) / 60);
 		const formatted = h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -8296,9 +8293,7 @@ export class CalendarView extends ItemView {
 			content: `${label} ${formatted}`,
 			taskColor: null,
 		});
-		if (iconName) {
-			setIcon(indicator, iconName);
-		}
+		bindPropertyIcon(indicator, () => getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[fieldKey]);
 		setAccessibleLabelWithoutTooltip(indicator, `${label} ${formatted}`);
 	}
 
@@ -8311,7 +8306,7 @@ export class CalendarView extends ItemView {
 			taskColor: null,
 			preferredHorizontal: 'right',
 		});
-		setIcon(indicator, getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
+		bindPropertyIcon(indicator, () => getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
 		setAccessibleLabelWithoutTooltip(indicator, t('calendar', 'notes'));
 	}
 
@@ -12307,11 +12302,8 @@ export class CalendarView extends ItemView {
 		settings: OperonSettings,
 	): void {
 		const chip = container.createSpan('operon-calendar-multi-week-time-chip');
-		const iconName = getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings);
-		if (iconName) {
-			const iconWrap = chip.createSpan('operon-calendar-multi-week-time-chip-icon');
-			setIcon(iconWrap, iconName);
-		}
+		const iconWrap = chip.createSpan('operon-calendar-multi-week-time-chip-icon operon-property-icon-optional');
+		bindPropertyIcon(iconWrap, () => getConfiguredKeyMappingIcon(fieldKey, settings.keyMappings));
 		const label = this.resolveCalendarFieldLabel(fieldKey);
 		const value = formatUiTime(this.app, settings, this.buildDateMinuteValue(dateKey, minuteOfDay));
 		bindOperonHoverTooltip(chip, {

@@ -5,6 +5,8 @@ import { t } from '../core/i18n';
 import { resolveInlinePropertyDefinition, type InlinePropertyType } from '../core/inline-property-definitions';
 import { type InlinePropertySnapshot } from '../core/inline-property-source';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getSourcePropertyIcon } from '../core/property-icons';
+import { bindPropertyIcon } from './property-icon-presentation';
 import { localToday } from '../core/local-time';
 import { formatShortLocationCoordinate, parseLocationCoordinate } from '../core/location-coordinates';
 import { getLocationPlaceIndex } from '../core/location-source-resolver';
@@ -43,9 +45,9 @@ import {
 } from './compact-markdown-editor-surface';
 import { createInlineTaskCompactChipElement } from './compact-task-layout';
 import {
-	collectNativeFieldValueCandidates, getCheckboxPropertyIcon, getCheckboxPropertyTypeIcon, getCustomFieldIcon,
+	collectNativeFieldValueCandidates, getCheckboxPropertyIcon, getCustomFieldIcon,
 	getCustomFieldLabel,
-	getCustomFieldMapping, getNativePropertyIcon, isProjectedCustomFieldType,
+	getCustomFieldMapping, isProjectedCustomFieldType,
 	normalizeCustomFieldRawValue
 } from './custom-field-surfaces';
 import { areStringArraysEqual, formatTaskEditorDatetime, normalizeListValues, scheduleTaskEditorReminderFocus } from './editor-property-format';
@@ -78,6 +80,16 @@ export const DESKTOP_CORE_FIELDS = new Set([
 ]);
 export type EditorFileProperty = { field: TableFilePropertyField; baseline: RawYamlPropertyExpectation | null; value: unknown; inline?: InlinePropertySnapshot; readonly?: boolean; readOnlyReason?: NativePropertyReadOnlyReason; headerSelected?: boolean; pending?: boolean };
 export type EditorFieldDisplay = Pick<KeyMapping, 'canonicalKey' | 'visiblePropertyName' | 'type' | 'icon'>;
+export function resolveEditorWorkflowPickerIcon(key: string, mappings: KeyMapping[]): string {
+	const customMapping = getCustomFieldMapping(mappings, key);
+	if (customMapping) return getCustomFieldIcon(customMapping);
+	return getConfiguredKeyMappingIcon(key, mappings)
+		|| (TASK_CREATOR_FALLBACK_FIELD_ICONS as Record<string, string>)[key]
+		|| (INLINE_TASK_COMPACT_FALLBACK_ICONS as Record<string, string>)[key]
+		|| (key === 'related' ? 'link-2' : '')
+		|| 'circle-dot';
+}
+
 /** Shared field controls. Hosts own layout, persistence and task-only operations. */
 export abstract class EditorPropertyFields {
 	protected isListProperty(key: string): boolean {
@@ -86,14 +98,14 @@ export abstract class EditorPropertyFields {
 			|| getManagedTaskDataFieldPicker(key, this.settings.keyMappings)?.type === 'list';
 	}
 
-	protected createPropertyRow(container: HTMLElement, key: string, name: string, icon: string, list: boolean): {
+	protected createPropertyRow(container: HTMLElement, key: string, name: string, icon: () => string, list: boolean): {
 		row: HTMLElement; label: HTMLButtonElement; value: HTMLElement;
 	} {
 		const row = container.createDiv('operon-editor-desktop-property-row');
 		row.dataset.propertyKey = key;
 		row.toggleClass('is-list-property', list);
 		const label = row.createEl('button', { cls: 'operon-editor-desktop-property-label', attr: { type: 'button' } });
-		setIcon(label.createSpan('operon-editor-desktop-property-icon'), icon);
+		bindPropertyIcon(label.createSpan('operon-editor-desktop-property-icon'), icon);
 		label.createSpan({ text: name, cls: 'operon-editor-desktop-property-name' });
 		const value = row.createDiv('operon-editor-desktop-property-value');
 		return { row, label, value };
@@ -179,10 +191,8 @@ export abstract class EditorPropertyFields {
 	}
 
 	protected appendCanonicalIcon(target: HTMLElement, canonicalKey: string, className: string): void {
-		const iconId = this.getCoreFieldIcon(canonicalKey);
-		if (!iconId) return;
-		const iconWrap = target.createSpan(className);
-		setIcon(iconWrap, iconId);
+		const iconWrap = target.createSpan(`${className} operon-property-icon-optional`);
+		bindPropertyIcon(iconWrap, () => this.getCoreFieldIcon(canonicalKey));
 	}
 
 	protected getCoreFieldIcon(canonicalKey: string): string {
@@ -201,11 +211,8 @@ export abstract class EditorPropertyFields {
 		button.empty();
 		button.removeClass('has-weekday');
 		if (options.isEmpty || options.showIcon === true) {
-			const iconId = this.getCoreFieldIcon(options.canonicalKey);
-			if (iconId) {
-				const iconWrap = button.createSpan('operon-editor-picker-button-leading-icon');
-				setIcon(iconWrap, iconId);
-			}
+			const iconWrap = button.createSpan('operon-editor-picker-button-leading-icon operon-property-icon-optional');
+			bindPropertyIcon(iconWrap, () => this.getCoreFieldIcon(options.canonicalKey));
 		}
 		button.createSpan({ text: options.text, cls: 'operon-editor-picker-button-text' });
 	}
@@ -307,7 +314,7 @@ export abstract class EditorPropertyFields {
 	protected createPickerAnchor(
 		container: HTMLElement,
 		placeholder: string,
-		options?: { leadingIcon?: string },
+		options?: { leadingIcon?: () => string },
 	): HTMLButtonElement {
 		const button = container.createEl('button', {
 			cls: 'operon-editor-picker-anchor',
@@ -318,7 +325,7 @@ export abstract class EditorPropertyFields {
 		const main = button.createSpan('operon-editor-picker-anchor-main');
 		if (options?.leadingIcon) {
 			const leadingIconWrap = main.createSpan('operon-editor-picker-anchor-leading-icon');
-			setIcon(leadingIconWrap, options.leadingIcon);
+			bindPropertyIcon(leadingIconWrap, options.leadingIcon);
 		}
 		const text = main.createSpan({
 			text: placeholder,
@@ -431,7 +438,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-tags-setting', 'operon-editor-tags-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack operon-editor-tags-stack');
 		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'tags'), {
-			leadingIcon: this.resolveCompactChipIcon('tags'),
+			leadingIcon: () => this.resolveCompactChipIcon('tags'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-tag-selection-row');
 
@@ -571,12 +578,10 @@ export abstract class EditorPropertyFields {
 	protected refreshDesktopPropertyIcon(key: string, row: HTMLElement, hasValue: boolean): void {
 		const icon = row.querySelector<HTMLElement>('.operon-editor-desktop-property-icon');
 		if (!icon) return;
-		const selected = key === 'taskIcon' ? this.fieldValues['taskIcon']?.trim() : '';
-		const iconId = selected && getIcon(selected) ? selected : this.resolveWorkflowPickerIcon(key);
-		if (icon.dataset.iconId !== iconId) {
-			setIcon(icon, iconId);
-			icon.dataset.iconId = iconId;
-		}
+		bindPropertyIcon(icon, () => {
+			const selected = key === 'taskIcon' ? this.fieldValues['taskIcon']?.trim() : '';
+			return selected && getIcon(selected) ? selected : this.resolveWorkflowPickerIcon(key);
+		});
 		icon.toggleClass('has-value', hasValue);
 		const color = key === 'taskColor' ? this.fieldValues['taskColor']?.trim().replace(/^#/, '') : '';
 		if (color && /^[0-9a-f]{6}$/i.test(color)) icon.style.color = `#${color}`;
@@ -597,7 +602,10 @@ export abstract class EditorPropertyFields {
 		const customMapping = getCustomFieldMapping(this.settings.keyMappings, key);
 		if (customMapping) return getCustomFieldLabel(customMapping);
 		if (key === 'tags') return t('taskEditor', 'tags');
-		if (key === 'contexts') return t('taskEditor', 'contexts');
+		if (key === 'contexts') {
+			const name = getVisiblePropertyName(key, this.settings.keyMappings);
+			return name === key ? t('taskEditor', 'contexts') : name;
+		}
 		if (key === 'assignees') return t('taskEditor', 'assignees');
 		if (key === 'location') return t('location', 'location');
 		if (key === 'links') return t('taskEditor', 'links');
@@ -613,13 +621,7 @@ export abstract class EditorPropertyFields {
 	}
 
 	protected resolveWorkflowPickerIcon(key: string): string {
-		const customMapping = getCustomFieldMapping(this.settings.keyMappings, key);
-		if (customMapping) return getCustomFieldIcon(customMapping);
-		return getConfiguredKeyMappingIcon(key, this.settings.keyMappings)
-			|| (TASK_CREATOR_FALLBACK_FIELD_ICONS as Record<string, string>)[key]
-			|| (INLINE_TASK_COMPACT_FALLBACK_ICONS as Record<string, string>)[key]
-			|| (key === 'related' ? 'link-2' : '')
-			|| 'circle-dot';
+		return resolveEditorWorkflowPickerIcon(key, this.settings.keyMappings);
 	}
 
 	protected hasWorkflowPickerValue(key: string): boolean {
@@ -813,7 +815,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-editor-inline-picker-setting', 'operon-editor-managed-task-data-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, field.label, {
-			leadingIcon: getConfiguredKeyMappingIcon(field.canonicalKey, this.settings.keyMappings) || 'circle-dot',
+			leadingIcon: () => getConfiguredKeyMappingIcon(field.canonicalKey, this.settings.keyMappings) || 'circle-dot',
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-managed-task-data-selection-row');
 		let closePicker: (() => void) | null = null;
@@ -916,7 +918,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-editor-inline-picker-setting', 'operon-editor-custom-field-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, label, {
-			leadingIcon: getCustomFieldIcon(mapping),
+			leadingIcon: () => this.resolveWorkflowPickerIcon(mapping.canonicalKey),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-custom-field-selection-row');
 		let closePicker: (() => void) | null = null;
@@ -1368,7 +1370,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-assignees-setting', 'operon-editor-assignees-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'assignees'), {
-			leadingIcon: this.resolveCompactChipIcon('assignees'),
+			leadingIcon: () => this.resolveCompactChipIcon('assignees'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-assignee-selection-row');
 
@@ -1443,7 +1445,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-location-setting', 'operon-editor-location-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack operon-editor-location-stack');
 		const anchor = this.createPickerAnchor(stack, t('location', 'location'), {
-			leadingIcon: this.resolveCompactChipIcon('location'),
+			leadingIcon: () => this.resolveCompactChipIcon('location'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-location-selection-row');
 		const locationResolver = getLocationPlaceIndex(this.app, this.settings).resolve;
@@ -1551,7 +1553,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-links-setting', 'operon-editor-links-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'links'), {
-			leadingIcon: this.resolveCompactChipIcon('links'),
+			leadingIcon: () => this.resolveCompactChipIcon('links'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-link-selection-row');
 
@@ -1626,7 +1628,7 @@ export abstract class EditorPropertyFields {
 		setting.settingEl.addClass('operon-related-setting', 'operon-editor-inline-picker-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack');
 		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'related'), {
-			leadingIcon: this.resolveWorkflowPickerIcon('related'),
+			leadingIcon: () => this.resolveWorkflowPickerIcon('related'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-related-selection-row');
 
@@ -1720,8 +1722,8 @@ export abstract class EditorPropertyFields {
 		const setting = new Setting(group);
 		setting.settingEl.addClass('operon-contexts-setting', 'operon-editor-contexts-setting');
 		const stack = setting.controlEl.createDiv('operon-editor-picker-stack operon-editor-contexts-stack');
-		const anchor = this.createPickerAnchor(stack, t('taskEditor', 'contexts'), {
-			leadingIcon: this.resolveCompactChipIcon('contexts'),
+		const anchor = this.createPickerAnchor(stack, this.getWorkflowPickerLabel('contexts'), {
+			leadingIcon: () => this.resolveCompactChipIcon('contexts'),
 		});
 		const selectedWrap = stack.createDiv('operon-editor-picker-selected operon-editor-context-selection-row');
 
@@ -2362,11 +2364,11 @@ export abstract class EditorPropertyFields {
 		const automatic = reason === 'automatic';
 		surface.row.toggleClass('is-automatic-property', automatic);
 		surface.action.toggleClass('is-automatic-property', automatic);
-		surface.action.empty();
-		const valueIcon = entry.field.type === 'checkbox' ? getCheckboxPropertyIcon(entry.value, entry.field.icon) : entry.field.icon;
-		setIcon(surface.action, automatic ? 'shield-alert' : valueIcon);
+		const propertyIcon = () => this.resolveNativePropertyIcon(name, entry.field.type);
+		bindPropertyIcon(surface.action, () => automatic ? 'shield-alert'
+			: entry.field.type === 'checkbox' ? getCheckboxPropertyIcon(entry.value, propertyIcon()) : propertyIcon());
 		const icon = surface.row.querySelector<HTMLElement>('.operon-editor-desktop-property-icon');
-		if (icon) { icon.empty(); setIcon(icon, automatic ? 'shield-alert' : valueIcon); }
+		if (icon) bindPropertyIcon(icon, () => automatic ? 'shield-alert' : propertyIcon());
 		if (reason) bindPropertyReadOnlyWarning(surface.action, name, reason, () => this.getThemeColor());
 		else this.bindEditorHoverTooltip(surface.action, { content: name, taskColor: () => this.getThemeColor() });
 		const labelName = label?.querySelector<HTMLElement>('.operon-editor-desktop-property-name') ?? null;
@@ -2465,10 +2467,14 @@ export abstract class EditorPropertyFields {
 		catch { return false; }
 	}
 
+	protected resolveNativePropertyIcon(name: string, type: TableFilePropertyField['type']): string {
+		return getSourcePropertyIcon(this.settings, name, getTableFilePropertyTypeIcon(type));
+	}
+
 	protected nativePropertyField(name: string, type: InlinePropertyType): TableFilePropertyField {
 		return {
 			key: encodeFilePropertyColumnKey(name)!, label: name, propertyName: name, type, sourceType: type === 'list' ? 'multitext' : type,
-			group: 'fileProperty', icon: type === 'checkbox' ? getCheckboxPropertyTypeIcon(this.settings.keyMappings, name) : getNativePropertyIcon(this.settings.keyMappings, name, getTableFilePropertyTypeIcon(type)), readonly: false, aliases: [], sourceFileCount: 1
+			group: 'fileProperty', icon: this.resolveNativePropertyIcon(name, type), readonly: false, aliases: [], sourceFileCount: 1
 		};
 	}
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -327,6 +327,7 @@
       "openCalendar": "Calendrier Operon",
       "openCanvasPropertyValuePool": "Ouvrir la réserve de valeurs de propriétés Canvas",
       "openCanvasTaskPool": "Ouvrir la réserve de tâches Canvas",
+      "openCurrentFileEditor": "Ouvrir l’éditeur de tâches ou de propriétés du fichier actuel",
       "openDuplicateOperonIdManager": "Ouvrir le gestionnaire des doublons d'operonId",
       "openExcalidrawPropertyPool": "Ouvrir Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Ouvrir le réservoir de tâches Excalidraw",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "Sélectionnez des éléments de liste à convertir.",
       "convertSelectionToOperonTasksSingleSelection": "Sélectionnez une seule plage de liste continue à convertir.",
       "convertSelectionToOperonTasksSummary": "{{converted}} éléments convertis, {{linked}} sous-tâches liées, {{skipped}} lignes ignorées.",
+      "convertedEditorUnavailable": "Le fichier a été converti. L’éditeur de tâches n’est pas encore prêt.",
       "createdFileTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
       "createdInlineTaskOpenFailed": "La tâche a été créée, mais sa vue n’a pas pu être ouverte.",
       "creatorFileTaskCreateFailed": "Échec de la création de la tâche-fichier depuis le créateur.",
       "creatorPostCreateFinalizeFailed": "La tâche a été créée, mais la configuration de suivi a échoué.",
+      "currentFileEditorUnavailable": "Impossible de vérifier le fichier actuel pour l’ouvrir dans l’éditeur.",
       "currentLineAlreadyOperonInlineTask": "La ligne actuelle est déjà une tâche en ligne Operon.",
       "currentLineNotPlainCheckbox": "La ligne actuelle n'est pas une simple tâche à case à cocher.",
       "currentLineNotSupportedTasksEmoji": "La ligne actuelle n'est pas une tâche emoji Tasks prise en charge.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Définissez des séries visuelles en lecture seule pour un arbre de tâches parent. Le vrai operonId ne change pas. Les préfixes utilisent 1 à 5 lettres ASCII et conservent la casse saisie; le tiret est automatique. Les lettres et les chiffres totalisent toujours 7 caractères, tiret exclu. Les séries imbriquées priment sur les séries parentes; les numéros générés sont automatiques, persistants et non modifiables manuellement.",
       "projectSerialsEmpty": "Aucune Project Serial pour le moment.",
+      "propertyIconChange": "Modifier l’icône de {{name}}",
+      "propertyIconSaveFailed": "Impossible d’enregistrer l’icône de {{name}}.",
+      "propertyIconUnavailable": "Impossible d’identifier la propriété {{name}}. Rouvrez le sélecteur d’icônes.",
       "propertyPoolAddFavorite": "Ajouter aux favoris",
       "propertyPoolAllValues": "Toutes les valeurs",
       "propertyPoolAlreadyPresent": "Déjà présent.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Icône",
       "taskCreatorToolbarTooltip_taskImage": "Image de tâche",
       "taskCreatorToolbarTooltip_taskType": "Type de tâche",
+      "taskEditorAddSection": "Ajouter une section",
       "taskEditorFileShowSource": "Ouvrir la source avec l’éditeur de tâche fichier",
       "taskEditorFileShowSourceDesc": "Afficher la source à côté de l’éditeur lors de l’ouverture d’une tâche fichier sur ordinateur.",
       "taskEditorInlineShowSource": "Ouvrir la source avec l’éditeur de tâche en ligne",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "Choisissez le côté des nouveaux espaces sur ordinateur. Les espaces ouverts conservent leur position. Les barres de commandes des autres lightboxes suivent aussi le côté choisi.",
       "taskEditorPositionLeft": "Gauche",
       "taskEditorPositionRight": "Droite",
+      "taskEditorRemoveProperty": "Retirer la propriété de la section",
+      "taskEditorRemoveSection": "Supprimer la section",
+      "taskEditorRemoveSectionConfirm": "Supprimer {{name}} ? Ses propriétés retourneront dans {{additional}}.",
+      "taskEditorSectionName": "Nom de la section",
       "taskEditorSections": "Sections et ordre",
-      "taskEditorSectionsDesc": "Renommez et réorganisez les sections de Task Editor. Laissez un nom vide pour rétablir le nom par défaut. Concerne la disposition sur ordinateur.",
+      "taskEditorSectionsDesc": "Organisez les sections, attribuez les propriétés et ordonnez les commandes dans les éditeurs de tâches et de propriétés.",
       "taskEditorSectionsSaveFailed": "Impossible d’enregistrer les sections de Task Editor.",
       "taskEditorUseMobileLayout": "Utiliser le Task Editor mobile sur téléphone",
       "taskEditorUseMobileLayoutDesc": "Lorsque cette option est activée, les téléphones utilisent la disposition mobile et ses réglages. Sinon, ils utilisent la disposition de bureau et ses réglages. Le changement prend effet à la prochaine ouverture de Task Editor ; les tablettes et ordinateurs ne sont pas affectés.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "Zinc",
       "colorToneStrip": "Bande de nuances",
       "contexts": "Contextes",
+      "convertNoteToFileTask": "Convertir en tâche de fichier Operon",
       "convertToPlainBlocked": "Supprimez d’abord ces relations Operon ou états de tâche : {{items}}.",
       "convertToPlainBlockerActiveTimer": "Minuteur actif",
       "convertToPlainBlockerBlockedBy": "Bloquée par",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d322ddef422b142dccd12ddb5339961b5e061c6f1f3671c7321481be48e2c112"
+  "sourceVersion": "c90891a6b99141946c77130916d58670834123641c7a54e4beabd3b72ae97052"
 }

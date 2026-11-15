@@ -327,7 +327,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('ui', 'interfaceTaskEditor', 'taskEditorPosition', 'settings', 'taskEditorPosition', 'taskEditorPositionDesc', 'dropdown', ['task editor', 'layout', 'opening', 'left right position']),
 	e('ui', 'interfaceTaskEditor', 'taskEditorFileShowSource', 'settings', 'taskEditorFileShowSource', 'taskEditorFileShowSourceDesc', 'toggle', ['task editor', 'layout', 'opening', 'file task source']),
 	e('ui', 'interfaceTaskEditor', 'taskEditorInlineShowSource', 'settings', 'taskEditorInlineShowSource', 'taskEditorInlineShowSourceDesc', 'toggle', ['task editor', 'layout', 'opening', 'inline task source']),
-	e('ui', 'interfaceTaskEditor', 'taskEditorSections', 'settings', 'taskEditorSections', 'taskEditorSectionsDesc', 'render', ['sections', 'rename', 'order', 'task editor']),
+	e('ui', 'interfaceTaskEditor', 'taskEditorSections', 'settings', 'taskEditorSections', 'taskEditorSectionsDesc', 'render', ['sections', 'rename', 'order', 'add section', 'add property', 'commands', 'property editor', 'task editor']),
 	section('ui', 'mobileTaskEditor', 'taskEditorWorkflowPickers', 'settings', 'taskEditorWorkflowPickers', 'taskEditorWorkflowPickersDesc', ['task editor', 'task editor pickers', 'workflow pickers']),
 	section('ui', 'interfaceLocationMap', 'locationPlaceVisualProperties', 'settings', 'locationPlaceVisualPropertiesSection', 'locationPlaceVisualPropertiesSectionDesc', ['location', 'map', 'place note visuals', 'marker icon', 'marker color']),
 	e('ui', 'interfaceLocationMap', 'locationPlaceIconPropertyName', 'settings', 'locationPlaceIconPropertyName', 'locationPlaceIconPropertyNameDesc', 'text', ['location', 'map', 'place note icon', 'marker icon', 'icon property']),

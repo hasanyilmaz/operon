@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -327,6 +327,7 @@
       "openCalendar": "Operon 日曆",
       "openCanvasPropertyValuePool": "開啟 Canvas 屬性值池",
       "openCanvasTaskPool": "開啟 Canvas 任務池",
+      "openCurrentFileEditor": "開啟目前檔案的任務或屬性編輯器",
       "openDuplicateOperonIdManager": "開啟重複 operonId 管理器",
       "openExcalidrawPropertyPool": "開啟 Excalidraw Property Pool",
       "openExcalidrawTaskPool": "開啟 Excalidraw 任務池",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "請選擇要轉換的列表項。",
       "convertSelectionToOperonTasksSingleSelection": "請選擇一個連續的列表範圍進行轉換。",
       "convertSelectionToOperonTasksSummary": "已轉換 {{converted}} 項，關聯 {{linked}} 個子任務，跳過 {{skipped}} 行。",
+      "convertedEditorUnavailable": "檔案已轉換。任務編輯器尚未就緒。",
       "createdFileTaskOpenFailed": "任務已建立，但無法開啟其檢視。",
       "createdInlineTaskOpenFailed": "任務已建立，但無法開啟其檢視。",
       "creatorFileTaskCreateFailed": "從建立器建立檔案任務失敗。",
       "creatorPostCreateFinalizeFailed": "任務已建立，但後續設定失敗。",
+      "currentFileEditorUnavailable": "無法驗證目前檔案以在編輯器中開啟。",
       "currentLineAlreadyOperonInlineTask": "當前行已經是 Operon 行內任務。",
       "currentLineNotPlainCheckbox": "當前行不是普通核取方塊任務。",
       "currentLineNotSupportedTasksEmoji": "當前行不是受支援的 Tasks 表情符號任務。",
@@ -2371,6 +2374,9 @@
       "projectSerials": "專案序列",
       "projectSerialsDesc": "為父任務樹定義只讀的可視序列。真實的 operonId 保持不變。字首使用 1-5 個 ASCII 字母並保留你的大小寫；連字元為自動新增。字母加數字始終共 7 個字元（不含連字元）。巢狀序列優先於父序列，生成的編號是自動、持久且無法手動編輯的。",
       "projectSerialsEmpty": "尚無專案序列。",
+      "propertyIconChange": "變更 {{name}} 的圖示",
+      "propertyIconSaveFailed": "無法儲存 {{name}} 的圖示。",
+      "propertyIconUnavailable": "無法確認屬性 {{name}}。請重新開啟圖示選擇器。",
       "propertyPoolAddFavorite": "加入收藏",
       "propertyPoolAllValues": "所有值",
       "propertyPoolAlreadyPresent": "已存在。",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "圖示",
       "taskCreatorToolbarTooltip_taskImage": "任務圖片",
       "taskCreatorToolbarTooltip_taskType": "任務類型",
+      "taskEditorAddSection": "新增區段",
       "taskEditorFileShowSource": "編輯檔案任務時開啟來源檔案",
       "taskEditorFileShowSourceDesc": "在桌面版開啟檔案任務時，在編輯器旁顯示來源檔案。",
       "taskEditorInlineShowSource": "編輯行內任務時開啟來源檔案",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "選擇桌面版新開啟的工作區所在側。已開啟的工作區保持原位置。 其他燈箱的控制列也會放在所選的一側。",
       "taskEditorPositionLeft": "左側",
       "taskEditorPositionRight": "右側",
+      "taskEditorRemoveProperty": "從區段移除屬性",
+      "taskEditorRemoveSection": "移除區段",
+      "taskEditorRemoveSectionConfirm": "要移除「{{name}}」嗎？其中的屬性將移回「{{additional}}」。",
+      "taskEditorSectionName": "區段名稱",
       "taskEditorSections": "區段與順序",
-      "taskEditorSectionsDesc": "重新命名並排列 Task Editor 區段。名稱留空可還原預設名稱。適用於桌面配置。",
+      "taskEditorSectionsDesc": "為任務編輯器和屬性編輯器排列區段、分配屬性及調整命令順序。",
       "taskEditorSectionsSaveFailed": "無法儲存 Task Editor 區段。",
       "taskEditorUseMobileLayout": "在手機上使用行動版 Task Editor",
       "taskEditorUseMobileLayoutDesc": "啟用後，手機使用行動版面及其設定；關閉後，使用桌面版面及其設定。下次開啟 Task Editor 時生效，不影響平板及桌面裝置。",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "鋅灰色",
       "colorToneStrip": "色調條",
       "contexts": "上下文",
+      "convertNoteToFileTask": "轉換為 Operon 檔案任務",
       "convertToPlainBlocked": "請先移除以下 Operon 關係或任務狀態：{{items}}。",
       "convertToPlainBlockerActiveTimer": "作用中的計時器",
       "convertToPlainBlockerBlockedBy": "阻止此任務的相依關係",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "f227976b22ebc5a505a122f6641abae1b6a829f1c3f1c038b0f82d0deb130778"
+  "sourceVersion": "c9c339b0a425cff7797a9b90841f51bc7916ae86dbf20a509c0a1b5ef80269d5"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -327,6 +327,7 @@
       "openCalendar": "Operon-Kalender",
       "openCanvasPropertyValuePool": "Canvas-Eigenschaftswerte-Pool öffnen",
       "openCanvasTaskPool": "Canvas-Aufgabenpool öffnen",
+      "openCurrentFileEditor": "Aufgaben- oder Eigenschafteneditor der aktuellen Datei öffnen",
       "openDuplicateOperonIdManager": "Manager für doppelte operonIds öffnen",
       "openExcalidrawPropertyPool": "Excalidraw Property Pool öffnen",
       "openExcalidrawTaskPool": "Excalidraw-Aufgabenpool öffnen",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "Wähle Listenelemente zum Umwandeln.",
       "convertSelectionToOperonTasksSingleSelection": "Wähle einen zusammenhängenden Listenbereich zum Umwandeln.",
       "convertSelectionToOperonTasksSummary": "{{converted}} Elemente umgewandelt, {{linked}} Unteraufgaben verknüpft, {{skipped}} Zeilen übersprungen.",
+      "convertedEditorUnavailable": "Die Datei wurde umgewandelt. Der Aufgabeneditor ist noch nicht bereit.",
       "createdFileTaskOpenFailed": "Die Aufgabe wurde erstellt, ihre Ansicht konnte jedoch nicht geöffnet werden.",
       "createdInlineTaskOpenFailed": "Die Aufgabe wurde erstellt, aber ihre Ansicht konnte nicht geöffnet werden.",
       "creatorFileTaskCreateFailed": "Die Datei-Aufgabe konnte über den Aufgaben-Ersteller nicht erstellt werden.",
       "creatorPostCreateFinalizeFailed": "Aufgabe wurde erstellt, aber die nachfolgende Einrichtung ist fehlgeschlagen.",
+      "currentFileEditorUnavailable": "Die aktuelle Datei konnte zum Öffnen im Editor nicht überprüft werden.",
       "currentLineAlreadyOperonInlineTask": "Die aktuelle Zeile ist bereits eine Operon-Inline-Aufgabe.",
       "currentLineNotPlainCheckbox": "Die aktuelle Zeile ist keine einfache Kontrollkästchen-Aufgabe.",
       "currentLineNotSupportedTasksEmoji": "Die aktuelle Zeile ist keine unterstützte Tasks-Emoji-Aufgabe.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Definiere schreibgeschützte visuelle Serien für einen übergeordneten Aufgabenbaum. Die echte operonId bleibt unverändert. Präfixe verwenden 1-5 ASCII-Buchstaben und behalten die eingegebene Groß-/Kleinschreibung; der Bindestrich wird automatisch ergänzt. Buchstaben plus Zahlen ergeben immer 7 Zeichen, ohne Bindestrich. Verschachtelte Serien haben Vorrang vor Elternserien; generierte Nummern sind automatisch, dauerhaft und nicht manuell bearbeitbar.",
       "projectSerialsEmpty": "Noch keine Project Serials.",
+      "propertyIconChange": "Symbol für {{name}} ändern",
+      "propertyIconSaveFailed": "Das Symbol für {{name}} konnte nicht gespeichert werden.",
+      "propertyIconUnavailable": "Das Feld {{name}} kann nicht eindeutig zugeordnet werden. Öffne die Auswahl erneut.",
       "propertyPoolAddFavorite": "Favorit hinzufügen",
       "propertyPoolAllValues": "Alle Werte",
       "propertyPoolAlreadyPresent": "Bereits vorhanden.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Symbol",
       "taskCreatorToolbarTooltip_taskImage": "Aufgabenbild",
       "taskCreatorToolbarTooltip_taskType": "Aufgabentyp",
+      "taskEditorAddSection": "Abschnitt hinzufügen",
       "taskEditorFileShowSource": "Quelle mit dem Dateiaufgaben-Editor öffnen",
       "taskEditorFileShowSourceDesc": "Beim Öffnen einer Dateiaufgabe auf dem Desktop die Quelle neben dem Editor anzeigen.",
       "taskEditorInlineShowSource": "Quelle mit dem Inline-Aufgaben-Editor öffnen",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "Wähle die Seite für neu geöffnete Desktop-Arbeitsflächen. Offene Arbeitsflächen behalten ihre Position. Auch die Steuerleisten anderer Lightboxen folgen der gewählten Seite.",
       "taskEditorPositionLeft": "Links",
       "taskEditorPositionRight": "Rechts",
+      "taskEditorRemoveProperty": "Eigenschaft aus Abschnitt entfernen",
+      "taskEditorRemoveSection": "Abschnitt entfernen",
+      "taskEditorRemoveSectionConfirm": "{{name}} entfernen? Die Eigenschaften werden wieder unter {{additional}} angezeigt.",
+      "taskEditorSectionName": "Abschnittsname",
       "taskEditorSections": "Abschnitte und Reihenfolge",
-      "taskEditorSectionsDesc": "Task-Editor-Abschnitte umbenennen und anordnen. Für den Standardnamen das Feld leer lassen. Gilt für das Desktop-Layout.",
+      "taskEditorSectionsDesc": "Abschnitte, Eigenschaftszuordnungen und Befehlsreihenfolge für Aufgaben- und Eigenschaftseditor festlegen.",
       "taskEditorSectionsSaveFailed": "Task-Editor-Abschnitte konnten nicht gespeichert werden.",
       "taskEditorUseMobileLayout": "Mobilen Task Editor auf Smartphones verwenden",
       "taskEditorUseMobileLayoutDesc": "Wenn aktiviert, verwenden Smartphones das mobile Layout und dessen Einstellungen. Andernfalls verwenden sie das Desktop-Layout und dessen Einstellungen. Gilt beim nächsten Öffnen des Task Editors; Tablets und Desktopgeräte bleiben unverändert.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "Zink",
       "colorToneStrip": "Farbtonleiste",
       "contexts": "Kontexte",
+      "convertNoteToFileTask": "In Operon-Dateiaufgabe umwandeln",
       "convertToPlainBlocked": "Entferne zuerst diese Operon-Beziehungen oder Aufgabenzustände: {{items}}.",
       "convertToPlainBlockerActiveTimer": "Aktiver Timer",
       "convertToPlainBlockerBlockedBy": "Blockiert durch",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "5e05c00bdbfe2aa7e4265ac94c28033443a4b39dbbba2d88f84a66d9c0f14210"
+  "sourceVersion": "3da9ee94882b5f76d6d8a7b6d3d94e3881138ea46ddfea1bdd01b0746c12e062"
 }

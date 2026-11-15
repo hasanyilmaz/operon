@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3841,
-  "keyFingerprint": "bed8e41f59d57ff8340e219f716960ecd7cd3666a741e772495b808b768c4ae5",
+  "keyCount": 3853,
+  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -327,6 +327,7 @@
       "openCalendar": "Operon Takvimi'ni aç",
       "openCanvasPropertyValuePool": "Canvas Property Value Pool aç",
       "openCanvasTaskPool": "Canvas Task Pool aç",
+      "openCurrentFileEditor": "Geçerli dosyanın Görev / Özellik Düzenleyicisini aç",
       "openDuplicateOperonIdManager": "Çakışan operonId yöneticisini aç",
       "openExcalidrawPropertyPool": "Excalidraw Property Pool’u aç",
       "openExcalidrawTaskPool": "Excalidraw Görev Havuzunu aç",
@@ -872,10 +873,12 @@
       "convertSelectionToOperonTasksSelectListItems": "Dönüştürmek için liste öğeleri seç.",
       "convertSelectionToOperonTasksSingleSelection": "Dönüştürmek için tek ve kesintisiz bir liste aralığı seç.",
       "convertSelectionToOperonTasksSummary": "{{converted}} öğe dönüştürüldü, {{linked}} alt görev bağlandı, {{skipped}} satır atlandı.",
+      "convertedEditorUnavailable": "Dosya dönüştürüldü. Görev Düzenleyici henüz hazır değil.",
       "createdFileTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
       "createdInlineTaskOpenFailed": "Görev oluşturuldu ancak görünümü açılamadı.",
       "creatorFileTaskCreateFailed": "Görev oluşturucu üzerinden dosya görevi oluşturulamadı.",
       "creatorPostCreateFinalizeFailed": "Görev oluşturuldu, ancak takip kurulumu başarısız oldu.",
+      "currentFileEditorUnavailable": "Geçerli dosyanın kimliği düzenleyicide açmak için doğrulanamadı.",
       "currentLineAlreadyOperonInlineTask": "Bu satır zaten Operon satır içi görev.",
       "currentLineNotPlainCheckbox": "Bu satır düz bir onay kutusu görevi değil.",
       "currentLineNotSupportedTasksEmoji": "Bu satır desteklenen bir Tasks emoji görev değil.",
@@ -2371,6 +2374,9 @@
       "projectSerials": "Project Serials",
       "projectSerialsDesc": "Bir üst görev ağacı için salt-okunur görsel seri tanımla. Gerçek operonId değişmez. Prefix 1-5 ASCII harften oluşur ve yazdığın büyük/küçük harf korunur; tire otomatik eklenir. Harfler ve sayılar toplamda her zaman 7 karakterdir, tire hariçtir. İç içe seriler üst seriye baskın gelir; üretilen numaralar otomatik, kalıcı ve manuel düzenlenemez.",
       "projectSerialsEmpty": "Henüz project serial yok.",
+      "propertyIconChange": "{{name}} simgesini değiştir",
+      "propertyIconSaveFailed": "{{name}} alanının simgesi kaydedilemedi.",
+      "propertyIconUnavailable": "{{name}} alanı doğrulanamadı. Simge seçiciyi yeniden açın.",
       "propertyPoolAddFavorite": "Favoriye ekle",
       "propertyPoolAllValues": "Tüm değerler",
       "propertyPoolAlreadyPresent": "Zaten mevcut.",
@@ -2834,6 +2840,7 @@
       "taskCreatorToolbarTooltip_taskIcon": "Simge",
       "taskCreatorToolbarTooltip_taskImage": "Görev Görseli",
       "taskCreatorToolbarTooltip_taskType": "Görev Türü",
+      "taskEditorAddSection": "Bölüm ekle",
       "taskEditorFileShowSource": "File task editörüyle kaynağı aç",
       "taskEditorFileShowSourceDesc": "Masaüstünde bir file task açarken kaynağı editörün yanında göster.",
       "taskEditorInlineShowSource": "Inline task editörüyle kaynağı aç",
@@ -2848,8 +2855,12 @@
       "taskEditorPositionDesc": "Masaüstünde yeni açılan çalışma yüzeyinin tarafını seçin. Açık yüzeyler konumunu korur. Diğer lightbox’ların kontrol şeritleri de seçilen tarafa yerleşir.",
       "taskEditorPositionLeft": "Sol",
       "taskEditorPositionRight": "Sağ",
+      "taskEditorRemoveProperty": "Alanı bölümden kaldır",
+      "taskEditorRemoveSection": "Bölümü kaldır",
+      "taskEditorRemoveSectionConfirm": "{{name}} kaldırılsın mı? Alanları {{additional}} bölümüne dönecek.",
+      "taskEditorSectionName": "Bölüm adı",
       "taskEditorSections": "Bölümler ve Sıralama",
-      "taskEditorSectionsDesc": "Task Editor bölümlerini yeniden adlandırın ve sıralayın. Varsayılan adı geri yüklemek için adı boş bırakın. Masaüstü düzenine uygulanır.",
+      "taskEditorSectionsDesc": "Görev Düzenleyici ve Özellik Düzenleyici için bölümleri, alan atamalarını ve komut sırasını düzenleyin.",
       "taskEditorSectionsSaveFailed": "Task Editor bölümleri kaydedilemedi.",
       "taskEditorUseMobileLayout": "Telefonlarda mobil Task Editor kullan",
       "taskEditorUseMobileLayoutDesc": "Açıkken telefonlar mobil düzeni ve ayarlarını kullanır. Kapalıyken masaüstü düzenini ve ayarlarını kullanır. Sonraki Task Editor açılışında uygulanır; tabletleri ve masaüstünü etkilemez.",
@@ -3390,6 +3401,7 @@
       "colorNameZinc": "Çinko",
       "colorToneStrip": "Renk ton şeridi",
       "contexts": "Bağlamlar",
+      "convertNoteToFileTask": "Operon Dosya Görevine dönüştür",
       "convertToPlainBlocked": "Önce şu Operon ilişkilerini veya görev durumlarını kaldırın: {{items}}.",
       "convertToPlainBlockerActiveTimer": "Etkin zamanlayıcı",
       "convertToPlainBlockerBlockedBy": "Görevi engelleyen bağımlılıklar",
@@ -3886,5 +3898,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "04983f4bb17db3b6492f58c2153ae8d2785c5f48158acebd3fe8f77a83d36e1b"
+  "sourceVersion": "4873f8fb7462803a616cb461e06bacf6bed11e7e7456f1ffe8de08d5d7536917"
 }

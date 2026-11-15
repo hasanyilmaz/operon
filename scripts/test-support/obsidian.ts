@@ -456,8 +456,11 @@ function stringifyYamlScalar(value: unknown): string {
 		: JSON.stringify(text);
 }
 
-export function getIcon(_iconId: string): any {
-	return createStubEl();
+export function getIcon(iconId: string): any {
+	const testHook = (globalThis as typeof globalThis & {
+		__operonTestGetIcon?: (name: string) => unknown;
+	}).__operonTestGetIcon;
+	return testHook ? testHook(iconId) : createStubEl();
 }
 
 export function getIconIds(): string[] {

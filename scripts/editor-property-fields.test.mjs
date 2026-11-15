@@ -20,7 +20,11 @@ for (const path of paths) {
 function subject(names, globals = {}) {
  const source = `class Subject { ${names.map(name => { assert.ok(methods.has(name), name); return methods.get(name); }).join('\n')} }; return new Subject();`;
  const js = ts.transpile(source, { target: ts.ScriptTarget.ES2022 });
- return new Function(...Object.keys(globals), js)(...Object.values(globals));
+ const dependencies = {
+  bindPropertyIcon: (element, resolve) => { const icon = resolve(); if (icon) globals.setIcon?.(element, icon); },
+  ...globals,
+ };
+ return new Function(...Object.keys(dependencies), js)(...Object.values(dependencies));
 }
 for (const [value, expected] of [['138F41', '#138F41'], ['#138F41', '#138F41'], ['invalid', 'var(--interactive-accent)'], ['', 'var(--interactive-accent)']]) {
  test(`Editor accent uses configured color: ${value || 'empty'}`, () => {
@@ -172,7 +176,7 @@ test('typed native list rendering preserves chip boundaries, item index and remo
   createInlineTaskCompactChipElement:options=>{const chip=element();chip.textContent=options.label;return chip;},
  });
  Object.assign(e,{fieldValues:{Custom:'"02"; 2; "a; b"'},fileProperties:new Map([['Custom',entry]]),filePropertyRows:new Map([['Custom',{row,action,value}]]),
-  syncFilePropertyRowVisibility:()=>{},bindEditorHoverTooltip:()=>{},bindTruncatedTextTooltip:()=>{},
+  syncFilePropertyRowVisibility:()=>{},bindEditorHoverTooltip:()=>{},bindTruncatedTextTooltip:()=>{},resolveNativePropertyIcon:()=> 'list',
   setFilePropertyValue:(name,next)=>changed.push({name,next}),openFilePropertyPicker:(...args)=>opened.push(args)});
  e.refreshFilePropertyValue('Custom');
  assert.deepEqual(value.children.map(chip=>chip.textContent),['"02"','2','"a; b"']);

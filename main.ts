@@ -89,7 +89,7 @@ import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
 import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
-import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, lightboxFileState } from './src/ui/web-lightbox';
+import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, openPreparedPropertyWorkspace, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -267,7 +267,7 @@ import {
 } from './src/systems/recurrence-identity-repair';
 import { TaskEditorModal, confirmTaskEditorDiscard, type TaskEditorSession } from './src/ui/task-editor-modal';
 import { getActiveLightboxShell } from './src/ui/lightbox';
-import { registerNativeTaskWorkspace } from './src/ui/native-task-workspace';
+import { getNativeTaskWorkspaceProvider, registerNativeTaskWorkspace } from './src/ui/native-task-workspace';
 import { NativePropertyEditor, type PropertyEditorSaveResult } from './src/ui/native-property-editor';
 import {
 	TaskCreatorDraft,
@@ -382,6 +382,7 @@ import { MobileNotificationsExporter } from './src/systems/mobile-notifications-
 import { buildOperonPluginStoragePath } from './src/storage/operon-storage-paths';
 import { normalizeTaskFieldColor, resolveTaskColorSourceForTask } from './src/core/task-color-source';
 import { getConfiguredKeyMappingIcon } from './src/core/key-mapping-icons';
+import { refreshMountedPropertyIcons } from './src/ui/property-icon-presentation';
 import { asyncHandler, runAsyncAction } from './src/core/async-action';
 import {
 	registerTransportProbe,
@@ -3388,6 +3389,7 @@ export default class OperonPlugin extends Plugin {
 		this.upcomingStatusBar?.render();
 		this.refreshDuplicateAlertStatusBar();
 		this.mobileGlobalTaskFab?.refresh();
+		refreshMountedPropertyIcons(this.app);
 		this.refreshViews();
 		return { externalCalendars, mobileNotifications, reindexReason };
 	}
@@ -17363,7 +17365,15 @@ export default class OperonPlugin extends Plugin {
 			this,
 			this.settings,
 			this.storage,
-			() => this.handleSettingsChanged(),
+			change => {
+				if (change === 'property-icons') {
+					this.invalidateAgentRuntimeSettingsProjectionCaches();
+					this.statusDock?.refresh();
+					this.refreshViews({ scheduleFollowup: false, reason: 'property-icons' });
+				} else {
+					this.handleSettingsChanged();
+				}
+			},
 			this.indexer,
 			(filterSetId) => this.openFilterViewById(filterSetId),
 			() => this.pinnedDock?.refreshLayout(),
@@ -21741,6 +21751,74 @@ export default class OperonPlugin extends Plugin {
 		// still reveal its source after the user declines a later replacement.
 		if (isCurrent()) openingReady = true;
 	}
+
+ private readonly currentFileEditorRequests = new WeakMap<Document, object>();
+
+ private async openCurrentFileEditor(view: MarkdownView): Promise<void> {
+  const file = view.file;
+  if (!(file instanceof TFile) || file.extension !== 'md' || this.isExcalidrawTaskSource(file)) return;
+  const anchor = view.containerEl;
+  const owner = anchor.ownerDocument;
+  const path = file.path;
+  const request = {};
+  this.currentFileEditorRequests.set(owner, request);
+  const current = () => this.currentFileEditorRequests.get(owner) === request && anchor.isConnected
+   && getActiveDocument() === owner && this.app.workspace.getActiveViewOfType(MarkdownView) === view
+   && view.file === file && file.path === path && this.app.vault.getAbstractFileByPath(path) === file;
+  const invalidate = () => {
+   if (this.currentFileEditorRequests.get(owner) === request) this.currentFileEditorRequests.delete(owner);
+  };
+  const workspace = this.app.workspace;
+  const win = owner.defaultView;
+  const leafChange = workspace.on('active-leaf-change', leaf => {
+   if (leaf?.view !== view || view.file !== file) invalidate();
+  });
+  const fileChange = workspace.on('file-open', next => {
+   if (next !== file) invalidate();
+  });
+  win?.addEventListener('blur', invalidate);
+  let ready = false;
+  const stillOwnsOpening = () => ready || current();
+  const unavailable = () => { if (current()) new Notice(t('notifications', 'currentFileEditorUnavailable')); };
+  try {
+   await this.indexer.reindexFilePath(path, { notify: false });
+   if (!current()) return;
+   const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
+   const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
+   if (!current()) return;
+   const identity = this.getQuickSwitcherFileTaskId(file);
+   const target = resolveFileLightboxOpening(file, 'editor', {
+    isExcalidraw: candidate => this.isExcalidrawTaskSource(candidate),
+    basesEnabled: () => false,
+    fileTaskId: () => scanned.yamlTask ? (scanned.yamlTask.operonId === identity ? identity : undefined) : identity === null ? null : undefined,
+   });
+   const provider = getNativeTaskWorkspaceProvider(this.app);
+   if (!target || !provider) { unavailable(); return; }
+   const canOpen = () => stillOwnsOpening() && (ready || this.getQuickSwitcherFileTaskId(file) === identity);
+   if (target.kind === 'editor') {
+    const descriptor = await provider.resolve(file, target.id);
+    if (!canOpen()) return;
+    if (!descriptor || descriptor.file !== file) { unavailable(); return; }
+    const content = await provider.create(descriptor);
+    if (!canOpen()) { content?.destroy({ skipCloseSave: true }); return; }
+    if (!content) { unavailable(); return; }
+    await openTaskWorkspace(this.app, anchor, { file, operonId: target.id, subpath: '' },
+     { task: descriptor, content, markdown: false, position: this.settings.taskEditorPosition }, canOpen);
+   } else if (target.kind === 'properties') {
+    const properties = await provider.readProperties?.(file);
+    if (!canOpen()) return;
+    if (!properties) { unavailable(); return; }
+    await openPreparedPropertyWorkspace(this.app, anchor, { file, subpath: '' }, properties, canOpen);
+   }
+   ready = current();
+  } catch { unavailable(); }
+  finally {
+   workspace.offref(leafChange);
+   workspace.offref(fileChange);
+   win?.removeEventListener('blur', invalidate);
+   invalidate();
+  }
+ }
 
 	private async handleCreatePeriodicNoteCommand(kind: PeriodicNoteKind): Promise<void> {
 		const kindLabel = kind === 'weekly'
@@ -32852,23 +32930,136 @@ export default class OperonPlugin extends Plugin {
 		await this.finishNoteToFileTaskConversion(target.file, target.document, currentTemplate);
 	}
 
-	private async convertNoteToFileTask(file: TFile): Promise<void> {
-		const confirmed = await this.promptConfirmAction(
-			t('modals', 'convertCurrentNoteTitle'),
-			t('modals', 'convertCurrentNoteMessage'),
-			t('modals', 'convertWithTemplate'),
-			t('buttons', 'cancel'),
-		);
-		if (!confirmed) return;
+ private confirmNoteToFileTaskConversion(): Promise<boolean> {
+  return this.promptConfirmAction(
+   t('modals', 'convertCurrentNoteTitle'),
+   t('modals', 'convertCurrentNoteMessage'),
+   t('modals', 'convertWithTemplate'),
+   t('buttons', 'cancel'),
+  );
+ }
 
-		await this.openNativeFileTaskConversionPicker(file);
-	}
+ private async convertNoteToFileTask(file: TFile): Promise<void> {
+  if (await this.confirmNoteToFileTaskConversion()) await this.openNativeFileTaskConversionPicker(file);
+ }
 
-	private async finishNoteToFileTaskConversion(
-		file: TFile,
-		document: ParsedFrontmatterDocument,
-		selectedTemplate: FileTaskTemplateOption,
-	): Promise<void> {
+ private canConvertPropertyEditorFile(file: TFile): boolean {
+  return file.extension === 'md' && this.app.vault.getAbstractFileByPath(file.path) === file
+   && !this.isExcalidrawTaskSource(file) && !isOperonExcludedPath(file.path, this.settings)
+   && this.getQuickSwitcherFileTaskId(file) === null && this.hasAvailableFileTaskTemplateOption();
+ }
+
+ private async convertPropertyEditorFile(file: TFile, prepare: (before: string) => Promise<string | null>, current: () => boolean): Promise<string | null> {
+  const path = file.path;
+  const ownsFile = () => file.path === path && this.app.vault.getAbstractFileByPath(path) === file;
+  const valid = () => current() && ownsFile();
+  const unavailable = () => { if (current()) new Notice(t('notifications', 'nativeFileTaskConversionUnavailable')); };
+  const changed = () => {
+   if (current()) this.showUiConversionResult({ status: 'not-applied', reason: 'source' });
+   return null;
+  };
+  if (!valid() || !this.canConvertPropertyEditorFile(file)) { unavailable(); return null; }
+  const mappings = this.settings.keyMappings;
+  const capture = () => capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
+  const approvedSource = await (await capture()).read();
+  if (!valid() || !readPropertyEditorDocument(approvedSource, mappings)) return changed();
+  if (!await this.confirmNoteToFileTaskConversion() || !valid()) return null;
+  const selected = await new Promise<FileTaskTemplateOption | null>(resolve => this.openFileTaskTemplatePicker(resolve, () => resolve(null)));
+  if (!selected) return null;
+  if (!valid()) return changed();
+  const currentSource = await (await capture()).read();
+  if (!valid() || this.settings.keyMappings !== mappings || currentSource !== approvedSource) return changed();
+  const preparedSource = await prepare(approvedSource);
+  if (preparedSource === null) return null;
+  const template = findFileTaskTemplateOptionById(this.getFileTaskTemplateOptions(), selected.id);
+  if (!valid() || !template || !this.canConvertPropertyEditorFile(file)) { unavailable(); return null; }
+  const result = await this.writer.runExclusiveTaskMutation(async permit => {
+   if (!valid() || !this.canConvertPropertyEditorFile(file) || this.settings.keyMappings !== mappings) return changed();
+   const initial = await capture();
+   const before = await initial.read();
+   if (before !== preparedSource || !readPropertyEditorDocument(before, mappings)) return changed();
+   const document = parseFrontmatterDocument(before, mappings);
+   let working = before;
+   let diskBefore = initial.stored;
+   let expectedDisk = initial.stored;
+   let reservedId: string | null = null;
+   let releaseIdentity: (() => void) | undefined;
+   const canCommit = () => valid() && this.settings.keyMappings === mappings && !isOperonExcludedPath(path, this.settings);
+   const reserveIdentity = (id: string): boolean => {
+    if (reservedId) return id === reservedId && !this.indexer.hasDuplicateOperonIdConflict(id);
+    if (!id || this.indexer.getTask(id) || this.indexer.hasDuplicateOperonIdConflict(id) || this.indexer.isTaskSourceTransitionActive(id)) return false;
+    reservedId = id;
+    releaseIdentity = this.indexer.beginExpectedDuplicateOperonIdTransition(id, [{ filePath: path, format: 'yaml', lineNumber: 0 }]);
+    return true;
+   };
+   const matches = async (text: string, disk: string) => {
+    if (!ownsFile()) return false;
+    const source = await capture();
+    return await source.read() === text && source.stored === disk;
+   };
+   const write = async (next: string, guard: () => boolean): Promise<boolean> => {
+    if (!guard() || !await matches(working, expectedDisk)) return false;
+    const source = working === before && expectedDisk === initial.stored ? initial : await capture();
+    if (await source.read() !== working) return false;
+    const outcome = await this.writer.withMarkdownSource(source, () =>
+     this.writer.applyExactMarkdownSourceMutation(path, working, next, guard, permit, 'plugin'));
+    if (outcome.outcome !== 'committed') return false;
+    working = expectedDisk = next;
+    return !source.nativeConflict;
+   };
+   let id: string | null = null;
+   let reason: PluginUiConversionResult['reason'] = 'template';
+   const outcome = await executePluginUiConversionTransaction([{
+    isBefore: () => matches(before, diskBefore),
+    isAfter: () => matches(working, expectedDisk),
+    apply: async () => {
+     try {
+      const prepared = await this.prepareNoteToFileTaskConversion(file, document, template, async next => {
+       reason = 'source';
+       if (!await write(next, canCommit)) throw new Error('Conversion template source changed.');
+       reason = 'template';
+      }, candidate => {
+       const reserved = reserveIdentity(candidate);
+       if (!reserved) reason = 'duplicate';
+       return reserved;
+      });
+      if (!prepared || this.fileTaskContentNeedsTemplaterProcessing(null, prepared.content)
+       || !this.isInlineToFileTaskTransitionContentValid(prepared.content, prepared.operonId)) return false;
+      if (!reserveIdentity(prepared.operonId)) { reason = 'duplicate'; return false; }
+      reason = 'source';
+      if (!await write(prepared.content, canCommit)) return false;
+      id = prepared.operonId;
+      return true;
+     } catch { return false; }
+    },
+    rollback: async () => {
+     if (!await write(before, ownsFile)) return false;
+     // A staged Templater write may have persisted the previously dirty native buffer.
+     // The restored source includes those original user edits.
+     diskBefore = before;
+     return true;
+    },
+   }], canCommit, true).finally(() => releaseIdentity?.());
+   if (outcome !== 'committed' || !id) {
+    this.showUiConversionResult({ status: outcome === 'committed' ? 'outcome-unknown' : outcome, reason });
+    return null;
+   }
+   return id;
+  });
+  if (!result) return null;
+  try {
+   await this.indexer.forceReindexKnownFileAfterMutation(file, { notify: false });
+   if (this.getQuickSwitcherFileTaskId(file) === result) this.fileTaskPipelineMover?.scheduleConvertedNote(result);
+   this.refreshViews();
+  } catch (error) { console.warn('Operon: converted note refresh pending', error); }
+  return result;
+ }
+
+ private async prepareNoteToFileTaskConversion(
+  file: TFile, document: ParsedFrontmatterDocument, selectedTemplate: FileTaskTemplateOption,
+  conversionWrite?: (content: string) => Promise<void>,
+  reserveIdentity?: (id: string) => boolean,
+ ): Promise<{ content: string; operonId: string } | null> {
 		const now = localNow();
 		const templateResult = await this.loadFileTaskTemplateDocumentFromOption(selectedTemplate);
 		const seedFieldValues = { ...document.managedFieldValues };
@@ -32883,7 +33074,7 @@ export default class OperonPlugin extends Plugin {
 			selectedTemplate,
 			seedFieldValues,
 			seedFieldPresence,
-		)) return;
+		)) return null;
 		const template = this.resolveLoadedFileTaskTemplateDocument(
 			templateResult,
 			this.buildOperonTemplatePlaceholderContext(file.basename, seedFieldValues, now),
@@ -32896,19 +33087,27 @@ export default class OperonPlugin extends Plugin {
 			tagsPresent: document.tagsPresent,
 			frontmatterDocument: document,
 		}, template, now, 'preserve-source');
+  if (reserveIdentity && !reserveIdentity(draft.operonId)) return null;
 		const templateContext = this.buildOperonTemplatePlaceholderContext(file.basename, draft.fieldValues, now);
-		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return;
+		if (!this.validateDependencyDraftOrShow(draft.operonId, draft.fieldValues)) return null;
 
 		const renderedContent = await this.maybeProcessFileTaskTemplaterContent(
 			file,
 			draft.content,
 			template,
 			selectedTemplate,
+			conversionWrite ? { conversionWrite } : undefined,
 		);
 		const resolvedContent = this.resolveFileTaskTemplatePlaceholdersInContent(renderedContent, templateContext, file.basename, {
 			resolveBodyText: false,
 		});
-		await this.app.vault.modify(file, resolvedContent);
+  return { content: resolvedContent, operonId: draft.operonId };
+ }
+
+ private async finishNoteToFileTaskConversion(file: TFile, document: ParsedFrontmatterDocument, selectedTemplate: FileTaskTemplateOption): Promise<void> {
+  const prepared = await this.prepareNoteToFileTaskConversion(file, document, selectedTemplate);
+  if (!prepared) return;
+		await this.app.vault.modify(file, prepared.content);
 		const finalDocument = await this.loadParsedFrontmatterDocument(file);
 		await this.indexer.reindexFilePath(file.path, { notify: false });
 		this.fileTaskPipelineMover?.scheduleConvertedNote(finalDocument.managedFieldValues['operonId'] ?? '');
@@ -38000,7 +38199,7 @@ export default class OperonPlugin extends Plugin {
 
  private readonly propertyEditorWrittenSources = new WeakMap<TFile, { path: string; sources: Set<string> }>();
 
- private async saveLightboxNoteProperties(file: TFile, changes: readonly PropertyEditorChange[], current: () => boolean): Promise<PropertyEditorSaveResult> {
+ private async saveLightboxNoteProperties(file: TFile, changes: readonly PropertyEditorChange[], current: () => boolean, expectedSource?: string): Promise<PropertyEditorSaveResult> {
   const path = file.path;
   const validTarget = (): boolean => current() && file.path === path && this.app.vault.getAbstractFileByPath(path) === file
    && !this.isExcalidrawTaskSource(file) && this.indexer.resolveFileTaskIdForOpening(path) === null;
@@ -38038,6 +38237,7 @@ export default class OperonPlugin extends Plugin {
      return ownWrite.settle;
     });
     const before = await source.read();
+    if (expectedSource !== undefined && before !== expectedSource) return { status: 'conflict' };
     const plan = planPropertyEditorWrite(before, mappings, changes);
     if (plan.status !== 'ready') return { status: plan.status };
     const baseline = readPropertyEditorDocument(before, mappings);
@@ -38075,7 +38275,7 @@ export default class OperonPlugin extends Plugin {
     return source && source.filePath === file.path ? { operonId: task.operonId, file } : null;
    },
    readProperties: async file => {
-    if (!Platform.isDesktopApp || file.extension !== 'md' || this.isExcalidrawTaskSource(file)
+    if (file.extension !== 'md' || this.isExcalidrawTaskSource(file)
      || this.indexer.resolveFileTaskIdForOpening(file.path) !== null) return null;
     const path = file.path;
     const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path));
@@ -38084,9 +38284,12 @@ export default class OperonPlugin extends Plugin {
      || this.indexer.resolveFileTaskIdForOpening(path) !== null) return null;
     return readPropertyEditorDocument(content, this.settings.keyMappings);
    },
-   createProperties: (host, file, document) => new NativePropertyEditor(host, document, {
+   canConvert: file => this.canConvertPropertyEditorFile(file),
+   convert: (file, prepare, current) => this.convertPropertyEditorFile(file, prepare, current),
+   createProperties: (host, file, document, convert) => new NativePropertyEditor(host, document, {
     app: this.app, file, settings: () => this.settings, tasks: () => this.indexer.getAllTasks(),
-    save: (changes, current) => this.saveLightboxNoteProperties(file, changes, current),
+    save: (changes, current, expectedSource) => this.saveLightboxNoteProperties(file, changes, current, expectedSource),
+    canConvert: () => this.canConvertPropertyEditorFile(file), convert,
    }),
    locate: async operonId => {
     const source = await this.readTaskEditorSource(operonId).catch(() => null);
@@ -38227,6 +38430,17 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 
+  this.addCommand({
+   id: 'open-current-file-editor',
+   name: t('commands', 'openCurrentFileEditor'),
+   checkCallback: checking => {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    const file = view?.file;
+    if (!view || !(file instanceof TFile) || file.extension !== 'md' || this.isExcalidrawTaskSource(file)) return false;
+    if (!checking) void this.openCurrentFileEditor(view);
+    return true;
+   },
+  });
 		// Smart task editor: create / upgrade / edit at cursor
 		this.addCommand({
 			id: 'open-task-editor',

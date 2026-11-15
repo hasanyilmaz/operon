@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { TFile, type App, type MarkdownView } from 'obsidian';
 import { TaskSourceModifyReconciler } from '../src/systems/task-source-modify-reconciliation';
+import { executePluginUiConversionTransaction } from '../src/systems/plugin-ui-conversion-transaction';
+import { parseFrontmatterDocument } from '../src/core/file-task-template-merge';
 import { resolveOperonIdPlaceholders } from '../src/core/operon-id-placeholders';
 import { isOperonExcludedPath } from '../src/core/operon-path-exclusions';
 import { localNow } from '../src/core/local-time';
@@ -33,9 +35,9 @@ function members(path: string, names: string[]): string {
     return names.map(name => { const member = all.find(m => m.name?.getText(ast) === name); assert.ok(member, name); return member.getText(ast).replace(/^(private|protected) /u, ''); }).join('\n');
 }
 const uiPath = 'src/ui/native-property-editor.ts';
-const hostCode = members(uiPath, ['markEdited', 'setFilePropertyValue', 'hydrate', 'makeAdapter', 'field', 'hasDesktopPropertyRules', 'prepareRepeatIdentityPatch', 'isEdited', 'scheduleEdited', 'cancelTimer', 'scheduleSave', 'persist', 'prepareClose', 'refresh', 'settleRefresh', 'discard']);
+const hostCode = members(uiPath, ['markEdited', 'setFilePropertyValue', 'hydrate', 'makeAdapter', 'field', 'hasDesktopPropertyRules', 'prepareRepeatIdentityPatch', 'isEdited', 'scheduleEdited', 'cancelTimer', 'scheduleSave', 'persist', 'showSaveFailure', 'pauseAutosave', 'resumeAutosave', 'prepareConversion', 'prepareClose', 'refresh', 'settleRefresh', 'discard']);
 const fieldCode = members('src/ui/editor-property-fields.ts', ['applyDraftFieldRules', 'applyStatusDraftChange', 'applyDateDraftChange', 'applyTerminalDateDraftChange', 'syncDerivedRepeatFieldsFromDraft', 'applyTaskFieldPickerPayload', 'commitWorkflowActionPayload']);
-const pluginCode = members('main.ts', ['saveLightboxNoteProperties']);
+const pluginCode = members('main.ts', ['saveLightboxNoteProperties', 'convertPropertyEditorFile']);
 const decode = (source: string) => readPropertyEditorDocument(source, DEFAULT_SETTINGS.keyMappings)!;
 const key = (canonical: string) => DEFAULT_SETTINGS.keyMappings.find(m => m.canonicalKey === canonical)?.visiblePropertyName ?? canonical;
 const flush = async () => {
@@ -63,7 +65,7 @@ class Clock {
     }
 }
 const base = '---\nCaption: original # keep\nCount: 0\nFlag: false\nUpdated: 2026-11-01T12:00\n---\n# Body\n';
-function world(source = base) {
+function world(source = base, keyMappings = DEFAULT_SETTINGS.keyMappings) {
     const file = new (TFile as unknown as {
         new (path: string): TFile;
     })('Fixture.md');
@@ -144,22 +146,24 @@ function world(source = base) {
                     state.active--;
                 }
             } } } as unknown as App;
-    const settings = { ...DEFAULT_SETTINGS, keyMappings: [...DEFAULT_SETTINGS.keyMappings] };
-    const types = { Caption: 'text', Count: 'number', Flag: 'checkbox', Mixed: 'multitext', Other: 'text' } as const;
+    const settings = { ...DEFAULT_SETTINGS, keyMappings: [...keyMappings] };
+    const types = { Caption: 'text', Count: 'number', Flag: 'checkbox', Mixed: 'multitext', Other: 'text', Up: 'multitext' } as const;
     getNativePropertyIndex(app).setTypes(types);
     const indexer = { resolveFileTaskIdForOpening: () => state.task ? 'new-task' : null, scheduleReindex: () => { state.reindexes++; } };
     const writer = new TaskWriter(app, indexer as unknown as TaskWriterIndexerPort, settings.keyMappings);
-    const globals = { capturePropertyEditorMarkdown, PropertyEditorSourceConflict, planPropertyEditorWrite, propertyEditorPreservesBody, readPropertyEditorDocument, resolvePropertyEditorField, getNativePropertyIndex };
+    const globals = { capturePropertyEditorMarkdown, PropertyEditorSourceConflict, planPropertyEditorWrite, propertyEditorPreservesBody, readPropertyEditorDocument, resolvePropertyEditorField, getNativePropertyIndex,
+        executePluginUiConversionTransaction, parseFrontmatterDocument, isOperonExcludedPath,
+        findFileTaskTemplateOptionById: (options: {id:string}[], id: string) => options.find(value => value.id === id) };
     const Plugin = new Function(...Object.keys(globals), ts.transpile(`class Plugin {${pluginCode}};return Plugin;`, { target: ts.ScriptTarget.ES2022 }))(...Object.values(globals));
     const plugin = new Plugin();
     Object.assign(plugin, { app, settings, writer, indexer, propertyEditorWrittenSources: new WeakMap(), isExcalidrawTaskSource: () => false, getMarkdownViewsForPath: () => views as unknown as MarkdownView[] });
     const clock = new Clock();
     function editor() {
         const globals = { ...globalRules, PropertyEditorAdapter, getNativePropertyIndex, inferVaultPropertyEditorTypes, readRawYamlPropertyExpectation, isEmptyFilePropertyValue,
-            TASK_EDITOR_AUTOSAVE_DELAY_MS, Date: { now: () => clock.now } };
+            planPropertyEditorWrite, TASK_EDITOR_AUTOSAVE_DELAY_MS, Date: { now: () => clock.now } };
         const Host = new Function(...Object.keys(globals), ts.transpile(`class Host {${fieldCode}\n${hostCode}};return Host;`, { target: ts.ScriptTarget.ES2022 }))(...Object.values(globals));
         const e = new Host();
-        Object.assign(e, { app, settings, options: { save: (changes: unknown, current: () => boolean) => plugin.saveLightboxNoteProperties(file, changes, current) },
+        Object.assign(e, { app, settings, options: { save: (changes: unknown, current: () => boolean, expected?: string) => plugin.saveLightboxNoteProperties(file, changes, current, expected) },
             draft: new PropertyEditorDraft(decode(state.disk)), submitted: new Set(), disposed: false, rendering: false, adding: null, fieldValues: {}, tags: [], checkbox: 'open', surfaces: new Map(), add: { focus() { } },
             timer: null, nextSaveAt: 0, saving: null, pendingRefresh: false, win: clock, message: { hidden: true, textContent: '' }, interaction: false,
             hasActiveInteraction: () => e.interaction, render() { }, closePicker() { e.interaction = false; },
@@ -194,6 +198,170 @@ test('full save chain debounces from the last edit and preserves native typed va
     for (const v of w.views)
         assert.equal(v.editor.getValue(), w.state.disk);
 });
+const contextsMappings = DEFAULT_SETTINGS.keyMappings.map(mapping =>
+    mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+const weekLink = '[[2026-W46]]';
+
+test('Opening and keeping a legacy Up selection performs zero writes; other edits preserve the scalar bytes', async () => {
+    const source = base.replace('Caption:', `Up: "${weekLink}" # week link\nCaption:`);
+    const w = world(source, contextsMappings), e = w.editor();
+    assert.equal(e.fieldValues.contexts, weekLink);
+    e.commitWorkflowActionPayload({ contexts: weekLink });
+    await w.clock.tick(2000);
+    assert.equal(await e.prepareClose(), true);
+    assert.equal(w.state.writes, 0);
+    assert.equal(w.state.disk, source);
+    e.setFilePropertyValue('Caption', 'changed');
+    assert.equal(await e.prepareClose(), true);
+    assert.equal(w.state.writes, 1);
+    assert.equal(w.state.disk, source.replace('Caption: original', 'Caption: changed'));
+});
+
+for (const [name, selection] of [['Up', [weekLink, '[[2026-W47]]']], ['contexts', []]] as const)
+    test(`Editing legacy ${name} writes a list under the original key and preserves the source`, async () => {
+        const source = base.replace('Caption:', `${name}: "${weekLink}" # week link\nCaption:`);
+        const w = world(source, contextsMappings), e = w.editor();
+        const tab = w.view();
+        e.commitWorkflowActionPayload({ contexts: [...selection] });
+        assert.deepEqual(e.draft.snapshot(), [{ name, expected: { present: true, value: weekLink }, value: [...selection] }]);
+        await w.clock.tick(2000);
+        assert.equal(w.state.writes, 1);
+        assert.equal(e.isEdited, false);
+        assert.deepEqual(decode(w.state.disk).frontmatter[name], selection);
+        assert.deepEqual(decode(w.state.disk).order, decode(source).order);
+        assert.match(w.state.disk, /# week link/u);
+        assert.ok(w.state.disk.endsWith('# Body\n'));
+        assert.equal(tab.editor.getValue(), w.state.disk);
+    });
+
+test('A changed legacy Up value retains the pending selection and reports a conflict', async () => {
+    const source = base.replace('Caption:', `Up: "${weekLink}"\nCaption:`);
+    const w = world(source, contextsMappings), e = w.editor();
+    e.commitWorkflowActionPayload({ contexts: '[[2026-W47]]' });
+    const external = source.replace(weekLink, '[[2026-W45]]');
+    w.state.disk = external;
+    assert.equal(await e.prepareClose(), false);
+    assert.equal(e.isEdited, true);
+    assert.equal(w.state.writes, 0);
+    assert.equal(w.state.disk, external);
+});
+
+function conversionWorld() {
+ const w = world();
+ const template = { id: 'template' };
+ const outcomes: string[] = [], moves: string[] = [];
+ let leased = 0;
+ Object.assign(w.plugin, {
+  canConvertPropertyEditorFile: () => !w.state.task,
+  confirmNoteToFileTaskConversion: async () => true,
+  openFileTaskTemplatePicker: (select: (value: typeof template) => void) => select(template),
+  getFileTaskTemplateOptions: () => [template],
+  fileTaskContentNeedsTemplaterProcessing: (_template: unknown, source: string) => source.includes('<%'),
+  isInlineToFileTaskTransitionContentValid: (source: string, id: string) =>
+   parseFrontmatterDocument(source, w.settings.keyMappings).managedFieldValues.operonId === id,
+  getQuickSwitcherFileTaskId: () => w.state.task ? 'fixture01' : null,
+  refreshViews() {}, fileTaskPipelineMover: { scheduleConvertedNote: (id: string) => moves.push(id) },
+  showUiConversionResult: (result: {status: string}) => outcomes.push(result.status),
+ });
+ Object.assign(w.plugin.indexer, {
+  getTask: () => null, hasDuplicateOperonIdConflict: () => false, isTaskSourceTransitionActive: () => leased > 0,
+  beginExpectedDuplicateOperonIdTransition: () => { leased++; return () => { leased--; }; },
+  forceReindexKnownFileAfterMutation: async () => { w.state.task = true; },
+ });
+ const converted = (source: string) => source.replace('Caption:', 'operonId: fixture01\nCaption:');
+ w.plugin.prepareNoteToFileTaskConversion = async (_file: unknown, _document: unknown, _template: unknown, _stage: unknown, reserve: (id: string) => boolean) =>
+  reserve('fixture01') ? { content: converted(w.state.disk), operonId: 'fixture01' } : null;
+ return { ...w, outcomes, moves, leased: () => leased, converted, run: (prepare: (before: string) => Promise<string | null> = async (before: string) => before) => w.plugin.convertPropertyEditorFile(w.file, prepare, () => true) };
+}
+
+test('note conversion commits through the shared writer, syncs native views and then schedules pipeline movement', async () => {
+ const w = conversionWorld(), tab = w.view();
+ assert.equal(await w.run(), 'fixture01');
+ assert.equal(w.state.writes, 1);
+ assert.equal(w.state.disk, w.converted(base));
+ assert.equal(tab.editor.getValue(), w.state.disk);
+ assert.deepEqual(w.moves, ['fixture01']);
+ assert.equal(w.leased(), 0);
+});
+
+for (const at of ['confirmation', 'template', 'draft'] as const)
+ test(`note conversion cancelled at ${at} performs zero conversion writes`, async () => {
+  const w = conversionWorld();
+  if (at === 'confirmation') w.plugin.confirmNoteToFileTaskConversion = async () => false;
+  if (at === 'template') w.plugin.openFileTaskTemplatePicker = (_select: unknown, cancel: () => void) => cancel();
+  assert.equal(await w.run(async before => at === 'draft' ? null : before), null);
+  assert.equal(w.state.writes, 0);
+  assert.deepEqual(w.moves, []);
+ });
+
+test('template selection stops conversion on a changed source before flushing the property draft', async () => {
+ const w = conversionWorld(), external = base.replace('# Body', '# External edit');
+ let flushed = false;
+ w.plugin.confirmNoteToFileTaskConversion = async () => { w.state.disk = external; return true; };
+ assert.equal(await w.run(async before => { flushed = true; return before; }), null);
+ assert.equal(flushed, false);
+ assert.equal(w.state.writes, 0);
+ assert.equal(w.state.disk, external);
+ assert.deepEqual(w.outcomes, ['not-applied']);
+});
+
+test('selected template flushes the paused property draft against the approved source', async () => {
+ const w = conversionWorld(), editor = w.editor();
+ editor.setFilePropertyValue('Caption', 'pending');
+ assert.equal(await editor.pauseAutosave(), true);
+ await w.clock.tick(2100);
+ assert.equal(w.state.writes, 0);
+ assert.equal(await w.run(before => editor.prepareConversion(before)), 'fixture01');
+ assert.equal(w.state.writes, 2);
+ assert.equal(editor.isEdited, false);
+ assert.match(w.state.disk, /Caption: pending # keep/u);
+ assert.match(w.state.disk, /operonId: fixture01/u);
+});
+
+test('a source edit racing the pending property flush keeps the draft and performs no conversion', async () => {
+ const w = conversionWorld(), editor = w.editor();
+ const external = base.replace('# Body', '# External edit');
+ editor.setFilePropertyValue('Caption', 'pending');
+ assert.equal(await editor.pauseAutosave(), true);
+ w.state.beforeCommit = () => { w.state.disk = external; };
+ assert.equal(await w.run(before => editor.prepareConversion(before)), null);
+ assert.equal(w.state.writes, 0);
+ assert.equal(w.state.disk, external);
+ assert.equal(editor.isEdited, true);
+ assert.equal(editor.message.textContent, 'propertyEditorConflict');
+});
+
+test('note conversion cannot overwrite a source edited while a template was preparing', async () => {
+ const w = conversionWorld(), external = base.replace('# Body', '# External edit');
+ w.plugin.prepareNoteToFileTaskConversion = async () => {
+  w.state.disk = external;
+  return { content: w.converted(base), operonId: 'fixture01' };
+ };
+ assert.equal(await w.run(), null);
+ assert.equal(w.state.writes, 0);
+ assert.equal(w.state.disk, external);
+ assert.deepEqual(w.moves, []);
+});
+
+test('failed staged Templater conversion restores the effective dirty Markdown source and releases its identity', async () => {
+ const w = conversionWorld(), dirty = base.replace('# Body', '# Unsaved body');
+ const tab = w.view();
+ tab.setText(dirty);
+ w.plugin.prepareNoteToFileTaskConversion = async (_file: unknown, _document: unknown, _template: unknown,
+  stage: (source: string) => Promise<void>, reserve: (id: string) => boolean) => {
+  assert.ok(reserve('fixture01'));
+  await stage(w.converted(dirty));
+  throw Error('Templater failed');
+ };
+ assert.equal(await w.run(), null);
+ assert.deepEqual(w.outcomes, ['rolled-back']);
+ assert.equal(w.state.disk, dirty);
+ assert.equal(tab.editor.getValue(), dirty);
+ assert.equal(w.state.writes, 2);
+ assert.equal(w.leased(), 0);
+ assert.deepEqual(w.moves, []);
+});
+
 test('save in flight retains later same-field and other-field changes, then drains once in order', async () => {
     const w = world(), e = w.editor();
     w.state.gate = deferred();

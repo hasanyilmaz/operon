@@ -1,3 +1,4 @@
+import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
 import assert from 'node:assert/strict';
@@ -342,7 +343,7 @@ async function createPlan(
 	const target = await storage.captureCommittedSettingsBackupSnapshot();
 	const sourceJson = exportJson(source);
 	const preflight = preflightOperonSettingsBackupRestoreV1({ sourceJson, targetSnapshot: target, selectedGroups });
-	assert.equal(preflight.ok, true);
+	assert.equal(preflight.ok, true, JSON.stringify(preflight.ok ? [] : preflight.diagnostics, null, 2));
 	if (!preflight.ok) throw new Error('Expected valid preflight.');
 	assert.equal(preflight.classification, 'ready', JSON.stringify(preflight.preview.issues, null, 2));
 	assert.ok(preflight.restorePlan);
@@ -469,6 +470,27 @@ test('dock click preference backup Undo restores the absent memory default and s
 	assert.equal(undone.status, 'success'); assert.equal(data.committed.ui.statusDock?.clickAction, undefined);
 	assert.equal(storage.getSettings().statusDockClickAction, undefined);
 	await storage.saveSettings(); assert.equal(data.committed.ui.statusDock?.clickAction, undefined);
+});
+
+test('selected General backup round-trips custom editor groups, removed defaults and command order through Undo', async () => {
+ const { storage, data } = await createHarness(canonicalPackage(baselineSettings()));
+ const source = clone((await storage.captureCommittedSettingsBackupSnapshot()).settings);
+ const baseline = clone(source.taskEditorSections);
+ source.taskEditorSections = normalizeTaskEditorSections([
+  { id: 'custom:references', name: 'References', properties: [{ kind: 'mapped', key: 'contexts' }, { kind: 'vault', name: 'Reading Count' }] },
+  ...baseline.map(section => section.id === 'connections' ? { id: section.id, name: '', removed: true }
+   : section.id === 'commands' ? { ...section, commandOrder: ['pin', 'tracker', 'scrollbars', 'checkboxes', 'subtask', 'inlineSubtask', 'remove'] } : section),
+ ]);
+ const { sourceJson, plan } = await createPlan(storage, source, ['general']);
+ const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+ assert.equal(result.status, 'success');
+ assert.deepEqual(data.committed.ui.taskUiPreferences.taskEditorSections, source.taskEditorSections);
+ assert.deepEqual(storage.getSettings().taskEditorSections, source.taskEditorSections);
+ assert.ok(result.receipt?.recovery.undoTokenId);
+ const undo = await storage.undoSettingsBackupRestoreV1(result.receipt.recovery.undoTokenId, result.receipt.receiptId);
+ assert.equal(undo.status, 'success');
+ assert.deepEqual(data.committed.ui.taskUiPreferences.taskEditorSections, baseline);
+ assert.deepEqual(storage.getSettings().taskEditorSections, baseline);
 });
 
 test('taxonomy-only restore publishes pool changes only after successful runtime recovery', async () => {
@@ -1362,4 +1384,45 @@ test('Mini Calendar preference follows other view preferences in General backup 
  assert.equal(Object.prototype.hasOwnProperty.call(snapshot.settings, 'miniCalendarViewMode'), false);
  assert.equal(snapshot.settings.language, current.language);
  harness.storage.destroy();
+});
+
+test('vault icons round-trip in General, and undo restores the absence of a preference', async () => {
+	const harness = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
+	const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+	assert.equal(current.vaultPropertyIcons, undefined);
+	const source = { ...current, vaultPropertyIcons: { 'reading count': 'book-open' } };
+	const { sourceJson, plan } = await createPlan(harness.storage, source, ['general']);
+	const result = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(harness.storage.getSettings().vaultPropertyIcons, source.vaultPropertyIcons);
+	const token = result.receipt?.recovery.undoTokenId;
+	const receipt = result.receipt?.receiptId;
+	assert.ok(token && receipt);
+	assert.equal((await harness.storage.undoSettingsBackupRestoreV1(token, receipt)).status, 'success');
+	assert.equal(harness.storage.getSettings().vaultPropertyIcons, undefined);
+	assert.equal((await harness.storage.captureCommittedSettingsBackupSnapshot()).settings.vaultPropertyIcons, undefined);
+	harness.storage.destroy();
+});
+
+test('General backups distinguish an absent legacy vault icon field from an explicit empty record', async () => {
+	const current = { ...clone(DEFAULT_SETTINGS), vaultPropertyIcons: { 'reading count': 'book-open' } };
+	const harness = await createHarness(canonicalPackage(current));
+	const targetSnapshot = await harness.storage.captureCommittedSettingsBackupSnapshot();
+	const source = { ...targetSnapshot.settings, vaultPropertyIcons: undefined };
+	const currentExport = exportJson(source);
+	const envelope = JSON.parse(currentExport) as { body: OperonSettingsBackupBodyV1 };
+	const general = envelope.body.groups.general?.data as Record<string, JsonValue> | undefined;
+	assert.ok(general);
+	assert.deepEqual(general.vaultPropertyIcons, {});
+	delete general.vaultPropertyIcons;
+	const legacy = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(envelope.body));
+	const candidateIcons = (sourceJson: string) => {
+		const preflight = preflightOperonSettingsBackupRestoreV1({ sourceJson, targetSnapshot, selectedGroups: ['general'] });
+		assert.equal(preflight.ok, true);
+		if (!preflight.ok || !preflight.restorePlan) throw new Error('Missing restore plan');
+		return preflight.restorePlan.candidateSettings.vaultPropertyIcons;
+	};
+	assert.deepEqual(candidateIcons(legacy), current.vaultPropertyIcons);
+	assert.deepEqual(candidateIcons(currentExport), {});
+	harness.storage.destroy();
 });
