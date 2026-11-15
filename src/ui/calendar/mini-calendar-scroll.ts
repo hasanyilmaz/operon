@@ -188,6 +188,7 @@ export class MiniCalendarScroller {
 				this.rows.set(index, row);
 				this.resizeObserver?.observe(row);
 			}
+			row.classList.toggle('is-centered-week', index === center);
 			const y = this.padding() + (index - this.windowStart) * this.pitch;
 			row.style.top = `${y}px`;
 			const visible = this.height > 0 && y + this.pitch > top + 0.5 && y < top + this.height - 0.5;

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates. Day and week numbers share centered cells that scale with the panel width; week numbers use a muted tone without hover tooltips.
-- **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks and alternating bright and muted months, with the current month bright. The fixed header has equal space above and below. Month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
+- **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks. Days in the current month and the week at the center of the sidebar stay bright as you scroll. Other days use a softer gray. The fixed header has equal space above and below, and accented month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
 - Choose what Mini Calendar opens under **Settings → Calendar View → Mini Calendar → Click behavior**: the source file, **Task / Property Editor**, or both in a Lightbox. File Tasks use Task Editor and regular notes use Property Editor; mobile opens notes in the normal file view.
 
 ### Validation
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Passed **87/87** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **42/42** Chromium/WebKit browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
 - Visual refinements passed **87/87** focused tests, **36/36** Chromium/WebKit continuous-view scenarios, strict lint, production build, release guard, and two focused reviews.
 - Header spacing passed both mouse and touch layout checks, strict lint, and release guard.
+- Mini Calendar color changes passed **18/18** Chromium scenarios across mouse and touch profiles, strict lint, and release guard.
 
 ## [4.7.0] - 2026-11-12
 

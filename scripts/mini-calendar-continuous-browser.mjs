@@ -82,23 +82,61 @@ try {
   await settle(page);
   await assertMiniCalendarGeometry(page, true);
   if (width === 320 && height === 480) {
-   // Month tones stay anchored to the real current month across navigation and year boundaries.
-   const tone = date => page.locator(`[data-date-key="${date}"]`).evaluate(button => ({
-    color: getComputedStyle(button.firstElementChild).color,
-    week: getComputedStyle(document.querySelector('[data-week-date]')).color,
-   }));
-   for (const [date, muted] of [['2026-11-02', false], ['2026-12-01', true], ['2027-01-04', false],
-    ['2027-02-01', true], ['2027-02-06', true], ['2027-03-02', false], ['2027-12-02', true], ['2028-01-03', false]]) {
-    await page.evaluate(date => view.navigate(date), date); await settle(page);
-    const selected = await tone(date); assert.notEqual(selected.color, selected.week, `selected ${date}`);
-    await page.evaluate(() => view.selectDate('2027-01-13')); await settle(page);
-    const result = await tone(date); assert.equal(result.color === result.week, muted, date);
-   }
+   // Today's month and the week at the viewport center use normal day colors.
+   const assertTone = (date, expectedColor) => page.locator(`[data-date-key="${date}"]`).evaluate((button, expected) => {
+    const actual = getComputedStyle(button.firstElementChild).color;
+    const week = getComputedStyle(document.querySelector('[data-week-date]')).color;
+    const probe = document.createElement('span');
+    probe.style.color = expected;
+    button.append(probe);
+    const expectedTone = getComputedStyle(probe).color;
+    probe.remove();
+    return { actual, expectedTone, week };
+   }, expectedColor).then(({ actual, expectedTone, week }) => {
+    assert.equal(actual, expectedTone, date);
+    assert.equal(week, 'rgb(119, 119, 119)', `week color near ${date}`);
+   });
+   const faint = '#777', normal = '#eee', accent = '#40a0ff';
+   const muted = color => `color-mix(in srgb, ${faint} 75%, ${color})`;
+   const weekend = `color-mix(in srgb, ${normal} 82%, ${accent})`;
+   await assertTone('2026-12-30', muted(normal));
+   await assertTone('2027-01-04', normal);
+   await assertTone('2027-01-09', weekend);
+   await assertTone('2027-02-01', accent);
+
+   await page.evaluate(() => view.navigate('2027-07-13')); await settle(page);
+   await assertTone('2027-07-13', normal);
+   await assertTone('2027-07-17', weekend);
+   await assertTone('2027-07-20', muted(normal));
+   await assertTone('2027-07-24', muted(weekend));
+   await assertTone('2027-07-01', accent);
+   const weekHeight = (await state(page)).pitch;
+   await page.locator('.operon-mini-calendar-scroll').evaluate((el, delta) => { el.scrollTop += delta; }, weekHeight);
+   await settle(page);
+   const scrolled = await state(page);
+   assert.equal(scrolled.center, '2027-07-19');
+   assert.equal(scrolled.reference, '2027-07-20');
+   assert.equal(scrolled.selected, '2027-07-13');
+   await assertTone('2027-07-13', muted(normal));
+   await assertTone('2027-07-17', muted(weekend));
+   await assertTone('2027-07-20', normal);
+   await assertTone('2027-07-24', weekend);
+
+   await page.evaluate(() => view.navigate('2027-08-01')); await settle(page);
+   await assertTone('2027-07-27', normal);
+   await assertTone('2027-08-01', accent);
+   await assertTone('2027-08-02', muted(normal));
+
+   await page.evaluate(() => view.navigate('2028-01-12')); await settle(page);
+   await assertTone('2028-01-04', muted(normal));
+   await assertTone('2028-01-12', normal);
+
    await page.evaluate(() => { view.navigate('2027-02-02'); view.selectDate('2027-01-13'); }); await settle(page);
+   await assertTone('2027-02-09', muted(normal));
    const before = await state(page);
-   await page.evaluate(() => { window.toneCell = document.querySelector('[data-date-key="2027-02-02"]'); now = new Date(2027, 1, 1, 12); view.render(); }); await settle(page);
-   const updated = await tone('2027-02-02'); assert.notEqual(updated.color, updated.week);
-   assert.equal(await page.evaluate(() => toneCell === document.querySelector('[data-date-key="2027-02-02"]')), true);
+   await page.evaluate(() => { window.toneCell = document.querySelector('[data-date-key="2027-02-09"]'); now = new Date(2027, 1, 1, 12); view.render(); }); await settle(page);
+   await assertTone('2027-02-09', normal);
+   assert.equal(await page.evaluate(() => toneCell === document.querySelector('[data-date-key="2027-02-09"]')), true);
    assert.equal((await state(page)).top, before.top);
    assert.equal((await state(page)).selected, '2027-01-13');
    await page.evaluate(() => { now = new Date(2027, 0, 13, 12); view.navigate('2027-01-13'); }); await settle(page);

@@ -18761,8 +18761,9 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-weekend,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-weekend {
+	--operon-calendar-weekend-day-color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
 	background: color-mix(in srgb, var(--interactive-accent) 6%, transparent);
-	color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
+	color: var(--operon-calendar-weekend-day-color);
 }
 
 .operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:hover,
@@ -18781,9 +18782,8 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	color: var(--text-faint);
 }
 
-.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day.is-muted-month:not(.is-anchor):not(.is-today),
-.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day.is-muted-month:not(.is-anchor):not(.is-today) .operon-mini-month-label {
-	color: var(--text-faint);
+.operon-mini-calendar-view.is-continuous .operon-mini-calendar-week:not(.is-centered-week) .operon-calendar-sidebar-month-day.is-muted-month {
+	color: color-mix(in srgb, var(--text-faint) 75%, var(--operon-calendar-weekend-day-color, var(--text-normal)));
 }
 
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-today,

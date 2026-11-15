@@ -131,9 +131,8 @@ export function renderMiniCalendarHeader(container: HTMLElement, options: MiniCa
 	return navigation;
 }
 
-/** An even number of months per year keeps this alternation stable across year boundaries. */
 export function isMutedMiniCalendarMonth(dateKey: string, today: string): boolean {
-	return (Number(dateKey.split('-')[1]) - Number(today.split('-')[1])) % 2 !== 0;
+	return dateKey.slice(0, 7) !== today.slice(0, 7);
 }
 
 export function renderMiniCalendarWeek(container: HTMLElement, weekStartDate: Date, options: MiniCalendarOptions, continuous = false): void {
