@@ -18,12 +18,14 @@ import { cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
 import { createCachedTableFilePropertyTypeResolver, createVaultFilePropertySnapshot, getTableFilePropertyTypeIcon } from '../table/table-file-property';
 import { taskEditorSectionDefaultLabel } from '../task-editor-section-label';
 import { setSettingsScope } from './settings-scope';
-import { createWorkflowActionButton, createWorkflowInlineAddRow } from './workflow-editor-ui';
+import { createSettingsListCardActionButton, createSettingsListCardChip } from './settings-list-ui';
+import { createWorkflowInlineAddRow } from './workflow-editor-ui';
 
 interface FieldChoice {
 	ref: TaskEditorPropertyRef;
 	label: string;
 	icon: string;
+	builtIn?: true;
 }
 
 function collectFields(app: App, settings: OperonSettings, layout: TaskEditorLayout): Map<string, FieldChoice> {
@@ -38,6 +40,10 @@ function collectFields(app: App, settings: OperonSettings, layout: TaskEditorLay
 			|| (key !== 'related' && isRetiredKeyMapping(key))) continue;
 		add({ ref: { kind: 'mapped', key }, label: mapping.visiblePropertyName || key,
 			icon: resolveEditorWorkflowPickerIcon(key, settings.keyMappings) });
+	}
+	for (const key of ['tags', 'subtasks'] as const) {
+		add({ ref: { kind: 'mapped', key }, label: t('taskEditor', key),
+			icon: resolveEditorWorkflowPickerIcon(key, settings.keyMappings), builtIn: true });
 	}
 	const declarations = getNativePropertyIndex(app).getTypes();
 	const resolver = createCachedTableFilePropertyTypeResolver();
@@ -89,8 +95,8 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 	let closeIconPicker: (() => void) | null = null;
 	let addInput: HTMLInputElement;
 	let addPending = false;
-	const fieldCatalog = collectFields(options.app, options.settings(),
-		resolveTaskEditorLayout(options.settings().taskEditorSections, options.settings().keyMappings));
+	let fieldCatalog: Map<string, FieldChoice>;
+	let catalogMappings: OperonSettings['keyMappings'] | undefined;
 
 	function focusControl(keys: readonly string[]): void {
 		const controls = Array.from(root.querySelectorAll<HTMLElement>('[data-editor-settings-focus]'));
@@ -113,10 +119,10 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 	function addMoveButtons(parent: HTMLElement, label: string, target: string, index: number, length: number, move: (delta: -1 | 1) => TaskEditorLayoutChange, fallback: string): void {
 		for (const delta of [-1, 1] as const) {
 			const key = `${target}:${delta}`;
-			const button = createWorkflowActionButton({
+			const button = createSettingsListCardActionButton({
 				containerEl: parent, icon: delta === -1 ? 'arrow-up' : 'arrow-down',
 				label: `${t('settings', delta === -1 ? 'moveUp' : 'moveDown')} · ${label}`,
-				className: 'operon-settings-icon-action-button', disabled: index + delta < 0 || index + delta >= length,
+				errorContext: 'settings section reorder failed', disabled: index + delta < 0 || index + delta >= length,
 				onClick: () => commit(move(delta), [key, `${target}:${-delta}`, fallback]),
 			});
 			button.dataset.editorSettingsFocus = key;
@@ -131,10 +137,10 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 	}
 
 	function fieldRow(card: HTMLElement, field: Pick<FieldChoice, 'label' | 'icon'>, className = '', property?: FieldChoice): HTMLElement {
-		const row = card.createDiv(`operon-editor-section-item ${className}`.trim());
-		if (property) {
+		const row = card.createDiv(`operon-settings-list-card operon-compact-chip-row operon-editor-section-item ${className}`.trim());
+		if (property && !property.builtIn) {
 			const button = row.createEl('button', {
-				cls: 'operon-editor-section-item-icon operon-settings-icon-action-button',
+				cls: 'operon-editor-section-item-icon operon-settings-list-card-action',
 				attr: { type: 'button' },
 			});
 			setAccessibleLabelWithoutTooltip(button, t('settings', 'propertyIconChange', { name: field.label }));
@@ -147,19 +153,30 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 				});
 			});
 		} else {
-			const icon = row.createSpan({ cls: 'operon-editor-section-item-icon', attr: { 'aria-hidden': 'true' } });
+			const icon = row.createSpan({ cls: 'operon-settings-list-card-icon', attr: { 'aria-hidden': 'true' } });
 			setIcon(icon, field.icon);
 		}
-		row.createSpan({ text: field.label, cls: 'operon-editor-section-item-name' });
-		return row.createDiv('operon-editor-section-item-actions');
+		const main = row.createDiv('operon-settings-list-card-main');
+		main.createSpan({ text: field.label, cls: 'operon-settings-list-card-title operon-editor-section-item-name' });
+		if (property?.ref.kind === 'mapped' && !property.builtIn) {
+			createSettingsListCardChip({
+				containerEl: main.createDiv('operon-settings-list-card-meta operon-compact-chip-row-meta'),
+				label: `{{${property.ref.key}:: }}`,
+				className: 'operon-compact-chip-canonical-chip',
+			});
+		}
+		return row.createDiv('operon-settings-list-card-actions operon-editor-section-item-actions');
 	}
 
 	function openAddProperty(anchor: HTMLButtonElement, id: TaskEditorSectionId, layout: TaskEditorLayout, focus: string): void {
 		closePicker?.();
 		let selected: TaskEditorPropertyRef | undefined;
-		const host = root.closest<HTMLElement>('.vertical-tab-content, .modal-content') ?? root;
+		const scrollHost = root.closest<HTMLElement>('.vertical-tab-content, .modal-content');
+		// Position in the outer containing block and follow scrolls in the inner Settings pane.
+		const floatingHost = root.closest<HTMLElement>('.vertical-tab-content-container');
 		closePicker = showSearchableFieldPicker(anchor, {
-			floatingHost: host, floatingScrollHost: host, constrainToFloatingHost: true, fitToHostViewport: true,
+			floatingHost: floatingHost ?? undefined, floatingScrollHost: scrollHost ?? undefined,
+			constrainToFloatingHost: true, fitToHostViewport: true,
 			value: null, ariaLabel: t('taskEditor', 'propertyEditorAdd'), placeholder: t('taskEditor', 'searchFileProperties'),
 			noMatchesText: t('taskEditor', 'noAvailableFileProperties'),
 			fields: Array.from(fieldCatalog.entries())
@@ -184,6 +201,10 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 		root.empty();
 		const settings = options.settings();
 		const layout = resolveTaskEditorLayout(settings.taskEditorSections, settings.keyMappings);
+		if (catalogMappings !== settings.keyMappings) {
+			fieldCatalog = collectFields(options.app, settings, layout);
+			catalogMappings = settings.keyMappings;
+		}
 		for (const [index, section] of layout.sections.entries()) {
 			const { id } = section;
 			const label = editorSectionLabel(layout.sections, id);
@@ -215,8 +236,8 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 				toggle.setValue(section.enabled !== false).onChange(enabled => commit({ type: 'visibility', id, enabled }, [`${id}:visibility`, nameKey]));
 			});
 			addMoveButtons(header.controlEl, label, id, index, layout.sections.length, delta => ({ type: 'move-section', id, delta }), nameKey);
-			if (isTaskEditorSectionRemovable(id)) createWorkflowActionButton({
-				containerEl: header.controlEl, className: 'operon-settings-danger-icon-button', icon: 'x', danger: true,
+			if (isTaskEditorSectionRemovable(id)) createSettingsListCardActionButton({
+				containerEl: header.controlEl, icon: 'x', errorContext: 'settings section removal failed',
 				label: `${t('settings', 'taskEditorRemoveSection')} · ${label}`,
 				onClick: async () => {
 					if (await options.confirmRemove(label) && !disposed && root.isConnected) await commit({ type: 'remove-section', id }, ['add-section']);
@@ -238,8 +259,8 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 				const actions = fieldRow(card, field, '', property);
 				addMoveButtons(actions, field.label, `${id}:${identity}`, position, fields.length,
 					delta => ({ type: 'move-field', field: ref, section: id, delta }), addKey);
-				createWorkflowActionButton({
-					containerEl: actions, className: 'operon-settings-icon-action-button', icon: 'x',
+				createSettingsListCardActionButton({
+					containerEl: actions, icon: 'x', errorContext: 'settings property removal failed',
 					label: `${t('settings', 'taskEditorRemoveProperty')} · ${field.label}`,
 					onClick: () => commit({ type: 'assign', field: ref }, [addKey]),
 				});
@@ -247,8 +268,8 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 			if (id === 'additional') for (const field of fieldCatalog.values()) {
 				if (!layout.assignment(field.ref)) fieldRow(card, field, 'is-automatic', field);
 			}
-			const button = createWorkflowActionButton({
-				containerEl: card, className: 'operon-editor-section-add-property', text: t('taskEditor', 'propertyEditorAdd'),
+			const button = createSettingsListCardActionButton({
+				containerEl: card, className: 'operon-editor-section-add-property', errorContext: 'settings property picker failed', text: t('taskEditor', 'propertyEditorAdd'),
 				label: t('taskEditor', 'propertyEditorAdd'),
 				onClick: () => openAddProperty(button, id, layout, addKey),
 			});

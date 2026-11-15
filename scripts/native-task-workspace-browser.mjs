@@ -30,6 +30,7 @@ const bundle = await build({ stdin: { contents: `export * from './src/ui/lightbo
      return svg;
     }
     export function getIconIds() { return ['book-open', 'compass', 'hash', 'link-2', 'star']; }
+    export function setIcon(target, name) { target.setAttribute?.('data-test-set-icon', name); }
     export class Modal {
      constructor(app) {
       this.app = app;
@@ -602,8 +603,10 @@ try {
  // Exercise the same card renderer used by Settings Search and the fallback Settings page.
  await page.setViewportSize({ width: 1040, height: 900 });
  await page.evaluate(() => {
-  const host = document.body.createDiv('vertical-tab-content');
-  host.style.cssText = 'position:relative;max-height:800px;overflow:auto;padding:12px;';
+  const viewport = document.body.createDiv('vertical-tab-content-container');
+  viewport.style.cssText = 'position:relative;height:min(800px, 100vh);overflow:hidden;';
+  const host = viewport.createDiv('vertical-tab-content');
+  host.style.cssText = 'height:100%;box-sizing:border-box;overflow:auto;padding:12px;';
   window.sectionsHost = host.createDiv({ attr: { id: 'sections-settings' } });
   window.sectionWrites = 0;
   window.iconAttempts = 0;
@@ -646,6 +649,15 @@ try {
  });
  const sections = page.locator('#sections-settings');
  const card = id => sections.locator(`[data-editor-settings-section="${id}"]`);
+ const connections = card('connections');
+ for (const [label, icon] of [['Tags', 'tags'], ['Subtasks', 'list-tree']]) {
+  const row = connections.locator('.operon-editor-section-item').filter({ has: page.getByText(label, { exact: true }) });
+  assert.equal(await row.locator('.operon-settings-list-card-icon').getAttribute('data-test-set-icon', { timeout: 2000 }), icon);
+  assert.equal(await row.locator('.operon-compact-chip-canonical-chip').count(), 0);
+  checks += 2;
+ }
+ assert.equal(await connections.getByText('Links', { exact: true }).count(), 1);
+ checks++;
  const upIcon = card('connections').getByRole('button', { name: 'Change icon for Up', exact: true });
  const iconModal = page.locator('.operon-settings-icon-picker-modal');
  await upIcon.press('Enter');
@@ -698,13 +710,30 @@ try {
  await check(() => [iconWrites, propertySettings.vaultPropertyIcons.count], [3,'book-open'], 'a failed icon write retains the saved glyph');
  await iconModal.getByRole('button', { name: 'Cancel', exact: true }).click();
  const addSection = sections.locator('[data-editor-settings-focus="add-section"]');
+ await page.evaluate(() => {
+  propertySettings.keyMappings = propertySettings.keyMappings.map(mapping => mapping.canonicalKey === 'links'
+   ? { ...mapping, visiblePropertyName: 'ExternalLinks' } : mapping);
+ });
  await addSection.fill('Research');
  await addSection.press('Enter');
  const research = sections.locator('[data-editor-settings-section^="custom:"]');
  await research.waitFor({ state: 'visible' });
+ const renamed = connections.locator('.operon-editor-section-item').filter({ hasText: 'ExternalLinks' });
+ assert.equal(await renamed.locator('.operon-compact-chip-canonical-chip').textContent({ timeout: 2000 }), '{{links:: }}');
+ assert.equal(await connections.getByText('Links', { exact: true }).count(), 0);
+ checks += 2;
  const assign = async (target, name) => {
   await target.getByRole('button', { name: 'Add Property' }).click();
   const search = page.getByRole('combobox', { name: 'Add Property' });
+  await page.waitForFunction(() => {
+   const viewport = sectionsHost.closest('.vertical-tab-content-container');
+   const panel = viewport.querySelector(':scope > .operon-searchable-option-picker-panel');
+   const input = panel?.querySelector('input');
+   if (!input) return false;
+   const rect = input.getBoundingClientRect();
+   return input === document.elementFromPoint(rect.left + 8, rect.top + rect.height / 2);
+  });
+  checks++;
   await search.fill(name);
   await search.press('Enter');
   await search.waitFor({ state: 'detached' });
@@ -712,6 +741,7 @@ try {
  };
  await assign(research, 'Up');
  await assign(research, 'Count');
+ assert.deepEqual(await research.locator('.operon-compact-chip-canonical-chip').allTextContents(), ['{{contexts:: }}']); checks++;
  await research.getByRole('button', { name: 'Move up · Count' }).click();
  assert.deepEqual(await research.locator('.operon-editor-section-item-name').allTextContents(), ['Count','Up']); checks++;
  assert.equal(await card('connections').getByText('Up', { exact: true }).count(), 0); checks++;
@@ -731,7 +761,7 @@ try {
  await research.locator('input[type="checkbox"]').click();
  await check(()=>sectionsHost.querySelector('[data-editor-settings-section^="custom:"] input[type="checkbox"]').checked,true,'a failed save restores the committed visibility');
  await check(()=>[sectionWrites,propertyWrites],[8,0],'layout settings do not write note content');
- await page.evaluate(()=>{disposeSections(); sectionsHost.parentElement.remove();});
+ await page.evaluate(()=>{disposeSections(); sectionsHost.closest('.vertical-tab-content-container').remove();});
 
  // The layout applies to a real Property Editor on each platform and freezes an open picker.
  for (const [mode,width] of [['desktop',1040],['tablet',800],['phone',390],['compact',390]]) {

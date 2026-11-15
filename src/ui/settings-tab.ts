@@ -2210,6 +2210,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}];
 		const sections = entries.find(entry => entry.id === 'ui.taskEditorSections');
 		if (sections) groups.push({ type: 'group', heading: t('settings', 'taskEditorSections'),
+			cls: 'operon-task-editor-sections-group',
 			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'taskEditorSections'), 'DOCS-021 Task Editor', 'operon-native-settings-declarative-docs-action--inline-heading')],
 			items: [this.buildTaskCaptureSearchSection(sections, container => this.renderTaskEditorSectionCards(container))],
 		});
