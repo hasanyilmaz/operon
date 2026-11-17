@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Add Property",
 		"propertyEditorConflict": "The source note changed while you were editing. Your draft was kept.",
 		"propertyEditorSaveFailed": "The properties could not be saved. Your draft was kept.",
+		"removeEmptyProperty": "Remove {{name}} from this file",
 		"propertyEditorRequiresTask": "{{name}} requires a saved Operon task and cannot be edited in a normal note.",
 		"convertNoteToFileTask": "Convert to Operon File Task",
 		"propertyEditorTitle": "Property Editor",

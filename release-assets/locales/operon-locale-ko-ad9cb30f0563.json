@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "속성 편집기",
       "related": "관련 항목",
       "relatedPlaceholder": "[[Project Note]]",
+      "removeEmptyProperty": "이 파일에서 {{name}} 삭제",
       "removeFileTaskMessage": "파일 작업을 Obsidian 휴지통으로 이동합니다. 계속할까요?",
       "removeInlineTaskMessage": "인라인 작업을 제거하고 해당 줄은 비워 둡니다. 계속할까요?",
       "removeSession": "세션 제거",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "5c6b4f18525ecdcdad0a859ab01846cea36a518c4ef6486576b969450329ecef"
+  "sourceVersion": "6609030b0e628fa157e2fefee967441fdcc081a786a031b096bb271bba889d5f"
 }

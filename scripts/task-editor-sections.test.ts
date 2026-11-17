@@ -298,3 +298,16 @@ test('initial defaults omit vault icons and a default selection performs zero ad
   assert.equal(harness.package().ui.taskUiPreferences.vaultPropertyIcons?.['reading count'], 'book-open');
  } finally { await harness.dispose(); }
 });
+
+
+test('both editor headers resolve assigned absent properties from the same layout identities', () => {
+ const mappings = DEFAULT_SETTINGS.keyMappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+ const input = [{ id: 'custom:health', name: 'Health', properties: [{ kind: 'vault', name: 'Calories' }, { kind: 'mapped', key: 'contexts' }] }];
+ const layout = resolveTaskEditorLayout(input, mappings);
+ assert.equal(layout.assignedPropertyNames.filter(name => name === 'Calories').length, 1);
+ assert.equal(layout.assignedPropertyNames.filter(name => name === 'Up').length, 1);
+ assert.equal(layout.position(layout.referenceForName('calories')).section, 'custom:health');
+ const renamed = resolveTaskEditorLayout(input, mappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Parent notes' } : mapping));
+ assert.ok(renamed.assignedPropertyNames.includes('Parent notes'));
+ assert.ok(!renamed.assignedPropertyNames.includes('Up'));
+});

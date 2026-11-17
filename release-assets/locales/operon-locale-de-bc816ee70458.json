@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Eigenschafteneditor",
       "related": "Verwandt",
       "relatedPlaceholder": "[[Projekt-Notiz]]",
+      "removeEmptyProperty": "{{name}} aus dieser Datei entfernen",
       "removeFileTaskMessage": "Dies verschiebt die Datei-Aufgabe in den Obsidian-Papierkorb. Fortfahren?",
       "removeInlineTaskMessage": "Dies entfernt die Inline-Aufgabe. Die Zeile bleibt leer. Fortfahren?",
       "removeSession": "Erfassungssitzung entfernen",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3da9ee94882b5f76d6d8a7b6d3d94e3881138ea46ddfea1bdd01b0746c12e062"
+  "sourceVersion": "d4663b179d3479e1f5255c236c749d6a6016d1043e572aef5b673e6fd754cbec"
 }

@@ -12,6 +12,7 @@ export interface PropertyEditorChange {
  name: string;
  expected: RawYamlPropertyExpectation;
  value: RawYamlPropertyValue;
+ remove?: boolean;
 }
 
 // YAML numbers outside JS integer precision cannot support reliable conflict checks.
@@ -137,6 +138,11 @@ export function planPropertyEditorWrite(content: string, mappings: KeyMapping[],
  return planYamlPropertyWrite(content, mappings, changes);
 }
 
+/** Caller must validate File Task identity and mutation admission before using this writer. */
+export function planFileTaskPropertyWrite(content: string, mappings: KeyMapping[], changes: readonly PropertyEditorChange[]): ReturnType<typeof planYamlPropertyWrite> {
+ return planYamlPropertyWrite(content, mappings, changes, true);
+}
+
 /** Custom-key reuse may normalize only empty existing values, including in File Tasks.
  * Ordinary Property Editor admission remains unchanged. */
 export function planEmptyCustomKeyValues(content: string, names: ReadonlySet<string>):
@@ -162,12 +168,20 @@ function planYamlPropertyWrite(content: string, mappings: KeyMapping[], changes:
  const { properties: document, indent, newline } = source;
  const expectedOrder = [...document.order];
  const edits = new Map<string, RawYamlPropertyValue>();
+ const removals = new Set<string>();
  const additions: string[] = [];
  try {
   for (const change of changes) {
-   if (!change.name.trim() || edits.has(change.name) || document.readonlyNames?.has(change.name) || hasUnsafePropertyNumber(change.value)) return { status: 'unsupported' };
+   if (!change.name.trim() || edits.has(change.name) || removals.has(change.name) || document.readonlyNames?.has(change.name) || hasUnsafePropertyNumber(change.value)) return { status: 'unsupported' };
    const before = readRawYamlPropertyExpectation(document.frontmatter, change.name);
    if (!before || expectedOrder.some(name => name !== change.name && name.toLowerCase() === change.name.toLowerCase())) return { status: 'conflict' };
+   if (change.remove) {
+    if (!rawYamlPropertyExpectationsEqual(before, change.expected)) return { status: 'conflict' };
+    if (!before.present) continue;
+    removals.add(change.name);
+    expectedOrder.splice(expectedOrder.indexOf(change.name), 1);
+    continue;
+   }
    if (rawYamlPropertyExpectationsEqual(before, { present: true, value: change.value })) continue;
    if (!rawYamlPropertyExpectationsEqual(before, change.expected)) return { status: 'conflict' };
    // A new field may have been cleared while its first save failed. The
@@ -180,16 +194,20 @@ function planYamlPropertyWrite(content: string, mappings: KeyMapping[], changes:
     additions.push(encoded.split(/\r?\n/u).map(line => indent + line).join(newline) + newline);
    }
   }
-  if (!edits.size) return { status: 'ready', text: content, properties: document };
+  if (!edits.size && !removals.size) return { status: 'ready', text: content, properties: document };
   let yaml = source.yaml;
   for (let index = source.entries.length - 1; index >= 0; index--) {
    const entry = source.entries[index];
    const value = edits.get(entry.name);
-   if (value === undefined) continue;
+   if (value === undefined && !removals.has(entry.name)) continue;
    const end = source.entries[index + 1]?.start ?? source.yaml.length;
    const previous = splitPropertyValue(source.yaml.slice(entry.keyEnd, end), indent);
    if (!previous) return { status: 'unsupported' };
-   const [first, ...rest] = encodePropertyValue(value, indent, newline);
+   if (removals.has(entry.name)) {
+    yaml = yaml.slice(0, entry.start) + (previous.comment ? indent + previous.comment.trimStart() + newline : '') + previous.tail + yaml.slice(end);
+    continue;
+   }
+   const [first, ...rest] = encodePropertyValue(value!, indent, newline);
    yaml = yaml.slice(0, entry.keyEnd) + first + previous.comment + rest.join('') + newline + previous.tail + yaml.slice(end);
   }
   yaml += additions.join('');

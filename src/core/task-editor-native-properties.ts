@@ -1,7 +1,7 @@
 import type { KeyMapping } from '../types/settings';
 import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions, type InlinePropertyType } from './inline-property-definitions';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
-import { isSupportedRawYamlPropertyValue, isWritableRawYamlPropertyName } from './raw-yaml-property';
+import { isEmptyFilePropertyValue, isSupportedRawYamlPropertyValue, isWritableRawYamlPropertyName } from './raw-yaml-property';
 
 export function nativeEditorPropertyTypes(types: Readonly<Record<string, string>>, mappings: readonly KeyMapping[], definitions?: InlinePropertyDefinitions): Record<string, InlinePropertyType> {
  const result: Record<string, InlinePropertyType> = {};
@@ -32,7 +32,7 @@ export function nativePropertyValueReadOnlyReason(value: unknown, type?: InlineP
   || typeof value === 'number' && !Number.isFinite(value)
   || Array.isArray(value) && value.some(item => typeof item !== 'string' && typeof item !== 'number' || typeof item === 'number' && !Number.isFinite(item)))) return 'unsupported';
  if (baseReason) return baseReason;
- if (type && value !== undefined && value !== null && value !== '') {
+ if (type && !isEmptyFilePropertyValue(value)) {
   try { encodeVaultPropertyValue(value as VaultPropertyValue, type); }
   catch { return 'type-conflict'; }
  }

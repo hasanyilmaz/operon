@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "プロパティを追加",
 		"propertyEditorConflict": "編集中に元のノートが変更されました。下書きは保持されています。",
 		"propertyEditorSaveFailed": "プロパティを保存できませんでした。下書きは保持されています。",
+		"removeEmptyProperty": "このファイルから {{name}} を削除",
 		"propertyEditorRequiresTask": "{{name}} には保存済みの Operon タスクが必要です。通常のノートでは編集できません。",
 		"convertNoteToFileTask": "Operon のファイルタスクに変換",
 		"propertyEditorTitle": "プロパティエディター",

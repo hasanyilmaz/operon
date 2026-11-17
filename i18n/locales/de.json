@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Eigenschaft hinzufügen",
 		"propertyEditorConflict": "Die Quellnotiz wurde während der Bearbeitung geändert. Ihr Entwurf wurde beibehalten.",
 		"propertyEditorSaveFailed": "Die Eigenschaften konnten nicht gespeichert werden. Ihr Entwurf wurde beibehalten.",
+		"removeEmptyProperty": "{{name}} aus dieser Datei entfernen",
 		"propertyEditorRequiresTask": "{{name}} erfordert eine gespeicherte Operon-Aufgabe und kann in einer normalen Notiz nicht bearbeitet werden.",
 		"convertNoteToFileTask": "In Operon-Dateiaufgabe umwandeln",
 		"propertyEditorTitle": "Eigenschafteneditor",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "プロパティエディター",
       "related": "関連",
       "relatedPlaceholder": "[[プロジェクトノート]]",
+      "removeEmptyProperty": "このファイルから {{name}} を削除",
       "removeFileTaskMessage": "ファイルタスクを Obsidian のゴミ箱に移動します。続行しますか？",
       "removeInlineTaskMessage": "インラインタスクを削除します。行は空のまま残ります。続行しますか？",
       "removeSession": "セッションを削除",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "8ba6022df8038607c5a24617e9a933b0bed09aebd538932ccbaaddd285850306"
+  "sourceVersion": "abea0d3793946dc397c89b085baa0e4d9f2909d8a3e71760eb5f2acfad985e09"
 }

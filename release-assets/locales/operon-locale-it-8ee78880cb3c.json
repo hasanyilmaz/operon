@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Editor delle proprietà",
       "related": "Correlati",
       "relatedPlaceholder": "[[Nota del progetto]]",
+      "removeEmptyProperty": "Rimuovi {{name}} da questo file",
       "removeFileTaskMessage": "Questo sposta l'attività-file nel cestino di Obsidian. Continuare?",
       "removeInlineTaskMessage": "Questo rimuove l'attività in linea. La riga rimarrà vuota. Continuare?",
       "removeSession": "Rimuovi sessione",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "642764d85b2cff1ab9ce738d3387dbb77618fa51e95eb66c9058d5e81ee8c7d4"
+  "sourceVersion": "965bcda9231583218d54bb243383b3c678c77e9d34276bde554e8ed89b9d165e"
 }

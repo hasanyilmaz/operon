@@ -176,6 +176,7 @@ test('typed native list rendering preserves chip boundaries, item index and remo
   createInlineTaskCompactChipElement:options=>{const chip=element();chip.textContent=options.label;return chip;},
  });
  Object.assign(e,{fieldValues:{Custom:'"02"; 2; "a; b"'},fileProperties:new Map([['Custom',entry]]),filePropertyRows:new Map([['Custom',{row,action,value}]]),
+  updateEmptyPropertyRemoval:(_row,_name,removable)=>assert.equal(removable,false),
   syncFilePropertyRowVisibility:()=>{},bindEditorHoverTooltip:()=>{},bindTruncatedTextTooltip:()=>{},resolveNativePropertyIcon:()=> 'list',
   setFilePropertyValue:(name,next)=>changed.push({name,next}),openFilePropertyPicker:(...args)=>opened.push(args)});
  e.refreshFilePropertyValue('Custom');

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Editor de propiedades",
       "related": "Relacionado",
       "relatedPlaceholder": "[[Nota del proyecto]]",
+      "removeEmptyProperty": "Eliminar {{name}} de este archivo",
       "removeFileTaskMessage": "Esto mueve la tarea de archivo a la papelera de Obsidian. ¿Continuar?",
       "removeInlineTaskMessage": "Esto quita la tarea en línea. La línea quedará vacía. ¿Continuar?",
       "removeSession": "Quitar sesión",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "9827152e1c933c201b0d4dcbb1da96c9124b5bdd595cfcb80a076f9d657c66cd"
+  "sourceVersion": "ca042db1ab7c2a0f7172485b5b9357781c831bdb5eed539931623ef1e71b17b6"
 }

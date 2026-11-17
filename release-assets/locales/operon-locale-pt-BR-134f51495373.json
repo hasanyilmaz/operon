@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Editor de propriedades",
       "related": "Relacionado",
       "relatedPlaceholder": "[[Nota do Projeto]]",
+      "removeEmptyProperty": "Remover {{name}} deste arquivo",
       "removeFileTaskMessage": "Isso move a tarefa em arquivo para o lixo Obsidian. Continuar?",
       "removeInlineTaskMessage": "Isso remove a tarefa inline. A linha permanecerá vazia. Continuar?",
       "removeSession": "Remover sessão",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a5be0d8cf32d99bc54b4212f1a8e9514165ba7ad89920fa5aedf97f7ffcd7057"
+  "sourceVersion": "63dda74747dd7270a80a7e75930c8323cabbdee7d60be7961735535255a1a7a3"
 }

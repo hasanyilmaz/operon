@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Aggiungi proprietà",
 		"propertyEditorConflict": "La nota sorgente è cambiata durante la modifica. La bozza è stata conservata.",
 		"propertyEditorSaveFailed": "Impossibile salvare le proprietà. La bozza è stata conservata.",
+		"removeEmptyProperty": "Rimuovi {{name}} da questo file",
 		"propertyEditorRequiresTask": "{{name}} richiede un’attività Operon salvata e non può essere modificato in una nota normale.",
 		"convertNoteToFileTask": "Converti in attività file di Operon",
 		"propertyEditorTitle": "Editor delle proprietà",

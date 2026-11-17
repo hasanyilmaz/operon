@@ -1,3 +1,5 @@
+import { isEmptyFilePropertyValue } from './src/core/raw-yaml-property';
+import { editorMappedProperties } from './src/core/file-task-property-draft';
 import type { MiniCalendarNoteRequest } from './src/ui/calendar/mini-calendar-notes';
 import { resolveFileLightboxOpening } from './src/ui/file-lightbox-opening';
 import { MiniCalendarView, MINI_CALENDAR_VIEW_TYPE, openMiniCalendar } from './src/ui/calendar/mini-calendar-view';
@@ -25072,7 +25074,9 @@ export default class OperonPlugin extends Plugin {
 				?? (yaml.fieldValues.dateCancelled ? 'cancelled' : yaml.fieldValues.dateCompleted ? 'done' : 'open');
 			parsed = this.parsedTaskFromIndexed({ ...indexed, ...yaml, checkbox });
 		} else parsed = matches[0];
-		const state = {
+		const mappedProperties = yaml ? editorMappedProperties(readFileTaskPropertyDocument(content)!.frontmatter, this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), this.settings.inlinePropertyDefinitions) : undefined;
+  const state = {
+   mappedProperties,
 			description: parsed.description, checkbox: parsed.checkbox, tags: [...parsed.tags],
 			fieldValues: Object.fromEntries(parsed.fields.map(field => [field.key, field.value])),
 			sourceFields: parsed.fields,
@@ -25215,8 +25219,13 @@ export default class OperonPlugin extends Plugin {
 		const wrappedOnSave = async (request: TaskEditorSaveRequest, save: OnSaveCallback = onSave): Promise<TaskEditorSaveCallbackResult> => {
    if (request.inlineProperties?.length || request.fileProperties?.length) {
     try {
-     const types = nativeEditorPropertyTypes(await loadTableFilePropertyTypesFromConfig(this.app), this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
-     for (const change of [...(request.inlineProperties ?? []).map(item => ({ name: item.sourceName, type: item.type, value: item.mutation.kind === 'set' ? item.mutation.value : null })), ...(request.fileProperties ?? []).map(item => ({ name: item.propertyName, type: item.nativeType, value: item.value }))]) {
+     const rawTypes = await loadTableFilePropertyTypesFromConfig(this.app);
+     const types = nativeEditorPropertyTypes(rawTypes, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
+     for (const change of [...(request.inlineProperties ?? []).map(item => ({ name: item.sourceName, mappedKey: item.mappedKey, type: item.type, value: item.mutation.kind === 'set' ? item.mutation.value : null })), ...(request.fileProperties ?? []).map(item => ({ name: item.propertyName, mappedKey: item.mappedKey, type: item.nativeType, value: item.value }))]) {
+      if (change.mappedKey) {
+       if (!isEmptyFilePropertyValue(change.value) || editorMappedProperties({ [change.name]: null }, this.settings.keyMappings, rawTypes, this.settings.inlinePropertyDefinitions)[change.mappedKey]?.name !== change.name) return false;
+       continue;
+      }
       const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === change.name.toLowerCase()));
       const aliases = [change.name, ...(mapping ? [mapping.canonicalKey, mapping.visiblePropertyName] : [])].map(name => name.toLowerCase());
       const name = Object.keys(types).find(key => aliases.includes(key.toLowerCase()));
@@ -25233,7 +25242,8 @@ export default class OperonPlugin extends Plugin {
     if (!(file instanceof TFile)) return false;
     try {
      patchInlineProperties(request.markdownSource ? await request.markdownSource.read() : await this.app.vault.read(file), file.path, current.operonId, request.inlineProperties, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions());
-     await this.storage.ensureInlinePropertyDefinitions(request.inlineProperties.map(change => resolveInlinePropertyDefinition(change.sourceName, change.type, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions())));
+     const definitions = request.inlineProperties.filter(change => !change.mappedKey).map(change => resolveInlinePropertyDefinition(change.sourceName, change.type, this.settings.keyMappings, this.storage.getCommittedInlinePropertyDefinitions()));
+     if (definitions.length) await this.storage.ensureInlinePropertyDefinitions(definitions);
     } catch { return false; }
    }
 			const saved = await save(request);
@@ -25345,7 +25355,7 @@ export default class OperonPlugin extends Plugin {
 		};
 		resolvedOptions = await this.resolveTaskEditorFileBodyOption(task, baseOptions);
 		const sourceFile = task ? this.app.vault.getAbstractFileByPath(indexedBeforeSave?.primary.filePath ?? task.filePath) : null;
-		if (!Platform.isPhone && task && !resolveCanonicalTask && sourceFile instanceof TFile && !this.isExcalidrawTaskSource(sourceFile)) {
+		if (task && !resolveCanonicalTask && sourceFile instanceof TFile && !this.isExcalidrawTaskSource(sourceFile)) {
 			resolvedOptions.readSource = readOpeningSource ?? (id => this.readTaskEditorSource(id, undefined, openingTrace));
 		}
 		resolvedOptions.openingTrace = openingTrace;

@@ -1,6 +1,7 @@
 import type { KeyMapping } from '../types/settings';
 import { getPropertyMappingAliases } from './property-icons';
 import { vaultPropertyIconKey } from './task-icon-value';
+import { getVisiblePropertyName } from './yaml-fields';
 import {
 	defaultTaskEditorProperties, isTaskEditorPropertySection, isTaskEditorSectionRemovable,
 	normalizeTaskEditorSections, TASK_EDITOR_COMMAND_IDS, taskEditorPropertyIdentity,
@@ -43,6 +44,7 @@ export function resolveTaskEditorLayout(input: unknown, mappings: readonly KeyMa
 		? notes : assignment(ref) ?? additional;
 	return {
 		sections, groups, fields, identify, position, assignment, referenceForName,
+  assignedPropertyNames: [...fields.values()].flat().map(ref => ref.kind === 'vault' ? ref.name : getVisiblePropertyName(ref.key, [...mappings])),
 		commandOrder: sections.find(section => section.id === 'commands')?.commandOrder ?? TASK_EDITOR_COMMAND_IDS,
 	};
 }

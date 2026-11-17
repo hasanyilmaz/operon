@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Adicionar propriedade",
 		"propertyEditorConflict": "A nota de origem foi alterada durante a edição. O rascunho foi mantido.",
 		"propertyEditorSaveFailed": "Não foi possível salvar as propriedades. O rascunho foi mantido.",
+		"removeEmptyProperty": "Remover {{name}} deste arquivo",
 		"propertyEditorRequiresTask": "{{name}} requer uma tarefa Operon salva e não pode ser editado em uma nota comum.",
 		"convertNoteToFileTask": "Converter em tarefa de arquivo do Operon",
 		"propertyEditorTitle": "Editor de propriedades",

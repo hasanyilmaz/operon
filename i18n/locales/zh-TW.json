@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "新增屬性",
 		"propertyEditorConflict": "編輯期間來源筆記已變更。草稿已保留。",
 		"propertyEditorSaveFailed": "無法儲存屬性。草稿已保留。",
+		"removeEmptyProperty": "從此檔案中移除 {{name}}",
 		"propertyEditorRequiresTask": "{{name}} 需要已儲存的 Operon 任務，無法在一般筆記中編輯。",
 		"convertNoteToFileTask": "轉換為 Operon 檔案任務",
 		"propertyEditorTitle": "屬性編輯器",

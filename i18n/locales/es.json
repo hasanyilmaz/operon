@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Añadir propiedad",
 		"propertyEditorConflict": "La nota de origen cambió durante la edición. Se conservó el borrador.",
 		"propertyEditorSaveFailed": "No se pudieron guardar las propiedades. Se conservó el borrador.",
+		"removeEmptyProperty": "Eliminar {{name}} de este archivo",
 		"propertyEditorRequiresTask": "{{name}} requiere una tarea de Operon guardada y no se puede editar en una nota normal.",
 		"convertNoteToFileTask": "Convertir en tarea de archivo de Operon",
 		"propertyEditorTitle": "Editor de propiedades",

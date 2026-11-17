@@ -37409,10 +37409,6 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-property-editor .operon-property-editor-message {
  color: var(--text-error);
 }
-.operon-task-editor.operon-property-editor .operon-editor-desktop-property-row.operon-property-editor-note-row {
- grid-template-columns: minmax(0, 1fr);
-}
-.operon-property-editor .operon-property-editor-note-row > .operon-editor-desktop-property-label,
 .operon-property-editor :is(.operon-editor-desktop-property-group, .operon-editor-text-field-group, .operon-property-editor-message)[hidden] {
  display: none;
 }
@@ -37820,4 +37816,105 @@ body.is-mobile .operon-mini-calendar-view .operon-calendar-toolbar-button { heig
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-nav { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 4px; }
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-weekdays,
 	.operon-mini-calendar-view .operon-calendar-sidebar-month-grid { gap: 6px 2px; }
+}
+
+/* Shared empty-property controls: reveal on interaction without shifting layout. */
+.operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row.has-property-remove {
+ grid-template-columns: calc(var(--operon-task-editor-property-label-width, 21.25%) + 8px) minmax(0, 1fr) auto;
+}
+body .operon-task-editor button.operon-editor-property-remove {
+ opacity: 0;
+ pointer-events: none;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ width: 28px;
+ min-width: 28px;
+ height: 28px;
+ padding: 4px;
+ flex: 0 0 auto;
+ justify-self: end;
+ align-self: center;
+ color: var(--text-muted);
+ background: transparent;
+ border: 1px solid transparent;
+ border-radius: 8px;
+ box-shadow: none;
+ cursor: pointer;
+}
+body .operon-task-editor button.operon-editor-property-remove:is(:hover, :focus-visible) {
+ border-color: var(--background-modifier-border);
+ background: transparent;
+ color: var(--text-normal);
+}
+body .operon-task-editor .has-property-remove:is(:hover, .has-descendant-focus-visible) > .operon-editor-property-remove,
+body .operon-task-editor .has-property-remove > .operon-editor-desktop-group-header:is(:hover, :focus-within) > .operon-editor-property-remove {
+ opacity: 1;
+ pointer-events: auto;
+}
+.operon-task-editor .operon-editor-text-field-group.is-notes > .operon-editor-desktop-group-header {
+ align-items: center;
+}
+.operon-task-editor-mobile .operon-editor-text-field-group.is-notes > .operon-editor-desktop-group-header {
+ display: flex;
+ justify-content: space-between;
+}
+.operon-task-editor .operon-note-setting .operon-task-editor-compact-text-host {
+ cursor: text;
+}
+.operon-task-editor .is-empty-property .operon-editor-desktop-property-value :is(.operon-editor-estimate-actions, .operon-editor-estimate-placeholder, .operon-editor-repeat-skip) {
+ display: none;
+}
+.operon-task-editor.operon-task-editor-mobile .operon-editor-desktop-property-row.has-property-remove {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) auto;
+}
+.operon-task-editor-mobile .has-property-remove > .operon-editor-desktop-property-value {
+ grid-column: 1;
+}
+.operon-task-editor-mobile .has-property-remove > .operon-editor-property-remove {
+ grid-column: 2;
+ grid-row: 1 / span 2;
+ align-self: center;
+}
+body .operon-task-editor-touch-desktop button.operon-editor-property-remove,
+body .operon-task-editor-mobile button.operon-editor-property-remove {
+ min-width: 44px;
+ min-height: 44px;
+}
+
+.operon-task-editor.operon-task-editor-touch-desktop .operon-editor-desktop-property-row.has-property-remove {
+ grid-template-columns: clamp(112px, 30%, 168px) minmax(0, 1fr) auto;
+}
+
+.operon-task-editor-mobile .operon-task-editor-mobile-note-wrap.has-property-remove {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) auto;
+ align-items: center;
+ gap: 4px;
+}
+.operon-task-editor-mobile .operon-task-editor-mobile-note-wrap.is-hidden {
+ display: none;
+}
+
+/* Empty values keep their picker hit area without drawing a second button box. */
+body .operon-task-editor .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-editor-repeat-trigger) {
+ border-color: transparent;
+ background: transparent;
+ box-shadow: none;
+}
+
+/* Empty core values retain geometry, but never paint the outer selection token. */
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value .operon-editor-value-token,
+body .operon-task-editor.operon-task-editor-mobile .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value .operon-editor-value-token {
+ border-color: transparent;
+ background: transparent;
+ box-shadow: none;
+}
+
+/* The note conversion action shares the editor's neutral resting controls. */
+body .operon-property-editor .operon-editor-text-field-group.is-description > button.operon-editor-picker-button:not(:hover):not(:focus-visible) {
+ background: transparent;
+ border: 1px solid var(--background-modifier-border);
+ box-shadow: none;
 }

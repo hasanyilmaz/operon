@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "添加属性",
 		"propertyEditorConflict": "编辑期间源笔记已更改。草稿已保留。",
 		"propertyEditorSaveFailed": "无法保存属性。草稿已保留。",
+		"removeEmptyProperty": "从此文件中移除 {{name}}",
 		"propertyEditorRequiresTask": "{{name}} 需要已保存的 Operon 任务，无法在普通笔记中编辑。",
 		"convertNoteToFileTask": "转换为 Operon 文件任务",
 		"propertyEditorTitle": "属性编辑器",

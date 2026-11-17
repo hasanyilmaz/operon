@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "属性编辑器",
       "related": "相关",
       "relatedPlaceholder": "[[项目笔记]]",
+      "removeEmptyProperty": "从此文件中移除 {{name}}",
       "removeFileTaskMessage": "此操作会将该文件任务移至 Obsidian 回收站。是否继续？",
       "removeInlineTaskMessage": "此操作会移除该行内任务。该行将保持为空。是否继续？",
       "removeSession": "移除会话",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "1a7647d62c469b1a791a48f1fca237093df77be680b070de8faf08f72c51d289"
+  "sourceVersion": "da63421d02e5750cb01ace65610cfc25776377619775b8849f48c79d6f09b258"
 }

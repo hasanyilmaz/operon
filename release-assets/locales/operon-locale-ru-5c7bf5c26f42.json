@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Редактор свойств",
       "related": "Связанные",
       "relatedPlaceholder": "[[Заметка проекта]]",
+      "removeEmptyProperty": "Удалить {{name}} из этого файла",
       "removeFileTaskMessage": "Это переместит файловую задачу в корзину Obsidian. Продолжить?",
       "removeInlineTaskMessage": "Это удаляет встроенную задачу. Строка останется пустой. Продолжить?",
       "removeSession": "Удалить сессию",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "63125fef5d49922d7d67f5b60658d53f8cf8064b074e06255e9a170857415bfe"
+  "sourceVersion": "ab3c17d83052266af01c4c9ea7a1abdb05f2fc183711a766edd6030dacb43240"
 }

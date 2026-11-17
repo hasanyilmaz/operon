@@ -2839,6 +2839,7 @@
 		"propertyEditorAdd": "Özellik ekle",
 		"propertyEditorConflict": "Siz düzenlerken kaynak not değişti. Taslağınız korundu.",
 		"propertyEditorSaveFailed": "Özellikler kaydedilemedi. Taslağınız korundu.",
+		"removeEmptyProperty": "{{name}} alanını bu dosyadan kaldır",
 		"propertyEditorRequiresTask": "{{name}} kayıtlı bir Operon görevi gerektirir ve normal bir notta düzenlenemez.",
 		"convertNoteToFileTask": "Operon Dosya Görevine dönüştür",
 		"propertyEditorTitle": "Özellik Düzenleyici",

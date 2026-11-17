@@ -1,3 +1,4 @@
+import { editorMappedProperties, type EditorMappedProperty } from '../core/file-task-property-draft';
 import { isWideEditorSourceViewport } from './editor-source-layout';
 import type { FileTaskRenameSuggestion } from '../core/filename-rule';
 import { type InlinePropertyType } from '../core/inline-property-definitions';
@@ -132,7 +133,6 @@ import { showEstimatePicker } from './field-pickers/estimate-picker';
 import { showIconPicker } from './field-pickers/icon-picker';
 import { showParentTaskPicker } from './field-pickers/parent-task-picker';
 import { showPriorityPicker } from './field-pickers/priority-picker';
-import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { showStatusPicker } from './field-pickers/status-picker';
 import { showSubtasksPicker } from './field-pickers/subtasks-picker';
@@ -175,6 +175,7 @@ export interface TaskEditorSaveRequest {
 export interface TaskEditorCanonicalState {
 	/** Fresh source fields, separate from the managed index projection. */
 	sourceFields?: readonly OperonField[];
+ mappedProperties?: Record<string, EditorMappedProperty>;
 	description: string;
 	checkbox: ParsedTask['checkbox'];
 	tags: string[];
@@ -511,7 +512,7 @@ export class TaskEditorContent extends EditorPropertyFields {
  protected filePropertyRows: Map<string, { row: HTMLElement; value: HTMLElement; action: HTMLButtonElement }> = new Map();
  private filePropertyRoot: HTMLElement | null = null;
  private desktopLayout: TaskEditorLayout | null = null;
- private desktopPropertyGroups = new Map<TaskEditorSectionId, ReturnType<typeof createEditorPropertyGroup>>();
+ private desktopPropertyGroups = new Map<TaskEditorSectionId, { group: HTMLElement; actions: HTMLElement }>();
  protected additionalPropertyAdd: HTMLButtonElement | null = null;
  private additionalPropertyKeys: readonly string[] = [];
  private filePropertyGeneration = 0;
@@ -616,7 +617,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.existingTask = existingTask;
 		this.isNewTask = !existingTask;
 		this.openingTrace = options.openingTrace;
-		this.readSource = !this.isPhone && existingTask ? options.readSource : undefined;
+		this.readSource = existingTask ? options.readSource : undefined;
 		this.onSave = onSave;
 		this.timeTracker = timeTracker;
 		this.focusDescriptionOnMount = options.focusDescriptionOnMount ?? true;
@@ -1830,7 +1831,8 @@ export class TaskEditorContent extends EditorPropertyFields {
 		const wrap = this.mobileNoteWrapEl;
 		if (!wrap) return;
 		const hasNote = !!(this.fieldValues['note'] ?? '').trim();
-		wrap.toggleClass('is-hidden', !this.mobileNoteOpen && !hasNote);
+		wrap.toggleClass('is-hidden', !this.mobileNoteOpen && !hasNote && !this.hasSourceProperty('note'));
+  this.updateMappedPropertyRemoval('note', wrap);
 	}
 
 	private setMobileNoteOpen(open: boolean, focus = false): void {
@@ -2037,7 +2039,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			// Picker callbacks still own their input. Re-evaluate on interaction end.
 			if (this.workflowActionPickerClose || this.closeFilePropertyPicker || this.closeFilePropertyAddPicker || this.mobilePickerOpenDepth) return;
 			const baseline = this.taskSourceState(true), draft = this.taskSourceState();
-			const changed = taskEditorChangedKeys(baseline, draft);
+			const changed = this.editorChangedKeys(baseline, draft);
 			const next = mergeTaskEditorSource(snapshot.state, draft, changed);
 			const path = this.getCompactTextSourcePath();
 			// A compact surface may be composing even before its draft callback fires.
@@ -2065,7 +2067,8 @@ export class TaskEditorContent extends EditorPropertyFields {
 				this.fileBodyContext.filePath = snapshot.filePath;
 				this.fileBodyContext.targetLine = Math.max(0, snapshot.lineNumber - this.fileBodyContext.lineNumberOffset);
 			}
-			this.refreshDesktopPropertyRows();
+			this.refreshWorkflowPickerSurfaceValues();
+   this.updateMobileNoteVisibility();
 			this.refreshSchedulingDraftControls();
 			this.refreshMobileCoreButtons();
 			this.refreshStatsCounters?.();
@@ -2295,7 +2298,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			this.renderProjectSerialControl(actions);
 			this.renderCopyOperonIdButton(actions);
 			this.renderDescription(group, false);
-		} else this.renderNote(group, false);
+		} else { this.renderNote(group, false); this.notePropertyGroup = group; }
 	}
 
 	private renderDescription(container: HTMLElement, showLabel = true): void {
@@ -2722,24 +2725,74 @@ export class TaskEditorContent extends EditorPropertyFields {
 		this.refreshDesktopPropertyRows();
 	}
 
- private getInlinePropertyChanges(): InlinePropertyChange[] {
-  return Array.from(this.fileProperties, ([sourceName, entry]): InlinePropertyChange | null => {
-   if (!entry.inline || entry.pending || !entry.baseline || !isSupportedRawYamlPropertyValue(entry.value)
-    || rawYamlPropertyExpectationsEqual(entry.baseline, { present: true, value: entry.value })) return null;
-   return { sourceName, type: entry.inline.type, expected: { present: entry.inline.present, rawValue: entry.inline.rawValue },
-    mutation: { kind: 'set', value: (Array.isArray(entry.value) ? [...entry.value] : entry.value) as VaultPropertyValue } };
-  }).filter((change): change is InlinePropertyChange => change !== null);
+ private notePropertyGroup: HTMLElement | null = null;
+ private editorChangedKeys(before: TaskEditorSourceState, after: TaskEditorSourceState): string[] {
+  return [...new Set([...taskEditorChangedKeys(before, after), ...this.removedMappedProperties.keys(), ...this.removedInlineProperties.keys()])];
  }
 
- private getFilePropertyChanges(): FileTaskPropertyChange[] {
-  return Array.from(this.fileProperties, ([propertyName, entry]) => {
-   if (entry.inline || entry.pending || !entry.baseline || !isSupportedRawYamlPropertyValue(entry.value) || rawYamlPropertyExpectationsEqual(entry.baseline, { present: true, value: entry.value })) return null;
-   return { propertyName, expected: { ...entry.baseline, value: Array.isArray(entry.baseline.value) ? [...entry.baseline.value] : entry.baseline.value }, value: Array.isArray(entry.value) ? [...entry.value] : entry.value, ...(this.isNativeCustomProperty(this.settings.keyMappings.find(mapping => [mapping.visiblePropertyName, mapping.canonicalKey].some(alias => alias.toLowerCase() === propertyName.toLowerCase()))?.canonicalKey ?? '') ? { nativeType: entry.field.type as InlinePropertyType } : {}) };
-  }).filter((change): change is FileTaskPropertyChange => change !== null);
+ private mappedPropertyBaselines: Record<string, EditorMappedProperty> = {};
+ private readonly removedMappedProperties = new Map<string, FileTaskPropertyChange>();
+ private readonly removedInlineProperties = new Map<string, InlinePropertyChange>();
+ private hasSourceProperty(key: string): boolean {
+  if (this.removedMappedProperties.has(key) || this.removedInlineProperties.has(key)) return false;
+  return !!this.mappedPropertyBaselines[key] || !!this.existingTask?.fields.some(field => field.key === key);
+ }
+ private canRemoveMappedProperty(key: string): boolean {
+  if (this.hasWorkflowPickerValue(key) || !this.hasSourceProperty(key)) return false;
+  const changed = key === 'tags' ? this.persistedTags.length > 0 : !!this.persistedFieldValues[key]?.trim();
+  const property = this.mappedPropertyBaselines[key];
+  if (property) return changed || isEmptyFilePropertyValue(property.expected.value);
+  const field = this.existingTask?.fields.find(item => item.key === key);
+  return this.fileBodyContext?.format === 'inline' && !!field && (changed || !field.value.trim()) && !!editorMappedProperties({ [field.sourceKey]: null }, this.settings.keyMappings, {}, this.settings.inlinePropertyDefinitions)[key];
+ }
+ private removeMappedProperty(key: string): void {
+  if (!this.canRemoveMappedProperty(key)) return;
+  const property = this.mappedPropertyBaselines[key];
+  if (property) {
+   this.removedMappedProperties.set(key, { propertyName: property.name, mappedKey: key, expected: property.expected, value: null, remove: true });
+  } else if (this.fileBodyContext?.format === 'inline') {
+   const field = this.existingTask?.fields.find(item => item.key === key);
+   const eligible = field && editorMappedProperties({ [field.sourceKey]: null }, this.settings.keyMappings, {}, this.settings.inlinePropertyDefinitions)[key];
+   if (!field || !eligible) return;
+   this.removedInlineProperties.set(key, { sourceName: field.sourceKey, mappedKey: key, type: eligible.type, expected: { present: true, rawValue: field.rawValue }, mutation: { kind: 'remove' } });
+  } else return;
+  this.markEdited(); this.refreshWorkflowPickerSurfaceValues(); this.updateMobileNoteVisibility();
+  const target = this.workflowActionButtons.get(key) ?? this.additionalPropertyAdd;
+  if (target?.isConnected) target.focus({ preventScroll: true });
+  else this.focusDescriptionField(false);
+ }
+ private updateMappedPropertyRemoval(key: string, row: HTMLElement): void {
+  this.updateEmptyPropertyRemoval(row, this.getWorkflowPickerLabel(key), this.canRemoveMappedProperty(key), () => this.removeMappedProperty(key));
+ }
+
+ private getInlinePropertyChanges(): InlinePropertyChange[] {
+  for (const key of this.removedInlineProperties.keys()) if (this.hasWorkflowPickerValue(key)) this.removedInlineProperties.delete(key);
+  return [...this.removedInlineProperties.values(), ...Array.from(this.fileProperties, ([sourceName, entry]): InlinePropertyChange | null => {
+   if (!entry.inline || entry.pending || !entry.baseline || !isSupportedRawYamlPropertyValue(entry.value)
+    || !entry.remove && rawYamlPropertyExpectationsEqual(entry.baseline, { present: true, value: entry.value })) return null;
+   return { sourceName, type: entry.inline.type, expected: { present: entry.inline.present, rawValue: entry.inline.rawValue },
+    mutation: entry.remove ? { kind: 'remove' } : { kind: 'set', value: (Array.isArray(entry.value) ? [...entry.value] : entry.value) as VaultPropertyValue } };
+  }).filter((change): change is InlinePropertyChange => change !== null)];
+ }
+
+ private getFilePropertyChanges(preserveEmpty = false): FileTaskPropertyChange[] {
+  const mapped: FileTaskPropertyChange[] = [];
+  for (const [key, property] of Object.entries(this.mappedPropertyBaselines)) {
+   if (this.hasWorkflowPickerValue(key)) { this.removedMappedProperties.delete(key); continue; }
+   const removed = this.removedMappedProperties.get(key);
+   if (removed) mapped.push(removed);
+   else if (preserveEmpty && isEmptyFilePropertyValue(property.expected.value) || (this.fieldValues[key] ?? '') !== (this.persistedFieldValues[key] ?? '') || key === 'tags' && this.tags.join() !== this.persistedTags.join()) {
+    mapped.push({ propertyName: property.name, mappedKey: key, expected: property.expected, value: isEmptyFilePropertyValue(property.expected.value) ? property.expected.value ?? null : null });
+   }
+  }
+  return [...mapped, ...Array.from(this.fileProperties, ([propertyName, entry]) => {
+   if (entry.inline || entry.pending || !entry.baseline || !isSupportedRawYamlPropertyValue(entry.value) || !entry.remove && rawYamlPropertyExpectationsEqual(entry.baseline, { present: true, value: entry.value })) return null;
+   return { propertyName, ...(entry.remove ? { remove: true, preserveSource: true } : {}), expected: { ...entry.baseline, value: Array.isArray(entry.baseline.value) ? [...entry.baseline.value] : entry.baseline.value }, value: Array.isArray(entry.value) ? [...entry.value] : entry.value, ...(this.isNativeCustomProperty(this.settings.keyMappings.find(mapping => [mapping.visiblePropertyName, mapping.canonicalKey].some(alias => alias.toLowerCase() === propertyName.toLowerCase()))?.canonicalKey ?? '') ? { nativeType: entry.field.type as InlinePropertyType } : {}) };
+  }).filter((change): change is FileTaskPropertyChange => change !== null)];
  }
 
  private mountDesktopFileProperties(root: HTMLElement): void {
-  if (this.usesMobileLayout || this.isNewTask || !this.fileBodyContext) return;
+  if (this.isNewTask || !this.fileBodyContext) return;
   this.filePropertyRoot = root.createDiv('operon-editor-desktop-file-properties');
   if (!this.filePropertyCleanup) {
    this.filePropertyCleanup = getNativePropertyIndex(this.app).subscribe(() => {
@@ -2793,10 +2846,21 @@ export class TaskEditorContent extends EditorPropertyFields {
       ...(type ? { field: this.nativePropertyField(name, type), ...(previous.inline ? { inline: { ...previous.inline, type } } : {}) } : {}) });
      continue;
     }
-    const dirty = previous.pending || this.filePropertyPickerName === name || this.submittedFileProperties.has(name)
+    const dirty = previous.remove || previous.pending || this.filePropertyPickerName === name || this.submittedFileProperties.has(name)
      || previous.baseline && isSupportedRawYamlPropertyValue(previous.value)
       && !rawYamlPropertyExpectationsEqual(previous.baseline, { present: true, value: previous.value });
     if (dirty) next.set(name, { ...previous, ...(next.has(name) ? { readonly: next.get(name)!.readonly, readOnlyReason: next.get(name)!.readOnlyReason, field: next.get(name)!.field } : {}) });
+   }
+   if (!this.usesMobileLayout && this.desktopLayout) for (const name of this.desktopLayout.assignedPropertyNames) {
+    const reference = this.desktopLayout.referenceForName(name);
+    const key = reference.kind === 'mapped' ? reference.key : name;
+    if (this.workflowActionButtons.has(key) || reference.kind === 'mapped' && !this.isNativeCustomProperty(key)) continue;
+    if ([...next.keys()].some(existing => this.desktopLayout!.identify(this.desktopLayout!.referenceForName(existing)) === this.desktopLayout!.identify(reference))) continue;
+    const type = this.nativePropertyType(name) ?? this.settings.keyMappings.find(mapping => mapping.canonicalKey === key)?.type ?? 'text';
+    const reason = nativePropertyReadOnlyReason(name, null, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes);
+    next.set(name, { field: this.nativePropertyField(name, type), value: null, baseline: { present: false, value: undefined },
+     pending: true, headerSelected: true, readonly: !!reason, readOnlyReason: reason,
+     ...(this.fileBodyContext?.format === 'inline' ? { inline: { sourceName: name, type, present: false, state: 'missing' as const } } : {}) });
    }
    const same = !this.filePropertyUnavailable && next.size === this.fileProperties.size && Array.from(next).every(([name, entry], index) => {
     const previous = this.fileProperties.get(name);
@@ -2836,8 +2900,16 @@ export class TaskEditorContent extends EditorPropertyFields {
   return known ? this.nativePropertyTypes[known] : undefined;
  }
 
+ protected removeFileProperty(name: string): void {
+  const entry = this.fileProperties.get(name);
+  if (!entry || !entry.baseline?.present || !this.canEditFileProperty(entry) || !isEmptyFilePropertyValue(entry.value)) return;
+  entry.remove = true;
+  const action = this.filePropertyRows.get(name)?.action;
+  this.refreshFilePropertyValue(name); this.markEdited(); action?.focus({ preventScroll: true });
+ }
+
  protected syncFilePropertyRowVisibility(entry: EditorFileProperty, surface: { row: HTMLElement; action: HTMLButtonElement }, populated: boolean): void {
-  surface.row.hidden = !populated;
+  surface.row.hidden = !!entry.remove || !populated && !entry.baseline?.present && !entry.inline?.present;
   this.refreshDesktopPropertyGroupState(surface.row);
   surface.action.hidden = !populated && !entry.baseline?.present && !entry.inline?.present && !entry.headerSelected;
  }
@@ -2867,7 +2939,7 @@ export class TaskEditorContent extends EditorPropertyFields {
   if (!layout) return;
   if (this.filePropertyUnavailable) root.createDiv({ text: t('taskEditor', 'filePropertiesUnavailable'), cls: 'operon-editor-desktop-file-warning' });
   for (const [name, entry] of this.fileProperties) {
-   const { section, rank } = layout.position(layout.referenceForName(name));
+   const { section, rank } = this.usesMobileLayout ? { section: 'additional' as const, rank: Infinity } : layout.position(layout.referenceForName(name));
    const target = this.desktopPropertyGroups.get(section) ?? this.desktopPropertyGroups.get('additional')!;
    const group = rank === Infinity ? root : target.group;
    const { actions } = target;
@@ -2896,8 +2968,9 @@ export class TaskEditorContent extends EditorPropertyFields {
 
  protected setFilePropertyValue(name: string, value: RawYamlPropertyValue): void {
   const entry = this.fileProperties.get(name);
-  if (!entry || !this.canEditFileProperty(entry) || !isSupportedRawYamlPropertyValue(entry.value) || !entry.pending && rawYamlPropertyExpectationsEqual({ present: true, value: entry.value }, { present: true, value })) return;
+  if (!entry || !this.canEditFileProperty(entry) || !isSupportedRawYamlPropertyValue(entry.value) || !entry.pending && !entry.remove && rawYamlPropertyExpectationsEqual({ present: true, value: entry.value }, { present: true, value })) return;
   entry.pending = false;
+  entry.remove = false;
   entry.value = Array.isArray(value) ? [...value] : value;
   this.refreshFilePropertyValue(name); this.markEdited();
  }
@@ -3028,13 +3101,15 @@ export class TaskEditorContent extends EditorPropertyFields {
 	}
 
 	private refreshDesktopPropertyRows(): void {
+  if (this.notePropertyGroup) this.updateMappedPropertyRemoval('note', this.notePropertyGroup);
 		const groups = new Set<HTMLElement>();
 		for (const [key, entry] of this.desktopPropertyRows) {
 			if (this.readSource && entry.value.contains(entry.value.ownerDocument.activeElement)) continue;
 			if (entry.row.parentElement) groups.add(entry.row.parentElement);
 			const hasValue = this.hasWorkflowPickerValue(key);
 			this.refreshDesktopPropertyIcon(key, entry.row, hasValue);
-			entry.row.hidden = !hasValue && !(entry.core && entry.row.contains(entry.row.ownerDocument.activeElement));
+   this.updateMappedPropertyRemoval(key, entry.row);
+			entry.row.hidden = !hasValue && !this.hasSourceProperty(key) && !(entry.core && entry.row.contains(entry.row.ownerDocument.activeElement));
 			const label = entry.row.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label');
 			if (label) label.disabled = (key === 'datetimeEnd' && !this.fieldValues['datetimeStart']) || (key === 'subtasks' && !this.getCurrentOperonId());
 			entry.value.toggleClass('is-readonly', label?.disabled ?? false);
@@ -3422,14 +3497,17 @@ export class TaskEditorContent extends EditorPropertyFields {
 	}
 
 	private renderWorkflowSurface(container: HTMLElement): void {
-		const items = this.getRenderableWorkflowPickerItems();
-		if (items.length === 0) return;
+		const items = this.getRenderableWorkflowPickerItems().filter(item => !this.isNativeCustomProperty(item.key));
+		if (items.length === 0 && !this.fileBodyContext) return;
 
 		const { actions, rows } = createCompactEditorWorkflow(container, t('settings', 'taskEditorWorkflowPickers'));
 		this.workflowActionsEl = actions;
 		this.workflowRowsEl = rows;
 		this.renderWorkflowPickerActions(this.workflowActionsEl, items);
 		this.renderFilledWorkflowPickers(this.workflowRowsEl, items);
+  this.desktopLayout = resolveTaskEditorLayout(this.settings.taskEditorSections, this.settings.keyMappings);
+  this.desktopPropertyGroups.set('additional', { group: container, actions });
+  this.mountDesktopFileProperties(container);
 	}
 
 	private getRenderableWorkflowPickerItems(): TaskEditorWorkflowPickerItem[] {
@@ -3485,12 +3563,18 @@ export class TaskEditorContent extends EditorPropertyFields {
 		}
 	}
 
-	private renderFilledWorkflowPickers(container: HTMLElement, items = this.getRenderableWorkflowPickerItems()): void {
+	private renderFilledWorkflowPickers(container: HTMLElement, items = this.getRenderableWorkflowPickerItems().filter(item => !this.isNativeCustomProperty(item.key))): void {
 		cleanupOperonHoverTooltips(container);
 		container.empty();
 		let renderedCount = 0;
 		for (const item of items) {
-			if (!this.hasWorkflowPickerValue(item.key)) continue;
+			if (!this.hasWorkflowPickerValue(item.key)) {
+    if (!this.hasSourceProperty(item.key)) continue;
+    const { row, label, value } = this.createPropertyRow(container, item.key, this.getWorkflowPickerLabel(item.key), () => this.resolveWorkflowPickerIcon(item.key), this.isListProperty(item.key));
+    this.bindDesktopPropertyInteraction(row, label, value, () => this.openWorkflowPickerFromAction(item.key, label), () => this.openWorkflowPickerFromAction(item.key, label), () => true);
+    this.updateMappedPropertyRemoval(item.key, row);
+    renderedCount++; continue;
+   }
 			const managedTaskDataField = getManagedTaskDataFieldPicker(item.key, this.settings.keyMappings);
 			const customMapping = getCustomFieldMapping(this.settings.keyMappings, item.key);
 			if (managedTaskDataField) {
@@ -3537,15 +3621,12 @@ export class TaskEditorContent extends EditorPropertyFields {
 	private syncWorkflowActionButtonState(key: string, button: HTMLButtonElement): void {
 		const active = this.hasWorkflowPickerValue(key);
 		const additionalGroup = button.closest<HTMLElement>('.operon-editor-desktop-property-group')?.dataset.propertyGroup === 'additional';
-		button.hidden = additionalGroup && !active;
+		button.hidden = additionalGroup && !active && !this.desktopLayout?.assignment({ kind: 'mapped', key });
 		button.toggleClass('is-active', active);
 		button.setAttr('aria-pressed', String(active));
 		const locked = key === 'subtasks' && !this.getCurrentOperonId();
-		const ruleAddDisabled = key === 'reminderRules'
-			&& this.isSystemReminderWorkflowKey(key)
-			&& getAvailableReminderRuleAnchors(this.fieldValues).length === 0;
 		button.toggleClass('is-locked', locked);
-		button.disabled = ruleAddDisabled || (key === 'datetimeEnd' && !(this.fieldValues['datetimeStart'] ?? '').trim());
+		button.disabled = this.workflowActionDisabled(key);
 		button.setAttr('aria-disabled', String(locked || button.disabled));
 	}
 
@@ -4611,6 +4692,11 @@ export class TaskEditorContent extends EditorPropertyFields {
 	}
 
 	private syncExistingTaskCanonicalState(state: TaskEditorCanonicalState): void {
+  if (state.mappedProperties) {
+   const next = { ...state.mappedProperties };
+   for (const [key, property] of Object.entries(this.mappedPropertyBaselines)) if (this.removedMappedProperties.has(key) || (this.fieldValues[key] ?? '') !== (this.persistedFieldValues[key] ?? '')) next[key] = property;
+   this.mappedPropertyBaselines = next;
+  }
 		if (!this.existingTask) return;
 
 		this.existingTask.description = state.description;
@@ -4626,7 +4712,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			}
 		}
 		for (const [key, value] of Object.entries(state.fieldValues)) {
-            if (state.sourceFields?.some(field => field.key === key) && !CANONICAL_KEY_MAP.has(key)) continue;
+            if (state.sourceFields?.some(field => field.key === key) && (!value || !CANONICAL_KEY_MAP.has(key))) continue;
 			this.syncExistingTaskFieldSnapshot(key, value);
 		}
 		this.existingTask.operonId = state.fieldValues['operonId'] ?? this.existingTask.operonId;
@@ -4992,8 +5078,9 @@ export class TaskEditorContent extends EditorPropertyFields {
 			const now = localNow();
 			this.fieldValues['datetimeModified'] = now;
 
-			const fields = Object.entries(this.fieldValues)
-				.filter(([key, value]) => key !== 'pinned' && (!!value || !isManagedTaskFieldCanonicalKey(key, this.settings.keyMappings) || this.existingTask?.fields.some(field => field.key === key && field.value === value)))
+			for (const field of this.existingTask?.fields ?? []) if (!Object.prototype.hasOwnProperty.call(this.fieldValues, field.key) && this.hasSourceProperty(field.key) && (this.mappedPropertyBaselines[field.key] || this.fileBodyContext?.format === 'inline' && editorMappedProperties({ [field.sourceKey]: null }, this.settings.keyMappings, {}, this.settings.inlinePropertyDefinitions)[field.key])) this.fieldValues[field.key] = '';
+   const fields = Object.entries(this.fieldValues)
+				.filter(([key, value]) => key !== 'pinned' && (!!value || !isManagedTaskFieldCanonicalKey(key, this.settings.keyMappings) || this.existingTask?.fields.some(field => field.key === key)))
 				.map(([key, value]) => buildTaskEditorOperonField(
 					key,
 					value,
@@ -5031,10 +5118,10 @@ export class TaskEditorContent extends EditorPropertyFields {
 				if (before === after) return 'unchanged';
 				return after ? 'explicitly-set' : 'explicitly-cleared';
 			};
-			const savedFileProperties = this.getFilePropertyChanges();
+			const savedFileProperties = this.getFilePropertyChanges(true);
    const savedInlineProperties = this.getInlinePropertyChanges();
-   if (savedInlineProperties.some(change => !this.canEditFileProperty(this.fileProperties.get(change.sourceName)!))) return { ok: false, reason: 'write-rejected' };
-   if (savedFileProperties.length && (this.filePropertyUnavailable || savedFileProperties.some(change => !this.canEditFileProperty(this.fileProperties.get(change.propertyName)!)))) return { ok: false, reason: 'write-rejected' };
+   if (savedInlineProperties.some(change => !change.mappedKey && !this.canEditFileProperty(this.fileProperties.get(change.sourceName)!))) return { ok: false, reason: 'write-rejected' };
+   if (savedFileProperties.length && (savedFileProperties.some(change => !change.mappedKey && !this.canEditFileProperty(this.fileProperties.get(change.propertyName)!)))) return { ok: false, reason: 'write-rejected' };
 			const savedDescription = this.description;
 			const savedTitleChange = this.editsFileTaskTitle
 				&& (this.fieldValues['fileTaskDisplayTitle'] ?? '') !== (this.persistedFieldValues['fileTaskDisplayTitle'] ?? '')
@@ -5071,7 +5158,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 					...(this.readSource && this.taskOperonId ? { sourceSync: {
 						operonId: this.taskOperonId,
 						baseline: this.taskSourceState(true),
-						changedKeys: taskEditorChangedKeys(this.taskSourceState(true), this.taskSourceState()),
+						changedKeys: this.editorChangedKeys(this.taskSourceState(true), this.taskSourceState()),
 					} } : {}),
                     inlineSourceFields: this.existingTask?.fields.map(field => ({ ...field })),
 					isNew: this.isNewTask,
@@ -5103,12 +5190,16 @@ export class TaskEditorContent extends EditorPropertyFields {
 				return { ok: false, reason: 'write-rejected' };
 			}
    for (const change of savedFileProperties) {
+    if (change.mappedKey) {
+     if (this.removedMappedProperties.get(change.mappedKey) === change) { this.removedMappedProperties.delete(change.mappedKey); delete this.mappedPropertyBaselines[change.mappedKey]; }
+     continue;
+    }
     const entry = this.fileProperties.get(change.propertyName);
     const result = isTaskEditorSaveCommit(saveResult) ? saveResult.fileProperties?.find(item => item.propertyName === change.propertyName) : undefined;
     const snapshot = isTaskEditorSaveCommit(saveResult) ? saveResult.filePropertySnapshots?.find(item => item.propertyName === change.propertyName)?.expectation : undefined;
-    const committed = snapshot ?? { present: true, value: result ? result.value : change.value };
+    const committed = snapshot ?? { present: !change.remove, value: result ? result.value : change.value };
     if (entry) {
-     if (rawYamlPropertyExpectationsEqual({ present: true, value: entry.value as RawYamlPropertyValue }, { present: true, value: change.value })) {
+     if (!!entry.remove === !!change.remove && rawYamlPropertyExpectationsEqual({ present: true, value: entry.value as RawYamlPropertyValue }, { present: true, value: change.value })) {
       if (!committed.present) this.fileProperties.delete(change.propertyName);
       else entry.value = Array.isArray(committed.value) ? [...committed.value] : committed.value;
      }
@@ -5116,11 +5207,12 @@ export class TaskEditorContent extends EditorPropertyFields {
     }
    }
    for (const change of savedInlineProperties) {
+    if (change.mappedKey) { if (this.removedInlineProperties.get(change.mappedKey) === change) this.removedInlineProperties.delete(change.mappedKey); continue; }
     const entry = this.fileProperties.get(change.sourceName);
     const committed = isTaskEditorSaveCommit(saveResult) ? saveResult.inlineProperties?.find(item => item.sourceName.toLowerCase() === change.sourceName.toLowerCase()) : undefined;
     if (!entry || !committed) continue;
     const acknowledged = committed.state === 'valid' ? committed.value : committed.rawValue ?? null;
-    if (change.mutation.kind === 'set' && rawYamlPropertyExpectationsEqual({ present: true, value: entry.value as RawYamlPropertyValue }, { present: true, value: change.mutation.value })) {
+    if (change.mutation.kind === 'remove' && entry.remove || change.mutation.kind === 'set' && !entry.remove && rawYamlPropertyExpectationsEqual({ present: true, value: entry.value as RawYamlPropertyValue }, { present: true, value: change.mutation.value })) {
      if (!committed.present) this.fileProperties.delete(change.sourceName);
      else entry.value = Array.isArray(acknowledged) ? [...acknowledged] : acknowledged;
     }

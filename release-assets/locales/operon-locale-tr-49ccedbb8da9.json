@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3853,
-  "keyFingerprint": "9848729b42756e813af8158caaa385725f2f051fa5be8f3e31c03e8fa898fc94",
+  "keyCount": 3854,
+  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3622,6 +3622,7 @@
       "propertyEditorTitle": "Özellik Düzenleyici",
       "related": "İlişkili",
       "relatedPlaceholder": "[[Proje Notu]]",
+      "removeEmptyProperty": "{{name}} alanını bu dosyadan kaldır",
       "removeFileTaskMessage": "Bu, dosya görevini Obsidian çöp kutusuna taşır. Devam edilsin mi?",
       "removeInlineTaskMessage": "Bu, satır içi görevi kaldırır. Satır boş kalacak. Devam edilsin mi?",
       "removeSession": "Oturumu kaldır",
@@ -3898,5 +3899,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "4873f8fb7462803a616cb461e06bacf6bed11e7e7456f1ffe8de08d5d7536917"
+  "sourceVersion": "55066a740e582d0e98e3257fbe31a7c380e345baac836f721a71fa59db6333d7"
 }

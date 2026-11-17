@@ -11,7 +11,8 @@ import { planPropertyEditorWrite, type PropertyEditorChange, type PropertyEditor
 import { isEmptyFilePropertyValue, readRawYamlPropertyExpectation, type RawYamlPropertyValue } from '../core/raw-yaml-property';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import type { IndexedTask, ParsedTask } from '../types/fields';
-import type { OperonSettings } from '../types/settings';
+import { normalizeTaskEditorWorkflowPickers, type OperonSettings } from '../types/settings';
+import { getVisiblePropertyName } from '../core/yaml-fields';
 import { DEFAULT_INLINE_REPEAT_COMPLETION_MODE } from '../storage/repeat-series-store';
 import { EditorPropertyFields, DESKTOP_CORE_FIELDS, type EditorFileProperty } from './editor-property-fields';
 import { getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
@@ -76,6 +77,8 @@ export class NativePropertyEditor extends EditorPropertyFields {
  private readonly clearAddingOnRowClick = (event: Event): void => {
   if ((event.target as HTMLElement).closest('[data-property-name]')) this.adding = null;
  };
+ private readonly headerActions = new Map<string, HTMLButtonElement>();
+ private noteSurface: { name: string; row: HTMLElement; value: string } | null = null;
  private readonly surfaces = new Map<string, { row: HTMLElement; label: HTMLButtonElement; value: HTMLElement; shared: boolean; signature: string; action?: HTMLButtonElement; key: string }>();
  private readonly schedulingRefreshers = new Set<() => void>();
  private adding: string | null = null;
@@ -238,12 +241,17 @@ export class NativePropertyEditor extends EditorPropertyFields {
   try {
    const document = this.draft.properties;
    this.applyThemeColor();
+   if (this.noteSurface && (!document.order.includes(this.noteSurface.name) || !this.usesSharedControl(this.field(this.noteSurface.name)))) {
+    this.noteCompactEditor?.destroy(); this.noteCompactEditor = null;
+    this.noteSurface.row.remove(); this.noteSurface = null;
+    this.updateEmptyPropertyRemoval(this.groups.get('notes')!.group, '', false, () => {});
+   }
    const positions = new Map<HTMLElement, number>();
    for (const [name, surface] of this.surfaces) {
     if (document.order.includes(name)) continue;
     this.removeSurface(name, surface);
    }
-   const actionPositions = new Map<HTMLElement, number>();
+   this.refreshHeaderActions();
    const order = document.order.map(name => {
     const field = this.field(name);
     const { section, rank } = this.sectionLayout.position(this.sectionLayout.referenceForName(name));
@@ -254,7 +262,19 @@ export class NativePropertyEditor extends EditorPropertyFields {
    for (const { name, field, id } of order) {
     const key = field.mapping?.canonicalKey ?? name;
     const shared = this.usesSharedControl(field);
-    const { group, actions } = this.groups.get(id)!;
+    const { group } = this.groups.get(id)!;
+    if (shared && key === 'note') {
+     const value = this.fieldValues.note ?? '';
+     if (!this.noteSurface || this.noteSurface.value !== value && !this.noteSurface.row.contains(this.root.ownerDocument.activeElement)) {
+      this.noteSurface?.row.remove();
+      const row = this.renderNote(group, false);
+      row.dataset.propertyName = name;
+      this.noteSurface = { name, row, value };
+     }
+     positions.set(group, 1);
+     this.updateEmptyPropertyRemoval(group, this.getWorkflowPickerLabel(key), isEmptyFilePropertyValue(document.frontmatter[name]), () => this.removeFileProperty(name));
+     continue;
+    }
     let surface = this.surfaces.get(name);
     // Mapping/type changes may switch a row to the shared read-only representation.
     if (surface && (surface.shared !== shared || surface.key !== key)) {
@@ -263,17 +283,10 @@ export class NativePropertyEditor extends EditorPropertyFields {
     }
     if (!surface) {
      const native = this.nativePropertyField(name, field.type);
-     const label = shared && key === 'contexts' ? this.getWorkflowPickerLabel(key) : name;
+     const label = field.mapping ? this.getWorkflowPickerLabel(key) : name;
      const icon = () => shared ? this.resolveWorkflowPickerIcon(key) : this.resolveNativePropertyIcon(name, field.type);
      const built = this.createPropertyRow(group, shared ? key : native.key, label, icon, field.type === 'list');
-     if (shared && key === 'note') built.row.addClass('operon-property-editor-note-row');
-     const action = actions?.createEl('button', { cls: 'operon-task-editor-workflow-action-button', attr: { type: 'button' } });
-     if (action) {
-      if (this.add.parentElement === actions) actions.insertBefore(action, this.add);
-      bindPropertyIcon(action, icon);
-      setAccessibleLabelWithoutTooltip(action, label);
-      this.bindEditorHoverTooltip(action, { content: label, taskColor: () => this.getThemeColor() });
-     }
+     const action = this.headerActions.get(name);
      surface = { ...built, shared, signature: '', action, key };
      surface.row.dataset.propertyName = name;
      this.surfaces.set(name, surface);
@@ -281,10 +294,9 @@ export class NativePropertyEditor extends EditorPropertyFields {
       const core = DESKTOP_CORE_FIELDS.has(key);
       this.desktopPropertyRows.set(key, { row: surface.row, value: surface.value, core, signature: '' });
       this.workflowActionButtons.set(key, action ?? surface.label);
-      action?.addEventListener('click', () => this.openWorkflowPickerFromAction(key, action));
       this.bindDesktopPropertyInteraction(surface.row, surface.label, surface.value,
-       () => key === 'note' ? this.noteCompactEditor?.focusEnd() : this.openWorkflowPickerFromAction(key, surface!.label),
-       () => key === 'note' ? this.noteCompactEditor?.focusEnd() : this.openDesktopPropertyValue(key, surface!.value, surface!.label),
+       () => this.openWorkflowPickerFromAction(key, surface!.label),
+       () => this.openDesktopPropertyValue(key, surface!.value, surface!.label),
        () => key !== 'datetimeEnd' || !!this.fieldValues.datetimeStart);
       if (core) {
        surface.row.addClass('operon-editor-desktop-core-property');
@@ -294,7 +306,6 @@ export class NativePropertyEditor extends EditorPropertyFields {
      } else {
       const propertyAction = action ?? built.label;
       this.filePropertyRows.set(name, { ...built, action: propertyAction });
-      action?.addEventListener('click', () => this.openFilePropertyPicker(name, undefined, 'picker', action));
       this.bindDesktopPropertyInteraction(surface.row, surface.label, surface.value,
        () => this.openFilePropertyPicker(name, undefined, 'picker', surface!.label),
        () => this.openFilePropertyPicker(name, undefined, 'popover', surface!.value),
@@ -306,7 +317,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
     if (shared) {
      const populated = this.hasWorkflowPickerValue(key);
      this.refreshDesktopPropertyIcon(key, surface.row, populated);
-     surface.label.disabled = key === 'datetimeEnd' && !this.fieldValues.datetimeStart;
+     surface.label.disabled = this.workflowActionDisabled(key);
      if (surface.action) surface.action.disabled = surface.label.disabled;
      const clear = surface.value.querySelector<HTMLButtonElement>('.operon-editor-value-clear');
      if (clear) { clear.hidden = !populated; clear.parentElement?.toggleClass('has-visible-clear', populated); }
@@ -314,10 +325,11 @@ export class NativePropertyEditor extends EditorPropertyFields {
       cleanupOperonHoverTooltips(surface.value); surface.value.empty();
       const managed = getManagedTaskDataFieldPicker(key, this.settings.keyMappings);
       const custom = getCustomFieldMapping(this.settings.keyMappings, key);
-      if (key === 'note') this.renderNote(surface.value, false);
-      else if (managed) this.renderManagedTaskDataWorkflowPicker(surface.value, managed);
-      else if (custom && isProjectedCustomFieldType(custom)) this.renderCustomWorkflowPicker(surface.value, custom);
-      else this.renderWorkflowPicker(surface.value, key);
+      if (populated) {
+       if (managed) this.renderManagedTaskDataWorkflowPicker(surface.value, managed);
+       else if (custom && isProjectedCustomFieldType(custom)) this.renderCustomWorkflowPicker(surface.value, custom);
+       else this.renderWorkflowPicker(surface.value, key);
+      }
       surface.signature = signature;
      }
     } else {
@@ -338,14 +350,10 @@ export class NativePropertyEditor extends EditorPropertyFields {
     const position = positions.get(group) ?? (this.usesMobileLayout && id !== 'notes' ? 0 : 1);
     if (group.children[position] !== surface.row) group.insertBefore(surface.row, group.children[position] ?? null);
     positions.set(group, position + 1);
-    if (actions && surface.action) {
-     const actionPosition = actionPositions.get(actions) ?? 0;
-     if (actions.children[actionPosition] !== surface.action) actions.insertBefore(surface.action, actions.children[actionPosition] ?? null);
-     actionPositions.set(actions, actionPosition + 1);
-    }
+    this.updateEmptyPropertyRemoval(surface.row, name, !field.reason && isEmptyFilePropertyValue(document.frontmatter[name]), () => this.removeFileProperty(name));
    }
-   for (const [id, { group }] of this.groups) {
-    const hidden = id !== 'additional' && !positions.has(group);
+   for (const [id, { group, actions }] of this.groups) {
+    const hidden = id !== 'additional' && !positions.has(group) && !actions?.childElementCount;
     group.hidden = hidden;
     const host = group.closest<HTMLElement>('.operon-task-editor-section-host');
     if (host) host.hidden = hidden;
@@ -355,20 +363,78 @@ export class NativePropertyEditor extends EditorPropertyFields {
   this.notifyPropertyContentChanged();
  }
 
+ private refreshHeaderActions(): void {
+  const document = this.draft.properties;
+  const fields = new Set(document.order.filter(name => this.field(name).mapping?.canonicalKey !== 'note'));
+  const items = this.usesMobileLayout ? this.settings.taskEditorWorkflowPickers
+   : normalizeTaskEditorWorkflowPickers(undefined, undefined, this.settings.keyMappings);
+  const keys = new Set(items.filter(item => item.visible).map(item => item.key));
+  if (!this.usesMobileLayout) for (const key of DESKTOP_CORE_FIELDS) keys.add(key);
+  for (const key of keys) {
+   if (key === 'note') continue;
+   const existing = document.order.find(name => this.field(name).mapping?.canonicalKey === key || name.toLowerCase() === key.toLowerCase());
+   fields.add(existing ?? getVisiblePropertyName(key, this.settings.keyMappings));
+  }
+  if (!this.usesMobileLayout) for (const name of this.sectionLayout.assignedPropertyNames) {
+   if (!Array.from(fields).some(field => this.sectionLayout.identify(this.sectionLayout.referenceForName(field)) === this.sectionLayout.identify(this.sectionLayout.referenceForName(name)))) fields.add(name);
+  }
+  for (const [name, button] of this.headerActions) if (!fields.has(name)) {
+   requestFloatingPanelCloseForRoot(button, 'escape'); cleanupOperonHoverTooltips(button); button.remove(); this.headerActions.delete(name);
+  }
+  const ordered = Array.from(fields).sort((a, b) => this.sectionLayout.position(this.sectionLayout.referenceForName(a)).rank - this.sectionLayout.position(this.sectionLayout.referenceForName(b)).rank);
+  const positions = new Map<HTMLElement, number>();
+  for (const name of ordered) {
+   const field = this.field(name);
+   const id = this.usesMobileLayout ? 'additional' : this.sectionLayout.position(this.sectionLayout.referenceForName(name)).section;
+   const actions = this.groups.get(id)?.actions;
+   if (!actions) continue;
+   let button = this.headerActions.get(name);
+   if (!button) {
+    button = actions.createEl('button', { cls: 'operon-task-editor-workflow-action-button', attr: { type: 'button' } });
+    this.headerActions.set(name, button);
+    const anchor = button;
+    button.addEventListener('click', () => {
+     const current = this.field(name);
+     if (current.reason || current.mapping && this.workflowActionDisabled(current.mapping.canonicalKey)) return;
+     if (!this.draft.properties.order.includes(name)) this.openAddition(name, anchor);
+     else if (this.usesSharedControl(current) && current.mapping) this.openWorkflowPickerFromAction(current.mapping.canonicalKey, anchor);
+     else this.openFilePropertyPicker(name, undefined, 'picker', anchor);
+    });
+   }
+   const key = field.mapping?.canonicalKey;
+   bindPropertyIcon(button, () => key ? this.resolveWorkflowPickerIcon(key) : this.resolveNativePropertyIcon(name, field.type));
+   const displayName = key ? this.getWorkflowPickerLabel(key) : name;
+   const label = field.taskOnly ? t('taskEditor', 'propertyEditorRequiresTask', { name: displayName }) : displayName;
+   if (button.getAttribute('aria-label') !== label) {
+    setAccessibleLabelWithoutTooltip(button, label);
+    cleanupOperonHoverTooltips(button);
+    this.bindEditorHoverTooltip(button, { content: label, taskColor: () => this.getThemeColor() });
+   }
+   button.disabled = !!key && this.workflowActionDisabled(key);
+   button.toggleClass('is-locked', !!field.reason);
+   button.setAttribute('aria-disabled', String(!!field.reason || button.disabled));
+   if (key) this.workflowActionButtons.set(key, button);
+   const position = positions.get(actions) ?? 0;
+   if (actions.children[position] !== button) actions.insertBefore(button, actions.children[position] ?? null);
+   positions.set(actions, position + 1);
+  }
+ }
+
+ protected removeFileProperty(name: string): void {
+  if (this.field(name).reason || !this.draft.remove(name, this.submitted.has(name))) return;
+  const focus = this.headerActions.get(name) ?? this.add;
+  this.hydrate(); this.scheduleEdited(); this.render(); (focus.isConnected ? focus : this.add).focus({ preventScroll: true });
+ }
+
  private removeSurface(name: string, surface: { row: HTMLElement; action?: HTMLButtonElement; key: string; shared: boolean }): void {
   requestFloatingPanelCloseForRoot(surface.row, 'escape');
-  if (surface.action) {
-   requestFloatingPanelCloseForRoot(surface.action, 'escape');
-   cleanupOperonHoverTooltips(surface.action);
-   surface.action.remove();
-  }
+  if (surface.action) requestFloatingPanelCloseForRoot(surface.action, 'escape');
   cleanupOperonHoverTooltips(surface.row);
   surface.row.remove();
   this.surfaces.delete(name);
   if (surface.shared) {
    this.desktopPropertyRows.delete(surface.key);
    this.workflowActionButtons.delete(surface.key);
-   if (surface.key === 'note') { this.noteCompactEditor?.destroy(); this.noteCompactEditor = null; }
   }
   this.filePropertyRows.delete(name);
   this.fileProperties.delete(name);
@@ -426,17 +492,17 @@ export class NativePropertyEditor extends EditorPropertyFields {
    onClose: () => { this.closeAddPicker = null; queueMicrotask(() => { if (selected && !this.disposed && epoch === this.propertyInteractionEpoch) this.openAddition(selected); }); },
   });
  }
- private openAddition(name: string): void {
+ private openAddition(name: string, anchor: HTMLButtonElement = this.add): void {
   const field = this.field(name);
   if (field.reason || this.draft.properties.order.includes(name)) return;
   this.adding = name;
   const key = field.mapping?.canonicalKey;
-  if (key && key !== 'note' && this.usesSharedControl(field)) this.openWorkflowPickerFromAction(key, this.add);
+  if (key && key !== 'note' && this.usesSharedControl(field)) this.openWorkflowPickerFromAction(key, anchor);
   else {
    this.fileProperties.set(name, { field: this.nativePropertyField(name, field.type), value: undefined, baseline: { present: false, value: undefined }, pending: true });
    const staging = this.add.ownerDocument.win.createDiv();
    this.filePropertyRows.set(name, { row: staging, value: staging, action: this.add.ownerDocument.win.createEl('button') });
-   this.openFilePropertyPicker(name, undefined, 'picker', this.add);
+   this.openFilePropertyPicker(name, undefined, 'picker', anchor);
   }
  }
  closePicker(render = true): void {

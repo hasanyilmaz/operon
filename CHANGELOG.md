@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Sections and Order** in Task Editor settings has more compact rows and clearer controls, and the **Add Property** picker stays visible while scrolling. Mapped fields show your configured property names and their inline syntax. **Tags** and **Subtasks** use the same icons as in Task Editor.
 
+- **Task Editor and Property Editor** keep existing empty properties visible with matching section actions and Notes controls. Clearing a value leaves a blank, borderless row without moving focus to the section header; a separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
+
 ### Validation
 
 - Passed **87/87** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **42/42** Chromium/WebKit browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Header spacing passed both mouse and touch layout checks, strict lint, and release guard.
 - Mini Calendar color changes passed **18/18** Chromium scenarios across mouse and touch profiles, strict lint, and release guard.
 - Sections and Order refinements passed **234/234** focused tests, **259/259** Chromium checks, strict lint, production build, and release guard.
+
+- Editor consistency passed **412/412** Chromium checks across desktop, tablet, and phone layouts. Full local checks and production build passed; strict lint and release guard also cover the final visual refinement.
 
 ## [4.7.0] - 2026-11-12
 
