@@ -1,9 +1,10 @@
+import { editorPropertyCandidateNames } from '../core/property-editor-fields';
 import { editorMappedProperties, type EditorMappedProperty } from '../core/file-task-property-draft';
 import { isWideEditorSourceViewport } from './editor-source-layout';
 import type { FileTaskRenameSuggestion } from '../core/filename-rule';
 import { type InlinePropertyType } from '../core/inline-property-definitions';
 import { type InlinePropertyChange, type InlinePropertySnapshot } from '../core/inline-property-source';
-import { nativeEditorPropertyTypes, nativePropertyReadOnlyReason } from '../core/task-editor-native-properties';
+import { nativePropertyReadOnlyReason } from '../core/task-editor-native-properties';
 import type { TaskMarkdownSource } from '../core/task-markdown-source';
 import { type VaultPropertyValue } from '../core/vault-property-codec';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
@@ -100,7 +101,7 @@ shouldTriggerOneShotAutomation,
 import { getFallbackStateIcon, normalizeTaskEditorWorkflowPickers, OperonSettings, TaskEditorWorkflowPickerItem, type KeyMapping } from '../types/settings';
 import { TrackerSession } from '../types/tracker';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
-import type { CompactEditorKeyIntent } from './compact-editor-key-intent';
+export { TASK_EDITOR_ESCAPE_INTENT_EVENT } from './compact-editor-key-intent';
 import {
 createCompactMarkdownEditorSurface,
 type CompactMarkdownEditorSurface,
@@ -217,7 +218,6 @@ export type OnSaveCallback = (
 	request: TaskEditorSaveRequest,
 ) => TaskEditorSaveCallbackResult | Promise<TaskEditorSaveCallbackResult>;
 
-export const TASK_EDITOR_ESCAPE_INTENT_EVENT = 'operon-editor-escape-intent';
 export const TASK_EDITOR_CLOSE_REQUEST_EVENT = 'operon-editor-close';
 
 export type TaskEditorSaveFailureReason =
@@ -538,7 +538,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 	private noteInputEl: HTMLTextAreaElement | null = null;
 	private descriptionCompactEditor: CompactMarkdownEditorSurface | null = null;
 	protected noteCompactEditor: CompactMarkdownEditorSurface | null = null;
-	private descriptionCompactHostEl: HTMLElement | null = null;
+	protected descriptionCompactHostEl: HTMLElement | null = null;
 	private compactTextResizeObserver: ResizeObserver | null = null;
 	protected noteCompactHostEl: HTMLElement | null = null;
 	private initialDescriptionFocusTimers: WindowTimeoutHandle[] = [];
@@ -876,66 +876,8 @@ export class TaskEditorContent extends EditorPropertyFields {
 		});
 	}
 
-	private focusAdjacentTaskEditorControl(
-		origin: HTMLElement | null,
-		direction: 'next' | 'previous',
-	): void {
-		const root = this.rootEl;
-		if (!origin || !root) return;
-		const selector = [
-			'button:not([disabled])',
-			'input:not([disabled])',
-			'textarea:not([disabled])',
-			'select:not([disabled])',
-			'[contenteditable="true"]',
-			'.cm-content',
-			'[tabindex]:not([tabindex="-1"])',
-		].join(',');
-		const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector))
-			.filter(candidate => {
-				if (!candidate.isConnected) return false;
-				if (candidate.closest('[hidden], .is-hidden')) return false;
-				const compactRoot = candidate.closest('.operon-compact-markdown-editor');
-				if (!compactRoot) return true;
-				return candidate.matches('textarea, .cm-content');
-			});
-		const activeElement = root.ownerDocument.activeElement;
-		let index = candidates.findIndex(candidate => (
-			candidate === activeElement
-			|| candidate.contains(activeElement)
-		));
-		if (index < 0) {
-			index = candidates.findIndex(candidate => origin.contains(candidate));
-		}
-		if (index < 0) return;
-		const targetIndex = direction === 'next' ? index + 1 : index - 1;
-		candidates[targetIndex]?.focus();
-	}
-
-	protected handleCompactTextEditorIntent(
-		field: 'description' | 'note',
-		intent: Exclude<CompactEditorKeyIntent, 'none'>,
-	): void {
-		const origin = field === 'description'
-			? this.descriptionCompactHostEl
-			: this.noteCompactHostEl;
-		switch (intent) {
-			case 'submit':
-			case 'focus-next':
-				this.focusAdjacentTaskEditorControl(origin, 'next');
-				break;
-			case 'focus-previous':
-				this.focusAdjacentTaskEditorControl(origin, 'previous');
-				break;
-			case 'explicit-submit':
-				void this.persistEditorState('explicit-save');
-				break;
-			case 'escape':
-				this.rootEl?.dispatchEvent(new CustomEvent(TASK_EDITOR_ESCAPE_INTENT_EVENT, {
-					bubbles: true,
-				}));
-				break;
-		}
+	protected async persistExplicitEditorChanges(): Promise<void> {
+		await this.persistEditorState('explicit-save');
 	}
 
 	private openFileBodySource(): void {
@@ -2454,7 +2396,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		removeButton.className = 'operon-editor-compact-selection-chip-remove';
 		setIcon(removeButton, 'x');
 		setAccessibleLabelWithoutTooltip(removeButton, removeLabel);
-		removeButton.addEventListener('click', onRemove);
+		removeButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(chip); onRemove(); });
 		chip.appendChild(removeButton);
 		return chip;
 	}
@@ -2927,6 +2869,7 @@ export class TaskEditorContent extends EditorPropertyFields {
   const focusedEntry = Array.from(this.filePropertyRows).find(([, entry]) => entry.row.contains(activeElement) || entry.action === activeElement);
   const focusedName = focusedEntry?.[0];
   const focusedValue = focusedEntry?.[1].value.contains(activeElement) ?? false;
+  const focusedLabel = focusedEntry?.[1].row.querySelector('.operon-editor-desktop-property-label') === activeElement;
   this.closeFilePropertyPicker?.();
   this.closeFilePropertyAddPicker?.();
   for (const { row, action } of this.filePropertyRows.values()) {
@@ -2960,7 +2903,7 @@ export class TaskEditorContent extends EditorPropertyFields {
   if (focusedName) {
    const restored = this.filePropertyRows.get(focusedName);
    const valueTarget = restored?.row.hidden ? null : restored?.value.querySelector<HTMLElement>('[tabindex="0"]') ?? restored?.value;
-   const target = (focusedValue ? valueTarget : null) ?? (restored && !restored.action.disabled && !restored.action.hidden ? restored.action : valueTarget)
+   const target = (focusedLabel && !restored?.row.hidden ? restored?.row.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label:not(:disabled)') : null) ?? (focusedValue ? valueTarget : null) ?? (restored && !restored.action.disabled && !restored.action.hidden ? restored.action : valueTarget)
     ?? Array.from(this.filePropertyRows.values()).map(surface => !surface.action.disabled && !surface.action.hidden ? surface.action : surface.row.hidden ? null : surface.value.querySelector<HTMLElement>('[tabindex="0"]') ?? surface.value).find(surface => surface !== null) ?? this.additionalPropertyAdd;
    target?.focus({ preventScroll: true });
   }
@@ -2977,32 +2920,21 @@ export class TaskEditorContent extends EditorPropertyFields {
 
  private getVaultFilePropertySnapshot() {
   const snapshot = createVaultFilePropertySnapshot(this.app, this.filePropertyTypeResolver, { keyMappings: this.settings.keyMappings, nativeListCandidates: true });
-  const fields = new Map<string, TableFilePropertyField>();
-  const used = new Set([...getNativePropertyIndex(this.app).usedPropertyNames(), ...snapshot.fields.map(field => field.propertyName.toLowerCase()), ...[...this.fileProperties.keys()].map(name => name.toLowerCase())]);
-  for (const [name, type] of Object.entries(nativeEditorPropertyTypes(this.nativePropertyTypes, this.settings.keyMappings, this.settings.inlinePropertyDefinitions))) {
-   const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
-   const aliases = [name, ...(mapping ? [mapping.canonicalKey, mapping.visiblePropertyName] : [])].map(alias => alias.toLowerCase());
-   if (!mapping && !aliases.some(alias => used.has(alias))) continue;
-   const sourceName = [...this.fileProperties.keys()].find(key => aliases.includes(key.toLowerCase())) ?? name;
-   fields.set((mapping?.canonicalKey ?? sourceName).toLowerCase(), this.nativePropertyField(sourceName, type));
-  }
   const index = getNativePropertyIndex(this.app);
-  // Newly defined custom properties may not occur in any note or the Obsidian type registry yet.
-  if (index.typesAvailable()) for (const mapping of this.settings.keyMappings) {
-   if (mapping.showInEditor === false || !this.isNativeCustomProperty(mapping.canonicalKey)) continue;
-   const identity = mapping.canonicalKey.toLowerCase();
-   if (fields.has(identity)) continue;
-   const name = mapping.visiblePropertyName || mapping.canonicalKey;
-   if (nativePropertyReadOnlyReason(name, undefined, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes) !== 'automatic') continue;
-   fields.set(identity, { ...this.nativePropertyField(name, mapping.type), readonly: true, readOnlyReason: 'automatic', icon: 'shield-alert' });
-  }
-  if (index.typesAvailable()) for (const field of snapshot.fields) {
-   const name = field.propertyName;
-   const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
-   const identity = (mapping?.canonicalKey ?? name).toLowerCase();
-   if (fields.has(identity) || snapshot.fields.filter(candidate => candidate.propertyName.toLowerCase() === name.toLowerCase()).length !== 1) continue;
-   if (nativePropertyReadOnlyReason(name, undefined, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes) !== 'automatic') continue;
-   fields.set(identity, { ...field, readonly: true, readOnlyReason: 'automatic', icon: 'shield-alert' });
+  const fields = new Map<string, TableFilePropertyField>();
+  if (index.typesAvailable()) {
+   const names = editorPropertyCandidateNames(this.settings.keyMappings, index.getTypes(), [...snapshot.fields.map(field => field.propertyName), ...index.usedPropertyNames()], [...this.fileProperties.keys()]);
+   for (const name of names) {
+    if (name.toLowerCase() === 'tags') continue;
+    const mapping = this.settings.keyMappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
+    if (mapping && !this.isNativeCustomProperty(mapping.canonicalKey)) continue;
+    const aliases = [name, ...(mapping ? [mapping.canonicalKey, mapping.visiblePropertyName] : [])].map(alias => alias.toLowerCase());
+    const type = Object.entries(this.nativePropertyTypes).find(([alias]) => aliases.includes(alias.toLowerCase()))?.[1]
+     ?? mapping?.type ?? snapshot.fields.find(field => aliases.includes(field.propertyName.toLowerCase()))?.type ?? 'text';
+    const reason = nativePropertyReadOnlyReason(name, undefined, index.getTypes(), this.settings.keyMappings, this.nativePropertyTypes);
+    if (reason && reason !== 'automatic') continue;
+    fields.set((mapping?.canonicalKey ?? name).toLowerCase(), { ...this.nativePropertyField(name, type as InlinePropertyType), readonly: !!reason, readOnlyReason: reason, ...(reason === 'automatic' ? { icon: 'shield-alert' } : {}) });
+   }
   }
   return { ...snapshot, fields: [...fields.values()] };
  }
@@ -3024,7 +2956,9 @@ export class TaskEditorContent extends EditorPropertyFields {
   this.closeActiveWorkflowActionPicker();
   this.closeFilePropertyPicker?.();
   const epoch = ++this.propertyInteractionEpoch;
-  const fields = this.additionalPropertyKeys.filter(key => !this.hasWorkflowPickerValue(key))
+  const fields = editorPropertyCandidateNames(this.settings.keyMappings, {}, [], [])
+   .map(name => this.settings.keyMappings.find(mapping => [mapping.visiblePropertyName, mapping.canonicalKey].some(alias => alias.toLowerCase() === name.toLowerCase()))?.canonicalKey ?? name)
+   .filter(key => (DESKTOP_CORE_FIELDS.has(key) || this.canRenderWorkflowPickerKey(key)) && !this.isNativeCustomProperty(key) && !this.workflowFieldReadOnlyReason(key) && !this.hasWorkflowPickerValue(key))
    .map(key => ({ field: key, label: this.getWorkflowPickerLabel(key), icon: this.resolveWorkflowPickerIcon(key), source: 'workflow' as const }));
   const fileFields = this.filePropertyRoot && !this.filePropertyUnavailable
    ? this.getVaultFilePropertySnapshot().fields
@@ -3077,7 +3011,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 			row.dataset.editorPropertyRank = String(rank);
 			const core = DESKTOP_CORE_FIELDS.has(field);
 			this.desktopPropertyRows.set(field, { row, value, core, signature: '' });
-			this.bindDesktopPropertyInteraction(row, label, value, () => this.openWorkflowPickerFromAction(field, label), () => this.openDesktopPropertyValue(field, value, label), () => field !== 'datetimeEnd' || !!this.fieldValues['datetimeStart']);
+			this.bindDesktopPropertyInteraction(row, label, value, () => this.openWorkflowPickerFromAction(field, label), () => this.openDesktopPropertyValue(field, value, label), () => !this.workflowActionDisabled(field));
 			if (core) {
 				row.addClass('operon-editor-desktop-core-property');
 				this.renderDesktopCoreProperty(value, field);
@@ -3104,21 +3038,21 @@ export class TaskEditorContent extends EditorPropertyFields {
   if (this.notePropertyGroup) this.updateMappedPropertyRemoval('note', this.notePropertyGroup);
 		const groups = new Set<HTMLElement>();
 		for (const [key, entry] of this.desktopPropertyRows) {
-			if (this.readSource && entry.value.contains(entry.value.ownerDocument.activeElement)) continue;
 			if (entry.row.parentElement) groups.add(entry.row.parentElement);
 			const hasValue = this.hasWorkflowPickerValue(key);
 			this.refreshDesktopPropertyIcon(key, entry.row, hasValue);
    this.updateMappedPropertyRemoval(key, entry.row);
 			entry.row.hidden = !hasValue && !this.hasSourceProperty(key) && !(entry.core && entry.row.contains(entry.row.ownerDocument.activeElement));
 			const label = entry.row.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label');
-			if (label) label.disabled = (key === 'datetimeEnd' && !this.fieldValues['datetimeStart']) || (key === 'subtasks' && !this.getCurrentOperonId());
+			if (label) label.disabled = this.workflowActionDisabled(key) || (key === 'subtasks' && !this.getCurrentOperonId());
 			entry.value.toggleClass('is-readonly', label?.disabled ?? false);
+			entry.value.inert = !!this.workflowFieldReadOnlyReason(key);
 			const clear = entry.value.querySelector<HTMLButtonElement>('.operon-editor-value-clear');
 			if (clear) {
 				clear.hidden = !hasValue;
 				clear.parentElement?.toggleClass('has-visible-clear', hasValue);
 			}
-			if (entry.core) continue;
+			if (entry.core || this.readSource && entry.value.contains(entry.value.ownerDocument.activeElement)) continue;
 			const signature = JSON.stringify([
 				key === 'subtasks' ? this.getWorkflowSubtaskIds() : key === 'tags' ? this.tags : this.fieldValues[key],
 				this.isSystemReminderWorkflowKey(key) ? REMINDER_RULE_ANCHORS.map(anchor => this.fieldValues[anchor]) : null,
@@ -3519,23 +3453,6 @@ export class TaskEditorContent extends EditorPropertyFields {
 			.filter(item => this.canRenderWorkflowPickerKey(item.key));
 	}
 
-	private canRenderWorkflowPickerKey(key: string): boolean {
-		if (getManagedTaskDataFieldPicker(key, this.settings.keyMappings)) return true;
-		const customMapping = getCustomFieldMapping(this.settings.keyMappings, key);
-		if (customMapping) return isProjectedCustomFieldType(customMapping);
-		return key === 'contexts'
-			|| key === 'tags'
-			|| key === 'assignees'
-			|| key === 'location'
-			|| key === 'links'
-			|| key === 'reminderDatetimes'
-			|| key === 'reminderRules'
-			|| key === 'parentTask'
-			|| key === 'subtasks'
-			|| key === 'blocking'
-			|| key === 'blockedBy'
-			|| key === 'related';
-	}
 
 	private renderWorkflowPickerActions(container: HTMLElement, items = this.getRenderableWorkflowPickerItems(), reset = true): void {
 		cleanupOperonHoverTooltips(container);
@@ -3622,12 +3539,7 @@ export class TaskEditorContent extends EditorPropertyFields {
 		const active = this.hasWorkflowPickerValue(key);
 		const additionalGroup = button.closest<HTMLElement>('.operon-editor-desktop-property-group')?.dataset.propertyGroup === 'additional';
 		button.hidden = additionalGroup && !active && !this.desktopLayout?.assignment({ kind: 'mapped', key });
-		button.toggleClass('is-active', active);
-		button.setAttr('aria-pressed', String(active));
-		const locked = key === 'subtasks' && !this.getCurrentOperonId();
-		button.toggleClass('is-locked', locked);
-		button.disabled = this.workflowActionDisabled(key);
-		button.setAttr('aria-disabled', String(locked || button.disabled));
+		this.syncPropertyActionState(button, active, this.workflowActionDisabled(key), key === 'subtasks' && !this.getCurrentOperonId());
 	}
 
 	protected getWorkflowSubtaskIds(parentId = this.getCurrentOperonId()): string[] {

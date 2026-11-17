@@ -37898,7 +37898,8 @@ body .operon-task-editor-mobile button.operon-editor-property-remove {
 }
 
 /* Empty values keep their picker hit area without drawing a second button box. */
-body .operon-task-editor .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-editor-repeat-trigger) {
+body .operon-task-editor .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-editor-repeat-trigger),
+body .operon-task-editor:not(.operon-task-editor-mobile) .operon-editor-desktop-property-row.is-empty-property .operon-editor-desktop-property-value :is(.operon-editor-picker-button, .operon-editor-repeat-trigger) {
  border-color: transparent;
  background: transparent;
  box-shadow: none;

@@ -3,19 +3,24 @@ import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions, type I
 import { encodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
 import { isEmptyFilePropertyValue, isSupportedRawYamlPropertyValue, isWritableRawYamlPropertyName } from './raw-yaml-property';
 
+export function nativeEditorPropertyType(raw: string): InlinePropertyType | undefined {
+ if (['multitext', 'aliases', 'tags', 'list'].includes(raw)) return 'list';
+ return ['text', 'number', 'checkbox', 'date', 'datetime'].includes(raw) ? raw as InlinePropertyType : undefined;
+}
+
 export function nativeEditorPropertyTypes(types: Readonly<Record<string, string>>, mappings: readonly KeyMapping[], definitions?: InlinePropertyDefinitions): Record<string, InlinePropertyType> {
  const result: Record<string, InlinePropertyType> = {};
  const names = new Map<string, string[]>();
  for (const name of Object.keys(types)) names.set(name.toLowerCase(), [...(names.get(name.toLowerCase()) ?? []), name]);
  for (const [name, raw] of Object.entries(types)) {
   if (names.get(name.toLowerCase())!.length !== 1) continue;
-  const type = raw === 'multitext' ? 'list' : raw;
-  if (!['text', 'list', 'number', 'checkbox', 'date', 'datetime'].includes(type)) continue;
+  const type = nativeEditorPropertyType(raw);
+  if (!type) continue;
   const mapped = mappings.filter(mapping => [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
   if (mapped.length > 1 || mapped[0]?.isSystem !== false && !isWritableRawYamlPropertyName(name, mappings)) continue;
-  if (mapped.length === 1 && Object.entries(types).some(([alias, declared]) => [mapped[0].canonicalKey, mapped[0].visiblePropertyName].some(key => key.toLowerCase() === alias.toLowerCase()) && ((declared === 'multitext' ? 'list' : declared) !== type || names.get(alias.toLowerCase())!.length !== 1))) continue;
+  if (mapped.length === 1 && Object.entries(types).some(([alias, declared]) => [mapped[0].canonicalKey, mapped[0].visiblePropertyName].some(key => key.toLowerCase() === alias.toLowerCase()) && (nativeEditorPropertyType(declared) !== type || names.get(alias.toLowerCase())!.length !== 1))) continue;
   try {
-   const definition = resolveInlinePropertyDefinition(name, type as InlinePropertyType, mappings, definitions);
+   const definition = resolveInlinePropertyDefinition(name, type, mappings, definitions);
    if (mapped.length && definition.encoding !== 'vault-v1') continue;
    result[name] = definition.type;
   } catch { /* Conflicting declarations remain read-only in the source projection. */ }
@@ -50,7 +55,7 @@ export function nativePropertyReadOnlyReason(
  const assigned = Object.entries(declarations).filter(([alias]) => aliases.has(alias.toLowerCase()));
  if (mapped.length > 1 || assigned.some(([alias], index) => assigned.some(([other], otherIndex) => otherIndex !== index && other.toLowerCase() === alias.toLowerCase()))) return 'type-conflict';
  if (!assigned.length) return 'automatic';
- if (assigned.some(([, type]) => !['text', 'multitext', 'list', 'number', 'checkbox', 'date', 'datetime'].includes(type))) return 'unsupported';
+ if (assigned.some(([, type]) => !nativeEditorPropertyType(type))) return 'unsupported';
  const typeName = Object.keys(nativeTypes).find(alias => aliases.has(alias.toLowerCase()));
  if (!typeName) return 'type-conflict';
  return nativePropertyValueReadOnlyReason(value, nativeTypes[typeName]);

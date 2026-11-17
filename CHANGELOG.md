@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 
 - **Sections and Order** in Task Editor settings has more compact rows and clearer controls, and the **Add Property** picker stays visible while scrolling. Mapped fields show your configured property names and their inline syntax. **Tags** and **Subtasks** use the same icons as in Task Editor.
-
-- **Task Editor and Property Editor** keep existing empty properties visible with matching section actions and Notes controls. Clearing a value leaves a blank, borderless row without moving focus to the section header; a separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
+- **Task Editor and Property Editor** use the same Notes keyboard controls, section icon states, and value-clearing behavior across desktop, tablet, and phone layouts. Existing empty properties stay visible; clearing a value leaves a blank, borderless row without moving focus to the section header, including after saving and reopening. A separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
+- **Add Property** and custom field controls use consistent property names, type checks, and picker behavior in both editors. Native properties use their declared Obsidian type; fields without a declared type and values that cannot be edited without changing their meaning remain read-only. Cancelling a new property picker leaves the note unchanged.
 
 ### Validation
 
@@ -26,8 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Header spacing passed both mouse and touch layout checks, strict lint, and release guard.
 - Mini Calendar color changes passed **18/18** Chromium scenarios across mouse and touch profiles, strict lint, and release guard.
 - Sections and Order refinements passed **234/234** focused tests, **259/259** Chromium checks, strict lint, production build, and release guard.
-
-- Editor consistency passed **412/412** Chromium checks across desktop, tablet, and phone layouts. Full local checks and production build passed; strict lint and release guard also cover the final visual refinement.
+- Editor consistency passed **225/225** field and persistence tests, **22/22** shared-control tests, and **518/518** Chromium checks across desktop, tablet, and phone layouts. Full local checks, TypeScript checks, strict lint, production build, release guard, and focused code review passed.
 
 ## [4.7.0] - 2026-11-12
 

@@ -14,7 +14,7 @@ import { loadPropertyTypeRegistry } from '../src/core/property-type-registry';
 import { PropertyEditorAdapter } from '../src/core/property-editor-adapter';
 import { PropertyEditorDraft } from '../src/core/property-editor-draft';
 import { planPropertyEditorWrite, propertyEditorPreservesBody, readPropertyEditorDocument } from '../src/core/property-editor-document';
-import { inferVaultPropertyEditorTypes, resolvePropertyEditorField } from '../src/core/property-editor-fields';
+import { editorPropertyCandidateNames, inferVaultPropertyEditorTypes, resolvePropertyEditorField } from '../src/core/property-editor-fields';
 import { readRawYamlPropertyExpectation, isEmptyFilePropertyValue } from '../src/core/raw-yaml-property';
 import { capturePropertyEditorMarkdown, PropertyEditorSourceConflict } from '../src/ui/task-editor-markdown-source';
 import { getNativePropertyIndex } from '../src/indexer/native-property-index';
@@ -159,7 +159,7 @@ function world(source = base, keyMappings = DEFAULT_SETTINGS.keyMappings) {
     Object.assign(plugin, { app, settings, writer, indexer, propertyEditorWrittenSources: new WeakMap(), isExcalidrawTaskSource: () => false, getMarkdownViewsForPath: () => views as unknown as MarkdownView[] });
     const clock = new Clock();
     function editor() {
-        const globals = { ...globalRules, PropertyEditorAdapter, getNativePropertyIndex, inferVaultPropertyEditorTypes, readRawYamlPropertyExpectation, isEmptyFilePropertyValue,
+        const globals = { ...globalRules, PropertyEditorAdapter, getNativePropertyIndex, editorPropertyCandidateNames, inferVaultPropertyEditorTypes, readRawYamlPropertyExpectation, isEmptyFilePropertyValue,
             planPropertyEditorWrite, TASK_EDITOR_AUTOSAVE_DELAY_MS, Date: { now: () => clock.now } };
         const Host = new Function(...Object.keys(globals), ts.transpile(`class Host {${fieldCode}\n${hostCode}};return Host;`, { target: ts.ScriptTarget.ES2022 }))(...Object.values(globals));
         const e = new Host();
@@ -167,7 +167,8 @@ function world(source = base, keyMappings = DEFAULT_SETTINGS.keyMappings) {
             draft: new PropertyEditorDraft(decode(state.disk)), submitted: new Set(), disposed: false, rendering: false, adding: null, fieldValues: {}, tags: [], checkbox: 'open', surfaces: new Map(), add: { focus() { } },
             timer: null, nextSaveAt: 0, saving: null, pendingRefresh: false, win: clock, message: { hidden: true, textContent: '' }, interaction: false,
             hasActiveInteraction: () => e.interaction, render() { }, closePicker() { e.interaction = false; },
-            refreshSchedulingDraftControls() { }, refreshMobileCoreButtons() { }, refreshWorkflowPickerSurfaceValues() { }, applyThemeColor() { },
+            hasWorkflowPickerValue: (key: string) => !!e.fieldValues[key], focusClearedProperty() {},
+  refreshSchedulingDraftControls() { }, refreshMobileCoreButtons() { }, refreshWorkflowPickerSurfaceValues() { }, applyThemeColor() { },
         });
         e.hydrate();
         return e;
@@ -632,7 +633,7 @@ test('unsafe external YAML rejects the entire pending package with zero writes',
 });
 test('Add Property chooser and actual value-picker lifecycle cancel without creating a field or frontmatter', async () => {
     const w = world('# Body\n'), e = w.editor();
-    const addCode = members(uiPath, ['openAddPicker', 'openAddition', 'closePicker', 'confirmNewFileProperty', 'getFilePropertyPickerOwner']);
+    const addCode = members(uiPath, ['openAddPicker', 'openAddition', 'closePicker', 'getFilePropertyPickerOwner']) + members('src/ui/editor-property-fields.ts', ['confirmNewFileProperty']);
     const pickerCode = members('src/ui/editor-property-fields.ts', ['openFilePropertyPicker', 'canEditFileProperty']);
     type Chooser = {
         onSelect: (choice: {
@@ -648,7 +649,7 @@ test('Add Property chooser and actual value-picker lifecycle cancel without crea
         }) => void;
     };
     let chooser: Chooser | null = null, valuePicker: ValuePicker | null = null;
-    const globals = { getNativePropertyIndex, inferVaultPropertyEditorTypes, isEmptyFilePropertyValue, encodeVaultPropertyValue,
+    const globals = { getNativePropertyIndex, editorPropertyCandidateNames, inferVaultPropertyEditorTypes, isEmptyFilePropertyValue, encodeVaultPropertyValue,
         t: (_group: string, k: string) => k, resolveSurfaceFloatingHostOptions: () => ({}), requestFloatingPanelCloseForRoot: () => { },
         collectNativeFieldValueCandidates: () => [],
         showSearchableFieldPicker: (_anchor: unknown, options: Chooser) => { chooser = options; return () => options.onClose(); },
@@ -659,7 +660,7 @@ test('Add Property chooser and actual value-picker lifecycle cancel without crea
         e[name] = Add.prototype[name];
     const element = () => ({ addClass() { }, removeClass() { }, querySelectorAll: () => [], focus() { }, isConnected: true });
     Object.assign(e, { propertyInteractionEpoch: 0, fileProperties: new Map(), filePropertyRows: new Map(),
-        nativePropertyField: () => ({ icon: 'text', type: 'text' }), indexer: { getAllTasks: () => [] }, closeActiveWorkflowActionPicker() { },
+        usesSharedControl:()=>true,getWorkflowPickerLabel: (key:string) => key, resolveWorkflowPickerIcon: () => 'text', nativePropertyField: () => ({ icon: 'text', type: 'text' }), indexer: { getAllTasks: () => [] }, closeActiveWorkflowActionPicker() { },
         refreshFilePropertyValue() { }, refreshDesktopFileProperties() { },
         add: { ...element(), ownerDocument: { win: { createDiv: element, createEl: element } } }, root: element(),
     });
@@ -813,52 +814,45 @@ for (const [name, sample, value, type] of [
  ['Genre', ['Drama'], ['Comedy', 0], 'list'],
  ['Amount', 2, 0, 'number'],
  ['Enabled', true, false, 'checkbox'],
- ['Related', ['[[Original]]'], ['[[New]]', 'plain value', 0, '[[A;B]]'], 'list'],
- ['CustomDefault', ['old'], ['02', 2, 'a; b'], 'list'],
- ['CustomLegacy', ['old'], ['02', 2, 'a; b'], 'list'],
  ['CustomVault', ['old'], ['02', 2, 'a; b'], 'list'],
 ] as const) test(`${name} uses a single-line chooser, typed ${type} picker and safe save`, async () => {
  const w=world('# Body\n');
+ getNativePropertyIndex(w.app).setTypes({[name]:type === 'list' ? 'multitext' : type});
  if (name.startsWith('Custom')) {
   w.settings.keyMappings.push({canonicalKey:name,visiblePropertyName:name,type:'list',enabled:true,isSystem:false,sync:'yes'});
-  if (name !== 'CustomDefault') w.settings.inlinePropertyDefinitions={version:1,entries:[{sourceName:name,type:'list',encoding:name==='CustomLegacy'?'legacy':'vault-v1'}]};
+  w.settings.inlinePropertyDefinitions={version:1,entries:[{sourceName:name,type:'list',encoding:'vault-v1'}]};
  }
  const e=w.editor();
  type Option={field:string;icon:string;secondaryLabel?:string};
  type Chooser={fields:Option[];onSelect:(field:Option)=>void;onClose:()=>void};
  type Picker={field:{type:string};onClose:()=>void;onMutation:(mutation:{kind:'set';value:unknown})=>void};
  let chooser:Chooser|null=null, picker:Picker|null=null;
- const globals={getNativePropertyIndex,inferVaultPropertyEditorTypes,isEmptyFilePropertyValue,encodeVaultPropertyValue,
+ const globals={DESKTOP_CORE_FIELDS:new Set<string>(),getNativePropertyIndex,editorPropertyCandidateNames,inferVaultPropertyEditorTypes,isEmptyFilePropertyValue,encodeVaultPropertyValue,
   t:(_group:string,k:string)=>k,resolveSurfaceFloatingHostOptions:()=>({}),requestFloatingPanelCloseForRoot:()=>{},collectNativeFieldValueCandidates:()=>[],
   showSearchableFieldPicker:(_anchor:unknown,options:Chooser)=>{chooser=options;return ()=>options.onClose();},
   openTableFilePropertyPicker:(options:Picker)=>{picker=options;return ()=>options.onClose();}};
- const code=members(uiPath,['openAddPicker','openAddition','usesSharedControl','closePicker','confirmNewFileProperty','getFilePropertyPickerOwner'])+members('src/ui/editor-property-fields.ts',['openFilePropertyPicker','canEditFileProperty']);
+ const code=members(uiPath,['openAddPicker','openAddition','usesSharedControl','closePicker','getFilePropertyPickerOwner'])+members('src/ui/editor-property-fields.ts',['openFilePropertyPicker','canEditFileProperty','confirmNewFileProperty']);
  const Add=new Function(...Object.keys(globals),ts.transpile(`class Add {${code}};return Add;`,{target:ts.ScriptTarget.ES2022}))(...Object.values(globals));
  for(const method of ['openAddPicker','openAddition','usesSharedControl','closePicker','confirmNewFileProperty','getFilePropertyPickerOwner','openFilePropertyPicker','canEditFileProperty']) e[method]=Add.prototype[method];
  const element=()=>({addClass(){},removeClass(){},querySelectorAll:()=>[],focus(){},isConnected:true});
  Object.assign(e,{propertyInteractionEpoch:0,fileProperties:new Map(),filePropertyRows:new Map(),
-  nativePropertyField:(name:string,type:string)=>({name,icon:type,type}),resolveWorkflowPickerIcon:()=> 'link-2',openWorkflowPickerFromAction:()=>{throw Error('Related must use the standard list picker');},indexer:{getAllTasks:()=>[]},closeActiveWorkflowActionPicker(){},refreshFilePropertyValue(){},refreshDesktopFileProperties(){},
+  nativePropertyField:(name:string,type:string)=>({name,icon:type,type}),canRenderWorkflowPickerKey:()=>true,getWorkflowPickerLabel:(key:string)=>key,resolveWorkflowPickerIcon:()=> 'link-2',openWorkflowPickerFromAction:()=>{throw Error('Related must use the standard list picker');},indexer:{getAllTasks:()=>[]},closeActiveWorkflowActionPicker(){},refreshFilePropertyValue(){},refreshDesktopFileProperties(){},
   add:{...element(),ownerDocument:{win:{createDiv:element,createEl:element}}},root:element()});
  Object.assign(w.app.vault,{getMarkdownFiles:()=>[w.file]});
  Object.assign(w.app,{metadataCache:{getFileCache:()=>({frontmatter:{[name]:sample,operonId:'protected',StructuredOnly:{nested:true},BlankAuto:null}})}});
- const choose=async()=>{e.openAddPicker();const c=chooser as unknown as Chooser;const option=c.fields.find(f=>f.field===name);assert.ok(option);assert.equal(option.secondaryLabel,undefined);assert.notEqual(option.icon,'shield-alert');assert.ok(!c.fields.some(f=>f.field==='operonId'||f.field==='StructuredOnly'));assert.ok(c.fields.some(f=>f.field==='BlankAuto'));c.onSelect(option);c.onClose();await flush();};
+ const choose=async()=>{e.openAddPicker();const c=chooser as unknown as Chooser;const option=c.fields.find(f=>f.field===name);assert.ok(option);assert.equal(option.secondaryLabel,undefined);assert.notEqual(option.icon,'shield-alert');assert.ok(!c.fields.some(f=>f.field==='operonId'||f.field==='StructuredOnly'));assert.equal(c.fields.find(f=>f.field==='BlankAuto')?.icon,'shield-alert');c.onSelect(option);c.onClose();await flush();};
  await choose();assert.ok(picker);assert.equal(e.fileProperties.get(name).field.type,type);
  e.closePicker();await w.clock.tick(3000);assert.equal(w.state.writes,0);assert.deepEqual(e.draft.properties.order,[]);
  await choose();(picker as unknown as Picker).onMutation({kind:'set',value});e.closePicker();await w.clock.tick(2000);
  assert.equal(w.state.writes,1);assert.deepEqual(decode(w.state.disk).frontmatter[name],value);assert.equal(e.isEdited,false);
  const reopened=w.editor();assert.equal(reopened.field(name).type,type);assert.equal(reopened.field(name).reason,undefined);
- assert.equal(getNativePropertyIndex(w.app).getTypes()[name],undefined);
- if (name === 'Related') {
-  assert.equal(e.usesSharedControl(reopened.field(name)),false);
-  reopened.setFilePropertyValue(name,['[[Edited]]',7,'a; b']);assert.equal(await reopened.prepareClose(),true);
-  assert.deepEqual(decode(w.state.disk).frontmatter[name],['[[Edited]]',7,'a; b']);
-  assert.equal(w.editor().field(name).reason,undefined);
- }
+ assert.equal(getNativePropertyIndex(w.app).getTypes()[name],type === 'list' ? 'multitext' : type);
+
 });
 test('Auto existing values take precedence over vault inference without removing real type protections', () => {
  const document={frontmatter:{AutoList:[0,"zero"],AutoNumber:0,AutoFlag:false,AutoText:'text',Object:{nested:true}},order:['AutoList','AutoNumber','AutoFlag','AutoText','Object']};
  for (const [name,type] of [['AutoList','list'],['AutoNumber','number'],['AutoFlag','checkbox'],['AutoText','text']]) {
-  const field=resolvePropertyEditorField(name,document,[],{}, {[name]:'text'});assert.equal(field.type,type);assert.equal(field.reason,undefined);
+  const field=resolvePropertyEditorField(name,document,[],{}, {[name]:'text'});assert.equal(field.type,type);assert.equal(field.reason,'automatic');
  }
  assert.ok(resolvePropertyEditorField('Object',document,[],{}).reason);
  assert.ok(resolvePropertyEditorField('AutoList',document,[],{AutoList:'number'}).reason);
@@ -878,9 +872,9 @@ test('opening Add refreshes an existing blank Auto row after vault inference cha
  assert.equal(e.field('Flexible').type,'text');
  Object.assign(w.app.vault,{getMarkdownFiles:()=>[w.file]});
  Object.assign(w.app,{metadataCache:{getFileCache:()=>({frontmatter:{Flexible:42}})}});
- e.nativePropertyField=(_name:string,type:string)=>({icon:type});
+ e.usesSharedControl=()=>true;e.getWorkflowPickerLabel=(key:string)=>key;e.resolveWorkflowPickerIcon=()=> 'text';e.nativePropertyField=(_name:string,type:string)=>({icon:type});
  const rendered:string[]=[];e.render=()=>rendered.push(e.field('Flexible').type);
- const globals={getNativePropertyIndex,inferVaultPropertyEditorTypes,resolveSurfaceFloatingHostOptions:()=>({}),t:()=>'',showSearchableFieldPicker:()=>()=>{}};
+ const globals={DESKTOP_CORE_FIELDS:new Set<string>(),getNativePropertyIndex,editorPropertyCandidateNames,inferVaultPropertyEditorTypes,isEmptyFilePropertyValue,resolveSurfaceFloatingHostOptions:()=>({}),t:()=>'',showSearchableFieldPicker:()=>()=>{}};
  const Add=new Function(...Object.keys(globals),ts.transpile(`class Add {${members(uiPath,['openAddPicker'])}};return Add;`,{target:ts.ScriptTarget.ES2022}))(...Object.values(globals));
  Add.prototype.openAddPicker.call(e);assert.equal(rendered.at(-1),'number');
 });

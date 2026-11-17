@@ -36,3 +36,5 @@ export function resolveCompactEditorKeyIntent(
 	if (input.key === 'Tab') return input.shiftKey ? 'focus-previous' : 'focus-next';
 	return 'none';
 }
+
+export const TASK_EDITOR_ESCAPE_INTENT_EVENT = 'operon-editor-escape-intent';

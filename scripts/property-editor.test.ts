@@ -105,7 +105,8 @@ test('property mapping checks type declarations, protected fields and duplicate 
  assert.equal(field('Workflow', {}).mapping?.canonicalKey, 'status');
  assert.equal(field('Workflow', { Workflow: 'number' }).reason, 'type-conflict');
  assert.equal(field('Series', {}).reason, 'unavailable');
- assert.equal(field('aliases', { aliases: 'aliases' }).reason, undefined);
+ // Reserved source properties follow the same protection as the Task Editor writer.
+ assert.equal(field('aliases', { aliases: 'aliases' }).reason, 'type-conflict');
  assert.equal(field('status', {}).reason, 'type-conflict');
 });
 

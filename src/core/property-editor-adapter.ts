@@ -1,3 +1,4 @@
+import type { InlinePropertyDefinitions } from './inline-property-definitions';
 import type { KeyMapping } from '../types/settings';
 import type { PropertyEditorDocument } from './property-editor-document';
 import { propertyEditorPickerValue, resolvePropertyEditorField, type PropertyEditorField } from './property-editor-fields';
@@ -13,7 +14,7 @@ export class PropertyEditorAdapter {
  readonly fields = new Map<string, PropertyEditorField>();
  readonly values: Record<string, string> = Object.create(null) as Record<string, string>;
  readonly tags: string[] = [];
- constructor(readonly document: PropertyEditorDocument, private readonly mappings: KeyMapping[], private readonly types: Readonly<Record<string, string>>, private readonly inferredTypes: Readonly<Record<string, string>> = {}) {
+ constructor(readonly document: PropertyEditorDocument, private readonly mappings: KeyMapping[], private readonly types: Readonly<Record<string, string>>, private readonly inferredTypes: Readonly<Record<string, string>> = {}, private readonly definitions?: InlinePropertyDefinitions) {
   for (const name of document.order) {
    const field = this.resolve(name);
    this.fields.set(name, field);
@@ -27,13 +28,13 @@ export class PropertyEditorAdapter {
   }
  }
  resolve(name: string): PropertyEditorField {
-  return resolvePropertyEditorField(name, this.document, this.mappings, this.types, this.inferredTypes);
+  return resolvePropertyEditorField(name, this.document, this.mappings, this.types, this.inferredTypes, this.definitions);
  }
  private encode(field: PropertyEditorField, value: unknown): string {
   if (value == null || value === '') return '';
   const key = field.mapping?.canonicalKey;
   if (key === 'taskColor' && typeof value === 'string') return normalizeTaskColorValue(value);
-  if (field.mapping?.isSystem === false || key === 'related') return encodeVaultPropertyValue(value as VaultPropertyValue, field.type);
+  if (field.control === 'native') return encodeVaultPropertyValue(value as VaultPropertyValue, field.type);
   if (field.type === 'list') {
    if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) throw new Error('Invalid mapped list');
    const text = key === 'taskGallery' ? serializeTaskMediaReferenceList(value) : value.join('; ');
@@ -47,7 +48,7 @@ export class PropertyEditorAdapter {
  private decode(field: PropertyEditorField, value: string): RawYamlPropertyValue {
   if (!value && field.type !== 'text' && field.type !== 'list') return null;
   if (field.mapping?.canonicalKey === 'taskColor') return formatTaskColorYamlValue(value);
-  if (field.mapping?.isSystem === false || field.mapping?.canonicalKey === 'related') return decodeVaultPropertyValue(value, field.type);
+  if (field.control === 'native') return decodeVaultPropertyValue(value, field.type);
   if (field.type === 'list') return field.mapping?.canonicalKey === 'taskGallery' ? parseTaskMediaReferenceList(value) : splitTaskListValue(value);
   if (field.type === 'text') return value;
   return decodeVaultPropertyValue(value, field.type);
@@ -78,14 +79,14 @@ export class PropertyEditorAdapter {
     const existing = this.document.order.filter(name => aliases.has(name.toLowerCase()));
     if (existing.length > 1) return null;
     const name = existing[0] ?? (firstName && this.resolve(firstName).mapping?.canonicalKey === key ? firstName : getVisiblePropertyName(key, this.mappings));
-    const field = this.resolve(name);
+    const field = this.fields.get(name) ?? this.resolve(name);
     if (field.reason || field.mapping?.canonicalKey !== key) return null;
     const value = this.decode(field, next[key] ?? '');
     // A rule may clear an absent dependent field. It must not create an empty key.
     if (!existing.length && isEmptyFilePropertyValue(value)) continue;
     if (!readRawYamlPropertyExpectation(this.document.frontmatter, name)) return null;
     const candidate = { ...this.document, frontmatter: { ...this.document.frontmatter, [name]: value } };
-    if (resolvePropertyEditorField(name, candidate, this.mappings, this.types, this.inferredTypes).reason) return null;
+    if (resolvePropertyEditorField(name, candidate, this.mappings, this.types, this.inferredTypes, this.definitions).reason) return null;
     changes.push({ name, value });
    }
   } catch { return null; }

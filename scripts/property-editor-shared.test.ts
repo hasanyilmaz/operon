@@ -17,7 +17,7 @@ const mappings = DEFAULT_SETTINGS.keyMappings;
 const name = (key: string) => mappings.find(item => item.canonicalKey === key)?.visiblePropertyName ?? key;
 const document = (frontmatter: Record<string, unknown>) => ({ frontmatter, order: Object.keys(frontmatter) });
 function adapter(frontmatter: Record<string, unknown>, extra: KeyMapping[] = [], types: Record<string, string> = {}) {
- return new PropertyEditorAdapter(document(frontmatter), [...mappings, ...extra], types);
+ return new PropertyEditorAdapter(document(frontmatter), [...mappings, ...extra], types, {}, { version: 1, entries: extra.map(mapping => ({ sourceName: mapping.visiblePropertyName, type: mapping.type, encoding: 'vault-v1' })) });
 }
 function methods(path: string, names: string[]): string {
  const source = readFileSync(path, 'utf8'), ast = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
@@ -45,6 +45,7 @@ function fixture(frontmatter: Record<string, unknown>, types: Record<string, str
   draft, settings: DEFAULT_SETTINGS, submitted: new Set(), disposed: false, rendering: false, adding: null,
   fieldValues: {}, tags: [], checkbox: 'open', surfaces: new Map(), add: { focus() {} },
   makeAdapter: () => new PropertyEditorAdapter(draft.properties, mappings, types), field: (key: string) => editor.adapter.fields.get(key) ?? editor.adapter.resolve(key),
+  hasWorkflowPickerValue: (key: string) => !!editor.fieldValues[key], focusClearedProperty() {},
   refreshSchedulingDraftControls() {}, refreshMobileCoreButtons() {}, refreshWorkflowPickerSurfaceValues() {}, applyThemeColor() {}, render() {}, closePicker() {},
   scheduleEdited: () => scheduled++,
  });
@@ -54,7 +55,7 @@ function fixture(frontmatter: Record<string, unknown>, types: Record<string, str
 test('Property adapter keeps YAML order, empty values, false, zero and mixed list member types', () => {
  const extras = [{canonicalKey:'custom:count',visiblePropertyName:'Count',type:'number',isSystem:false}, {canonicalKey:'custom:flag',visiblePropertyName:'Flag',type:'checkbox',isSystem:false}, {canonicalKey:'custom:list',visiblePropertyName:'Mixed',type:'list',isSystem:false}] as KeyMapping[];
  const source = { Count: 0, Flag: false, Mixed: ['02',2,'a; b','[[Note]]'], Empty: null };
- const a = adapter(source, extras, { Empty:'text' });
+ const a = adapter(source, extras, { Empty:'text', Count:'number', Flag:'checkbox', Mixed:'multitext' });
  assert.deepEqual(a.document.order, ['Count','Flag','Mixed','Empty']);
  assert.equal(a.values['custom:count'],'0'); assert.equal(a.values['custom:flag'],'false');
  assert.deepEqual(a.changes(a.values,a.tags),[]);
@@ -194,4 +195,62 @@ test('closing a Property Editor releases listeners and preserves its reusable mo
  f.editor.destroy();
  assert.equal(disconnected,true);assert.equal(emptied,true);assert.equal(f.editor.disposed,true);
  assert.deepEqual(removed,[['focusout',focus,undefined],['click',click,true]]);
+});
+
+test('both editors discover one property per mapping identity and keep the existing YAML spelling', async () => {
+ const { editorPropertyCandidateNames } = await import('../src/core/property-editor-fields');
+ const mappings = [
+  {canonicalKey:'contexts',visiblePropertyName:'Up',type:'list',showInEditor:true},
+  {canonicalKey:'custom:hidden',visiblePropertyName:'Hidden',type:'text',isSystem:false,showInEditor:false},
+  {canonicalKey:'custom:new',visiblePropertyName:'New custom',type:'number',isSystem:false},
+ ] as KeyMapping[];
+ const names = editorPropertyCandidateNames(mappings, {Up:'multitext',Calories:'number',Hidden:'text'}, ['UP','calories','Other'], ['up','CALORIES']);
+ assert.deepEqual(names, ['CALORIES','New custom','Other','tags','up']);
+ const ambiguous = [...mappings,{canonicalKey:'custom:ambiguous',visiblePropertyName:'Up',type:'text',isSystem:false}] as KeyMapping[];
+ assert.ok(!editorPropertyCandidateNames(ambiguous,{Up:'text'},[],[]).includes('Up'));
+});
+
+test('vault eligibility uses the same declared type and value checks in both editors', async () => {
+ const { resolvePropertyEditorField } = await import('../src/core/property-editor-fields');
+ const { nativeEditorPropertyTypes, nativePropertyReadOnlyReason } = await import('../src/core/task-editor-native-properties');
+ for (const [type, value] of [['text','value'],['multitext',['02',2,'a; b']],['number',0],['checkbox',false],['date','2026-11-17'],['datetime','2026-11-17T12:30']] as const) {
+  for (const types of ([{Value:type},{},{Value:'unsupported'},{Value:type,value:type}] as Record<string,string>[])) {
+   const field = resolvePropertyEditorField('Value',document({Value:value}),[],types);
+   assert.equal(field.reason,nativePropertyReadOnlyReason('Value',value,types,[],nativeEditorPropertyTypes(types,[])),JSON.stringify([type,types]));
+  }
+ }
+});
+
+test('custom controls follow the stored encoding and reject lossy legacy list edits', async () => {
+ const { editorPropertyControl } = await import('../src/core/property-editor-fields');
+ const custom = {canonicalKey:'custom:list',visiblePropertyName:'List',type:'list',isSystem:false} as KeyMapping;
+ assert.equal(editorPropertyControl(custom),'workflow');
+ const definitions = {version:1 as const,entries:[{sourceName:'List',type:'list' as const,encoding:'vault-v1' as const}]};
+ assert.equal(editorPropertyControl(custom,definitions),'native');
+ for (const value of [['02',2],['a; b'],['a','b']]) {
+  const legacy = new PropertyEditorAdapter(document({List:value}),[custom],{List:'multitext'});
+  if (JSON.stringify(value) === '["a","b"]') {
+   assert.equal(legacy.fields.get('List')?.reason,undefined);
+   assert.deepEqual(legacy.changes({'custom:list':'b; c'},[]),[{name:'List',value:['b','c']}]);
+  } else {
+   assert.equal(legacy.fields.get('List')?.reason,'type-conflict');
+   assert.equal(legacy.changes({'custom:list':'replacement'},[]),null);
+  }
+  const native = new PropertyEditorAdapter(document({List:value}),[custom],{List:'multitext'},{},definitions);
+  assert.equal(native.fields.get('List')?.reason,undefined);
+  assert.deepEqual(native.changes(native.values,[]),[]);
+ }
+});
+
+test('Related shares the workflow list control without rewriting or coercing ambiguous existing members', () => {
+ const key = name('related');
+ const editor = adapter({[key]:['[[One]]','[[Two]]']});
+ assert.equal(editor.fields.get(key)?.control,'workflow');
+ assert.deepEqual(editor.changes({...editor.values,related:'[[Two]]; [[Three]]'},[]),[{name:key,value:['[[Two]]','[[Three]]']}]);
+ for (const value of [[1,'text'],['a; b']]) {
+  const protectedEditor = adapter({[key]:value});
+  assert.equal(protectedEditor.fields.get(key)?.reason,'type-conflict');
+  assert.deepEqual(protectedEditor.changes(protectedEditor.values,[]),[]);
+  assert.equal(protectedEditor.changes({related:'new'},[]),null);
+ }
 });

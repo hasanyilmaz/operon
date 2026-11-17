@@ -1,3 +1,4 @@
+import { propertyReadOnlyWarningText } from './property-readonly-warning';
 import { bindPropertyIcon } from './property-icon-presentation';
 import { isWideEditorSourceViewport } from './editor-source-layout';
 import { Notice, Platform, setIcon, type App, type TFile } from 'obsidian';
@@ -6,7 +7,7 @@ import { getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { PropertyEditorDraft } from '../core/property-editor-draft';
 import { PropertyEditorAdapter } from '../core/property-editor-adapter';
-import { inferVaultPropertyEditorTypes, type PropertyEditorField } from '../core/property-editor-fields';
+import { editorPropertyCandidateNames, inferVaultPropertyEditorTypes, type PropertyEditorField } from '../core/property-editor-fields';
 import { planPropertyEditorWrite, type PropertyEditorChange, type PropertyEditorDocument } from '../core/property-editor-document';
 import { isEmptyFilePropertyValue, readRawYamlPropertyExpectation, type RawYamlPropertyValue } from '../core/raw-yaml-property';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
@@ -211,7 +212,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
   this.closePicker(false);
   this.mainPanelEl.inert = true;
  }
- private makeAdapter(): PropertyEditorAdapter { return new PropertyEditorAdapter(this.draft.properties, this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), this.inferredTypes ??= inferVaultPropertyEditorTypes(this.app)); }
+ private makeAdapter(): PropertyEditorAdapter { return new PropertyEditorAdapter(this.draft.properties, this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), this.inferredTypes ??= inferVaultPropertyEditorTypes(this.app), this.settings.inlinePropertyDefinitions); }
  private hydrate(): void {
   this.adapter = this.makeAdapter();
   this.fieldValues = { ...this.adapter.values };
@@ -227,11 +228,8 @@ export class NativePropertyEditor extends EditorPropertyFields {
  private usesSharedControl(field: PropertyEditorField): boolean {
   if (!field.mapping || field.reason) return false;
   const key = field.mapping.canonicalKey;
-  // File lists and custom YAML fields use typed controls, independent of inline encoding.
-  if (key === 'related' || field.mapping.isSystem === false) return false;
-  return DESKTOP_CORE_FIELDS.has(key) || ['contexts', 'tags', 'links', 'assignees', 'related', 'location', 'reminderDatetimes', 'reminderRules', 'note'].includes(key)
-   || !!getManagedTaskDataFieldPicker(key, this.settings.keyMappings)
-   || !!getCustomFieldMapping(this.settings.keyMappings, key);
+  if (field.control === 'native') return false;
+  return DESKTOP_CORE_FIELDS.has(key) || key === 'note' || this.canRenderWorkflowPickerKey(key);
  }
  private render(): void {
   if (this.disposed || this.rendering) return;
@@ -297,7 +295,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
       this.bindDesktopPropertyInteraction(surface.row, surface.label, surface.value,
        () => this.openWorkflowPickerFromAction(key, surface!.label),
        () => this.openDesktopPropertyValue(key, surface!.value, surface!.label),
-       () => key !== 'datetimeEnd' || !!this.fieldValues.datetimeStart);
+       () => !this.workflowActionDisabled(key));
       if (core) {
        surface.row.addClass('operon-editor-desktop-core-property');
        this.renderDesktopCoreProperty(surface.value, key); this.addDesktopCoreClear(surface.value, key);
@@ -402,7 +400,10 @@ export class NativePropertyEditor extends EditorPropertyFields {
     });
    }
    const key = field.mapping?.canonicalKey;
-   bindPropertyIcon(button, () => key ? this.resolveWorkflowPickerIcon(key) : this.resolveNativePropertyIcon(name, field.type));
+   if (this.usesSharedControl(field) && key) {
+    bindPropertyIcon(button, () => this.resolveWorkflowPickerIcon(key));
+    this.syncPropertyActionState(button, this.hasWorkflowPickerValue(key), this.workflowActionDisabled(key), !!field.reason);
+   } else this.refreshFilePropertyAction(name, button, { field: this.nativePropertyField(name, field.type), value: document.frontmatter[name], baseline: readRawYamlPropertyExpectation(document.frontmatter, name) ?? { present: false, value: undefined }, readonly: !!field.reason, readOnlyReason: field.reason });
    const displayName = key ? this.getWorkflowPickerLabel(key) : name;
    const label = field.taskOnly ? t('taskEditor', 'propertyEditorRequiresTask', { name: displayName }) : displayName;
    if (button.getAttribute('aria-label') !== label) {
@@ -410,9 +411,6 @@ export class NativePropertyEditor extends EditorPropertyFields {
     cleanupOperonHoverTooltips(button);
     this.bindEditorHoverTooltip(button, { content: label, taskColor: () => this.getThemeColor() });
    }
-   button.disabled = !!key && this.workflowActionDisabled(key);
-   button.toggleClass('is-locked', !!field.reason);
-   button.setAttribute('aria-disabled', String(!!field.reason || button.disabled));
    if (key) this.workflowActionButtons.set(key, button);
    const position = positions.get(actions) ?? 0;
    if (actions.children[position] !== button) actions.insertBefore(button, actions.children[position] ?? null);
@@ -471,16 +469,16 @@ export class NativePropertyEditor extends EditorPropertyFields {
   this.closePicker();
   this.inferredTypes = inferVaultPropertyEditorTypes(this.app); this.hydrate(); this.render();
   const document = this.draft.properties;
-  const names = new Set(Object.keys(getNativePropertyIndex(this.app).getTypes()));
-  for (const name of Object.keys(this.inferredTypes)) names.add(name);
+  const names = editorPropertyCandidateNames(this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), Object.keys(this.inferredTypes), document.order);
   const fields = new Map<string, { field: string; label: string; icon: string }>();
   for (const name of names) {
-   if (document.order.includes(name)) continue;
+   if (this.inferredTypes[name] === 'unsupported') continue;
+   if (document.order.includes(name) && !isEmptyFilePropertyValue(document.frontmatter[name])) continue;
    const field = this.field(name);
-   if (field.reason) continue;
+   if (field.reason && field.reason !== 'automatic' || field.control === 'workflow' && !this.usesSharedControl(field)) continue;
    const key = field.mapping?.canonicalKey;
    const identity = (key ?? name).toLowerCase();
-   if (!fields.has(identity)) fields.set(identity, { field: name, label: name, icon: key ? this.resolveWorkflowPickerIcon(key) : this.nativePropertyField(name, field.type).icon });
+   if (!fields.has(identity)) fields.set(identity, { field: name, label: key ? this.getWorkflowPickerLabel(key) : name, icon: field.reason === 'automatic' ? 'shield-alert' : key ? this.resolveWorkflowPickerIcon(key) : this.nativePropertyField(name, field.type).icon });
   }
   const epoch = this.propertyInteractionEpoch;
   let selected: string | null = null;
@@ -494,7 +492,13 @@ export class NativePropertyEditor extends EditorPropertyFields {
  }
  private openAddition(name: string, anchor: HTMLButtonElement = this.add): void {
   const field = this.field(name);
-  if (field.reason || this.draft.properties.order.includes(name)) return;
+  if (field.reason) { new Notice(propertyReadOnlyWarningText(name, field.reason)); return; }
+  if (this.draft.properties.order.includes(name)) {
+   const surface = this.surfaces.get(name);
+   if (field.mapping && this.usesSharedControl(field)) this.openWorkflowPickerFromAction(field.mapping.canonicalKey, surface?.label ?? anchor);
+   else this.openFilePropertyPicker(name, undefined, 'picker', surface?.label ?? anchor);
+   return;
+  }
   this.adding = name;
   const key = field.mapping?.canonicalKey;
   if (key && key !== 'note' && this.usesSharedControl(field)) this.openWorkflowPickerFromAction(key, anchor);
@@ -515,10 +519,12 @@ export class NativePropertyEditor extends EditorPropertyFields {
   if (render) this.render();
  }
 
- protected confirmNewFileProperty(entry: EditorFileProperty): boolean { return entry.pending === true; }
+ protected workflowFieldReadOnlyReason(key: string) {
+  const name = this.draft.properties.order.find(name => this.field(name).mapping?.canonicalKey === key) ?? getVisiblePropertyName(key, this.settings.keyMappings);
+  return this.field(name).reason;
+ }
  protected getFilePropertyPickerOwner(): HTMLElement { return this.root; }
  protected hasDesktopPropertyRules(): boolean { return true; }
- protected shouldCloseWorkflowPickerOnSelect(): boolean { return this.isPhone || !!this.adding && !this.draft.properties.order.includes(this.adding); }
  protected syncFilePropertyRowVisibility(_entry: EditorFileProperty, surface: { row: HTMLElement; action: HTMLButtonElement }): void { surface.row.hidden = false; }
  protected registerSchedulingDraftRefresher(refresh: () => void): void { this.schedulingRefreshers.add(refresh); }
  protected refreshSchedulingDraftControls(): void { for (const refresh of this.schedulingRefreshers) refresh(); }
@@ -537,7 +543,7 @@ export class NativePropertyEditor extends EditorPropertyFields {
   textarea.style.height = `${Math.ceil(textarea.scrollHeight + (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0))}px`;
   this.notifyPropertyContentChanged();
  }
- protected handleCompactTextEditorIntent(): void { this.add.focus({ preventScroll: true }); }
+ protected async persistExplicitEditorChanges(): Promise<void> { this.cancelTimer(); await this.persist(); }
  // Task-only capabilities are deliberately absent. No task identity or task writer is exposed to this host.
  protected ensureRepeatSeriesIdentity(): void { /* Plain notes have no series identity. */ }
  protected prepareRepeatIdentityPatch(): void { /* Plain notes have no series identity. */ }

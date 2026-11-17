@@ -4,8 +4,8 @@ import { CANONICAL_KEYS, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 import { isRetiredKeyMapping, type KeyMapping } from '../types/settings';
 import { getManagedYamlAliases } from './yaml-fields';
 import { splitTaskListValue } from './task-field-patch';
-import { nativePropertyValueReadOnlyReason, type NativePropertyReadOnlyReason } from './task-editor-native-properties';
-import type { InlinePropertyType } from './inline-property-definitions';
+import { nativeEditorPropertyType as propertyType, nativeEditorPropertyTypes, nativePropertyReadOnlyReason, nativePropertyValueReadOnlyReason, type NativePropertyReadOnlyReason } from './task-editor-native-properties';
+import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions, type InlinePropertyType } from './inline-property-definitions';
 import type { PropertyEditorDocument } from './property-editor-document';
 
 const builtinListNames = new Set(['aliases', 'tags', 'cssclasses']);
@@ -22,6 +22,7 @@ export interface PropertyEditorField {
  mapping?: KeyMapping;
  reason?: NativePropertyReadOnlyReason;
  taskOnly?: boolean;
+ control?: 'workflow' | 'native';
 }
 
 /** Project a legacy scalar into the picker while keeping the original YAML for conflict checks. */
@@ -31,40 +32,39 @@ export function propertyEditorPickerValue(field: PropertyEditorField, value: unk
  return value;
 }
 
-function propertyType(type: string): InlinePropertyType | undefined {
- switch (type) {
-  case 'multitext': case 'aliases': case 'tags': case 'list': return 'list';
-  case 'text': case 'number': case 'checkbox': case 'date': case 'datetime': return type;
-  default: return undefined;
- }
-}
-
 export function resolvePropertyEditorField(
- name: string, document: PropertyEditorDocument, mappings: KeyMapping[], types: Readonly<Record<string, string>>, inferredTypes: Readonly<Record<string, string>> = {},
+ name: string, document: PropertyEditorDocument, mappings: KeyMapping[], types: Readonly<Record<string, string>>, inferredTypes: Readonly<Record<string, string>> = {}, definitions?: InlinePropertyDefinitions, task = false,
 ): PropertyEditorField {
  const lower = name.toLowerCase();
  const matching = mappings.filter(mapping =>
   getManagedYamlAliases(mapping.canonicalKey, [mapping]).some(alias => alias.toLowerCase() === lower));
  const fallback = CANONICAL_KEYS.find(key => key.name.toLowerCase() === lower && !mappings.some(mapping => mapping.canonicalKey === key.name));
- const mapping = matching[0] ?? (fallback ? { canonicalKey: fallback.name, visiblePropertyName: fallback.name, type: fallback.type, sync: fallback.sync, enabled: true, isSystem: true, isInternal: fallback.internal } : undefined);
+ const mapping = matching[0] ?? (lower === 'tags' ? { canonicalKey: 'tags', visiblePropertyName: name, type: 'list' as const, sync: 'yes' as const, enabled: true, isSystem: true } : fallback ? { canonicalKey: fallback.name, visiblePropertyName: fallback.name, type: fallback.type, sync: fallback.sync, enabled: true, isSystem: true, isInternal: fallback.internal } : undefined);
  const aliases = new Set([lower, ...(mapping ? getManagedYamlAliases(mapping.canonicalKey, [mapping]).map(alias => alias.toLowerCase()) : [])]);
  const declared = Object.entries(types).filter(([key]) => aliases.has(key.toLowerCase()));
  const declaredType = declared.length ? propertyType(declared[0][1]) : undefined;
  const ownType = inferObsidianPropertyType([document.frontmatter[name]]);
  const inferred = ownType === 'unknown' ? inferredTypes[name] ?? 'text' : ownType;
  const type = mapping?.type ?? (builtinListNames.has(lower) ? 'list' : declaredType ?? (!declared.length ? propertyType(inferred) : undefined));
- const field: PropertyEditorField = { name, type: type ?? 'text', mapping };
- if (lower.startsWith('_') || protectedNames.has(lower) || document.readonlyNames?.has(name)
-  || mapping && (protectedNames.has(mapping.canonicalKey.toLowerCase()) || mapping.canonicalKey !== 'related' && isRetiredKeyMapping(mapping.canonicalKey))) {
+ let control: 'workflow' | 'native';
+ try { control = editorPropertyControl(mapping, definitions); }
+ catch { return { name, type: type ?? 'text', mapping, reason: 'type-conflict' }; }
+ const field: PropertyEditorField = { name, type: type ?? 'text', mapping, control };
+ if (control === 'workflow' && mapping?.isSystem === false && type === 'checkbox') return { ...field, reason: 'unsupported' };
+ if (lower.startsWith('_') || !task && protectedNames.has(lower) || document.readonlyNames?.has(name)
+  || mapping && (!task && protectedNames.has(mapping.canonicalKey.toLowerCase()) || mapping.canonicalKey !== 'related' && isRetiredKeyMapping(mapping.canonicalKey))) {
   return { ...field, reason: 'unavailable', taskOnly: PROPERTY_EDITOR_TASK_ONLY_KEYS.has(mapping?.canonicalKey ?? name) };
  }
  if (matching.length > 1 || document.order.some(key => key !== name && aliases.has(key.toLowerCase()))
-  || declared.some(([, raw]) => propertyType(raw) !== type)) return { ...field, reason: 'type-conflict' };
+  || declared.some(([alias, raw], index) => propertyType(raw) !== type || declared.some(([other], otherIndex) => otherIndex !== index && alias.toLowerCase() === other.toLowerCase()))) return { ...field, reason: 'type-conflict' };
+ if (control === 'native') return { ...field, reason: nativePropertyReadOnlyReason(name, document.frontmatter[name], types, mappings, nativeEditorPropertyTypes(types, mappings, definitions)) };
  if (!type) return { ...field, reason: declared.length ? 'unsupported' : 'automatic' };
  const value = propertyEditorPickerValue(field, document.frontmatter[name]);
- const stringList = builtinListNames.has(lower) || mapping?.canonicalKey === 'contexts';
+ const stringList = builtinListNames.has(lower) || control === 'workflow' && type === 'list';
  const reason = stringList && Array.isArray(value) && value.some(item => typeof item !== 'string')
   ? 'type-conflict' : nativePropertyValueReadOnlyReason(value, type);
+ if (!reason && control === 'workflow' && type === 'list' && mapping?.canonicalKey !== 'taskGallery' && Array.isArray(value)
+  && JSON.stringify(splitTaskListValue(value.join('; '))) !== JSON.stringify(value)) return { ...field, reason: 'type-conflict' };
  return { ...field, reason };
 }
 
@@ -80,4 +80,23 @@ export function inferVaultPropertyEditorTypes(app: App): Record<string, string> 
   const inferred = inferObsidianPropertyType(editable);
   return [name, meaningful.length && !editable.length ? 'unsupported' : inferred === 'unknown' ? 'text' : inferred];
  }));
+}
+
+/** One alias-aware pool for both editors. Eligibility is resolved separately from discovery. */
+export function editorPropertyCandidateNames(mappings: readonly KeyMapping[], types: Readonly<Record<string, string>>, vaultNames: readonly string[], existingNames: readonly string[]): string[] {
+ const names = [...existingNames, 'tags', ...mappings.filter(mapping => mapping.showInEditor !== false).map(mapping => mapping.visiblePropertyName || mapping.canonicalKey), ...Object.keys(types), ...vaultNames];
+ const candidates = new Map<string, string>();
+ for (const name of names) {
+  const matching = mappings.filter(mapping => getManagedYamlAliases(mapping.canonicalKey, [mapping]).some(alias => alias.toLowerCase() === name.toLowerCase()));
+  if (matching.length > 1 || matching[0]?.showInEditor === false) continue;
+  const identity = (matching[0]?.canonicalKey ?? name).toLowerCase();
+  if (!candidates.has(identity)) candidates.set(identity, name);
+ }
+ return [...candidates.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/** Control routing follows the stored encoding, not which editor opened the file. */
+export function editorPropertyControl(mapping: KeyMapping | undefined, definitions?: InlinePropertyDefinitions): 'workflow' | 'native' {
+ if (!mapping) return 'native';
+ return mapping.isSystem === false && resolveInlinePropertyDefinition(mapping.visiblePropertyName || mapping.canonicalKey, mapping.type, [mapping], definitions).encoding === 'vault-v1' ? 'native' : 'workflow';
 }

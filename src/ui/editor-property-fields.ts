@@ -1,9 +1,11 @@
+import { getNativePropertyIndex } from '../indexer/native-property-index';
+import { editorPropertyControl, resolvePropertyEditorField } from '../core/property-editor-fields';
 import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { App, getIcon, Notice, setIcon, Setting, stringifyYaml } from 'obsidian';
 import { getActiveWindow } from '../core/dom-compat';
 import { applyFieldRules } from '../core/field-rules';
 import { t } from '../core/i18n';
-import { resolveInlinePropertyDefinition, type InlinePropertyType } from '../core/inline-property-definitions';
+import { type InlinePropertyType } from '../core/inline-property-definitions';
 import { type InlinePropertySnapshot } from '../core/inline-property-source';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { getSourcePropertyIcon } from '../core/property-icons';
@@ -24,7 +26,7 @@ import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from '..
 import { formatUiDate } from '../core/ui-date-format';
 import { formatUiTime } from '../core/ui-time-format';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../core/vault-property-codec';
-import { getVisiblePropertyName } from '../core/yaml-fields';
+import { getManagedYamlAliases, getVisiblePropertyName } from '../core/yaml-fields';
 import { OperonIndexer } from '../indexer/indexer';
 import {
 	DEFAULT_INLINE_REPEAT_COMPLETION_MODE, InlineRepeatCompletionMode,
@@ -39,7 +41,7 @@ import { resolveReverseWorkflowFromTerminalDate, resolveWorkflowStatus } from '.
 import { INLINE_TASK_COMPACT_FALLBACK_ICONS, InlineTaskCompactChipKey, OperonSettings, TASK_CREATOR_FALLBACK_FIELD_ICONS, type KeyMapping } from '../types/settings';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindAssigneeChipImage } from './assignee-chip-image';
-import type { CompactEditorKeyIntent } from './compact-editor-key-intent';
+import { TASK_EDITOR_ESCAPE_INTENT_EVENT, type CompactEditorKeyIntent } from './compact-editor-key-intent';
 import {
 	createCompactMarkdownEditorSurface,
 	type CompactMarkdownEditorSurface,
@@ -93,6 +95,36 @@ export function resolveEditorWorkflowPickerIcon(key: string, mappings: KeyMappin
 
 /** Shared field controls. Hosts own layout, persistence and task-only operations. */
 export abstract class EditorPropertyFields {
+	private clearFocusVersion = 0;
+
+	/** A cleared value keeps its existing row; only Remove property removes it. */
+	protected focusClearedProperty(source: HTMLElement | string): void {
+		const row = typeof source === 'string'
+			? this.desktopPropertyRows.get(source)?.row ?? this.filePropertyRows.get(source)?.row
+			: source.closest<HTMLElement>('.operon-editor-desktop-property-row');
+		const label = row?.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label:not(:disabled)');
+		if (!label || row?.hidden || !label.isConnected) return;
+		const rowKey = row?.dataset.propertyKey;
+		const version = ++this.clearFocusVersion;
+		const epoch = this.propertyInteractionEpoch;
+		// Move out before refresh: a focused value otherwise retains its old rendering.
+		label.focus({ preventScroll: true });
+		// Pickers may restore their anchor synchronously while closing after onClear.
+		queueMicrotask(() => {
+			if (this.disposed || version !== this.clearFocusVersion || epoch !== this.propertyInteractionEpoch) return;
+			const current = label.isConnected ? row : Array.from(this.rootEl?.querySelectorAll<HTMLElement>('.operon-editor-desktop-property-row') ?? []).find(candidate => candidate.dataset.propertyKey === rowKey);
+			if (current && !current.hidden) current.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label:not(:disabled)')?.focus({ preventScroll: true });
+		});
+	}
+
+	protected syncPropertyActionState(button: HTMLButtonElement, active: boolean, disabled: boolean, locked = false): void {
+		button.toggleClass('is-active', active);
+		button.setAttribute('aria-pressed', String(active));
+		button.toggleClass('is-locked', locked);
+		button.disabled = disabled;
+		button.setAttribute('aria-disabled', String(disabled || locked));
+	}
+
 	protected isListProperty(key: string): boolean {
 		return ['contexts', 'tags', 'links', 'assignees', 'subtasks', 'blocking', 'blockedBy', 'related', 'reminderDatetimes', 'reminderRules'].includes(key)
 			|| getCustomFieldMapping(this.settings.keyMappings, key)?.type === 'list'
@@ -148,10 +180,72 @@ export abstract class EditorPropertyFields {
 	protected abstract getManualDatePickerOptions(key: string): { weekStart: 'monday' | 'sunday'; showWeekNumbers: boolean } | undefined;
 	protected abstract getWorkflowActionFocusTarget(key: string): HTMLButtonElement | null | undefined;
 	protected abstract getWorkflowSubtaskIds(parentId?: string | null): string[];
-	protected abstract handleCompactTextEditorIntent(
+	protected descriptionCompactHostEl: HTMLElement | null = null;
+	protected abstract persistExplicitEditorChanges(): Promise<void>;
+	private focusAdjacentEditorControl(
+		origin: HTMLElement | null,
+		direction: 'next' | 'previous',
+	): void {
+		const root = this.rootEl;
+		if (!origin || !root) return;
+		const selector = [
+			'button:not([disabled])',
+			'input:not([disabled])',
+			'textarea:not([disabled])',
+			'select:not([disabled])',
+			'[contenteditable="true"]',
+			'.cm-content',
+			'[tabindex]:not([tabindex="-1"])',
+		].join(',');
+		const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector))
+			.filter(candidate => {
+				if (!candidate.isConnected) return false;
+				if (candidate.closest('[hidden], .is-hidden, [inert], [aria-disabled="true"]') || candidate.tabIndex < 0) return false;
+				const style = root.ownerDocument.defaultView?.getComputedStyle(candidate);
+				if (!candidate.getClientRects().length || style?.visibility === 'hidden' || style?.visibility === 'collapse') return false;
+				const compactRoot = candidate.closest('.operon-compact-markdown-editor');
+				if (!compactRoot) return true;
+				return candidate.matches('textarea, .cm-content');
+			});
+		const activeElement = root.ownerDocument.activeElement;
+		let index = candidates.findIndex(candidate => (
+			candidate === activeElement
+			|| candidate.contains(activeElement)
+		));
+		if (index < 0) {
+			index = candidates.findIndex(candidate => origin.contains(candidate));
+		}
+		if (index < 0) return;
+		const targetIndex = direction === 'next' ? index + 1 : index - 1;
+		candidates[targetIndex]?.focus();
+	}
+
+	protected handleCompactTextEditorIntent(
 		field: 'description' | 'note',
 		intent: Exclude<CompactEditorKeyIntent, 'none'>,
-	): void;
+	): void {
+		const origin = field === 'description'
+			? this.descriptionCompactHostEl
+			: this.noteCompactHostEl;
+		switch (intent) {
+			case 'submit':
+			case 'focus-next':
+				this.focusAdjacentEditorControl(origin, 'next');
+				break;
+			case 'focus-previous':
+				this.focusAdjacentEditorControl(origin, 'previous');
+				break;
+			case 'explicit-submit':
+				void this.persistExplicitEditorChanges();
+				break;
+			case 'escape':
+				this.rootEl?.dispatchEvent(new CustomEvent(TASK_EDITOR_ESCAPE_INTENT_EVENT, {
+					bubbles: true,
+				}));
+				break;
+		}
+	}
+
 	protected abstract indexer: Pick<OperonIndexer, 'getAllTasks'>;
 	protected abstract inlineCompletionMode: InlineRepeatCompletionMode;
 	protected abstract readonly isPhone: boolean;
@@ -295,7 +389,7 @@ export abstract class EditorPropertyFields {
 			setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', {
 				value: this.formatCustomFieldDisplayValue(mapping, value),
 			}));
-			removeButton.addEventListener('click', () => onRemove(value, index));
+			removeButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(container); onRemove(value, index); });
 			chip.appendChild(removeButton);
 			chip.addClass('has-remove-action');
 			container.appendChild(chip);
@@ -315,6 +409,7 @@ export abstract class EditorPropertyFields {
 			this.fieldValues[fieldKey] = normalized.join('; ');
 			return;
 		}
+		if (this.fieldValues[fieldKey]) this.focusClearedProperty(fieldKey);
 		delete this.fieldValues[fieldKey];
 	}
 
@@ -379,7 +474,7 @@ export abstract class EditorPropertyFields {
 				attr: { type: 'button' },
 			});
 			setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value }));
-			removeButton.addEventListener('click', () => onRemove(value));
+			removeButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(container); onRemove(value); });
 		}
 	}
 
@@ -413,7 +508,7 @@ export abstract class EditorPropertyFields {
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
 			setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value: formatLabel(value) }));
-			removeButton.addEventListener('click', () => onRemove(value));
+			removeButton.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(container); onRemove(value); });
 			chip.appendChild(removeButton);
 			container.appendChild(chip);
 		}
@@ -495,6 +590,7 @@ export abstract class EditorPropertyFields {
 				onSave: (values) => {
 					const nextValues = normalizeListValues(values.map(value => value.replace(/^#/, '')));
 					if (areStringArraysEqual(selectedValues, nextValues)) return;
+					if (!nextValues.length) this.focusClearedProperty(container);
 					selectedValues = nextValues;
 					this.tags = [...nextValues];
 					render();
@@ -610,8 +706,34 @@ export abstract class EditorPropertyFields {
 		else icon.style.removeProperty('color');
 	}
 
+	protected canRenderWorkflowPickerKey(key: string): boolean {
+		if (getManagedTaskDataFieldPicker(key, this.settings.keyMappings)) return true;
+		const customMapping = getCustomFieldMapping(this.settings.keyMappings, key);
+		if (customMapping) return isProjectedCustomFieldType(customMapping);
+		return key === 'contexts'
+			|| key === 'tags'
+			|| key === 'assignees'
+			|| key === 'location'
+			|| key === 'links'
+			|| key === 'reminderDatetimes'
+			|| key === 'reminderRules'
+			|| key === 'parentTask'
+			|| key === 'subtasks'
+			|| key === 'blocking'
+			|| key === 'blockedBy'
+			|| key === 'related';
+	}
+
+ protected workflowFieldReadOnlyReason(key: string): NativePropertyReadOnlyReason | undefined {
+  const name = getVisiblePropertyName(key, this.settings.keyMappings);
+  const file = this.fileBodyContext?.format === 'yaml' ? this.app.vault.getAbstractFileByPath(this.fileBodyContext.filePath) : null;
+  const frontmatter = file ? this.app.metadataCache.getFileCache(file as import('obsidian').TFile)?.frontmatter ?? {} : {};
+  const sourceName = Object.keys(frontmatter).find(alias => getManagedYamlAliases(key, this.settings.keyMappings).some(candidate => candidate.toLowerCase() === alias.toLowerCase())) ?? name;
+  return resolvePropertyEditorField(sourceName, { frontmatter, order: Object.keys(frontmatter) }, this.settings.keyMappings, getNativePropertyIndex(this.app).getTypes(), {}, this.settings.inlinePropertyDefinitions, true).reason;
+ }
+
  protected workflowActionDisabled(key: string): boolean {
-  return key === 'datetimeEnd' && !(this.fieldValues.datetimeStart ?? '').trim()
+  return !!this.workflowFieldReadOnlyReason(key) || key === 'datetimeEnd' && !(this.fieldValues.datetimeStart ?? '').trim()
    || key === 'reminderRules' && this.isSystemReminderWorkflowKey(key) && getAvailableReminderRuleAnchors(this.fieldValues).length === 0;
  }
 
@@ -777,8 +899,7 @@ export abstract class EditorPropertyFields {
 						closePicker?.();
 						const result = applyReminderListMutation({ fieldKey, currentValue: this.fieldValues[fieldKey], mutation: { action: 'remove', current: { index, rawValue } } });
 						if (!result.ok) { new Notice(t('reminders', 'staleItem')); return; }
-						if (result.changed) this.commitWorkflowActionPayload({ [fieldKey]: result.fieldValue });
-						this.workflowActionButtons.get(fieldKey)?.focus({ preventScroll: true });
+						if (result.changed) { this.focusClearedProperty(group); this.commitWorkflowActionPayload({ [fieldKey]: result.fieldValue }); }
 					});
 				}
 				selectedWrap.appendChild(chip);
@@ -792,6 +913,7 @@ export abstract class EditorPropertyFields {
 			let committed = false;
 			let closeHandled = false;
 			let focusIndex = index;
+			const clearVersion = this.clearFocusVersion;
 			const handleClose = () => {
 				if (closeHandled) return;
 				closeHandled = true;
@@ -804,6 +926,7 @@ export abstract class EditorPropertyFields {
 					focusIndex,
 					getWorkflowRows: () => this.workflowRowsEl,
 					getActionButton: () => this.workflowActionButtons.get(fieldKey),
+					shouldFocus: () => clearVersion === this.clearFocusVersion && !this.disposed,
 				});
 			};
 			closePicker = openTaskFieldPicker({
@@ -820,8 +943,7 @@ export abstract class EditorPropertyFields {
 					item: { index, rawValue },
 				},
 				onCommit: payload => {
-					this.applyTaskFieldPickerPayload(payload);
-					this.markEdited();
+					this.commitWorkflowActionPayload(payload);
 					committed = true;
 					const remaining = splitTaskListValue(this.fieldValues[fieldKey]).length;
 					focusIndex = remaining > 0 ? Math.min(index, remaining - 1) : -1;
@@ -878,7 +1000,8 @@ export abstract class EditorPropertyFields {
 				removeButton.className = 'operon-editor-compact-selection-chip-remove';
 				setIcon(removeButton, 'x');
 				setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value }));
-				removeButton.addEventListener('click', () => {
+				removeButton.addEventListener('click', event => {
+					event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(group);
 					closeActivePicker();
 					const nextValue = field.type === 'list'
 						? serializeTaskMediaReferenceList(values.filter(existing => existing !== value))
@@ -1067,6 +1190,7 @@ export abstract class EditorPropertyFields {
 					this.markEdited();
 				},
 				onClear: () => {
+					this.focusClearedProperty(container);
 					delete this.fieldValues['priority'];
 					refreshButton();
 					this.markEdited();
@@ -1115,6 +1239,7 @@ export abstract class EditorPropertyFields {
 					this.markEdited();
 				},
 				onClear: () => {
+					this.focusClearedProperty(container);
 					delete this.fieldValues['status'];
 					refresh();
 					resetPickerState();
@@ -1173,6 +1298,7 @@ export abstract class EditorPropertyFields {
 					this.markEdited();
 				},
 				onRemove: () => {
+					this.focusClearedProperty(container);
 					if (!this.applyDateDraftChange(key, '')) return;
 					this.markEdited();
 				},
@@ -1236,6 +1362,7 @@ export abstract class EditorPropertyFields {
 					this.markEdited();
 				},
 				onRemove: () => {
+					this.focusClearedProperty(container);
 					this.applyDraftFieldRules({ [key]: '' }, [key]);
 					this.markEdited();
 				},
@@ -1302,6 +1429,7 @@ export abstract class EditorPropertyFields {
 					selectItem(iconId);
 				},
 				onClear: () => {
+					this.focusClearedProperty(container);
 					closeIconPicker = null;
 					iconButton.removeClass('is-picker-open');
 					delete this.fieldValues['taskIcon'];
@@ -1375,6 +1503,7 @@ export abstract class EditorPropertyFields {
 					this.markEdited();
 				},
 				onClear: () => {
+					this.focusClearedProperty(container);
 					swatch.removeClass('is-picker-open');
 					delete this.fieldValues['taskColor'];
 					refreshSwatch('');
@@ -1388,6 +1517,7 @@ export abstract class EditorPropertyFields {
 		});
 		swatch.addEventListener('contextmenu', (e) => {
 			e.preventDefault();
+			this.focusClearedProperty(container);
 			delete this.fieldValues['taskColor'];
 			refreshSwatch('');
 			this.applyThemeColor();
@@ -1531,7 +1661,8 @@ export abstract class EditorPropertyFields {
 			removeButton.className = 'operon-editor-compact-selection-chip-remove';
 			setIcon(removeButton, 'x');
 			setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value: label }));
-			removeButton.addEventListener('click', () => {
+			removeButton.addEventListener('click', event => {
+				event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(group);
 				closeActivePicker();
 				commitValue('');
 			});
@@ -1550,6 +1681,7 @@ export abstract class EditorPropertyFields {
 					closeActivePicker();
 				},
 				onClear: () => {
+					this.focusClearedProperty(group);
 					commitValue('');
 					closeActivePicker();
 				},
@@ -1693,7 +1825,8 @@ export abstract class EditorPropertyFields {
 				removeButton.className = 'operon-editor-compact-selection-chip-remove';
 				setIcon(removeButton, 'x');
 				setAccessibleLabelWithoutTooltip(removeButton, t('taskEditor', 'removeValue', { value: label }));
-				removeButton.addEventListener('click', () => {
+				removeButton.addEventListener('click', event => {
+					event.preventDefault(); event.stopPropagation(); this.focusClearedProperty(group);
 					closeActivePicker();
 					selectedValues = selectedValues.filter(existing => existing !== value);
 					this.setDelimitedFieldValue('related', selectedValues);
@@ -1937,6 +2070,9 @@ export abstract class EditorPropertyFields {
 	}
 
 	protected applyTaskFieldPickerPayload(payload: Record<string, string | string[]>): void {
+		for (const [key, value] of Object.entries(payload)) {
+			if ((Array.isArray(value) ? !value.length : !value.trim()) && this.fieldValues[key]) this.focusClearedProperty(key);
+		}
 		const patch: Record<string, string> = {};
 		for (const [key, value] of Object.entries(payload)) {
 			patch[key] = Array.isArray(value) ? value.join('; ') : value;
@@ -2151,6 +2287,7 @@ export abstract class EditorPropertyFields {
 					refresh();
 				},
 				onClear: () => {
+					this.focusClearedProperty(container);
 					delete this.fieldValues['repeat'];
 					delete this.fieldValues['datetimeRepeatEnd'];
 					delete this.fieldValues['repeatSeriesId'];
@@ -2228,6 +2365,8 @@ export abstract class EditorPropertyFields {
 	protected abstract openDependencyWorkflowAction(anchor: HTMLElement, fieldKey: 'blocking' | 'blockedBy', onClose: () => void): (() => void) | null;
 	protected abstract desktopPropertyRows: Map<string, { row: HTMLElement; value: HTMLElement; core: boolean; signature: string }>;
 	protected openWorkflowPickerFromAction(key: string, button: HTMLButtonElement): void {
+		const reason = this.workflowFieldReadOnlyReason(key);
+		if (reason) { new Notice(propertyReadOnlyWarningText(this.getWorkflowPickerLabel(key), reason)); return; }
 		this.propertyInteractionEpoch += 1;
 		if (button.hasClass('is-locked')) {
 			new Notice(t('taskEditor', 'subtasksSaveFirst'));
@@ -2238,6 +2377,7 @@ export abstract class EditorPropertyFields {
 		button.addClass('is-picker-open');
 		let closePicker: (() => void) | null = null;
 		let focusRestoreScheduled = false;
+		const clearVersion = this.clearFocusVersion;
 		const restoreReminderActionFocus = () => {
 			if (!this.isSystemReminderWorkflowKey(key) || focusRestoreScheduled) return;
 			focusRestoreScheduled = true;
@@ -2248,7 +2388,7 @@ export abstract class EditorPropertyFields {
 				focusIndex: -1,
 				getWorkflowRows: () => this.workflowRowsEl,
 				getActionButton: () => this.workflowActionButtons.get(key),
-				shouldFocus: () => !this.workflowActionPickerClose,
+				shouldFocus: () => !this.workflowActionPickerClose && clearVersion === this.clearFocusVersion && !this.disposed,
 			});
 		};
 		const handleClose = () => {
@@ -2319,6 +2459,9 @@ export abstract class EditorPropertyFields {
 	protected hasDesktopPropertyRules(): boolean { return (this.desktopPropertyRows?.size ?? 0) > 0; }
 
 	protected commitWorkflowActionPayload(payload: Record<string, string | string[]>): void {
+		for (const [key, value] of Object.entries(payload)) {
+			if ((Array.isArray(value) ? value.length === 0 : !value.trim()) && this.hasWorkflowPickerValue(key)) this.focusClearedProperty(key);
+		}
 		if (this.hasDesktopPropertyRules()) {
 			const remaining = { ...payload };
 			if (typeof remaining.status === 'string') {
@@ -2379,14 +2522,22 @@ export abstract class EditorPropertyFields {
 		catch { return false; }
 	}
 
+	protected refreshFilePropertyAction(name: string, button: HTMLButtonElement, entry: EditorFileProperty): void {
+		const editable = this.canEditFileProperty(entry);
+		this.syncPropertyActionState(button, !isEmptyFilePropertyValue(entry.value), !editable, !!entry.readOnlyReason);
+		button.toggleClass('is-automatic-property', entry.readOnlyReason === 'automatic');
+		bindPropertyIcon(button, () => entry.readOnlyReason === 'automatic' ? 'shield-alert'
+			: entry.field.type === 'checkbox' ? getCheckboxPropertyIcon(entry.value, this.resolveNativePropertyIcon(name, entry.field.type))
+				: this.resolveNativePropertyIcon(name, entry.field.type));
+	}
+
 	protected refreshFilePropertyValue(name: string): void {
 		const entry = this.fileProperties.get(name), surface = this.filePropertyRows.get(name);
 		if (!entry || !surface) return;
 		const populated = !isEmptyFilePropertyValue(entry.value);
 		this.updateEmptyPropertyRemoval(surface.row, name, !entry.remove && !populated && !!entry.baseline?.present && this.canEditFileProperty(entry), () => this.removeFileProperty(name));
 		this.syncFilePropertyRowVisibility(entry, surface, populated);
-		surface.action.toggleClass('is-active', populated);
-		surface.action.disabled = !this.canEditFileProperty(entry);
+		this.refreshFilePropertyAction(name, surface.action, entry);
 		const label = surface.row.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label');
 		if (label) { label.disabled = false; label.setAttribute('aria-disabled', String(surface.action.disabled)); }
 		surface.value.toggleClass('is-readonly', surface.action.disabled);
@@ -2397,8 +2548,6 @@ export abstract class EditorPropertyFields {
 		surface.row.toggleClass('is-automatic-property', automatic);
 		surface.action.toggleClass('is-automatic-property', automatic);
 		const propertyIcon = () => this.resolveNativePropertyIcon(name, entry.field.type);
-		bindPropertyIcon(surface.action, () => automatic ? 'shield-alert'
-			: entry.field.type === 'checkbox' ? getCheckboxPropertyIcon(entry.value, propertyIcon()) : propertyIcon());
 		const icon = surface.row.querySelector<HTMLElement>('.operon-editor-desktop-property-icon');
 		if (icon) bindPropertyIcon(icon, () => automatic ? 'shield-alert' : propertyIcon());
 		if (reason) bindPropertyReadOnlyWarning(surface.action, name, reason, () => this.getThemeColor());
@@ -2415,7 +2564,6 @@ export abstract class EditorPropertyFields {
 		this.renderCustomFieldSelection(surface.value, display, editable ? (_value, index) => {
 			const next = entry.field.type === 'list' ? (entry.value as (string | number)[]).filter((_item, position) => position !== index) : entry.field.type === 'text' ? '' : null;
 			this.setFilePropertyValue(name, next);
-			(surface.action.hidden ? this.additionalPropertyAdd : surface.action)?.focus({ preventScroll: true });
 		} : null, {
 			values, suppressValueTooltip: !!reason, onActivate: (chip, value, index) => {
 				if (reason) { setAccessibleLabelWithoutTooltip(chip, propertyReadOnlyWarningText(name, reason)); return; }
@@ -2435,7 +2583,7 @@ export abstract class EditorPropertyFields {
 		catch { return t('taskEditor', 'filePropertyReadOnly', { name: '' }); }
 	}
 
-	protected confirmNewFileProperty(_entry: EditorFileProperty): boolean { return false; }
+	protected confirmNewFileProperty(entry: EditorFileProperty): boolean { return entry.pending === true; }
 
 	protected getFilePropertyPickerOwner(surface: { action: HTMLButtonElement }): HTMLElement { return surface.action; }
 
@@ -2465,7 +2613,11 @@ export abstract class EditorPropertyFields {
 			app: this.app, anchor: pickerAnchor, field: entry.field, label: name, textEditRoute,
 			cellValue: { present: entry.baseline?.present ?? true, rawValue: entry.value, normalizedValue: isEmptyFilePropertyValue(entry.value) ? '' : String(entry.value) },
 			candidates: collectNativeFieldValueCandidates(this.app, this.indexer.getAllTasks(), this.settings.keyMappings, name, entry.field.type), settings: this.settings, sourcePath: this.fileBodyContext?.filePath ?? '', lifecycleOwner: this.getFilePropertyPickerOwner(surface), preserveListValues: true, nativeList: true, confirmList: this.confirmNewFileProperty(entry), editListIndex,
-			onMutation: mutation => { this.setFilePropertyValue(name, mutation.kind === 'delete' ? entry.field.type === 'text' ? '' : entry.field.type === 'list' ? [] : null : mutation.value); },
+			onMutation: mutation => {
+				const next = mutation.kind === 'delete' ? entry.field.type === 'text' ? '' : entry.field.type === 'list' ? [] : null : mutation.value;
+				if (isEmptyFilePropertyValue(next)) this.focusClearedProperty(surface.row);
+				this.setFilePropertyValue(name, next);
+			},
 			onClose: close,
 		});
 		this.closeFilePropertyPicker = closePicker;
@@ -2487,11 +2639,7 @@ export abstract class EditorPropertyFields {
 				Object.assign(patch, { datetimeRepeatEnd: '', repeatSeriesId: '', repeatOccurrenceDate: '' });
 				this.inlineCompletionMode = DEFAULT_INLINE_REPEAT_COMPLETION_MODE;
 			}
-			// Leave the value before committing so source-aware refresh can update the
-			// empty row immediately. Keep focus on its label, not the section toolbar.
-			value.closest('.operon-editor-desktop-property-row')
-				?.querySelector<HTMLButtonElement>('.operon-editor-desktop-property-label:not(:disabled)')
-				?.focus({ preventScroll: true });
+			this.focusClearedProperty(value);
 			this.commitWorkflowActionPayload(patch);
 		});
 	}
@@ -2499,7 +2647,7 @@ export abstract class EditorPropertyFields {
 	protected isNativeCustomProperty(key: string): boolean {
 		const mapping = this.settings.keyMappings.find(item => item.canonicalKey === key && item.isSystem === false);
 		if (!mapping) return false;
-		try { return resolveInlinePropertyDefinition(mapping.visiblePropertyName, mapping.type, this.settings.keyMappings, this.settings.inlinePropertyDefinitions).encoding === 'vault-v1'; }
+		try { return editorPropertyControl(mapping, this.settings.inlinePropertyDefinitions) === 'native'; }
 		catch { return false; }
 	}
 

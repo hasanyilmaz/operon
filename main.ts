@@ -38218,14 +38218,15 @@ export default class OperonPlugin extends Plugin {
     if (!validTarget()) return { status: 'conflict' };
     const mappings = this.settings.keyMappings;
     const types = getNativePropertyIndex(this.app).getTypes();
-    const canCommit = (): boolean => validTarget() && this.settings.keyMappings === mappings && getNativePropertyIndex(this.app).getTypes() === types;
+    const definitions = this.settings.inlinePropertyDefinitions;
+    const canCommit = (): boolean => validTarget() && this.settings.keyMappings === mappings && this.settings.inlinePropertyDefinitions === definitions && getNativePropertyIndex(this.app).getTypes() === types;
     const ownWrite: { settle?: (committed: boolean) => void } = {};
     const source = await capturePropertyEditorMarkdown(this.app, file, () => this.getMarkdownViewsForPath(path), text => {
      const rebased = planPropertyEditorWrite(text, mappings, changes);
      const baseline = readPropertyEditorDocument(text, mappings);
      return rebased.status === 'ready' && baseline && !changes.some(({ name }) =>
-      resolvePropertyEditorField(name, baseline, mappings, types).reason
-      || resolvePropertyEditorField(name, rebased.properties, mappings, types).reason) ? rebased.text : null;
+      resolvePropertyEditorField(name, baseline, mappings, types, {}, definitions).reason
+      || resolvePropertyEditorField(name, rebased.properties, mappings, types, {}, definitions).reason) ? rebased.text : null;
     }, canCommit, (stored, next) => {
      // A YAML-only edit is not a raw task edit. Protect only these exact bytes;
      // dirty native body changes and subsequently diverging sources still normalize.
@@ -38251,8 +38252,8 @@ export default class OperonPlugin extends Plugin {
     const plan = planPropertyEditorWrite(before, mappings, changes);
     if (plan.status !== 'ready') return { status: plan.status };
     const baseline = readPropertyEditorDocument(before, mappings);
-    if (!baseline || changes.some(({ name }) => resolvePropertyEditorField(name, baseline, mappings, types).reason
-     || resolvePropertyEditorField(name, plan.properties, mappings, types).reason)) return { status: 'unsupported' };
+    if (!baseline || changes.some(({ name }) => resolvePropertyEditorField(name, baseline, mappings, types, {}, definitions).reason
+     || resolvePropertyEditorField(name, plan.properties, mappings, types, {}, definitions).reason)) return { status: 'unsupported' };
     if (!canCommit()) return { status: 'conflict' };
     // Even an idempotent disk result may need to update an open native buffer.
     const result = await this.writer.withMarkdownSource(source, () =>
