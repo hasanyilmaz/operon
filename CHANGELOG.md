@@ -32,16 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Passed **87/87** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **42/42** Chromium/WebKit browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
-- Visual refinements passed **87/87** focused tests, **36/36** Chromium/WebKit continuous-view scenarios, strict lint, production build, release guard, and two focused reviews.
-- Header spacing passed both mouse and touch layout checks, strict lint, and release guard.
-- Mini Calendar color changes passed **18/18** Chromium scenarios across mouse and touch profiles, strict lint, and release guard.
-- Sections and Order refinements passed **234/234** focused tests, **259/259** Chromium checks, strict lint, production build, and release guard.
-- Editor consistency passed **225/225** field and persistence tests, **22/22** shared-control tests, and **518/518** Chromium checks across desktop, tablet, and phone layouts. Full local checks, TypeScript checks, strict lint, production build, release guard, and focused code review passed.
-- Passed **4/4** focused File Task recurrence tests, including Custom Key carryover and configured value clearing. Runtime mutation checks, strict lint, production build, and release guard passed.
-- Passed **49/49** tracker tests, full local checks, production build, and release guard. Normal Obsidian exit was manually verified.
-- Passed **192/192** Status Dock tests, plugin checks, production build, and focused code review. Cmd-click was manually verified in Obsidian.
-- Passed **6/6** timer command scenarios across FlowTime and TrackTime, plus plugin checks and production build. The command was manually verified in Obsidian.
+- Plugin checks, production build, and key Obsidian workflows passed, along with **5,315/5,315** local regression tests.
 
 ## [4.7.0] - 2026-11-12
 
