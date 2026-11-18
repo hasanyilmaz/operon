@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.8.0] - 2026-11-18
+
 ### New
 
 - Reuse one saved filter across daily notes with **embedded filter dates**. Add a line such as `dateCompleted: 2026-11-11` below `filterId` to replace that field’s condition in the block, or add one if it’s missing. The saved filter stays unchanged. ([#338](https://github.com/hasanyilmaz/operon/issues/338))
