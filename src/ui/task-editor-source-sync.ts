@@ -1,3 +1,4 @@
+import type { EditorMappedProperty } from '../core/file-task-property-draft';
 import type { OperonField, ParsedTask } from '../types/fields';
 
 export interface TaskEditorSourceState {
@@ -6,6 +7,7 @@ export interface TaskEditorSourceState {
 	tags: string[];
 	fieldValues: Record<string, string>;
 	sourceFields?: readonly OperonField[];
+	mappedProperties?: Record<string, EditorMappedProperty>;
 }
 
 export interface TaskEditorSourceSnapshot {
@@ -54,6 +56,7 @@ export function mergeTaskEditorSource(
 		tags: [...(changed.has('_tags') ? draft.tags : latest.tags)],
 		fieldValues: fields,
 		sourceFields: latest.sourceFields,
+		mappedProperties: latest.mappedProperties,
 	};
 }
 export const TASK_EDITOR_AUTOSAVE_DELAY_MS = 2_000;

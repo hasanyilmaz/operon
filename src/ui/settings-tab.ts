@@ -14,8 +14,10 @@ import { syncCustomPropertyType } from '../core/custom-property-type-sync';
 import { getNativePropertyIndex } from '../indexer/native-property-index';
 import { notifyPropertyTypeChanges } from './table/table-file-property';
 import type { TasksConversionUiIntegration } from './tasks-conversion-controller';
-import { normalizeTaskEditorSections, type TaskEditorSection, type TaskEditorSectionId } from '../types/task-editor-sections';
-import { taskEditorSectionDefaultLabel } from './task-editor-section-label';
+import { normalizeTaskEditorSections, type TaskEditorSection } from '../types/task-editor-sections';
+import { changeTaskEditorLayout } from '../core/task-editor-layout';
+import { renderTaskEditorSectionsSettings } from './settings/task-editor-section-settings';
+import { editorSectionLabel } from './editor-sections-layout';
 import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
@@ -299,6 +301,10 @@ import {
 	createSettingsListCardChip,
 } from './settings/settings-list-ui';
 import { openSettingsIconPickerModal } from './settings/settings-icon-picker-modal';
+import type { TaskEditorPropertyRef } from '../types/task-editor-sections';
+import { bindPropertyIcon } from './property-icon-presentation';
+import { openPropertyIconPicker } from './settings/property-icon-picker';
+import { resolveEditorWorkflowPickerIcon } from './editor-property-fields';
 import { openSettingsColorPickerModal } from './settings/settings-color-picker-modal';
 import { renderSettingsIconPickerRow } from './settings/settings-icon-picker-ui';
 import {
@@ -893,7 +899,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
 	private pluginVersion: string;
-	private onSettingsChanged: () => void;
+	private onSettingsChanged: (change?: 'property-icons') => void;
 	private onDockRefreshLayout: () => void;
 	private hasPendingSettingsChange = false;
 	private expandedPresetIds: Set<string> = new Set();
@@ -957,7 +963,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		plugin: Plugin,
 		settings: OperonSettings,
 		storage: OperonStorage,
-		onSettingsChanged: () => void,
+		onSettingsChanged: (change?: 'property-icons') => void,
 		indexer?: OperonIndexer,
 		openFilterInSidebar?: (filterSetId: string) => Promise<void>,
 		onDockRefreshLayout?: () => void,
@@ -1197,6 +1203,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	getControlValue(key: string): unknown {
   if (key === 'statusDockSections') return normalizeStatusDockSections(this.settings.statusDockSections);
+		if (key === 'taskEditorSections') return normalizeTaskEditorSections(this.settings.taskEditorSections);
 		if (key.startsWith('calendarPresetRangeMode:')) return this.settings.calendarPresets.find(p => p.id === key.slice('calendarPresetRangeMode:'.length))?.rangeMode ?? 'rolling';
 		if (key === 'propertyValuePool') return readPropertyPoolPreferences(this.settings.propertyValuePool).preferences;
 		const entry = this.findSettingsSearchEntryByKey(key);
@@ -1210,6 +1217,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === 'trackerStopOnObsidianQuit') {
+			try {
+				await this.storage.updateSettings({ trackerStopOnObsidianQuit: value === true || value === 'true' });
+				this.notifySettingsChanged();
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
+			return;
+		}
 		if (key === 'fileTaskDisplayTitleEnabled' && (value === true || value === 'true')
 			&& !hasFileTaskDisplayTitleMapping(this.settings.keyMappings)) {
 			new Notice(t('settings', 'keyMappingsMappingCollision'));
@@ -1245,6 +1261,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 			}
 			return;
 		}
+		if ((key === 'miniCalendarClickAction' || key === 'miniCalendarViewMode') && typeof value === 'string') {
+			try {
+				if (key === 'miniCalendarViewMode') await this.storage.saveMiniCalendarViewMode(value);
+				else await this.storage.saveMiniCalendarClickAction(value);
+				this.notifySettingsChanged();
+			} finally { this.updateNativeSettingsDefinitions(); }
+			return;
+		}
+
 		if (key === 'statusDockClickAction' && typeof value === 'string') {
 			await this.storage.saveStatusDockPreference(key, value);
 			this.notifySettingsChanged();
@@ -1253,7 +1278,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 		if (key === 'statusDockSections') { await this.saveStatusDockSections(() => normalizeStatusDockSections(value)); return; }
 		if (key === 'taskEditorSections') {
-			await this.saveTaskEditorSections(() => normalizeTaskEditorSections(value));
+			if (Array.isArray(value)) await this.saveTaskEditorSections(() => normalizeTaskEditorSections(value));
+			this.updateNativeSettingsDefinitions();
 			return;
 		}
 		if (key.startsWith('calendarPresetRangeMode:')) {
@@ -1711,6 +1737,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			['touchControls', ['calendarTouchDragLongPressMs', 'calendarTouchDragCancelDistancePx', 'calendarTouchTimeGridTaskMoveEnabled'], render, ['DOCS-060 Calendar layout toolbar and sidebar']],
 			['viewPresets', ['calendarDefaultPresetId', 'calendarPresets'], render, ['DOCS-029 Calendar presets and time grid', 'DOCS-060 Calendar layout toolbar and sidebar']],
 			['calendarSidebarSettings', ['calendarSidebarWidthPx', 'calendarSidebarShowWeekNumbers', 'calendarSidebarCalendarsDefaultExpanded', 'calendarSidebarTaskPoolDefaultExpanded'], render, ['DOCS-060 Calendar layout toolbar and sidebar', 'DOCS-095 Calendar Task Pool']],
+			['miniCalendarTitle', ['miniCalendarViewMode', 'miniCalendarClickAction'], render],
 			['externalCalendarsTitle', ['externalCalendars'], render, ['DOCS-048 External calendars']],
 		], entries, t('settings', 'tabCalendar'), 'DOCS-028 Calendar overview',
 			key => key === 'externalCalendarsTitle' ? t('settings', key) : t('calendar', key),
@@ -2190,13 +2217,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 				this.buildSettingsSearchSettingDefinition(entries, 'taskEditorInlineShowSource'),
 			]),
 		}];
-		groups.push({ type: 'group', heading: t('settings', 'taskEditorSections'), cls: 'operon-task-editor-sections-settings',
+		const sections = entries.find(entry => entry.id === 'ui.taskEditorSections');
+		if (sections) groups.push({ type: 'group', heading: t('settings', 'taskEditorSections'),
+			cls: 'operon-task-editor-sections-group',
 			extraButtons: [this.buildDeclarativeSettingsDocsButton(t('settings', 'taskEditorSections'), 'DOCS-021 Task Editor', 'operon-native-settings-declarative-docs-action--inline-heading')],
-			items: normalizeTaskEditorSections(this.settings.taskEditorSections).map(section => ({
-				name: section.name || taskEditorSectionDefaultLabel(section.id),
-				aliases: [taskEditorSectionDefaultLabel(section.id), t('settings', 'taskEditorSections')],
-				render: (setting: Setting) => this.configureTaskEditorSectionRow(setting, section.id),
-			})),
+			items: [this.buildTaskCaptureSearchSection(sections, container => this.renderTaskEditorSectionCards(container))],
 		});
 
 		return groups;
@@ -2510,6 +2535,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				)],
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'trackerSplitSessionsAtMidnight'),
+					Platform.isDesktopApp ? this.buildSettingsSearchSettingDefinition(entries, 'trackerStopOnObsidianQuit') : null,
 					Platform.isDesktopApp ? null : this.buildSettingsSearchSettingDefinition(entries, 'trackerShowStatusBarTimer'),
 				]),
 			},
@@ -3041,6 +3067,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		}
 
 		this.activeNativeSettingsPage = { tabId, containerEl };
+		this.clearTaskEditorSectionCards(containerEl);
 		containerEl.empty();
 		setSettingsScope(containerEl, true);
 		containerEl.addClass('operon-settings-tab-root');
@@ -3075,6 +3102,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private clearNativeSettingsPage(containerEl: HTMLElement): void {
+		this.clearTaskEditorSectionCards(containerEl);
 		for (const [host, dispose] of this.tasksConversionSettings) if (containerEl.contains(host)) dispose();
 		this.disposeReminderSoundPreview();
 		closeFloatingPanelsForRoot(containerEl);
@@ -3317,7 +3345,8 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (key === 'statusDockVisible' || key === 'statusDockCreatorStartsTimer') return true;
 		if (key === 'statusDockShowSeconds' || key === 'statusDockShowTimerDial') return false;
 		if (key === 'statusDockTimerDialSize') return DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE;
-		if (key === 'statusDockClickAction') return 'source-and-editor';
+		if (key === 'miniCalendarViewMode') return 'continuous';
+		if (key === 'statusDockClickAction' || key === 'miniCalendarClickAction') return 'source-and-editor';
 		return (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[key];
 	}
 
@@ -3423,9 +3452,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private normalizeSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): unknown {
+		if (key === 'miniCalendarViewMode') return value === 'month' ? 'month' : 'continuous';
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule({ preset: value });
 		if (key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return normalizeTaskFinderResultBehavior(value, DEFAULT_SETTINGS[key]);
-		if (key === 'statusDockClickAction') return normalizeTaskFinderResultBehavior(value, 'source-and-editor');
+		if (key === 'statusDockClickAction' || key === 'miniCalendarClickAction') return normalizeTaskFinderResultBehavior(value, 'source-and-editor');
   if (key === 'taskEditorPosition') return value === 'left' ? 'left' : 'right';
 		if (key === 'calendarAutoScrollPastRatio' || key === 'calendarTimeGridScale') {
 			const options: readonly number[] = key === 'calendarAutoScrollPastRatio'
@@ -3744,78 +3774,56 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
   this.markSettingsSearchSectionTarget(container, 'ui.statusDockSections');
  }
 
-	private taskEditorSectionsSaveQueue: Promise<void> = Promise.resolve();
-	private saveTaskEditorSections(change: (current: TaskEditorSection[]) => TaskEditorSection[], refreshDefinitions = true): Promise<void> {
-		const run = this.taskEditorSectionsSaveQueue.then(async () => {
-			const current = normalizeTaskEditorSections(this.settings.taskEditorSections);
-			const before = JSON.stringify(current);
-			const next = normalizeTaskEditorSections(change(current));
-			if (before === JSON.stringify(next)) return;
-			await this.storage.updateSettings({ taskEditorSections: next });
-			this.notifySettingsChanged();
-			this.applyPendingSettingsChange();
-		}).catch((error: unknown) => {
+	private readonly taskEditorSectionHosts = new Map<HTMLElement, () => void>();
+
+	private async saveTaskEditorSections(change: (current: TaskEditorSection[], mappings: readonly KeyMapping[]) => TaskEditorSection[]): Promise<void> {
+		try {
+			await this.storage.saveTaskEditorSections(change);
+		} catch (error) {
 			new Notice(t('settings', 'taskEditorSectionsSaveFailed'));
 			throw error;
-		}).finally(() => { if (refreshDefinitions) this.updateNativeSettingsDefinitions(); });
-		this.taskEditorSectionsSaveQueue = run.catch(() => undefined);
-		return run;
+		}
 	}
 
-	private configureTaskEditorSectionRow(setting: Setting, id: TaskEditorSectionId, refresh?: () => void): void {
-		const sections = normalizeTaskEditorSections(this.settings.taskEditorSections);
-		const index = sections.findIndex(section => section.id === id);
-		const defaultName = taskEditorSectionDefaultLabel(id);
-		setting.settingEl.addClass('operon-task-editor-section-setting');
-		setting.setName(defaultName);
-		setting.addText(text => {
-			text.setValue(sections[index].name || defaultName).setPlaceholder(defaultName);
-			text.inputEl.maxLength = 80;
-			setAccessibleLabelWithoutTooltip(text.inputEl, defaultName);
-			setting.infoEl.replaceChildren(text.inputEl);
-			const saveName = (): void => {
-				const submitted = text.getValue();
-				const name = submitted.trim();
-				void this.saveTaskEditorSections(current => current.map(section => section.id === id
-					? { ...section, name: name === defaultName ? '' : name } : section), false)
-					.catch(() => undefined).finally(() => {
-						if (text.getValue() === submitted) text.setValue(this.settings.taskEditorSections.find(section => section.id === id)?.name || defaultName);
-					});
-			};
-			text.inputEl.addEventListener('change', saveName);
-			text.inputEl.addEventListener('keydown', event => {
-				if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); text.inputEl.blur(); }
-			});
+	private openPropertyIconPicker(
+		anchor: HTMLButtonElement, ref: TaskEditorPropertyRef, label: string, fallback: string, onClose?: () => void,
+	): (() => void) | null {
+		return openPropertyIconPicker(this.app, {
+			anchor, field: ref, label, fallback, onClose,
+			settings: () => this.settings,
+			save: (edit, icon) => this.storage.savePropertyIcon(edit, icon),
+			onCommitted: () => this.onSettingsChanged('property-icons'),
 		});
-		if (id !== 'description') setting.addToggle(toggle => {
-			let changeVersion = 0;
-			toggle.setValue(sections[index].enabled !== false);
-			setAccessibleLabelWithoutTooltip(toggle.toggleEl, defaultName);
-			toggle.onChange(enabled => {
-				const version = ++changeVersion;
-				void this.saveTaskEditorSections(current => current.map(section => section.id === id
-					? { ...section, enabled } : section), false).catch(() => {
-					if (version !== changeVersion) return;
-					toggle.setValue(normalizeTaskEditorSections(this.settings.taskEditorSections).find(section => section.id === id)?.enabled !== false);
-				});
-			});
+	}
+
+	private renderTaskEditorSectionCards(container: HTMLElement): () => void {
+		this.taskEditorSectionHosts.get(container)?.();
+		const dispose = renderTaskEditorSectionsSettings(container, {
+			app: this.app,
+			settings: () => this.settings,
+			change: change => this.saveTaskEditorSections((sections, mappings) => changeTaskEditorLayout(sections, mappings, change)),
+			openIconPicker: (anchor, field, label, icon, onClose) => this.openPropertyIconPicker(anchor, field, label, icon, onClose),
+			confirmRemove: name => this.promptSettingsConfirmation({
+				title: t('settings', 'taskEditorRemoveSection'),
+				message: t('settings', 'taskEditorRemoveSectionConfirm', { name, additional: editorSectionLabel(this.settings.taskEditorSections, 'additional') }),
+				confirmText: t('buttons', 'remove'),
+				cancelText: t('buttons', 'cancel'),
+				danger: true,
+				initialFocus: 'cancel',
+			}),
 		});
-		for (const delta of [-1, 1]) setting.addExtraButton(button => {
-			const disabled = index + delta < 0 || index + delta >= sections.length;
-			button.extraSettingsEl.toggleClass('is-section-move-disabled', disabled);
-			button.setIcon(delta < 0 ? 'arrow-up' : 'arrow-down')
-			.setTooltip(t('settings', delta < 0 ? 'taskCardMoveUp' : 'taskCardMoveDown'))
-			.setDisabled(disabled)
-			.onClick(() => {
-				if (disabled) return;
-				void this.saveTaskEditorSections(current => {
-					const from = current.findIndex(section => section.id === id);
-					const to = from + delta;
-					if (from >= 0 && to >= 0 && to < current.length) [current[from], current[to]] = [current[to], current[from]];
-					return current;
-				}).catch(() => undefined).finally(() => refresh?.());
-			});
-		});
+		const cleanup = (): void => {
+			dispose();
+			if (this.taskEditorSectionHosts.get(container) === cleanup) this.taskEditorSectionHosts.delete(container);
+		};
+		this.taskEditorSectionHosts.set(container, cleanup);
+		return cleanup;
+	}
+
+	private clearTaskEditorSectionCards(container?: HTMLElement): void {
+		for (const [root, dispose] of this.taskEditorSectionHosts) {
+			if (!container || container.contains(root)) dispose();
+		}
 	}
 
  private taskCardSaveQueue: Promise<void> = Promise.resolve();
@@ -4067,6 +4075,13 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
    'background-tab': t('settings', key === 'inlineTaskAfterCreate' ? 'inlineTaskAfterCreateBackgroundTab' : 'fileTaskAfterCreateBackgroundTab'),
   };
 		if (key === 'statusDockTimerDialSize') return Object.fromEntries(STATUS_DOCK_TIMER_DIAL_SIZES.map(size => [`${size}x`, `${size}×`]));
+		if (key === 'miniCalendarViewMode') return { continuous: t('calendar', 'miniCalendarContinuous'), month: t('calendar', 'miniCalendarMonth') };
+		if (key === 'miniCalendarClickAction') return {
+			source: t('settings', 'taskFinderResultSourceOnly'),
+			'source-and-editor': t('settings', 'workspaceTweaksQuickSwitcherSourceAndEditor'),
+			editor: t('settings', 'workspaceTweaksQuickSwitcherEditorOnly'),
+		};
+
 		if (key === 'statusDockClickAction' || key === 'taskFinderFileResultBehavior' || key === 'taskFinderInlineResultBehavior') return {
 			source: t('settings', 'taskFinderResultSourceOnly'),
 			'source-and-editor': t('settings', 'taskFinderResultSourceAndEditor'),
@@ -4461,6 +4476,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	hide(): void {
+		this.clearTaskEditorSectionCards();
 		this.statusDockVisibilityToggles.clear();
 		for (const dispose of this.tasksConversionSettings.values()) dispose();
 		this.disposeReminderSoundPreview();
@@ -4942,14 +4958,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		this.renderBoundToggleSetting(layout, t('settings', 'taskEditorInlineShowSource'), t('settings', 'taskEditorInlineShowSourceDesc'), 'taskEditorInlineShowSource');
 		const sections = renderNativeSettingsGroupedSection(containerEl, t('settings', 'taskEditorSections'), undefined,
 			this.buildNativeSettingsDocsAction(t('settings', 'taskEditorSections'), 'DOCS-021 Task Editor'));
-		sections.addClass('operon-task-editor-sections-settings');
-		const renderSections = (): void => {
-			sections.empty();
-			for (const section of normalizeTaskEditorSections(this.settings.taskEditorSections)) {
-				this.configureTaskEditorSectionRow(new Setting(sections), section.id, renderSections);
-			}
-		};
-		renderSections();
+		this.renderTaskEditorSectionCards(sections);
 		this.markSettingsSearchSectionTarget(sections, 'ui.taskEditorSections');
 
 	}
@@ -7954,6 +7963,20 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	private renderCalendarSetting(containerEl: HTMLElement, key: string): void {
+		if (key === 'miniCalendarClickAction' || key === 'miniCalendarViewMode') {
+			let control: DropdownComponent | undefined;
+			this.markSettingsSearchTarget(renderDropdownSetting({
+				containerEl, configure: dropdown => { control = dropdown; }, name: t('calendar', key), desc: t('calendar', key === 'miniCalendarViewMode' ? 'miniCalendarViewModeDesc' : 'miniCalendarClickActionDesc'),
+				value: String(this.getControlValue(key)),
+				options: Object.entries(this.getSettingsSearchDropdownOptions(key)).map(([value, label]) => ({ value, label })),
+				onChange: settingsAsyncHandler('Mini Calendar preference save failed', async value => {
+					try { await this.setControlValue(key, value); }
+					finally { control?.setValue(String(this.getControlValue(key))); this.applyPendingSettingsChange(); }
+				}),
+			}), key);
+			return;
+		}
+
 		if (key === 'calendarDefaultPresetId') {
 			this.renderBoundDropdownSetting(containerEl, t('calendar', 'defaultPreset'), t('calendar', 'defaultPresetDesc'), 'calendarDefaultPresetId', {
 				value: this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? '',
@@ -12316,41 +12339,20 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		});
 		setAccessibleLabelWithoutTooltip(iconButton, t('settings', 'keyMappingsIconAria'));
 
-		const getStoredIcon = (): string => normalizeTaskIconValue(getCurrentMapping()?.icon);
-		const refreshIconPreview = (iconName = getStoredIcon()) => {
-			iconButton.empty();
-			setAccessibleLabelWithoutTooltip(iconButton, t('settings', 'keyMappingsIconAria'));
-			iconButton.classList.remove('has-icon');
-			if (!iconName) return;
-			const iconEl = getIcon(iconName);
-			if (!iconEl) return;
-			iconEl.addClass('operon-key-mapping-icon-preview');
-			iconButton.appendChild(iconEl);
-			iconButton.classList.add('has-icon');
-		};
-		const commitIconValue = async (nextValue: string): Promise<void> => {
-			const current = getCurrentMapping();
-			if (!current) return;
-			const nextIcon = normalizeTaskIconValue(nextValue);
-			if (nextIcon === getStoredIcon()) return;
-			current.icon = nextIcon;
-			refreshIconPreview(nextIcon);
-			await this.saveSettings();
-		};
-
-		const openPicker = () => {
-			openSettingsIconPickerModal(this.app, {
-				settingsScope: true,
-				title: t('settings', 'keyMappingsIconAria'),
-				value: getStoredIcon(),
-				query: '',
-				onSelect: iconId => { void commitIconValue(iconId); },
-				onClear: () => { void commitIconValue(''); },
-			});
-		};
-		refreshIconPreview();
-		iconButton.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
-		iconButton.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openPicker(); });
+		const iconPreview = iconButton.createSpan('operon-key-mapping-icon-preview');
+		bindPropertyIcon(iconPreview, () => {
+			const icon = normalizeTaskIconValue(getCurrentMapping()?.icon);
+			iconButton.toggleClass('has-icon', !!icon);
+			return icon;
+		});
+		let pickerOpen = false;
+		iconButton.addEventListener('click', () => {
+			if (pickerOpen) return;
+			pickerOpen = !!this.openPropertyIconPicker(
+				iconButton, { kind: 'mapped', key: canonicalKey }, getCurrentMapping()?.visiblePropertyName || canonicalKey,
+				resolveEditorWorkflowPickerIcon(canonicalKey, this.settings.keyMappings), () => { pickerOpen = false; },
+			);
+		});
 
 		// System rows show field help; custom rows show usage stats beside the icon.
 		row2.createDiv({

@@ -1,7 +1,7 @@
 import { IndexedTask } from './fields';
 
 export type TrackerSource = 'editor' | 'command' | 'sidebar-search' | 'history-play' | 'status-bar' | 'flowtime';
-export type TrackerStopReason = 'manual' | 'switch' | 'terminal-status';
+export type TrackerStopReason = 'manual' | 'switch' | 'terminal-status' | 'obsidian-quit';
 export type TimeTrackerTransitionKind = 'starting' | 'stopping';
 
 export interface ActiveTrackerRecord {

@@ -4,6 +4,7 @@ import { Notice, Platform, WorkspaceTabs, type App, type TextFileView, type Work
 import { bindNativeLightboxMethod } from './native-lightbox-lifecycle';
 import { NativeLightboxSurface } from './native-lightbox-surface';
 import { getNativeTaskWorkspaceProvider, NativeTaskWorkspace, type NativeTaskWorkspaceInitial } from './native-task-workspace';
+import type { PropertyEditorDocument } from '../core/property-editor-document';
 import type { TaskEditorSession } from './task-editor-modal';
 import { OPERON_TABLE_FILE_VIEW_TYPE } from '../types/table';
 import { getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
@@ -31,11 +32,21 @@ export function openWebLightbox(app: App, anchor: HTMLElement, url: string): boo
 }
 
 export function openFileLightbox(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean, properties?: { showSource: boolean }): void {
- if (Platform.isDesktopApp) void openNativeLightbox(app, anchor, { file }, undefined, canOpen, properties);
+ void openFileLightboxAsync(app, anchor, file, canOpen, properties);
+}
+
+/** Await readiness when an opening owns a cancellation token (for example Mini Calendar). */
+export function openFileLightboxAsync(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, canOpen?: () => boolean, properties?: { showSource: boolean }): Promise<TaskEditorSession | null> {
+ return Platform.isDesktopApp ? openNativeLightbox(app, anchor, { file }, undefined, canOpen, properties) : Promise.resolve(null);
 }
 
 export function openTaskWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile, initial: NativeTaskWorkspaceInitial, canOpen?: () => boolean): Promise<TaskEditorSession | null> {
  return openNativeLightbox(app, anchor, { file }, initial, canOpen);
+}
+
+export function openPreparedPropertyWorkspace(app: App, anchor: HTMLElement, file: ResolvedLightboxFile,
+ document: PropertyEditorDocument, canOpen: () => boolean): Promise<TaskEditorSession | null> {
+ return openNativeLightbox(app, anchor, { file }, undefined, canOpen, { showSource: false, initial: document });
 }
 
 /** Obsidian ephemeral state uses zero-based lines. */
@@ -277,7 +288,7 @@ function detachLightboxLeaf(app: App, detachedLeaf: WorkspaceLeaf, originalDetac
        finally { detachedLeaf.getViewState = getState; workspace.lastTabGroupStacked = stacked; }
 }
 
-function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial, canOpen?: () => boolean, properties?: { showSource: boolean }): Promise<TaskEditorSession | null> {
+function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string } | { file: ResolvedLightboxFile }, initial?: NativeTaskWorkspaceInitial, canOpen?: () => boolean, properties?: { showSource: boolean; initial?: PropertyEditorDocument }): Promise<TaskEditorSession | null> {
  if (canOpen?.() === false) { initial?.content.destroy({ skipCloseSave: true }); return Promise.resolve(null); }
  let resolveOpened!: (handle: TaskEditorSession | null) => void;
  const opened = new Promise<TaskEditorSession | null>(resolve => { resolveOpened = resolve; });
@@ -411,7 +422,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       // A source-only view does not need task metadata to display its native body.
       if (first && !initial && !properties) void contextReady?.catch(() => { if (!closed) unavailable(); });
       else await contextReady;
-      if (first && properties && companion && isFile && !cancelled()) {
+      if (first && properties && !properties.initial && companion && isFile && !cancelled()) {
        propertiesOpened = await companion.showProperties(target.file.file, properties.showSource);
       }
       if (first && companion && !closed) {
@@ -537,14 +548,18 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
      void initializing.finally(() => { initializing = null; }).catch(() => undefined);
      return initializing;
     };
-    if (initial && !initial.markdown) {
+    if (initial && !initial.markdown || properties?.initial) {
      void (async () => {
       try {
+       if (properties?.initial && (!isFile || !companion?.mountInitialProperties(target.file.file, properties.initial))) {
+        unavailable(); close(); return;
+       }
        await companion?.prepareInitialRender();
        if (cancelled()) return;
        ready = true;
        lightbox.removeClass('is-workspace-loading');
-       initial.content.applyInitialDescriptionFocus(canOpen);
+       if (initial) initial.content.applyInitialDescriptionFocus(canOpen);
+       else companion?.focusRetainedDraft();
        markLightboxControlsReady(lightbox);
       openingTrace?.finish('ready'); resolveOpened(companion?.handle ?? null);
       } catch { unavailable(); close(); }

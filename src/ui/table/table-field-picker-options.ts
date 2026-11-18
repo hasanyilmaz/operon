@@ -1,7 +1,8 @@
 import { t } from '../../core/i18n';
 import type { FilterFieldType } from '../../types/settings';
 import type { SearchableFieldPickerOption } from '../field-pickers/searchable-field-picker';
-import type { TableTaskField, TableTaskFieldGroup } from './table-field-catalog';
+import { resolveTableFieldIcon, type TableTaskField, type TableTaskFieldGroup } from './table-field-catalog';
+import type { OperonSettings } from '../../types/settings';
 
 export interface TableFieldPickerOption extends SearchableFieldPickerOption {
 	field: string;
@@ -36,8 +37,10 @@ export function buildTableFieldPickerOptions(
 	options: {
 		excludedFieldKeys?: ReadonlySet<string>;
 		noneLabel?: string;
+		settings?: Pick<OperonSettings, 'keyMappings' | 'vaultPropertyIcons'>;
 	} = {},
 ): TableFieldPickerOption[] {
+	const { settings } = options;
 	const excludedFieldKeys = options.excludedFieldKeys ?? new Set<string>();
 	const pickerOptions = catalog
 		.filter(field => !excludedFieldKeys.has(field.key))
@@ -46,6 +49,7 @@ export function buildTableFieldPickerOptions(
 			label: getTableFieldPickerOptionLabel(field),
 			type: field.type,
 			icon: field.icon,
+			resolveIcon: () => settings ? resolveTableFieldIcon(field, settings) : field.icon,
 			group: field.group,
 			groupLabel: getTableFieldGroupLabel(field.group),
 			groupOrder: getTableFieldGroupOrder(field.group),

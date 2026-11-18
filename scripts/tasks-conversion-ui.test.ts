@@ -501,7 +501,7 @@ test('Settings renderer lifecycle keeps separate detached surfaces and cleans on
  const source = await readFile(path.join(process.cwd(), 'src/ui/settings-tab.ts'), 'utf8');
  const ast = ts.createSourceFile('settings-tab.ts', source, ts.ScriptTarget.Latest, true);
  const cls = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonSettingsTab') as import('typescript').ClassDeclaration;
- const names = ['renderTasksBulkConversion', 'clearNativeSettingsPage'];
+ const names = ['renderTasksBulkConversion', 'clearNativeSettingsPage', 'clearTaskEditorSectionCards'];
  const methods = cls.members.filter(member => ts.isMethodDeclaration(member) && names.includes(member.name.getText(ast)));
  assert.equal(methods.length, names.length);
  const script = ts.transpileModule('class Harness { '+methods.map(method => method.getText(ast)).join('\n')+' }; return Harness;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -513,13 +513,18 @@ test('Settings renderer lifecycle keeps separate detached surfaces and cleans on
   const view = new TasksConversionSettings(new App(), host, c); views.push(view); return () => view.dispose();
  } };
  const doc = { activeElement: null as TestElement | null }, first = new TestElement('div', doc), second = new TestElement('div', doc);
+ const disposedCards: string[] = [];
+ h.taskEditorSectionHosts = new Map([[first, () => { disposedCards.push('first'); h.taskEditorSectionHosts.delete(first); }],
+  [second, () => { disposedCards.push('second'); h.taskEditorSectionHosts.delete(second); }]]);
  const cleanupFirst = h.renderTasksBulkConversion(first); h.renderTasksBulkConversion(second);
  assert.equal(h.tasksConversionSettings.size, 2); assert.ok(first.allText.includes('2 convertible tasks')); assert.ok(second.allText.includes('2 convertible tasks'));
  c.requestConfirmation(c.preview!); h.clearNativeSettingsPage(first);
+ assert.deepEqual(disposedCards, ['first']);
  assert.equal(h.tasksConversionSettings.size, 1); assert.equal(first.children.length, 0); assert.equal(c.confirmation, null);
  assert.equal(c.available, true); assert.ok(second.allText.includes('2 convertible tasks'));
  cleanupFirst(); assert.equal(h.tasksConversionSettings.size, 1);
  h.clearNativeSettingsPage(second); assert.equal(h.tasksConversionSettings.size, 0); assert.equal(c.available, true);
+ assert.deepEqual(disposedCards, ['first', 'second']);
 });
 
 test('plugin reuses its conversion session and refuses access while unloading', async () => {

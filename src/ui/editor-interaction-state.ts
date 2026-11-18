@@ -1,5 +1,6 @@
 import { getOwnerWindow } from '../core/dom-compat';
 import { bindDescendantFocusVisible } from './descendant-focus-visible';
+import { closeBoundOperonHoverTooltip } from './operon-hover-tooltip';
 
 const FOCUS_SELECTOR = [
 	'operon-editor-desktop-group-header', 'operon-editor-desktop-property-row',
@@ -13,7 +14,7 @@ const PICKER_STATE = 'has-descendant-picker-open';
 const DESCRIPTION_STATE = 'has-description-focus';
 
 /** Keep transient Editor decoration in step with its dynamically rendered descendants. */
-export function bindEditorInteractionState(root: HTMLElement): () => void {
+export function bindEditorInteractionState(root: HTMLElement, touchLayout = false): () => void {
 	const owner = getOwnerWindow(root) as Window & { MutationObserver: typeof MutationObserver };
 	const bindings = new Map<HTMLElement, () => void>();
 	let pickerScopes = new Set<HTMLElement>();
@@ -49,6 +50,23 @@ export function bindEditorInteractionState(root: HTMLElement): () => void {
 		observer?.observe(root, {subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden', 'disabled', 'style']});
 	}
 
+	const onPointer = (event: PointerEvent): void => {
+		const mode = event.pointerType === 'mouse' ? 'mouse' : 'touch';
+		if (root.dataset.editorInput === mode) return;
+		root.dataset.editorInput = mode;
+		if (mode === 'touch') {
+			for (const target of [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))]) closeBoundOperonHoverTooltip(target);
+		}
+	};
+	const onKey = (event: KeyboardEvent): void => {
+		if (['Tab', 'Enter', ' '].includes(event.key)) root.dataset.editorInput = 'keyboard';
+	};
+	if (touchLayout) {
+		root.dataset.editorInput = 'touch';
+		root.addEventListener('pointerdown', onPointer, true);
+		root.addEventListener('pointermove', onPointer, true);
+		root.addEventListener('keydown', onKey, true);
+	}
 	root.addEventListener('focusin', sync, true);
 	root.addEventListener('focusout', sync, true);
 	sync();
@@ -56,6 +74,11 @@ export function bindEditorInteractionState(root: HTMLElement): () => void {
 		if (closed) return;
 		closed = true;
 		observer?.disconnect();
+		if (touchLayout) {
+			root.removeEventListener('pointerdown', onPointer, true);
+			root.removeEventListener('pointermove', onPointer, true);
+			root.removeEventListener('keydown', onKey, true);
+		}
 		root.removeEventListener('focusin', sync, true);
 		root.removeEventListener('focusout', sync, true);
 		for (const cleanup of bindings.values()) cleanup();

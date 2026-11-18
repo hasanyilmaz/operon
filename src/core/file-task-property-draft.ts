@@ -1,3 +1,6 @@
+import { CANONICAL_KEY_MAP } from '../types/keys';
+import { resolvePropertyEditorField } from './property-editor-fields';
+import { isEmptyFilePropertyValue } from './raw-yaml-property';
 import { resolveInlinePropertyDefinition, type InlinePropertyDefinitions, type InlinePropertyType } from './inline-property-definitions';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
 import { getManagedYamlAliases } from './yaml-fields';
@@ -8,10 +11,33 @@ import type { KeyMapping } from '../types/settings';
 
 export interface FileTaskPropertyChange {
  remove?: boolean;
+ /** Editor-only presence intent for a verified mapped property. */
+ mappedKey?: string;
+ /** Preserve source formatting for the editor's explicit empty-property removal. */
+ preserveSource?: boolean;
  propertyName: string;
  nativeType?: InlinePropertyType;
  expected: RawYamlPropertyExpectation;
  value: RawYamlPropertyValue;
+}
+
+export type EditorMappedProperty = { name: string; expected: RawYamlPropertyExpectation; type: InlinePropertyType };
+export function editorMappedProperties(frontmatter: Record<string, unknown>, mappings: readonly KeyMapping[], types: Readonly<Record<string, string>> = {}, definitions?: InlinePropertyDefinitions): Record<string, EditorMappedProperty> {
+ const result = Object.create(null) as Record<string, EditorMappedProperty>;
+ const document = { frontmatter, order: Object.keys(frontmatter) };
+ for (const name of document.order) {
+  const field = resolvePropertyEditorField(name, document, [...mappings], types);
+  const expected = readRawYamlPropertyExpectation(frontmatter, name);
+  if (field.mapping?.isSystem === false) {
+   try { if (resolveInlinePropertyDefinition(name, field.type, mappings, definitions).encoding === 'vault-v1') continue; } catch { continue; }
+  }
+  const key = field.mapping?.canonicalKey ?? (name.toLowerCase() === 'tags' ? 'tags' : undefined);
+  if (!key || field.reason || !expected?.present) continue;
+  const definition = CANONICAL_KEY_MAP.get(key);
+  if (definition?.internal || definition?.sync === 'auto' || key === 'datetimeCreated') continue;
+  result[key] = { name, expected, type: field.type };
+ }
+ return result;
 }
 
 /** Read the real document rather than a potentially stale metadata-cache snapshot. */
@@ -29,7 +55,11 @@ export function canApplyFileTaskPropertyChanges(frontmatter: Record<string, unkn
   seen.add(change.propertyName.toLowerCase());
   if (Object.keys(frontmatter).some(name => name !== change.propertyName && name.toLowerCase() === change.propertyName.toLowerCase())) return false;
   if (!isSupportedRawYamlPropertyValue(change.value)) return false;
-  if (!isWritableRawYamlPropertyName(change.propertyName, mappings)) {
+  if (change.preserveSource && (!change.remove || !isEmptyFilePropertyValue(change.value))) return false;
+  if (change.mappedKey) {
+   const property = editorMappedProperties(frontmatter, mappings, {}, definitions)[change.mappedKey];
+   if (!property || property.name !== change.propertyName || !change.expected.present || !isEmptyFilePropertyValue(change.value)) return false;
+  } else if (!isWritableRawYamlPropertyName(change.propertyName, mappings)) {
    const mapping = mappings.find(item => item.isSystem === false && [item.canonicalKey, item.visiblePropertyName].some(name => name.toLowerCase() === change.propertyName.toLowerCase()));
    if (!mapping || !change.nativeType) return false;
    const aliases = Object.keys(frontmatter).filter(name => [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));

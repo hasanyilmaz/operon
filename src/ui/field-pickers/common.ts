@@ -259,7 +259,7 @@ function resolveRect(anchor: HTMLElement | DOMRect): DOMRect {
 export function resolveSurfaceFloatingHostOptions(anchorEl: HTMLElement): FloatingHostOptions {
 	const propertyEditor = anchorEl.closest('.operon-property-editor');
 	const propertyWorkspace = asHTMLElement(propertyEditor?.closest('.operon-task-workspace'), anchorEl);
-	if (propertyWorkspace) {
+	if (propertyWorkspace && !getTaskEditorMobileRoot(anchorEl)) {
 		// The short editor scroll area can clip the picker. Use the full Lightbox while
 		// following the trigger when the editor content scrolls.
 		return {
@@ -763,7 +763,7 @@ export function createFloatingPanel(
 			&& options.shouldHandleEscape?.(event) !== false
 			&& isTopMostFloatingPanel(record)
 		) {
-			if (panel.closest('.operon-native-lightbox-host, .operon-task-workspace > .operon-floating-panel')) {
+			if (panel.closest('.operon-native-lightbox-host, .operon-task-workspace')) {
 				event.preventDefault();
 				event.stopPropagation();
 			}

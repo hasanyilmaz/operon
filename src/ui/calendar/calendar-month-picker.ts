@@ -5,7 +5,7 @@ import { normalizeDateDisplayFormat, type DateDisplayFormat } from '../../types/
 import { createFloatingPanel } from '../field-pickers/common';
 
 export function calendarMonthTarget(dateKey: string, year: number, month: number): string {
-	const day = Number(dateKey.slice(8, 10));
+	const day = Number(dateKey.split('-')[2]);
 	const end = new Date(0);
 	end.setFullYear(year, month + 1, 0);
 	return `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-${String(Math.min(day, end.getDate())).padStart(2, '0')}`;

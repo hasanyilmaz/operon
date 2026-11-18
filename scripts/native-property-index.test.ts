@@ -198,6 +198,13 @@ test('table native return reuses one successful snapshot without source reads or
   f.native.getTask=task=>{projections++;return original(task);};
   assert.equal(get(owner,false),base);
   assert.equal(get(owner),first);assert.equal(get(other),independent);assert.equal(projections,0);assert.equal(f.reads.length,reads);
+  const value = first.fields.find(field => field.propertyName === 'Value');
+  assert.equal(value?.icon, 'hash');
+  f.settings.vaultPropertyIcons = { value: 'book-open' };
+  assert.equal(get(owner), first, 'an icon edit reuses the open table projection');
+  assert.equal(value?.icon, 'book-open');
+  assert.equal(projections, 0);
+  assert.equal(f.reads.length, reads);
   assert.equal(getTableNativePropertySnapshot(owner,f.app,{...base},tasks.map(task=>({...task,primary:{...task.primary}})),1,f.settings,()=>{}),first);
   clearTableNativePropertySnapshot(owner);assert.notEqual(get(owner),first);assert.equal(get(other),independent);
  } finally {f.indexer.destroy();}

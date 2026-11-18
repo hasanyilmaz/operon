@@ -1,4 +1,5 @@
 import { Platform, type App } from 'obsidian';
+import { normalizeTaskIconValue } from '../core/task-icon-value';
 import { getManagedYamlAliases } from '../core/yaml-fields';
 import { parseListValue } from '../core/parser';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../core/vault-property-codec';
@@ -48,14 +49,7 @@ export function getCustomFieldLabel(mapping: Pick<KeyMapping, 'visiblePropertyNa
 }
 
 export function getCustomFieldIcon(mapping: Pick<KeyMapping, 'type' | 'icon'>): string {
-	return mapping.icon?.trim() || getCustomFieldTypeFallbackIcon(mapping.type);
-}
-
-export function getNativePropertyIcon(mappings: readonly KeyMapping[], name: string, fallback: string): string {
- const identity = name.trim().toLowerCase();
- const matches = mappings.filter(mapping => isManagedCustomFieldMapping(mapping)
-  && [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => alias.trim().toLowerCase() === identity));
- return matches.length === 1 ? matches[0].icon?.trim() || fallback : fallback;
+	return normalizeTaskIconValue(mapping.icon) || getCustomFieldTypeFallbackIcon(mapping.type);
 }
 
 export function getCustomFieldTypeFallbackIcon(type: KeyMapping['type']): string {
@@ -331,10 +325,4 @@ function isKeyMappingArray(value: readonly KeyMapping[] | null | undefined): val
 /** Checkbox type icons are configurable; concrete boolean states are always explicit. */
 export function getCheckboxPropertyIcon(value: unknown, fallback = 'square-dashed'): string {
 	return value === true ? 'square-check-big' : value === false ? 'square' : fallback;
-}
-
-export function getCheckboxPropertyTypeIcon(keyMappings: readonly KeyMapping[], name: string): string {
-	const mapping = keyMappings.find(item => item.type === 'checkbox'
-		&& getManagedYamlAliases(item.canonicalKey, [item]).some(alias => alias.toLowerCase() === name.toLowerCase()));
-	return mapping?.icon?.trim() || 'square-dashed';
 }

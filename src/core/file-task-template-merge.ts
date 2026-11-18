@@ -1,11 +1,11 @@
 import { parseYaml } from 'obsidian';
 import { hasFileTaskDisplayTitleMapping } from './raw-yaml-property';
-import { CANONICAL_KEY_ORDER } from '../types/keys';
+import { CANONICAL_KEY_MAP, CANONICAL_KEY_ORDER } from '../types/keys';
 import { isRetiredKeyMapping, KeyMapping } from '../types/settings';
 import { buildForwardMapping, buildReverseMapping } from './yaml-fields';
 import { ResolvedFileTaskDefaults } from './file-task-defaults';
 import { formatTaskColorYamlValue, normalizeTaskColorValue } from './task-color-value';
-import { getManagedTaskFieldType, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
+import { getManagedTaskFieldType, isManagedCustomFieldMapping, isManagedTaskFieldCanonicalKey } from './managed-task-fields';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from './task-media-reference';
 
 export type FileTaskBodyStrategy = 'preserve-source' | 'use-template';
@@ -60,6 +60,7 @@ export interface BuildMergedFileTaskDraftOptions {
 	keyMappings: KeyMapping[];
 	bodyStrategy: FileTaskBodyStrategy;
 	preserveSourceKeyChoices?: boolean;
+	preserveSourceCustomFields?: boolean;
 }
 
 export interface MergedFileTaskDraft {
@@ -715,6 +716,12 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 	const sections: Array<{ raw: string; originalFinal?: boolean }> = [];
 	const orderedYamlKeys: string[] = [];
 	const emitted = new Set<string>();
+	const preservedCustomKeys = options.preserveSourceCustomFields
+		? new Set(options.keyMappings
+			.filter(isManagedCustomFieldMapping)
+			.map(mapping => mapping.canonicalKey)
+			.filter(key => !CANONICAL_KEY_MAP.has(key) && !Object.prototype.hasOwnProperty.call(source.fieldValues, key)))
+		: undefined;
 
 	const emit = (yamlKey: string, raw: string, originalFinal?: boolean): void => {
 		if (emitted.has(yamlKey)) return;
@@ -747,6 +754,11 @@ export function buildMergedFileTaskDraft(options: BuildMergedFileTaskDraftOption
 				continue;
 			}
 			if (!section.canonicalKey) continue;
+			if (document === sourceDocument && preservedCustomKeys?.has(section.canonicalKey)) {
+				// Recurrence already applied its YAML resets to these source sections.
+				emitPreserved(section);
+				continue;
+			}
 			const choice = chosenKeyMap.get(section.canonicalKey);
 			if (!choice) continue;
 			if (!mergedFields.presence.has(section.canonicalKey)) continue;

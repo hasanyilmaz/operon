@@ -15,6 +15,7 @@ import {
 	type RawYamlPropertyExpectation,
 	type RawYamlPropertyMutation,
 } from '../../core/raw-yaml-property';
+import { bindPropertyIcon } from '../property-icon-presentation';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
 	showCustomDateFieldPicker,
@@ -306,7 +307,7 @@ export function renderTableFilePropertyValue(options: {
 	const listValue = options.field?.type === 'list' || Array.isArray(options.cellValue.rawValue);
  if (warning && options.column.displayMode === 'icon') {
   const icon = options.cell.createSpan('operon-table-file-property-icon');
-  setIcon(icon, options.field?.icon ?? 'text');
+  bindPropertyIcon(icon, () => options.field?.icon ?? 'text');
   applyTableColumnCellAccent(icon, options.column, options.cellValue.normalizedValue, { ...accentOptions, decorateAsChip: false });
   return false;
  }
@@ -329,7 +330,7 @@ export function renderTableFilePropertyValue(options: {
 		if (!options.cellValue.normalizedValue.trim()) return false;
 		const content = formatTableIconOnlyTooltipContent(options.cellValue.normalizedValue);
 		const icon = renderTableIconOnlyCell(options.cell, {
-			icon: options.field?.icon ?? 'text',
+			icon: () => options.field?.icon ?? 'text',
 			color: null,
 			title: options.label,
 			content,
@@ -344,7 +345,7 @@ export function renderTableFilePropertyValue(options: {
 		const content = formatTableListIconOnlyTooltipContent(renderValues);
 		if (!content) return false;
 		renderTableIconOnlyCell(options.cell, {
-			icon: options.field?.icon ?? 'text',
+			icon: () => options.field?.icon ?? 'text',
 			color: resolveTableColumnCellAccent(
 				options.column,
 				options.cellValue.normalizedValue,
@@ -357,7 +358,7 @@ export function renderTableFilePropertyValue(options: {
 		});
 	} else if (options.column.displayMode === 'icon') {
 		const icon = options.cell.createSpan('operon-table-file-property-icon');
-		setIcon(icon, options.field?.icon ?? 'text');
+		bindPropertyIcon(icon, () => options.field?.icon ?? 'text');
 		applyTableColumnCellAccent(icon, options.column, options.cellValue.normalizedValue, {
 			...accentOptions,
 			decorateAsChip: false,

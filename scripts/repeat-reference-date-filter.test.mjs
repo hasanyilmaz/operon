@@ -52,7 +52,7 @@ const getFieldOptions = compile('getFieldOptions', {
  resolveFilterFieldGroupForMapping: () => 'task', getConfiguredKeyMappingIcon: h.getConfiguredKeyMappingIcon,
  getFilterFieldTypeIcon: compile('getFilterFieldTypeIcon'), compareFilterFieldPickerOptions: compile('compareFilterFieldPickerOptions'),
 }, true);
-const subject = { keyMappings: h.DEFAULT_SETTINGS.keyMappings, getFilePropertyFieldOptions: () => [], getFieldOptions, getProjectSerialScopeOptions: () => [] };
+const subject = { getPropertyIconSettings: () => h.DEFAULT_SETTINGS, keyMappings: h.DEFAULT_SETTINGS.keyMappings, getFilePropertyFieldOptions: () => [], getFieldOptions, getProjectSerialScopeOptions: () => [] };
 const condition = (operator = 'dateIs', value = today) => ({ id: 'condition', field: key, fieldType: 'date', operator, value });
 const filter = cond => ({ id: 'reference-filter', name: 'Reference date', rootGroup: { id: 'root', logic: 'all', children: [cond] }, sorts: [], matchLogic: 'all', conditions: [cond] });
 const task = (date, repeat = '') => ({ operonId: 'task', description: 'Task', checkbox: 'open', tags: [], primary: { filePath: 'Task.md', format: 'inline', lineNumber: 0 }, fieldValues: { repeat, [key]: date, dateScheduled: today, dateDue: today, dateStarted: today } });

@@ -1,4 +1,4 @@
-import { renderStatusDockTaskTitle, renderStatusDockSessionDuration } from './status-dock-card-content';
+import { bindStatusDockTaskClick, renderStatusDockTaskTitle, renderStatusDockSessionDuration } from './status-dock-card-content';
 import { setIcon } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
 import type { TrackerSession } from '../types/tracker';
@@ -13,7 +13,7 @@ import { bindTaskContextualHoverMenu, cleanupTaskContextualHoverMenus, hideTaskC
 
 export interface StatusDockSessionActions {
  openSession: (session: TrackerSession, canCommit?: () => boolean) => Promise<void>;
- openTask: (taskId: string, anchor: HTMLElement) => Promise<void>;
+ openTask: (taskId: string, anchor: HTMLElement, inNewTab: boolean) => Promise<void>;
  clickIcon: (taskId: string) => Promise<void>;
  contextualAction: ContextualMenuActionHandler;
  isPinned: (taskId: string) => boolean;
@@ -43,6 +43,7 @@ export class StatusDockSessionCard {
  private busy = 0;
  private revision = 0;
  private signature = '';
+ private unbindTaskClick: (() => void) | null = null;
  private disposed = false;
  private readonly owner: Window;
  constructor(private readonly host: HTMLElement, private readonly options: {
@@ -89,8 +90,10 @@ export class StatusDockSessionCard {
    duration.addEventListener('click', event => { event.stopPropagation(); const session = this.session;
     if (session) void this.run(() => this.options.actions.openSession(session)); });
    const name = this.el.createEl('button', { cls: 'operon-status-dock-name', attr: { type: 'button' } });
-   name.addEventListener('click', event => { event.stopPropagation(); const session = this.session;
-    if (session) void this.run(() => this.options.actions.openTask(session.operonId, name)); });
+   this.unbindTaskClick = bindStatusDockTaskClick(this.el, name, inNewTab => {
+    const session = this.session;
+    if (session) void this.run(() => this.options.actions.openTask(session.operonId, name, inNewTab));
+   });
   }
   setIcon(icon, resolveTaskDisplayIcon(settings, task.fieldValues, task.checkbox));
   icon.style.color = resolveTaskStatusIconColorForTask(task, settings) ?? '';
@@ -146,6 +149,7 @@ export class StatusDockSessionCard {
   this.revision++; this.session = null; this.lifetime = null; this.signature = ''; this.busy = 0; this.hover = false;
   if (this.timer !== null) this.owner.clearTimeout(this.timer); this.timer = null;
   hideTaskContextualHoverMenu(true, this.el); cleanupTaskContextualHoverMenus(this.el);
+  this.unbindTaskClick?.(); this.unbindTaskClick = null;
   cleanupOperonHoverTooltips(this.el); this.el.empty(); this.el.hidden = true;
   if (wasVisible) this.options.onVisibilityChange?.(false);
  }

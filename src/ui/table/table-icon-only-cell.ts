@@ -3,6 +3,7 @@ import { resolveSubtaskActionIconForKind } from '../../core/subtask-action';
 import { normalizeTaskIconValue } from '../../core/task-icon-value';
 import { findStatusDef } from '../../types/pipeline';
 import type { OperonSettings } from '../../types/settings';
+import { bindPropertyIcon } from '../property-icon-presentation';
 import { bindOperonHoverTooltip } from '../operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import type { WorkflowStatusIdentityIndex } from '../../core/workflow-status-identity';
@@ -16,7 +17,7 @@ type TableValueIconSettings = Pick<OperonSettings, 'pipelines' | 'priorities'>;
 let tableValueIconIds: Set<string> | null = null;
 
 export interface TableIconOnlyCellOptions {
-	icon: string;
+	icon: string | (() => string);
 	title: string;
 	content: string;
 	contentEl?: HTMLElement;
@@ -136,9 +137,12 @@ export function renderTableIconOnlyCell(cell: HTMLElement, options: TableIconOnl
 		icon.style.setProperty('--operon-live-hover-border', options.color);
 		icon.style.setProperty('--operon-task-chip-hover-accent', options.color);
 	}
-	setIcon(icon, options.icon);
-	if (!icon.querySelector('svg')) {
-		setIcon(icon, 'text');
+	const value = options.icon;
+	if (typeof value === 'function') {
+		bindPropertyIcon(icon, value, 'text');
+	} else {
+		setIcon(icon, value);
+		if (!icon.querySelector('svg')) setIcon(icon, 'text');
 	}
 	if (options.showTooltip !== false) {
 		bindOperonHoverTooltip(icon, {

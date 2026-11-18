@@ -292,13 +292,14 @@ test('empty opening note and tags become clean when user content is fully remove
 });
 
 test('checkbox property icons distinguish booleans, missing values and configured type icons', async () => {
- const { getCheckboxPropertyIcon, getCheckboxPropertyTypeIcon, getCustomFieldTypeFallbackIcon, isProjectedCustomFieldType } = await import('../src/ui/custom-field-surfaces');
+ const { getCheckboxPropertyIcon, getCustomFieldTypeFallbackIcon, isProjectedCustomFieldType } = await import('../src/ui/custom-field-surfaces');
+ const { getSourcePropertyIcon } = await import('../src/core/property-icons');
  const { getTableFilePropertyTypeIcon } = await import('../src/ui/table/table-file-property');
  const mapping = { canonicalKey: 'watched', visiblePropertyName: 'Watched', type: 'checkbox', icon: 'star', isSystem: false, enabled: true } as any;
  assert.equal(getCustomFieldTypeFallbackIcon('checkbox'), 'square-dashed');
  assert.equal(getTableFilePropertyTypeIcon('checkbox'), 'square-dashed');
- assert.equal(getCheckboxPropertyTypeIcon([mapping], 'Watched'), 'star');
- assert.equal(getCheckboxPropertyTypeIcon([], 'Watched'), 'square-dashed');
+ assert.equal(getSourcePropertyIcon({ keyMappings: [mapping] }, 'Watched', 'square-dashed'), 'star');
+ assert.equal(getSourcePropertyIcon({ keyMappings: [] }, 'Watched', 'square-dashed'), 'square-dashed');
  for (const value of [undefined, null, '', 'false', 0]) assert.equal(getCheckboxPropertyIcon(value, 'star'), 'star');
  assert.equal(getCheckboxPropertyIcon(true, 'star'), 'square-check-big');
  assert.equal(getCheckboxPropertyIcon(false, 'star'), 'square');
@@ -306,15 +307,17 @@ test('checkbox property icons distinguish booleans, missing values and configure
  assert.equal(isProjectedCustomFieldType(mapping), false);
 });
 
-test('Creator checkbox state icons override configured icons but preserve automatic warnings', () => {
+test('Creator keeps a configured checkbox property icon alongside its value state and automatic warning', () => {
  const field = { property: { interpretation: 'native', type: 'checkbox', sourceName: 'Watched' }, value: null as unknown, readOnlyReason: undefined as string | undefined };
  const context = { prepared: { field: () => field }, options: { settings: { keyMappings: [{ canonicalKey: 'watched', visiblePropertyName: 'Watched', type: 'checkbox', icon: 'star', isSystem: false, enabled: true }] } } };
- const resolve = () => (TaskCreatorModal.prototype as any).resolveFieldIcon.call(context, 'watched');
- assert.equal(resolve(), 'star');
- field.value = true; assert.equal(resolve(), 'square-check-big');
- field.value = false; assert.equal(resolve(), 'square');
- field.value = null; assert.equal(resolve(), 'star');
- field.readOnlyReason = 'automatic'; assert.equal(resolve(), 'shield-alert');
+ const icon = () => (TaskCreatorModal.prototype as any).resolveFieldIcon.call(context, 'watched');
+ const state = () => (TaskCreatorModal.prototype as any).resolveCheckboxValueIcon.call(context, 'watched');
+ assert.deepEqual([icon(), state()], ['star', '']);
+ field.value = true; assert.deepEqual([icon(), state()], ['star', 'square-check-big']);
+ field.value = false; assert.deepEqual([icon(), state()], ['star', 'square']);
+ field.readOnlyReason = 'automatic'; assert.deepEqual([icon(), state()], ['shield-alert', '']);
+ field.readOnlyReason = undefined; context.options.settings.keyMappings[0].icon = '';
+ assert.deepEqual([icon(), state()], ['square', '']);
 });
 
 
@@ -391,10 +394,11 @@ test('Creator toolbar refresh preserves unchanged picker targets but updates cha
  // A minimal DOM tree records the identity of nested icon targets across real renders.
  const makeElement = () => {
   const el: any = { dataset: {}, children: [], classList: { toggle() {} },
-   empty() { for (const child of this.children) child.parent = null; this.children = []; },
-   appendChild(child: any) { child.parent = this; this.children.push(child); },
-   createSpan() { const child = makeElement(); this.appendChild(child); return child; },
-   querySelector() { return this.children[0] ?? null; }, toggleClass() {}, setAttribute() {},
+   appendChild(child: any) { child.parent = child.parentElement = this; this.children.push(child); },
+   prepend(child: any) { child.parent = child.parentElement = this; this.children.unshift(child); },
+   createSpan(className: string) { const child = makeElement(); child.className = className; this.appendChild(child); return child; },
+   querySelector(selector: string) { return this.children.find((child: any) => child.className === selector.slice(1)) ?? null; },
+   toggleClass() {}, setAttribute() {},
   };
   return el;
  };
@@ -407,8 +411,16 @@ test('Creator toolbar refresh preserves unchanged picker targets but updates cha
  modal.resolveFieldIcon = () => iconName;
  modal.bindFieldButtonTooltip = () => {};
  const globals = globalThis as any;
- const previous = globals.__operonTestSetIcon;
- globals.__operonTestSetIcon = (el: any, name: string) => { el.appendChild({ name, parent: el }); };
+ const previous = globals.__operonTestGetIcon;
+ globals.__operonTestGetIcon = (name: string) => ({
+  name,
+  parent: null as any,
+  parentElement: null as any,
+  remove() {
+   this.parent.children = this.parent.children.filter((child: any) => child !== this);
+   this.parent = this.parentElement = null;
+  },
+ });
  try {
   const render = (TaskCreatorModal.prototype as any).renderFieldButtons;
   render.call(modal);
@@ -422,5 +434,5 @@ test('Creator toolbar refresh preserves unchanged picker targets but updates cha
   assert.equal(button.children[0], wrap);
   assert.equal(wrap.children[0].name, 'check-square', 'checkbox/property icon changes remain visible');
   assert.equal(svg.parent, null);
- } finally { globals.__operonTestSetIcon = previous; }
+ } finally { globals.__operonTestGetIcon = previous; }
 });

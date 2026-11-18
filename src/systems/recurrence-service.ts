@@ -1099,42 +1099,12 @@ export class RecurrenceService {
 			},
 		});
 		if (childIdCollision) return null;
-		const draft = buildMergedFileTaskDraft({
-			source: {
-				description: nextTitle,
-				fieldValues: planned.fieldValues,
-				fieldPresence: buildRecurringFileFieldPresence(
-					planned.fieldValues,
-					sourceDocumentWithYamlRemovals,
-				),
-				tags: [...planned.tags],
-				tagsPresent: planned.tags.length > 0,
-				frontmatterDocument: {
-					...sourceDocumentWithYamlRemovals,
-					body: transformedBody.body,
-				},
-			},
-			template: null,
-			defaults: resolveFileTaskDefaults({
-				sourceFieldValues: planned.fieldValues,
-				templateFieldValues: {},
-				existingOperonId: input.nextOperonId,
-				defaultPipelineName: this.getSettings().defaultPipelineName,
-				defaultPriority: this.getSettings().defaultPriority,
-				pipelines: this.getSettings().pipelines,
-				now: planned.fieldValues['datetimeModified'],
-				generateOperonId: () => input.nextOperonId,
-			}),
-			keyMappings: this.getSettings().keyMappings,
-			bodyStrategy: 'preserve-source',
-			preserveSourceKeyChoices: true,
-		});
 		return {
 			disposition: 'materialize',
 			seriesId: series.seriesId,
 			nextOperonId: input.nextOperonId,
 			nextFilePath: filePath,
-			plannedSourceContent: draft.content,
+			plannedSourceContent: this.buildFileOccurrenceContent(planned, nextTitle, sourceDocumentWithYamlRemovals, transformedBody.body),
 			coalescedWithPrimarySource: plainNaming,
 			sourceTaskRetained: true,
 			...(archiveFilePath
@@ -1579,39 +1549,46 @@ export class RecurrenceService {
 			now: plan.fieldValues['datetimeModified'],
 			generateOperonId: () => generateOperonId(),
 		});
-		const draft = buildMergedFileTaskDraft({
+		const nextContent = this.buildFileOccurrenceContent(plan, nextTitle, sourceDocumentWithYamlRemovals, transformedBody.body);
+		await this.app.vault.create(filePath, nextContent);
+		await this.storage.repeatSeries.updateLastMaterializedTitle(plan.seriesId, nextTitle, plan.fieldValues['datetimeModified']);
+		this.onBeforeCreatedTaskReindex(plan.fieldValues['operonId']);
+		this.indexer.scheduleReindex(filePath);
+		return filePath;
+	}
+
+	private buildFileOccurrenceContent(
+		plan: PlannedOccurrence,
+		nextTitle: string,
+		sourceDocument: ParsedFrontmatterDocument,
+		body: string,
+	): string {
+		const settings = this.getSettings();
+		return buildMergedFileTaskDraft({
 			source: {
 				description: nextTitle,
 				fieldValues: plan.fieldValues,
-				fieldPresence: buildRecurringFileFieldPresence(plan.fieldValues, sourceDocumentWithYamlRemovals),
+				fieldPresence: buildRecurringFileFieldPresence(plan.fieldValues, sourceDocument),
 				tags: [...plan.tags],
 				tagsPresent: plan.tags.length > 0,
-					frontmatterDocument: {
-						...sourceDocumentWithYamlRemovals,
-						body: transformedBody.body,
-					},
+				frontmatterDocument: { ...sourceDocument, body },
 			},
 			template: null,
 			defaults: resolveFileTaskDefaults({
 				sourceFieldValues: plan.fieldValues,
 				templateFieldValues: {},
 				existingOperonId: plan.fieldValues['operonId'],
-				defaultPipelineName: this.getSettings().defaultPipelineName,
-				defaultPriority: this.getSettings().defaultPriority,
-				pipelines: this.getSettings().pipelines,
+				defaultPipelineName: settings.defaultPipelineName,
+				defaultPriority: settings.defaultPriority,
+				pipelines: settings.pipelines,
 				now: plan.fieldValues['datetimeModified'],
 				generateOperonId: () => plan.fieldValues['operonId'],
 			}),
-			keyMappings: this.getSettings().keyMappings,
+			keyMappings: settings.keyMappings,
 			bodyStrategy: 'preserve-source',
 			preserveSourceKeyChoices: true,
-		});
-
-		await this.app.vault.create(filePath, draft.content);
-		await this.storage.repeatSeries.updateLastMaterializedTitle(plan.seriesId, nextTitle, plan.fieldValues['datetimeModified']);
-		this.onBeforeCreatedTaskReindex(plan.fieldValues['operonId']);
-		this.indexer.scheduleReindex(filePath);
-		return filePath;
+			preserveSourceCustomFields: true,
+		}).content;
 	}
 
 	private buildReadOnlySeriesEntry(

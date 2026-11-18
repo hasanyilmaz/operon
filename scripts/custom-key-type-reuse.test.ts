@@ -362,7 +362,7 @@ test('reporter flow: actual editor Clear retains List key; recreate Text preserv
   await f.add('list');
   const original=emptyNote.replace('[] # keep comment','[old]');
   const Editor=new Function('isSupportedRawYamlPropertyValue','rawYamlPropertyExpectationsEqual',ts.transpile(`class Editor {${productionMembers('src/ui/task-editor-content.ts',['setFilePropertyValue','getFilePropertyChanges'])}};return Editor;`,{target:ts.ScriptTarget.ES2022}))(isSupportedRawYamlPropertyValue,rawYamlPropertyExpectationsEqual);
-  const e=new Editor();Object.assign(e,{settings:f.storage.getSettings(),fileProperties:new Map([['test123',{baseline:{present:true,value:['old']},value:['old'],field:{type:'list'}}]]),canEditFileProperty:()=>true,isNativeCustomProperty:()=>true,refreshFilePropertyValue(){},markEdited(){}});
+  const e=new Editor();Object.assign(e,{mappedPropertyBaselines:{},removedMappedProperties:new Map(),settings:f.storage.getSettings(),fileProperties:new Map([['test123',{baseline:{present:true,value:['old']},value:['old'],field:{type:'list'}}]]),canEditFileProperty:()=>true,isNativeCustomProperty:()=>true,refreshFilePropertyValue(){},markEdited(){}});
   e.setFilePropertyValue('test123',[]);
   const cleared=(w.writer as any).renderFilePropertyDraft(original,'ABC1234',{}, {changes:e.getFilePropertyChanges()},'merge',1);
   assert.ok(cleared);assert.deepEqual(parseYaml(cleared.split('---')[1]).test123,[]);

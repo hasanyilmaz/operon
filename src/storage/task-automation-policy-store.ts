@@ -28,6 +28,7 @@ export type TaskAutomationPolicyStoreSettings = Pick<
 	| 'fileRepeatCustomFolder'
 	| 'estimateAutoReallocation'
 	| 'trackerSplitSessionsAtMidnight'
+	| 'trackerStopOnObsidianQuit'
 	| 'reminderCatchUpWindowMinutes'
 	| 'reminderNoticeDurationSeconds'
 	| 'reminderAutoPinDueTasks'
@@ -54,6 +55,7 @@ const TASK_AUTOMATION_POLICY_STORE_SETTING_KEYS = [
 	'fileRepeatCustomFolder',
 	'estimateAutoReallocation',
 	'trackerSplitSessionsAtMidnight',
+	'trackerStopOnObsidianQuit',
 	'reminderCatchUpWindowMinutes',
 	'reminderNoticeDurationSeconds',
 	'reminderAutoPinDueTasks',
@@ -120,6 +122,7 @@ function readStoreData(
 		fileRepeatCustomFolder: readString(raw.fileRepeatCustomFolder, fallback.fileRepeatCustomFolder),
 		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: readBoolean(raw.trackerSplitSessionsAtMidnight, fallback.trackerSplitSessionsAtMidnight),
+		trackerStopOnObsidianQuit: readBoolean(raw.trackerStopOnObsidianQuit, fallback.trackerStopOnObsidianQuit),
 		reminderCatchUpWindowMinutes: readReminderCatchUpWindow(
 			raw.reminderCatchUpWindowMinutes,
 			fallback.reminderCatchUpWindowMinutes,

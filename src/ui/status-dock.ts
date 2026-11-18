@@ -35,6 +35,7 @@ interface StatusDockDependencies {
 	getSettings: () => OperonSettings;
 	sessionActions?: Omit<StatusDockSessionActions, 'openTask'>;
 	openTask: (taskId: string, anchor: HTMLElement, behavior: TaskFinderResultBehavior) => Promise<void>;
+	openTaskSource: (taskId: string) => Promise<void>;
 	pickTrackerTask: () => Promise<string | null>;
 	openConflicts: () => void;
 	startTimerForTask: (taskId: string, canCommit: () => boolean) => Promise<boolean>;
@@ -196,23 +197,23 @@ export class OperonStatusDock extends Component {
 		const { flowTimeControls } = this.dependencies;
 		const widget = new StatusDockWidget(container.doc, {
 			startTask: (taskId, anchor) => this.startCalendarTask(taskId, anchor),
-			openTracker: anchor => this.openTracker(anchor),
+			openTracker: (anchor, inNewTab) => this.openTracker(anchor, inNewTab),
 			toggleTimer: () => this.toggleTimer(),
 			toggleTimerMode: () => flowTimeControls.setMode(flowTimeControls.mode === 'flowtime' ? 'tracktime' : 'flowtime'),
 			toggleBreak: anchor => this.activateSecondaryAction(anchor),
 			createTask: anchor => this.createDockTask(anchor),
 			findTask: anchor => this.selectTaskForTimer(anchor),
-			openUpcoming: anchor => this.runAction(async () => {
+			openUpcoming: (anchor, inNewTab) => this.runAction(async () => {
 				const task = this.upcoming.getSnapshot().task;
-				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
+				if (task) await this.openTaskFromDock(task.operonId, anchor, inNewTab);
 			}),
-			openCurrentTask: (taskId, anchor) => this.runAction(async () => {
+			openCurrentTask: (taskId, anchor, inNewTab) => this.runAction(async () => {
 				const task = this.upcoming.getSnapshot().ongoing?.find(candidate => candidate.operonId === taskId);
-				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
+				if (task) await this.openTaskFromDock(task.operonId, anchor, inNewTab);
 			}),
-			openNextUpcoming: anchor => this.runAction(async () => {
+			openNextUpcoming: (anchor, inNewTab) => this.runAction(async () => {
 				const task = resolveStatusDockCalendar(this.upcoming.getSnapshot()).future?.task;
-				if (task) await this.dependencies.openTask(task.operonId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
+				if (task) await this.openTaskFromDock(task.operonId, anchor, inNewTab);
 			}),
 			openConflicts: this.dependencies.openConflicts,
 		}, error => { console.warn('Operon: status dock action failed', error); new Notice(t('notifications', 'taskSaveFailed')); }, flowTimeControls);
@@ -224,7 +225,7 @@ export class OperonStatusDock extends Component {
 			getSessions: id => this.dependencies.timeTracker.getTaskSessions(id),
 			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), actions: {
 				...this.dependencies.sessionActions,
-				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
+				openTask: (id, anchor, inNewTab) => this.openTaskFromDock(id, anchor, inNewTab),
 			},
 		});
 		if (this.dependencies.sessionActions && context.sessionCard) context.taskList = new StatusDockTaskList(widget.root, {
@@ -236,7 +237,7 @@ export class OperonStatusDock extends Component {
 			isTracking: id => this.dependencies.timeTracker.isTimerRunning(id), sessionCard: context.sessionCard,
 			toggleTimer: (id, canCommit) => this.runAction(async () => { await this.dependencies.toggleTaskTimer(id, canCommit); }),
 			actions: { ...this.dependencies.sessionActions,
-				openTask: (id, anchor) => this.dependencies.openTask(id, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction)),
+				openTask: (id, anchor, inNewTab) => this.openTaskFromDock(id, anchor, inNewTab),
 			},
 		});
 		widget.onPositionChanged = () => context.taskList?.refreshPosition();
@@ -282,13 +283,18 @@ export class OperonStatusDock extends Component {
 		});
 	}
 
-	private async openTracker(anchor: HTMLElement): Promise<void> {
+	private openTaskFromDock(taskId: string, anchor: HTMLElement, inNewTab: boolean): Promise<void> {
+		if (inNewTab) return this.dependencies.openTaskSource(taskId);
+		return this.dependencies.openTask(taskId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
+	}
+
+	private async openTracker(anchor: HTMLElement, inNewTab = false): Promise<void> {
 		await this.runAction(async () => {
 			const { timeTracker, breakController } = this.dependencies;
 			const expected = timeTracker.getActiveState();
 			const pending = breakController.getSnapshot().pendingTaskId;
 			const taskId = expected?.operonId ?? pending;
-			if (taskId) await this.dependencies.openTask(taskId, anchor, resolveStatusDockClickAction(this.dependencies.getSettings().statusDockClickAction));
+			if (taskId) await this.openTaskFromDock(taskId, anchor, inNewTab);
 		});
 	}
 

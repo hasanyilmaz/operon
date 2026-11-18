@@ -32,7 +32,7 @@ const { formatTableRepeatValue, parseRepeatRule, formatRepeatRuleSummaryI18n, is
 
 // Execute the real TypeScript methods with lightweight host adapters; no Obsidian UI is opened.
 function compile(file, name, deps = {}, className) {
- deps = { Platform: { isDesktopApp: true }, embedTableCellOpeners: new WeakMap(),
+ deps = { resolveTableFieldIcon: helpers.resolveTableFieldIcon, Platform: { isDesktopApp: true }, embedTableCellOpeners: new WeakMap(),
   isDesktopOpeningChip: key => { assert.ok(['repeat', 'repeatOccurrenceDate'].includes(key)); return false; }, ...deps };
  const source = read(file), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
  const nodes = className ? ast.statements.find(n => ts.isClassDeclaration(n) && n.name.text === className).members : ast.statements;
@@ -193,7 +193,7 @@ test('icon-only passes readable tooltip/accessibility and enables shared accent 
  for (const embedded of [false, true]) {
  const render = embedded ? compile('src/ui/embed-table-processor.ts', 'renderEmbedTableIconOnlyCell', dependencies) : compile(viewFile, 'renderIconOnlyCell', dependencies, 'OperonTableView');
  render.call({ callbacks: {} }, new Element(), task, { key: 'repeat' }, raw, { settings, valueResolver: { getRawValue: () => raw } }, {});
- assert.equal(captured.icon, 'repeat'); assert.equal(captured.content, formatTableRepeatValue(raw));
+ assert.equal(captured.icon(), 'repeat'); assert.equal(captured.content, formatTableRepeatValue(raw));
  assert.equal(captured.ariaLabel, `Repeat: ${formatTableRepeatValue(raw)}`); assert.equal(captured.color, '#123456');
  assert.equal(captured.contentEl, undefined);
  }
@@ -353,7 +353,7 @@ for (const embedded of [false, true]) {
    captured = undefined;
    render.call({ callbacks: {} }, new Element(), task, { key: referenceKey }, value, { settings: referenceSettings, valueResolver: { getRawValue: () => value } }, {});
    if (!value) assert.equal(captured, undefined);
-   else { assert.equal(captured.icon, 'calendars'); assert.equal(captured.content, '16/10/2026'); assert.equal(captured.ariaLabel, `${referenceLabel}: 16/10/2026`); }
+   else { assert.equal(captured.icon(), 'calendars'); assert.equal(captured.content, '16/10/2026'); assert.equal(captured.ariaLabel, `${referenceLabel}: 16/10/2026`); }
   }
  });
  test(`${surface} reference date: detailed surface uses common bordered chips and leaves blanks empty`, () => {

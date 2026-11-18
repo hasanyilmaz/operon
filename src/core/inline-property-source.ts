@@ -1,3 +1,4 @@
+import { editorMappedProperties } from './file-task-property-draft';
 import { markdownBodyStartLine } from './markdown-body';
 import { iterateMarkdownLinesOutsideFences } from './markdown-fenced-lines';
 import { CANONICAL_KEY_MAP } from '../types/keys';
@@ -19,6 +20,7 @@ export interface InlinePropertySnapshot {
  state: 'missing' | 'valid' | 'unsupported' | 'conflict';
 }
 export interface InlinePropertyChange {
+ mappedKey?: string;
  sourceName: string;
  type: InlinePropertyType;
  expected: { present: boolean; rawValue?: string };
@@ -143,6 +145,12 @@ export function mergeInlineEditorSource(
   }
  }
  submitted.fields = [...submitted.fields.filter(field => !preserved.has(field.key)), ...current.fields.filter(field => preserved.has(field.key))];
+ for (const change of changes) if (change.mappedKey) {
+  const fresh = current.fields.filter(field => field.key === change.mappedKey);
+  if (fresh.length !== 1 || fresh[0].rawValue !== change.expected.rawValue) return null;
+  submitted.fields = submitted.fields.filter(field => field.key !== change.mappedKey);
+  submitted.fields.push(fresh[0]);
+ }
  try { return changes.length ? patchInlineProperties(serializeTask(submitted, mappings), '', submitted.operonId!, changes, mappings, definitions) : serializeTask(submitted, mappings); }
  catch { return null; }
 }
@@ -191,7 +199,8 @@ export function patchInlineProperties(
   if (seen.has(identity) || /[\r\n{}]|::/u.test(name) || !name.trim()) throw new Error('Invalid property name');
   seen.add(identity);
   const mapping = mappings.find(item => [item.canonicalKey, item.visiblePropertyName].some(alias => alias.toLowerCase() === name.toLowerCase()));
-  if ((!mapping || mapping.isSystem !== false) && !isWritableRawYamlPropertyName(name, mappings)) throw new Error('Reserved property');
+  const mappedRemoval = change.mappedKey && change.mutation.kind === 'remove' && editorMappedProperties({ [name]: null }, mappings, {}, definitions)[change.mappedKey]?.name === name;
+  if (change.mappedKey && !mappedRemoval || !mappedRemoval && (!mapping || mapping.isSystem !== false) && !isWritableRawYamlPropertyName(name, mappings)) throw new Error('Reserved property');
   const matches = parsed.fields.filter(field => field.sourceKey.toLowerCase() === identity || !!mapping && field.key === mapping.canonicalKey);
   if (matches.length > 1) throw new Error('Property alias conflict');
   const existing = matches[0];

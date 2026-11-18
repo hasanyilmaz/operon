@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### New
+
+- Reuse one saved filter across daily notes with **embedded filter dates**. Add a line such as `dateCompleted: 2026-11-11` below `filterId` to replace that field’s condition in the block, or add one if it’s missing. The saved filter stays unchanged. ([#338](https://github.com/hasanyilmaz/operon/issues/338))
+- Added **Start/stop timer** to the command palette. Start FlowTime or TrackTime without assigning a task, or stop the running timer. Stopping a task timer saves its session to that task. Unassigned time is discarded when stopped.
+- Use **Open mini calendar** to show a sidebar calendar with independent date navigation and quick access to daily and weekly notes. Missing notes use your existing note settings and templates. On desktop, **Settings → Calendar View → Mini Calendar → Click behavior** lets you open the source file, the matching **Task / Property Editor**, or both in a Lightbox. Mobile opens notes in the normal file view.
+- **Mini Calendar** defaults to **Continuous weeks**, with scrollable weeks that fill the sidebar. Returning to today centers its week, and touch controls adapt on tablets and phones. The fixed header has balanced spacing, day and week numbers are centered in cells that scale with the panel width, and muted week numbers have no hover tooltip. The current month and centered week stay bright, with other days shown in a softer tone. Accented month labels replace the first day’s number. Choose **Month** under **View mode** for a fixed monthly layout.
+- **Task Editor and Property Editor** share the same section layout across desktop, tablet, and phone. Use **Open current file’s Task / Property Editor** to open the active Markdown file’s matching editor in a Lightbox. The **Convert to Operon File Task** button has a neutral fill and border and converts eligible notes in the same Lightbox.
+- Added **Stop timer when Obsidian quits** under **Tasks → Tracker → Tracking behavior**. Turn it on to save a running task’s FlowTime or TrackTime session at normal desktop exit. The setting is off by default. ([#339](https://github.com/hasanyilmaz/operon/issues/339))
+
+### Improved
+
+- **Cmd-click** a **Status Dock** task card on macOS, or **Ctrl-click** on Windows or Linux, to open its source file in a new tab. A regular click follows the dock's **Click behavior** setting.
+- **Sections and Order** lets you create, hide, and reorder sections, remove eligible groups, assign and reorder properties, and reorder commands for both editors. Compact property rows have clearer controls and show mapped names and inline syntax, and the **Add Property** picker stays visible while scrolling. Property icons are shared across supported Operon views, including the icons for **Tags** and **Subtasks**. Changing a mapped icon here also updates **Key Mappings**.
+- Both editors share **Notes** keyboard controls, section icon states, and **Add Property** names, type checks, and pickers. Fields mapped to **Contexts**, such as **Up**, accept legacy single links in the picker. Clearing a value preserves a blank, borderless row after reopening and keeps focus in place. The remove button appears on hover or keyboard focus. Native properties use their Obsidian type, fields without a declared type and values that cannot be edited safely stay read-only, and cancelling a new property picker leaves the note unchanged.
+
+### Fixed
+
+- Recurring **File Tasks** carry their **Custom Key** values into the next occurrence, even when a property is added to Custom Keys after the series starts. Properties configured to clear on repeat still start empty.
+
+### Security
+
+- Updated the development dependencies `fast-uri` to 3.1.9 and `minimatch` to 11.0.1 to address dependency audit findings.
+
 ### Validation
+
+- Plugin checks, production build, and key Obsidian workflows passed, along with **5,315/5,315** local regression tests.
 
 ## [4.7.0] - 2026-11-12
 

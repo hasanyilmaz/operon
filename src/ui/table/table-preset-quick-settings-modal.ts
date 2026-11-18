@@ -534,6 +534,7 @@ export class TablePresetQuickSettingsModal extends Modal {
 				options.catalog.filter(field => !field.unavailable || field.key === options.value), {
 					excludedFieldKeys: options.excludedFieldKeys,
 					noneLabel: options.noneLabel,
+					settings: this.options.getSettings(),
 				},
 			);
 			if (this.options.tableFieldPickerPresentation === 'modal') {
