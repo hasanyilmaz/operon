@@ -2,7 +2,7 @@
 Notes: Find any Operon setting from Obsidian's settings search
 Icon: search
 Color: "#ca8a04"
-Updated: 2026-10-22T22:06:42+02:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Settings search
@@ -28,6 +28,7 @@ Search for these labels to reach the individual controls:
 | Search label | Page and section | What it changes |
 |---|---|---|
 | Task Editor position | Interface → Task Editor → Layout and opening | Side of the editor and control rail in new desktop Lightboxes, including Property Editor |
+| Sections and Order | Interface → Task Editor | Shared sections, property assignments, icons, and command order for Task Editor and Property Editor |
 | Open source with file task editor | Interface → Task Editor → Layout and opening | Whether normal File task editor openings include the source |
 | Open source with inline task editor | Interface → Task Editor → Layout and opening | Whether normal Inline task editor openings include the source |
 | File task results | Interface → Task Finder → Result Behavior | Source, editor, or both when selecting a File task result |
@@ -36,9 +37,15 @@ Search for these labels to reach the individual controls:
 | Core Quick Switcher click behavior | Interface → Workspace Tweaks → Lightbox | What a normal click or Enter opens on Obsidian Desktop |
 | Show Status Dock | Interface → Status Dock → General Settings | The saved desktop dock visibility |
 | Sections and Order | Interface → Status Dock | Which dock sections are enabled and where they appear |
-| Use mobile Task Editor on phones | Mobile → Task Editor | The phone editor layout, without changing tablet or desktop layout selection |
+| Use mobile Task Editor on phones | Mobile → Task Editor | The layout for both editors on phones |
+| View mode | Views → Calendar → Mini Calendar | Continuous weeks or Month in the independent sidebar |
+| Click behavior | Views → Calendar → Mini Calendar | What opens on desktop when you select a day or week number |
 
-Task Finder, Task Editor, and Core Quick Switcher each have their own opening preferences. Search and direct page navigation edit the same preferences. Opening choices apply to subsequent openings; dimming can update open surfaces. For defaults and scope, see [[DOCS-021 Task Editor|Task Editor]], [[DOCS-027 Task Finder|Task Finder]], [[DOCS-098 Workspace Tweaks|Workspace Tweaks]], [[DOCS-152 Status Dock|Status Dock]], and [[DOCS-101 Mobile General|Mobile General]].
+When searching **Sections and Order**, choose the result under **Task Editor** for the shared editor layout or the result under **Status Dock** for dock sections. Searching `mini calendar` finds both sidebar settings.
+
+Search and direct page navigation edit the same preferences. Opening choices apply to subsequent openings, and dimming can update open surfaces. See [[DOCS-021 Task Editor|Task Editor]], [[DOCS-027 Task Finder|Task Finder]], [[DOCS-098 Workspace Tweaks|Workspace Tweaks]], [[DOCS-152 Status Dock|Status Dock]], [[DOCS-101 Mobile General|Mobile General]], and [[DOCS-155 Mini Calendar|Mini Calendar]] for their respective defaults.
+
+On desktop, search **Stop timer when Obsidian quits** or `shutdown` to find the option under **Tasks → Tracker → Tracking behavior**. It applies to an eligible task timer when Obsidian exits normally. See [[DOCS-034 Time tracking#Stop the timer on normal desktop exit|Stop the timer on normal desktop exit]].
 
 ## What a result targets
 

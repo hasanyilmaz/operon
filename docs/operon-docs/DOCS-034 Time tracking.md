@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-11-05T01:10:44+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Time tracking
@@ -16,6 +16,8 @@ Time tracking records the actual effort you spend on a task, so you can compare 
 ## Start and stop
 
 Run **Start/stop time tracker** on a task to begin timing, and run it again to stop. Run it on a different task to switch what you are tracking. You can also start or stop from a task's [[DOCS-042 Contextual menu actions|contextual menu]].
+
+Run **Operon: Start/stop timer** from the command palette to control the shared timer from any view. When idle, it starts an unassigned timer in the selected TrackTime or FlowTime mode. Run it again to stop the active timer. A timer assigned to a task saves a session to that task. Unassigned time is discarded when stopped.
 
 In the contextual menu, the same action shows **Stop Timer** with a stop icon only for the task whose timer is running. Other eligible tasks still show **Start Timer**. Starting one of them uses the normal switch to that task; stopping the active task saves its session through the usual time-tracking flow. This behavior is shared by the supported menu surfaces, including task rows, cards, Tables, Calendar, and Kanban.
 
@@ -32,6 +34,12 @@ The Dock also offers task lists for **Overdue**, **Happens Today**, **Pinned Tas
 A newly saved task session produces a temporary card while the dock is visible. Click its duration to open **Edit session**. The card waits while a Dock list is open; clicking elsewhere on the dock closes the list and runs the chosen action. See [[DOCS-053 Time session history|Time session history]] for other editing entry points.
 
 Use **Show Status Dock** or **Toggle status dock** to change the saved visibility preference while tracking continues. It is separate from the [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
+
+## Stop the timer on normal desktop exit
+
+Turn on **Stop timer when Obsidian quits** under **Settings → Operon → Tasks → Tracker → Tracking behavior** to finish a running task session at the time Obsidian quits normally. It applies to FlowTime and TrackTime and is off by default.
+
+The timer must be assigned to a task and have started on the device that is quitting. Leaving the setting off lets the active timer continue across restarts. Closing a panel or reloading Operon leaves the running timer available. A forced exit can interrupt saving. Use **Stop** to record the session before a forced shutdown.
 
 ## Track across devices
 
@@ -101,7 +109,7 @@ Open the **Time Session History** panel to see and edit the sessions you have tr
 
 ## Settings
 
-Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
+Operon settings for this live in **Settings → Operon → Tasks → Tracker**, under **Tracking behavior** for midnight session splitting and normal desktop quit, **Session History** for the history range and task-description click action, and **TrackTime & FlowTime** for the timer panel and FlowTime preferences.
 
 On desktop, use **Settings → Operon → Interface → Status Dock → Sections and Order** to show, hide, or move **Time Tracker**. Hiding that section leaves any running timer or break active. On mobile, use the native status-bar timer preference where available.
 

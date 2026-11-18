@@ -2,7 +2,7 @@
 Notes: Review and correct the time sessions you have tracked
 Icon: history
 Color: "#4f46e5"
-Updated: 2026-11-05T01:10:44+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Time session history
@@ -45,7 +45,7 @@ Click a duration to open **Edit session** for that record. The task name uses th
 
 On desktop, the visible [[DOCS-152 Status Dock|Status Dock]] shows a temporary card for the latest newly saved task session. Click its **duration**, such as **34m 22s**, to open the same **Edit session** window. The card lasts ten seconds, with its countdown paused while you hover over or interact with it. If a Dock list is open, the card waits until that list closes. This card is available even when the Session History section is off.
 
-Clicking the card's task description follows the **Status Dock** opening preference, independently of the history panel's **Task description click action** setting. Once the card disappears, the saved session remains available in history and Task Editor.
+Clicking the card's task description follows the **Status Dock** opening preference, independently of the history panel's **Task description click action** setting. Once the card disappears, the saved session remains available in history and Task Editor. On both the Dock's Session History cards and its temporary recent-session card, **Cmd-click** on macOS or **Ctrl-click** on Windows or Linux opens the task source in a new tab. See [[DOCS-152 Status Dock#Open a task source in a new tab|Open a task source in a new tab]].
 
 ## Edit from Task Editor
 

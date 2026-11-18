@@ -2,7 +2,7 @@
 Notes: Date-based planning with sidebar countdowns and desktop Status Dock tasks
 Icon: calendar-clock
 Color: "#0284c7"
-Updated: 2026-11-05T01:07:15+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Upcoming Tasks
@@ -49,7 +49,7 @@ An ongoing task has started and has not reached its end time. The end can be exp
 
 Ongoing entries show their task names without a zero countdown or a **Now:** label. When a countdown ends, the selected task can remain alongside the next future task. If no ongoing block is available, this retained task remains until its selection becomes invalid, for example through completion, deletion, or a changed scheduled start. Selection is recalculated when Operon reloads.
 
-Hover over a task to reveal Play in place of its icon, then click the icon to start tracking. Clicking its name follows the dock’s shared **Click behavior** setting, whose default is **Source File + Task Editor**. Countdown text is not a click target. The task’s own icon takes priority; fallback icons use Scheduled for current tasks and Due for the next task. The Due icon does not change selection to use Due dates.
+Hover over a task to reveal Play in place of its icon, then click the icon to start tracking. A regular click on its name follows the dock’s shared **Click behavior** setting, whose default is **Source File + Task Editor**. **Cmd-click** on macOS or **Ctrl-click** on Windows or Linux opens the task source in a new tab. See [[DOCS-152 Status Dock#Open a task source in a new tab|the Dock's source shortcut]]. The task’s own icon takes priority; fallback icons use Scheduled for current tasks and Due for the next task. The Due icon does not change selection to use Due dates.
 
 The dock’s upcoming-task countdown shows seconds below one minute and minutes for longer durations. **Show seconds** under Status Dock applies to Time Tracker. The existing countdown range limit still applies; a hidden countdown does not remove the task name. Starting or stopping tracking does not change which task is scheduled next. Full controls, positioning, and visibility are covered in [[DOCS-152 Status Dock|Status Dock]].
 

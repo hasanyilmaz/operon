@@ -2,7 +2,7 @@
 Notes: Rename property names without changing what a field means
 Icon: key-round
 Color: "#ca8a04"
-Updated: 2026-10-13T17:06:30+02:00
+Updated: 2026-11-18T16:26:34+03:00
 ---
 
 # Key mappings
@@ -80,6 +80,8 @@ Since visible names must be unique, Operon has to handle the case where one of t
 ## Field icon
 
 Each field can carry an optional **icon**, chosen from Lucide. Surfaces that use the field’s key mapping share this icon, so you can configure it centrally rather than surface by surface. Leaving it blank does not guarantee an iconless field: some surfaces, including Task Creator and Task Editor controls, use a fallback icon when no mapping icon is set.
+
+You can also pick the icon from **Settings → Operon → Interface → Task Editor → Sections and Order**. Changing an icon for a mapped property updates the same icon used by **Key Mappings** or **Custom Keys**. An unmapped Vault Property uses its own saved icon across supported Operon views. Choose **Clear** in the icon picker to return to the default icon.
 
 For Checkbox properties, the fallback **type icon** is a dashed square. A configured type icon is retained. Supported value controls show a checked box for `true` and an empty box for `false`; that automatic value indicator is distinct from the field's configured type icon. This does not enable a previously unsupported custom-field surface.
 

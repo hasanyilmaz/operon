@@ -2,12 +2,14 @@
 Notes: Switch the Calendar between a top toolbar and a side panel
 Icon: panel-left
 Color: "#0284c7"
-Updated: 2026-10-19T13:40:31+02:00
+Updated: 2026-11-18T16:29:19+03:00
 ---
 
 # Calendar layout: toolbar and sidebar
 
 The [[DOCS-028 Calendar overview|Calendar]] can wear two layouts, and you switch between them with one button. **Toolbar** mode puts the controls in a strip across the top and gives the grid the whole width. **Sidebar** mode moves the controls and a set of working panels into a column beside the grid. Same Calendar, same tasks, two different ways to sit on screen. The right one depends on how wide the leaf is and what you are doing.
+
+The layouts on this page belong to the main Operon Calendar. To open daily and weekly notes from a separate sidebar, use [[DOCS-155 Mini Calendar|Mini Calendar]].
 
 ## Switching modes
 

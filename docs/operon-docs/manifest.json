@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "346f9b1b14d6df386bc942f6065a4d99a119cd510caba44bbce14d98d242a92d",
-      "bytes": 12718
+      "sha256": "c69e2f82dbf5cb7c5daa97287d8eb506a8946e7390110ca244fb1e9801c3c1a8",
+      "bytes": 12837
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -109,13 +109,13 @@
     },
     {
       "path": "DOCS-021 Task Editor.md",
-      "sha256": "3ec44c448acbe083615f6f3352d995c507bc85df3331fcb2089bfd78f78d05d0",
-      "bytes": 22306
+      "sha256": "13d0d72f4c1b376d0d7205bb6707ba5cc8dfd1885fa9a996c023b5db1004162e",
+      "bytes": 23670
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "1c9ebd0eea5515b848e9a307251451ced25da8a311cccab80f9970795facb5aa",
-      "bytes": 8486
+      "sha256": "f7ecd432abc1de447da89800e37cccbb3afad7674a2ff2713a44bbabbfee7aac",
+      "bytes": 9165
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -144,8 +144,8 @@
     },
     {
       "path": "DOCS-028 Calendar overview.md",
-      "sha256": "ca34ea8e7098ccfda33ba4966d797333367423935e6b46e0a00524a12fbd6a1c",
-      "bytes": 7708
+      "sha256": "6ecc505a3a93b7570bf82cfb4e6386de25553afb7189ab69b9e9b5acad7870f5",
+      "bytes": 7855
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
@@ -169,18 +169,18 @@
     },
     {
       "path": "DOCS-033 Recurring tasks.md",
-      "sha256": "e02e5a4a8751eca9a5fbd5869153f010fc602512c4b3ebb4f15831b08fd74ab2",
-      "bytes": 9154
+      "sha256": "2c14b1af98733a94e9734bf1780a98c195f75d8b847b2e2bc11249c2c0e91786",
+      "bytes": 9723
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "a8f1c8b6d1d4c22f95c674890d06a9e7612773dd6928d56f63f7ccb7c5860d49",
-      "bytes": 8989
+      "sha256": "e8a8e81aec0c3ca4f6d8d6aaf165f7cd8805586f8811b942b342e6cb4cef027d",
+      "bytes": 9957
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
-      "sha256": "64ea4082c5a4306414cc92d94b249b9e1d5013303b4f438f4b4641170f6acea2",
-      "bytes": 7414
+      "sha256": "359c20fb1b763d319ffe5b0bd4d0e31799e29ae6fac472aa5d2288d24a951efd",
+      "bytes": 7810
     },
     {
       "path": "DOCS-036 Agent-friendly workflows.md",
@@ -199,13 +199,13 @@
     },
     {
       "path": "DOCS-039 Key mappings.md",
-      "sha256": "1f973d21a49b65a1b5f5f9d675ae5790172999a0c412c8b12609ea1bdfbe4497",
-      "bytes": 10449
+      "sha256": "620755501fdd6189221fe9b2247168e6b768719baf0605c6f8055501f224740d",
+      "bytes": 10815
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "92adea6f99547a5fb0f330450fe2f082f9143faedfdfacccc1d3f15512fa0e04",
-      "bytes": 14111
+      "sha256": "8eb239eb7c14ea0e3c707d5fab07bbee5ee447cb944d29d7ca3fd8b211f964ad",
+      "bytes": 14266
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -219,8 +219,8 @@
     },
     {
       "path": "DOCS-043 Settings search.md",
-      "sha256": "40d315dd0cb1517a9c6f2e87a36e8ae8cb2b648639e4bfe8b6b00cb91f46e442",
-      "bytes": 6820
+      "sha256": "1d0ac52056add14b92622a8b14e0d51c036857edca5aa8abf6cf865f742719ec",
+      "bytes": 7655
     },
     {
       "path": "DOCS-044 Where Operon stores data.md",
@@ -254,8 +254,8 @@
     },
     {
       "path": "DOCS-050 Daily Notes workflows.md",
-      "sha256": "875950dc14893fb818af484f40504e9a0d8a0cc6b66878ec1ea78fcc0177086e",
-      "bytes": 5637
+      "sha256": "e4cffd639a8b226f77ee486ab92150f12ce95408728be93de038c9a14103ab16",
+      "bytes": 6185
     },
     {
       "path": "DOCS-051 Templater and QuickAdd workflows.md",
@@ -269,8 +269,8 @@
     },
     {
       "path": "DOCS-053 Time session history.md",
-      "sha256": "db283a913a22d9f723136b908295f5d34fc95e53b130fc101262aed466a12762",
-      "bytes": 7037
+      "sha256": "f32cf980379588ce2a33127a33ed2a2ab26400e5adb3d3d97ba23968a01d0493",
+      "bytes": 7308
     },
     {
       "path": "DOCS-054 Missing tasks.md",
@@ -294,8 +294,8 @@
     },
     {
       "path": "DOCS-058 Operon inheritance rules.md",
-      "sha256": "304c5bca4909509603a099ef08a64032676bcd121ab70c7197a7fe79e58c13ec",
-      "bytes": 9643
+      "sha256": "18e7db8a299f1b5c02b76280e38b87e8741b462f235024e665852723215596b8",
+      "bytes": 10024
     },
     {
       "path": "DOCS-059 Dynamic Subtasks Filter.md",
@@ -304,8 +304,8 @@
     },
     {
       "path": "DOCS-060 Calendar layout toolbar and sidebar.md",
-      "sha256": "575998542f8325eb769277025b5de1036aa0146396a2dd51072843505a0636f2",
-      "bytes": 8777
+      "sha256": "862c563cde9884c49a08f416527ea44ab647382c5f0cfc54339b414eaf30e8c0",
+      "bytes": 8941
     },
     {
       "path": "DOCS-061 operonId template variables.md",
@@ -369,8 +369,8 @@
     },
     {
       "path": "DOCS-073 Filter conditions and operators.md",
-      "sha256": "fdfe29ea99a81f6e3c9fb0bd466a00cb085a50cd7db2f93f121f55bedec2f49d",
-      "bytes": 14506
+      "sha256": "1b59fe47f5438d59bceb62aad0e935b9e42a2f2d2564351868147fb0e4d39245",
+      "bytes": 14823
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
@@ -419,8 +419,8 @@
     },
     {
       "path": "DOCS-083 Embed a filter in a note.md",
-      "sha256": "94add022c2a943c8332f19682db5ac70a0eb9ddbd0349db62ce5848090fa9023",
-      "bytes": 2880
+      "sha256": "593e940b243f6e2467ae4ca4143fc991f3f75c1e4a2211698e166bd2ff3c87bb",
+      "bytes": 4291
     },
     {
       "path": "DOCS-084 Create New Operon Task.md",
@@ -484,8 +484,8 @@
     },
     {
       "path": "DOCS-096 Mobile Calendar.md",
-      "sha256": "ceee1c162f1741c8bfc547647354718590074d6823a8452a8f309e3477b2a348",
-      "bytes": 5954
+      "sha256": "04d565a41125e7e7eeae7882aa826fe37b396ec6238292dd01c173c57679131a",
+      "bytes": 6138
     },
     {
       "path": "DOCS-097 Project serials.md",
@@ -509,8 +509,8 @@
     },
     {
       "path": "DOCS-101 Mobile General.md",
-      "sha256": "a624eca03156fdae8cefa29d4d9aea23833c6f2c22d804a96fdab8142a4f8392",
-      "bytes": 8580
+      "sha256": "23efc637d607b9d3650d2bfb21950eba2dd5d4a66b36b6c7c2378a77148b4fb4",
+      "bytes": 9021
     },
     {
       "path": "DOCS-102 Do you need to use all of Operon.md",
@@ -674,8 +674,8 @@
     },
     {
       "path": "DOCS-134 Backup and restore settings.md",
-      "sha256": "a0763e3e433051ce58ca288563f714e2d11b38ae103a87173cdf7b2932bf087c",
-      "bytes": 9147
+      "sha256": "8b1be0f51672c392701da5d02780b2789b39289d75ac303e24735947a88a561a",
+      "bytes": 9499
     },
     {
       "path": "DOCS-135 Convert task to plain.md",
@@ -689,8 +689,8 @@
     },
     {
       "path": "DOCS-137 Daily and Weekly Notes.md",
-      "sha256": "d9b2d6d84aeb723bf29f489ca65b4c0d8e968ef8d110768f44dfda84969f739b",
-      "bytes": 13040
+      "sha256": "4d70e89323ee689ca295f9491ab11feafce47d75cc680e4fa9da6010109b8c71",
+      "bytes": 14025
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
@@ -704,8 +704,8 @@
     },
     {
       "path": "DOCS-140 Upcoming Tasks.md",
-      "sha256": "7e879a6862fdd0823267d73aadfb0bcd4013de3b22b372d1e9aa7b6b550053cf",
-      "bytes": 9438
+      "sha256": "8e6879684cf6ed7819c88707c812400b27165d639fa9820594cc6fd2f0480373",
+      "bytes": 9596
     },
     {
       "path": "DOCS-141 Canvas Task Cards.md",
@@ -759,13 +759,13 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "2af041ea7f6bc21f44e7ef7bae5a9c4961bec7a603747a3b978ca00d66329d45",
-      "bytes": 20828
+      "sha256": "194613cf107069b2cc96859135e7d82e733a8d38b47637a38204cfa824d94850",
+      "bytes": 21406
     },
     {
       "path": "DOCS-152 Status Dock.md",
-      "sha256": "2d004c695def16ca18813866085fe91ba178a6d1bf986066756b82a73052d012",
-      "bytes": 15633
+      "sha256": "461a6a0f15fd5eee0f9fd63118edb0462944f05185e11913662a10eae1cad4a0",
+      "bytes": 16284
     },
     {
       "path": "DOCS-153 Kanban presets.md",
@@ -774,9 +774,14 @@
     },
     {
       "path": "DOCS-154 Property Editor.md",
-      "sha256": "9f61205ee249c30f7d4b9b2ab293f3825e48ccd469dba4469dd482d5482df692",
-      "bytes": 2743
+      "sha256": "9c9d3cf565a14711dfbc5658b09a8c9bc91e9f5b4b37181b3b0f73d71d30b446",
+      "bytes": 4376
+    },
+    {
+      "path": "DOCS-155 Mini Calendar.md",
+      "sha256": "5e9d54fcf3fbc1e22f01a89631e3833bb31a64934b72a7223433c5031bedc981",
+      "bytes": 3949
     }
   ],
-  "generatedAt": "2026-11-12T12:28:09.110Z"
+  "generatedAt": "2026-11-18T14:43:23.089Z"
 }

@@ -2,7 +2,7 @@
 Notes: Configure and use Daily and Weekly Notes as safe task destinations and optional Operon containers
 Icon: calendar-range
 Color: "#059669"
-Updated: 2026-10-14T11:59:33+02:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Daily and Weekly Notes
@@ -27,7 +27,7 @@ The **Daily and Weekly Notes** section is always available, even when the inline
 
 ## Daily Notes management
 
-Turn on **Manage Daily Notes with Operon** to use Operon's Daily format, template, and folder. When it is off, Operon continues to use the Core Daily Notes plugin's configuration when that plugin is available.
+Turn on **Manage daily notes with Operon** to use Operon's Daily format, template, and folder. When it is off, Operon continues to use the Core Daily Notes plugin's configuration when that plugin is available.
 
 The default Operon Daily format is `YYYY-MM-DD`. The format controls the note path only; task date fields are still stored as ISO dates such as `2026-08-21`.
 
@@ -38,7 +38,7 @@ Daily Notes therefore have two supported configuration sources:
 
 ## Weekly Notes management
 
-Turn on **Manage Weekly Notes with Operon** to make Weekly Notes available as a routed destination. Weekly Notes use their own format, template, and folder and do not depend on Core Daily Notes.
+Turn on **Manage weekly notes with Operon** to make Weekly Notes available as a routed destination. Weekly Notes use their own format, template, and folder and do not depend on Core Daily Notes.
 
 The weekly path and optional container identity are anchored to the week's ISO Monday. The actual routed date is still kept for placement inside the note, so a task for Thursday goes under Thursday's linked-date heading rather than Monday's.
 
@@ -47,6 +47,15 @@ The weekly path and optional container identity are anchored to the week's ISO M
 Use **Create daily note** to open today's Daily Note or **Create weekly note** to open the current Weekly Note. If the note is missing, the command creates it through the same format, folder, template, and **Create as Operon Task** rules described below; if it already exists, Operon opens it. The command creates or opens the note directly and does not require or add an inline task.
 
 Each command deliberately requires its matching Operon management setting. **Create daily note** requires **Manage daily notes with Operon**, even when Core Daily Notes is available, and **Create weekly note** requires **Manage weekly notes with Operon**. When the relevant setting is off, no note is created and a notice reports that management is disabled. Enable the matching toggle under **Task Router → Daily and Weekly Notes**.
+
+## Open a note from Mini Calendar
+
+Run **Operon: Open mini calendar**, then select a **day** for its Daily Note or a **week number** for its Weekly Note. Mini Calendar opens the existing note or creates the missing note using the applicable format, folder, template, and File Task preference.
+
+- **Daily Notes** use Operon's settings when **Manage daily notes with Operon** is on. Otherwise, Mini Calendar can use the enabled Obsidian **Daily Notes** core plugin. The palette's **Create daily note** command requires Operon management.
+- **Weekly Notes** require **Manage weekly notes with Operon**. Mini Calendar anchors the note to the week's ISO Monday, including when the grid displays Sunday first.
+
+The Mini Calendar's desktop **Click behavior** determines what opens in Lightbox. On mobile the note opens in the normal Obsidian file view. See [[DOCS-155 Mini Calendar|Mini Calendar]] for the opening choices.
 
 ## Formats, folders, and templates
 
@@ -127,7 +136,7 @@ The separate settings-based creation extension also accepts Daily or Weekly Inli
 
 ## FAQ
 
-**Do I need the Core Daily Notes plugin?** Not when **Manage Daily Notes with Operon** is enabled. When it is disabled, the Core plugin supplies the fallback Daily configuration.
+**When is Core Daily Notes used?** When Operon management is off, the enabled Obsidian **Daily Notes** core plugin can supply the configuration for Mini Calendar and Daily Note routing. Use Operon management for the **Create daily note** command.
 
 **Do Weekly Notes use the Daily Notes plugin?** No. Operon manages Weekly formats, folders, and templates directly.
 

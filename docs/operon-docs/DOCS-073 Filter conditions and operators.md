@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-10-29T18:31:47+01:00
+Updated: 2026-11-18T16:29:19+03:00
 ---
 
 # Filter conditions and operators
@@ -70,6 +70,8 @@ For date fields like `dateDue` and `dateScheduled` (date and time fields use the
 The "X days" operators take a number, and "day of week is" and "month is" take a weekday or month number, so their input is numeric rather than a date picker.
 
 When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → Core → General → Language & Formats → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
+
+An embedded filter can require an exact date for a supported field in just that block. The date replaces any saved conditions for that field when evaluating the block. See [[DOCS-083 Embed a filter in a note#Filter by the note's date|Filter by the note's date]] for the supported keys and behavior in nested groups.
 
 ### Repeat reference date
 

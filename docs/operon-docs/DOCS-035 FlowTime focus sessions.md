@@ -2,7 +2,7 @@
 Notes: Run a countdown focus session on a task, with breaks and overtime
 Icon: hourglass
 Color: "#9333ea"
-Updated: 2026-11-05T01:10:44+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # FlowTime focus sessions
@@ -58,6 +58,8 @@ So the length you set is a soft target, not a deadline. If you want no target at
 - **TrackTime**: a plain count-up stopwatch. Use it when you just want to log effort without a target. See [[DOCS-034 Time tracking|Time tracking]].
 
 Both record to the same task, so the choice is about how you want to work, not where the time lands. To review what you recorded, open the [[DOCS-053 Time session history|Time session history]].
+
+With FlowTime selected, **Operon: Start/stop timer** can start an unassigned timer or stop your active work session from the command palette. On desktop, the optional **Stop timer when Obsidian quits** setting can save a running task session at normal exit. See [[DOCS-034 Time tracking#Stop the timer on normal desktop exit|Stop the timer on normal desktop exit]] for eligibility and defaults.
 
 ## Completion sound
 

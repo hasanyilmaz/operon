@@ -2,7 +2,7 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-10-14T11:54:38+02:00
+Updated: 2026-11-18T16:29:19+03:00
 ---
 
 # Calendar overview
@@ -10,6 +10,8 @@ Updated: 2026-10-14T11:54:38+02:00
 The Calendar shows your tasks in time. It is the best surface for scheduled work, deadlines, and time blocks, and for planning by day or week. [[DOCS-011 Inline tasks|Inline tasks]] and [[DOCS-013 File tasks|file tasks]] land on the same Calendar as soon as they carry a date, so a quick line in a note and a full task note are planned side by side. Many tasks only become real once they are placed on a date, and the Calendar is where that happens.
 
 Open it with **Operon Calendar** from the command palette.
+
+Use **Open mini calendar** for a separate date sidebar with quick access to daily and weekly notes. See [[DOCS-155 Mini Calendar|Mini Calendar]].
 
 > **MEDIA-DOCS-028-1:** The Operon Calendar with all-day items and timed blocks across a week.
 

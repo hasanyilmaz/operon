@@ -2,7 +2,7 @@
 Notes: Generate future work from a repeating pattern
 Icon: repeat
 Color: "#9333ea"
-Updated: 2026-10-29T18:31:47+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Recurring tasks
@@ -73,6 +73,10 @@ When a new occurrence is created, structure that should persist (the task's shap
 ## Recurring file tasks
 
 Recurrence works especially well for [[DOCS-013 File tasks|file tasks]] with a stable structure, like a weekly review or a publishing checklist that needs the same sections every time. A recurring file task can create a new note for each occurrence, giving each run its own working space. See [[DOCS-013 File tasks|File tasks]].
+
+The next File Task occurrence carries the current occurrence's [[DOCS-040 Custom keys|Custom Key]] property values forward. This also works when you register a YAML property as a Custom Key after the series starts. For example, a `Client` value on the current note is available on the next occurrence once `Client` is a mapped Custom Key.
+
+The series' **Recurring file task YAML/frontmatter cleanup** rules take priority. A property selected for cleanup starts empty in the next occurrence. Use the YAML key as it appears in the source note when configuring the rule.
 
 ## Skipping an occurrence
 
