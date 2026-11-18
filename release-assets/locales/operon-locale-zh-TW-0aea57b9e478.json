@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "刪除篩選器",
       "deleteGroup": "刪除分組",
       "deleteSort": "刪除排序",
+      "duplicateEmbedDate": "在此程式碼區塊中只能指定一次 {{field}}。",
       "duplicateFilter": "複製篩選器",
       "dynamicFileTaskFilterCurrentFileOperonId": "當前檔案 operonId",
       "dynamicFileTaskFilterDesc": "用於 YAML 檔案任務筆記的自動檔案任務篩選器。",
@@ -497,6 +498,7 @@
       "groupCopied": "已複製分組。",
       "groupEmpty": "（無值）",
       "groupNone": "無",
+      "invalidEmbedDate": "{{field}} 必須是 YYYY-MM-DD 格式的有效日期。",
       "logic": "條件邏輯",
       "matchAll": "全部",
       "matchAny": "任一",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "73c6b65959b77010c22a9db611d7d49ef2d0880025dc7639692853a1ba8a3a65"
+  "sourceVersion": "d9c89ac8ec8eb7e7a08f27591b64ee33f0d93f07c97044df173b5b393d1fcd2f"
 }

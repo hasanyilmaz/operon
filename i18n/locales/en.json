@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} task",
 		"taskCountMany": "{{count}} tasks",
 		"copyEmbedCode": "Copy embed code",
+		"invalidEmbedDate": "{{field}} must be a valid date in YYYY-MM-DD format.",
+		"duplicateEmbedDate": "Specify {{field}} only once in this block.",
 		"embedCodeCopied": "Embed code copied!",
 		"fieldTrackedOn": "Tracked time",
 		"trackedOnInvalid": "Enter a valid date or whole-number value.",

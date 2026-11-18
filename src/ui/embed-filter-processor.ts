@@ -71,6 +71,13 @@ import {
 	parseEmbedWidthPercent,
 	refreshActiveEmbedPercentWidths,
 } from './embed-percent-width';
+import {
+	applyEmbedDateOverrides,
+	getEmbedDateField,
+	parseEmbedDate,
+	type EmbedDateField,
+	type EmbedDateOverrides,
+} from './embed-filter-dates';
 
 function generateFilterSetId(): string {
     return 'fs_' + Math.random().toString(36).slice(2, 9);
@@ -125,10 +132,14 @@ export interface FilterSurfaceInstance {
     lazyLoadObserver: IntersectionObserver | null;
 }
 
-interface EmbedInstance extends FilterSurfaceInstance {
+interface EmbedFilterReference {
     filterId: string | null;
     filterName: string | null;
 	widthPercent: EmbedWidthPercent | null;
+	dateOverrides?: Readonly<EmbedDateOverrides>;
+}
+
+interface EmbedInstance extends FilterSurfaceInstance, EmbedFilterReference {
 	widthCleanup: (() => void) | null;
 }
 
@@ -142,6 +153,7 @@ export interface FilterSurfaceRenderOptions {
     subtaskSorts?: FilterSortSpec[];
     dynamicRootTaskId?: string;
     onEditFilter?: (filterSet: FilterSet) => void;
+    dateOverrides?: Readonly<EmbedDateOverrides>;
 }
 
 /** Active embeds belong to their MarkdownRenderChild, including cached detached sections. */
@@ -197,14 +209,13 @@ function destroyEmbedFilterInstance(instance: EmbedInstance): void {
  * - filterId: "fs_abc123"
  * - filter: "My Filter Name"
  */
-function parseFilterReference(source: string): {
-	filterId: string | null;
-	filterName: string | null;
-	widthPercent: EmbedWidthPercent | null;
-} | null {
+function parseFilterReference(source: string): EmbedFilterReference
+	| { error: 'invalidEmbedDate' | 'duplicateEmbedDate'; field: EmbedDateField }
+	| null {
     let filterId: string | null = null;
     let filterName: string | null = null;
 	let widthPercent: EmbedWidthPercent | null = null;
+	let dateOverrides: EmbedDateOverrides | undefined;
 
     for (const line of source.split('\n')) {
         const trimmed = line.trim();
@@ -216,10 +227,19 @@ function parseFilterReference(source: string): {
 
 		const widthMatch = trimmed.match(/^width:\s*(.*?)\s*$/i);
 		if (widthMatch) widthPercent = parseEmbedWidthPercent(widthMatch[1]);
+
+		const dateLine = /^(\w+)\s*:\s*(.*)$/u.exec(trimmed);
+		if (!dateLine) continue;
+		const field = getEmbedDateField(dateLine[1]);
+		if (!field) continue;
+		if (dateOverrides?.[field] !== undefined) return { error: 'duplicateEmbedDate', field };
+		const date = parseEmbedDate(dateLine[2]);
+		if (date === null) return { error: 'invalidEmbedDate', field };
+		(dateOverrides ??= {})[field] = date;
     }
 
     if (!filterId && !filterName) return null;
-    return { filterId, filterName, widthPercent };
+    return { filterId, filterName, widthPercent, dateOverrides };
 }
 
 function resolveFilterSet(
@@ -255,20 +275,21 @@ export function registerEmbedFilterProcessor(
             renderError(el, 'Invalid syntax. Use: filterId: "Filter Id" or filter: "Filter Name"');
             return;
         }
+        if ('error' in filterRef) {
+            renderError(el, t('filterSets', filterRef.error, { field: filterRef.field }));
+            return;
+        }
 
         // Track this instance for live refresh
         const instance: EmbedInstance = {
             ...createFilterSurfaceInstance(el),
-            el,
-            filterId: filterRef.filterId,
-            filterName: filterRef.filterName,
-			widthPercent: filterRef.widthPercent,
+            ...filterRef,
 			widthCleanup: null,
         };
         activeEmbeds.add(instance);
-		ctx.addChild(new EmbedFilterRenderChild(el, instance, () => renderEmbed(instance, filterRef, deps)));
+		ctx.addChild(new EmbedFilterRenderChild(el, instance, () => renderEmbed(instance, deps)));
 
-        renderEmbed(instance, filterRef, deps);
+        renderEmbed(instance, deps);
 		instance.widthCleanup = bindEmbedPercentWidth(instance.el, instance.widthPercent);
     });
 }
@@ -280,27 +301,23 @@ export function registerEmbedFilterProcessor(
 export function refreshEmbedFilters(deps: EmbedFilterDeps): void {
     for (const instance of activeEmbeds) {
         // Obsidian can reuse a detached section. Only child unload ends its lifetime.
-        renderEmbed(instance, {
-            filterId: instance.filterId,
-            filterName: instance.filterName,
-        }, deps);
+        renderEmbed(instance, deps);
     }
 	refreshActiveEmbedPercentWidths();
 }
 
 function renderEmbed(
     instance: EmbedInstance,
-    filterRef: { filterId: string | null; filterName: string | null },
     deps: EmbedFilterDeps,
 ): void {
     const el = instance.el;
-    const filterSet = resolveFilterSet(deps.settings, filterRef);
+    const filterSet = resolveFilterSet(deps.getSettings(), instance);
 
     if (!filterSet) {
         instance.lastRenderSignature = null;
         cleanupOperonRenderRoot(el);
         el.empty();
-        const label = filterRef.filterId ?? filterRef.filterName ?? 'unknown';
+        const label = instance.filterId ?? instance.filterName ?? 'unknown';
         renderError(el, `Filter "${label}" not found. Define it in Settings → Operon → Filters.`);
         return;
     }
@@ -308,6 +325,7 @@ function renderEmbed(
     renderFilterSurface(instance, filterSet, deps, {
         surfaceClassName: 'operon-filter-surface--embed',
         showSettingsButton: true,
+        dateOverrides: instance.dateOverrides,
     });
 }
 
@@ -356,6 +374,7 @@ export function renderFilterSurface(
         filterSet.id,
         instance.searchQuery.trim().toLocaleLowerCase(),
         JSON.stringify(filterSet),
+        JSON.stringify(options.dateOverrides),
         options.surfaceClassName ?? '',
         options.showSubtasks === undefined ? `settings-subtasks:${String(deps.settings.filterShowSubtasks)}:${deps.settings.filterSubtaskAutoExpandLimit}` : String(options.showSubtasks),
         options.showOnlyOpenSubtasks === undefined ? 'settings-open-subtasks' : String(options.showOnlyOpenSubtasks),
@@ -424,6 +443,7 @@ export function renderFilterSurface(
     }
 	const priorities = deps.getPriorities();
     const pipelines = deps.getPipelines();
+    const evaluationFilter = applyEmbedDateOverrides(filterSet, options.dateOverrides);
     const filterEvaluationOptions = {
 		getRepeatSkipDates: deps.getRepeatSkipDates,
 		projectSerialScopes: deps.getSettings().projectSerialScopes,
@@ -540,7 +560,7 @@ export function renderFilterSurface(
             return;
         }
 
-        const baseGrouped = evaluateFilterSetGrouped(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
+        const baseGrouped = evaluateFilterSetGrouped(evaluationFilter, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
         const baseRootTasks = baseGrouped.matchedTasks ?? [];
         for (const task of baseRootTasks) scopedById.set(task.operonId, task);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseRootTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);
@@ -601,7 +621,7 @@ export function renderFilterSurface(
 
     } else {
         // Flat
-        const baseTasks = evaluateFilterSet(filterSet, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
+        const baseTasks = evaluateFilterSet(evaluationFilter, allTasks, priorities, deps.pinnedCache, pipelines, filterEvaluationOptions);
         for (const task of baseTasks) scopedById.set(task.operonId, task);
         const searchActive = isFilterSearchActive(instance.searchQuery);
         const treeScopeTasks = getEmbedTreeScope(instance, filterSet, baseTasks, deps, includeSubtasksInSearch, embedShowOnlyOpenSubtasks);

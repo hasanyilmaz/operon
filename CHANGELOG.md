@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added per-block dates to **embedded filters**, so daily notes can reuse one saved filter and show tasks completed on the note’s date. Add a line such as `dateCompleted: 2026-11-11` below `filterId`. ([#338](https://github.com/hasanyilmaz/operon/issues/338))
 - Added **Start/stop timer** to the command palette. Start FlowTime or TrackTime without assigning a task, or stop the running timer. Stopping a task timer saves its session to that task. Unassigned time is discarded when stopped.
 - Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates. Day and week numbers share centered cells that scale with the panel width; week numbers use a muted tone without hover tooltips.
 - **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks. Days in the current month and the week at the center of the sidebar stay bright as you scroll. Other days use a softer gray. The fixed header has equal space above and below, and accented month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.

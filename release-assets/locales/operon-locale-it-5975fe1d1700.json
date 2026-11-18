@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "Elimina filtro",
       "deleteGroup": "Elimina gruppo",
       "deleteSort": "Elimina ordinamento",
+      "duplicateEmbedDate": "Specifica {{field}} una sola volta in questo blocco.",
       "duplicateFilter": "Duplica filtro",
       "dynamicFileTaskFilterCurrentFileOperonId": "operonId del file attuale",
       "dynamicFileTaskFilterDesc": "Filtro automatico di attività-file per le note di attività-file YAML.",
@@ -497,6 +498,7 @@
       "groupCopied": "Gruppo copiato.",
       "groupEmpty": "(nessun valore)",
       "groupNone": "nessuno",
+      "invalidEmbedDate": "{{field}} deve essere una data valida nel formato YYYY-MM-DD.",
       "logic": "Logica delle condizioni",
       "matchAll": "Tutte",
       "matchAny": "Qualsiasi",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "668e13cc86544e3bbe5e70aa0056caf50ccd402cca949c103b6584c5a5f1213f"
+  "sourceVersion": "9d1332869457732779b152fa64a75438818e422eb497b3d8c2e79f6c4810f23e"
 }

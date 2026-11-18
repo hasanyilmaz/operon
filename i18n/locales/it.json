@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} attività",
 		"taskCountMany": "{{count}} attività",
 		"copyEmbedCode": "Copia codice di incorporamento",
+		"invalidEmbedDate": "{{field}} deve essere una data valida nel formato YYYY-MM-DD.",
+		"duplicateEmbedDate": "Specifica {{field}} una sola volta in questo blocco.",
 		"embedCodeCopied": "Codice di incorporamento copiato!",
 		"fieldTrackedOn": "Tempo registrato",
 		"trackedOnInvalid": "Inserisci una data valida o un numero intero.",

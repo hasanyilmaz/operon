@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} tâche",
 		"taskCountMany": "{{count}} tâches",
 		"copyEmbedCode": "Copier le code d’intégration",
+		"invalidEmbedDate": "{{field}} doit être une date valide au format YYYY-MM-DD.",
+		"duplicateEmbedDate": "Indiquez {{field}} une seule fois dans ce bloc.",
 		"embedCodeCopied": "Code d’intégration copié !",
 		"fieldTrackedOn": "Temps enregistré",
 		"trackedOnInvalid": "Saisissez une date valide ou un nombre entier.",

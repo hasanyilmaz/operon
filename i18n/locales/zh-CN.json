@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} 个任务",
 		"taskCountMany": "{{count}} 个任务",
 		"copyEmbedCode": "复制嵌入代码",
+		"invalidEmbedDate": "{{field}} 必须是 YYYY-MM-DD 格式的有效日期。",
+		"duplicateEmbedDate": "在此代码块中只能指定一次 {{field}}。",
 		"embedCodeCopied": "嵌入代码已复制！",
 		"fieldTrackedOn": "记录时间",
 		"trackedOnInvalid": "请输入有效日期或整数。",

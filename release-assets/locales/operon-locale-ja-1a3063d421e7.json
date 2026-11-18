@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "フィルターを削除",
       "deleteGroup": "グループを削除",
       "deleteSort": "並べ替えを削除",
+      "duplicateEmbedDate": "このブロックでは {{field}} を一度だけ指定してください。",
       "duplicateFilter": "フィルターを複製",
       "dynamicFileTaskFilterCurrentFileOperonId": "現在のファイルの operonId",
       "dynamicFileTaskFilterDesc": "YAML ファイルタスクノート用の自動ファイルタスクフィルター。",
@@ -497,6 +498,7 @@
       "groupCopied": "グループをコピーしました。",
       "groupEmpty": "（値なし）",
       "groupNone": "なし",
+      "invalidEmbedDate": "{{field}} には YYYY-MM-DD 形式の有効な日付を指定してください。",
       "logic": "条件ロジック",
       "matchAll": "すべて",
       "matchAny": "いずれか",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3a90515e641374ce6bd9cb69e5239104a13419cb3205cdaeb509cf65193d1441"
+  "sourceVersion": "865264a98a093d6622b255f30466d7eca85542c4d57560842526e587bcfe7d21"
 }

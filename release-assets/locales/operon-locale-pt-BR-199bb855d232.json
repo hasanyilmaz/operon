@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "Excluir filtro",
       "deleteGroup": "Excluir grupo",
       "deleteSort": "Excluir ordenação",
+      "duplicateEmbedDate": "Especifique {{field}} apenas uma vez neste bloco.",
       "duplicateFilter": "Filtro duplicado",
       "dynamicFileTaskFilterCurrentFileOperonId": "operonId do arquivo atual",
       "dynamicFileTaskFilterDesc": "Filtro automático de tarefa em arquivo para notas de tarefas em arquivo YAML.",
@@ -497,6 +498,7 @@
       "groupCopied": "Grupo copiado.",
       "groupEmpty": "(sem valor)",
       "groupNone": "nenhum",
+      "invalidEmbedDate": "{{field}} deve ser uma data válida no formato YYYY-MM-DD.",
       "logic": "Lógica das condições",
       "matchAll": "Todos",
       "matchAny": "Qualquer um",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "fbb0714ee274f26beea447e20e80dfde406603cbca2a272f71976c78a889e095"
+  "sourceVersion": "f72640aeb21638fa9766f5f57991e265bcd994f53a9607e7e2d97947a901e1f0"
 }

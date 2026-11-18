@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "Удалить фильтр",
       "deleteGroup": "Удалить группу",
       "deleteSort": "Удалить сортировку",
+      "duplicateEmbedDate": "Укажите {{field}} в этом блоке только один раз.",
       "duplicateFilter": "Дублировать фильтр",
       "dynamicFileTaskFilterCurrentFileOperonId": "operonId текущего файла",
       "dynamicFileTaskFilterDesc": "Автоматический фильтр файловых задач для заметок файловых задач YAML.",
@@ -497,6 +498,7 @@
       "groupCopied": "Группа скопирована.",
       "groupEmpty": "(нет значения)",
       "groupNone": "нет",
+      "invalidEmbedDate": "{{field}} должно быть допустимой датой в формате YYYY-MM-DD.",
       "logic": "Логика условий",
       "matchAll": "Все",
       "matchAny": "Любое",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f096d61c2aecd15100287adc09f290ca1f06865eb86a8d35fa3f28ab787bef61"
+  "sourceVersion": "fd41fcfe1d2e9ed5813cbbb43801c86fc5f5948f04a995a6338dcb6d7a95f6e7"
 }

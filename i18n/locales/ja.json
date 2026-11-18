@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} 件のタスク",
 		"taskCountMany": "{{count}} 件のタスク",
 		"copyEmbedCode": "埋め込みコードをコピー",
+		"invalidEmbedDate": "{{field}} には YYYY-MM-DD 形式の有効な日付を指定してください。",
+		"duplicateEmbedDate": "このブロックでは {{field}} を一度だけ指定してください。",
 		"embedCodeCopied": "埋め込みコードをコピーしました！",
 		"fieldTrackedOn": "記録時間",
 		"trackedOnInvalid": "有効な日付または整数を入力してください。",

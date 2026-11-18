@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} görev",
 		"taskCountMany": "{{count}} görev",
 		"copyEmbedCode": "Gömme kodunu kopyala",
+		"invalidEmbedDate": "{{field}} için YYYY-MM-DD biçiminde geçerli bir tarih girin.",
+		"duplicateEmbedDate": "{{field}} bu blokta yalnızca bir kez belirtilebilir.",
 		"embedCodeCopied": "Gömme kodu kopyalandı!",
 		"fieldTrackedOn": "Kaydedilen zaman",
 		"trackedOnInvalid": "Geçerli bir tarih veya tam sayı girin.",

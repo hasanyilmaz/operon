@@ -3635,6 +3635,8 @@
 		"taskCountOne": "{{count}} задача",
 		"taskCountMany": "{{count}} задач",
 		"copyEmbedCode": "Скопировать код встраивания",
+		"invalidEmbedDate": "{{field}} должно быть допустимой датой в формате YYYY-MM-DD.",
+		"duplicateEmbedDate": "Укажите {{field}} в этом блоке только один раз.",
 		"embedCodeCopied": "Код встраивания скопирован!",
 		"fieldTrackedOn": "Учтённое время",
 		"trackedOnInvalid": "Введите допустимую дату или целое число.",

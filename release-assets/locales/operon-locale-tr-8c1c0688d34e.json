@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3857,
-  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
+  "keyCount": 3859,
+  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -438,6 +438,7 @@
       "deleteFilterTitle": "Filtreyi sil",
       "deleteGroup": "Grubu sil",
       "deleteSort": "Sıralamayı sil",
+      "duplicateEmbedDate": "{{field}} bu blokta yalnızca bir kez belirtilebilir.",
       "duplicateFilter": "Filtreyi çoğalt",
       "dynamicFileTaskFilterCurrentFileOperonId": "Mevcut dosya operonId",
       "dynamicFileTaskFilterDesc": "YAML dosya görevi notları için otomatik dosya-görevi filtresi.",
@@ -497,6 +498,7 @@
       "groupCopied": "Grup kopyalandı.",
       "groupEmpty": "(değer yok)",
       "groupNone": "yok",
+      "invalidEmbedDate": "{{field}} için YYYY-MM-DD biçiminde geçerli bir tarih girin.",
       "logic": "Koşul Mantığı",
       "matchAll": "Tümü",
       "matchAny": "Herhangi",
@@ -3902,5 +3904,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "361f44017978e6cf825a42fed7dce7d0411553a4eb012419eda07885611d2156"
+  "sourceVersion": "71077fc884f700b4ebb994a5eb3f7336e1cb74bffab8a367181846097398801b"
 }

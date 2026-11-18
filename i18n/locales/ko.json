@@ -3635,6 +3635,8 @@
 		"taskCountOne": "작업 {{count}}개",
 		"taskCountMany": "작업 {{count}}개",
 		"copyEmbedCode": "임베드 코드 복사",
+		"invalidEmbedDate": "{{field}}은(는) YYYY-MM-DD 형식의 유효한 날짜여야 합니다.",
+		"duplicateEmbedDate": "이 블록에서 {{field}}은(는) 한 번만 지정하세요.",
 		"embedCodeCopied": "임베드 코드를 복사했습니다!",
 		"fieldTrackedOn": "추적 시간",
 		"trackedOnInvalid": "유효한 날짜 또는 정수를 입력하세요.",
