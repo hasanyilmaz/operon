@@ -2,14 +2,14 @@
 Notes: General phone-first behavior, the quick-create button, the mobile Task Editor toolbar, and touch menus
 Icon: smartphone
 Color: "#ca8a04"
-Updated: 2026-11-05T01:12:23+01:00
+Updated: 2026-11-18T16:29:19+03:00
 ---
 
 # Mobile General
 
 Operon runs the same way on a phone as on the desktop, with a few **phone-first adjustments** layered on top for touch. This page is the home for the general ones: the floating quick-create button, the two phone Task Editor layouts, tablet editing, and how touch menus behave. The two surfaces with the most mobile-specific behavior, the [[DOCS-096 Mobile Calendar|Calendar]] and the [[DOCS-100 Mobile Kanban|Kanban]] board, have their own pages.
 
-Phone-specific settings do not change tablet or desktop layout selection. The desktop-style Task Editor on phones and tablets shares **Sections and Order** and **Property Visibility & Order** with desktop editing. The **Layout and opening** preferences for source panels, left/right placement, and lightbox controls apply only to desktop workspaces.
+Phone-specific settings do not change tablet or desktop layout selection. The desktop-style Task Editor and Property Editor on phones and tablets share **Sections and Order** and **Property Visibility & Order** with desktop editing. The **Layout and opening** preferences for source panels, left/right placement, and lightbox controls apply only to desktop workspaces.
 
 > **MEDIA-DOCS-101-1:** A phone showing the floating quick-create button at the bottom-right corner.
 
@@ -33,9 +33,9 @@ At the top of **Settings → Operon → Mobile → Task Editor**, **Use mobile T
 | Tablet | Desktop-style editor | Unchanged |
 | Desktop | Desktop editor | Unchanged |
 
-Close and reopen Task Editor after changing the setting. Each open editor keeps the layout it started with. Switching does not reset, copy, or overwrite the other layout's toolbar or workflow preferences; the compact mobile settings stay available even while that layout is off. This is a vault preference, not a separate per-device profile.
+Close and reopen the editor after changing the setting. Each open editor keeps the layout it started with. Switching does not reset, copy, or overwrite the other layout's toolbar or workflow preferences; the compact mobile settings stay available even while that layout is off. This is a vault preference, not a separate per-device profile.
 
-Phones and tablets do not include the desktop workspace that places native Markdown beside the Task Editor. The old embedded **File Body** button and panel have been retired. Task-property editing, Description/Notes, and the checkbox popover remain available. For the desktop source-and-editor workflow, see [[DOCS-021 Task Editor|Task Editor]].
+Use **Operon: Open current file’s Task / Property Editor** on a phone or tablet to open the active Markdown file's editor. A regular note opens [[DOCS-154 Property Editor|Property Editor]], and a verified File Task opens [[DOCS-021 Task Editor|Task Editor]]. The phone layout option applies to both editors. Phones and tablets show the editor in a single panel. The old embedded **File Body** button and panel have been retired. Task-property editing, Description/Notes, and the checkbox popover remain available. For the desktop source-and-editor workflow, see [[DOCS-021 Task Editor|Task Editor]].
 
 ## Desktop-style editing with touch
 
@@ -60,6 +60,8 @@ This is purely about the mobile toolbar's makeup. It does not change what the fi
 Operon's [[DOCS-042 Contextual menu actions|contextual menu]] opens differently on touch, and on a phone it **closes itself after a short while** so it does not linger over your content. The **mobile context menu auto-hide** setting controls how long it stays after opening before closing on its own, from 1 to 30 seconds, defaulting to 7. Raise it if menus close before you reach them, or lower it if you would rather they clear away quickly.
 
 ## Mobile-specific surfaces
+
+**Mini Calendar** supports touch scrolling. Tap a day or week number to open its note in the normal Obsidian file view. See [[DOCS-155 Mini Calendar|Mini Calendar]].
 
 Two views change enough on a phone to have their own pages:
 

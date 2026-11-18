@@ -2,7 +2,7 @@
 Notes: Customize the desktop Status Dock, track time, and open task and session lists
 Icon: panel-bottom
 Color: "#0F766E"
-Updated: 2026-11-05T01:14:43+01:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Status Dock
@@ -105,7 +105,7 @@ Click a list icon to open it, click it again to close it, or click another list 
 Task-list cards show the task icon and description and stay open until dismissed. Session History cards also show a duration. They share the recent-session card's height and fixed width, constrained by the available window space. Short names do not shrink the card; longer names use the available space before ending in an ellipsis.
 
 - **Task icon:** clicking follows the global **Task icon click action** preference. Hovering opens the task's contextual menu.
-- **Task description:** clicking follows the Status Dock's source/editor opening preference below.
+- **Task description:** a regular click follows the Status Dock's source/editor opening preference. Use [[DOCS-152 Status Dock#Open a task source in a new tab|the source shortcut]] to open a tab directly.
 - **Play/Stop:** hovering over a card reveals this action at its right edge. Its border appears when the control itself is hovered or focused. It starts or stops that task's timer without closing the list. There is no inline Unpin button.
 
 Click outside the list or elsewhere on the dock bar to close it. A dock action still runs normally after closing the list. Menus and editors opened from a card remain usable without being treated as an outside click. With focus in the dock or list, **Escape** closes the list once its own popup has been dismissed. The list also closes if you change the section order, hide its section or the Dock, or its scope becomes empty. Dragging the handle keeps the list open as it follows the Dock. Pressing **Escape** during a drag restores the original position and leaves the list open.
@@ -158,6 +158,12 @@ Go to **Settings → Operon → Interface → Status Dock → General Settings �
 - **Task Editor Only**
 
 This preference applies to assigned tracking-task names, calendar-task names, and task descriptions in the Dock lists and the temporary session card. Source opening uses the supported source lightbox flow; it does not add support for otherwise unsupported source previews. See [[DOCS-151 Lightbox|Lightbox]] and [[DOCS-021 Task Editor|Task Editor]].
+
+### Open a task source in a new tab
+
+On macOS, **Cmd-click** a task name or its card. On Windows or Linux, use **Ctrl-click**. This opens the File Task's note or the Inline Task's source line in a new Obsidian tab.
+
+The shortcut applies to the tracked task, ongoing and upcoming calendar tasks, task lists, Session History cards, and the temporary recent-session card. A regular click on the name uses **Click behavior**. Separate controls keep their actions, including the duration for **Edit session** and the timer button for **Play/Stop**.
 
 ## Duplicate-ID warnings
 

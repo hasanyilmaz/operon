@@ -2,7 +2,7 @@
 Notes: Add your own task fields when the built-in set is not enough, with inline and frontmatter examples
 Icon: key-square
 Color: "#ca8a04"
-Updated: 2026-10-29T18:42:56+01:00
+Updated: 2026-11-18T16:26:34+03:00
 ---
 
 # Custom keys
@@ -72,7 +72,7 @@ Task Editor's **Additional** section and Creator's property selection keep eligi
 
 An unused field with only an old type declaration, and no active custom definition, is not offered solely because of that declaration. Restarting Operon or refreshing the index does not turn that stale declaration back into a custom field. This rule does not remove used normal Obsidian properties or change Table's own column catalog rules.
 
-Creator, Task Editor, and native Table property controls use the active custom field's configured icon, whether the property is identified by its canonical key or visible name. The type icon is the fallback when no custom icon is configured. Checkbox true/false indicators and genuine read-only warning icons take priority over a decorative field icon.
+Creator, Task Editor, Property Editor, and native Table property controls use the active custom field's configured icon, whether the property is identified by its canonical key or visible name. Pick that icon from the Custom Key card or from **Interface → Task Editor → Sections and Order**. Both controls update the same icon. The type icon is the fallback when no custom icon is configured. Checkbox true/false indicators and genuine read-only warning icons take priority over a decorative field icon.
 
 ## Reusing existing values
 

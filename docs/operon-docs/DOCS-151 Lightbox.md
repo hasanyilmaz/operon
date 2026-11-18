@@ -2,7 +2,7 @@
 Notes: Desktop previews, editable file views, navigation controls, and background dimming
 Icon: panels-top-left
 Color: "#0891b2"
-Updated: 2026-10-26T12:23:25+01:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Lightbox
@@ -60,7 +60,7 @@ On desktop, the shared preview also opens a task's source from:
 - Source navigation in [[DOCS-053 Time session history|Time Session History]], through its configured task-description action or the companion Source button.
 - **Open Source** below a selected [[DOCS-141 Canvas Task Cards|Canvas]] or [[DOCS-147 Excalidraw Task Cards|Excalidraw]] task card.
 
-Source chips, Table Source cells, Source actions, and card selection controls support Cmd/Ctrl-click for a focused Obsidian tab. Context-menu and Session History Source actions open the preview; use its **Open in new tab** control to continue in a tab.
+Source chips, Table Source cells, Source actions, and card selection controls support Cmd/Ctrl-click for a focused Obsidian tab. The context-menu **Open Source** action and the Source action in the standalone Time Session History panel open the preview. Use its **Open in new tab** control to continue in a tab. Status Dock task and session cards also offer a direct [[DOCS-152 Status Dock#Open a task source in a new tab|Cmd/Ctrl-click source shortcut]].
 
 For an Inline task, Operon resolves its current source position. In the editable Markdown view, the caret sits immediately after the description's last character, before trailing metadata, with no text selected. Source opening with Cmd/Ctrl and **Show source** in the [[DOCS-021 Task Editor|Task Editor workspace]] use the same position. A File task opens its source file normally. Opening Source itself does not change the task or create a missing file.
 
@@ -73,6 +73,10 @@ These are specific navigation controls, not a change to every file link or task 
 On **Obsidian Desktop**, click or press Enter on an existing file or alias in Core Quick Switcher. The default opens the source alongside **Task Editor** for a File Task or **Property Editor** for an eligible regular Markdown note. Choose a different opening mode under **Settings → Operon → Interface → Workspace Tweaks → Lightbox → Core Quick Switcher click behavior**. [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Workspace Tweaks]] lists the four options.
 
 In the Operon opening modes, Tables and enabled Bases open in the source Lightbox. Obsidian handles modifier shortcuts, unsupported results, and openings where Operon cannot determine the file’s task identity for the requested editor.
+
+## Open the active file's editor
+
+Run **Operon: Open current file’s Task / Property Editor** with a Markdown note active to start with its editor alone. A verified File Task opens [[DOCS-021 Task Editor|Task Editor]]. A regular note opens [[DOCS-154 Property Editor|Property Editor]]. This command has its own starting layout. On desktop you can then use **Show source**.
 
 ## Supported content
 

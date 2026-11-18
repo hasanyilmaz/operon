@@ -2,7 +2,7 @@
 Notes: What is inherited between tasks and when
 Icon: git-branch-plus
 Color: "#7c3aed"
-Updated: 2026-10-01T13:47:36+02:00
+Updated: 2026-11-18T16:34:55+03:00
 ---
 
 # Operon inheritance rules
@@ -61,6 +61,8 @@ When a recurring task is completed, Operon generates the next occurrence and cop
 - **Fresh each time:** a new `operonId`, a new `datetimeCreated`, the next `dateScheduled`, and an updated `datetimeModified`.
 
 The two reminder fields intentionally behave differently. **ReminderRules carry forward** because they describe a relationship, such as 15 minutes before Start time; Operon resolves that same rule against the new occurrence's shifted dates when the referenced date is available. **ReminderDatetimes do not carry forward** because they are fixed moments that belong to the occurrence where you created them. See [[DOCS-116 Reminders|Reminders]].
+
+For recurring File Tasks, the next occurrence also carries forward [[DOCS-040 Custom keys|Custom Key]] values from the current occurrence's YAML, including properties mapped after the series began. A matching **Recurring file task YAML/frontmatter cleanup** rule clears the value for the new occurrence. See [[DOCS-033 Recurring tasks#Recurring file tasks|Recurring file tasks]].
 
 ## 3. Display inheritance (color and icon)
 

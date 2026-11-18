@@ -2,7 +2,7 @@
 Notes: Capture inline tasks into Daily Notes and inherit dates from their note
 Icon: calendar-check
 Color: "#059669"
-Updated: 2026-10-14T11:47:37+02:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Daily Notes workflows
@@ -30,7 +30,7 @@ Each toggle is independent. Existing values win, so the defaults never replace a
 
 ## Which filename formats work
 
-With **Manage Daily Notes with Operon** enabled, Operon's Moment-style Daily format controls the note path and shows a live path preview in settings. The default is `YYYY-MM-DD`; folder-producing formats such as `YYYY/MM/YYYY-MM-DD` are supported when they resolve to a safe vault-relative path.
+With **Manage daily notes with Operon** enabled, Operon's Moment-style Daily format controls the note path and shows a live path preview in settings. The default is `YYYY-MM-DD`; folder-producing formats such as `YYYY/MM/YYYY-MM-DD` are supported when they resolve to a safe vault-relative path.
 
 With Operon management disabled, the Core Daily Notes **Date format** supplies the filename format. If that format is unavailable, Operon uses `YYYY-MM-DD` as the fallback.
 
@@ -52,9 +52,13 @@ The optional **Create daily notes as an Operon task** setting under **File Tasks
 - Let the Daily Note Defaults fill start or scheduled dates when useful.
 - Review the tasks in a [[DOCS-025 Filter View|Filter View]] or the [[DOCS-028 Calendar overview|Calendar]].
 
+## Review a previous day
+
+Open a date from [[DOCS-155 Mini Calendar|Mini Calendar]] to revisit its Daily Note. To show the tasks completed on that date, reuse a saved filter in the note and set `dateCompleted` in its block. If a Daily Note template inserts the block, have it write the note's date in `YYYY-MM-DD` format when it creates the note. See [[DOCS-083 Embed a filter in a note#Filter by the note's date|Filter by the note's date]] for the example and supported fields.
+
 ## FAQ
 
-**Do I need the Core Daily Notes plugin?** No when Operon manages Daily Notes. When Operon management is off, Core Daily Notes provides the fallback configuration.
+**Which setting supplies my Daily Note configuration?** Enable **Manage daily notes with Operon** to use Operon's format, folder, and template. When it is off, the enabled Obsidian **Daily Notes** core plugin supplies the fallback.
 
 **Does every new task go to the Daily Note?** Only inline tasks whose normal Task Router destination is Daily Notes, or tasks explicitly routed there.
 

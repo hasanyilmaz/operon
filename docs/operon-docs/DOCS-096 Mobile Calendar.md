@@ -2,7 +2,7 @@
 Notes: How the Calendar works on a phone, its view modes, cycle, and per-mode presets
 Icon: smartphone
 Color: "#0284c7"
-Updated: 2026-10-01T13:50:38+02:00
+Updated: 2026-11-18T16:29:19+03:00
 ---
 
 # Mobile Calendar
@@ -12,6 +12,8 @@ On a phone there is less room for a full grid, so the [[DOCS-028 Calendar overvi
 > **MEDIA-DOCS-096-1:** The mobile Calendar Day view.
 
 ![MEDIA-DOCS-096-1 - The mobile Calendar Day view](https://raw.githubusercontent.com/hasanyilmaz/operon/main/docs/media/MEDIA-DOCS-096-1.png)
+
+Use **Operon: Open mini calendar** for a separate date sidebar. Tap a day or week number there to open its note in Obsidian's file view. See [[DOCS-155 Mini Calendar|Mini Calendar]].
 
 ## The four views
 

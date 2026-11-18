@@ -2,7 +2,7 @@
 Notes: Export, preview, restore, and reset portable Operon settings
 Icon: archive-restore
 Color: "#0891b2"
-Updated: 2026-10-22T22:06:42+02:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Back up and restore settings
@@ -29,14 +29,16 @@ Canvas pool preferences include panel width and visible rows, along with Propert
 
 Saved [[DOCS-151 Lightbox|Lightbox]] width and height preferences are also portable settings, separately for Markdown, Base, Table, Web, PDF, Image, Video, and YouTube. They are percentages for content profiles, distinct from the device-local interface positions excluded below. Restoring those settings can transfer the saved sizes to another vault.
 
-The backup also includes these independent opening preferences:
+The backup includes opening, layout, and tracking preferences:
 
 - [[DOCS-021 Task Editor|Task Editor]] position, which also sets the control-rail side on other desktop lightboxes, and its separate File/Inline source-opening toggles.
 - [[DOCS-027 Task Finder|Task Finder]] Result Behavior for File and Inline results. Restoring these choices does not merge them with the general Task Editor toggles.
 - **Core Quick Switcher click behavior** under [[DOCS-098 Workspace Tweaks#Core Quick Switcher click behavior|Workspace Tweaks → Lightbox]].
-- The phone's **Use mobile Task Editor on phones** choice, together with the editor's section, property, and compact mobile toolbar preferences.
-
-The backup also includes saved [[DOCS-152 Status Dock|Status Dock]] visibility, click behavior, section order, and the Task Creator and timer display preferences.
+- The phone's **Use mobile Task Editor on phones** choice and its compact toolbar preferences.
+- The shared **Sections and Order** setup for Task Editor and Property Editor, including custom sections, property assignments, and command order. The backup also contains **Property Visibility & Order** preferences and icons assigned to unmapped Vault Properties.
+- [[DOCS-155 Mini Calendar|Mini Calendar]] **View mode** and desktop **Click behavior**.
+- [[DOCS-152 Status Dock|Status Dock]] visibility, section order, and click behavior.
+- Task Creator and timer display preferences, along with the desktop **Stop timer when Obsidian quits** setting under Tracker.
 
 Restored opening preferences apply to new workspaces and subsequent Finder or Quick Switcher selections. An already open workspace keeps its position and opening choices. The backup includes saved preferences, but not open panels, unsaved drafts, selections, scroll positions, or undo history.
 

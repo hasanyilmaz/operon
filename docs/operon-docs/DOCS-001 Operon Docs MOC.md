@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-11-05T01:12:23+01:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Operon Docs
@@ -113,7 +113,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 ### Views and planning
 - [[DOCS-152 Status Dock|Status Dock]]: customizable desktop sections for time tracking, calendar tasks, task lists, and session history
 - [[DOCS-151 Lightbox|Lightbox]]: shared desktop previews, editable files, and window controls
-- [[DOCS-154 Property Editor|Property Editor]]: edit the properties of a regular Markdown note in Lightbox
+- [[DOCS-154 Property Editor|Property Editor]]: edit a regular Markdown note's properties using the shared editor layout
 - [[DOCS-141 Canvas Task Cards|Canvas Task Cards]]
 - [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]]
 - [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool for Canvas, Excalidraw, and Kanban]]: find existing tasks and place them on a board or drawing
@@ -127,6 +127,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-059 Dynamic Subtasks Filter|Dynamic Subtasks Filter]]
 - [[DOCS-027 Task Finder|Task Finder]]
 - [[DOCS-028 Calendar overview|Calendar overview]]
+- [[DOCS-155 Mini Calendar|Mini Calendar]]: browse dates and open daily or weekly notes from the sidebar
 - [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]]
 - [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]]
 - [[DOCS-095 Calendar Task Pool|Calendar Task Pool]]

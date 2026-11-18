@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-10-26T12:20:43+01:00
+Updated: 2026-11-18T16:38:41+03:00
 ---
 
 # Command palette reference
@@ -34,6 +34,7 @@ These commands create or open the periodic note itself; they do not require an i
 
 ## Edit and convert
 
+- **Open current file’s Task / Property Editor** opens the active Markdown file's matching editor by itself. Verified File Tasks use [[DOCS-021 Task Editor|Task Editor]], and regular notes use [[DOCS-154 Property Editor|Property Editor]].
 - [[DOCS-087 Edit or convert to file task|Edit or convert to file task]]: edits the current file task, or converts a normal note into one.
 - [[DOCS-088 Convert file task to inline task|Convert file task to inline task]]: collapses a file task back into a single inline task, then moves the old note to the Obsidian trash. See [[DOCS-019 Converting inline and file tasks|Converting inline and file tasks]].
 - [[DOCS-135 Convert task to plain|Convert task to plain]]: picks an inline or file task with Task Finder, then removes its Operon identity while keeping a plain checkbox or normal note.
@@ -55,11 +56,13 @@ These commands create or open the periodic note itself; they do not require an i
 
 - [[DOCS-090 Toggle task completion|Toggle task completion]]: completes or reopens the task at the cursor.
 - **Start/stop time tracker**: starts or stops the timer on the task at the cursor. See [[DOCS-034 Time tracking|Time tracking]].
+- **Start/stop timer** controls the shared TrackTime or FlowTime timer from any view. It starts an unassigned timer when idle or stops the active timer. An assigned timer saves its session to the task. See [[DOCS-034 Time tracking#Start and stop|Start and stop]].
 
 ## Open views and table embeds
 
 - **Operon Filter View**: filtered, saved task lists. See [[DOCS-025 Filter View|Filter View]].
 - **Operon Calendar**: scheduled and timed tasks on a calendar. See [[DOCS-028 Calendar overview|Calendar overview]].
+- **Open mini calendar** opens the independent date sidebar or brings it forward. Select a day or week number to open its note. See [[DOCS-155 Mini Calendar|Mini Calendar]].
 - **Operon Kanban**: tasks as cards in workflow columns. See [[DOCS-030 Kanban overview|Kanban overview]].
 - **Operon Table**: tasks as rows and columns, like a spreadsheet. See [[DOCS-105 Table overview|Table overview]].
 - **Insert Operon Table embed**: inserts the default Table preset's `operon-table` code block at the cursor in the active Markdown editor, or replaces the current selection. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].

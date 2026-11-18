@@ -2,7 +2,7 @@
 Notes: Task fields, native Markdown alongside the editor, and automatic saving
 Icon: square-pen
 Color: "#ea580c"
-Updated: 2026-10-29T18:42:56+01:00
+Updated: 2026-11-18T16:26:34+03:00
 ---
 
 # Task Editor
@@ -16,7 +16,8 @@ The Task Editor is where you view and change a task's structured fields without 
 ## How to open it
 
 - On an existing inline task, run **Create or edit inline task**.
-- On a file task or a note with task fields, run **Edit or convert to file task**.
+- With a File Task active, run **Open current file’s Task / Property Editor** to open its editor by itself. For a regular Markdown note, the same command opens [[DOCS-154 Property Editor|Property Editor]].
+- To edit a File Task or convert a note, run **Edit or convert to file task**.
 - From any Operon surface, open a task's contextual menu and choose **Open editor**. See [[DOCS-042 Contextual menu actions|Contextual menu actions]].
 
 From a [[DOCS-141 Canvas Task Cards|Canvas Task Card]], select the card and use **Open editor**, or choose it from the task icon's contextual menu. From an [[DOCS-142 Embedded Task Cards|Embedded Task Card]] in a note, click the task title.
@@ -70,15 +71,23 @@ This shared source-and-editor workspace is desktop-only. Phones, tablets, new-ta
 
 ## Sections and property rows
 
-The desktop-style editor organizes work into sections, with property names and values presented as rows. Under **Interface → Task Editor → Sections and Order**, configure section names, visibility, and order. **Property Visibility & Order** controls the configured property rows. These desktop preferences also apply to tablets and to phones using the desktop-style layout.
+Task Editor and [[DOCS-154 Property Editor|Property Editor]] share a desktop-style section layout. Open **Settings → Operon → Interface → Task Editor → Sections and Order** to arrange it. The layout also applies to tablets and phones using the desktop-style editor.
 
-Open an editable property's name or value to use its control. On a mouse, the row's interactive styling helps show the target; on touch, action and clear controls remain accessible without hovering. Visibility settings change the presentation, not the stored task values.
+- Use **Add section**, a section's name field, its visibility toggle, and the arrows to build and arrange the layout.
+- Use **Add Property** inside a section to assign a supported field. Selecting a field assigned elsewhere moves it to this section. Use the arrows to order fields and **Remove property from section** to return a field to Additional.
+- You can remove the default Overview, Planning, Activity, and Connections groups, or a custom section. Its properties return to **Additional**. The layout changes how fields appear and leaves the stored properties intact.
+- Reorder the actions in **Commands**. Each editor shows the actions available for the current item.
+- Select a property icon to change it. Built-in mappings and Custom Keys share the icon in their settings. An unmapped Vault Property has its own icon in supported Operon views. See [[DOCS-039 Key mappings#Field icon|Field icon]].
+
+Reopen the editor to see the new layout. **Property Visibility & Order** still controls the configured picker rows.
+
+Open an editable property's name or value to use its control. With a mouse, hover styling identifies the target. On touch, action and clear controls stay accessible. Clearing a value keeps an existing empty property visible after saving and reopening. The separate **Remove property** control appears on hover or keyboard focus for an eligible empty field and removes the property itself.
 
 Text and List property controls reuse the shared suggestion pool from task chips and Tables, including values used only on Inline Tasks and compatible frontmatter values. A field does not need a current value to offer existing choices. Opening the picker again uses the current available pool; type conflicts and unavailable sources remain protected. See [[DOCS-070 Custom field pickers|Custom field pickers]].
 
 ### Additional properties
 
-**Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout. Use the section's add control for supported properties and each value's control to edit it. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
+**Additional** exposes supported Vault Properties on the current task alongside the mapped fields. It also works in the desktop-style phone layout. Use **Add Property** to choose a supported field and enter its first value. Close the picker without selecting a value to leave the task as it was. Unassigned Automatic types, unsupported values, and conflicts can remain read-only or unavailable; not every frontmatter value is a writable field. See [[DOCS-018 Task properties|Task properties]], [[DOCS-070 Custom field pickers|Custom field pickers]], and [[DOCS-115 File task property columns|Vault Properties]].
 
 **Add existing property** lists eligible custom keys enabled for the editor even before they have been used in a note, alongside supported normal properties used in the vault. An unused property does not return to this list solely because an old type declaration remains after its custom key was deleted. Properties already present on the task or in the current draft remain available. Operon fills missing type declarations for eligible custom keys and uses their configured icons; explicit type conflicts and incompatible values remain protected. See [[DOCS-040 Custom keys|Custom keys]].
 
@@ -205,7 +214,7 @@ Open **Settings → Operon → Interface → Task Editor**. **Layout and opening
 
 These preferences apply to newly opened desktop workspaces. Open levels keep their position and starting preferences; changing a setting does not rearrange them. Turning a source-opening option off starts with only the editor, and **Show source** remains available. The position preference also mirrors the controls on other desktop lightboxes. It does not reverse actions such as **Open to the right**.
 
-**Sections and Order** configures the desktop-style sections. **Property Visibility & Order**, previously called Workflow Pickers, controls property visibility and ordering. The old **File Body**, **Show line numbers in Task Editor**, and **Highlight active line in Task Editor** controls are no longer offered; the source uses Obsidian's native editor preferences and theme styling.
+**Sections and Order** sets the shared desktop-style sections, property assignments, command order, and property icons. **Property Visibility & Order**, previously called Workflow Pickers, controls configured picker visibility and ordering. The old **File Body**, **Show line numbers in Task Editor**, and **Highlight active line in Task Editor** controls are no longer offered; the source uses Obsidian's native editor preferences and theme styling.
 
 The phone layout selector and compact layout preferences are under **Mobile → Task Editor**. Selecting one layout does not overwrite the other's preferences. The desktop **Layout and opening** options do not change phone or tablet editing.
 
