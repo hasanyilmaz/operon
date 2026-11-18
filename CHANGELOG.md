@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Task Editor and Property Editor** use the same Notes keyboard controls, section icon states, and value-clearing behavior across desktop, tablet, and phone layouts. Existing empty properties stay visible; clearing a value leaves a blank, borderless row without moving focus to the section header, including after saving and reopening. A separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
 - **Add Property** and custom field controls use consistent property names, type checks, and picker behavior in both editors. Native properties use their declared Obsidian type; fields without a declared type and values that cannot be edited without changing their meaning remain read-only. Cancelling a new property picker leaves the note unchanged.
 
+### Fixed
+
+- Recurring **File Tasks** carry their **Custom Key** values into the next occurrence, even when a property is added to Custom Keys after the series starts. Properties configured to clear on repeat still start empty.
+
 ### Validation
 
 - Passed **87/87** focused calendar and file-opening tests, **24/24** periodic note creation tests, **98/98** settings backup tests, and **42/42** Chromium/WebKit browser scenarios. Local checks, strict lint, production build, release guard, and two focused code reviews passed.
@@ -27,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mini Calendar color changes passed **18/18** Chromium scenarios across mouse and touch profiles, strict lint, and release guard.
 - Sections and Order refinements passed **234/234** focused tests, **259/259** Chromium checks, strict lint, production build, and release guard.
 - Editor consistency passed **225/225** field and persistence tests, **22/22** shared-control tests, and **518/518** Chromium checks across desktop, tablet, and phone layouts. Full local checks, TypeScript checks, strict lint, production build, release guard, and focused code review passed.
+- Passed **4/4** focused File Task recurrence tests, including Custom Key carryover and configured value clearing. Runtime mutation checks, strict lint, production build, and release guard passed.
 
 ## [4.7.0] - 2026-11-12
 
