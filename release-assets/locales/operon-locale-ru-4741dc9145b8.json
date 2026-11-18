@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Показывать кнопку запуска в режиме ожидания и активный таймер в доке состояния Operon.",
       "trackerSplitSessionsAtMidnight": "Разделять сессии в полночь",
       "trackerSplitSessionsAtMidnightDesc": "Если сессия трекера переходит на новый день, сохранять её как отдельные ежедневные диапазоны трекера для более чистой истории и отчётности.",
+      "trackerStopOnObsidianQuit": "Останавливать таймер при выходе из Obsidian",
+      "trackerStopOnObsidianQuitDesc": "Сохраняет сеанс текущей задачи при обычном выходе из Obsidian на этом устройстве. Действует для FlowTime и TrackTime.",
       "trackerTaskDescriptionClickAction": "Действие при клике на описание задачи",
       "trackerTaskDescriptionClickActionDesc": "Выберите, что происходит при клике на описание задачи в боковой панели истории сессий времени.",
       "trackerTitle": "Трекер",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "ab3c17d83052266af01c4c9ea7a1abdb05f2fc183711a766edd6030dacb43240"
+  "sourceVersion": "2f06be0bc2f060757aa60ffe96b920ebacd889aa514805fd2ababb975812df22"
 }

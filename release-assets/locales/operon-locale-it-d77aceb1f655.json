@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Mostra il pulsante di avvio a riposo e il timer attivo nel dock di stato Operon.",
       "trackerSplitSessionsAtMidnight": "Dividi sessioni a mezzanotte",
       "trackerSplitSessionsAtMidnightDesc": "Quando una sessione di monitoraggio passa a un nuovo giorno, salvala come intervalli di monitoraggio separati per giorno per una cronologia e report più puliti.",
+      "trackerStopOnObsidianQuit": "Arresta il timer alla chiusura di Obsidian",
+      "trackerStopOnObsidianQuitDesc": "Salva la sessione dell’attività in corso quando Obsidian si chiude normalmente su questo dispositivo. Vale per FlowTime e TrackTime.",
       "trackerTaskDescriptionClickAction": "Azione clic su descrizione attività",
       "trackerTaskDescriptionClickActionDesc": "Scegli cosa succede quando fai clic su una descrizione di attività all'interno della barra laterale Cronologia sessioni di tempo.",
       "trackerTitle": "Monitoraggio",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "965bcda9231583218d54bb243383b3c678c77e9d34276bde554e8ed89b9d165e"
+  "sourceVersion": "2e539a504a46ef0cb019f948ec6e52fcb5f48d18cbb062a137365024f3056c86"
 }

@@ -17031,6 +17031,9 @@ export default class OperonPlugin extends Plugin {
 			// full refresh only after all duration aggregate attempts finish.
 			() => this.refreshViews({ reason: 'tracker-duration-aggregates' }),
 		);
+		if (Platform.isDesktopApp) {
+			this.registerEvent(this.app.workspace.on('quit', tasks => this.timeTracker.scheduleStopOnQuit(tasks)));
+		}
 		this.flowTimeBreakController = new FlowTimeBreakController({
 			timeTracker: this.timeTracker,
 			getTask: taskId => this.indexer.getTask(taskId),

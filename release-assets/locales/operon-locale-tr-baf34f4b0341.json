@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Operon durum dock’unda boşta Play düğmesini, çalışırken aktif sayacı göster.",
       "trackerSplitSessionsAtMidnight": "Oturumları gece yarısında böl",
       "trackerSplitSessionsAtMidnightDesc": "Bir zaman oturumu yeni güne geçerse, daha temiz geçmiş ve raporlama için ayrı günlük zaman aralıkları olarak sakla.",
+      "trackerStopOnObsidianQuit": "Obsidian’dan çıkarken sayacı durdur",
+      "trackerStopOnObsidianQuitDesc": "Bu cihazda Obsidian normal şekilde kapanırken aktif görevin oturumunu kaydet. Ayar FlowTime ve TrackTime için geçerlidir.",
       "trackerTaskDescriptionClickAction": "Görev açıklamasına tıklama eylemi",
       "trackerTaskDescriptionClickActionDesc": "Zaman Oturumları Geçmişi yan paneli içinde görev açıklamasına tıklayınca ne olacağını seç.",
       "trackerTitle": "Zaman Takibi",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "55066a740e582d0e98e3257fbe31a7c380e345baac836f721a71fa59db6333d7"
+  "sourceVersion": "89304b8da2cf70a2d699e49e2d26e07e9b38cabf6368cebba7beb83529027678"
 }

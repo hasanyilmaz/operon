@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates. Day and week numbers share centered cells that scale with the panel width; week numbers use a muted tone without hover tooltips.
 - **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks. Days in the current month and the week at the center of the sidebar stay bright as you scroll. Other days use a softer gray. The fixed header has equal space above and below, and accented month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
 - Choose what Mini Calendar opens under **Settings → Calendar View → Mini Calendar → Click behavior**: the source file, **Task / Property Editor**, or both in a Lightbox. File Tasks use Task Editor and regular notes use Property Editor; mobile opens notes in the normal file view.
+- Added **Stop timer when Obsidian quits** under **Tasks → Tracker → Tracking behavior**. Turn it on to save a running task’s FlowTime or TrackTime session at normal desktop exit. The setting is off by default. ([#339](https://github.com/hasanyilmaz/operon/issues/339))
 
 ### Improved
 
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sections and Order refinements passed **234/234** focused tests, **259/259** Chromium checks, strict lint, production build, and release guard.
 - Editor consistency passed **225/225** field and persistence tests, **22/22** shared-control tests, and **518/518** Chromium checks across desktop, tablet, and phone layouts. Full local checks, TypeScript checks, strict lint, production build, release guard, and focused code review passed.
 - Passed **4/4** focused File Task recurrence tests, including Custom Key carryover and configured value clearing. Runtime mutation checks, strict lint, production build, and release guard passed.
+- Passed **49/49** tracker tests, full local checks, production build, and release guard. Normal Obsidian exit was manually verified.
 
 ## [4.7.0] - 2026-11-12
 

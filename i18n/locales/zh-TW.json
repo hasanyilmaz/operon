@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "選擇在時間會話歷史側邊欄中點選任務描述時執行的操作。",
 		"trackerClickJumpToSource": "跳轉到源",
 		"trackerClickOpenTaskEditor": "開啟任務編輯器",
+		"trackerStopOnObsidianQuit": "結束 Obsidian 時停止計時器",
+		"trackerStopOnObsidianQuitDesc": "在這部裝置上正常結束 Obsidian 時，儲存目前任務的計時工作階段。適用於 FlowTime 和 TrackTime。",
 		"trackerSplitSessionsAtMidnight": "在午夜拆分會話",
 		"trackerSplitSessionsAtMidnightDesc": "當追蹤器會話跨入新的一天時，將其儲存為按天分隔的追蹤器範圍，以獲得更清晰的歷史和報告。",
 		"trackerShowStatusBarTimer": "在狀態列中顯示活動計時器",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Mostrar el botón de inicio en reposo y el temporizador activo en el dock de estado de Operon.",
       "trackerSplitSessionsAtMidnight": "Dividir sesiones a medianoche",
       "trackerSplitSessionsAtMidnightDesc": "Cuando una sesión del rastreador cruza a un nuevo día, almacenarla como rangos de rastreador separados por día para un historial y unos informes más limpios.",
+      "trackerStopOnObsidianQuit": "Detener el temporizador al salir de Obsidian",
+      "trackerStopOnObsidianQuitDesc": "Guarda la sesión de la tarea activa cuando Obsidian se cierra normalmente en este dispositivo. Se aplica a FlowTime y TrackTime.",
       "trackerTaskDescriptionClickAction": "Acción al hacer clic en la descripción de la tarea",
       "trackerTaskDescriptionClickActionDesc": "Elegir qué sucede al hacer clic en la descripción de una tarea dentro de la barra lateral del historial de sesiones de tiempo.",
       "trackerTitle": "Rastreador",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ca042db1ab7c2a0f7172485b5b9357781c831bdb5eed539931623ef1e71b17b6"
+  "sourceVersion": "b5d75b880cb7f3aacb85d6a761e327b20df05f47f0e3d03980d904370d87ec96"
 }

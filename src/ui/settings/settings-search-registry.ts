@@ -175,6 +175,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('settings', 'tasksUpcoming', 'upcomingStatusBarExpiryAction', 'settings', 'upcomingStatusBarExpiryAction', 'upcomingStatusBarExpiryActionDesc', 'dropdown', ['status bar', 'countdown', 'expired', 'next']),
 	e('settings', 'tasksUpcoming', 'upcomingStatusBarClickAction', 'settings', 'upcomingStatusBarClickAction', 'upcomingStatusBarClickActionDesc', 'dropdown', ['status bar', 'click', 'timer', 'editor']),
 
+	e('automation', 'tasksTracker', 'trackerStopOnObsidianQuit', 'settings', 'trackerStopOnObsidianQuit', 'trackerStopOnObsidianQuitDesc', 'toggle', ['time tracking', 'timer', 'quit', 'exit', 'shutdown']),
 	e('automation', 'tasksTracker', 'trackerSplitSessionsAtMidnight', 'settings', 'trackerSplitSessionsAtMidnight', 'trackerSplitSessionsAtMidnightDesc', 'toggle', ['time tracking', 'timer', 'tracker midnight', 'session', 'midnight']),
 	e('ui', 'tasksTracker', 'trackerShowStatusBarTimer', 'settings', 'trackerShowStatusBarTimer', 'trackerShowStatusBarTimerDesc', 'toggle', ['time tracking', 'timer', 'status bar', 'TrackTime']),
 	e('settings', 'tasksTracker', 'trackerHistoryDays', 'settings', 'trackerHistoryWindowDays', 'trackerHistoryWindowDaysDesc', 'number', ['time tracking', 'timer', 'history', 'history window', 'session history']),

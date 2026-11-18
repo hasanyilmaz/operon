@@ -1217,6 +1217,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === 'trackerStopOnObsidianQuit') {
+			try {
+				await this.storage.updateSettings({ trackerStopOnObsidianQuit: value === true || value === 'true' });
+				this.notifySettingsChanged();
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
+			return;
+		}
 		if (key === 'fileTaskDisplayTitleEnabled' && (value === true || value === 'true')
 			&& !hasFileTaskDisplayTitleMapping(this.settings.keyMappings)) {
 			new Notice(t('settings', 'keyMappingsMappingCollision'));
@@ -2526,6 +2535,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				)],
 				items: this.compactSettingsSearchDefinitions([
 					this.buildSettingsSearchSettingDefinition(entries, 'trackerSplitSessionsAtMidnight'),
+					Platform.isDesktopApp ? this.buildSettingsSearchSettingDefinition(entries, 'trackerStopOnObsidianQuit') : null,
 					Platform.isDesktopApp ? null : this.buildSettingsSearchSettingDefinition(entries, 'trackerShowStatusBarTimer'),
 				]),
 			},

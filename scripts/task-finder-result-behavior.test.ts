@@ -225,11 +225,11 @@ for (const desktop of [false,true]) test(`dock settings labels and expiry visibi
  for(const key of ['upcomingStatusBarExpiryAction','upcomingStatusBarClickAction'])assert.equal(group.items.find((item:any)=>item.key===key).visible(),!desktop);
 });
 
-for(const desktop of [false,true])test(`tracker visibility toggle is mobile-only: desktop=${desktop}`,()=>{
+for(const desktop of [false,true])test(`tracker settings expose the appropriate platform controls: desktop=${desktop}`,()=>{
  const Host=methods('src/ui/settings-tab.ts',['buildTrackerSettingsItems'],{Platform:{isDesktopApp:desktop},t:(_ns:string,key:string)=>key});
  const host=Object.assign(new Host(),{settings:{...DEFAULT_SETTINGS,trackerShowStatusBarTimer:false},buildSettingsSearchSettingDefinition:(_entries:unknown,key:string)=>({key}),compactSettingsSearchDefinitions:(items:any[])=>items.filter(Boolean),buildDeclarativeSettingsDocsButton:()=>({})});
  const before=JSON.stringify(host.settings),items=host.buildTrackerSettingsItems([]).flatMap((group:any)=>group.items);
- assert.equal(items.some((item:any)=>item.key==='trackerShowStatusBarTimer'),!desktop);assert.equal(items.some((item:any)=>item.key==='trackerSplitSessionsAtMidnight'),true);assert.equal(JSON.stringify(host.settings),before);
+ assert.equal(items.some((item:any)=>item.key==='trackerShowStatusBarTimer'),!desktop);assert.equal(items.some((item:any)=>item.key==='trackerSplitSessionsAtMidnight'),true);assert.equal(items.some((item:any)=>item.key==='trackerStopOnObsidianQuit'),desktop);assert.equal(JSON.stringify(host.settings),before);
 });
 
 for(const desktop of [false,true])for(const available of [false,true])test(`single dock command only toggles on execution: desktop=${desktop}, ready=${available}`,()=>{

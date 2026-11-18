@@ -1,4 +1,4 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, Platform, type Tasks } from 'obsidian';
 import { OperonIndexer } from '../indexer/indexer';
 import { TaskWriter } from '../core/task-writer';
 import { localNow, localToday } from '../core/local-time';
@@ -31,6 +31,12 @@ import { WindowIntervalHandle, clearWindowInterval, setWindowInterval } from '..
 import { getAppLocale } from '../core/obsidian-app';
 import { enginePerfLog } from '../core/engine-perf';
 
+const LOCAL_TRACKER_ORIGIN_KEY = 'operon:quit-tracker-origin';
+
+function trackerOrigin(record: ActiveTrackerRecord): string {
+	return JSON.stringify([record.id, record.taskId, record.start, record.updatedAt]);
+}
+
 export type TimeTrackerEvent = 'tick' | 'state' | 'history' | 'transition';
 export interface TimeTrackerEventContext { source: ActiveTrackerChangeSource; }
 type TimeTrackerListener = (event: TimeTrackerEvent, context?: TimeTrackerEventContext) => void;
@@ -40,6 +46,11 @@ interface InternalActiveTracker {
 	operonId: string | null;
 	start: string;
 	source: TrackerSource;
+}
+
+// Stores can reuse a record ID when the active task or start changes.
+function activeSessionKey(record: InternalActiveTracker): string {
+	return JSON.stringify([record.id, record.operonId, record.start]);
 }
 
 interface ResumeFromIndexOptions {
@@ -94,10 +105,11 @@ export class TimeTracker {
 	private tickerInterval: WindowIntervalHandle | null = null;
 	private stopPromise: Promise<boolean> | null = null;
 	private disposed = false;
+	private readonly quitBatches = new WeakSet<Pick<Tasks, 'add'>>();
 	private externalRefresh: Promise<ActiveTrackerRefreshResult> | null = null;
 	private transitionQueue: Promise<unknown> = Promise.resolve();
 	private transitionState: TimeTrackerTransitionState | null = null;
-	private finalizedActiveRecordIds: Set<string> = new Set();
+	private finalizedActiveSessions: Set<string> = new Set();
 	private historyCache: HistoryCacheEntry | null = null;
 	private readonly sessionCreatedListeners = new Set<(session: TrackerSession) => void>();
 	private readonly announcedSessions = new Set<string>();
@@ -413,7 +425,7 @@ export class TimeTracker {
 		if (!task) return null;
 		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
 		if (
-			this.finalizedActiveRecordIds.has(current.id)
+			this.finalizedActiveSessions.has(activeSessionKey(current))
 			|| existingSessions.some(session => session.start === current.start)
 		) return {};
 		const trackers = serializeTrackerList([
@@ -463,6 +475,8 @@ export class TimeTracker {
 
 			const previousActiveState = this.getActiveState();
 		const previousActive = this.activeTrackerStore.getActiveForUser();
+		// Attaching an unassigned timer keeps its original start and ownership.
+		const isLocalStart = !previousActive || previousActive.taskId !== null || this.ownsTrackerOrigin(previousActive);
 		const start = this.activeTracker && !this.activeTracker.operonId
 			? this.activeTracker.start
 			: (startOverride?.trim() || localNow());
@@ -471,8 +485,9 @@ export class TimeTracker {
 			afterTask: IndexedTask | null;
 			modifiedTimestamp: string;
 		} | null = null;
+		let startedRecord: ActiveTrackerRecord;
 		try {
-			await this.setActiveTracker(operonId, start, source, canCommit);
+			startedRecord = await this.setActiveTracker(operonId, start, source, canCommit);
 			this.setTransitionState({
 				kind: 'starting',
 				taskId: operonId,
@@ -582,6 +597,7 @@ export class TimeTracker {
 			}
 		}
 
+		if (isLocalStart) this.rememberTrackerOrigin(startedRecord);
 		this.clearTransitionState();
 		this.startTicker();
 		this.emit('state');
@@ -676,7 +692,8 @@ export class TimeTracker {
 		}
 
 		try {
-			await this.setActiveTracker(null, startOverride?.trim() || localNow(), source);
+			const record = await this.setActiveTracker(null, startOverride?.trim() || localNow(), source);
+			this.rememberTrackerOrigin(record);
 		} catch (error) {
 			console.error('Operon: Failed to start unassigned active timer', error);
 			new Notice(t('notifications', 'taskSaveFailed'));
@@ -687,6 +704,30 @@ export class TimeTracker {
 		this.startTicker();
 		this.emit('state');
 		return true;
+	}
+
+	scheduleStopOnQuit(tasks: Pick<Tasks, 'add'>, end = localNow()): void {
+		if (this.disposed || !this.getSettings().trackerStopOnObsidianQuit || this.quitBatches.has(tasks)) return;
+		const record = this.activeTrackerStore.getActiveForUser();
+		if (!record?.taskId || !this.ownsTrackerOrigin(record)) return;
+		const startTime = parseLocalDatetime(record.start)?.getTime();
+		const endTime = parseLocalDatetime(end)?.getTime();
+		if (startTime === undefined || endTime === undefined || endTime < startTime) return;
+
+		const expected = trackerOrigin(record);
+		const canCommit = (): boolean => {
+			const current = this.activeTrackerStore.getActiveForUser();
+			return !this.disposed && this.getSettings().trackerStopOnObsidianQuit
+				&& !!current && trackerOrigin(current) === expected && this.ownsTrackerOrigin(current);
+		};
+		this.quitBatches.add(tasks);
+		tasks.add(async () => {
+			try {
+				await this.stop('obsidian-quit', end, canCommit);
+			} catch (error) {
+				console.warn('Operon: Failed to stop timer during Obsidian exit', error);
+			}
+		});
 	}
 
 	async stop(
@@ -732,9 +773,9 @@ export class TimeTracker {
 			if (!task) return false;
 			const sessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
 			if (!sessions.some(session => session.start === start)) return false;
-			const activeRecordId = this.activeTracker.id;
+			const sessionKey = activeSessionKey(this.activeTracker);
 			await this.clearActiveTracker();
-			this.finalizedActiveRecordIds.delete(activeRecordId);
+			this.finalizedActiveSessions.delete(sessionKey);
 			this.clearTransitionState();
 			this.stopTicker();
 			this.emit('history');
@@ -762,9 +803,10 @@ export class TimeTracker {
 			if (!previousTask || !targetTask) return false;
 			const sessions = parseTrackerList(previousTask.fieldValues['trackers'] ?? '');
 			if (!sessions.some(session => session.start === previousStart)) return false;
-			const previousRecordId = this.activeTracker.id;
-			await this.setActiveTracker(targetOperonId, targetStart, source);
-			this.finalizedActiveRecordIds.delete(previousRecordId);
+			const previousSessionKey = activeSessionKey(this.activeTracker);
+			const record = await this.setActiveTracker(targetOperonId, targetStart, source);
+			this.rememberTrackerOrigin(record);
+			this.finalizedActiveSessions.delete(previousSessionKey);
 			this.clearTransitionState();
 			this.startTicker();
 			this.emit('history');
@@ -784,7 +826,7 @@ export class TimeTracker {
 		const task = this.indexer.getTask(operonId);
 		if (!task) return null;
 		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		const alreadyPersisted = this.finalizedActiveRecordIds.has(current.id)
+		const alreadyPersisted = this.finalizedActiveSessions.has(activeSessionKey(current))
 			|| existingSessions.some(session => session.start === current.start);
 		if (alreadyPersisted) return {};
 		const trackers = serializeTrackerList([
@@ -807,6 +849,9 @@ export class TimeTracker {
 		if (!this.activeTracker) return false;
 
 		const current = this.activeTracker;
+		const quitting = _reason === 'obsidian-quit';
+		if (quitting && (!current.operonId || !this.indexer.getTask(current.operonId)
+			|| this.indexer.hasDuplicateOperonIdConflict(current.operonId))) return false;
 		const previousActive = this.getActiveState();
 		this.setTransitionState({
 			kind: 'stopping',
@@ -858,8 +903,9 @@ export class TimeTracker {
 		}
 
 		const end = endOverride?.trim() || localNow();
-		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		const alreadyPersisted = this.finalizedActiveRecordIds.has(current.id)
+		const previousTrackers = task.fieldValues['trackers'] ?? '';
+		const existingSessions = parseTrackerList(previousTrackers);
+		const alreadyPersisted = this.finalizedActiveSessions.has(activeSessionKey(current))
 			|| existingSessions.some(session => session.start === current.start);
 		if (!alreadyPersisted) {
 			try {
@@ -874,8 +920,9 @@ export class TimeTracker {
 					{},
 					canCommit,
 					true,
+					quitting ? previousTrackers : undefined,
 				);
-				this.finalizedActiveRecordIds.add(current.id);
+				this.finalizedActiveSessions.add(activeSessionKey(current));
 			} catch (error) {
 				console.error('Operon: Failed to stop time tracker', error);
 				new Notice(t('notifications', 'taskSaveFailed'));
@@ -887,8 +934,8 @@ export class TimeTracker {
 		}
 
 		try {
-			await this.clearActiveTracker();
-			this.finalizedActiveRecordIds.delete(current.id);
+			await this.clearActiveTracker(quitting ? canCommit : undefined);
+			this.finalizedActiveSessions.delete(activeSessionKey(current));
 		} catch (error) {
 			console.error('Operon: Failed to clear active timer after saving session', error);
 			new Notice(t('notifications', 'taskSaveFailed'));
@@ -930,7 +977,7 @@ export class TimeTracker {
 		}
 
 		const existingSessions = parseTrackerList(task.fieldValues['trackers'] ?? '');
-		const alreadyPersisted = this.finalizedActiveRecordIds.has(current.id)
+		const alreadyPersisted = this.finalizedActiveSessions.has(activeSessionKey(current))
 			|| existingSessions.some(session => session.start === current.start);
 		const timerPayload: Record<string, string> = {};
 		if (!alreadyPersisted) {
@@ -961,13 +1008,13 @@ export class TimeTracker {
 			return 'task-write-failed';
 		}
 		if (!alreadyPersisted) {
-			this.finalizedActiveRecordIds.add(current.id);
+			this.finalizedActiveSessions.add(activeSessionKey(current));
 			this.notifyCreatedSessions(operonId, previousTrackers);
 		}
 
 		try {
 			await this.clearActiveTracker();
-			this.finalizedActiveRecordIds.delete(current.id);
+			this.finalizedActiveSessions.delete(activeSessionKey(current));
 		} catch (error) {
 			console.error('Operon: Failed to clear active timer after external task mutation', error);
 			this.clearTransitionState();
@@ -1344,6 +1391,7 @@ export class TimeTracker {
 		extraFields: Record<string, string> = {},
 		canCommit?: () => boolean,
 		created = false,
+		expectedTrackers?: string,
 	): Promise<void> {
 		const previousTrackers = task.fieldValues['trackers'] ?? '';
 		const duration = trackers ? String(calculateDurationFromTrackers(trackers)) : '';
@@ -1358,6 +1406,7 @@ export class TimeTracker {
 			}, {
 				reindex: 'none',
 				canCommit,
+				expectedFieldValues: expectedTrackers === undefined ? undefined : { trackers: expectedTrackers },
 				touchAncestors: false,
 			});
 		if (wrote === false) {
@@ -1384,7 +1433,25 @@ export class TimeTracker {
 		this.activeTracker = record ? this.activeRecordToInternal(record) : null;
 	}
 
-	private async setActiveTracker(operonId: string | null, start: string, source: TrackerSource, canCommit?: () => boolean): Promise<void> {
+	private ownsTrackerOrigin(record: ActiveTrackerRecord): boolean {
+		if (!Platform.isDesktopApp) return false;
+		try {
+			return this.app.loadLocalStorage?.(LOCAL_TRACKER_ORIGIN_KEY) === trackerOrigin(record);
+		} catch {
+			return false;
+		}
+	}
+
+	private rememberTrackerOrigin(record: ActiveTrackerRecord | null): void {
+		if (!Platform.isDesktopApp) return;
+		try {
+			this.app.saveLocalStorage?.(LOCAL_TRACKER_ORIGIN_KEY, record ? trackerOrigin(record) : null);
+		} catch (error) {
+			console.warn('Operon: Failed to update the local timer origin', error);
+		}
+	}
+
+	private async setActiveTracker(operonId: string | null, start: string, source: TrackerSource, canCommit?: () => boolean): Promise<ActiveTrackerRecord> {
 		const record = await this.activeTrackerStore.setActiveForUser({
 			taskId: operonId,
 			start,
@@ -1393,10 +1460,13 @@ export class TimeTracker {
 			updatedAt: localNow(),
 		}, canCommit);
 		this.activeTracker = this.activeRecordToInternal(record);
+		return record;
 	}
 
 	private async clearActiveTracker(canCommit?: () => boolean): Promise<void> {
+		const previous = this.activeTrackerStore.getActiveForUser();
 		await this.activeTrackerStore.clearActiveForUser(undefined, canCommit);
+		if (previous && this.ownsTrackerOrigin(previous)) this.rememberTrackerOrigin(null);
 		this.activeTracker = null;
 	}
 

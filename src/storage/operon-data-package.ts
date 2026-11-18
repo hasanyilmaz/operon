@@ -240,6 +240,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'fileRepeatCustomFolder',
 	'estimateAutoReallocation',
 	'trackerSplitSessionsAtMidnight',
+	'trackerStopOnObsidianQuit',
 	'reminderCatchUpWindowMinutes',
 	'reminderNoticeDurationSeconds',
 	'reminderAutoPinDueTasks',
@@ -400,7 +401,11 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 }
 
 export interface OperonAutomationPackageV1 {
-	taskAutomationPolicy: VersionedStoreSlice<TaskAutomationPolicyStoreSettings>;
+	taskAutomationPolicy: VersionedStoreSlice<
+		Omit<TaskAutomationPolicyStoreSettings, 'trackerStopOnObsidianQuit'> & {
+			trackerStopOnObsidianQuit?: boolean;
+		}
+	>;
 }
 
 export interface OperonIntegrationsPackageV1 {
@@ -802,6 +807,8 @@ export function buildOperonDataPackageFromSettings(
 				fileRepeatCustomFolder: normalized.fileRepeatCustomFolder,
 				estimateAutoReallocation: false,
 				trackerSplitSessionsAtMidnight: normalized.trackerSplitSessionsAtMidnight,
+				// Keep the off default absent on disk so old packages remain unchanged.
+				...(normalized.trackerStopOnObsidianQuit ? { trackerStopOnObsidianQuit: true } : {}),
 				reminderCatchUpWindowMinutes: normalized.reminderCatchUpWindowMinutes,
 				reminderNoticeDurationSeconds: normalized.reminderNoticeDurationSeconds,
 				reminderAutoPinDueTasks: normalized.reminderAutoPinDueTasks,

@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Выберите, что происходит при клике на описание задачи в боковой панели истории сессий времени.",
 		"trackerClickJumpToSource": "Перейти к источнику",
 		"trackerClickOpenTaskEditor": "Открыть редактор задач",
+		"trackerStopOnObsidianQuit": "Останавливать таймер при выходе из Obsidian",
+		"trackerStopOnObsidianQuitDesc": "Сохраняет сеанс текущей задачи при обычном выходе из Obsidian на этом устройстве. Действует для FlowTime и TrackTime.",
 		"trackerSplitSessionsAtMidnight": "Разделять сессии в полночь",
 		"trackerSplitSessionsAtMidnightDesc": "Если сессия трекера переходит на новый день, сохранять её как отдельные ежедневные диапазоны трекера для более чистой истории и отчётности.",
 		"trackerShowStatusBarTimer": "Показывать активный таймер в строке состояния",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Operon 상태 dock에 대기 시 재생 버튼, 추적 중에는 활성 타이머를 표시합니다.",
       "trackerSplitSessionsAtMidnight": "자정에 세션 분할",
       "trackerSplitSessionsAtMidnightDesc": "추적 세션이 다음 날로 이어지면 기록과 보고를 명확히 하도록 날짜별 추적 범위로 나누어 저장합니다.",
+      "trackerStopOnObsidianQuit": "Obsidian 종료 시 타이머 중지",
+      "trackerStopOnObsidianQuitDesc": "이 기기에서 Obsidian을 정상 종료할 때 실행 중인 작업의 세션을 저장합니다. FlowTime과 TrackTime에 적용됩니다.",
       "trackerTaskDescriptionClickAction": "작업 설명 클릭 동작",
       "trackerTaskDescriptionClickActionDesc": "시간 세션 기록 사이드바에서 작업 설명을 클릭할 때의 동작을 선택합니다.",
       "trackerTitle": "시간 추적",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "6609030b0e628fa157e2fefee967441fdcc081a786a031b096bb271bba889d5f"
+  "sourceVersion": "efd47f37ae079dfbac98fbe9843d38ecfc15aaceb37940d5a2f4e309dd7cec6a"
 }

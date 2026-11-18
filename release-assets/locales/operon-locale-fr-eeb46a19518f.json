@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Afficher le bouton de démarrage au repos et le minuteur actif dans le dock de statut Operon.",
       "trackerSplitSessionsAtMidnight": "Fractionner les sessions à minuit",
       "trackerSplitSessionsAtMidnightDesc": "Lorsqu'une session de suivi passe à un nouveau jour, la stocker sous forme de plages de suivi distinctes par jour pour un historique et des rapports plus clairs.",
+      "trackerStopOnObsidianQuit": "Arrêter le minuteur à la fermeture d’Obsidian",
+      "trackerStopOnObsidianQuitDesc": "Enregistre la session de la tâche active lors de la fermeture normale d’Obsidian sur cet appareil. S’applique à FlowTime et TrackTime.",
       "trackerTaskDescriptionClickAction": "Action au clic sur la description de la tâche",
       "trackerTaskDescriptionClickActionDesc": "Choisissez ce qui se passe lorsque vous cliquez sur une description de tâche dans la barre latérale d'historique des sessions de suivi.",
       "trackerTitle": "Suivi",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7d0f681e95348b84e401bc9d13420edc0378d62a09043d42c62cc4db64d1a62d"
+  "sourceVersion": "60e85e60ec0261e1395eb9fc5fe61ed4cb90785050584f53866eda12581e4842"
 }

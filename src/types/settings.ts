@@ -2145,6 +2145,7 @@ export interface OperonSettings extends TaskCardSettings {
 	trackerHistoryDays: number;
 	trackerShowStatusBarTimer: boolean;
 	trackerSplitSessionsAtMidnight: boolean;
+	trackerStopOnObsidianQuit: boolean;
 	trackerTaskDescriptionClickAction: TrackerTaskDescriptionClickAction;
 	flowTimeMode: FlowTimeMode;
 	flowTimeSessionMinutes: number;
@@ -2670,6 +2671,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 		trackerHistoryDays: 7,
 				trackerShowStatusBarTimer: true,
 		trackerSplitSessionsAtMidnight: false,
+		trackerStopOnObsidianQuit: false,
 				trackerTaskDescriptionClickAction: 'openTaskEditor',
 				flowTimeMode: 'tracktime',
 				flowTimeSessionMinutes: 25,

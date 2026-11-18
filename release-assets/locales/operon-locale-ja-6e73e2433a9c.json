@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Operonステータスドックに、待機中は開始ボタン、計測中はタイマーを表示します。",
       "trackerSplitSessionsAtMidnight": "深夜0時でセッションを分割",
       "trackerSplitSessionsAtMidnightDesc": "トラッカーセッションが新しい日にまたがるとき、より整理された履歴とレポートのために、日ごとに別々のトラッカー範囲として保存します。",
+      "trackerStopOnObsidianQuit": "Obsidian の終了時にタイマーを停止",
+      "trackerStopOnObsidianQuitDesc": "このデバイスで Obsidian を通常終了すると、実行中のタスクのセッションを保存します。FlowTime と TrackTime に適用されます。",
       "trackerTaskDescriptionClickAction": "タスク説明のクリックアクション",
       "trackerTaskDescriptionClickActionDesc": "タイムセッション履歴サイドバー内でタスクの説明をクリックしたときの動作を選択します。",
       "trackerTitle": "トラッカー",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "abea0d3793946dc397c89b085baa0e4d9f2909d8a3e71760eb5f2acfad985e09"
+  "sourceVersion": "3127281e9d7dcc8cb5629122d58c7efce5a6be20404f880c640ebc4e6a9824b5"
 }

@@ -1638,6 +1638,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Choose what happens when you click a task description inside the Time Session History sidebar.",
 		"trackerClickJumpToSource": "Jump to source",
 		"trackerClickOpenTaskEditor": "Open task editor",
+		"trackerStopOnObsidianQuit": "Stop timer when Obsidian quits",
+		"trackerStopOnObsidianQuitDesc": "Save the running task’s session when Obsidian exits normally on this device. The setting applies to FlowTime and TrackTime.",
 		"trackerSplitSessionsAtMidnight": "Split sessions at midnight",
 		"trackerSplitSessionsAtMidnightDesc": "When a tracker session crosses into a new day, store it as separate per-day tracker ranges for cleaner history and reporting.",
 		"trackerShowStatusBarTimer": "Show active timer in status bar",

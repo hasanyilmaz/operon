@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { Platform, TFile } from 'obsidian';
+import { TaskWriter } from '../src/core/task-writer';
+import { scanFileWithMappings } from '../src/indexer/file-scanner';
+import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
+import { preflightOperonSettingsBackupRestoreV1 } from '../src/core/settings-backup-preflight';
+import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackage } from '../src/storage/operon-data-package';
 import { ActiveTrackerStore } from '../src/storage/active-tracker-store';
 import { WriteQueue } from '../src/storage/write-queue';
 import { TimeTracker } from '../src/systems/time-tracker';
@@ -38,20 +44,28 @@ async function store(adapter = new Adapter(), initial?: ActiveTrackerRecord[]) {
  const value = new ActiveTrackerStore({ vault: { adapter, configDir: 'config' } } as never, new WriteQueue());
  await value.load(); return { value, adapter };
 }
-function trackerFixture(value: ActiveTrackerStore) {
+function trackerFixture(value: ActiveTrackerStore, localStorage = new Map<string, unknown>()) {
  const intervals = new Set<() => void>();
  Object.defineProperty(globalThis,'activeWindow',{configurable:true,value:{setInterval:(f:()=>void)=>{intervals.add(f);return f;},clearInterval:(f:()=>void)=>intervals.delete(f)}});
  const tasks = new Map<string,IndexedTask>(['task-a','task-b'].map(id=>[id,{operonId:id,description:id,checkbox:'open',fieldValues:{},primary:{format:'inline',filePath:`${id}.md`,lineNumber:0}} as IndexedTask]));
  const writes: Array<{id:string;fields:Record<string,string>}> = [];
  let writerGate: ReturnType<typeof deferred> | null = null;
  const settings = {...DEFAULT_SETTINGS,pipelines:[],defaultPipelineName:''};
- const tracker = new TimeTracker({} as never,{getTask:(id:string)=>tasks.get(id),getAllTasks:()=>[...tasks.values()],reindexFilePath:async()=>{},hasDuplicateOperonIdConflict:()=>false} as never,
-  {writeTaskFields:async(id:string,fields:Record<string,string>)=>{ if(writerGate) { const gate=writerGate;writerGate=null;await gate.promise; } writes.push({id,fields});Object.assign(tasks.get(id)!.fieldValues,fields);return true;}} as never,
+ const app = {
+  loadLocalStorage: (key: string) => localStorage.get(key) ?? null,
+  saveLocalStorage: (key: string, data: unknown) => {
+   if (data === null) localStorage.delete(key);
+   else localStorage.set(key, data);
+  },
+ };
+ let rejectTaskWrite = false;
+ const tracker = new TimeTracker(app as never,{getTask:(id:string)=>tasks.get(id),getAllTasks:()=>[...tasks.values()],reindexFilePath:async()=>{},hasDuplicateOperonIdConflict:()=>false} as never,
+  {writeTaskFields:async(id:string,fields:Record<string,string>, options?: { canCommit?: () => boolean; expectedFieldValues?: Record<string, string> })=>{ if(writerGate) { const gate=writerGate;writerGate=null;await gate.promise; } if (rejectTaskWrite || options?.canCommit?.() === false || Object.entries(options?.expectedFieldValues ?? {}).some(([key, expected]) => (tasks.get(id)?.fieldValues[key] ?? '') !== expected)) return false; writes.push({id,fields});Object.assign(tasks.get(id)!.fieldValues,fields);return true;}} as never,
   value,()=>settings,undefined,async()=>{});
  const events: Array<{event:string;source:string}> = []; let created = 0;
  tracker.subscribe((event,context)=>events.push({event,source:context?.source??'local'}));
  tracker.subscribeSessionCreated(()=>created++);
- return {tracker,tasks,writes,events,intervals,get created(){return created;},setWriterGate:(gate:ReturnType<typeof deferred>)=>{writerGate=gate;}};
+ return {tracker,tasks,writes,events,intervals,settings,localStorage,rejectTaskWrite:()=>{rejectTaskWrite=true;},get created(){return created;},setWriterGate:(gate:ReturnType<typeof deferred>)=>{writerGate=gate;}};
 }
 
 test('two stores receive start, switch, unassigned and stop without echo writes',async()=>{
@@ -267,4 +281,296 @@ test('hung provider read releases the transition queue, rejects its late snapsho
   h.adapter.files.set(file,text([record('task-b','b')]));gate.resolve();for(let i=0;i<10;i++)await Promise.resolve();
   assert.equal(h.value.getActiveForUser(),null);assert.equal(await f.tracker.refreshExternalState(),'changed');assert.equal(f.tracker.getActiveState()?.operonId,'task-b');
  }finally{f.tracker.destroy();Object.defineProperty(globalThis,'window',{configurable:true,value:originalWindow});}
+});
+
+function quitBatch() {
+	const callbacks: Array<() => Promise<void>> = [];
+	return { callbacks, add: (run: () => Promise<void>) => callbacks.push(run) };
+}
+
+function setupDesktopQuitTest() {
+	Object.defineProperty(Platform, 'isDesktopApp', { configurable: true, value: true });
+}
+
+for (const [source, format] of [['flowtime', 'inline'], ['editor', 'yaml']] as const) {
+	for (const enabled of [false, true]) {
+		test(`quit handles ${source} on ${format} with the setting ${enabled ? 'on' : 'off'}`, async () => {
+			setupDesktopQuitTest();
+			const h = await store();
+			const f = trackerFixture(h.value);
+			try {
+				const task = f.tasks.get('task-a')!;
+				task.primary.format = format;
+				task.fieldValues.status = 'Project.In_Progress';
+				assert.equal(await f.tracker.start(task.operonId, source, start), true);
+				f.settings.trackerStopOnObsidianQuit = enabled;
+				const batch = quitBatch();
+				f.tracker.scheduleStopOnQuit(batch, end);
+				f.tracker.scheduleStopOnQuit(batch, '2026-11-04T10:25:00');
+				assert.equal(batch.callbacks.length, enabled ? 1 : 0);
+				assert.equal(f.writes.length, 0);
+				for (const run of batch.callbacks) await run();
+				assert.equal(f.writes.length, enabled ? 1 : 0);
+				assert.equal(h.value.getActiveForUser()?.taskId ?? null, enabled ? null : task.operonId);
+				assert.equal(task.fieldValues.status, 'Project.In_Progress');
+				if (enabled) {
+					assert.equal(task.fieldValues.duration, '60');
+					assert.equal(task.fieldValues.datetimeModified, end);
+					assert.equal(f.localStorage.size, 0);
+				}
+			} finally { f.tracker.destroy(); }
+		});
+	}
+}
+
+test('quit preserves local ownership across reload and uses existing midnight splitting', async () => {
+	setupDesktopQuitTest();
+	const h = await store();
+	const first = trackerFixture(h.value);
+	assert.equal(await first.tracker.start('task-a', 'flowtime', '2026-11-04T23:59:00'), true);
+	first.tracker.destroy();
+	assert.equal(first.writes.length, 0);
+	const reopened = trackerFixture(h.value, first.localStorage);
+	try {
+		reopened.settings.trackerStopOnObsidianQuit = true;
+		reopened.settings.trackerSplitSessionsAtMidnight = true;
+		await reopened.tracker.resumeFromIndex();
+		const quit = quitBatch();
+		reopened.tracker.scheduleStopOnQuit(quit, '2026-11-05T00:01:00');
+		assert.equal(quit.callbacks.length, 1);
+		await quit.callbacks[0]();
+		assert.equal(reopened.tracker.getTaskSessions('task-a').length, 2);
+		assert.equal(reopened.tasks.get('task-a')?.fieldValues.duration, '120');
+		assert.equal(h.value.getActiveForUser(), null);
+	} finally { reopened.tracker.destroy(); }
+});
+
+test('quit leaves remote, unknown and unassigned timers running', async () => {
+	setupDesktopQuitTest();
+	const h = await store(new Adapter(), [record()]);
+	const f = trackerFixture(h.value);
+	try {
+		f.settings.trackerStopOnObsidianQuit = true;
+		const quit = quitBatch();
+		await f.tracker.resumeFromIndex({ migrateLegacy: true });
+		assert.equal(await f.tracker.start('task-a', 'flowtime', start), true, 'Idempotent start must not claim ownership');
+		f.tracker.scheduleStopOnQuit(quit, end);
+		assert.equal(quit.callbacks.length, 0);
+		assert.equal(await f.tracker.stop('manual', end), true);
+		assert.equal(await f.tracker.startUnassigned('flowtime', start), true);
+		f.tracker.scheduleStopOnQuit(quit, end);
+		assert.equal(quit.callbacks.length, 0);
+		assert.equal(f.tracker.getActiveState()?.isUnassigned, true);
+		assert.equal(await f.tracker.start('task-b', 'flowtime', start), true);
+		f.tracker.scheduleStopOnQuit(quit, end);
+		assert.equal(quit.callbacks.length, 1);
+		await quit.callbacks[0]();
+		assert.equal(h.value.getActiveForUser(), null);
+	} finally { f.tracker.destroy(); }
+});
+
+test('quit refuses a replacement even when sync reuses the old active record id', async () => {
+	setupDesktopQuitTest();
+	const h = await store();
+	const f = trackerFixture(h.value);
+	try {
+		f.settings.trackerStopOnObsidianQuit = true;
+		await f.tracker.start('task-a', 'flowtime', start);
+		const quit = quitBatch();
+		f.tracker.scheduleStopOnQuit(quit, end);
+		assert.equal(quit.callbacks.length, 1);
+		const active = h.value.getActiveForUser()!;
+		h.adapter.files.set(file, text([{ ...active, taskId: 'task-b' }]));
+		await quit.callbacks[0]();
+		assert.equal(h.value.getActiveForUser()?.taskId, 'task-b');
+		assert.equal(f.writes.length, 0);
+		assert.equal(h.adapter.writes, 1);
+	} finally { f.tracker.destroy(); }
+});
+
+test('manual Stop and quit share one session write', async () => {
+	setupDesktopQuitTest();
+	const h = await store();
+	const f = trackerFixture(h.value);
+	try {
+		await f.tracker.start('task-a', 'editor', start);
+		f.settings.trackerStopOnObsidianQuit = true;
+		const quit = quitBatch();
+		f.tracker.scheduleStopOnQuit(quit, end);
+		const manual = f.tracker.stop('manual', end);
+		await Promise.all([manual, quit.callbacks[0]()]);
+		assert.equal(f.writes.length, 1);
+		assert.equal(h.value.getActiveForUser(), null);
+	} finally { f.tracker.destroy(); }
+});
+
+for (const mode of ['task-write', 'tracker-clear'] as const) {
+	test(`quit preserves the active timer on ${mode} failure`, async () => {
+		setupDesktopQuitTest();
+		const h = await store();
+		const f = trackerFixture(h.value);
+		try {
+			await f.tracker.start('task-a', 'editor', start);
+			f.settings.trackerStopOnObsidianQuit = true;
+			if (mode === 'task-write') f.rejectTaskWrite();
+			else h.adapter.writeFails = true;
+			const quit = quitBatch();
+			f.tracker.scheduleStopOnQuit(quit, end);
+			await quit.callbacks[0]();
+			assert.equal(h.value.getActiveForUser()?.taskId, 'task-a');
+			assert.equal(f.writes.length, mode === 'task-write' ? 0 : 1);
+			if (mode === 'tracker-clear') {
+				h.adapter.writeFails = false;
+				assert.equal(await f.tracker.stop('manual', end), true);
+				assert.equal(f.writes.length, 1);
+				assert.equal(h.value.getActiveForUser(), null);
+			}
+		} finally { f.tracker.destroy(); }
+	});
+}
+
+test('quit compares the previous tracker history before saving over an edit', async () => {
+	setupDesktopQuitTest();
+	const h = await store();
+	const f = trackerFixture(h.value);
+	try {
+		await f.tracker.start('task-a', 'editor', start);
+		f.settings.trackerStopOnObsidianQuit = true;
+		const gate = deferred();
+		f.setWriterGate(gate);
+		const entered = deferred();
+		f.tracker.subscribe(event => { if (event === 'transition') entered.resolve(); });
+		const quit = quitBatch();
+		f.tracker.scheduleStopOnQuit(quit, end);
+		const pending = quit.callbacks[0]();
+		await entered.promise;
+		const existingHistory = '2026-11-04T08:00:00/2026-11-04T09:00:00';
+		f.tasks.get('task-a')!.fieldValues.trackers = existingHistory;
+		gate.resolve();
+		await pending;
+		assert.equal(f.tasks.get('task-a')!.fieldValues.trackers, existingHistory);
+		assert.equal(h.value.getActiveForUser()?.taskId, 'task-a');
+		assert.equal(f.writes.length, 0);
+	} finally { f.tracker.destroy(); }
+});
+
+test('quit preference survives the automation package and selected General backup restore', () => {
+	const source = { ...DEFAULT_SETTINGS, trackerStopOnObsidianQuit: true };
+	const pack = buildOperonDataPackageFromSettings(source);
+	assert.equal(pack.automation.taskAutomationPolicy.trackerStopOnObsidianQuit, true);
+	assert.equal(composeOperonSettingsFromDataPackage(pack, DEFAULT_SETTINGS).trackerStopOnObsidianQuit, true);
+	const disabled = buildOperonDataPackageFromSettings({
+		...composeOperonSettingsFromDataPackage(pack, DEFAULT_SETTINGS),
+		trackerStopOnObsidianQuit: false,
+	});
+	assert.equal(Object.prototype.hasOwnProperty.call(disabled.automation.taskAutomationPolicy, 'trackerStopOnObsidianQuit'), false);
+	assert.equal(composeOperonSettingsFromDataPackage(disabled, DEFAULT_SETTINGS).trackerStopOnObsidianQuit, false);
+	const { trackerStopOnObsidianQuit: _current, ...legacy } = pack.automation.taskAutomationPolicy;
+	for (const policy of [legacy, { ...legacy, trackerStopOnObsidianQuit: 'true' }]) {
+		const old = { ...pack, automation: { taskAutomationPolicy: policy } } as unknown as typeof pack;
+		assert.equal(composeOperonSettingsFromDataPackage(old, DEFAULT_SETTINGS).trackerStopOnObsidianQuit, false);
+	}
+	const backup = exportOperonSettingsBackupJsonV1({
+		settings: source,
+		source: { pluginVersion: '4.7.0', obsidianVersion: '1.13.7', dataPackageSchemaVersion: pack.schemaVersion },
+		createdAt: '2026-11-18T10:00:00.000Z',
+	});
+	assert.equal(backup.ok, true, backup.diagnostics.map(item => item.message).join('\n'));
+	if (!backup.ok) return;
+	const restored = preflightOperonSettingsBackupRestoreV1({
+		sourceJson: backup.json,
+		targetSnapshot: {
+			settings: DEFAULT_SETTINGS, dataPackageSchemaVersion: pack.schemaVersion,
+			settingsVersion: DEFAULT_SETTINGS.settingsVersion,
+			canonicalWritesSuspended: false, canonicalWriteSuspensionReason: null,
+		},
+		selectedGroups: ['general'],
+	});
+	assert.equal(restored.restorePlan?.candidateSettings.trackerStopOnObsidianQuit, true);
+});
+
+for (const format of ['inline', 'yaml'] as const) {
+	test(`quit writes one real ${format} session without changing task status or body`, async () => {
+		setupDesktopQuitTest();
+		const { value } = await store();
+		const settings = { ...DEFAULT_SETTINGS, pipelines: [], defaultPipelineName: '', trackerStopOnObsidianQuit: true };
+		const File = TFile as unknown as new (path: string) => TFile;
+		const note = Object.assign(new File('Task.md'), { stat: { mtime: 1, size: 0 } });
+		const taskId = 'task001';
+		const state = 'Project.In_Progress';
+		let content = format === 'yaml'
+			? `---\noperonId: ${taskId}\nstatus: ${state}\n---\nBody stays\n`
+			: `- [ ] Timer {{operonId:: ${taskId}}} {{status:: ${state}}}\nBody stays\n`;
+		let writes = 0;
+		const local = new Map<string, unknown>();
+		const app = {
+			loadLocalStorage: (key: string) => local.get(key),
+			saveLocalStorage: (key: string, data: unknown) => local.set(key, data),
+			vault: {
+				getAbstractFileByPath: (path: string) => path === note.path ? note : null,
+				read: async () => content,
+				cachedRead: async () => content,
+				process: async (_file: TFile, edit: (text: string) => string) => {
+					const next = edit(content);
+					if (next !== content) writes++;
+					content = next;
+					return content;
+				},
+			},
+		};
+		const task: IndexedTask = {
+			operonId: taskId, description: 'Timer', checkbox: 'open', tags: [],
+			datetimeModified: '', tier: 'hot',
+			fieldValues: { status: state }, primary: { format, filePath: note.path, lineNumber: 0 },
+		};
+		const indexer = {
+			getTask: (id: string) => id === taskId ? task : null,
+			hasDuplicateOperonIdConflict: () => false,
+			reindexFilePath: async () => {
+				const scan = await scanFileWithMappings(app as never, note, settings.keyMappings, content);
+				const fields = format === 'yaml' ? scan.yamlTask?.fieldValues
+					: Object.fromEntries(scan.inlineTasks[0]?.fields.map(field => [field.key, field.value]) ?? []);
+				assert.ok(fields);
+				task.fieldValues = fields;
+			},
+		};
+		const writer = new TaskWriter(app as never, indexer as never, settings.keyMappings);
+		const tracker = new TimeTracker(app as never, indexer as never, writer, value, () => settings, undefined, async () => {});
+		try {
+			assert.equal(await tracker.start(taskId, 'flowtime', start), true);
+			const quit = quitBatch();
+			tracker.scheduleStopOnQuit(quit, end);
+			await quit.callbacks[0]();
+			assert.equal(writes, 1);
+			assert.equal(task.fieldValues.trackers, `${start}/${end}`);
+			assert.equal(task.fieldValues.status, state);
+			assert.match(content, /Body stays\n$/);
+			assert.equal(value.getActiveForUser(), null);
+		} finally { tracker.destroy(); }
+	});
+}
+
+test('quit saves the old session without clearing a synced replacement that reuses its record id', async () => {
+	setupDesktopQuitTest();
+	const h = await store(new Adapter(), []);
+	const f = trackerFixture(h.value);
+	try {
+		f.settings.trackerStopOnObsidianQuit = true;
+		assert.equal(await f.tracker.start('task-a', 'flowtime', start), true);
+		const previous = h.value.getActiveForUser()!;
+		const replacement = { ...previous, taskId: 'task-b', start: end, updatedAt: end };
+		h.adapter.beforeProcess = () => {
+			h.adapter.beforeProcess = null;
+			h.adapter.files.set(file, text([replacement]));
+		};
+		const quit = quitBatch();
+		f.tracker.scheduleStopOnQuit(quit, end);
+		await quit.callbacks[0]();
+		assert.deepEqual(h.value.getActiveForUser(), replacement);
+		assert.deepEqual(f.writes.map(write => write.id), ['task-a']);
+
+		assert.equal(await f.tracker.stop('manual', '2026-11-04T10:02:00'), true);
+		assert.deepEqual(f.writes.map(write => write.id), ['task-a', 'task-b']);
+		assert.equal(h.value.getActiveForUser(), null);
+	} finally { f.tracker.destroy(); }
 });

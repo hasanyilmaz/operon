@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "Im Operon-Status-Dock im Leerlauf die Starttaste und beim Erfassen den aktiven Timer anzeigen.",
       "trackerSplitSessionsAtMidnight": "Erfassungssitzungen um Mitternacht aufteilen",
       "trackerSplitSessionsAtMidnightDesc": "Wenn eine Erfassungssitzung in einen neuen Tag übergeht, wird sie für einen übersichtlicheren Verlauf und bessere Berichte als separate Erfassungssitzungen pro Tag gespeichert.",
+      "trackerStopOnObsidianQuit": "Timer beim Beenden von Obsidian stoppen",
+      "trackerStopOnObsidianQuitDesc": "Speichert die Sitzung der laufenden Aufgabe, wenn Obsidian auf diesem Gerät regulär beendet wird. Gilt für FlowTime und TrackTime.",
       "trackerTaskDescriptionClickAction": "Klickaktion für Aufgabenbeschreibung",
       "trackerTaskDescriptionClickActionDesc": "Wähle, was passiert, wenn du auf eine Aufgabenbeschreibung in der Seitenleiste „Verlauf der Erfassungssitzungen“ klickst.",
       "trackerTitle": "Zeiterfassung",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "d4663b179d3479e1f5255c236c749d6a6016d1043e572aef5b673e6fd754cbec"
+  "sourceVersion": "df87098578cd7a894d5b27b89efe169a27ddf765e82c0e5d957f8c5bf17ce06f"
 }

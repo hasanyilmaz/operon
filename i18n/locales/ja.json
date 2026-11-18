@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "タイムセッション履歴サイドバー内でタスクの説明をクリックしたときの動作を選択します。",
 		"trackerClickJumpToSource": "ソースへジャンプ",
 		"trackerClickOpenTaskEditor": "タスクエディターを開く",
+		"trackerStopOnObsidianQuit": "Obsidian の終了時にタイマーを停止",
+		"trackerStopOnObsidianQuitDesc": "このデバイスで Obsidian を通常終了すると、実行中のタスクのセッションを保存します。FlowTime と TrackTime に適用されます。",
 		"trackerSplitSessionsAtMidnight": "深夜0時でセッションを分割",
 		"trackerSplitSessionsAtMidnightDesc": "トラッカーセッションが新しい日にまたがるとき、より整理された履歴とレポートのために、日ごとに別々のトラッカー範囲として保存します。",
 		"trackerShowStatusBarTimer": "ステータスバーにアクティブなタイマーを表示",

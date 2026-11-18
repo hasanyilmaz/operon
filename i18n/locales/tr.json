@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Zaman Oturumları Geçmişi yan paneli içinde görev açıklamasına tıklayınca ne olacağını seç.",
 		"trackerClickJumpToSource": "Kaynağa git",
 		"trackerClickOpenTaskEditor": "Görev editörünü aç",
+		"trackerStopOnObsidianQuit": "Obsidian’dan çıkarken sayacı durdur",
+		"trackerStopOnObsidianQuitDesc": "Bu cihazda Obsidian normal şekilde kapanırken aktif görevin oturumunu kaydet. Ayar FlowTime ve TrackTime için geçerlidir.",
 		"trackerSplitSessionsAtMidnight": "Oturumları gece yarısında böl",
 		"trackerSplitSessionsAtMidnightDesc": "Bir zaman oturumu yeni güne geçerse, daha temiz geçmiş ve raporlama için ayrı günlük zaman aralıkları olarak sakla.",
 		"trackerShowStatusBarTimer": "Aktif zamanlayıcıyı durum çubuğunda göster",

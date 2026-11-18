@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3854,
-  "keyFingerprint": "7b38c063be57e51f232a27c842ca3366921e01a0f88498ef027a936a3e3cfe1c",
+  "keyCount": 3856,
+  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -3013,6 +3013,8 @@
       "trackerShowStatusDockTimerDesc": "在 Operon 狀態停靠列中，閒置時顯示開始按鈕，計時時顯示作用中計時器。",
       "trackerSplitSessionsAtMidnight": "在午夜拆分會話",
       "trackerSplitSessionsAtMidnightDesc": "當追蹤器會話跨入新的一天時，將其儲存為按天分隔的追蹤器範圍，以獲得更清晰的歷史和報告。",
+      "trackerStopOnObsidianQuit": "結束 Obsidian 時停止計時器",
+      "trackerStopOnObsidianQuitDesc": "在這部裝置上正常結束 Obsidian 時，儲存目前任務的計時工作階段。適用於 FlowTime 和 TrackTime。",
       "trackerTaskDescriptionClickAction": "任務描述點選操作",
       "trackerTaskDescriptionClickActionDesc": "選擇在時間會話歷史側邊欄中點選任務描述時執行的操作。",
       "trackerTitle": "追蹤器",
@@ -3899,5 +3901,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "c8660154d7b1c53f2f24779d0316e63c397ce33223b32aa499daf394b1a64cb5"
+  "sourceVersion": "6c3efade8c65ed4d07dea923f16443ebf4cde68e1da2505a6a8a8cbec43a3bac"
 }

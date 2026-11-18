@@ -405,6 +405,7 @@ function pickTaskAutomationPolicyStoreSettings(settings: OperonSettings): TaskAu
 		fileRepeatCustomFolder: settings.fileRepeatCustomFolder,
 		estimateAutoReallocation: false,
 		trackerSplitSessionsAtMidnight: settings.trackerSplitSessionsAtMidnight,
+		trackerStopOnObsidianQuit: settings.trackerStopOnObsidianQuit,
 		reminderCatchUpWindowMinutes: settings.reminderCatchUpWindowMinutes,
 		reminderNoticeDurationSeconds: settings.reminderNoticeDurationSeconds,
 		reminderAutoPinDueTasks: settings.reminderAutoPinDueTasks,
@@ -2166,7 +2167,11 @@ export class OperonStorage {
 		this.contextualMenuStore.loadFromPackage(dataPackage.ui.contextualMenu);
 		this.taskUiPreferenceStore.loadFromPackage(dataPackage.ui.taskUiPreferences);
 		this.taskCreationProfileStore.loadFromPackage(dataPackage.ui.taskCreationProfile);
-		this.taskAutomationPolicyStore.loadFromPackage(dataPackage.automation.taskAutomationPolicy);
+		const policy = dataPackage.automation.taskAutomationPolicy;
+		this.taskAutomationPolicyStore.loadFromPackage({
+			...policy,
+			trackerStopOnObsidianQuit: policy.trackerStopOnObsidianQuit === true,
+		});
 	}
 
 	async inspectIndexV8RecoveryRequired(): Promise<IndexV8RecoveryMarkerStatus> {

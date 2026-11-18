@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Wähle, was passiert, wenn du auf eine Aufgabenbeschreibung in der Seitenleiste „Verlauf der Erfassungssitzungen“ klickst.",
 		"trackerClickJumpToSource": "Zur Quelle springen",
 		"trackerClickOpenTaskEditor": "Aufgaben-Editor öffnen",
+		"trackerStopOnObsidianQuit": "Timer beim Beenden von Obsidian stoppen",
+		"trackerStopOnObsidianQuitDesc": "Speichert die Sitzung der laufenden Aufgabe, wenn Obsidian auf diesem Gerät regulär beendet wird. Gilt für FlowTime und TrackTime.",
 		"trackerSplitSessionsAtMidnight": "Erfassungssitzungen um Mitternacht aufteilen",
 		"trackerSplitSessionsAtMidnightDesc": "Wenn eine Erfassungssitzung in einen neuen Tag übergeht, wird sie für einen übersichtlicheren Verlauf und bessere Berichte als separate Erfassungssitzungen pro Tag gespeichert.",
 		"trackerShowStatusBarTimer": "Aktiven Timer in der Statusleiste anzeigen",

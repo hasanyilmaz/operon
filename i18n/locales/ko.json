@@ -1652,6 +1652,8 @@
 		"trackerTaskDescriptionClickActionDesc": "시간 세션 기록 사이드바에서 작업 설명을 클릭할 때의 동작을 선택합니다.",
 		"trackerClickJumpToSource": "원본으로 이동",
 		"trackerClickOpenTaskEditor": "작업 편집기 열기",
+		"trackerStopOnObsidianQuit": "Obsidian 종료 시 타이머 중지",
+		"trackerStopOnObsidianQuitDesc": "이 기기에서 Obsidian을 정상 종료할 때 실행 중인 작업의 세션을 저장합니다. FlowTime과 TrackTime에 적용됩니다.",
 		"trackerSplitSessionsAtMidnight": "자정에 세션 분할",
 		"trackerSplitSessionsAtMidnightDesc": "추적 세션이 다음 날로 이어지면 기록과 보고를 명확히 하도록 날짜별 추적 범위로 나누어 저장합니다.",
 		"trackerShowStatusBarTimer": "상태 표시줄에 활성 타이머 표시",

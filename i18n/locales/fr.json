@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Choisissez ce qui se passe lorsque vous cliquez sur une description de tâche dans la barre latérale d'historique des sessions de suivi.",
 		"trackerClickJumpToSource": "Aller à la source",
 		"trackerClickOpenTaskEditor": "Ouvrir l'éditeur de tâche",
+		"trackerStopOnObsidianQuit": "Arrêter le minuteur à la fermeture d’Obsidian",
+		"trackerStopOnObsidianQuitDesc": "Enregistre la session de la tâche active lors de la fermeture normale d’Obsidian sur cet appareil. S’applique à FlowTime et TrackTime.",
 		"trackerSplitSessionsAtMidnight": "Fractionner les sessions à minuit",
 		"trackerSplitSessionsAtMidnightDesc": "Lorsqu'une session de suivi passe à un nouveau jour, la stocker sous forme de plages de suivi distinctes par jour pour un historique et des rapports plus clairs.",
 		"trackerShowStatusBarTimer": "Afficher le minuteur actif dans la barre d'état",

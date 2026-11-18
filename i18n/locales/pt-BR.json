@@ -1639,6 +1639,8 @@
 		"trackerTaskDescriptionClickActionDesc": "Escolha o que acontece quando você clica em uma descrição de tarefa dentro da barra lateral Histórico de Sessão.",
 		"trackerClickJumpToSource": "Ir para a origem",
 		"trackerClickOpenTaskEditor": "Abrir Editor de Tarefa",
+		"trackerStopOnObsidianQuit": "Parar o temporizador ao sair do Obsidian",
+		"trackerStopOnObsidianQuitDesc": "Salva a sessão da tarefa ativa quando o Obsidian é encerrado normalmente neste dispositivo. Aplica-se ao FlowTime e ao TrackTime.",
 		"trackerSplitSessionsAtMidnight": "Dividir sessões à meia-noite",
 		"trackerSplitSessionsAtMidnightDesc": "Quando uma sessão do rastreador passar para um novo dia, armazene-a em intervalos separados por dia para um histórico e relatórios mais organizados.",
 		"trackerShowStatusBarTimer": "Mostrar o cronômetro ativo na barra de status",
