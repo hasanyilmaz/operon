@@ -8,12 +8,15 @@ import {
 	scrollChildIntoView,
 } from './common';
 
+import { bindPropertyIcon } from '../property-icon-presentation';
+
 export interface SearchableOptionPickerItem {
 	value: string;
 	label: string;
 	description?: string;
 	trailingText?: string;
 	icon?: string | null;
+	resolveIcon?: () => string;
 	iconColor?: string;
 	title?: string;
 	group?: string | null;
@@ -167,17 +170,18 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 		if (match.title) item.title = match.title;
 
-		if (match.icon) {
+		if (match.icon || match.resolveIcon) {
 			item.addClass('has-icon');
 			const iconEl = item.createSpan('operon-searchable-option-picker-item-icon');
 			if (match.iconColor) iconEl.style.setProperty('color', match.iconColor);
-			setIcon(iconEl, match.icon);
+			if (match.resolveIcon) bindPropertyIcon(iconEl, match.resolveIcon);
+			else if (match.icon) setIcon(iconEl, match.icon);
 		}
 		if (match.description) {
 			const content = item.createSpan('operon-searchable-option-picker-item-content');
 			content.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
 			content.createSpan({ cls: 'operon-searchable-option-picker-item-description', text: match.description });
-		} else if (match.icon || match.trailingText !== undefined) {
+		} else if (match.icon || match.resolveIcon || match.trailingText !== undefined) {
 			item.createSpan({ cls: 'operon-searchable-option-picker-item-label', text: match.label || match.value });
 		} else {
 			item.textContent = match.label || match.value;

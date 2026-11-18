@@ -11,6 +11,7 @@ export interface SearchableFieldPickerOption {
 	trailingText?: string;
 	type?: string;
 	icon?: string | null;
+	resolveIcon?: () => string;
 	iconColor?: string;
 	group?: string | null;
 	groupLabel?: string | null;
@@ -58,6 +59,7 @@ export function showSearchableFieldPicker<TField extends SearchableFieldPickerOp
 		description: fieldOption.secondaryLabel,
 		trailingText: fieldOption.trailingText,
 		icon: fieldOption.icon,
+		resolveIcon: fieldOption.resolveIcon,
 		iconColor: fieldOption.iconColor,
 		group: fieldOption.group,
 		groupLabel: fieldOption.groupLabel,

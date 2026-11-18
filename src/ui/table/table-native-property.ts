@@ -1,7 +1,7 @@
 import { parseTableTaskListValue } from './table-value-adapter';
 import type { TableValueResolver } from './table-value-cache';
 import type { TableColumn } from '../../types/table';
-import { getNativePropertyIcon, getCheckboxPropertyTypeIcon } from '../custom-field-surfaces';
+import { getSourcePropertyIcon } from '../../core/property-icons';
 import { TFile, type App } from 'obsidian';
 import type { IndexedTask } from '../../types/fields';
 import type { OperonSettings } from '../../types/settings';
@@ -16,7 +16,7 @@ import {
  type TableFilePropertySnapshot, type TableFilePropertyField, type TableFilePropertyCellValue,
 } from './table-file-property';
 
-type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions'>;
+type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions' | 'vaultPropertyIcons'>;
 const rowCells = new WeakMap<NativeTaskProperties, Map<string, TableFilePropertyCellValue>>();
 const empty = (): TableFilePropertyCellValue => ({ present: false, rawValue: undefined, normalizedValue: '' });
 /** Adapt the shared sparse index; no view-owned source cache or source reads. */
@@ -39,7 +39,8 @@ function projectSnapshot(app: App, base: TableFilePropertySnapshot, tasks: reado
   const reason = index.reason(name);
   fields.set(name.toLowerCase(), { key: previous?.key ?? encodeTableFilePropertyColumnKey(name)!, label: previous?.label ?? name,
    propertyName: name, type, sourceType: knownType ? candidateTypeResolver.resolve(name, [sample]).sourceType : previous?.sourceType ?? candidateTypeResolver.resolve(name, [sample]).sourceType, group: 'fileProperty',
-   readonly: !!reason, readOnlyReason: reason, icon: reason === 'automatic' ? 'shield-alert' : type === 'checkbox' ? getCheckboxPropertyTypeIcon(settings.keyMappings, name) : getNativePropertyIcon(settings.keyMappings, name, getTableFilePropertyTypeIcon(type)),
+   readonly: !!reason, readOnlyReason: reason,
+   get icon() { return reason === 'automatic' ? 'shield-alert' : getSourcePropertyIcon(settings, name, getTableFilePropertyTypeIcon(type)); },
    aliases: previous?.aliases ?? [name], sourceFileCount: previous?.sourceFileCount ?? 0 });
  };
  for (const field of base.fields) add(field.propertyName, field);
@@ -65,7 +66,7 @@ function projectSnapshot(app: App, base: TableFilePropertySnapshot, tasks: reado
   return cell;
  };
  // Data signatures, rather than index generations, suppress redundant sort/search invalidations.
- const signature = JSON.stringify([[...fields.values()], tasks.map(task => [task.operonId, rows.get(task.operonId)?.available, rows.get(task.operonId)?.revision])]);
+ const signature = JSON.stringify([[...fields.values()].map(({ icon: _icon, ...field }) => field), tasks.map(task => [task.operonId, rows.get(task.operonId)?.available, rows.get(task.operonId)?.revision])]);
  return {
   revision: base.revision, signature, fields: [...fields.values()], getCell,
   getCandidates(key) {

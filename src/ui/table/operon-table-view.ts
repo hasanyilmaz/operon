@@ -58,6 +58,7 @@ import {
 	applyTablePresetFieldAliases,
 	buildEffectiveTableTaskFieldCatalog,
 	getTableTaskField,
+	resolveTableFieldIcon,
 	getTableTaskFieldLabel,
 	getTableColumnLabel,
 	isEditableTableTaskFieldKey,
@@ -3219,7 +3220,7 @@ export class OperonTableView extends FileView {
 		const content = canOpenParentTask && !Platform.isDesktopApp
 			? `${baseContent}\n${formatTableParentTaskTooltipContent(rawParentTaskId, getTaskSourceOpenModifierLabel())}`
 			: baseContent;
-		const fallbackIcon = field?.icon ?? 'text';
+		const fallbackIcon = () => field ? resolveTableFieldIcon(field, renderState.settings) : 'text';
 		const isTaskIconColumn = column.key === 'taskIcon';
 		const isTaskDataTypeColumn = column.key === TABLE_TASK_DATA_TYPE_COLUMN_KEY;
 		const compactDuration = formatTableCompactDuration(column.key, renderState.valueResolver.getRawValue(task, column.key));
@@ -3256,14 +3257,14 @@ export class OperonTableView extends FileView {
 			return;
 		}
 		const icon = renderTableIconOnlyCell(cell, {
-			icon: locationVisual?.icon ?? resolveTableIconOnlyCellIcon(
+			icon: () => locationVisual?.icon ?? resolveTableIconOnlyCellIcon(
 				column.key,
 				value,
 				resolveTableValueCellIcon(
 					column.key,
 					value,
 					renderState.settings,
-					fallbackIcon,
+					fallbackIcon(),
 					renderState.valueResolver.workflowStatusIdentityIndex,
 				),
 			),

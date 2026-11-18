@@ -63,6 +63,7 @@ import {
 	resolveTaskStatusIconColorForTask,
 } from '../../core/task-color-source';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import { bindPropertyIcon } from '../property-icon-presentation';
 import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
 import { stripFilterViewOnlyOptions } from '../../systems/calendar-filter-materialization';
 import {
@@ -2991,7 +2992,7 @@ export class KanbanView extends ItemView {
 		preview.draggable = false;
 		bindKanbanNotePreviewDragShield(preview);
 		const icon = preview.createSpan('operon-kanban-card-note-preview-icon');
-		setIcon(icon, getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
+		bindPropertyIcon(icon, () => getConfiguredKeyMappingIcon('note', settings.keyMappings) || 'notebook-pen');
 		const noteText = preview.createSpan('operon-kanban-card-note-preview-text');
 		renderCompactTaskMarkdown(noteText, {
 			value: noteValue,

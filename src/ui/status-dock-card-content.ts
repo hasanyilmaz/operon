@@ -8,6 +8,32 @@ import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip, cleanupOperonHoverTooltips } from './operon-hover-tooltip';
 import { formatStatusDockSeconds } from './status-dock-duration';
+import { isTaskSourceOpenModifierClick } from './task-source-open-modifier';
+
+/** Task titles retain their activation, while card padding only handles a source shortcut. */
+export function bindStatusDockTaskClick(card: HTMLElement, title: HTMLElement, open: (inNewTab: boolean) => void): () => void {
+ const opensSource = (event: MouseEvent) => event.button === 0 && event.detail > 0 && isTaskSourceOpenModifierClick(event);
+ const onTitleClick = (event: MouseEvent) => {
+  event.stopPropagation();
+  if (event.defaultPrevented) return;
+  const inNewTab = opensSource(event);
+  if (inNewTab) event.preventDefault();
+  open(inNewTab);
+ };
+ // Independent controls stop propagation in their own handlers.
+ const onCardClick = (event: MouseEvent) => {
+  if (event.defaultPrevented || !opensSource(event)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  open(true);
+ };
+ title.addEventListener('click', onTitleClick);
+ card.addEventListener('click', onCardClick);
+ return () => {
+  title.removeEventListener('click', onTitleClick);
+  card.removeEventListener('click', onCardClick);
+ };
+}
 
 export function statusDockSessionKey(session: TrackerSession): string {
  return JSON.stringify([session.operonId, session.start, session.end, session.sessionIndex]);

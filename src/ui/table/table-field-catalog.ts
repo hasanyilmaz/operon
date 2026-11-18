@@ -1,6 +1,7 @@
 import { TASK_INFO_CHIPS } from '../../core/task-info-chips';
 import type { NativePropertyReadOnlyReason } from '../../core/task-editor-native-properties';
 import { getConfiguredKeyMappingIcon } from '../../core/key-mapping-icons';
+import { getSourcePropertyIcon } from '../../core/property-icons';
 import { getCurrentLang, t } from '../../core/i18n';
 import { getManagedCustomFieldMappings, getManagedCustomKeyMapping } from '../../core/managed-task-fields';
 import { CANONICAL_KEYS, type ValueType } from '../../types/keys';
@@ -11,7 +12,7 @@ import {
 	type OperonSettings,
 } from '../../types/settings';
 import { TABLE_TASK_DATA_TYPE_COLUMN_KEY, TABLE_TASK_TREE_COLUMN_KEY, type TableColumn } from '../../types/table';
-import { decodeTableFilePropertyColumnKey } from './table-file-property';
+import { decodeTableFilePropertyColumnKey, getTableFilePropertyTypeIcon } from './table-file-property';
 export { isTablePlainTextField } from './table-text-edit-route';
 
 export type TableTaskFieldGroup =
@@ -42,7 +43,7 @@ export interface TableTaskField {
 export const PROJECT_SERIAL_TABLE_FIELD_KEY = 'projectSerial';
 export const TABLE_WORKFLOW_PIPELINE_FIELD_KEY = 'workflow.pipeline';
 
-type TableTaskFieldCatalogSettings = Pick<OperonSettings, 'keyMappings'>;
+type TableTaskFieldCatalogSettings = Pick<OperonSettings, 'keyMappings' | 'vaultPropertyIcons'>;
 
 const TABLE_FIELD_LABEL_OVERRIDES: Record<string, string> = {
 	progress: 'Subtask Progress',
@@ -123,6 +124,7 @@ export function buildEffectiveTableTaskFieldCatalog(
 		catalog.push(propertyName && field.group === 'fileProperty'
 			? {
 				...field,
+				icon: resolveTableFieldIcon(field, settings),
 				sourceLabel: field.sourceLabel?.trim() || propertyName,
 				aliases: [...new Set([...field.aliases, propertyName])],
 			}
@@ -138,7 +140,7 @@ export function buildEffectiveTableTaskFieldCatalog(
 			label: propertyName,
 			type: 'text',
 			group: 'fileProperty',
-			icon: 'text',
+			icon: getSourcePropertyIcon(settings, propertyName, 'text'),
 			readonly: true,
 			aliases: [propertyName, key, `note.${propertyName}`],
 			sourceLabel: propertyName,
@@ -146,6 +148,13 @@ export function buildEffectiveTableTaskFieldCatalog(
 		});
 	}
 	return catalog;
+}
+
+export function resolveTableFieldIcon(field: TableTaskField, settings: TableTaskFieldCatalogSettings): string {
+	if (field.readOnlyReason === 'automatic') return 'shield-alert';
+	const name = decodeTableFilePropertyColumnKey(field.key);
+	return name ? getSourcePropertyIcon(settings, name, getTableFilePropertyTypeIcon(field.type))
+		: getTableTaskField(field.key, settings)?.icon ?? field.icon;
 }
 
 export function buildTableGroupSortFieldCatalog(

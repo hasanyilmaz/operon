@@ -1,6 +1,7 @@
 import { cloneKanbanAxesPayload, decodeKanbanAxes, projectKanbanLegacyAxes } from '../core/kanban-axis-model';
 import { normalizeLightboxSizes, type LightboxSizes } from '../core/lightbox-size';
 import { DEFAULT_FILENAME_RULE, normalizeFilenameRule, type FilenameRule, type FileTaskTitleChangeMode } from '../core/filename-rule';
+import { normalizeVaultPropertyIcons } from '../core/task-icon-value';
 import { normalizeBackgroundDimming } from '../core/background-dimming';
 import { TASK_INFO_CHIPS, isTaskInfoChipKey } from '../core/task-info-chips';
 import { cloneInlinePropertyDefinitions, validateInlinePropertyDefinitions } from '../core/inline-property-definitions';
@@ -1535,7 +1536,7 @@ export function normalizeChildTaskInheritanceStatusPipelineSource(
 	return fallback;
 }
 
-function getDefaultKeyMappingIcon(canonicalKey: string): string {
+export function getDefaultKeyMappingIcon(canonicalKey: string): string {
 	return normalizeTaskIconValue(DEFAULT_KEY_MAPPING_ICONS[canonicalKey] ?? '');
 }
 
@@ -1679,6 +1680,8 @@ export interface OperonSettings extends TaskCardSettings {
 	statusDockVisible?: boolean;
 	statusDockSections?: StatusDockSection[];
 	statusDockClickAction?: TaskFinderResultBehavior;
+	miniCalendarClickAction?: TaskFinderResultBehavior;
+	miniCalendarViewMode?: 'continuous' | 'month';
 	/** Legacy choices remain readable for backup compatibility; the dock has one mode. */
 	statusDockMode?: StatusDockMode;
 	statusDockAlignment?: StatusDockAlignment;
@@ -1808,6 +1811,7 @@ export interface OperonSettings extends TaskCardSettings {
 	taskCreatorToolbar: TaskCreatorToolbarItem[];
 	/** Desktop Task Editor section order and optional custom titles. */
 	taskEditorSections: TaskEditorSection[];
+	vaultPropertyIcons?: Record<string, string>;
 	/** Desktop workspace preferences, captured at the start of each opening. */
 	taskEditorPosition: 'left' | 'right';
 	taskEditorFileShowSource: boolean;
@@ -2141,6 +2145,7 @@ export interface OperonSettings extends TaskCardSettings {
 	trackerHistoryDays: number;
 	trackerShowStatusBarTimer: boolean;
 	trackerSplitSessionsAtMidnight: boolean;
+	trackerStopOnObsidianQuit: boolean;
 	trackerTaskDescriptionClickAction: TrackerTaskDescriptionClickAction;
 	flowTimeMode: FlowTimeMode;
 	flowTimeSessionMinutes: number;
@@ -2666,6 +2671,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 		trackerHistoryDays: 7,
 				trackerShowStatusBarTimer: true,
 		trackerSplitSessionsAtMidnight: false,
+		trackerStopOnObsidianQuit: false,
 				trackerTaskDescriptionClickAction: 'openTaskEditor',
 				flowTimeMode: 'tracktime',
 				flowTimeSessionMinutes: 25,
@@ -4531,6 +4537,9 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskDailyNoteAddScheduledDate;
 	out.taskCreatorToolbar = normalizeTaskCreatorToolbar(src.taskCreatorToolbar);
 	out.taskEditorSections = normalizeTaskEditorSections(src.taskEditorSections);
+	const vaultPropertyIcons = normalizeVaultPropertyIcons(src.vaultPropertyIcons);
+	if (vaultPropertyIcons) out.vaultPropertyIcons = vaultPropertyIcons;
+	else delete out.vaultPropertyIcons;
 	if (typeof src.statusDockCreatorStartsTimer === 'boolean') out.statusDockCreatorStartsTimer = src.statusDockCreatorStartsTimer;
 	else delete out.statusDockCreatorStartsTimer;
 	if (typeof src.statusDockShowSeconds === 'boolean') out.statusDockShowSeconds = src.statusDockShowSeconds;
@@ -4546,6 +4555,10 @@ export function migrateSettings(raw: unknown): OperonSettings {
 	else delete out.statusDockSections;
 	if (src.statusDockClickAction === 'source' || src.statusDockClickAction === 'source-and-editor' || src.statusDockClickAction === 'editor') out.statusDockClickAction = src.statusDockClickAction;
 	else delete out.statusDockClickAction;
+	if (src.miniCalendarClickAction === 'source' || src.miniCalendarClickAction === 'source-and-editor' || src.miniCalendarClickAction === 'editor') out.miniCalendarClickAction = src.miniCalendarClickAction;
+	else delete out.miniCalendarClickAction;
+	if (src.miniCalendarViewMode === 'continuous' || src.miniCalendarViewMode === 'month') out.miniCalendarViewMode = src.miniCalendarViewMode;
+	else delete out.miniCalendarViewMode;
 	if (src.statusDockMode === 'compact' || src.statusDockMode === 'detailed') out.statusDockMode = src.statusDockMode;
 	else delete out.statusDockMode;
 	if (src.statusDockAlignment === 'left' || src.statusDockAlignment === 'center' || src.statusDockAlignment === 'right') out.statusDockAlignment = src.statusDockAlignment;

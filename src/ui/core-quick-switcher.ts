@@ -15,22 +15,7 @@ interface CoreQuickSwitcherOptions {
 	onOpenError: (error: unknown) => void;
 }
 
-type FileOpening = { kind: 'source' } | { kind: 'properties'; showSource: boolean } | { kind: 'editor'; id: string; showSource: boolean };
-
-export function resolveCoreQuickSwitcherFileOpening(file: TFile, behavior: ActiveBehavior, context: {
-	isExcalidraw: (file: TFile) => boolean;
-	basesEnabled: () => boolean;
-	/** Undefined means task identity is uncertain. Null means this file has no File Task. */
-	fileTaskId: (file: TFile) => string | null | undefined;
-}): FileOpening | null {
-	if (file.extension === 'table') return { kind: 'source' };
-	if (file.extension === 'base') return context.basesEnabled() ? { kind: 'source' } : null;
-	if (file.extension !== 'md' || context.isExcalidraw(file)) return null;
-	if (behavior === 'source') return { kind: 'source' };
-	const id = context.fileTaskId(file);
-	if (id === undefined) return null;
-	return id === null ? { kind: 'properties', showSource: behavior === 'source-and-editor' } : { kind: 'editor', id, showSource: behavior === 'source-and-editor' };
-}
+export { resolveFileLightboxOpening as resolveCoreQuickSwitcherFileOpening } from './file-lightbox-opening';
 
 function isPlainSelection(event: unknown): boolean {
 	if (!isRecord(event) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;

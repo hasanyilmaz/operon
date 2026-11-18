@@ -4,6 +4,7 @@ import type { ProjectSerialDisplay } from '../core/project-serials';
 import { getTimeScopedFieldValues } from '../core/time-scope-values';
 import { type App, Platform, setIcon } from 'obsidian';
 import { createOwnerElement } from '../core/dom-compat';
+import { bindPropertyIcon } from './property-icon-presentation';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
 import { parseRepeatRule, type RepeatRule } from '../core/repeat-rule';
 import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
@@ -137,6 +138,9 @@ export interface InlineTaskCompactChipEntry {
 	reminderItem?: CompactReminderItemRef;
 	reminderState?: ReminderDisplayState;
 }
+
+// Rendering bindings stay out of the card data used for equality and cache keys.
+const compactPropertyIcons = new WeakMap<InlineTaskCompactChipEntry, () => string>();
 
 export interface CompactReminderItemRef {
 	fieldKey: ReminderPickerFieldKey;
@@ -458,6 +462,7 @@ export function buildInlineTaskCompactChipEntries(
 				);
 				if (match?.taskIcon) {
 					entry.icon = match.taskIcon;
+					compactPropertyIcons.delete(entry);
 				}
 				entry.locationCoordinate = coordinate.canonical;
 				entry.locationMarkerIcon = match
@@ -569,7 +574,7 @@ function pushCustomChipEntries(
 	entries: InlineTaskCompactChipEntry[],
 	mapping: KeyMapping,
 	fieldValues: Record<string, string>,
-	settings: Pick<OperonSettings, 'dateDisplayFormat' | 'timeFormat'>,
+	settings: Pick<OperonSettings, 'dateDisplayFormat' | 'timeFormat' | 'keyMappings'>,
 	iconOnly: boolean,
 ): void {
 	const rawValue = normalizeCustomFieldRawValue((fieldValues as Record<string, unknown>)[mapping.canonicalKey]);
@@ -579,7 +584,7 @@ function pushCustomChipEntries(
 			const wikiLink = parseCompactWikiLinkValue(value);
 			const displayValue = wikiLink?.displayValue ?? value;
 			const label = truncateCompactLabel(displayValue);
-			const entry = createCustomEntry(mapping, label, iconOnly, wikiLink?.linkTarget ?? null);
+			const entry = createCustomEntry(settings, mapping, label, iconOnly, wikiLink?.linkTarget ?? null);
 			entry.rawValue = value;
 			if (label !== displayValue) {
 				entry.tooltipTitle = getCustomFieldLabel(mapping);
@@ -599,7 +604,7 @@ function pushCustomChipEntries(
 			? formatUiDate(rawValue, settings)
 			: wikiLink?.displayValue ?? rawValue;
 	const label = truncateCompactLabel(displayValue);
-	const entry = createCustomEntry(mapping, label, iconOnly, null, wikiLink?.linkTarget ?? null);
+	const entry = createCustomEntry(settings, mapping, label, iconOnly, null, wikiLink?.linkTarget ?? null);
 	if (fullDatetime) {
 		entry.tooltipContent = fullDatetime;
 		entry.ariaLabel = fullDatetime;
@@ -749,7 +754,9 @@ export function createInlineTaskCompactChipElement(
 
 	const iconEl = createOwnerElement(chip, 'span');
 	iconEl.className = 'operon-inline-compact-chip-icon';
-	setIcon(iconEl, entry.icon);
+	const resolveIcon = compactPropertyIcons.get(entry);
+	if (resolveIcon) bindPropertyIcon(iconEl, resolveIcon);
+	else setIcon(iconEl, entry.icon);
 	chip.appendChild(iconEl);
 
 	const labelEl = createOwnerElement(chip, 'span');
@@ -771,10 +778,11 @@ function createEntry(
 	externalUrl: string | null = null,
 	externalRawValue: string | null = null,
 ): InlineTaskCompactChipEntry {
-	return {
+	const resolveIcon = () => getConfiguredKeyMappingIcon(key, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[key];
+	const entry: InlineTaskCompactChipEntry = {
 		key,
 		label,
-		icon: getConfiguredKeyMappingIcon(key, settings.keyMappings) || INLINE_TASK_COMPACT_FALLBACK_ICONS[key],
+		icon: resolveIcon(),
 		iconOnly,
 		interactive,
 		colorRole,
@@ -783,6 +791,8 @@ function createEntry(
 		externalUrl,
 		externalRawValue,
 	};
+	compactPropertyIcons.set(entry, resolveIcon);
+	return entry;
 }
 
 function getCompactFieldLabel(settings: OperonSettings, key: string): string {
@@ -791,16 +801,18 @@ function getCompactFieldLabel(settings: OperonSettings, key: string): string {
 }
 
 function createCustomEntry(
+	settings: Pick<OperonSettings, 'keyMappings'>,
 	mapping: KeyMapping,
 	label: string,
 	iconOnly = false,
 	linkTarget: string | null = null,
 	previewLinkTarget: string | null = linkTarget,
 ): InlineTaskCompactChipEntry {
-	return {
+	const resolveIcon = () => getConfiguredKeyMappingIcon(mapping.canonicalKey, settings.keyMappings) || getCustomFieldIcon({ type: mapping.type });
+	const entry: InlineTaskCompactChipEntry = {
 		key: mapping.canonicalKey,
 		label,
-		icon: getCustomFieldIcon(mapping),
+		icon: resolveIcon(),
 		iconOnly,
 		interactive: true,
 		colorRole: 'default',
@@ -808,6 +820,8 @@ function createCustomEntry(
 		previewLinkTarget,
 		tooltipTitle: getCustomFieldLabel(mapping),
 	};
+	compactPropertyIcons.set(entry, resolveIcon);
+	return entry;
 }
 
 function hasCompactValue(

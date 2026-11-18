@@ -19,6 +19,7 @@ import {
 	prepareTaskSortContext,
 } from '../core/filter-display';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getSourcePropertyIcon, type PropertyIconSettings } from '../core/property-icons';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks, shouldAutoExpandFilterTaskSubtasks } from './filter-task-row';
 import { t } from '../core/i18n';
@@ -66,7 +67,7 @@ import {
 } from '../core/raw-yaml-property';
 import { parseLocalTimestamp } from '../core/local-time';
 import type { IndexedTask } from '../types/fields';
-import type { TableFilePropertyField, TableFilePropertySnapshot } from './table/table-file-property';
+import { getTableFilePropertyTypeIcon, type TableFilePropertyField, type TableFilePropertySnapshot } from './table/table-file-property';
 import { getFilterGroupDisplayLabel, resolveFilterGroupDateDisplay } from './filter-group-label';
 import { cleanupOperonRenderRoot } from './render-root-cleanup';
 import { requestCloseTextFieldPopoversForOwner } from './text-field-popover';
@@ -833,6 +834,10 @@ export class FilterSetModal extends Modal {
 		return options;
 	}
 
+	private getPropertyIconSettings(): PropertyIconSettings {
+		return this.evalDeps?.getSettings() ?? this.options.getSettings?.() ?? { keyMappings: this.keyMappings };
+	}
+
 	private buildFilePropertyFieldOption(
 		field: TableFilePropertyField,
 		typeDriftFrom?: FilterFieldType,
@@ -844,12 +849,15 @@ export class FilterSetModal extends Modal {
 				savedType: this.getFilePropertyTypeLabel(typeDriftFrom),
 			})
 			: t('filterSets', 'filePropertySourceType', { type: typeLabel });
+		const resolveIcon = () => field.readOnlyReason === 'automatic' ? 'shield-alert'
+			: getSourcePropertyIcon(this.getPropertyIconSettings(), field.propertyName, getTableFilePropertyTypeIcon(field.type));
 		return {
 			field: field.key,
 			label: field.propertyName,
 			secondaryLabel,
 			type: field.type,
-			icon: field.icon,
+			icon: resolveIcon(),
+			resolveIcon,
 			group: 'fileProperty',
 			groupLabel: getFilterFieldGroupLabel('fileProperty'),
 			groupOrder: getFilterFieldGroupOrder('fileProperty'),
@@ -873,12 +881,14 @@ export class FilterSetModal extends Modal {
 		type: FilterFieldType,
 	): FilterFieldPickerOption {
 		const typeLabel = this.getFilePropertyTypeLabel(type);
+		const resolveIcon = () => getSourcePropertyIcon(this.getPropertyIconSettings(), propertyName, getTableFilePropertyTypeIcon(type));
 		return {
 			field: key,
 			label: propertyName,
 			secondaryLabel: t('filterSets', 'filePropertyUnavailable', { type: typeLabel }),
 			type,
-			icon: getFilterFieldTypeIcon(type),
+			icon: resolveIcon(),
+			resolveIcon,
 			group: 'fileProperty',
 			groupLabel: getFilterFieldGroupLabel('fileProperty'),
 			groupOrder: getFilterFieldGroupOrder('fileProperty'),
@@ -968,28 +978,21 @@ export class FilterSetModal extends Modal {
 			pseudoFields.push(buildFilterFieldPickerOption(PLAIN_CHECKBOXES_FILTER_FIELD_KEY, t('filterSets', 'fieldPlainCheckboxes'), 'checkbox', 'workflow', 'list-checks'));
 		}
 
-		const mappingCandidates = getFilterSetFieldPickerMappingCandidates(this.keyMappings);
-		const builtInMappings = mappingCandidates
-			.filter(candidate => candidate.kind === 'builtIn')
-			.map(({ mapping }) => buildFilterFieldPickerOption(
-				mapping.canonicalKey,
-				mapping.visiblePropertyName,
-				mapping.type,
-				resolveFilterFieldGroupForMapping(mapping),
-				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
-			));
-		const customMappings = mappingCandidates
-			.filter(candidate => candidate.kind === 'custom')
-			.map(({ mapping }) => buildFilterFieldPickerOption(
-				mapping.canonicalKey,
-				mapping.visiblePropertyName,
-				mapping.type,
-				'custom',
-				getConfiguredKeyMappingIcon(mapping.canonicalKey, this.keyMappings) || getFilterFieldTypeIcon(mapping.type),
-			));
+		const mappings = getFilterSetFieldPickerMappingCandidates(this.getPropertyIconSettings().keyMappings)
+			.map(({ kind, mapping }) => {
+				const resolveIcon = () => getConfiguredKeyMappingIcon(mapping.canonicalKey, this.getPropertyIconSettings().keyMappings)
+					|| getFilterFieldTypeIcon(mapping.type);
+				return {
+					...buildFilterFieldPickerOption(
+						mapping.canonicalKey, mapping.visiblePropertyName, mapping.type,
+						kind === 'custom' ? 'custom' : resolveFilterFieldGroupForMapping(mapping), resolveIcon(),
+					),
+					resolveIcon,
+				};
+			});
 		const filePropertyFields = this.getFilePropertyFieldOptions();
 
-		return [...pseudoFields, ...builtInMappings, ...customMappings, ...filePropertyFields].sort(compareFilterFieldPickerOptions);
+		return [...pseudoFields, ...mappings, ...filePropertyFields].sort(compareFilterFieldPickerOptions);
 	}
 
 	private getProjectSerialScopeOptions(): SearchableMultiOption[] {

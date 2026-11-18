@@ -1,3 +1,4 @@
+import { editorMappedProperties } from '../src/core/file-task-property-draft';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -235,18 +236,18 @@ function methods(file: string, names: string[], dependencies: Record<string, unk
  const code = ts.transpileModule(`class Fixture { ${selected} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  return new Function(...Object.keys(dependencies), `${code}; return Fixture;`)(...Object.values(dependencies));
 }
-const Content = methods('src/ui/task-editor-content.ts', ['taskSourceState', 'refreshTaskSource', 'applyCanonicalSaveCommit'], {
+const Content = methods('src/ui/task-editor-content.ts', ['taskSourceState', 'editorChangedKeys', 'refreshTaskSource', 'applyCanonicalSaveCommit'], {
  mergeTaskEditorSource, taskEditorChangedKeys,
  areStringArraysEqual: (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b),
  mergeCanonicalFieldValuesIntoDraft: (current: Record<string,string>, submitted: Record<string,string>, canonical: Record<string,string>) => mergeTaskEditorSource(state(canonical), state(current), taskEditorChangedKeys(state(submitted), state(current))).fieldValues,
 });
 function contentFixture() {
  const editor = new Content(); let refreshes = 0;
- Object.assign(editor, { taskOperonId: 'task1', sourceRefreshGeneration: 0, description: baseline.description, persistedDescription: baseline.description,
+ Object.assign(editor, { removedMappedProperties: new Map(), removedInlineProperties: new Map(), taskOperonId: 'task1', sourceRefreshGeneration: 0, description: baseline.description, persistedDescription: baseline.description,
   checkbox: baseline.checkbox, persistedCheckbox: baseline.checkbox, tags: [...baseline.tags], persistedTags: [...baseline.tags],
   fieldValues: { ...baseline.fieldValues }, persistedFieldValues: { ...baseline.fieldValues }, existingTask: { filePath: 'old.md', lineNumber: 4 },
   readSource: async () => ({ state: { ...state({ priority: 'B', note: 'new note' }), description: 'remote' }, filePath: 'new.md', lineNumber: 17 }),
-  getCompactTextSourcePath: () => 'old.md', syncExistingTaskCanonicalState() {}, refreshDesktopPropertyRows: () => refreshes++, refreshSchedulingDraftControls() {}, refreshMobileCoreButtons() {}, refreshFileTaskName() {},
+  getCompactTextSourcePath: () => 'old.md', syncExistingTaskCanonicalState() {}, updateMobileNoteVisibility() {}, refreshWorkflowPickerSurfaceValues: () => refreshes++, refreshSchedulingDraftControls() {}, refreshMobileCoreButtons() {}, refreshFileTaskName() {},
  });
  return { editor, refreshes: () => refreshes };
 }
@@ -284,7 +285,7 @@ test('missing source keeps the complete draft and baseline', async () => {
 // Rebase integration runs the real source scanner, parser and serializer against an unsaved native buffer.
 
 const Main = methods('main.ts', ['readTaskEditorSource', 'saveSynchronizedTaskEditor', 'parsedTaskFromIndexed'], {
- TFile, scanFileWithMappings, readTaskEditorMarkdown, readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches,
+ TFile, scanFileWithMappings, readTaskEditorMarkdown, readFileTaskPropertyDocument, fileTaskPropertyIdentityMatches, editorMappedProperties, getNativePropertyIndex: () => ({getTypes: () => ({})}),
  isManagedYamlCanonicalKey, resolveWorkflowStatus, createTaskEditorMarkdownSource, mergeTaskEditorSource, serializeTask,
  localNow: () => '2026-01-01T10:00:00',
  buildTaskEditorOperonField: (key: string, value: string) => ({ key, value, rawValue: value, sourceKey: key, type: 'text', isCanonical: true, containerRange: { from: 0, to: 0 }, valueRange: { from: 0, to: 0 } }),
@@ -533,4 +534,16 @@ test('delayed save or suggestion for A cannot restore a prompt after B is entere
   await editor.persistEditorState();
   assert.equal(suggestion.current!.filename, expected);
  }
+});
+
+
+test('a pending empty-field removal survives source refresh and retains conflict intent', async () => {
+ const { editor } = contentFixture();
+ editor.fieldValues.contexts = ''; editor.persistedFieldValues.contexts = '';
+ editor.removedMappedProperties.set('contexts', { propertyName: 'Up', expected: { present: true, value: null }, remove: true });
+ editor.readSource = async () => ({ state: state({ contexts: 'external' }), filePath: 'old.md', lineNumber: 4 });
+ await editor.refreshTaskSource();
+ assert.equal(editor.fieldValues.contexts, '');
+ assert.equal(editor.removedMappedProperties.has('contexts'), true);
+ assert.ok(editor.editorChangedKeys(editor.taskSourceState(true), editor.taskSourceState()).includes('contexts'));
 });

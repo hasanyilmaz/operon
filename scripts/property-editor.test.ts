@@ -1,3 +1,8 @@
+import { canApplyFileTaskPropertyChanges, editorMappedProperties } from '../src/core/file-task-property-draft';
+import { TaskWriter } from '../src/core/task-writer';
+import { DEFAULT_SETTINGS } from '../src/types/settings';
+import { mergeInlineEditorSource, patchInlineProperties, type InlinePropertyChange } from '../src/core/inline-property-source';
+import { parseTaskLine } from '../src/core/parser';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseYaml } from 'obsidian';
@@ -100,7 +105,8 @@ test('property mapping checks type declarations, protected fields and duplicate 
  assert.equal(field('Workflow', {}).mapping?.canonicalKey, 'status');
  assert.equal(field('Workflow', { Workflow: 'number' }).reason, 'type-conflict');
  assert.equal(field('Series', {}).reason, 'unavailable');
- assert.equal(field('aliases', { aliases: 'aliases' }).reason, undefined);
+ // Reserved source properties follow the same protection as the Task Editor writer.
+ assert.equal(field('aliases', { aliases: 'aliases' }).reason, 'type-conflict');
  assert.equal(field('status', {}).reason, 'type-conflict');
 });
 
@@ -263,4 +269,107 @@ test('cyclic YAML stays protected without recursive number inspection', () => {
  const document=read('---\nCycle: &cyc [*cyc]\nOther: kept\n---\nBody\n');
  assert.ok(document);assert.ok(document.readonlyNames?.has('Cycle'));
  assert.ok(resolvePropertyEditorField('Cycle',document,[],{}).reason);
+});
+
+
+test('empty removal preserves comments, exact unaffected bytes and YAML order', () => {
+ const source = '\uFEFF---\r\n# top\r\n"Empty": [] # field comment\r\n# next comment\r\nCount: 0\r\nFlag: false\r\n---\r\nBody\r\n';
+ const draft = new PropertyEditorDraft(read(source));
+ assert.equal(draft.edited, false);
+ assert.equal(draft.remove('Count', false), false);
+ assert.equal(draft.remove('Flag', false), false);
+ assert.equal(draft.remove('Empty', false), true);
+ assert.deepEqual(draft.properties.order, ['Count', 'Flag']);
+ const sent = draft.snapshot();
+ const result = planPropertyEditorWrite(source, [], sent);
+ assert.equal(result.status, 'ready');
+ if (result.status !== 'ready') return;
+ assert.equal(result.text, source.replace('"Empty": [] # field comment', '# field comment'));
+ assert.equal(planPropertyEditorWrite(source.replace('[]', '[external]'), [], sent).status, 'conflict');
+ draft.acknowledge(result.properties, sent);
+ assert.equal(draft.edited, false);
+ assert.equal(draft.properties.order.includes('Empty'), false);
+});
+
+test('remove and re-add while deletion saves preserves the new draft and rebases absence', () => {
+ const source = '---\nEmpty: \nOther: preserved\n---\nBody';
+ const draft = new PropertyEditorDraft(read(source));
+ draft.remove('Empty', false);
+ const sent = draft.snapshot();
+ draft.set('Empty', 'new value', true);
+ const removed = planPropertyEditorWrite(source, [], sent);
+ assert.equal(removed.status, 'ready');
+ if (removed.status !== 'ready') return;
+ draft.acknowledge(removed.properties, sent);
+ assert.equal(draft.properties.frontmatter.Empty, 'new value');
+ assert.equal(draft.snapshot()[0].expected.present, false);
+ const restored = planPropertyEditorWrite(removed.text, [], draft.snapshot());
+ assert.equal(restored.status, 'ready');
+ if (restored.status === 'ready') assert.equal(restored.properties.frontmatter.Empty, 'new value');
+});
+
+test('task mapped presence admits only unique editable canonical fields', () => {
+ const mappings = DEFAULT_SETTINGS.keyMappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+ const frontmatter = { operonId: 'abc123', Up: null, datetimeModified: null, datetimeCreated: null, trackers: null };
+ const properties = editorMappedProperties(frontmatter, mappings);
+ assert.deepEqual(Object.keys(properties), ['contexts']);
+ const remove = { propertyName: 'Up', mappedKey: 'contexts', expected: { present: true, value: null }, value: null, remove: true };
+ assert.equal(canApplyFileTaskPropertyChanges(frontmatter, [remove], mappings), true);
+ assert.equal(canApplyFileTaskPropertyChanges({ ...frontmatter, Up: ['external'] }, [remove], mappings), false);
+ assert.equal(canApplyFileTaskPropertyChanges(frontmatter, [{ ...remove, mappedKey: 'operonId', propertyName: 'operonId' }], mappings), false);
+ assert.equal(editorMappedProperties({ Up: null, contexts: null }, mappings).contexts, undefined);
+});
+
+test('File Task empty removal uses the real compound writer and preserves comments', () => {
+ const mappings = DEFAULT_SETTINGS.keyMappings.map(mapping => mapping.canonicalKey === 'contexts' ? { ...mapping, visiblePropertyName: 'Up' } : mapping);
+ const idName = mappings.find(mapping => mapping.canonicalKey === 'operonId')!.visiblePropertyName;
+ const source = '---\n' + idName + ': abc123\nUp: # retain\nOther: original # untouched\n---\nBody\n';
+ const render = (TaskWriter.prototype as unknown as { renderFilePropertyDraft: (...args: unknown[]) => string | null }).renderFilePropertyDraft;
+ const host = { keyMappings: mappings, hooks: {}, stringifyFrontmatterScalar: (TaskWriter.prototype as unknown as { stringifyFrontmatterScalar: (value: unknown) => string | null }).stringifyFrontmatterScalar };
+ const change = { propertyName: 'Up', mappedKey: 'contexts', expected: { present: true, value: null }, value: null, remove: true };
+ const result = render.call(host, source, 'abc123', {}, { changes: [change] }, 'merge');
+ assert.equal(result, source.replace('Up: # retain', '# retain'));
+ const nativeSource = source.replace('Up: # retain', 'Blank: # retain');
+ assert.equal(render.call(host, nativeSource, 'abc123', {}, { changes: [{ propertyName: 'Blank', expected: {present:true,value:null}, value:null, remove:true, preserveSource:true }] }, 'merge'), nativeSource.replace('Blank: # retain', '# retain'));
+
+ assert.equal(render.call(host, source.replace('Up: # retain', 'Up: external # retain'), 'abc123', {}, { changes: [change] }, 'merge'), null);
+ const aliasSource = source.replace('Up: # retain', 'contexts: "[[week]]" # retain');
+ const cleared = render.call(host, aliasSource, 'abc123', { contexts: '' }, { changes: [{ ...change, propertyName: 'contexts', expected: { present: true, value: '[[week]]' }, remove: false }] }, 'replace');
+ assert.equal(cleared, source.replace('Up: # retain', 'contexts: # retain'));
+ assert.equal(editorMappedProperties({ contexts: null }, mappings).contexts.name, 'contexts');
+
+});
+
+test('inline mapped removal preserves other fields and rejects stale or protected source', () => {
+ const mappings = DEFAULT_SETTINGS.keyMappings;
+ const line = '- [ ] Fixture {{operonId:: abc123}} {{contexts:: }} {{note:: Keep}}';
+ const parsed = parseTaskLine(line, 0, '', mappings)!;
+ const field = parsed.fields.find(field => field.key === 'contexts')!;
+ const remove: InlinePropertyChange = { sourceName: field.sourceKey, mappedKey: 'contexts', type: 'list', expected: { present: true, rawValue: field.rawValue }, mutation: { kind: 'remove' } };
+ const result = mergeInlineEditorSource(line, line, parsed.fields, mappings, undefined, [remove]);
+ assert.ok(result);
+ assert.equal(parseTaskLine(result, 0, '', mappings)!.fields.some(field => field.key === 'contexts'), false);
+ assert.equal(parseTaskLine(result, 0, '', mappings)!.fields.find(field => field.key === 'note')!.value, 'Keep');
+ assert.equal(mergeInlineEditorSource(line.replace('contexts:: ', 'contexts:: changed'), line, parsed.fields, mappings, undefined, [remove]), null);
+ assert.throws(() => patchInlineProperties(line, '', 'abc123', [{ ...remove, sourceName: 'operonId', mappedKey: 'operonId' }], mappings));
+});
+
+
+test('legacy custom empties use the mapped path while typed custom empties use only the native path', () => {
+ const mappings: KeyMapping[] = [...DEFAULT_SETTINGS.keyMappings, { canonicalKey:'legacyCustom',visiblePropertyName:'Custom',type:'text',sync:'yes',enabled:true,isSystem:false }];
+ const property = editorMappedProperties({ Custom:null }, mappings).legacyCustom;
+ assert.equal(property.name, 'Custom');
+ const definitions = { version:1 as const,entries:[{ sourceName:'Custom',type:'text' as const,encoding:'vault-v1' as const }] };
+ assert.equal(editorMappedProperties({ Custom:null }, mappings, {}, definitions).legacyCustom, undefined);
+ const change = { propertyName:'Custom',mappedKey:'legacyCustom',expected:{present:true,value:null},value:null,remove:true };
+ assert.equal(canApplyFileTaskPropertyChanges({Custom:null},[change],mappings),true);
+ assert.equal(canApplyFileTaskPropertyChanges({Custom:null},[change],mappings,definitions),false);
+});
+
+
+test('empty built-in Tags retains its actual source name and supports explicit removal', () => {
+ const properties=editorMappedProperties({Tags:[]},DEFAULT_SETTINGS.keyMappings);
+ assert.equal(properties.tags.name,'Tags');
+ assert.equal(canApplyFileTaskPropertyChanges({Tags:[]},[{propertyName:'Tags',mappedKey:'tags',expected:{present:true,value:[]},value:null,remove:true}],DEFAULT_SETTINGS.keyMappings),true);
+ assert.equal(editorMappedProperties({Tags:[],tags:[]},DEFAULT_SETTINGS.keyMappings).tags,undefined);
 });

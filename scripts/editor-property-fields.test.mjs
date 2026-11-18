@@ -20,7 +20,11 @@ for (const path of paths) {
 function subject(names, globals = {}) {
  const source = `class Subject { ${names.map(name => { assert.ok(methods.has(name), name); return methods.get(name); }).join('\n')} }; return new Subject();`;
  const js = ts.transpile(source, { target: ts.ScriptTarget.ES2022 });
- return new Function(...Object.keys(globals), js)(...Object.values(globals));
+ const dependencies = {
+  bindPropertyIcon: (element, resolve) => { const icon = resolve(); if (icon) globals.setIcon?.(element, icon); },
+  ...globals,
+ };
+ return new Function(...Object.keys(dependencies), js)(...Object.values(dependencies));
 }
 for (const [value, expected] of [['138F41', '#138F41'], ['#138F41', '#138F41'], ['invalid', 'var(--interactive-accent)'], ['', 'var(--interactive-accent)']]) {
  test(`Editor accent uses configured color: ${value || 'empty'}`, () => {
@@ -76,7 +80,7 @@ function ruleEditor(values = {}) {
  });
  const states = [['Open',false,false],['Done',true,false],['Cancelled',false,true]];
  Object.assign(editor,{fieldValues:{...values},checkbox:'open',settings:{defaultPipelineName:'Task',pipelines:[{name:'Task', statuses:states.map(([label,isFinished,isCancelled])=>({id:label,label,isFinished,isCancelled,isScheduledTarget:false,isTrackingTarget:false,color:'#000000'}))}]}});
- for(const hook of ['syncDerivedRepeatFieldsFromDraft','refreshSchedulingDraftControls','refreshMobileCoreButtons','refreshWorkflowPickerSurfaceValues']) editor[hook]=()=>{};
+ for(const hook of ['syncDerivedRepeatFieldsFromDraft','refreshSchedulingDraftControls','refreshMobileCoreButtons','refreshWorkflowPickerSurfaceValues','focusClearedProperty']) editor[hook]=()=>{};
  return editor;
 }
 test('Scheduled moves start and end while preserving their times', () => {
@@ -107,13 +111,13 @@ class Element {
  empty(){this.children=[];}setText(text){this.textContent=text;} addClass(...c){c.forEach(x=>this.classes.add(x));}removeClass(c){this.classes.delete(c);}hasClass(c){return this.classes.has(c);}toggleClass(c,on){on?this.classes.add(c):this.classes.delete(c);}addEventListener(name,cb){this.handlers[name]=cb;}appendChild(el){this.children.push(el);}setAttribute(){}
 }
 test('Color picker changes accent immediately and clear restores theme accent',()=>{
- let picker;let edits=0;const container=new Element();
+ let picker;let edits=0;let clearFocus=0;const container=new Element();
  const e=subject(['renderColorControl','getThemeColor','applyThemeColor','appendCanonicalIcon','getCoreFieldIcon'],{t:(_s,key)=>key,setIcon:()=>{},setAccessibleLabelWithoutTooltip:()=>{},showColorPicker:(_anchor,opts)=>picker=opts,getConfiguredKeyMappingIcon:()=> 'palette'});
- Object.assign(e,{fieldValues:{taskColor:'138F41'},settings:{colorPalette:[],keyMappings:[]},createInlineField:()=>container,rootEl:container,shellEl:container,mainPanelEl:container,usesMobileLayout:false,registerSchedulingDraftRefresher:()=>{},markEdited:()=>edits++});
+ Object.assign(e,{focusClearedProperty:()=>clearFocus++,fieldValues:{taskColor:'138F41'},settings:{colorPalette:[],keyMappings:[]},createInlineField:()=>container,rootEl:container,shellEl:container,mainPanelEl:container,usesMobileLayout:false,registerSchedulingDraftRefresher:()=>{},markEdited:()=>edits++});
  e.renderColorControl(container);
  const nodes=[];function visit(n){nodes.push(n);n.children.forEach(visit)}visit(container);const swatch=nodes.find(n=>n.handlers.click);swatch.handlers.click();
  picker.onSelect('112233');assert.equal(e.fieldValues.taskColor,'112233');assert.equal(container['--operon-task-editor-accent'],'#112233');assert.equal(edits,1);
- picker.onClear();assert.equal(e.fieldValues.taskColor,undefined);assert.equal(container['--operon-task-editor-accent'],'var(--interactive-accent)');assert.equal(edits,2);
+ picker.onClear();assert.equal(e.fieldValues.taskColor,undefined);assert.equal(container['--operon-task-editor-accent'],'var(--interactive-accent)');assert.equal(edits,2);assert.equal(clearFocus,1);
 });
 
 const {encodeVaultPropertyValue} = await moduleFrom('src/core/vault-property-codec.ts');
@@ -148,6 +152,14 @@ test('Native picker close/cancel produces no mutation and restores focus',()=>{
  const f=nativePickerFixture();f.e.closeFilePropertyPicker();
  assert.deepEqual(f.mutations,[]);assert.equal(f.focused(),1);assert.equal(f.e.closeFilePropertyPicker,null);
 });
+test('both hosts require confirmation for a pending native list and cancel without adding it',()=>{
+ const e=subject(['confirmNewFileProperty']);
+ assert.equal(e.confirmNewFileProperty({pending:true}),true);
+ assert.equal(e.confirmNewFileProperty({pending:false}),false);
+ const f=nativePickerFixture();f.entry.pending=true;f.entry.baseline={present:false};
+ f.e.closeFilePropertyPicker();
+ assert.equal(f.e.fileProperties.has('Related'),false);assert.deepEqual(f.mutations,[]);
+});
 test('Content notification follows refreshed fields and ignores disposed editors',()=>{
  const order=[];const e=subject(['markEdited','notifyPropertyContentChanged']);
  Object.assign(e,{disposed:false,editVersion:0,desktopPropertyRows:new Map([['color',{}]]),refreshDesktopPropertyRows:()=>order.push('refresh'),onPropertyContentChanged:()=>order.push('notify'),scheduleSave:()=>order.push('save')});
@@ -165,18 +177,19 @@ test('typed native list rendering preserves chip boundaries, item index and remo
  const element=()=>{const e=new Element();e.querySelector=()=>null;e.replaceChildren=()=>e.empty();e.setAttr=()=>{};e.focus=()=>{};e.ownerDocument={win:{createEl:element}};return e;};
  const value=element(),action=element(),row=element();const opened=[],changed=[];
  const entry={field:{key:'Custom',type:'list',icon:'list'},value:['02',2,'a; b'],baseline:{present:true,value:['02',2,'a; b']}};
- const e=subject(['refreshFilePropertyValue','renderCustomFieldSelection','formatCustomFieldDisplayValue','canEditFileProperty'],{
+ const e=subject(['refreshFilePropertyAction','syncPropertyActionState','refreshFilePropertyValue','renderCustomFieldSelection','formatCustomFieldDisplayValue','canEditFileProperty'],{
   isEmptyFilePropertyValue,encodeVaultPropertyValue,setIcon:()=>{},cleanupOperonHoverTooltips:()=>{},setAccessibleLabelWithoutTooltip:()=>{},t:()=>'',
   normalizeCustomFieldRawValue:v=>v??'',getCustomFieldIcon:()=> 'list',
   splitTaskListValue:()=>{throw Error('Typed YAML members must not be split as legacy strings');},
   createInlineTaskCompactChipElement:options=>{const chip=element();chip.textContent=options.label;return chip;},
  });
- Object.assign(e,{fieldValues:{Custom:'"02"; 2; "a; b"'},fileProperties:new Map([['Custom',entry]]),filePropertyRows:new Map([['Custom',{row,action,value}]]),
-  syncFilePropertyRowVisibility:()=>{},bindEditorHoverTooltip:()=>{},bindTruncatedTextTooltip:()=>{},
+ Object.assign(e,{focusClearedProperty:()=>{},fieldValues:{Custom:'"02"; 2; "a; b"'},fileProperties:new Map([['Custom',entry]]),filePropertyRows:new Map([['Custom',{row,action,value}]]),
+  updateEmptyPropertyRemoval:(_row,_name,removable)=>assert.equal(removable,false),
+  syncFilePropertyRowVisibility:()=>{},bindEditorHoverTooltip:()=>{},bindTruncatedTextTooltip:()=>{},resolveNativePropertyIcon:()=> 'list',
   setFilePropertyValue:(name,next)=>changed.push({name,next}),openFilePropertyPicker:(...args)=>opened.push(args)});
  e.refreshFilePropertyValue('Custom');
  assert.deepEqual(value.children.map(chip=>chip.textContent),['"02"','2','"a; b"']);
  const second=value.children[1];second.handlers.click({target:{closest:()=>null}});
  assert.equal(opened[0][0],'Custom');assert.equal(opened[0][4],1);
- second.children[0].handlers.click();assert.deepEqual(changed,[{name:'Custom',next:['02','a; b']}]);
+ second.children[0].handlers.click({preventDefault(){},stopPropagation(){}});assert.deepEqual(changed,[{name:'Custom',next:['02','a; b']}]);
 });

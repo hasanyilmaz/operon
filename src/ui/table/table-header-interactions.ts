@@ -20,6 +20,7 @@ import {
 } from '../../types/table';
 import { t } from '../../core/i18n';
 import { getOwnerDocument, isHTMLElement } from '../../core/dom-compat';
+import { bindPropertyIcon } from '../property-icon-presentation';
 import { setAccessibleLabelWithoutTooltip } from '../accessibility-label';
 import {
 	applyTableColumnGeometryClass,
@@ -39,6 +40,7 @@ import {
 	getEffectiveTableTaskField,
 	getTableTaskField,
 	getTableColumnLabel,
+	resolveTableFieldIcon,
 	type TableTaskField,
 } from './table-field-catalog';
 import {
@@ -304,7 +306,7 @@ function renderTableAdminHeaderCell(cell: HTMLElement, column: TableColumn, sett
 		return;
 	}
 	if (column.key === TABLE_TASK_ICON_COLUMN_KEY) {
-		setIcon(iconEl, settings ? getTableTaskField('taskIcon', settings)?.icon ?? 'icons' : 'icons');
+		bindPropertyIcon(iconEl, () => settings ? getTableTaskField('taskIcon', settings)?.icon ?? 'icons' : 'icons');
 		cell.createSpan({ cls: 'operon-table-header-label', text: t('settings', 'tableShowTaskIcon') });
 		return;
 	}
@@ -335,9 +337,9 @@ function renderTableHeaderLabel(
 			preferredVertical: 'below',
 		});
 	}
-	if (field?.icon) {
+	if (field?.icon && settings) {
 		const iconEl = cell.createSpan('operon-table-header-icon');
-		setIcon(iconEl, field.readOnlyReason === 'automatic' ? 'shield-alert' : field.icon);
+		bindPropertyIcon(iconEl, () => resolveTableFieldIcon(field, settings));
 		iconEl.toggleClass('is-automatic-property', field.readOnlyReason === 'automatic');
 	}
 	if (!iconOnly) {
@@ -752,7 +754,7 @@ function showTableAddColumnPicker(
 	let closePicker: (() => void) | null = null;
 	closePicker = showSearchableFieldPicker(anchor, {
 		value: null,
-		fields: buildTableFieldPickerOptions(fields),
+		fields: buildTableFieldPickerOptions(fields, { settings: renderState.settings ?? undefined }),
 		placeholder: t('table', 'fieldPickerSearchPlaceholder'),
 		ariaLabel: t('table', side === 'left' ? 'addColumnLeft' : 'addColumnRight'),
 		noMatchesText: fields.length === 0 ? t('table', 'noColumnsAvailable') : t('table', 'fieldPickerNoMatches'),

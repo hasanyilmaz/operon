@@ -1,3 +1,4 @@
+import { planFileTaskPropertyWrite, type PropertyEditorChange } from './property-editor-document';
 import { encodeVaultPropertyValue } from './vault-property-codec';
 import type { TaskMarkdownSource } from './task-markdown-source';
 /**
@@ -1541,8 +1542,30 @@ export class TaskWriter {
         for (const mapping of nativeMappings) delete nextFields[mapping.canonicalKey];
         const plan = applyYamlTaskFieldValues(document.frontmatter, nextFields, mode, this.keyMappings.filter(mapping => !nativeMappings.includes(mapping)));
         for (const change of draft.changes) {
+            if (change.mappedKey) for (const alias of getManagedYamlAliases(change.mappedKey, this.keyMappings)) {
+                if (alias !== change.propertyName) { delete document.frontmatter[alias]; plan.blankYamlKeys.delete(alias); }
+            }
+            plan.removedYamlKeys.delete(change.propertyName); plan.blankYamlKeys.delete(change.propertyName);
             if (change.remove) delete document.frontmatter[change.propertyName];
             else document.frontmatter[change.propertyName] = change.value;
+        }
+        if (draft.changes.some(change => change.preserveSource || change.mappedKey)) {
+            const original = readFileTaskPropertyDocument(content)!;
+            const changes: PropertyEditorChange[] = [];
+            for (const name of new Set([...original.order, ...Object.keys(document.frontmatter)])) {
+                const expected = readRawYamlPropertyExpectation(original.frontmatter, name);
+                const next = readRawYamlPropertyExpectation(document.frontmatter, name);
+                if (JSON.stringify(original.frontmatter[name]) === JSON.stringify(document.frontmatter[name]) && !!expected?.present === !!next?.present) continue;
+                if (!expected || !next) return null;
+                changes.push({ name, expected, value: next.value ?? null, ...(!next.present ? { remove: true } : {}) });
+            }
+            const patched = planFileTaskPropertyWrite(content, this.keyMappings, changes);
+            if (patched.status !== 'ready') return null;
+            if (draft.body) {
+                const originalBody = readFileTaskPropertyDocument(patched.text)!.body;
+                return patched.text.slice(0, patched.text.length - originalBody.length) + draft.body.content;
+            }
+            return patched.text;
         }
         const opening = content.startsWith('---\r\n') ? '---\r\n' : '---\n';
         return normalizeYamlFrontmatterFormatting(`${opening}${[...document.order.filter(key => Object.prototype.hasOwnProperty.call(document.frontmatter, key)), ...Object.keys(document.frontmatter).filter(key => !document.order.includes(key))].map(key => stringifyYaml({ [key]: document.frontmatter[key] }).replace(/\r?\n$/, '')).join('\n')}\n---\n${draft.body?.content ?? document.body}`, plan);

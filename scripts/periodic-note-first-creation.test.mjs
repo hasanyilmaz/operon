@@ -111,6 +111,17 @@ for(const kind of ['daily','weekly']){
   assert.equal(result.kind,'failed');assert.equal(f.events.filter(e=>e[0]==='create').length,1);assert.equal(f.events.filter(e=>e[0]==='inline').length,0);
   const denied=setup(kind,'Note');assert.equal((await denied.h.insertTaskCreatorInlineTaskUsingDefaultTarget(draft(),{canCommit:()=>false})).kind,'failed');assert.equal(denied.events.length,0);
  });
+ test(kind+' Mini Calendar cancellation suppresses clean errors but retains recovery notices',async()=>{
+  for(const recoveryRequired of [false,true]){
+   const f=setup(kind,'');let current=true;
+   f.h.getPeriodicNoteService=()=>({prepare:async()=>({status:'prepared',plan:{}}),commit:async()=>{
+    current=false;return {ok:false,error:{code:'invalid-target',message:'cancelled',recoveryRequired}};
+   }});
+   await f.h.resolveOrCreatePeriodicNoteResult(kind,localToday(),undefined,()=>current,undefined,()=>current);
+   assert.equal(f.events.filter(e=>e[0]==='error').length,recoveryRequired?1:0);
+   assert.equal(f.events.filter(e=>e[0]==='create').length,0);
+  }
+ });
  test(kind+' unsafe existing heading target stays byte-for-byte unchanged',async()=>{
   const f=setup(kind,'Missing');const resolved=await f.h.resolveEffectivePeriodicNoteConfig(kind);const p=resolvePeriodicNotePathFromDateKey(kind,localToday(),resolved.config);
   for(const original of ['---\\nexample: value','~~~md\\n## Tasks']){f.add(p,original);

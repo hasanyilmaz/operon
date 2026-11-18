@@ -12,9 +12,11 @@ import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackag
 import { WriteQueue } from '../src/storage/write-queue';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { assertSettingsBackupCompatibilityRegistryExhaustive, getSettingsBackupCompatibilityForKey } from '../src/core/settings-backup-compatibility';
-import {  resolveNativeLightboxLayout } from '../src/ui/native-lightbox-layout';
+import { resolveNativeLightboxLayout } from '../src/ui/native-lightbox-layout';
+import { resolveFileLightboxOpening } from '../src/ui/file-lightbox-opening';
 import { readPropertyEditorDocument } from '../src/core/property-editor-document';
 import type { KeyMapping } from '../src/types/settings';
+import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 
 function methods(file: string, names: string[], dependencies: Record<string, unknown> = {}) {
  const source = readFileSync(file, 'utf8'), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
@@ -66,7 +68,107 @@ test('opening follows the newly resolved file after a task move',async()=>{
  const f=openingFixture();const moved={path:'Moved.md'};f.host.readTaskEditorSource=async()=>({file:moved,lineNumber:18,parsed:{},format:'inline'});
  await f.host.openTaskEditorFor(f.task,()=>{});assert.equal(f.stats().opened[2].file,moved);assert.equal(f.stats().opened[3].task.file,moved);
 });
-const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','togglePropertyEditor','showProperties','removePropertyEditor','setLocked','followSource'],{
+function currentFileEditorFixture(taskId: string | null | undefined, scannedId?: string) {
+ const file = Object.assign(Object.create(TFile.prototype), { path: 'Current.md', extension: 'md' });
+ const win = new EventTarget(), owner = { defaultView: win };
+ const view = { file, containerEl: { isConnected: true, ownerDocument: owner } };
+ const notices: string[] = [], openings: unknown[][] = [];
+ const events = new Map<symbol, { event: string; callback: (value: unknown) => void }>();
+ const state = { owner, view, text: '- [ ] Inline task {{operonId:: inline01}}', taskId, scannedId };
+ const workspace = {
+  getActiveViewOfType: () => state.view,
+  on(event: string, callback: (value: unknown) => void) { const key = Symbol(); events.set(key, { event, callback }); return key; },
+  offref(key: symbol) { events.delete(key); },
+ };
+ const emit = (name: string, value: unknown) => {
+  for (const { event, callback } of events.values()) if (event === name) callback(value);
+ };
+ const content = { destroyed: 0, destroy() { this.destroyed++; } };
+ const provider = {
+  resolve: async () => ({ file, operonId: state.taskId }),
+  create: async () => content,
+  readProperties: async () => readPropertyEditorDocument(state.text, []),
+ };
+ const Host = methods('main.ts', ['currentFileEditorRequests', 'openCurrentFileEditor'], {
+  TFile, MarkdownView: class {}, getActiveDocument: () => state.owner,
+  readTaskEditorMarkdown: async () => state.text,
+  scanFileWithMappings: async () => ({ yamlTask: state.scannedId ? { operonId: state.scannedId } : null, inlineTasks: [{}] }),
+  resolveFileLightboxOpening, getNativeTaskWorkspaceProvider: () => provider,
+  openTaskWorkspace: async (...args: unknown[]) => openings.push(['task', ...args.slice(1)]),
+  openPreparedPropertyWorkspace: async (...args: unknown[]) => openings.push(['properties', ...args.slice(1)]),
+  Notice: class { constructor(key: string) { notices.push(key); } }, t: (_group: string, key: string) => key,
+ });
+ const host = new Host();
+ Object.assign(host, {
+  app: { workspace, vault: { getAbstractFileByPath: () => file } }, settings: DEFAULT_SETTINGS,
+  indexer: { reindexFilePath: async () => {} }, isExcalidrawTaskSource: () => false,
+  getQuickSwitcherFileTaskId: () => state.taskId, getMarkdownViewsForPath: () => [],
+ });
+ return { file, view, state, provider, host, content, notices, openings, win, emit, events, launch: () => host.openCurrentFileEditor(view) };
+}
+
+test('current-file command opens a normal note with an inline task in its Property Editor', async () => {
+ const f = currentFileEditorFixture(null);
+ await f.launch();
+ const [[kind, anchor, target, properties, canOpen]] = f.openings;
+ assert.equal(kind, 'properties');
+ assert.equal(anchor, f.view.containerEl);
+ assert.deepEqual(target, { file: f.file, subpath: '' });
+ assert.deepEqual(properties, { order: [], frontmatter: {} });
+ assert.equal((canOpen as () => boolean)(), true);
+ assert.equal(f.events.size, 0);
+});
+
+test('current-file command opens a confirmed File Task with the source hidden', async () => {
+ const f = currentFileEditorFixture('file0001', 'file0001');
+ await f.launch();
+ const [[kind, , target, initial]] = f.openings;
+ assert.equal(kind, 'task');
+ assert.deepEqual(target, { file: f.file, operonId: 'file0001', subpath: '' });
+ assert.equal((initial as { markdown: boolean }).markdown, false);
+ assert.equal(f.content.destroyed, 0);
+});
+
+test('current-file command reports unresolved or conflicting File Task identity', async () => {
+ for (const [indexed, source] of [[undefined, 'file0001'], ['file0001', 'file0002'], [null, 'file0001']] as const) {
+  const f = currentFileEditorFixture(indexed, source);
+  await f.launch();
+  assert.deepEqual(f.openings, []);
+  assert.deepEqual(f.notices, ['currentFileEditorUnavailable']);
+  assert.equal(f.events.size, 0);
+ }
+});
+
+test('late current-file command preparation yields to a newer request and disposes unused content', async () => {
+ const f = currentFileEditorFixture('file0001', 'file0001');
+ const preparing = deferred<typeof f.content>(), started = deferred<void>();
+ f.provider.create = () => { started.resolve(); return preparing.promise; };
+ const first = f.launch();
+ await started.promise;
+ f.provider.create = async () => ({ destroyed: 0, destroy() {} });
+ await f.launch();
+ preparing.resolve(f.content);
+ await first;
+ assert.equal(f.openings.length, 1);
+ assert.equal(f.content.destroyed, 1);
+ assert.equal(f.events.size, 0);
+});
+
+for (const interrupt of ['file-open', 'active-leaf-change', 'window-blur'] as const)
+ test(`current-file command cancels after transient ${interrupt}`, async () => {
+  const f = currentFileEditorFixture(null), read = deferred<void>();
+  f.host.indexer.reindexFilePath = () => read.promise;
+  const pending = f.launch();
+  if (interrupt === 'window-blur') f.win.dispatchEvent(new Event('blur'));
+  else f.emit(interrupt, null);
+  read.resolve();
+  await pending;
+  assert.deepEqual(f.openings, []);
+  assert.deepEqual(f.notices, []);
+  assert.equal(f.events.size, 0);
+ });
+
+const Controller=methods('src/ui/native-task-workspace.ts',['prepare','refresh','toggleEditor','togglePropertyEditor','showProperties','removePropertyEditor','setLocked','followSource','createPropertyEditor','convertPropertyEditor','mountInitialProperties','toggleMarkdown'],{
  Notice:class{}, t: (_group: string, key: string) => key,
 });
 function controllerFixture(){const c=new Controller();Object.assign(c,{generation:0,disposed:false,locked:false,enabled:true,editorHidden:false,busy:false,
@@ -145,6 +247,72 @@ test('normal notes open with properties hidden and reset the panel on navigation
  await c.toggleEditor();
  assert.equal(c.propertyEditor.document.frontmatter.Note, 'Next.md');
 });
+test('prepared properties start without a source and reveal it only through the source control', async () => {
+ const c = controllerFixture(), file = { path: 'Note.md' };
+ let opened = 0;
+ c.markdownVisible = false;
+ c.navigate = async (target: { file: unknown }) => { assert.equal(target.file, file); c.sourceReady = true; opened++; };
+ assert.ok(c.mountInitialProperties(file, readPropertyEditorDocument('', [])));
+ assert.equal(c.markdownWanted, false);
+ assert.equal(opened, 0);
+ await c.toggleMarkdown();
+ assert.equal(opened, 1);
+ assert.equal(c.markdownWanted, true);
+});
+
+test('property conversion locks a clean draft and promotes the same workspace only after verified indexing', async () => {
+ const c = controllerFixture(), file = { path: 'Note.md' };
+ const gate = deferred<void>();
+ const root = { inert: false };
+ let saved = 0, destroyed = 0;
+ const properties = {
+  root, pauseAutosave: async () => true, resumeAutosave() {},
+  prepareConversion: async (text: string) => { saved++; return text; },
+  setConversionCommitted() {}, destroy() { destroyed++; },
+ };
+ Object.assign(c, { propertyEditor: properties, propertyFile: file, markdownWanted: true, body: root });
+ c.provider.convert = async (_file: unknown, prepare: (before: string) => Promise<string | null>) => {
+  assert.equal(await prepare('approved'), 'approved');
+  assert.equal(root.inert, true);
+  await gate.promise;
+  file.path = 'Pipeline/Note.md';
+  return 'task0001';
+ };
+ c.provider.locate = async () => ({ file, operonId: 'task0001' });
+ const content = { destroy() {}, applyInitialDescriptionFocus() {} };
+ c.provider.create = async () => content;
+ const conversion = c.convertPropertyEditor(file);
+ assert.equal(await c.prepare(false), false);
+ gate.resolve();
+ await conversion;
+ assert.equal(saved, 1);
+ assert.equal(destroyed, 1);
+ assert.equal(c.propertyEditor, null);
+ assert.equal(root.inert, false);
+ assert.equal(c.editor, content);
+ assert.equal(c.explicit.operonId, 'task0001');
+ assert.equal(c.currentFile.path, 'Pipeline/Note.md');
+ assert.equal(c.markdownWanted, true);
+});
+
+test('conversion cancellation unlocks the draft; an unindexed committed conversion stays protected', async () => {
+ const c = controllerFixture(), file = { path: 'Note.md' };
+ const root = { inert: false };
+ let committed = 0;
+ const properties = { root, pauseAutosave: async () => true, resumeAutosave() {}, prepareConversion: async (text: string) => text, setConversionCommitted() { committed++; } };
+ Object.assign(c, { propertyEditor: properties, propertyFile: file });
+ c.provider.convert = async (_file: unknown, prepare: (before: string) => Promise<string | null>) => { await prepare('approved'); return null; };
+ await c.convertPropertyEditor(file);
+ assert.equal(root.inert, false);
+ c.provider.convert = async (_file: unknown, prepare: (before: string) => Promise<string | null>) => { await prepare('approved'); return 'task0001'; };
+ c.provider.locate = async () => null;
+ await c.convertPropertyEditor(file);
+ assert.equal(root.inert, true);
+ assert.equal(c.propertyEditor, properties);
+ await c.convertPropertyEditor(file);
+ assert.equal(committed, 1);
+});
+
 test('property draft blocks a transfer on failure and allows only an explicit close discard', async () => {
  const c = controllerFixture();
  let attempts = 0, discarded = 0, confirmations = 0;
@@ -158,6 +326,18 @@ test('property draft blocks a transfer on failure and allows only an explicit cl
  assert.equal(attempts, 2);
  assert.equal(confirmations, 1);
  assert.equal(discarded, 1);
+});
+test('a property draft survives revealing a source that has become a File Task elsewhere', async () => {
+ const c = controllerFixture(), file = { path: 'Note.md' };
+ const properties = { isEdited: true };
+ c.propertyFile = file;
+ c.propertyEditor = properties;
+ c.body.empty = () => { throw Error('must retain the open draft'); };
+ c.provider.resolve = async () => ({ file, operonId: 'file0001' });
+ await c.refresh({ view: { getViewType: () => 'markdown', file } });
+ assert.equal(c.sourceReady, true);
+ assert.equal(c.propertyEditor, properties);
+ assert.equal(c.descriptor, undefined);
 });
 test('unresolved explicit tasks never fall back to the property editor', async () => {
  const c = controllerFixture(), file = {path: 'Inline.md'};
@@ -338,6 +518,37 @@ test('settings surfaces expose workspace preferences and retire legacy controls 
   for(const key of ['taskEditorShowLineNumbers','taskEditorHighlightActiveLine','taskEditorFileBodySection'])assert.equal(body.includes(key),false);
  }
  for(const key of ['taskEditorShowLineNumbers','taskEditorHighlightActiveLine'])assert.equal(registry.includes("'interfaceTaskEditor', '"+key+"'"),false);
+});
+
+test('Settings Search and fallback Settings use the same layout cards and structured save path', async () => {
+ const subject = methods('src/ui/settings-tab.ts', ['buildTaskEditorSettingsItems','renderInterfaceTaskEditorTab','getControlValue','setControlValue'], {
+  normalizeTaskEditorSections, t: (_group: string, key: string) => key,
+  renderNativeSettingsGroupedSection: (_host: unknown, name: string) => name,
+  renderDropdownSetting: () => ({}), settingsAsyncHandler: () => () => {},
+ });
+ const host = new subject(), rendered: unknown[] = [];
+ let saved = 0, refreshed = 0;
+ const settings = { ...DEFAULT_SETTINGS };
+ Object.assign(host, {
+  settings, buildSettingsSearchSettingDefinition: () => null,
+  compactSettingsSearchDefinitions: () => [], buildDeclarativeSettingsDocsButton: () => ({}),
+  buildTaskCaptureSearchSection: (_entry: unknown, render: (container: unknown) => void) => ({ render }),
+  renderTaskEditorSectionCards: (container: unknown) => rendered.push(container),
+  buildNativeSettingsDocsAction: () => ({}), markSettingsSearchTarget() {}, markSettingsSearchSectionTarget() {},
+  renderBoundToggleSetting() {}, getSettingsSearchDropdownOptions: () => ({}),
+  saveTaskEditorSections: (update: () => typeof settings.taskEditorSections) => { saved++; settings.taskEditorSections = update(); },
+  updateNativeSettingsDefinitions: () => { refreshed++; },
+ });
+ const groups = host.buildTaskEditorSettingsItems([{ id: 'ui.taskEditorSections' }]);
+ groups[1].items[0].render('declarative target');
+ host.renderInterfaceTaskEditorTab({});
+ assert.deepEqual(rendered, ['declarative target', 'taskEditorSections']);
+ const layout = normalizeTaskEditorSections([{ id:'custom:tested', name:'Test', properties: [{ kind:'vault', name:'Count' }] }]);
+ await host.setControlValue('taskEditorSections', layout);
+ assert.equal(saved, 1);
+ assert.equal(refreshed, 1);
+ assert.deepEqual(host.getControlValue('taskEditorSections'), layout);
+ assert.notEqual(host.getControlValue('taskEditorSections'), settings.taskEditorSections);
 });
 
 for (const side of ['left','right'] as const) for (const height of [300,500,900]) test(`hidden source keeps ${side} editor at the source frame top for height ${height}`,()=>{

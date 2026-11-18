@@ -40,6 +40,7 @@ export class Menu {
 }
 export const MarkdownRenderer={render(...args:any[]){let resolve:any,reject:any;const promise=new Promise((a,b)=>{resolve=a;reject=b;});renderCalls.push({args,resolve,reject});return promise;}};
 export function setIcon(){}
+export function getIcon(){return null;}
 `);
  const outfile=path.join(dir,'test.cjs');
  const code=String.raw`

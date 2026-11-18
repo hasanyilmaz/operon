@@ -8,7 +8,7 @@ import type { PipelineStoreSettings } from './pipeline-store';
 import type { PriorityStoreSettings } from './priority-store';
 import type { TaskAutomationPolicyStoreSettings } from './task-automation-policy-store';
 import type { TaskCreationProfileStoreSettings } from './task-creation-profile-store';
-import type { TaskUiPreferencePackageSettings, TaskUiPreferenceStoreSettings } from './task-ui-preference-store';
+import type { TaskUiPreferencePackageSettings } from './task-ui-preference-store';
 import { buildTablePresetPackageManifest } from './table-preset-manifest';
 import {
 	type ExternalCalendarSource,
@@ -68,7 +68,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| keyof KanbanPresetStoreSettings
 	| keyof TablePresetProjectionSettings
 	| keyof ContextualMenuStoreSettings
-	| keyof TaskUiPreferenceStoreSettings
+	| keyof TaskUiPreferencePackageSettings
 	| keyof TaskCreationProfileStoreSettings
 	| keyof WorkspaceTweaksPackageSettings
 	| 'statusDockCreatorStartsTimer'
@@ -129,6 +129,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'contextualMenuMobileAutoHideMs',
 	'taskCreatorToolbar',
 	'taskEditorSections',
+	'vaultPropertyIcons',
 	'taskEditorPosition',
 	'taskEditorFileShowSource',
 	'taskEditorInlineShowSource',
@@ -239,6 +240,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'fileRepeatCustomFolder',
 	'estimateAutoReallocation',
 	'trackerSplitSessionsAtMidnight',
+	'trackerStopOnObsidianQuit',
 	'reminderCatchUpWindowMinutes',
 	'reminderNoticeDurationSeconds',
 	'reminderAutoPinDueTasks',
@@ -249,6 +251,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 const TASK_UI_PREFERENCE_PACKAGE_KEYS = [
 	'taskCreatorToolbar',
 	'taskEditorSections',
+	'vaultPropertyIcons',
 	'taskEditorPosition',
 	'taskEditorFileShowSource',
 	'taskEditorInlineShowSource',
@@ -294,7 +297,7 @@ const TASK_UI_PREFERENCE_PACKAGE_KEYS = [
 	'filterTaskShowNoteAction',
 	'filterTaskShowSubtaskAction',
 	'filterTaskShowPlainCheckboxAction',
-] as const satisfies readonly (keyof TaskUiPreferenceStoreSettings)[];
+] as const satisfies readonly (keyof TaskUiPreferencePackageSettings)[];
 
 export type OperonDataPackageSettings = Omit<
 	OperonSettings,
@@ -398,7 +401,11 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 }
 
 export interface OperonAutomationPackageV1 {
-	taskAutomationPolicy: VersionedStoreSlice<TaskAutomationPolicyStoreSettings>;
+	taskAutomationPolicy: VersionedStoreSlice<
+		Omit<TaskAutomationPolicyStoreSettings, 'trackerStopOnObsidianQuit'> & {
+			trackerStopOnObsidianQuit?: boolean;
+		}
+	>;
 }
 
 export interface OperonIntegrationsPackageV1 {
@@ -671,6 +678,7 @@ export function buildOperonDataPackageFromSettings(
 				version: 1,
 				taskCreatorToolbar: cloneUnknown(normalized.taskCreatorToolbar),
 				taskEditorSections: cloneUnknown(normalized.taskEditorSections),
+				...(normalized.vaultPropertyIcons ? { vaultPropertyIcons: { ...normalized.vaultPropertyIcons } } : {}),
 				...(normalized.taskEditorPosition === 'left' ? { taskEditorPosition: 'left' as const } : {}),
 				...(normalized.taskEditorFileShowSource === false ? { taskEditorFileShowSource: false } : {}),
 				...(normalized.taskEditorInlineShowSource ? { taskEditorInlineShowSource: true } : {}),
@@ -799,6 +807,8 @@ export function buildOperonDataPackageFromSettings(
 				fileRepeatCustomFolder: normalized.fileRepeatCustomFolder,
 				estimateAutoReallocation: false,
 				trackerSplitSessionsAtMidnight: normalized.trackerSplitSessionsAtMidnight,
+				// Keep the off default absent on disk so old packages remain unchanged.
+				...(normalized.trackerStopOnObsidianQuit ? { trackerStopOnObsidianQuit: true } : {}),
 				reminderCatchUpWindowMinutes: normalized.reminderCatchUpWindowMinutes,
 				reminderNoticeDurationSeconds: normalized.reminderNoticeDurationSeconds,
 				reminderAutoPinDueTasks: normalized.reminderAutoPinDueTasks,

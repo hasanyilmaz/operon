@@ -456,8 +456,19 @@ function stringifyYamlScalar(value: unknown): string {
 		: JSON.stringify(text);
 }
 
-export function getIcon(_iconId: string): any {
-	return createStubEl();
+export function getIcon(iconId: string): any {
+	const testHook = (globalThis as typeof globalThis & {
+		__operonTestGetIcon?: (name: string) => unknown;
+	}).__operonTestGetIcon;
+	if (testHook) return testHook(iconId);
+	const ownerDocument = (globalThis as typeof globalThis & { document?: Document }).document;
+	const glyph = ownerDocument?.createElementNS?.('http://www.w3.org/2000/svg', 'svg');
+	if (glyph) {
+		glyph.setAttribute('class', 'svg-icon');
+		glyph.setAttribute('width', '16');
+		glyph.setAttribute('height', '16');
+	}
+	return glyph ?? createStubEl();
 }
 
 export function getIconIds(): string[] {

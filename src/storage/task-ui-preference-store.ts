@@ -75,7 +75,8 @@ type DefaultedTaskUiPreferenceKey = 'taskFinderFileResultBehavior' | 'taskFinder
 ;
 
 export type TaskUiPreferencePackageSettings = Omit<TaskUiPreferenceStoreSettings, DefaultedTaskUiPreferenceKey>
- & Partial<Pick<TaskUiPreferenceStoreSettings, DefaultedTaskUiPreferenceKey>>;
+ & Partial<Pick<TaskUiPreferenceStoreSettings, DefaultedTaskUiPreferenceKey>>
+ & Pick<OperonSettings, 'vaultPropertyIcons'>;
 
 interface TaskUiPreferenceStoreData extends TaskUiPreferenceStoreSettings {
 	version: number;

@@ -5,8 +5,11 @@ import { PreparedTaskCreatorDraft, type PreparedTaskCreatorAdapter } from './tas
 import { openTableFilePropertyPicker } from './table/table-file-property-editor';
 import { bindPropertyReadOnlyWarning } from './property-readonly-warning';
 import { encodeVaultPropertyValue, type VaultPropertyValue } from '../core/vault-property-codec';
-import { App, KeymapEventHandler, Menu, Modal, Notice, Platform, getIcon, setIcon } from 'obsidian';
+import { App, KeymapEventHandler, Menu, Modal, Notice, Platform, getIcon } from 'obsidian';
 import { getConfiguredKeyMappingIcon } from '../core/key-mapping-icons';
+import { getSourcePropertyIcon } from '../core/property-icons';
+import { getTableFilePropertyTypeIcon } from './table/table-file-property';
+import { bindPropertyIcon } from './property-icon-presentation';
 import { getSubtaskInheritedFieldKeys, resolveSubtaskInitialFieldsFromParentValues } from '../core/subtask-inheritance';
 import { getAvailableReminderRuleAnchors } from './field-pickers/reminder-picker-model';
 import { applyTaskFieldPatchToState, splitTaskListValue } from '../core/task-field-patch';
@@ -34,7 +37,7 @@ import {
 } from './compact-markdown-editor-surface';
 import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
-import { getNativePropertyIcon, getCheckboxPropertyIcon, getCheckboxPropertyTypeIcon, getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
+import { getCheckboxPropertyIcon, getCustomFieldIcon, getCustomFieldLabel, getCustomFieldMapping, isProjectedCustomFieldType } from './custom-field-surfaces';
 import {
 	debugTaskFieldSuggestion,
 	resolveTaskFieldSuggestions,
@@ -1823,19 +1826,23 @@ export class TaskCreatorModal extends Modal {
 			button.disabled = ruleAddDisabled;
 			button.setAttribute('aria-disabled', String(ruleAddDisabled));
 
-			const taskIcon = key === 'taskIcon' ? this.draft.taskIcon.trim() : '';
-			const fallbackIcon = this.resolveFieldIcon(key);
-			const iconKey = JSON.stringify([taskIcon, fallbackIcon]);
 			const iconWrap = button.querySelector<HTMLElement>('.operon-task-creator-tool-icon')
 				?? button.createSpan('operon-task-creator-tool-icon');
-			// Closing a picker must not detach the SVG targeted by the next click.
-			if (iconWrap.dataset.creatorIcon !== iconKey) {
-				iconWrap.empty();
-				const icon = taskIcon ? getIcon(taskIcon) : null;
-				if (icon) iconWrap.appendChild(icon);
-				else setIcon(iconWrap, fallbackIcon);
-				iconWrap.dataset.creatorIcon = iconKey;
-			}
+			// Preserve the SVG targeted by a pending click when the resolved glyph is unchanged.
+			bindPropertyIcon(iconWrap, () => {
+				const taskIcon = key === 'taskIcon' ? this.draft.taskIcon.trim() : '';
+				return taskIcon && getIcon(taskIcon) ? taskIcon : this.resolveFieldIcon(key);
+			});
+			const property = this.prepared?.field(key).property;
+			if (property?.interpretation === 'native' && property.type === 'checkbox') {
+				const state = button.querySelector<HTMLElement>('.operon-task-creator-checkbox-value-icon')
+					?? button.createSpan({ cls: 'operon-task-creator-checkbox-value-icon', attr: { 'aria-hidden': 'true' } });
+				bindPropertyIcon(state, () => {
+					const icon = this.resolveCheckboxValueIcon(key);
+					state.hidden = !icon;
+					return icon;
+				});
+			} else button.querySelector('.operon-task-creator-checkbox-value-icon')?.remove();
 			if (key === 'blockedBy') this.applyBlockedByAggregateState(button);
 			if (warning) bindPropertyReadOnlyWarning(button, this.getFieldLabel(key), warning, () => this.getThemeColor());
    else this.bindFieldButtonTooltip(button, key);
@@ -2022,7 +2029,7 @@ export class TaskCreatorModal extends Modal {
 					},
 				});
 				const icon = chip.createSpan('operon-task-creator-reminder-chip-icon');
-				setIcon(icon, getConfiguredKeyMappingIcon(fieldKey, this.options.settings.keyMappings) || 'bell-ring');
+				bindPropertyIcon(icon, () => getConfiguredKeyMappingIcon(fieldKey, this.options.settings.keyMappings) || 'bell-ring');
 				chip.createSpan({ cls: 'operon-task-creator-reminder-chip-text', text: display.text });
 				bindOperonHoverTooltip(chip, {
 					title: display.tooltipTitle,
@@ -2107,11 +2114,23 @@ export class TaskCreatorModal extends Modal {
 		}
 	}
 
+	private resolveCheckboxValueIcon(key: TaskCreatorFieldKey): string {
+		const field = this.prepared?.field(key);
+		if (field?.property.interpretation !== 'native' || field.property.type !== 'checkbox'
+			|| typeof field.value !== 'boolean' || field.readOnlyReason === 'automatic') return '';
+		return getSourcePropertyIcon(this.options.settings, field.property.sourceName)
+			? getCheckboxPropertyIcon(field.value) : '';
+	}
+
 	private resolveFieldIcon(key: TaskCreatorFieldKey): string {
-  const field = this.prepared?.field(key);
-  if (field?.readOnlyReason === 'automatic') return 'shield-alert';
-  if (field?.property.interpretation === 'native' && field.property.type === 'checkbox') return getCheckboxPropertyIcon(field.value, getCheckboxPropertyTypeIcon(this.options.settings.keyMappings, field.property.sourceName));
-  if (field?.property.interpretation === 'native') return getNativePropertyIcon(this.options.settings.keyMappings, field.property.sourceName, ({ text: 'text', list: 'list', number: 'hash', checkbox: 'square-dashed', date: 'calendar', datetime: 'calendar-clock' } as const)[field.property.type ?? 'text']);
+		const field = this.prepared?.field(key);
+		if (field?.readOnlyReason === 'automatic') return 'shield-alert';
+		if (field?.property.interpretation === 'native') {
+			const type = field.property.type ?? 'text';
+			const fallback = getTableFilePropertyTypeIcon(type);
+			return getSourcePropertyIcon(this.options.settings, field.property.sourceName,
+				type === 'checkbox' ? getCheckboxPropertyIcon(field.value, fallback) : fallback);
+		}
 		const customMapping = getCustomFieldMapping(this.options.settings.keyMappings, key);
 		if (customMapping) return getCustomFieldIcon(customMapping);
 		return getConfiguredKeyMappingIcon(key, this.options.settings.keyMappings)

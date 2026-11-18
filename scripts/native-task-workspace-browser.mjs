@@ -7,11 +7,84 @@ import { build } from 'esbuild';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.OPERON_TEST_PLAYWRIGHT || 'playwright');
-const bundle = await build({ stdin: { contents: `export * from './src/ui/lightbox-opening-perf'; export * from './src/ui/native-task-workspace'; export * from './src/ui/web-lightbox'; export * from './src/ui/lightbox'; export * from './src/core/lightbox-size'; export * from './src/ui/modal-backdrop'; export {Platform} from 'obsidian';`, resolveDir: root }, define: { OPERON_LIGHTBOX_PERF_ENABLED: 'true' }, bundle: true, write: false, format: 'iife', globalName: 'Subject', platform: 'browser', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
+const bundle = await build({ stdin: { contents: `export * from './src/ui/lightbox-opening-perf'; export * from './src/ui/native-task-workspace'; export * from './src/ui/web-lightbox'; export * from './src/ui/lightbox'; export * from './src/core/lightbox-size'; export * from './src/ui/modal-backdrop'; export { Platform } from 'obsidian'; export { DEFAULT_SETTINGS } from './src/types/settings'; export { getNativePropertyIndex } from './src/indexer/native-property-index'; export { readPropertyEditorDocument, planPropertyEditorWrite } from './src/core/property-editor-document'; export { NativePropertyEditor } from './src/ui/native-property-editor';
+ export { TaskEditorContent } from './src/ui/task-editor-content';
+ export { readYamlFields } from './src/core/yaml-fields';
+ export { TaskWriter, tryPatchYamlTaskContent } from './src/core/task-writer';
+ export { parseTaskLine } from './src/core/parser';
+ export { editorMappedProperties, readFileTaskPropertyDocument } from './src/core/file-task-property-draft';
+ export { bindEditorInteractionState } from './src/ui/editor-interaction-state';
+ export { createEditorSectionHosts } from './src/ui/editor-sections-layout';
+ export { changeTaskEditorLayout, resolveTaskEditorLayout } from './src/core/task-editor-layout';
+ export { normalizeTaskEditorSections } from './src/types/task-editor-sections';
+ export { renderTaskEditorSectionsSettings } from './src/ui/settings/task-editor-section-settings';
+ export { openPropertyIconPicker } from './src/ui/settings/property-icon-picker';
+ export { propertyIconEditMatches } from './src/core/property-icons';
+ export { refreshMountedPropertyIcons } from './src/ui/property-icon-presentation';
+ `, resolveDir: root }, define: { OPERON_LIGHTBOX_PERF_ENABLED: 'true' }, bundle: true, write: false, format: 'iife', globalName: 'Subject', platform: 'browser', logLevel: 'silent', plugins: [{
+ name: 'editor-fixture-host',
+ setup(builder) {
+  builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'host', namespace: 'editor-fixture' }));
+  builder.onLoad({ filter: /.*/, namespace: 'editor-fixture' }, () => ({
+   resolveDir: root,
+   contents: `
+    export * from './scripts/test-support/obsidian-native-yaml.ts';
+    export function getIcon(name) {
+     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+     svg.setAttribute('data-test-icon', name);
+     return svg;
+    }
+    export function getIconIds() { return ['book-open', 'compass', 'hash', 'link-2', 'star']; }
+    export function setIcon(target, name) { target.setAttribute?.('data-test-set-icon', name); }
+    export class Modal {
+     constructor(app) {
+      this.app = app;
+      this.containerEl = document.body.createDiv('modal-container');
+      this.modalEl = this.containerEl.createDiv('modal');
+      this.titleEl = this.modalEl.createDiv('modal-title');
+      this.contentEl = this.modalEl.createDiv('modal-content');
+      this.onEscape = event => { if (event.key === 'Escape') this.close(); };
+     }
+     open() { document.addEventListener('keydown', this.onEscape); this.onOpen?.(); }
+     close() {
+      document.removeEventListener('keydown', this.onEscape);
+      this.containerEl.remove();
+      this.onClose?.();
+     }
+    }
+    export class Setting {
+     constructor(parent) {
+      this.settingEl = parent.createDiv('setting-item');
+      this.infoEl = this.settingEl.createDiv('setting-item-info');
+      this.controlEl = this.settingEl.createDiv('setting-item-control');
+     }
+     setName(name) { this.infoEl.setText(name); return this; }
+     addText(callback) {
+      const inputEl = this.controlEl.createEl('input', { attr: { type: 'text' } });
+      const control = { inputEl, getValue: () => inputEl.value,
+       setValue: value => { inputEl.value = value; return control; },
+       setPlaceholder: value => { inputEl.placeholder = value; return control; } };
+      callback(control);
+      return this;
+     }
+     addToggle(callback) {
+      const toggleEl = this.controlEl.createEl('input', { attr: { type: 'checkbox' } });
+      const control = { toggleEl,
+       setValue: value => { toggleEl.checked = value; return control; },
+       onChange: listener => { toggleEl.addEventListener('change', () => { void listener(toggleEl.checked); }); return control; } };
+      callback(control);
+      return this;
+     }
+    }
+   `,
+  }));
+ },
+}] });
 const browser = await chromium.launch({ headless: true, ...(process.env.OPERON_TEST_BROWSER ? { executablePath: process.env.OPERON_TEST_BROWSER } : {}) });
 let checks = 0;
 try {
  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+ page.setDefaultTimeout(10000);
  const errors = []; page.on('pageerror', error => errors.push(error.message));
  await page.setContent(`<style>body{margin:0;--background-primary:#222;--background-secondary:#292929;--background-modifier-border:#777;--text-normal:#eee;--layer-modal:50}button{box-sizing:border-box}</style><style>${readFileSync(path.join(root, 'styles.css'), 'utf8')}</style><button id="anchor">Source</button>`);
  await page.evaluate(() => {
@@ -25,13 +98,20 @@ try {
   Element.prototype.addClass = function(...names) {this.classList.add(...names);};
   Element.prototype.removeClass = function(...names) {this.classList.remove(...names);};
   Element.prototype.toggleClass = function(name,on) {this.classList.toggle(name,on);};
+  Element.prototype.hasClass = function(name) {return this.classList.contains(name);};
+  Element.prototype.setAttr = function(name,value) {this.setAttribute(name,value);};
+  Element.prototype.setCssProps = function(entries) {for (const [name,value] of Object.entries(entries)) this.style.setProperty(name,value);};
+
   Element.prototype.setText = function(text) {this.textContent=text;};
   Element.prototype.setCssStyles = function(styles) {Object.assign(this.style,styles);};
   Element.prototype.empty = function() {this.replaceChildren();};
-  window.createSpan = o => document.body.createSpan(o); window.createEl = (t,o) => document.body.createEl(t,o);
+  window.createEl = (tag,options) => { const el = document.body.createEl(tag,options); el.remove(); return el; };
+  window.createDiv = o => window.createEl('div',o);
+  window.createSpan = o => window.createEl('span',o);
  });
  await page.addScriptTag({content:bundle.outputFiles[0].text});
  await page.evaluate(() => {
+  window.activeDocument = document; window.activeWindow = window;
   const S=Subject; S.Platform.isDesktopApp=true;
   window.writes=[]; window.editors=[]; window.leaves=[]; window.closed=0; window.confirmations=0; window.closedHistory=[];
   S.bindLightboxSizePreference({get:()=>({markdown:{width:70,height:90}}),save:async(...args)=>writes.push(args)});
@@ -123,7 +203,7 @@ try {
   window.clickLabel=label=>findLabel(label).click();
   window.closeAll=async()=>{S.disposeWebLightboxes(app);await new Promise(resolve=>setTimeout(resolve,0));};
  });
- const check=async(fn,expected,message)=>{assert.deepEqual(await page.evaluate(fn),expected,message ?? String(fn));checks++;};
+ const check=async(fn,expected,message,arg)=>{if(process.env.OPERON_EDITOR_TEST_TRACE)console.log(message||checks);assert.deepEqual(await page.evaluate(fn,arg),expected,message ?? String(fn));checks++;};
  const layout=async label=>{await page.waitForTimeout(60);await check(()=>controlLayoutErrors(),[],label);};
  const ready=()=>page.waitForFunction(()=>window.visibleShell()&&!visibleShell().classList.contains('is-workspace-loading'));
  await page.evaluate(()=>open()); await ready();
@@ -414,6 +494,835 @@ try {
   await check(shortGeometry,[true,true,true,true],`${side} ${mode}: editor contracts after content shrinks`);
   await check(tightBottom,true,`${side} ${mode}: shrinking content leaves only normal bottom padding`);
   await page.evaluate(()=>closeAll());
+ }
+ // Exercise the real Property Editor in the same shell as the native Task Editor.
+ await page.evaluate(() => {
+  const S = Subject;
+  const settings = {
+   ...S.DEFAULT_SETTINGS,
+   keyMappings: S.DEFAULT_SETTINGS.keyMappings.map(mapping => mapping.canonicalKey === 'contexts'
+    ? { ...mapping, visiblePropertyName: 'Up' } : mapping),
+   taskEditorSections: [{ id: 'connections', name: 'References' }, { id: 'description', name: '' }, { id: 'additional', name: '' }],
+  };
+  window.propertySettings = settings;
+  const source = '---\nCount: 3\nUp: "[[2026-W46]]"\nnote: Summary\n_private: protected\n---\nBody';
+  stored.set(files.Normal.path, source);
+  app.vault.getMarkdownFiles = () => [];
+  app.metadataCache = { getFileCache: () => null };
+  S.getNativePropertyIndex(app).setTypes({ Up: 'multitext', Count: 'number', Extra: 'text' });
+  provider.readProperties = async file => S.readPropertyEditorDocument(stored.get(file.path), settings.keyMappings);
+  provider.canConvert = () => true;
+  provider.convert = async () => null;
+  window.propertyWrites = 0;
+  provider.createProperties = (host, file, props, convert) => new S.NativePropertyEditor(host, props, {
+   app, file, settings: () => settings, tasks: () => [], canConvert: () => true, convert,
+   save: async () => { window.propertyWrites++; return { status: 'failed' }; },
+  });
+  window.openProperties = async (source = true) => {
+   const anchor = document.getElementById('anchor');
+   anchor.focus();
+   const file = files.Normal, data = source ? await provider.readProperties(file) : { order: [], frontmatter: {} };
+   await S.openPreparedPropertyWorkspace(app, anchor, { file, subpath: '' }, data, () => true);
+  };
+ });
+ for (const [mode, width] of [['desktop',1600],['tablet',900],['phone',390],['compact',390]]) {
+  await page.setViewportSize({ width, height: 800 });
+  await page.evaluate(async mode => {
+   Object.assign(Subject.Platform, { isDesktopApp: mode === 'desktop', isTablet: mode === 'tablet', isPhone: mode === 'phone' || mode === 'compact', isMobile: mode !== 'desktop', isMobileApp: mode !== 'desktop' });
+   propertySettings.taskEditorUseMobileLayout = mode === 'compact';
+   window.leafCountBeforeProperties = leaves.length;
+   await openProperties();
+  },mode);
+  await ready();
+  const property = page.locator('.operon-property-editor');
+  await check(() => [leaves.length===leafCountBeforeProperties, visibleShell().querySelector('.is-markdown').hidden,
+   visibleShell().querySelector('.operon-property-editor .operon-task-editor-title').textContent],
+   [true,true,'Property Editor'],mode+' opens only the shared editor without creating a native leaf');
+  await check(() => ({ compact: !!visibleShell().querySelector('.operon-task-editor-mobile-body'), touch: visibleShell().querySelector('.operon-property-editor').dataset.editorInput ?? '' }),
+   { compact: mode==='compact', touch: mode==='phone'||mode==='tablet'?'touch':'' },mode+' uses the configured editor layout');
+  if (mode !== 'compact') {
+   await check(() => Array.from(visibleShell().querySelectorAll('[data-editor-section]:not([hidden])'), host => host.dataset.editorSection),
+    ['connections','description','additional','notes','overview','planning','activity'],mode+' keeps configured controls available in empty groups');
+   await check(() => visibleShell().querySelector('[data-editor-section="connections"] .operon-editor-desktop-group-title').textContent,'References');
+   await check(() => visibleShell().querySelector('[data-editor-section="notes"] [data-property-name="note"]') !== null,true);
+  }
+  await check(() => !!visibleShell().querySelector('[data-property-name="_private"] .is-readonly'),true,'protected property stays read-only');
+  const contextSelector = mode === 'compact' ? '.operon-editor-picker-anchor' : '.operon-editor-desktop-property-label';
+  const context = property.locator(`[data-property-name="Up"] ${contextSelector}`).first();
+  if (mode === 'compact') {
+   await context.dispatchEvent('pointerdown', { pointerType: 'touch' });
+   await context.dispatchEvent('pointerup', { pointerType: 'touch' });
+   await context.evaluate(el => el.click());
+  } else await context.press('Enter');
+  const picker = page.locator('.operon-contexts-picker-panel');
+  await picker.waitFor({ state: 'visible', timeout: 3000 });
+  assert.deepEqual(await picker.locator('.operon-parent-selected-chip-label').allTextContents(), ['2026-W46'], mode+' opens the selected Up link');
+  checks++;
+  if (mode !== 'desktop') {
+   await page.setViewportSize({ width, height: 460 });
+   await page.waitForFunction(() => {
+    const panel = visibleShell().querySelector('.operon-native-task-panel').getBoundingClientRect();
+    return panel.bottom <= visualViewport.height && panel.top >= 0 && panel.right <= visualViewport.width;
+   });
+   await check(() => !!visibleShell().querySelector('.operon-contexts-picker-panel.operon-mobile-picker-surface'),true,mode+' preserves the mobile picker when the viewport shrinks');
+  }
+  await page.keyboard.press('Escape');
+  await picker.waitFor({ state: 'detached', timeout: 3000 });
+  await check(() => [!!visibleShell(),propertyWrites],[true,0],mode+' closes the picker without writing or closing the editor');
+  if (mode==='desktop') {
+   await page.evaluate(()=>clickLabel('Show source'));
+   await page.waitForFunction(()=>!visibleShell().querySelector('.is-markdown').hidden);
+   await check(()=>[currentLeaf().view.file.path,!!visibleShell().querySelector('.operon-property-editor')],['Normal.md',true],'desktop may reveal its source without losing the editor');
+  } else {
+   await check(()=>visibleControls().length,1,'mobile editor uses its close control');
+  }
+  await page.evaluate(()=>closeAll());
+  await check(()=>document.activeElement.id,'anchor',mode+' restores focus on closing');
+ }
+ await page.evaluate(async () => {
+  Object.assign(Subject.Platform, { isDesktopApp: true, isTablet: false, isPhone: false, isMobile: false, isMobileApp: false });
+  await openProperties(false);
+ });
+ await ready();
+ await check(()=>Array.from(visibleShell().querySelectorAll('[data-editor-section]:not([hidden])'), host=>host.dataset.editorSection),['connections','description','additional','overview','planning','activity'],'empty note keeps configured controls without adding blank fields');
+ await page.locator('.operon-property-editor .operon-editor-file-property-add').evaluate(el=>el.click());
+ await page.getByRole('combobox', { name: 'Add Property' }).waitFor({ state: 'attached', timeout: 3000 });
+ await page.keyboard.press('Escape');
+ await check(()=>[!!visibleShell(),propertyWrites],[true,0],'closing Add property creates no field');
+ await page.evaluate(()=>closeAll());
+ await page.evaluate(async () => {
+  provider.locate = async id => tasks.get(files.Normal) === id ? { file: files.Normal, operonId: id } : null;
+  provider.convert = async (file, prepare) => {
+   if (await prepare(stored.get(file.path)) === null) return null;
+   tasks.set(file, 'convertedNote');
+   return 'convertedNote';
+  };
+  await openProperties();
+  window.conversionShell = visibleShell();
+ });
+ await page.getByRole('button', { name: 'Convert to Operon File Task' }).click();
+ await page.waitForFunction(()=>currentEditor()?.id==='convertedNote');
+ await check(() => [visibleShell()===conversionShell,!!visibleShell().querySelector('.operon-property-editor'),
+  visibleShell().querySelector('.is-markdown').hidden,currentEditor().input.closest('[inert]')===null],
+  [true,false,true,true],'conversion activates the Task Editor inside the same editor-only Lightbox');
+ await page.evaluate(()=>closeAll());
+ // Exercise the same card renderer used by Settings Search and the fallback Settings page.
+ await page.setViewportSize({ width: 1040, height: 900 });
+ await page.evaluate(() => {
+  const viewport = document.body.createDiv('vertical-tab-content-container');
+  viewport.style.cssText = 'position:relative;height:min(800px, 100vh);overflow:hidden;';
+  const host = viewport.createDiv('vertical-tab-content');
+  host.style.cssText = 'height:100%;box-sizing:border-box;overflow:auto;padding:12px;';
+  window.sectionsHost = host.createDiv({ attr: { id: 'sections-settings' } });
+  window.sectionWrites = 0;
+  window.iconAttempts = 0;
+  window.iconWrites = 0;
+  window.failIconWrite = false;
+  window.allowSectionRemoval = false;
+  window.failSectionWrite = false;
+  window.sectionConfirmations = [];
+  window.disposeSections = Subject.renderTaskEditorSectionsSettings(sectionsHost, {
+   app,
+   settings: () => propertySettings,
+   async change(action) {
+    if (failSectionWrite) throw new Error('fixture settings failure');
+    const current = Subject.normalizeTaskEditorSections(propertySettings.taskEditorSections);
+    propertySettings.taskEditorSections = Subject.normalizeTaskEditorSections(Subject.changeTaskEditorLayout(current, propertySettings.keyMappings, action));
+    sectionWrites++;
+   },
+   openIconPicker(anchor, field, label, fallback, onClose) {
+    return Subject.openPropertyIconPicker(app, {
+     anchor, field, label, fallback, onClose, settings: () => propertySettings,
+     async save(edit, icon) {
+      iconAttempts++;
+      await new Promise(resolve => setTimeout(resolve, 60));
+      if (failIconWrite || !Subject.propertyIconEditMatches(propertySettings, edit)) throw new Error('fixture icon write rejected');
+      if (edit.ref.kind === 'mapped') {
+       propertySettings.keyMappings = propertySettings.keyMappings.map(mapping => mapping.canonicalKey === edit.ref.key
+        ? { ...mapping, icon: icon || edit.defaultIcon } : mapping);
+      } else {
+       const next = { ...propertySettings.vaultPropertyIcons };
+       if (icon) next[edit.ref.name] = icon; else delete next[edit.ref.name];
+       propertySettings.vaultPropertyIcons = next;
+      }
+      iconWrites++;
+      return true;
+     },
+    });
+   },
+   async confirmRemove(name) { sectionConfirmations.push(name); return allowSectionRemoval; },
+  });
+ });
+ const sections = page.locator('#sections-settings');
+ const card = id => sections.locator(`[data-editor-settings-section="${id}"]`);
+ const connections = card('connections');
+ for (const [label, icon] of [['Tags', 'tags'], ['Subtasks', 'list-tree']]) {
+  const row = connections.locator('.operon-editor-section-item').filter({ has: page.getByText(label, { exact: true }) });
+  assert.equal(await row.locator('.operon-settings-list-card-icon').getAttribute('data-test-set-icon', { timeout: 2000 }), icon);
+  assert.equal(await row.locator('.operon-compact-chip-canonical-chip').count(), 0);
+  checks += 2;
+ }
+ assert.equal(await connections.getByText('Links', { exact: true }).count(), 1);
+ checks++;
+ const upIcon = card('connections').getByRole('button', { name: 'Change icon for Up', exact: true });
+ const iconModal = page.locator('.operon-settings-icon-picker-modal');
+ await upIcon.press('Enter');
+ await iconModal.waitFor();
+ await page.keyboard.press('Escape');
+ await iconModal.waitFor({ state: 'detached' });
+ await check(() => [iconAttempts, document.activeElement?.querySelector('[data-test-icon]')?.getAttribute('data-test-icon')], [0, 'compass'], 'Escape returns focus to the icon button without saving');
+ await upIcon.press('Space');
+ await iconModal.getByRole('button', { name: 'Cancel', exact: true }).click();
+ await check(() => iconAttempts, 0, 'Cancel performs zero writes');
+ await upIcon.click();
+ await iconModal.getByRole('button', { name: 'star', exact: true }).evaluate(button => { button.click(); button.click(); });
+ await iconModal.waitFor({ state: 'detached' });
+ await check(() => [iconAttempts, iconWrites, propertySettings.keyMappings.find(mapping => mapping.canonicalKey === 'contexts').icon],
+  [1, 1, 'star'], 'double activation saves one canonical preference');
+ assert.equal(await upIcon.locator('[data-test-icon]').getAttribute('data-test-icon'), 'star', 'icon update preserves the accessible name');
+ checks++;
+ await upIcon.click();
+ assert.match(await iconModal.locator('.operon-settings-icon-picker-current-label').textContent(), /star/);
+ checks++;
+ await iconModal.getByRole('button', { name: 'Clear', exact: true }).click();
+ await iconModal.waitFor({ state: 'detached' });
+ assert.equal(await upIcon.locator('[data-test-icon]').getAttribute('data-test-icon'), 'compass');
+ checks++;
+
+ const countIcon = card('additional').getByRole('button', { name: 'Change icon for Count', exact: true });
+ const touch = await page.context().newCDPSession(page);
+ await touch.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+ for (const width of [900, 390]) {
+  await page.setViewportSize({ width, height: 760 });
+  await countIcon.scrollIntoViewIfNeeded();
+  const box = await countIcon.boundingBox();
+  assert.ok(box && box.height >= 44, 'coarse pointer icon target is at least 44 px tall');
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await iconModal.waitFor();
+  if (width === 900) await iconModal.getByRole('button', { name: 'Cancel', exact: true }).click();
+  else await iconModal.getByRole('button', { name: 'book-open', exact: true }).click();
+  await iconModal.waitFor({ state: 'detached' });
+  checks++;
+ }
+ await touch.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+ await touch.detach();
+ await page.setViewportSize({ width: 1040, height: 900 });
+ await check(() => [iconAttempts, iconWrites, propertySettings.vaultPropertyIcons.count], [3, 3, 'book-open'], 'touch edits the case-insensitive vault icon');
+ await page.evaluate(() => { window.failIconWrite = true; });
+ await countIcon.click();
+ await iconModal.getByRole('button', { name: 'star', exact: true }).click();
+ await page.waitForFunction(() => iconAttempts === 4 && !document.querySelector('.operon-settings-icon-picker-modal .modal-content')?.hasAttribute('aria-busy'));
+ await check(() => [iconWrites, propertySettings.vaultPropertyIcons.count], [3,'book-open'], 'a failed icon write retains the saved glyph');
+ await iconModal.getByRole('button', { name: 'Cancel', exact: true }).click();
+ const addSection = sections.locator('[data-editor-settings-focus="add-section"]');
+ await page.evaluate(() => {
+  propertySettings.keyMappings = propertySettings.keyMappings.map(mapping => mapping.canonicalKey === 'links'
+   ? { ...mapping, visiblePropertyName: 'ExternalLinks' } : mapping);
+ });
+ await addSection.fill('Research');
+ await addSection.press('Enter');
+ const research = sections.locator('[data-editor-settings-section^="custom:"]');
+ await research.waitFor({ state: 'visible' });
+ const renamed = connections.locator('.operon-editor-section-item').filter({ hasText: 'ExternalLinks' });
+ assert.equal(await renamed.locator('.operon-compact-chip-canonical-chip').textContent({ timeout: 2000 }), '{{links:: }}');
+ assert.equal(await connections.getByText('Links', { exact: true }).count(), 0);
+ checks += 2;
+ const assign = async (target, name) => {
+  await target.getByRole('button', { name: 'Add Property' }).click();
+  const search = page.getByRole('combobox', { name: 'Add Property' });
+  await page.waitForFunction(() => {
+   const viewport = sectionsHost.closest('.vertical-tab-content-container');
+   const panel = viewport.querySelector(':scope > .operon-searchable-option-picker-panel');
+   const input = panel?.querySelector('input');
+   if (!input) return false;
+   const rect = input.getBoundingClientRect();
+   return input === document.elementFromPoint(rect.left + 8, rect.top + rect.height / 2);
+  });
+  checks++;
+  await search.fill(name);
+  await search.press('Enter');
+  await search.waitFor({ state: 'detached' });
+  await target.getByText(name, { exact: true }).waitFor();
+ };
+ await assign(research, 'Up');
+ await assign(research, 'Count');
+ assert.deepEqual(await research.locator('.operon-compact-chip-canonical-chip').allTextContents(), ['{{contexts:: }}']); checks++;
+ await research.getByRole('button', { name: 'Move up · Count' }).click();
+ assert.deepEqual(await research.locator('.operon-editor-section-item-name').allTextContents(), ['Count','Up']); checks++;
+ assert.equal(await card('connections').getByText('Up', { exact: true }).count(), 0); checks++;
+ await research.getByRole('button', { name: 'Remove property from section · Up' }).click();
+ assert.equal(await card('additional').locator('.is-automatic').getByText('Up', { exact: true }).count(), 1); checks++;
+ await assign(research, 'Up');
+ const overview = card('overview');
+ await overview.getByRole('button', { name: 'Remove section · Overview' }).click();
+ await check(()=>[sectionConfirmations.at(-1),!!sectionsHost.querySelector('[data-editor-settings-section="overview"]')],['Overview',true]);
+ await page.evaluate(()=>{window.allowSectionRemoval=true;});
+ await overview.getByRole('button', { name: 'Remove section · Overview' }).click();
+ await overview.waitFor({ state: 'detached' });
+ await card('commands').getByRole('button', { name: 'Move up · Pin' }).click();
+ await check(()=>Subject.resolveTaskEditorLayout(propertySettings.taskEditorSections,propertySettings.keyMappings).commandOrder.slice(0,3),['tracker','pin','scrollbars']);
+ assert.equal(await card('commands').getByRole('button', { name: /Remove section/u }).count(),0); checks++;
+ await page.evaluate(()=>{window.failSectionWrite=true;});
+ await research.locator('input[type="checkbox"]').click();
+ await check(()=>sectionsHost.querySelector('[data-editor-settings-section^="custom:"] input[type="checkbox"]').checked,true,'a failed save restores the committed visibility');
+ await check(()=>[sectionWrites,propertyWrites],[8,0],'layout settings do not write note content');
+ await page.evaluate(()=>{disposeSections(); sectionsHost.closest('.vertical-tab-content-container').remove();});
+
+ // The layout applies to a real Property Editor on each platform and freezes an open picker.
+ for (const [mode,width] of [['desktop',1040],['tablet',800],['phone',390],['compact',390]]) {
+  await page.setViewportSize({ width, height: 760 });
+  await page.evaluate(async mode => {
+   Object.assign(Subject.Platform, { isDesktopApp: mode==='desktop', isTablet: mode==='tablet', isPhone: mode==='phone'||mode==='compact', isMobileApp: mode!=='desktop', isMobile: mode!=='desktop' });
+   propertySettings.taskEditorUseMobileLayout = mode==='compact';
+   await openProperties();
+  },mode);
+  await ready();
+  await check(()=>Array.from(visibleShell().querySelectorAll('[data-property-group^="custom:"] [data-property-name]'), row=>row.dataset.propertyName),
+   mode==='compact'?[]:['Count','Up'],mode+' uses the saved mixed order in the section layout');
+  if (mode !== 'compact') {
+   await check(()=>!!visibleShell().querySelector('[data-editor-section="overview"]'),false);
+   await check(()=>!!visibleShell().querySelector('[data-editor-section="additional"] [data-property-name="_private"] .is-readonly'),true);
+  }
+  if(mode==='desktop') {
+   await page.locator('[data-property-name="Up"] .operon-editor-desktop-property-label').press('Enter');
+   const picker = page.locator('.operon-contexts-picker-panel');
+   await picker.waitFor({state:'visible'});
+   await page.evaluate(() => {
+    window.activeUpLabel = visibleShell().querySelector('[data-property-name="Up"] .operon-editor-desktop-property-label');
+    window.activeUpPicker = visibleShell().querySelector('.operon-contexts-picker-panel');
+    propertySettings.keyMappings = propertySettings.keyMappings.map(mapping => mapping.canonicalKey === 'contexts'
+     ? { ...mapping, icon: 'link-2' } : mapping);
+    Subject.refreshMountedPropertyIcons(app);
+   });
+   await check(() => [
+    activeUpLabel === visibleShell().querySelector('[data-property-name="Up"] .operon-editor-desktop-property-label'),
+    activeUpPicker === visibleShell().querySelector('.operon-contexts-picker-panel'),
+    activeUpLabel.querySelector('[data-test-icon]')?.getAttribute('data-test-icon'),
+    visibleShell().querySelector('[data-property-name="Count"] .operon-editor-desktop-property-label [data-test-icon]')?.getAttribute('data-test-icon'),
+    propertyWrites,
+   ], [true,true,'link-2','book-open',0], 'live glyph updates preserve the open editor, active picker and note');
+   await page.evaluate(()=>{
+    const id = propertySettings.taskEditorSections.find(section=>section.id.startsWith('custom:')).id;
+    const before = propertySettings.taskEditorSections;
+    propertySettings.taskEditorSections = Subject.changeTaskEditorLayout(before,propertySettings.keyMappings,{type:'visibility',id,enabled:false});
+    window.reinstateSettings = before;
+   });
+   await check(()=>!!visibleShell().querySelector('.operon-contexts-picker-panel'),true,'layout editing leaves an active picker mounted');
+   await page.keyboard.press('Escape');
+   await picker.waitFor({state:'detached'});
+   await page.evaluate(()=>closeAll());
+   await page.evaluate(()=>openProperties());
+   await ready();
+   await check(()=>getComputedStyle(visibleShell().querySelector('[data-editor-section^="custom:"]')).display,'none','saved visibility is applied on reopening');
+   await page.evaluate(()=>{propertySettings.taskEditorSections=reinstateSettings;});
+  }
+  await page.evaluate(()=>closeAll());
+ }
+
+ // Use TaskEditorContent's desktop grouping and native row renderer for both task representations.
+ await page.setViewportSize({ width: 1040, height: 760 });
+ await page.evaluate(()=>{
+  window.layoutTask = format => {
+   const S = Subject;
+   document.querySelector('#task-sections-fixture')?.remove();
+   const root = document.body.createDiv({ cls: 'operon-task-editor', attr: { id: 'task-sections-fixture' } });
+   const editor = Object.create(S.TaskEditorContent.prototype);
+   const desktopLayout = S.resolveTaskEditorLayout(propertySettings.taskEditorSections,propertySettings.keyMappings);
+   Object.assign(editor,{
+    app, settings: propertySettings, desktopLayout, desktopPropertyGroups:new Map(), desktopPropertyRows:new Map(), filePropertyRows:new Map(),
+    workflowActionButtons:new Map(), fieldValues:{contexts:'[[2026-W46]]'}, tags:[], description:'Fixture task', isNewTask:false, isPhone:false,
+    usesMobileLayout:false, subtaskActionKind:'file', existingTask:{}, taskOperonId:'fixture1', fileBodyContext:{filePath:'A.md',format},
+    timeTracker:{isTimerRunning:()=>false}, getCurrentOperonId:()=>null, onSetHideScrollbars:async()=>{}, onRequestDelete:async()=>false,
+    getThemeColor:()=>null, bindTaskEditorTooltip(){}, syncWorkflowActionButtonState(){}, renderDesktopCoreProperty(){}, addDesktopCoreClear(){},
+    refreshDesktopPropertyRows(){}, getRenderableWorkflowPickerItems:()=>[{key:'contexts',visible:true},{key:'related',visible:true}],
+    mountDesktopFileProperties(group){
+     const fileRoot=group.createDiv('operon-editor-desktop-file-properties');
+     const count = this.nativePropertyField('Count','number');
+     this.fileProperties = new Map([['Count',{field:count,value:3,baseline:{present:true,value:3},
+      ...(format==='inline'?{inline:{sourceName:'Count',present:true,type:'number'}}:{})}]]);
+     this.renderDesktopFileProperties(fileRoot);
+    },
+   });
+   const { host } = S.createEditorSectionHosts(root,desktopLayout.sections);
+   editor.renderDesktopPropertyGroups(host,desktopLayout);
+   window.layoutEditor=editor;
+   editor.scrollbarsObserver?.disconnect();
+  };
+ });
+ for (const [format,expected] of [['yaml',['tracker','pin','scrollbars','checkboxes','subtask','inlineSubtask','remove']],['inline',['tracker','pin','scrollbars','checkboxes','subtask','remove']]]) {
+  await page.evaluate(format=>layoutTask(format),format);
+  await check(()=>Array.from(document.querySelectorAll('#task-sections-fixture [data-property-group^="custom:"] .operon-editor-desktop-property-name'),row=>row.textContent),['Count','Up'],format+' interleaves native and mapped rows');
+  await check(()=>Array.from(document.querySelectorAll('#task-sections-fixture [data-editor-command]'),node=>node.dataset.editorCommand),expected,format+' uses the saved command order');
+  await check(()=>document.querySelector('#task-sections-fixture [data-property-key="contexts"] .operon-editor-desktop-property-icon [data-test-icon]')?.getAttribute('data-test-icon'),
+   'link-2',format+' uses the same mapped icon as the open Property Editor');
+  await check(()=>!!document.querySelector('#task-sections-fixture [data-editor-section="overview"]'),false,'deleted default leaves no empty host');
+ }
+
+ await page.evaluate(()=>{
+  const editor=layoutEditor;
+  Object.assign(editor,{mappedPropertyBaselines:{},removedMappedProperties:new Map(),removedInlineProperties:new Map(),persistedFieldValues:{},persistedTags:[],markEdited(){}});
+  const entry=editor.fileProperties.get('Count');entry.value=null;entry.baseline={present:true,value:null};
+  editor.refreshFilePropertyValue('Count');
+ });
+ await check(()=>[layoutEditor.filePropertyRows.get('Count').row.hidden,!!layoutEditor.filePropertyRows.get('Count').row.querySelector('.operon-editor-property-remove')],[false,true],'Task Editor keeps a present empty native property visible');
+ await page.evaluate(()=>layoutEditor.removeFileProperty('Count'));
+ await check(()=>layoutEditor.getInlinePropertyChanges()[0].mutation.kind,'remove','inline empty property requests explicit removal');
+ await page.evaluate(()=>layoutEditor.setFilePropertyValue('Count',0));
+ await check(()=>[layoutEditor.getInlinePropertyChanges()[0].mutation.kind,layoutEditor.getInlinePropertyChanges()[0].mutation.value,!!layoutEditor.filePropertyRows.get('Count').row.querySelector('.operon-editor-property-remove')],['set',0,false],'re-adding a zero cancels pending inline deletion');
+ await page.evaluate(()=>{
+  layoutEditor.fileProperties.clear();layoutEditor.fileBodyContext.format='yaml';layoutEditor.existingTask.fields=[];
+  layoutEditor.mappedPropertyBaselines={contexts:{name:'Up',expected:{present:true,value:null},type:'list'}};
+  layoutEditor.fieldValues.contexts='';layoutEditor.removeMappedProperty('contexts');
+ });
+ await check(()=>[layoutEditor.getFilePropertyChanges()[0].remove,layoutEditor.editorChangedKeys({description:'x',checkbox:'open',tags:[],fieldValues:{}},{description:'x',checkbox:'open',tags:[],fieldValues:{}})],[true,['contexts']],'mapped deletion stays dirty even when the value was already empty');
+ await page.evaluate(()=>{layoutEditor.fieldValues.contexts='[[new]]';});
+ await check(()=>layoutEditor.getFilePropertyChanges().length,0,'explicitly re-adding a mapped value cancels pending deletion');
+ await page.evaluate(()=>{layoutEditor.mappedPropertyBaselines={contexts:{name:'Up',expected:{present:true,value:['keep']},type:'list'}};layoutEditor.fieldValues={};layoutEditor.persistedFieldValues={};});
+ await check(()=>[layoutEditor.getFilePropertyChanges(true).length,layoutEditor.canRemoveMappedProperty('contexts')],[0,false],'unprojected nonempty source data is neither cleared nor offered for removal');
+
+ // Run the real Task Editor loader against an empty verified property snapshot.
+ for(const format of ['yaml','inline']) {
+  await page.evaluate(async format=>{
+   const S=Subject;
+   window.headerSettingsBefore=propertySettings.taskEditorSections;
+   window.headerMappingsBefore=propertySettings.keyMappings;window.headerDefinitionsBefore=propertySettings.inlinePropertyDefinitions;window.headerIconsBefore=propertySettings.vaultPropertyIcons;
+   propertySettings.keyMappings=[...propertySettings.keyMappings,{canonicalKey:'calorieTarget',visiblePropertyName:'Calorie Target',type:'number',icon:'target',isSystem:false}];
+   propertySettings.inlinePropertyDefinitions={version:1,entries:[...(propertySettings.inlinePropertyDefinitions?.entries??[]),{sourceName:'Calorie Target',type:'number',encoding:'vault-v1'}]};
+   propertySettings.vaultPropertyIcons={...propertySettings.vaultPropertyIcons,calories:'flame'};
+   propertySettings.taskEditorSections=S.changeTaskEditorLayout(propertySettings.taskEditorSections,propertySettings.keyMappings,{type:'add',id:'custom:health',name:'Health'});
+   propertySettings.taskEditorSections=S.changeTaskEditorLayout(propertySettings.taskEditorSections,propertySettings.keyMappings,{type:'assign',field:{kind:'vault',name:'Calories'},section:'custom:health'});
+   propertySettings.taskEditorSections=S.changeTaskEditorLayout(propertySettings.taskEditorSections,propertySettings.keyMappings,{type:'assign',field:{kind:'mapped',key:'calorieTarget'},section:'custom:health'});
+   layoutTask(format);
+   const editor=layoutEditor,root=document.getElementById('task-sections-fixture');
+   const index=S.getNativePropertyIndex(app);
+   window.headerIndex=index;
+   window.headerIndexMethods=Object.fromEntries(['configure','isReady','ensure','getTypes','getNativeTypes','getTask'].map(key=>[key,index[key]]));
+   Object.assign(index,{configure(){},isReady:()=>true,ensure:async()=>{},getTypes:()=>({Calories:'number','Calorie Target':'number'}),getNativeTypes:()=>({Calories:'number','Calorie Target':'number'}),getTask:()=>({available:true,properties:new Map()})});
+   Object.assign(editor,{rootEl:root,shellEl:root,mainPanelEl:root,filePropertyRoot:root.createDiv(),filePropertyGeneration:0,
+    filePropertyTypeResolver:{replaceTypes(){},resolve:()=>({tableType:'number'})},
+    getCurrentIndexedTask:()=>({operonId:'fixture1',primary:{filePath:'A.md'}}),indexer:{hasDuplicateOperonIdConflict:()=>false,getAllTasks:()=>[]},
+    submittedFileProperties:new Set(),mappedPropertyBaselines:{},removedMappedProperties:new Map(),removedInlineProperties:new Map(),persistedFieldValues:{},persistedTags:[],propertyInteractionEpoch:0,sourceCompositionEnd(){},
+    markEdited(){window.assignedHeaderEdits++;}
+   });
+   window.assignedHeaderEdits=0;
+   await editor.loadDesktopFileProperties();
+  },format);
+  await check(()=>{
+   const entry=layoutEditor.filePropertyRows.get('Calories');
+   return [!!entry,entry.action.hidden,entry.action.disabled,entry.row.hidden,entry.action.closest('[data-property-group]').dataset.propertyGroup,assignedHeaderEdits,layoutEditor.getFilePropertyChanges().length,layoutEditor.getInlinePropertyChanges().length];
+  },[true,false,false,true,'custom:health',0,0,0],format+' assigned absent vault property has a header action with no row or write');
+  await check(()=>{
+   const vault=layoutEditor.filePropertyRows.get('Calories'),custom=layoutEditor.filePropertyRows.get('Calorie Target');
+   return [vault.action.querySelector('[data-test-icon]')?.getAttribute('data-test-icon'),custom.action.querySelector('[data-test-icon]')?.getAttribute('data-test-icon'),custom.action.hidden,custom.row.hidden];
+  },['flame','target',false,true],format+' absent vault and native custom headers use their configured icons');
+  await page.evaluate(()=>layoutEditor.filePropertyRows.get('Calories').action.click());
+  await check(()=>typeof layoutEditor.closeFilePropertyPicker,'function',format+' absent header opens the existing native picker');
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>layoutEditor.initialFileProperties);
+  await check(()=>[layoutEditor.filePropertyRows.get('Calories').action.hidden,layoutEditor.filePropertyRows.get('Calories').row.hidden,assignedHeaderEdits,layoutEditor.getFilePropertyChanges().length,layoutEditor.getInlinePropertyChanges().length],[false,true,0,0,0],format+' cancelling retains the configured header without creating a property');
+  await page.evaluate(()=>layoutEditor.setFilePropertyValue('Calories',0));
+  await check(()=>[layoutEditor.filePropertyRows.get('Calories').row.hidden,assignedHeaderEdits,layoutEditor.fileBodyContext.format==='yaml'?layoutEditor.getFilePropertyChanges().length:layoutEditor.getInlinePropertyChanges().length],[false,1,1],format+' an explicit zero creates exactly one pending property change');
+  await page.evaluate(()=>{Object.assign(headerIndex,headerIndexMethods);propertySettings.taskEditorSections=headerSettingsBefore;propertySettings.keyMappings=headerMappingsBefore;propertySettings.inlinePropertyDefinitions=headerDefinitionsBefore;propertySettings.vaultPropertyIcons=headerIconsBefore;});
+ }
+
+ await page.evaluate(()=>document.querySelector('#task-sections-fixture').remove());
+
+ // Empty-field behavior uses real editor controls and the real YAML write planner.
+ for (const [mode,width] of [['desktop',1040],['tablet',768],['phone',420],['compact',390]]) {
+  await page.setViewportSize({width,height:780});
+  await page.evaluate(mode=>{
+   const S=Subject;
+   Object.assign(S.Platform,{isDesktopApp:mode==='desktop',isTablet:mode==='tablet',isPhone:mode==='phone'||mode==='compact',isMobile:mode!=='desktop',isMobileApp:mode!=='desktop'});
+   const settings={...S.DEFAULT_SETTINGS,taskEditorUseMobileLayout:mode==='compact',keyMappings:S.DEFAULT_SETTINGS.keyMappings.map(m=>m.canonicalKey==='contexts'?{...m,visiblePropertyName:'Up'}:m)};
+   const host=document.body.createDiv({attr:{id:'empty-editor-fixture'}});
+   host.style.setProperty('--background-modifier-hover','rgb(60, 60, 60)');
+   host.style.setProperty('--background-modifier-border-hover','rgb(100, 100, 100)');
+   window.visibleEditorValueText=value=>{
+    const walker=document.createTreeWalker(value,NodeFilter.SHOW_TEXT);const parts=[];
+    while(walker.nextNode()){
+     const node=walker.currentNode;let parent=node.parentElement;
+     if(parent.closest('.operon-sr-only'))continue;
+     let visible=true;
+     while(parent && parent!==value){if(getComputedStyle(parent).display==='none'||getComputedStyle(parent).visibility==='hidden')visible=false;parent=parent.parentElement;}
+     if(visible)parts.push(node.textContent);
+    }
+    return parts.join('').trim();
+   };
+   window.emptyWrites=0;
+   window.emptyKeys=['dateStarted','dateDue','dateScheduled','dateCompleted','estimate'];
+   window.emptyNames=emptyKeys.map(key=>settings.keyMappings.find(m=>m.canonicalKey===key)?.visiblePropertyName ?? key);
+   window.emptySource='---\n'+emptyNames.map(name=>name+': \n').join('')+'contexts: \nCaption: "  "\nCount: 0\nFlag: false\nnote: \n---\nBody\n';
+   S.getNativePropertyIndex(app).setTypes({Up:'multitext',Caption:'text',Count:'number',Flag:'checkbox',note:'text'});
+   window.emptyEditor=new S.NativePropertyEditor(host,S.readPropertyEditorDocument(emptySource,settings.keyMappings),{
+    app,file:files.Normal,settings:()=>settings,tasks:()=>[],save:async changes=>{
+     const result=S.planPropertyEditorWrite(emptySource,settings.keyMappings,changes);
+     if(result.status!=='ready')return result;
+     emptyWrites++;emptySource=result.text;return {status:'saved',properties:result.properties};
+    },
+   });
+  },mode);
+  await check(()=>[emptyWrites,document.querySelectorAll('#empty-editor-fixture [data-property-name="Caption"] .operon-editor-property-remove').length,
+   document.querySelectorAll('#empty-editor-fixture [data-property-name="Count"] .operon-editor-property-remove').length,
+   document.querySelectorAll('#empty-editor-fixture [data-property-name="Flag"] .operon-editor-property-remove').length],[0,1,0,0],mode+' shows empty removal without writing or mistaking zero/false for empty');
+  await check(()=>Array.from(emptyEditor.headerActions.keys()).filter(name=>['up','contexts'].includes(name.toLowerCase())).length,1,mode+' deduplicates the source alias and mapped header');
+  await check(()=>getComputedStyle(document.querySelector('#empty-editor-fixture .operon-note-setting .operon-task-editor-compact-text-host')).cursor,'text',mode+' Notes uses a text cursor');
+  await check(()=>emptyNames.map(name=>visibleEditorValueText(emptyEditor.surfaces.get(name).value)),['','','','',''],mode+' empty core fields do not repeat names or show an estimate action');
+  await check(()=>visibleEditorValueText(emptyEditor.surfaces.get('contexts').value),'',mode+' empty list values use the same blank presentation');
+  const emptyDateButton=page.locator('#empty-editor-fixture [data-property-key="dateDue"] .operon-editor-picker-button');
+  await emptyDateButton.hover();
+  await check(()=>{
+   const button=emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-picker-button');
+   const style=getComputedStyle(button);
+   return [style.borderTopColor,style.backgroundColor,style.boxShadow];
+  },['rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)','none'],mode+' hovering an empty date never shows a blank box');
+  await emptyDateButton.evaluate(button=>button.classList.add('is-picker-open'));
+  await page.waitForTimeout(200);
+  await check(()=>getComputedStyle(emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-picker-button')).borderTopColor,'rgba(0, 0, 0, 0)',mode+' an open empty picker has no stray box');
+  await emptyDateButton.evaluate(button=>button.classList.remove('is-picker-open'));
+  // Both editors use these real shared controls; exercise each editor's CSS scope.
+  for(const propertyEditor of [true,false]) {
+   await page.evaluate(propertyEditor=>emptyEditor.root.classList.toggle('operon-property-editor',propertyEditor),propertyEditor);
+   const scope=mode+(propertyEditor?' Property Editor':' Task Editor');
+   const row=page.locator('#empty-editor-fixture [data-property-key="dateDue"]');
+   const remove=row.locator(':scope > .operon-editor-property-remove');
+   await row.hover();
+   await remove.hover();
+   await check(()=>{
+    const value=emptyEditor.surfaces.get(emptyNames[1]).value;
+    const token=getComputedStyle(value.querySelector('.operon-editor-value-token'));
+    const remove=getComputedStyle(value.parentElement.querySelector(':scope > .operon-editor-property-remove'));
+    return [token.borderTopColor,token.backgroundColor,token.boxShadow,remove.borderTopWidth,remove.borderTopColor];
+   },['rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)','none','1px','rgb(119, 119, 119)'],scope+' hovering X leaves the outer empty token borderless and preserves X border');
+   await row.locator('.operon-editor-value-token').hover();
+   await check(()=>getComputedStyle(emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-value-token')).borderTopColor,'rgba(0, 0, 0, 0)',scope+' direct outer-token hover stays borderless');
+   await emptyDateButton.focus();
+   await check(()=>getComputedStyle(emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-value-token')).borderTopColor,'rgba(0, 0, 0, 0)',scope+' keyboard focus does not restore the outer empty border');
+   await row.evaluate(el=>el.classList.add('has-descendant-picker-open'));
+   await check(()=>getComputedStyle(emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-value-token')).borderTopColor,'rgba(0, 0, 0, 0)',scope+' picker-open state leaves the outer empty token borderless');
+   await row.evaluate(el=>el.classList.remove('has-descendant-picker-open'));
+   await page.evaluate(()=>{
+    const surface=emptyEditor.surfaces.get(emptyNames[1]);
+    emptyEditor.fieldValues.dateDue='2026-11-17';
+    emptyEditor.refreshSchedulingDraftControls();
+    emptyEditor.refreshDesktopPropertyIcon('dateDue',surface.row,true);
+   });
+   await row.locator('.operon-editor-value-token').hover();
+   await check(()=>{
+    const token=getComputedStyle(emptyEditor.surfaces.get(emptyNames[1]).value.querySelector('.operon-editor-value-token'));
+    return parseFloat(token.borderTopWidth)>0 && token.borderTopStyle!=='none' && token.borderTopColor!=='rgba(0, 0, 0, 0)';
+   },mode!=='compact',scope+' populated value keeps its existing desktop/touch border or compact appearance');
+   await page.evaluate(()=>{
+    emptyEditor.fieldValues.dateDue='';emptyEditor.refreshSchedulingDraftControls();
+    emptyEditor.refreshDesktopPropertyIcon('dateDue',emptyEditor.surfaces.get(emptyNames[1]).row,false);
+   });
+  }
+  await page.evaluate(()=>emptyEditor.root.classList.add('operon-property-editor'));
+
+
+  await check(()=>{
+   const group=document.querySelector('#empty-editor-fixture .operon-editor-text-field-group.is-notes');
+   return [!!group.querySelector(':scope > .operon-note-setting'),!!group.querySelector(':scope > .operon-editor-desktop-group-header > .operon-editor-property-remove'),group.querySelectorAll('.operon-editor-desktop-property-row').length];
+  },[true,true,0],mode+' Notes directly uses the shared text section and header removal control');
+  await page.mouse.move(0,0);
+  await check(()=>getComputedStyle(document.querySelector('#empty-editor-fixture .is-notes .operon-editor-property-remove')).opacity,'0',mode+' removal glyph is hidden at rest');
+  await page.locator('#empty-editor-fixture .is-notes > .operon-editor-desktop-group-header').hover();
+  await check(()=>getComputedStyle(document.querySelector('#empty-editor-fixture .is-notes .operon-editor-property-remove')).opacity,'1',mode+' Notes header hover reveals removal');
+  await check(()=>{
+   const group=document.querySelector('#empty-editor-fixture .is-notes');
+   const header=group.querySelector('.operon-editor-desktop-group-header').getBoundingClientRect();
+   const button=group.querySelector('.operon-editor-property-remove').getBoundingClientRect();
+   return button.top>=header.top && button.bottom<=header.bottom+1;
+  },true,mode+' Notes removal is centered within its header');
+  await page.locator('#empty-editor-fixture .is-notes .operon-editor-property-remove').hover();
+  await check(()=>{
+   const style=getComputedStyle(document.querySelector('#empty-editor-fixture .is-notes .operon-editor-property-remove'));
+   return [style.backgroundColor,style.borderTopColor];
+  },['rgba(0, 0, 0, 0)','rgb(119, 119, 119)'],mode+' removal hover stays transparent with a neutral border');
+  if(mode==='desktop') {
+   await page.evaluate(()=>{
+    window.taskNoteOwner=Object.create(emptyEditor);
+    taskNoteOwner.noteCompactEditor=null;
+    taskNoteOwner.desktopSectionLabel=()=> 'Notes';
+    const target=document.body.createDiv({cls:'operon-task-editor',attr:{id:'shared-task-note-fixture'}});
+    Subject.TaskEditorContent.prototype.renderDescriptionNoteSection.call(taskNoteOwner,target,'notes');
+    taskNoteOwner.updateEmptyPropertyRemoval(taskNoteOwner.notePropertyGroup,'Notes',true,()=>{});
+   });
+   await check(()=>{
+    const shape=root=>Array.from(root.querySelectorAll('*')).filter(el=>!el.closest('.operon-sr-only')).map(el=>el.tagName+':'+Array.from(el.classList).filter(name=>!name.includes('focus-visible')&&!name.includes('picker-open')).sort().join(' '));
+    return JSON.stringify(shape(document.querySelector('#shared-task-note-fixture .is-notes')))===JSON.stringify(shape(document.querySelector('#empty-editor-fixture .is-notes')));
+   },true,'Task and Property Editor Notes use identical section/control structure');
+   await page.evaluate(()=>{taskNoteOwner.noteCompactEditor.destroy();document.getElementById('shared-task-note-fixture').remove();});
+  }
+  await page.locator('#empty-editor-fixture [data-property-name="Caption"] .operon-editor-property-remove').focus();
+  await page.keyboard.press('Enter');
+  await check(()=>[!!document.querySelector('#empty-editor-fixture [data-property-name="Caption"]'),document.activeElement===emptyEditor.additionalPropertyAdd],[false,true],mode+' removes the empty row and returns keyboard focus to Add Property');
+  await page.evaluate(()=>emptyEditor.prepareClose());
+  await check(()=>[emptyWrites,/^Caption:/m.test(emptySource),/^Count: 0/m.test(emptySource),/^Flag: false/m.test(emptySource)],[1,false,true,true],mode+' saves only the requested removal');
+  await page.evaluate(async()=>{emptyEditor.removeFileProperty('contexts');await emptyEditor.prepareClose();});
+  await page.evaluate(()=>emptyEditor.headerActions.get('Up').click());
+  await page.locator('#empty-editor-fixture .operon-contexts-picker-panel').waitFor({state:'attached',timeout:3000});
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>emptyEditor.prepareClose());
+  await check(()=>[emptyWrites,/^(Up|contexts):/m.test(emptySource)],[2,false],mode+' absent mapped header opens its picker and Escape writes nothing');
+  await page.evaluate(()=>{window.headerFocus=emptyEditor.headerActions.get('Up');headerFocus.focus();emptyEditor.render();});
+  await check(()=>document.activeElement===headerFocus,true,mode+' redraw preserves header focus');
+  await page.evaluate(()=>{emptyEditor.destroy();document.getElementById('empty-editor-fixture').remove();});
+ }
+ // Exercise populated -> clear -> leave row -> save -> reopen with each real
+ // editor. Only the vault boundary is in memory; Task saves use the writer's
+ // production YAML draft renderer and Property saves use their guarded planner.
+ await page.setViewportSize({width:1040,height:760});
+ await page.evaluate(()=>{
+  const S=Subject;
+  Object.assign(S.Platform,{isDesktopApp:true,isTablet:false,isPhone:false,isMobile:false,isMobileApp:false});
+  window.clearSettings={...S.DEFAULT_SETTINGS,keyMappings:S.DEFAULT_SETTINGS.keyMappings.map(m=>m.canonicalKey==='dateStarted'?{...m,visiblePropertyName:'Started'}:m)};
+  window.clearIdName=clearSettings.keyMappings.find(m=>m.canonicalKey==='operonId').visiblePropertyName;
+  window.clearWrites=0;
+  window.mountClearEditor=kind=>{
+   window.clearEditorCleanup?.();
+   document.querySelector('#clear-editor-fixture')?.remove();
+   const host=document.body.createDiv({attr:{id:'clear-editor-fixture'}});
+   host.style.cssText='position:fixed;inset:20px;overflow:auto;background:var(--background-primary);z-index:100';
+   if(kind==='property'){
+    window.clearEditor=new S.NativePropertyEditor(host,S.readPropertyEditorDocument(clearSource,clearSettings.keyMappings),{
+     app,file:files.Normal,settings:()=>clearSettings,tasks:()=>[],save:async changes=>{
+      if(clearWrites>4)throw Error('Repeated fixture save');
+      const result=S.planPropertyEditorWrite(clearSource,clearSettings.keyMappings,changes);
+      if(result.status!=='ready')throw Error('property clear write rejected '+result.status);
+      clearSource=result.text;clearWrites++;return {status:'saved',properties:result.properties};
+     },
+    });
+    window.clearSurface=()=>clearEditor.surfaces.get('Started');
+    window.saveClearEditor=()=>clearEditor.prepareClose();
+    window.clearEditorCleanup=()=>clearEditor.destroy();
+   }else{
+    const doc=S.readFileTaskPropertyDocument(clearSource);
+    const parsed=S.parseTaskLine('- [ ] Fixture '+Object.entries(S.readYamlFields(doc.frontmatter,clearSettings.keyMappings)).map(([key,value])=>'{{'+key+':: '+value+'}}').join(' '),0,'A.md',clearSettings.keyMappings);
+    if(!parsed)throw Error('fixture task failed to parse');
+    const indexer={getAllTasks:()=>[],getTask:()=>null,getTaskById:()=>null,secondary:{getChildIds:()=>[],getParentIds:()=>[]}};
+    window.clearEditor=new S.TaskEditorContent(app,indexer,clearSettings,parsed,async payload=>{
+     const writer=new S.TaskWriter(app,indexer,clearSettings.keyMappings);
+     const fields=Object.fromEntries(S.parseTaskLine(payload.taskLine,0,'A.md',clearSettings.keyMappings).fields.map(field=>[field.key,field.value]));
+     const patch=payload.fileProperties?.length?null:S.tryPatchYamlTaskContent(clearSource,'clearfixture',fields,'merge',clearSettings.keyMappings);
+     const result=patch?(patch.ok?patch.content:null):writer.renderFilePropertyDraft(clearSource,'clearfixture',fields, {changes:payload.fileProperties||[]});
+     if(result===null)throw Error('task clear write rejected');
+     clearSource=result;clearWrites++;return true;
+    },{isTimerRunning:()=>false},{focusDescriptionOnMount:false,readSource:async()=>null,fileBody:{filePath:'A.md',format:'yaml',initialContent:'Body\n'}});
+    clearEditor.rootEl=host;host.addClass('operon-task-editor');
+    clearEditor.workflowRowsEl=host.createDiv('operon-task-editor-section-layout');
+    clearEditor.mappedPropertyBaselines=S.editorMappedProperties(doc.frontmatter,clearSettings.keyMappings);
+    clearEditor.desktopLayout=S.resolveTaskEditorLayout(clearSettings.taskEditorSections,clearSettings.keyMappings);
+    clearEditor.renderDesktopPropertyGroup(clearEditor.workflowRowsEl,'planning',(window.clearKeys||['dateStarted']).map((key,rank)=>({key,rank})));
+    if(window.clearNotes) clearEditor.renderNote(host,false);
+    clearEditor.refreshDesktopPropertyRows();
+    clearEditor.suspendAutoSave();
+    const unbind=S.bindEditorInteractionState(host);
+    window.clearSurface=()=>clearEditor.desktopPropertyRows.get('dateStarted');
+    window.saveClearEditor=async()=>{const result=await clearEditor.persistEditorState('close-save');if(!result.ok)throw Error(JSON.stringify(result));};
+    window.clearEditorCleanup=()=>{unbind();clearEditor.noteCompactEditor?.destroy();clearEditor.disposed=true;if(clearEditor.saveTimer)window.clearTimeout(clearEditor.saveTimer);};
+   }
+  };
+ });
+ for(const kind of ['task','property'])for(const input of ['mouse','keyboard']){
+  await page.evaluate(({kind})=>{
+   window.clearWrites=0;
+   window.clearSource='---\n'+(kind==='task'?clearIdName+': clearfixture\n':'')+'Started: 2026-11-17\nUnrelated: keep\n---\nBody\n';
+   mountClearEditor(kind);
+  },{kind});
+  const row=page.locator('#clear-editor-fixture [data-property-key="dateStarted"]');
+  const removeValue=row.locator('.operon-editor-value-clear');
+  await row.hover();
+  await check(()=>clearSurface().row.classList.contains('is-empty-property'),false,kind+' starts populated');
+  if(input==='mouse')await removeValue.click();
+  else{await removeValue.focus();await page.keyboard.press('Enter');}
+  await check(()=>[clearSurface().row.hidden,clearSurface().row.classList.contains('is-empty-property'),document.activeElement===clearSurface().row.querySelector('.operon-editor-desktop-property-label')],
+   [false,true,true],kind+' '+input+' clear keeps a blank row and focus on its label');
+  await page.mouse.move(0,0);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await check(()=>{
+   const {row,value}=clearSurface();const token=getComputedStyle(value.querySelector('.operon-editor-value-token'));
+   return [visibleEditorValueText(value),token.borderTopColor,token.backgroundColor,!!row.querySelector('.operon-editor-property-remove'),!!document.querySelector('#clear-editor-fixture .operon-editor-desktop-group-header.has-descendant-focus-visible')];
+  },['','rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)',true,false],kind+' '+input+' mouse-away leaves no empty frame or focused header');
+  await check(()=>getComputedStyle(clearSurface().row.querySelector('.operon-editor-property-remove')).opacity,input==='keyboard'?'1':'0',kind+' '+input+' mouse-away only retains removal for keyboard focus');
+  await page.evaluate(()=>document.activeElement?.blur());
+  await check(()=>getComputedStyle(clearSurface().row.querySelector('.operon-editor-property-remove')).opacity,'0',kind+' removal hides after leaving hover and focus');
+  await page.evaluate(()=>saveClearEditor());
+  await check(()=>[clearWrites,/^Started:\s*$/m.test(clearSource),/^Unrelated: keep$/m.test(clearSource),clearSource.endsWith('Body\n')],[1,true,true,true],kind+' saves the empty key and preserves other content');
+  await page.evaluate(kind=>mountClearEditor(kind),kind);
+  await check(()=>[clearSurface().row.hidden,clearSurface().row.classList.contains('is-empty-property'),visibleEditorValueText(clearSurface().value),clearWrites],[false,true,'',1],kind+' reopens the same blank property without another write');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
+ }
+ // Stage 1: both hosts use the same Notes intents, action state, and clear focus.
+ await page.evaluate(()=>{
+  window.clearKeys=['dateStarted','contexts']; window.clearNotes=true;
+  clearSettings={...clearSettings,keyMappings:clearSettings.keyMappings.map(m=>m.canonicalKey==='contexts'?{...m,visiblePropertyName:'Up'}:m)};
+  Subject.getNativePropertyIndex(app).setTypes({Up:'multitext',Count:'number',Flag:'checkbox',Mixed:'multitext'});
+  window.freshStageEditor=kind=>{
+   clearSource='---\n'+(kind==='task'?clearIdName+': clearfixture\n':'')+'Started: 2026-11-17\nUp: ["[[Week]]"]\nnote: Summary\nFlag: false\nCount: 0\nMixed: [one, two]\n'+(window.stageExtraSource||'')+'Unrelated: keep\n---\nBody\n';
+   clearWrites=0;mountClearEditor(kind);
+   if(kind==='task'){
+    const doc=Subject.readFileTaskPropertyDocument(clearSource);
+    for(const [name,type] of [['Flag','checkbox'],['Count','number'],['Mixed','list']]){
+     const field=clearEditor.nativePropertyField(name,type), baseline={present:true,value:doc.frontmatter[name]};
+     clearEditor.fileProperties.set(name,{field,baseline,value:doc.frontmatter[name]});
+     const {row,label,value}=clearEditor.createPropertyRow(clearEditor.rootEl,field.key,name,()=>field.icon,type==='list');
+     const action=clearEditor.rootEl.createEl('button');
+     clearEditor.filePropertyRows.set(name,{row,value,action});
+     clearEditor.refreshFilePropertyValue(name);
+    }
+   }
+   window.stageAction=name=>kind==='property'?clearEditor.headerActions.get(name):name==='Up'?clearEditor.workflowActionButtons.get('contexts'):clearEditor.filePropertyRows.get(name)?.action;
+   window.stageSurface=name=>kind==='property'?clearEditor.surfaces.get(name):name==='Up'?clearEditor.desktopPropertyRows.get('contexts'):clearEditor.filePropertyRows.get(name);
+   window.stageRefresh=()=>kind==='property'?clearEditor.render():clearEditor.refreshWorkflowActionButtonStates();
+  };
+ });
+ for(const kind of ['task','property']){
+  await page.evaluate(kind=>freshStageEditor(kind),kind);
+  await check(()=>[stageAction('Up').classList.contains('is-active'),stageAction('Up').getAttribute('aria-pressed'),stageAction('Flag').getAttribute('aria-pressed'),stageAction('Count').getAttribute('aria-pressed')],[true,'true','true','true'],kind+' headers treat Up, false and zero as populated');
+  await check(()=>stageAction('Flag').querySelector('svg')?.getAttribute('data-test-icon'),'square',kind+' unchecked checkbox header uses its value glyph');
+  await page.evaluate(()=>stageRefresh());
+  await check(()=>stageAction('Flag').querySelector('svg')?.getAttribute('data-test-icon'),'square',kind+' unrelated refresh preserves checkbox glyph');
+  await page.evaluate(()=>{
+   clearSettings.keyMappings=clearSettings.keyMappings.map(m=>m.canonicalKey==='contexts'?{...m,icon:'star'}:m);
+   Subject.refreshMountedPropertyIcons(app);
+  });
+  await check(()=>stageAction('Up').querySelector('svg')?.getAttribute('data-test-icon'),'star',kind+' mapped icon refresh preserves its active state');
+  // Last-value removal and partial-list removal both retain a stable row focus.
+  for(const name of ['Up','Mixed','Flag','Count']){
+   await page.evaluate(name=>{stageSurface(name).row.setAttribute('data-stage-row','current');},name);
+   const row=page.locator('#clear-editor-fixture [data-stage-row="current"]');
+   const removes=row.locator('.operon-editor-compact-selection-chip-remove');
+   let removals=0;
+   while(await removes.count()){
+    assert.ok(++removals<=3,kind+' '+name+' removal must reduce values');
+    await row.hover();
+    await removes.first().click();
+    await page.mouse.move(0,0);
+    await check(name=>document.activeElement===stageSurface(name).row.querySelector('.operon-editor-desktop-property-label'),true,kind+' '+name+' removal keeps row focus',name);
+   }
+   await check(name=>[stageSurface(name).row.hidden,stageAction(name).classList.contains('is-active'),stageAction(name).getAttribute('aria-pressed')],[false,false,'false'],kind+' '+name+' empty header and row agree',name);
+   await page.evaluate(name=>stageSurface(name).row.removeAttribute('data-stage-row'),name);
+  }
+  await page.evaluate(()=>{document.activeElement?.blur();});
+  await page.evaluate(()=>saveClearEditor());
+  await check(()=>{
+   const fm=Subject.readFileTaskPropertyDocument(clearSource).frontmatter;
+   return ['Up','Mixed','Flag','Count'].map(name=>Object.hasOwn(fm,name)&&(fm[name]==null||fm[name]===''||Array.isArray(fm[name])&&!fm[name].length));
+  },[true,true,true,true],kind+' list, checkbox and number clear preserve empty source keys');
+  await page.evaluate(kind=>mountClearEditor(kind),kind);
+  await check(()=>{const value=Subject.readFileTaskPropertyDocument(clearSource).frontmatter.Up;return value==null||Array.isArray(value)&&!value.length;},true,kind+' reopened Up remains empty');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
+ }
+ for(const kind of ['task','property'])for(const width of [1040,900,390]){
+  await page.setViewportSize({width,height:760});
+  await page.evaluate(({kind,width})=>{
+   Object.assign(Subject.Platform,{isPhone:width===390,isMobile:width===390,isMobileApp:width===390,isTablet:width===900});
+   freshStageEditor(kind);
+   const host=clearEditor.noteCompactHostEl;
+   const before=document.createElement('button');before.id='notes-before';before.textContent='Before';host.before(before);
+   const hidden=document.createElement('button');hidden.style.display='none';host.after(hidden);
+   const after=document.createElement('button');after.id='notes-after';after.textContent='After';hidden.after(after);
+   window.notesEscapes=0;clearEditor.rootEl.addEventListener('operon-editor-escape-intent',()=>notesEscapes++);
+  },{kind,width});
+  const notes=page.locator('#clear-editor-fixture .operon-task-editor-compact-text-host').locator('textarea,.cm-content').first();
+  await notes.focus();await page.keyboard.press('Tab');
+  await check(()=>document.activeElement?.id,'notes-after',kind+' '+width+' Notes Tab skips hidden controls');
+  await notes.focus();await page.keyboard.press('Shift+Tab');
+  await check(()=>document.activeElement?.id,'notes-before',kind+' '+width+' Notes Shift+Tab goes backwards');
+  await notes.focus();await page.keyboard.press('Enter');
+  await check(()=>document.activeElement?.id,'notes-after',kind+' '+width+' Notes Enter follows Task Editor navigation');
+  await notes.focus();await page.keyboard.press('End');await page.keyboard.press('Shift+Enter');await page.keyboard.type('More');
+  await check(()=>clearEditor.fieldValues.note,'Summary\nMore',kind+' '+width+' Notes Shift+Enter inserts a newline');
+  await page.keyboard.press('Control+Enter');
+  await page.waitForTimeout(30);
+  await check(()=>[clearWrites,!!document.querySelector('#clear-editor-fixture')],[1,true],kind+' '+width+' Notes explicit save leaves editor open');
+  await page.keyboard.press('Escape');
+  await check(()=>notesEscapes,1,kind+' '+width+' Notes Escape emits the shared close intent');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
+ }
+ await page.setViewportSize({width:1040,height:760});
+ for(const kind of ['task','property']){
+  await page.evaluate(kind=>{
+   Object.assign(Subject.Platform,{isPhone:false,isMobile:false,isMobileApp:false,isTablet:false});
+   freshStageEditor(kind);
+   if(kind==='task')clearEditor.onSave=async()=>false;
+   else clearEditor.options.save=async()=>({status:'failed'});
+  },kind);
+  const notes=page.locator('#clear-editor-fixture .operon-task-editor-compact-text-host').locator('textarea,.cm-content').first();
+  await notes.focus();await page.keyboard.press('End');await page.keyboard.type(' retained');await page.keyboard.press('Meta+Enter');
+  await page.waitForTimeout(30);
+  await check(()=>[clearWrites,clearEditor.fieldValues.note,clearEditor.isEdited,!!document.querySelector('#clear-editor-fixture')],[0,'Summary retained',true,true],kind+' Cmd+Enter failure retains the Notes draft and open editor');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
+ }
+ await page.evaluate(()=>{
+  window.clearKeys=['dateStarted','contexts','reminderDatetimes','taskImage','estimate'];
+  window.stageExtraSource=clearKeys.filter(key=>!['dateStarted','contexts'].includes(key)).map(key=>{
+   const name=clearSettings.keyMappings.find(m=>m.canonicalKey===key).visiblePropertyName;
+   return name+': '+(key==='reminderDatetimes'?'["2026-11-20T09:00:00"]':key==='estimate'?'120':'"image.png"')+'\n';
+  }).join('');
+ });
+ for(const kind of ['task','property']){
+  await page.evaluate(kind=>freshStageEditor(kind),kind);
+  const started=page.locator('#clear-editor-fixture [data-property-key="dateStarted"]');
+  await started.hover();await started.locator('.operon-editor-picker-button').click();
+  await page.locator('.operon-day-picker-footer-button.is-clear').click();
+  await check(()=>{
+   const row=clearEditor.desktopPropertyRows.get('dateStarted').row;
+   return [row.classList.contains('is-empty-property'),document.activeElement===row.querySelector('.operon-editor-desktop-property-label')];
+  },[true,true],kind+' picker Clear preserves the empty row and label focus after closing');
+  for(const key of ['reminderDatetimes','taskImage']){
+   const row=page.locator('#clear-editor-fixture [data-property-key="'+key+'"]');
+   await row.hover();await row.locator('.operon-editor-compact-selection-chip-remove').click();
+   await page.mouse.move(0,0);await page.waitForTimeout(60);
+   await check(key=>{
+    const row=clearEditor.desktopPropertyRows.get(key).row;
+    return [row.hidden,row.classList.contains('is-empty-property'),document.activeElement===row.querySelector('.operon-editor-desktop-property-label')];
+   },[false,true,true],kind+' '+key+' clear does not restore header focus on the next frame',key);
+  }
+  const estimate=page.locator('#clear-editor-fixture [data-property-key="estimate"] input');
+  await estimate.fill('');
+  await check(()=>[clearEditor.desktopPropertyRows.get('estimate').row.classList.contains('is-empty-property'),document.activeElement?.tagName],[true,'INPUT'],kind+' typing an empty estimate refreshes empty state without moving focus');
+  await page.evaluate(()=>{document.activeElement?.blur();});await page.evaluate(()=>saveClearEditor());
+  await check(()=>{
+   const fm=Subject.readFileTaskPropertyDocument(clearSource).frontmatter;
+   return ['dateStarted','reminderDatetimes','taskImage','estimate'].map(key=>{
+    const name=clearSettings.keyMappings.find(m=>m.canonicalKey===key).visiblePropertyName,value=fm[name];
+    return Object.hasOwn(fm,name)&&(value==null||value===''||Array.isArray(value)&&!value.length);
+   });
+  },[true,true,true,true],kind+' picker, reminder, image and typed estimate clears keep their source properties');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
+ }
+
+ // Shared field policy through the real editor entry points, across pointer layouts.
+ for(const mode of ['desktop','tablet','phone','compact'])for(const kind of ['task','property']){
+  await page.setViewportSize({width:mode==='desktop'?1040:mode==='tablet'?900:390,height:760});
+  await page.evaluate(({kind,mode})=>{
+   Object.assign(Subject.Platform,{isPhone:mode==='phone'||mode==='compact',isMobile:mode!=='desktop',isMobileApp:mode!=='desktop',isTablet:mode==='tablet'});
+   clearSettings={...clearSettings,taskEditorUseMobileLayout:mode==='compact',keyMappings:[...clearSettings.keyMappings.filter(m=>m.canonicalKey!=='custom:stage2'),{canonicalKey:'custom:stage2',visiblePropertyName:'Choices',type:'list',isSystem:false,enabled:true,sync:'yes'}]};
+   clearSettings.inlinePropertyDefinitions={version:1,entries:[{sourceName:'Choices',type:'list',encoding:'legacy'}]};
+   Subject.getNativePropertyIndex(app).setTypes({Choices:'multitext',Up:'multitext'});
+   window.clearKeys=['custom:stage2'];window.clearNotes=false;window.stageExtraSource='';
+   clearSource='---\n'+(kind==='task'?clearIdName+': clearfixture\n':'')+'Started: 2026-11-17\n---\nBody\n';clearWrites=0;
+   mountClearEditor(kind);
+   if(kind==='property')clearEditor.openAddition('Choices',clearEditor.headerActions.get('Choices')||clearEditor.add);
+   else clearEditor.openWorkflowPickerFromAction('custom:stage2',clearEditor.workflowActionButtons.get('custom:stage2'));
+  },{kind,mode});
+  const input=page.locator('.operon-floating-panel .operon-floating-input').last();
+  await input.waitFor({state:'visible'});
+  await check(()=>clearWrites,0,kind+' '+mode+' opening a new custom picker writes nothing');
+  await input.fill('first');await input.press('Enter');
+  {
+   await input.waitFor({state:'visible'});
+   await input.fill('second');await input.press('Enter');
+   await check(()=>clearEditor.fieldValues['custom:stage2'],'first; second',kind+' '+mode+' new legacy list keeps multiple selection open');
+   await input.press('Escape');
+  }
+  await page.evaluate(()=>saveClearEditor());
+  await check(()=>Subject.readFileTaskPropertyDocument(clearSource).frontmatter.Choices,['first','second'],kind+' '+mode+' custom list writes YAML members without coercion');
+  await page.evaluate(kind=>mountClearEditor(kind),kind);
+  await check(()=>clearEditor.fieldValues['custom:stage2'],'first; second',kind+' '+mode+' saved custom selection reopens through the same control');
+  await page.evaluate(()=>{clearEditorCleanup();document.querySelector('#clear-editor-fixture').remove();});
  }
  assert.deepEqual(errors,[]);checks++;
 
