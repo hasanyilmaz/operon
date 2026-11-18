@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente",
       "showIndexStats": "Afficher les statistiques de l'index",
       "toggleCompletion": "Basculer l'état d'achèvement de la tâche",
+      "toggleGlobalTimer": "Démarrer/arrêter le minuteur",
       "togglePinnedDock": "Basculer le panneau des tâches épinglées",
       "toggleStatusDock": "Afficher/masquer le dock de statut",
       "toggleTimer": "Démarrer/arrêter le suivi du temps",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "60e85e60ec0261e1395eb9fc5fe61ed4cb90785050584f53866eda12581e4842"
+  "sourceVersion": "f5380c1bd89a89e756ba3d9fb4d08614e7056662b03f8ccc599bed82fbf3ee4a"
 }

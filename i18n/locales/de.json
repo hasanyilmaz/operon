@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "Vorhandene Aufgabe zu Excalidraw hinzufügen",
 		"createTask": "Neue Aufgabe an der Cursorposition erstellen",
 		"toggleCompletion": "Aufgabenerledigung umschalten",
+		"toggleGlobalTimer": "Timer starten/stoppen",
 		"toggleTimer": "Zeiterfassung starten/stoppen",
 		"openTaskEditor": "Aufgaben-Editor öffnen (neue Aufgabe)",
 		"editTask": "Aufgabe an der Cursorposition bearbeiten",

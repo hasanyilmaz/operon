@@ -38670,6 +38670,18 @@ export default class OperonPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: 'toggle-global-timer',
+			name: t('commands', 'toggleGlobalTimer'),
+			callback: () => runAsyncAction('toggle global timer command failed', async () => {
+				if (this.timeTracker.getActiveState()) {
+					await this.stopActiveTimer();
+				} else {
+					await this.startUnassignedTimer();
+				}
+			}),
+		});
+
 		// Start/stop timer
 			this.addCommand({
 				id: 'toggle-timer',

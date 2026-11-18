@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "重试待处理的工作流重命名",
       "showIndexStats": "显示索引统计",
       "toggleCompletion": "切换任务完成状态",
+      "toggleGlobalTimer": "启动/停止计时器",
       "togglePinnedDock": "切换置顶任务停靠栏",
       "toggleStatusDock": "切换状态停靠栏显示",
       "toggleTimer": "启动/停止时间追踪器",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6d3e4a61330f929b9cc3cb8f41dd0fa571a880ae0ffe251a200c9c667605af1f"
+  "sourceVersion": "0d4c31b7502786a8e475e8232a030894a635743478d4cf0501656eb818e202d3"
 }

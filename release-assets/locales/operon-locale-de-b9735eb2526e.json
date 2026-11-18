@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Ausstehende Workflow-Umbenennung erneut versuchen",
       "showIndexStats": "Index-Statistiken anzeigen",
       "toggleCompletion": "Aufgabenerledigung umschalten",
+      "toggleGlobalTimer": "Timer starten/stoppen",
       "togglePinnedDock": "Dock für angeheftete Aufgaben umschalten",
       "toggleStatusDock": "Status-Dock ein-/ausblenden",
       "toggleTimer": "Zeiterfassung starten/stoppen",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "df87098578cd7a894d5b27b89efe169a27ddf765e82c0e5d957f8c5bf17ce06f"
+  "sourceVersion": "7d6da5a73e4b56c558cf8a4c81a2ae1910fe37a15e6fa1cabf392c4f0b2c6386"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente",
       "showIndexStats": "Mostrar estadísticas del índice",
       "toggleCompletion": "Alternar finalización de la tarea",
+      "toggleGlobalTimer": "Iniciar/detener temporizador",
       "togglePinnedDock": "Alternar panel de tareas fijadas",
       "toggleStatusDock": "Mostrar/ocultar el dock de estado",
       "toggleTimer": "Iniciar/detener el seguimiento de tiempo",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "b5d75b880cb7f3aacb85d6a761e327b20df05f47f0e3d03980d904370d87ec96"
+  "sourceVersion": "b89e9712a3c43c48725f7a394f7445a7fe4468e28ce6d1ac944a1f87d3144fc5"
 }

@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "Ajouter une tâche existante à Excalidraw",
 		"createTask": "Créer une nouvelle tâche au curseur",
 		"toggleCompletion": "Basculer l'état d'achèvement de la tâche",
+		"toggleGlobalTimer": "Démarrer/arrêter le minuteur",
 		"toggleTimer": "Démarrer/arrêter le suivi du temps",
 		"openTaskEditor": "Ouvrir l'éditeur de tâche (nouvelle tâche)",
 		"editTask": "Modifier la tâche au curseur",

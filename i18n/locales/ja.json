@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "既存のタスクをExcalidrawに追加",
 		"createTask": "カーソル位置に新しいタスクを作成",
 		"toggleCompletion": "タスクの完了を切り替え",
+		"toggleGlobalTimer": "タイマーを開始/停止",
 		"toggleTimer": "タイムトラッカーを開始/停止",
 		"openTaskEditor": "タスクエディターを開く（新規タスク）",
 		"editTask": "カーソル位置のタスクを編集",

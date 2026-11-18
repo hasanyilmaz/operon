@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "重試待處理的工作流程重新命名",
       "showIndexStats": "顯示索引統計",
       "toggleCompletion": "切換任務完成狀態",
+      "toggleGlobalTimer": "啟動/停止計時器",
       "togglePinnedDock": "切換置頂任務停靠欄",
       "toggleStatusDock": "切換狀態停靠列顯示",
       "toggleTimer": "啟動/停止時間追蹤器",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "6c3efade8c65ed4d07dea923f16443ebf4cde68e1da2505a6a8a8cbec43a3bac"
+  "sourceVersion": "73c6b65959b77010c22a9db611d7d49ef2d0880025dc7639692853a1ba8a3a65"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Tentar novamente a renomeação do fluxo de trabalho pendente",
       "showIndexStats": "Mostrar estatísticas do índice",
       "toggleCompletion": "Alternar conclusão da tarefa",
+      "toggleGlobalTimer": "Iniciar/parar cronômetro",
       "togglePinnedDock": "Alternar dock de tarefas fixadas",
       "toggleStatusDock": "Mostrar/ocultar dock de status",
       "toggleTimer": "Iniciar/parar rastreamento de tempo",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "bd49dcba07e79ce642f42a2eba976f3ef5b01faf265c0ab1f1ff76e714f71e01"
+  "sourceVersion": "fbb0714ee274f26beea447e20e80dfde406603cbca2a272f71976c78a889e095"
 }

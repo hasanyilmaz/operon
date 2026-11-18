@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Added **Start/stop timer** to the command palette. Start FlowTime or TrackTime without assigning a task, or stop the running timer. Stopping a task timer saves its session to that task. Unassigned time is discarded when stopped.
 - Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates. Day and week numbers share centered cells that scale with the panel width; week numbers use a muted tone without hover tooltips.
 - **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks. Days in the current month and the week at the center of the sidebar stay bright as you scroll. Other days use a softer gray. The fixed header has equal space above and below, and accented month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
 - Choose what Mini Calendar opens under **Settings → Calendar View → Mini Calendar → Click behavior**: the source file, **Task / Property Editor**, or both in a Lightbox. File Tasks use Task Editor and regular notes use Property Editor; mobile opens notes in the normal file view.
@@ -36,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Passed **4/4** focused File Task recurrence tests, including Custom Key carryover and configured value clearing. Runtime mutation checks, strict lint, production build, and release guard passed.
 - Passed **49/49** tracker tests, full local checks, production build, and release guard. Normal Obsidian exit was manually verified.
 - Passed **192/192** Status Dock tests, plugin checks, production build, and focused code review. Cmd-click was manually verified in Obsidian.
+- Passed **6/6** timer command scenarios across FlowTime and TrackTime, plus plugin checks and production build. The command was manually verified in Obsidian.
 
 ## [4.7.0] - 2026-11-12
 

@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "기존 작업을 Excalidraw에 추가",
 		"createTask": "커서 위치에 새 작업 만들기",
 		"toggleCompletion": "작업 완료 상태 전환",
+		"toggleGlobalTimer": "타이머 시작/중지",
 		"toggleTimer": "시간 추적 시작/중지",
 		"openTaskEditor": "작업 편집기 열기(새 작업)",
 		"editTask": "커서 위치의 작업 편집",

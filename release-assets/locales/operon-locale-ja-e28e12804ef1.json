@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行",
       "showIndexStats": "インデックス統計を表示",
       "toggleCompletion": "タスクの完了を切り替え",
+      "toggleGlobalTimer": "タイマーを開始/停止",
       "togglePinnedDock": "ピン留めタスクのドックを切り替え",
       "toggleStatusDock": "ステータスドックの表示を切り替え",
       "toggleTimer": "タイムトラッカーを開始/停止",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3127281e9d7dcc8cb5629122d58c7efce5a6be20404f880c640ebc4e6a9824b5"
+  "sourceVersion": "3a90515e641374ce6bd9cb69e5239104a13419cb3205cdaeb509cf65193d1441"
 }

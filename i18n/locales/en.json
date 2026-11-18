@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "Add existing task to Excalidraw",
 		"createTask": "Create new task at cursor",
 		"toggleCompletion": "Toggle task completion",
+		"toggleGlobalTimer": "Start/stop timer",
 		"toggleTimer": "Start/stop time tracker",
 		"openTaskEditor": "Open Task Editor (new task)",
 		"editTask": "Edit task at cursor",

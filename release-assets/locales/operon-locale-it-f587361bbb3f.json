@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Riprova rinomina del flusso di lavoro in sospeso",
       "showIndexStats": "Mostra statistiche indice",
       "toggleCompletion": "Alterna completamento attività",
+      "toggleGlobalTimer": "Avvia/arresta il timer",
       "togglePinnedDock": "Alterna pannello attività fissate",
       "toggleStatusDock": "Mostra/nascondi il dock di stato",
       "toggleTimer": "Avvia/arresta monitoraggio del tempo",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "2e539a504a46ef0cb019f948ec6e52fcb5f48d18cbb062a137365024f3056c86"
+  "sourceVersion": "668e13cc86544e3bbe5e70aa0056caf50ccd402cca949c103b6584c5a5f1213f"
 }

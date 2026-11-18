@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "대기 중인 워크플로 이름 변경 재시도",
       "showIndexStats": "인덱스 통계 보기",
       "toggleCompletion": "작업 완료 상태 전환",
+      "toggleGlobalTimer": "타이머 시작/중지",
       "togglePinnedDock": "고정 작업 dock 표시 전환",
       "toggleStatusDock": "상태 dock 전환",
       "toggleTimer": "시간 추적 시작/중지",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "efd47f37ae079dfbac98fbe9843d38ecfc15aaceb37940d5a2f4e309dd7cec6a"
+  "sourceVersion": "384e452de50089a1ac3192276372adcb47018f3c135f1201bdf5b2b5dfb973aa"
 }

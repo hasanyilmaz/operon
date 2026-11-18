@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3856,
-  "keyFingerprint": "d0fe048fb6a77c508f3d1f6f8388656115bbfb8d1e84a68a09fcc86a4dc6bf23",
+  "keyCount": 3857,
+  "keyFingerprint": "495cacd5692967f9594605e3dcf6f404884b7cdbf7020b02bb955cae22417c0c",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -351,6 +351,7 @@
       "retryPendingWorkflowRename": "Повторить незавершённое переименование рабочего процесса",
       "showIndexStats": "Показать статистику индекса",
       "toggleCompletion": "Переключить выполнение задачи",
+      "toggleGlobalTimer": "Запустить/остановить таймер",
       "togglePinnedDock": "Переключить док закреплённых задач",
       "toggleStatusDock": "Показать/скрыть док состояния",
       "toggleTimer": "Запустить/остановить трекер времени",
@@ -3901,5 +3902,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "2f06be0bc2f060757aa60ffe96b920ebacd889aa514805fd2ababb975812df22"
+  "sourceVersion": "f096d61c2aecd15100287adc09f290ca1f06865eb86a8d35fa3f28ab787bef61"
 }

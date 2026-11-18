@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "將現有任務加入 Excalidraw",
 		"createTask": "在游標處新建任務",
 		"toggleCompletion": "切換任務完成狀態",
+		"toggleGlobalTimer": "啟動/停止計時器",
 		"toggleTimer": "啟動/停止時間追蹤器",
 		"openTaskEditor": "開啟任務編輯器（新任務）",
 		"editTask": "編輯游標處的任務",

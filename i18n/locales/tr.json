@@ -8,6 +8,7 @@
 		"addExistingTaskToExcalidraw": "Mevcut görevi Excalidraw’a ekle",
 		"createTask": "İmlece yeni görev oluştur",
 		"toggleCompletion": "Görev tamamlanma durumunu değiştir",
+		"toggleGlobalTimer": "Sayacı başlat/durdur",
 		"toggleTimer": "Zaman takibini başlat/durdur",
 		"openTaskEditor": "Görev Editörü aç (yeni görev)",
 		"editTask": "İmleçteki görevi düzenle",
