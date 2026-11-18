@@ -96,6 +96,7 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 	let addInput: HTMLInputElement;
 	let addPending = false;
 	let fieldCatalog: Map<string, FieldChoice>;
+	const nameInputs = new Map<TaskEditorSectionId, HTMLInputElement>();
 	let catalogMappings: OperonSettings['keyMappings'] | undefined;
 
 	function focusControl(keys: readonly string[]): void {
@@ -195,6 +196,11 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 	}
 
 	function render(draft = ''): void {
+		const nameDrafts = new Map<TaskEditorSectionId, string>();
+		for (const [id, input] of nameInputs) {
+			if (input.value !== input.defaultValue) nameDrafts.set(id, input.value);
+		}
+		nameInputs.clear();
 		closePicker?.();
 		closeIconPicker?.();
 		cleanupOperonHoverTooltips(root);
@@ -219,10 +225,14 @@ export function renderTaskEditorSectionsSettings(root: HTMLElement, options: Sec
 				setAccessibleLabelWithoutTooltip(text.inputEl, t('settings', 'taskEditorSectionName'));
 				text.inputEl.dataset.editorSettingsFocus = nameKey;
 				text.inputEl.maxLength = 80;
-				text.setValue(label).setPlaceholder(taskEditorSectionDefaultLabel(id));
+				text.inputEl.defaultValue = label;
+				text.setValue(nameDrafts.get(id) ?? label).setPlaceholder(taskEditorSectionDefaultLabel(id));
+				nameInputs.set(id, text.inputEl);
 				header.infoEl.replaceChildren(text.inputEl);
 				text.inputEl.addEventListener('change', () => {
-					const name = text.getValue().trim();
+					const submitted = text.getValue();
+					text.inputEl.defaultValue = submitted;
+					const name = submitted.trim();
 					const value = !id.startsWith('custom:') && name === taskEditorSectionDefaultLabel(id) ? '' : name;
 					void commit({ type: 'rename', id, name: value }, [nameKey]);
 				});

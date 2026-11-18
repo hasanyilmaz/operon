@@ -102,7 +102,7 @@ function method(file,name,deps={}){
  return new Function(...Object.keys(deps),`${js};return Subject.prototype.${name};`)(...Object.values(deps));
 }
 for(const key of [sourceKey,serialKey])for(const iconOnly of [false,true])test(`${key}/${iconOnly}: DOM controls preserve accessible names and native button keyboard`,()=>{
- const create=fn('src/ui/compact-task-layout.ts','createInlineTaskCompactChipElement',{isTaskInfoChipKey:api.isTaskInfoChipKey,createOwnerElement:(_owner,tag)=>Object.assign(new El(),{tag}),setIcon:(el,icon)=>el.icon=icon,setAccessibleLabelWithoutTooltip:(el,label)=>el.attrs['aria-label']=label});
+ const create=fn('src/ui/compact-task-layout.ts','createInlineTaskCompactChipElement',{compactPropertyIcons:new WeakMap(),isTaskInfoChipKey:api.isTaskInfoChipKey,createOwnerElement:(_owner,tag)=>Object.assign(new El(),{tag}),setIcon:(el,icon)=>el.icon=icon,setAccessibleLabelWithoutTooltip:(el,label)=>el.attrs['aria-label']=label});
  const entry=entries(task(),display,items.map(x=>({...x,iconOnly}))).find(x=>x.key===key),el=create(entry);
  assert.equal(el.tag,key===sourceKey?'button':'span');assert.equal(el.attrs['aria-label'],entry.ariaLabel);assert.match(el.className,/operon-task-info-chip/);
  if(key===serialKey)assert.match(el.className,/operon-project-serial-chip/);
