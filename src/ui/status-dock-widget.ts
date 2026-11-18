@@ -20,6 +20,7 @@ import { renderCompactTaskMarkdown } from './compact-task-markdown-renderer';
 import { getTaskDisplayTitle } from '../core/task-display-title';
 import { createFlowTimeDial, resolveFlowTimeDialAccent } from './flow-time-dial';
 import { formatStatusDockSeconds } from './status-dock-duration';
+import { bindStatusDockTaskClick } from './status-dock-card-content';
 
 const DIAL_BASE_SIZE = 144;
 const DIAL_GAP = 8;
@@ -40,14 +41,14 @@ export interface StatusDockSnapshot {
 }
 export interface StatusDockActions {
 	findTask: (anchor: HTMLElement) => void | Promise<void>;
-	openTracker: (anchor: HTMLElement) => void | Promise<void>;
+	openTracker: (anchor: HTMLElement, inNewTab: boolean) => void | Promise<void>;
 	toggleTimer: () => void | Promise<void>;
 	toggleTimerMode: () => void | Promise<void>;
 	toggleBreak: (anchor: HTMLElement) => void | Promise<void>;
 	startTask: (taskId: string, anchor: HTMLElement) => void | Promise<void>;
-	openCurrentTask: (taskId: string, anchor: HTMLElement) => void | Promise<void>;
-	openNextUpcoming: (anchor: HTMLElement) => void | Promise<void>;
-	openUpcoming: (anchor: HTMLElement) => void | Promise<void>;
+	openCurrentTask: (taskId: string, anchor: HTMLElement, inNewTab: boolean) => void | Promise<void>;
+	openNextUpcoming: (anchor: HTMLElement, inNewTab: boolean) => void | Promise<void>;
+	openUpcoming: (anchor: HTMLElement, inNewTab: boolean) => void | Promise<void>;
 	openConflicts: () => void;
 	createTask: (anchor: HTMLElement) => void | Promise<void>;
 }
@@ -139,7 +140,7 @@ export class StatusDockWidget {
 			});
 			return el;
 		};
-		const reading = (parent: HTMLElement, cls: string, icon: string | null, action: (anchor: HTMLElement) => void | Promise<void>, plainable = false) => {
+		const reading = (parent: HTMLElement, cls: string, icon: string | null, action: (anchor: HTMLElement, inNewTab: boolean) => void | Promise<void>, plainable = false) => {
 			const shell = plainable ? parent : parent.createSpan('operon-status-dock-calendar-task');
 			const el = shell.createSpan(`operon-status-dock-reading ${cls}`);
 			if (icon) this.icon(el.createSpan('operon-status-dock-leading-icon'), icon);
@@ -149,10 +150,9 @@ export class StatusDockWidget {
 				: copy.createSpan('operon-status-dock-time');
 			const name = copy.createSpan('operon-status-dock-name');
 			if (!plainable) { name.setAttribute('role', 'button'); name.tabIndex = 0; }
-			name.addEventListener('click', event => {
+			bindStatusDockTaskClick(el, name, inNewTab => {
 				if (name.getAttribute('role') !== 'button') return;
-				event.stopPropagation();
-				try { const result = action(name); if (result) void result.catch(onError); } catch (error) { onError(error); }
+				try { const result = action(name, inNewTab); if (result) void result.catch(onError); } catch (error) { onError(error); }
 			});
 			name.addEventListener('keydown', event => {
 				if (name.getAttribute('role') !== 'button' || (event.key !== 'Enter' && event.key !== ' ')) return;
@@ -202,7 +202,7 @@ export class StatusDockWidget {
 		this.createCurrentReading = id => {
 			const host = this.currentHost.createDiv('operon-status-dock-current-item'); host.dataset.taskId = id;
 			const divider = host.createSpan('operon-status-dock-divider'); divider.setAttribute('aria-hidden', 'true');
-			const item = reading(host, 'operon-status-dock-upcoming operon-status-dock-current is-current', 'calendar-clock', anchor => actions.openCurrentTask(id, anchor));
+			const item = reading(host, 'operon-status-dock-upcoming operon-status-dock-current is-current', 'calendar-clock', (anchor, inNewTab) => actions.openCurrentTask(id, anchor, inNewTab));
 			return { host, button: item.el, icon: item.el.querySelector<HTMLElement>('.operon-status-dock-leading-icon')!, time: item.duration, name: item.name, divider };
 		};
 		this.futureArea = this.root.createDiv('operon-status-dock-task-area');

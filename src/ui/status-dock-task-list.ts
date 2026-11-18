@@ -1,4 +1,4 @@
-import { renderStatusDockTaskTitle, renderStatusDockSessionDuration, statusDockSessionKey } from './status-dock-card-content';
+import { bindStatusDockTaskClick, renderStatusDockTaskTitle, renderStatusDockSessionDuration, statusDockSessionKey } from './status-dock-card-content';
 import { normalizeStatusDockSections, isStatusDockSectionEnabled } from '../types/status-dock-sections';
 import { Notice, setIcon } from 'obsidian';
 import type { IndexedTask } from '../types/fields';
@@ -243,7 +243,9 @@ export class StatusDockTaskList {
    if (!this.busy && session && guard()) void this.run(() => this.options.actions.openSession(session, guard)); });
   const name = el.createEl('button', { cls: 'operon-status-dock-name', attr: { type: 'button' } });
   icon.addEventListener('click', event => { event.stopPropagation(); if (captureGuard()()) void this.run(() => this.options.actions.clickIcon(id)); });
-  name.addEventListener('click', event => { event.stopPropagation(); if (captureGuard()()) void this.run(() => this.options.actions.openTask(id, name)); });
+  bindStatusDockTaskClick(el, name, inNewTab => {
+   if (captureGuard()()) void this.run(() => this.options.actions.openTask(id, name, inNewTab));
+  });
   const timer = el.createEl('button', { cls: 'operon-status-dock-scope-timer', attr: { type: 'button' } });
   timer.addEventListener('click', event => {
    event.stopPropagation();

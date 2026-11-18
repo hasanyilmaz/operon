@@ -17,7 +17,7 @@ import { buildOperonSettingsBackupSelectedPatchV1 } from '../src/core/settings-b
 import { exportOperonSettingsBackupJsonV1 } from '../src/core/settings-backup-export';
 import { preflightOperonSettingsBackupRestoreV1 } from '../src/core/settings-backup-preflight';
 import { humanizeUpcomingCountdown, UpcomingTaskStatusModel } from '../src/core/upcoming-task-status';
-import { WorkspaceLeaf } from 'obsidian';
+import { Platform, WorkspaceLeaf } from 'obsidian';
 import { FlowTimeView } from '../src/ui/flow-time-view';
 import { FlowTimeControls } from '../src/systems/flow-time-controls';
 import { FlowTimeBreakController } from '../src/systems/flow-time-break';
@@ -445,7 +445,7 @@ test('each window retains one dock across tab changes, lightboxes, moves and win
 	const dock = new OperonStatusDock(app, { flowTimeControls, toggleTaskTimer: async () => true, indexer: { getTask: () => null, getAllTasks: () => [], getGeneration: () => 1 } as never,
 		timeTracker: { getActiveState: () => null, getTransitionState: () => null, subscribe: () => () => {}, startUnassigned: async () => { starts++; return true; } } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: null, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, subscribe: () => () => {} } as never,
-		getSettings: () => settings, startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
+		getSettings: () => settings, startTimerForTask: async () => false, openTask: async () => {}, openTaskSource: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {} });
 	(dock as unknown as { registerEvent(ref: { dispose: () => void }): void }).registerEvent = ref => dock.register(ref.dispose);
 	dock.onload();
 	assert.equal(main.doc.body.querySelectorAll('.operon-status-dock').length, 1);
@@ -530,7 +530,7 @@ test('dock source clicks retain the clicked owner anchor and idle selection star
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => active, getTransitionState: () => transition } as never,
 		breakController: { getSnapshot: () => ({ pendingTaskId: pending, breakState: null, actionPending: false }), getElapsedSeconds: () => 0, selectPendingTask: async (pick: () => Promise<string | null>) => { const before = active, id = await pick(); if (!id || active !== before) return false; starts++; return true; } } as never,
-		startTimerForTask: async () => false, openTask: async (id, anchor, behavior) => { opened.push([id, anchor, behavior]); },
+		startTimerForTask: async () => false, openTask: async (id, anchor, behavior) => { opened.push([id, anchor, behavior]); }, openTaskSource: async () => {},
 		createTrackerTask: async () => null, pickTrackerTask: async () => { picks++; return selected; },
 		openConflicts: () => {},
 	});
@@ -655,7 +655,7 @@ test('tracking and upcoming route all three click choices with their owner ancho
 		indexer: { getTask: () => undefined, getAllTasks: () => [], getGeneration: () => 1 }, getSettings: () => settings,
 		timeTracker: { getActiveState: () => snapshot().active, getTransitionState: () => null } as never,
 		breakController: { getSnapshot: () => snapshot().breakSnapshot, getElapsedSeconds: () => 0 } as never,
-		startTimerForTask: async () => false, openTask: async (...args) => { opened.push(args); await gate; }, createTrackerTask: async () => null, pickTrackerTask: async () => null,
+		startTimerForTask: async () => false, openTask: async (...args) => { opened.push(args); await gate; }, openTaskSource: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null,
 		openConflicts: () => {},
 	});
 	(dock as any).upcoming.getSnapshot = () => snapshot().upcoming;
@@ -718,7 +718,7 @@ function feedbackHarness(statusDockVisible?: boolean) {
 	const dock = new OperonStatusDock({ workspace: { containerEl: document.doc.body } } as unknown as App, { flowTimeControls: timerControls, toggleTaskTimer: async () => true,
 		indexer: { getTask: id => tasks.get(id), getAllTasks: () => [], getGeneration: () => 1 }, timeTracker: tracker as never,
 		breakController: controller, getSettings: () => settings,
-		startTimerForTask: async () => false, openTask: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {},
+		startTimerForTask: async () => false, openTask: async () => {}, openTaskSource: async () => {}, createTrackerTask: async () => null, pickTrackerTask: async () => null, openConflicts: () => {},
 	});
 	// Trap any accidental legacy panel-opening call while exercising real timer actions.
 	(dock as any).dependencies.openFlowTime = async () => { state.opened++; };
@@ -1755,7 +1755,7 @@ function scopeListFixture(timerAction?: (id: string, guard: () => boolean) => Pr
  const list = new StatusDockTaskList(host, { getSettings: () => settings, getTask: id => tasks.find(t => t.operonId === id),
  startHistoryTimer: historyAction ?? (async (id, guard) => {if (guard()) calls.push(`replay:${id}`);}),
  isTracking: isTracking ?? (id => tracking.has(id)), toggleTimer: timerAction ?? (async (id, guard) => { if (guard()) { calls.push(`timer:${id}`); if (tracking.has(id)) tracking.delete(id); else tracking.add(id); } }), sessionCard, actions: {
-  openTask: async id => { calls.push(`open:${id}`); }, clickIcon: async id => { calls.push(`icon:${id}`); },
+  openTask: async (id, _anchor, inNewTab) => { calls.push(`${inNewTab ? 'tab' : 'open'}:${id}`); }, clickIcon: async id => { calls.push(`icon:${id}`); },
   openSession: async session => { calls.push(`edit:${session.operonId}:${session.sessionIndex}`); }, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false,
  } });
  const panel = host.querySelector('.operon-status-dock-task-list');
@@ -2112,7 +2112,7 @@ test('Dock uses the real pinned query and invalidates only on relevant source ch
  const settings=storage.getSettings();
  const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
  flowTimeControls,indexer,getSettings:()=>settings,getPinnedTasks:()=>getPinnedTasksForDisplay(indexer as never,storage.pinned,settings.priorities,settings.pinnedTaskSortMode),getPinnedGeneration:()=>storage.pinned.getGeneration(),
- timeTracker:{} as never,breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
+ timeTracker:{} as never,breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},openTaskSource:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
  const scopes=()=> (dock as any).getTaskScopes();
  try {
   await storage.pinned.pin('a');await storage.pinned.pin('b');
@@ -2205,7 +2205,7 @@ test('Dock History shares tracker order and caches across second ticks while inv
  const dock=new OperonStatusDock({workspace:{containerEl:f.doc.body}} as unknown as App,{
  flowTimeControls,indexer:{getAllTasks:()=>[],getTask:()=>undefined,getGeneration:()=>generation},getSettings:()=>settings,
  timeTracker:{getHistory:()=>{reads++;return [{sessions:sessions.slice(0,2)},{sessions:sessions.slice(2)}];}} as never,
- breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
+ breakController:{} as never,toggleTaskTimer:async()=>true,startTimerForTask:async()=>true,openTask:async()=>{},openTaskSource:async()=>{},createTrackerTask:async()=>null,pickTrackerTask:async()=>null,openConflicts:()=>{}});
  try{
   const read=()=> (dock as any).getHistorySnapshot();assert.deepEqual(read(),sessions);
   for(let i=0;i<60;i++){timers.tick(1000);read();}assert.equal(reads,1);
@@ -2312,4 +2312,118 @@ for(const distance of [0,3]) test(`Escape at ${distance}px preserves the list in
   assert.equal(blocked,1);assert.equal((f.dock as any).position,null);
   f.emitWindow('pointerdown',pointer);f.emitWindow('click',{pointerId:9,detail:1,preventDefault(){blocked++;},stopImmediatePropagation(){}});assert.equal(blocked,1);
  }finally{f.dock.destroy();}
+});
+
+type DockClickTarget = {
+	parentElement: DockClickTarget | null;
+	handlers?: Map<string, Set<(event: MouseEvent) => void>>;
+};
+
+function dispatchDockClick(target: DockClickTarget, options: MouseEventInit = {}): boolean {
+	let stopped = false, prevented = false;
+	const event = {
+		button: 0, detail: 1, metaKey: false, ctrlKey: false, ...options, target,
+		get defaultPrevented() { return prevented; },
+		stopPropagation() { stopped = true; },
+		preventDefault() { prevented = true; },
+	} as unknown as MouseEvent;
+	for (let node: DockClickTarget | null = target; node && !stopped; node = node.parentElement) {
+		for (const callback of node.handlers?.get('click') ?? []) callback(event);
+	}
+	return prevented;
+}
+
+for (const mac of [true, false]) test(`dock cards open only the source tab with ${mac ? 'Cmd' : 'Ctrl'}+click`, async () => {
+	const original = Platform.isMacOS;
+	Object.assign(Platform, { isMacOS: mac });
+	const f = scopeListFixture();
+	const shortcut = mac ? { metaKey: true } : { ctrlKey: true };
+	try {
+		const [task] = f.tasks;
+		f.list.update({ overdue: [task], today: [task], pinned: [task], modified: [task] }, historySessions(task));
+		for (const scope of ['overdue', 'today', 'pinned', 'modified', 'history'] as const) {
+			f.list.toggle(scope);
+			const row = f.panel.children[0];
+			const name = row.querySelector('.operon-status-dock-name');
+			const titleChild = name.createSpan();
+			const before = f.calls.length;
+			assert.equal(dispatchDockClick(titleChild, shortcut), true);
+			await Promise.resolve();
+			assert.equal(dispatchDockClick(row, shortcut), true);
+			await Promise.resolve();
+			dispatchDockClick(name);
+			dispatchDockClick(name, { ...shortcut, detail: 0 });
+			dispatchDockClick(row);
+			assert.deepEqual(f.calls.slice(before), ['tab:first', 'tab:first', 'open:first', 'open:first']);
+		}
+		await new Promise(resolve => setImmediate(resolve));
+		f.calls.length = 0;
+		const history = f.panel.children[0];
+		dispatchDockClick(history.querySelector('.operon-status-dock-time'), shortcut);
+		await new Promise(resolve => setImmediate(resolve));
+		dispatchDockClick(history.querySelector('.operon-status-dock-session-icon'), shortcut);
+		await new Promise(resolve => setImmediate(resolve));
+		dispatchDockClick(history.querySelector('.operon-status-dock-scope-timer'), shortcut);
+		assert.deepEqual(f.calls, ['edit:first:1', 'icon:first', 'replay:first']);
+	} finally { f.list.destroy(); Object.assign(Platform, { isMacOS: original }); }
+});
+
+test('recent session source shortcut survives card reuse without accumulating listeners', async () => {
+	const f = statusDockDocument();
+	f.doc.defaultView.performance = { now: () => 0 };
+	const host = f.doc.body.createDiv();
+	const rowTask = scopedTask('recorded', {});
+	const session = historySessions(rowTask)[0];
+	const calls: string[] = [];
+	const card = new StatusDockSessionCard(host, {
+		getSettings: () => DEFAULT_SETTINGS, getTask: () => rowTask, getSessions: () => [session], isTracking: () => false,
+		actions: {
+			openTask: async (id, _anchor, inNewTab) => { calls.push(`${inNewTab ? 'tab' : 'open'}:${id}`); },
+			openSession: async () => {}, clickIcon: async () => {}, contextualAction: () => {}, isPinned: () => false, hasSubtasks: () => false,
+		},
+	});
+	try {
+		const shortcut = Platform.isMacOS ? { metaKey: true } : { ctrlKey: true };
+		for (let i = 0; i < 3; i++) {
+			card.show(session);
+			const row = host.querySelector('.operon-status-dock-session-card');
+			dispatchDockClick(row, shortcut);
+			await new Promise(resolve => setImmediate(resolve));
+			row.querySelector('.operon-status-dock-name').click();
+			await new Promise(resolve => setImmediate(resolve));
+			card.clear();
+		}
+		assert.deepEqual(calls, Array.from({ length: 3 }, () => ['tab:recorded', 'open:recorded']).flat());
+	} finally { card.destroy(); }
+});
+
+test('dock readings bypass every configured click action only for the source shortcut', async () => {
+	const h = feedbackHarness();
+	try {
+		const opened: string[] = [];
+		const dock = h.dock as any;
+		dock.dependencies.openTask = async (id: string, _anchor: HTMLElement, behavior: string) => { opened.push(`${id}:${behavior}`); };
+		dock.dependencies.openTaskSource = async (id: string) => { opened.push(`${id}:tab`); };
+		const next = { task: task('future', '2026-10-24T12:00:00'), countdown: '02:00:00' };
+		const ongoing = task('ongoing', '2026-10-24T10:00:00');
+		dock.upcoming.getSnapshot = () => ({ ...snapshot().upcoming, ongoing: [ongoing], current: true, due: true, next });
+		h.emit();
+		const shortcut = Platform.isMacOS ? { metaKey: true } : { ctrlKey: true };
+		for (const behavior of ['source', 'source-and-editor', 'editor'] as const) {
+			h.settings.statusDockClickAction = behavior;
+			for (const [selector, id] of [
+				['.operon-status-dock-tracker-reading', 'active'],
+				['.operon-status-dock-current', 'ongoing'],
+				['.operon-status-dock-next', 'future'],
+			] as const) {
+				const reading = h.views[0].root.querySelector(selector);
+				const name = reading.querySelector('.operon-status-dock-name');
+				dispatchDockClick(name, shortcut);
+				await new Promise(resolve => setImmediate(resolve));
+				dispatchDockClick(name);
+				await new Promise(resolve => setImmediate(resolve));
+				assert.deepEqual(opened.slice(-2), [`${id}:tab`, `${id}:${behavior}`]);
+			}
+		}
+	} finally { h.close(); }
 });

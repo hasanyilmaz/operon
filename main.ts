@@ -17445,6 +17445,9 @@ export default class OperonPlugin extends Plugin {
 					isPinned: id => this.storage.pinned.isPinned(id),
 					hasSubtasks: id => this.indexer.secondary.getChildIds(id).size > 0,
 				},
+				openTaskSource: async taskId => {
+					if (!this.redirectDuplicateOperonIdAction(taskId)) await this.openMaterializedTaskSourceInNewTab(taskId);
+				},
 				openTask: async (taskId, anchor, behavior) => {
 					if (behavior === 'source') await this.openTaskSourcePreview(taskId, anchor);
 					else await this.openEditorForId(taskId, behavior === 'source-and-editor', anchor);

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Cmd-click** a **Status Dock** task card on macOS, or **Ctrl-click** on Windows or Linux, to open its source file in a new tab. A regular click follows the dock's **Click behavior** setting.
 - **Sections and Order** in Task Editor settings has more compact rows and clearer controls, and the **Add Property** picker stays visible while scrolling. Mapped fields show your configured property names and their inline syntax. **Tags** and **Subtasks** use the same icons as in Task Editor.
 - **Task Editor and Property Editor** use the same Notes keyboard controls, section icon states, and value-clearing behavior across desktop, tablet, and phone layouts. Existing empty properties stay visible; clearing a value leaves a blank, borderless row without moving focus to the section header, including after saving and reopening. A separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
 - **Add Property** and custom field controls use consistent property names, type checks, and picker behavior in both editors. Native properties use their declared Obsidian type; fields without a declared type and values that cannot be edited without changing their meaning remain read-only. Cancelling a new property picker leaves the note unchanged.
@@ -34,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Editor consistency passed **225/225** field and persistence tests, **22/22** shared-control tests, and **518/518** Chromium checks across desktop, tablet, and phone layouts. Full local checks, TypeScript checks, strict lint, production build, release guard, and focused code review passed.
 - Passed **4/4** focused File Task recurrence tests, including Custom Key carryover and configured value clearing. Runtime mutation checks, strict lint, production build, and release guard passed.
 - Passed **49/49** tracker tests, full local checks, production build, and release guard. Normal Obsidian exit was manually verified.
+- Passed **192/192** Status Dock tests, plugin checks, production build, and focused code review. Cmd-click was manually verified in Obsidian.
 
 ## [4.7.0] - 2026-11-12
 
