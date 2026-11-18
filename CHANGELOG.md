@@ -9,23 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
-- Added per-block dates to **embedded filters**, so daily notes can reuse one saved filter and show tasks completed on the note’s date. Add a line such as `dateCompleted: 2026-11-11` below `filterId`. ([#338](https://github.com/hasanyilmaz/operon/issues/338))
+- Reuse one saved filter across daily notes with **embedded filter dates**. Add a line such as `dateCompleted: 2026-11-11` below `filterId` to replace that field’s condition in the block, or add one if it’s missing. The saved filter stays unchanged. ([#338](https://github.com/hasanyilmaz/operon/issues/338))
 - Added **Start/stop timer** to the command palette. Start FlowTime or TrackTime without assigning a task, or stop the running timer. Stopping a task timer saves its session to that task. Unassigned time is discarded when stopped.
-- Added **Mini Calendar** to the sidebar with **Open mini calendar**, independent date navigation, and quick access to daily and weekly notes. Missing notes are created using your existing note settings and templates. Day and week numbers share centered cells that scale with the panel width; week numbers use a muted tone without hover tooltips.
-- **Mini Calendar** now defaults to **Continuous weeks**, filling the sidebar with scrollable weeks. Days in the current month and the week at the center of the sidebar stay bright as you scroll. Other days use a softer gray. The fixed header has equal space above and below, and accented month labels replace the number on each month’s first day. Returning to today centers its week, and touch controls adapt automatically for tablets and phones. Choose **Month** under **View mode** to use the fixed monthly layout.
-- Choose what Mini Calendar opens under **Settings → Calendar View → Mini Calendar → Click behavior**: the source file, **Task / Property Editor**, or both in a Lightbox. File Tasks use Task Editor and regular notes use Property Editor; mobile opens notes in the normal file view.
+- Use **Open mini calendar** to show a sidebar calendar with independent date navigation and quick access to daily and weekly notes. Missing notes use your existing note settings and templates. On desktop, **Settings → Calendar View → Mini Calendar → Click behavior** lets you open the source file, the matching **Task / Property Editor**, or both in a Lightbox. Mobile opens notes in the normal file view.
+- **Mini Calendar** defaults to **Continuous weeks**, with scrollable weeks that fill the sidebar. Returning to today centers its week, and touch controls adapt on tablets and phones. The fixed header has balanced spacing, day and week numbers are centered in cells that scale with the panel width, and muted week numbers have no hover tooltip. The current month and centered week stay bright, with other days shown in a softer tone. Accented month labels replace the first day’s number. Choose **Month** under **View mode** for a fixed monthly layout.
+- **Task Editor and Property Editor** share the same section layout across desktop, tablet, and phone. Use **Open current file’s Task / Property Editor** to open the active Markdown file’s matching editor in a Lightbox. The **Convert to Operon File Task** button has a neutral fill and border and converts eligible notes in the same Lightbox.
 - Added **Stop timer when Obsidian quits** under **Tasks → Tracker → Tracking behavior**. Turn it on to save a running task’s FlowTime or TrackTime session at normal desktop exit. The setting is off by default. ([#339](https://github.com/hasanyilmaz/operon/issues/339))
 
 ### Improved
 
 - **Cmd-click** a **Status Dock** task card on macOS, or **Ctrl-click** on Windows or Linux, to open its source file in a new tab. A regular click follows the dock's **Click behavior** setting.
-- **Sections and Order** in Task Editor settings has more compact rows and clearer controls, and the **Add Property** picker stays visible while scrolling. Mapped fields show your configured property names and their inline syntax. **Tags** and **Subtasks** use the same icons as in Task Editor.
-- **Task Editor and Property Editor** use the same Notes keyboard controls, section icon states, and value-clearing behavior across desktop, tablet, and phone layouts. Existing empty properties stay visible; clearing a value leaves a blank, borderless row without moving focus to the section header, including after saving and reopening. A separate remove button appears on hover or keyboard focus. Property Editor's conversion button uses a neutral background and border.
-- **Add Property** and custom field controls use consistent property names, type checks, and picker behavior in both editors. Native properties use their declared Obsidian type; fields without a declared type and values that cannot be edited without changing their meaning remain read-only. Cancelling a new property picker leaves the note unchanged.
+- **Sections and Order** lets you create, hide, and reorder sections, remove eligible groups, assign and reorder properties, and reorder commands for both editors. Compact property rows have clearer controls and show mapped names and inline syntax, and the **Add Property** picker stays visible while scrolling. Property icons are shared across supported Operon views, including the icons for **Tags** and **Subtasks**. Changing a mapped icon here also updates **Key Mappings**.
+- Both editors share **Notes** keyboard controls, section icon states, and **Add Property** names, type checks, and pickers. Fields mapped to **Contexts**, such as **Up**, accept legacy single links in the picker. Clearing a value preserves a blank, borderless row after reopening and keeps focus in place. The remove button appears on hover or keyboard focus. Native properties use their Obsidian type, fields without a declared type and values that cannot be edited safely stay read-only, and cancelling a new property picker leaves the note unchanged.
 
 ### Fixed
 
 - Recurring **File Tasks** carry their **Custom Key** values into the next occurrence, even when a property is added to Custom Keys after the series starts. Properties configured to clear on repeat still start empty.
+
+### Security
+
+- Updated the development dependencies `fast-uri` to 3.1.9 and `minimatch` to 11.0.1 to address dependency audit findings.
 
 ### Validation
 
