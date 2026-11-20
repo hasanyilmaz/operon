@@ -79,42 +79,79 @@ export function readAutomationRules(value: unknown): AutomationRulesSettings {
 	return structuredClone(value);
 }
 
-const RULE_ID_SPACE = 36 ** 7;
-const RULE_ID_FORMAT = /^ar_[0-9a-z]{7}$/u;
+type IdPrefix = 'ar_' | 'fg_' | 'act_';
+const RULE_ID = /^ar_[0-9a-z]{7}$/u;
+const ROOT_ID = /^fg_[0-9a-z]{8}$/u;
+const ACTION_ID = /^act_[0-9a-z]{8}$/u;
 
-function availableRuleId(used: ReadonlySet<string>, start: number): string {
-	let index = start;
+/** Reserve each ID immediately so several allocations in the same draft cannot collide. */
+function reserveId(prefix: IdPrefix, used: Set<string>, previous?: string): string {
+	const width = prefix === 'ar_' ? 7 : 8;
+	const space = 36 ** width;
+	let index = previous === undefined ? Math.floor(Math.random() * space)
+		: parseInt(previous.toLowerCase().replace(/[^0-9a-z]/gu, '').slice(-width) || '0', 36);
 	for (;;) {
-		const id = 'ar_' + index.toString(36).padStart(7, '0');
-		if (!used.has(id)) return id;
-		index = (index + 1) % RULE_ID_SPACE;
+		const id = prefix + index.toString(36).padStart(width, '0');
+		if (!used.has(id)) {
+			used.add(id);
+			return id;
+		}
+		index = (index + 1) % space;
 	}
 }
 
 export function createAutomationRuleId(rules: readonly AutomationRule[]): string {
-	return availableRuleId(new Set(rules.map(rule => rule.id)), Math.floor(Math.random() * RULE_ID_SPACE));
+	return reserveId('ar_', new Set(rules.map(rule => rule.id)));
 }
 
-/** Stable across backup previews, reloads and retries, including a collision between two legacy IDs. */
-export function migrateAutomationRuleIds(settings: AutomationRulesSettings): AutomationRulesSettings {
-	const legacy = settings.rules.map(rule => rule.id).filter(id => !RULE_ID_FORMAT.test(id));
-	if (!legacy.length) return settings;
-	const used = new Set(settings.rules.map(rule => rule.id));
+export function createAutomationActionId(used: Set<string>): string {
+	return reserveId('act_', used);
+}
+
+function legacyReplacements(ids: string[], format: RegExp, prefix: IdPrefix): Map<string, string> {
+	const used = new Set(ids);
 	const replacements = new Map<string, string>();
-	for (const previous of legacy.sort()) {
-		const suffix = previous.toLowerCase().replace(/[^0-9a-z]/gu, '').slice(-7);
-		const id = availableRuleId(used, parseInt(suffix || '0', 36));
-		used.add(id);
-		replacements.set(previous, id);
+	for (const id of ids.filter(id => !format.test(id)).sort()) {
+		replacements.set(id, reserveId(prefix, used, id));
 	}
+	return replacements;
+}
+
+function migrateRoots(rule: AutomationRule): [FilterGroup, FilterGroup] {
+	const { scope, target } = rule;
+	if (ROOT_ID.test(scope.id) && ROOT_ID.test(target.id) && scope.id !== target.id) return [scope, target];
+	const used = new Set([scope.id, target.id]);
+	const pending = [...scope.children, ...target.children];
+	for (const node of pending) {
+		used.add(node.id);
+		if ('children' in node) for (const child of node.children) pending.push(child);
+	}
+	const root = (group: FilterGroup): FilterGroup => ({ ...group, id: reserveId('fg_', used, group.id) });
+	return [
+		ROOT_ID.test(scope.id) ? scope : root(scope),
+		ROOT_ID.test(target.id) && target.id !== scope.id ? target : root(target),
+	];
+}
+
+/** Stable across backup previews, reloads and retries. Only rule, root and action identities migrate. */
+export function migrateAutomationRuleIds(settings: AutomationRulesSettings): AutomationRulesSettings {
+	const replacements = legacyReplacements(settings.rules.map(rule => rule.id), RULE_ID, 'ar_');
 	const rules = settings.rules.map(rule => {
-		const id = replacements.get(rule.id);
-		return id ? { ...rule, id } : rule;
+		const id = replacements.get(rule.id) ?? rule.id;
+		const [scope, target] = migrateRoots(rule);
+		const actionIds = legacyReplacements(rule.actions.map(action => action.id), ACTION_ID, 'act_');
+		if (id === rule.id && scope === rule.scope && target === rule.target && !actionIds.size) return rule;
+		const actions = actionIds.size ? rule.actions.map(action => {
+			const replacement = actionIds.get(action.id);
+			return replacement ? { ...action, id: replacement } : action;
+		}) : rule.actions;
+		return { ...rule, id, scope, target, actions };
 	});
-	return { ...settings, rules };
+	return rules.some((rule, index) => rule !== settings.rules[index]) ? { ...settings, rules } : settings;
 }
 
 export function createAutomationRule(name: string, rules: readonly AutomationRule[] = []): AutomationRule {
-	const root = (): FilterGroup => ({ id: crypto.randomUUID(), logic: 'all', children: [] });
+	const used = new Set<string>();
+	const root = (): FilterGroup => ({ id: reserveId('fg_', used), logic: 'all', children: [] });
 	return { id: createAutomationRuleId(rules), name: name.trim(), mode: 'manual', active: false, scope: root(), target: root(), actions: [] };
 }

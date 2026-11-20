@@ -1,4 +1,4 @@
-import { createAutomationRule, createAutomationRuleId, migrateAutomationRuleIds, readAutomationRules } from '../src/core/automation-rules';
+import { createAutomationActionId, createAutomationRule, createAutomationRuleId, migrateAutomationRuleIds, readAutomationRules } from '../src/core/automation-rules';
 import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
@@ -386,12 +386,39 @@ test('new and duplicate automation rule IDs avoid existing IDs', () => {
 		Math.random = () => 0;
 		const first = createAutomationRule('First');
 		assert.equal(first.id, 'ar_0000000');
+		assert.deepEqual([first.scope.id, first.target.id], ['fg_00000000', 'fg_00000001']);
+		const used = new Set(['act_00000000']);
+		assert.equal(createAutomationActionId(used), 'act_00000001');
+		assert.equal(createAutomationActionId(used), 'act_00000002');
 		const second = createAutomationRule('Second', [first]);
 		assert.equal(second.id, 'ar_0000001');
 		assert.equal(createAutomationRuleId([first, second]), 'ar_0000002');
 	} finally {
 		Math.random = random;
 	}
+});
+
+test('nested ID migration reserves existing nodes and actions and keeps rule contents intact', () => {
+	const rule = createAutomationRule('Example');
+	rule.scope.id = 'scope-00000000';
+	rule.target.id = 'fg_00000001';
+	rule.scope.children.push({ id: 'fg_00000000', logic: 'all', children: [] });
+	rule.actions = ['old-00000000', 'act_00000000', 'other-00000000'].map(id => (
+		{ id, field: 'tags', operation: 'add', value: ['review'] }
+	));
+	const settings = { ...readAutomationRules(undefined), rules: [rule] };
+	const expected = clone(settings);
+	expected.rules[0].scope.id = 'fg_00000002';
+	expected.rules[0].actions[0].id = 'act_00000001';
+	expected.rules[0].actions[2].id = 'act_00000002';
+	const migrated = migrateAutomationRuleIds(settings);
+	assert.deepEqual(migrated, expected);
+	assert.equal(migrateAutomationRuleIds(migrated), migrated);
+	const both = clone(settings);
+	both.rules[0].target.id = both.rules[0].scope.id;
+	const [converted] = migrateAutomationRuleIds(both).rules;
+	assert.match(converted.target.id, /^fg_[0-9a-z]{8}$/u);
+	assert.notEqual(converted.scope.id, converted.target.id);
 });
 
 for (const schema of [2, 3] as const) {
@@ -403,6 +430,9 @@ for (const schema of [2, 3] as const) {
 		if (schema === 3) initial.taxonomy.inlinePropertyDefinitions = { version: 1, entries: [] };
 		const ids = ['old-a123456', 'ar_a123456', 'legacy-a123456', '!!!'];
 		const rules = ids.map(id => ({ ...createAutomationRule(id), id, active: true }));
+		rules[0].scope.id = 'old-scope';
+		rules[0].target.id = 'old-target';
+		rules[0].actions.push({ id: 'old-action', operation: 'remove', field: 'tags', value: ['review'] });
 		const original = { ...readAutomationRules(undefined), rules };
 		initial.automation.ruleSettings = original;
 		const migrated = migrateAutomationRuleIds(original);
@@ -498,7 +528,8 @@ test('selected automation restore deactivates all imported rules and Undo restor
 	const source = { ...storage.getSettings(), automationRules: { ...previous, confirmation: 25, rules: imported } };
 	const { sourceJson, plan } = await createPlan(storage, source, ['automations']);
 	assert.deepEqual(JSON.parse(sourceJson).body.groups.automations.data.rules.map((rule: { active: boolean }) => rule.active), [false, true]);
-	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, id: rule.id === 'legacy-rule' ? 'ar_acyrule' : rule.id, active: false })) };
+	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, active: false })) };
+	expected.rules[1] = { ...expected.rules[1], id: 'ar_acyrule', actions: [{ ...imported[1].actions[0], id: 'act_00action' }] };
 	assert.deepEqual(plan.candidateSettings.automationRules, expected);
 	const before = clone(data.committed);
 	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));

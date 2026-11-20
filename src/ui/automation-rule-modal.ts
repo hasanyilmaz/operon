@@ -1,6 +1,6 @@
 import { App, Modal, Notice } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
-import { createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
+import { createAutomationActionId, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { getOwnerWindow } from '../core/dom-compat';
 import { DATE_OPERATORS, getOperatorsForField, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS } from '../core/filter-display';
 import { t } from '../core/i18n';
@@ -60,6 +60,7 @@ export const automationIssueLabels: Record<AutomationPlanIssue['reason'], string
 
 export class AutomationRuleModal extends Modal {
 	private readonly draft: AutomationRule;
+	private readonly usedActionIds: Set<string>;
 	private readonly fields: FilterFieldCatalog;
 	private readonly actionContext: ActionEditorContext;
 	private readonly editors: FilterConditionEditor[] = [];
@@ -83,6 +84,7 @@ export class AutomationRuleModal extends Modal {
 		private readonly persist: (rule: AutomationRule) => Promise<boolean>) {
 		super(app);
 		this.draft = existing ? structuredClone(existing) : createAutomationRule('', readAutomationRules(source.getSettings().automationRules).rules);
+		this.usedActionIds = new Set(this.draft.actions.map(action => action.id));
 		this.fields = new FilterFieldCatalog({ keyMappings: source.getSettings().keyMappings, getSettings: source.getSettings,
 			getRootGroup: () => ({ ...this.draft.scope, children: [this.draft.scope, this.draft.target] }),
 			getLayoutFields: () => this.draft.actions.map(action => action.field),
@@ -120,12 +122,12 @@ export class AutomationRuleModal extends Modal {
 		const header = card.createDiv('operon-filter-group-header').createDiv('operon-filter-group-heading');
 		header.createEl('strong', { cls: 'operon-filter-group-title', text: t('settings', 'automationActions') });
 		this.section = card.createDiv('operon-automation-actions');
-		this.draft.actions = this.draft.actions.flatMap(action => expandListAction(action, this.actionContext));
+		this.draft.actions = this.draft.actions.flatMap(action => expandListAction(action, this.actionContext, this.usedActionIds));
 		for (const action of this.draft.actions) this.mountAction(action);
 		const add = card.createDiv('operon-filter-group-footer').createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button',
 			text: '+ ' + t('settings', 'automationAddAction') });
 		add.addEventListener('click', () => {
-			const action: AutomationAction = { id: crypto.randomUUID(), field: '', operation: 'add', value: '' };
+			const action: AutomationAction = { id: createAutomationActionId(this.usedActionIds), field: '', operation: 'add', value: '' };
 			this.draft.actions.push(action);
 			this.mountAction(action).focusField();
 			this.changed();
@@ -179,7 +181,7 @@ export class AutomationRuleModal extends Modal {
 			this.loadFields();
 			this.draft.actions = this.draft.actions.flatMap(action => {
 				const row = this.rows.get(action.id);
-				const expanded = expandListAction(action, this.actionContext);
+				const expanded = expandListAction(action, this.actionContext, this.usedActionIds);
 				if (expanded.length > 1 && row) {
 					for (const member of expanded) row.element.before(this.mountAction(member).element);
 					row.dispose();

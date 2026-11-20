@@ -1,6 +1,6 @@
 import { App, setIcon } from 'obsidian';
 import { isAutomationNativeKeyWritable, managedAutomationFieldType, readActionLiteral } from '../core/automation-action-fields';
-import type { AutomationAction } from '../core/automation-rules';
+import { createAutomationActionId, type AutomationAction } from '../core/automation-rules';
 import { t } from '../core/i18n';
 import { parseListValue } from '../core/parser';
 import { parseTaskMediaReferenceList } from '../core/task-media-reference';
@@ -38,7 +38,7 @@ export function actionType(field: string, ctx: ActionEditorContext): FilterField
 }
 
 /** Expand older multi-value actions in the editor draft, preserving the first action ID. */
-export function expandListAction(action: AutomationAction, ctx: ActionEditorContext): AutomationAction[] {
+export function expandListAction(action: AutomationAction, ctx: ActionEditorContext, usedIds: Set<string>): AutomationAction[] {
 	const type = actionType(action.field, ctx);
 	if (type !== 'list' && type !== 'tags') return [action];
 	let members: string[];
@@ -55,7 +55,7 @@ export function expandListAction(action: AutomationAction, ctx: ActionEditorCont
 		members = Array.isArray(action.value) ? action.value : parseListValue(action.value);
 	}
 	return members.length > 1
-		? members.map((member, index) => ({ ...action, id: index ? crypto.randomUUID() : action.id, value: [member] }))
+		? members.map((member, index) => ({ ...action, id: index ? createAutomationActionId(usedIds) : action.id, value: [member] }))
 		: [action];
 }
 
