@@ -52,7 +52,7 @@ const add = (field, value) => ({ id: '+' + field + JSON.stringify(value), field,
 const del = (field, value) => ({ ...add(field, value), id: '-' + field + JSON.stringify(value), operation: 'remove' });
 const rule = (id, actions = [], target = group('all'), scope = group('all')) =>
 	({ id, name: id, actions, target, scope, active: false, mode: 'manual' });
-const snapshot = (tasks, extra = {}) => ({ tasks, asOf, conditionFields: sharedFields, pins: new Set(), unavailableIds: new Set(), ready: true,
+const snapshot = (tasks, extra = {}) => ({ tasks, asOf, conditionFields: sharedFields, pins: new Set(), unavailableIds: new Set(), getDuplicateInstances: () => [], ready: true,
 	activeTimerId: null, getFrontmatter: () => null, fileRenameState: () => 'unknown', getRepeatSkipDates: () => [], settings: DEFAULT_SETTINGS,
 	projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true), ...extra });
 const plan = (tasks, rules, extra = {}, limit = 'always') => planAutomationChanges(snapshot(tasks, extra), rules, limit);

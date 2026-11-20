@@ -58,6 +58,16 @@ async function fixture(files, opts = {}) {
 	const records = new Map(), tasks = new Map(), frontmatter = new Map(), listeners = new Map();
 	const f = { writes: [], prompts: [], config, rule, tasks, frontmatter, refreshes: 0, known: true,
 		editFile: (name, content) => writeFile(path.join(dir, name), content) };
+	const duplicates = new Map();
+	const indexTask = task => {
+		const key = task.operonId;
+		if (tasks.has(key)) {
+			const copies = duplicates.get(key) ?? [tasks.get(key)];
+			copies.push(task);
+			duplicates.set(key, copies);
+		}
+		tasks.set(key, task);
+	};
 	const vault = {
 		getAbstractFileByPath: name => records.get(name),
 		read: file => readFile(path.join(dir, file.path), 'utf8'),
@@ -82,12 +92,12 @@ async function fixture(files, opts = {}) {
 		const file = new TFile(name); file.stat = { mtime: 0, ctime: 0, size: Buffer.byteLength(value) }; records.set(name, file);
 		await writeFile(path.join(dir, name), value);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
-		for (const task of scan.inlineTasks) tasks.set(task.operonId, { ...task, tier: 'hot', datetimeModified: '',
+		for (const task of scan.inlineTasks) indexTask({ ...task, tier: 'hot', datetimeModified: '',
 			fieldValues: Object.fromEntries(task.fields.map(field => [field.key, field.value])),
 			primary: { filePath: name, format: 'inline', lineNumber: task.lineNumber } });
 		if (scan.yamlTask) {
 			const task = scan.yamlTask;
-			tasks.set(task.operonId, { ...task, tier: 'hot', checkbox: 'open', datetimeModified: task.fieldValues.datetimeModified ?? '',
+			indexTask({ ...task, tier: 'hot', checkbox: 'open', datetimeModified: task.fieldValues.datetimeModified ?? '',
 				primary: { filePath: name, format: 'yaml', lineNumber: 0 } });
 			frontmatter.set(task.operonId, parseYaml(value.split('---')[1]));
 		}
@@ -106,7 +116,7 @@ async function fixture(files, opts = {}) {
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
 			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
-			unavailableIds: new Set(), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
+			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: () => [...duplicates.values()].flat(), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
@@ -298,6 +308,30 @@ test('a blocked transition can still tag the target; transitions relying on anot
 	allTasks.reject = 'B.md'; const failed = await allTasks.run();
 	assert.equal(failed.applied, 0); assert.equal(await allTasks.read('A.md'), files['A.md']);
 });
+for (const relation of ['blockedBy', 'blocking']) {
+	for (const last of ['open', 'done']) {
+		test(`duplicate blocker protects closure and permits tagging with ${relation} and ${last} indexed last`, async () => {
+			const open = ['Open.md', inline(id(1), relation === 'blocking' ? ' {{blocking:: task000}}' : '')];
+			const done = ['Done.md', inline(id(1), ' {{status:: Project.Finished}}').replace('- [ ]', '- [x]')];
+			const files = Object.fromEntries([
+				['Dependent.md', inline(id(0), relation === 'blockedBy' ? ' {{blockedBy:: task001}}' : '')],
+				...(last === 'open' ? [done, open] : [open, done]),
+			]);
+			const f = await fixture(files, { rule: { target: rootGroup('description', 'text', 'is', id(0)),
+				actions: [action('status', 'Project.Finished'), action('tags', 'follow')] } });
+			assert.equal(f.tasks.get(id(1)).checkbox, last);
+			const result = await f.run();
+			assert.ok(result.plan.issues.some(issue => issue.taskId === id(0) && issue.reason === 'blocked'));
+			assert.equal(result.applied, 1);
+			const dependent = await f.read('Dependent.md');
+			assert.match(dependent, /^- \[ \].*#follow/u);
+			assert.doesNotMatch(dependent, /Project\.Finished|dateCompleted::/u);
+			assert.deepEqual(f.writes, ['Dependent.md']);
+			assert.equal(await f.read(open[0]), open[1]);
+			assert.equal(await f.read(done[0]), done[1]);
+		});
+	}
+}
 test('opposed writes skip the entire conflicting task', async () => {
 	const f = await fixture(filesFor(1), { rule: { actions: [action('tags','same'), action('tags','same','remove'), action('note','skip')] } });
 	const result = await f.run(); assert.equal(result.applied,0); assert.ok(result.plan.issues.some(i => i.reason === 'conflict')); assert.deepEqual(f.writes, []);

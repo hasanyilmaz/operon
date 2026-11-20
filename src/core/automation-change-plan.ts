@@ -23,6 +23,7 @@ export interface AutomationPlanSnapshot {
 	settings: OperonSettings;
 	pins: ReadonlySet<string> | null;
 	unavailableIds: ReadonlySet<string>;
+	getDuplicateInstances(): Iterable<Pick<IndexedTask, 'operonId' | 'fieldValues'>>;
 	activeTimerId: string | null | undefined;
 	native?: TableFilePropertyQueryContext;
 	getFrontmatter: AutomationFieldSource['getFrontmatter'];
@@ -492,6 +493,13 @@ function guardProjectedTransitions(
 	excludeOrigins: (origins: Origin[]) => void, issues: AutomationPlanIssue[],
 ): void {
 	if (!transitions.size) return;
+	// A non-representative copy may be the only source of an inverse blocking edge.
+	const ambiguousBlockerIds = new Set<string>();
+	const ambiguousTargets = new Set<string>();
+	for (const copy of ctx.snapshot.getDuplicateInstances()) {
+		ambiguousBlockerIds.add(copy.operonId);
+		for (const target of parseDependencyIdList(copy.fieldValues.blocking)) ambiguousTargets.add(target);
+	}
 	const incoming = new Map<string, IndexedTask[]>();
 	for (const task of graph.values()) for (const id of parseDependencyIdList(task.fieldValues.blocking)) {
 		if (!transitions.has(id)) continue;
@@ -499,9 +507,10 @@ function guardProjectedTransitions(
 		if (blockers) blockers.push(task); else incoming.set(id, [task]);
 	}
 	for (const [id, origins] of transitions) {
-		const blockers = resolveActiveBlockers(graph.get(id)!, peer => graph.get(peer), ctx.snapshot.settings.pipelines,
+		const blockers = resolveActiveBlockers(graph.get(id)!, peer => ambiguousBlockerIds.has(peer) ? undefined : graph.get(peer),
+			ctx.snapshot.settings.pipelines,
 			() => incoming.get(id) ?? []);
-		if (!blockers.length) continue;
+		if (!blockers.length && !ambiguousTargets.has(id)) continue;
 		issues.push({ reason: 'blocked', taskId: id, field: 'status', origins });
 		excludeOrigins(origins);
 	}
