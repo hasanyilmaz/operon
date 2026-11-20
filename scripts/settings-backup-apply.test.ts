@@ -1,4 +1,4 @@
-import { createAutomationRule, readAutomationRules } from '../src/core/automation-rules';
+import { createAutomationRule, createAutomationRuleId, migrateAutomationRuleIds, readAutomationRules } from '../src/core/automation-rules';
 import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
@@ -263,7 +263,8 @@ interface Harness {
 	adapter: MemoryAdapter;
 }
 
-async function createHarness(initial: OperonDataPackageV1, observeBoot?: (data: ControlledPluginData) => void): Promise<Harness> {
+async function createHarness(initial: OperonDataPackageV1, observeBoot?: (data: ControlledPluginData) => void,
+	beforeBoot?: (data: ControlledPluginData, adapter: MemoryAdapter) => void): Promise<Harness> {
 	const adapter = new MemoryAdapter();
 	const data = new ControlledPluginData(initial);
 	const tableSources = new Map((initial.views.tablePresets.fileBindings ?? []).map(binding => {
@@ -288,6 +289,7 @@ async function createHarness(initial: OperonDataPackageV1, observeBoot?: (data: 
 		},
 	} as unknown as App;
 	const storage = new OperonStorage(app, connectPluginDataAdapter(adapter, { loadData: data.loadData, saveData: data.saveData }));
+	beforeBoot?.(data, adapter);
 	await storage.initialize();
 	observeBoot?.(data);
 	data.reset();
@@ -378,6 +380,52 @@ function protectedProjection(dataPackage: OperonDataPackageV1) {
 	};
 }
 
+test('new and duplicate automation rule IDs avoid existing IDs', () => {
+	const random = Math.random;
+	try {
+		Math.random = () => 0;
+		const first = createAutomationRule('First');
+		assert.equal(first.id, 'ar_0000000');
+		const second = createAutomationRule('Second', [first]);
+		assert.equal(second.id, 'ar_0000001');
+		assert.equal(createAutomationRuleId([first, second]), 'ar_0000002');
+	} finally {
+		Math.random = random;
+	}
+});
+
+for (const schema of [2, 3] as const) {
+	test('legacy automation rule IDs migrate once with a recoverable preimage on schema ' + schema, async () => {
+		const defaults = clone(DEFAULT_SETTINGS);
+		defaults.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+		const initial = canonicalPackage(defaults);
+		initial.schemaVersion = schema;
+		if (schema === 3) initial.taxonomy.inlinePropertyDefinitions = { version: 1, entries: [] };
+		const ids = ['old-a123456', 'ar_a123456', 'legacy-a123456', '!!!'];
+		const rules = ids.map(id => ({ ...createAutomationRule(id), id, active: true }));
+		const original = { ...readAutomationRules(undefined), rules };
+		initial.automation.ruleSettings = original;
+		const migrated = migrateAutomationRuleIds(original);
+		assert.deepEqual(migrated.rules.map(rule => rule.id), ['ar_a123458', 'ar_a123456', 'ar_a123457', 'ar_0000000']);
+		assert.deepEqual(migrated.rules, migrateAutomationRuleIds({ ...original, rules: [...rules].reverse() }).rules.reverse());
+		assert.equal(migrateAutomationRuleIds(migrated), migrated);
+		const expected = clone(initial);
+		expected.automation.ruleSettings = migrated;
+		const first = await createHarness(initial, data => assert.equal(data.saveSuccesses, 1));
+		assert.deepEqual(first.data.committed, expected);
+		assert.ok([...first.adapter.files].some(([name, value]) => name.includes('.bak') && JSON.stringify(JSON.parse(value)) === JSON.stringify(initial)));
+		first.storage.destroy();
+		const second = await createHarness(expected, data => assert.equal(data.saveAttempts, 0));
+		second.data.committed = clone(initial);
+		await second.storage.reloadCanonicalSettingsPackage();
+		assert.deepEqual(second.data.committed, expected);
+		assert.equal(second.data.saveSuccesses, 1);
+		await second.storage.reloadCanonicalSettingsPackage();
+		assert.equal(second.data.saveAttempts, 1);
+		second.storage.destroy();
+	});
+}
+
 for (const schema of [2, 3] as const) {
 	test('automation drafts survive reload without initializing absent rules on schema ' + schema, async () => {
 		const defaultsWithFilters = clone(DEFAULT_SETTINGS);
@@ -418,17 +466,39 @@ for (const schema of [2, 3] as const) {
 	});
 }
 
+test('automation ID migration recovers after backup failure, write rejection and acknowledgement loss', async () => {
+	const defaults = clone(DEFAULT_SETTINGS);
+	defaults.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+	const original = { ...readAutomationRules(undefined), rules: [{ ...createAutomationRule('Existing'), id: 'legacy-rule' }] };
+	const initial = canonicalPackage({ ...defaults, automationRules: original });
+	const expected = clone(initial);
+	expected.automation.ruleSettings = migrateAutomationRuleIds(original);
+	for (const failure of ['backup', 'fail-clean', 'commit-then-error'] as const) {
+		const committed = failure === 'commit-then-error';
+		const first = await createHarness(initial, data => assert.equal(data.saveAttempts, failure === 'backup' ? 0 : 1), (data, adapter) => {
+			if (failure === 'backup') adapter.write = async () => { throw new Error('Injected backup failure'); };
+			else data.mode = failure;
+		});
+		assert.deepEqual(first.data.committed, committed ? expected : initial);
+		assert.equal(Boolean(first.storage.getCanonicalSettingsWriteSuspensionReason()), !committed);
+		first.storage.destroy();
+		const restart = await createHarness(first.data.committed, data => assert.equal(data.saveAttempts, committed ? 0 : 1));
+		assert.deepEqual(restart.data.committed, expected);
+		restart.storage.destroy();
+	}
+});
+
 test('selected automation restore deactivates all imported rules and Undo restores the exact preimage', async () => {
 	const activeRule = { ...createAutomationRule('Existing'), active: true, mode: 'auto' as const };
 	const previous = { ...readAutomationRules(undefined), rules: [activeRule] };
 	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), automationRules: previous }));
 	const { storage, data } = harness;
-	const imported = [createAutomationRule('First'), { ...createAutomationRule('Second'), active: true }];
+	const imported = [createAutomationRule('First'), { ...createAutomationRule('Second'), id: 'legacy-rule', active: true }];
 	imported[1].actions.push({ id: 'action', field: 'tags', operation: 'add', value: 'review' });
 	const source = { ...storage.getSettings(), automationRules: { ...previous, confirmation: 25, rules: imported } };
 	const { sourceJson, plan } = await createPlan(storage, source, ['automations']);
 	assert.deepEqual(JSON.parse(sourceJson).body.groups.automations.data.rules.map((rule: { active: boolean }) => rule.active), [false, true]);
-	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, active: false })) };
+	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, id: rule.id === 'legacy-rule' ? 'ar_acyrule' : rule.id, active: false })) };
 	assert.deepEqual(plan.candidateSettings.automationRules, expected);
 	const before = clone(data.committed);
 	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));

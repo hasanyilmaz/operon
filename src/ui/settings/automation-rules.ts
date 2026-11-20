@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import { AUTOMATION_CONFIRMATIONS, readAutomationRules, type AutomationConfirmation, type AutomationRule, type AutomationRulesSettings } from '../../core/automation-rules';
+import { AUTOMATION_CONFIRMATIONS, createAutomationRuleId, readAutomationRules, type AutomationConfirmation, type AutomationRule, type AutomationRulesSettings } from '../../core/automation-rules';
 import { t } from '../../core/i18n';
 import type { OperonStorage } from '../../storage/operon-storage';
 import { AutomationRuleModal, type AutomationEditorSource } from '../automation-rule-modal';
@@ -83,7 +83,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		}
 		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
 		button('copy', t('table', 'duplicatePreset'), async () => {
-			const copy = { ...structuredClone(rule), id: crypto.randomUUID(), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };
+			const copy = { ...structuredClone(rule), id: createAutomationRuleId(rules), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };
 			await commit([...rules.slice(0, index + 1), copy, ...rules.slice(index + 1)]);
 		});
 		button('trash-2', t('filterSets', 'deleteFilterConfirm'), () => {

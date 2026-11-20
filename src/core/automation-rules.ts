@@ -79,7 +79,42 @@ export function readAutomationRules(value: unknown): AutomationRulesSettings {
 	return structuredClone(value);
 }
 
-export function createAutomationRule(name: string): AutomationRule {
+const RULE_ID_SPACE = 36 ** 7;
+const RULE_ID_FORMAT = /^ar_[0-9a-z]{7}$/u;
+
+function availableRuleId(used: ReadonlySet<string>, start: number): string {
+	let index = start;
+	for (;;) {
+		const id = 'ar_' + index.toString(36).padStart(7, '0');
+		if (!used.has(id)) return id;
+		index = (index + 1) % RULE_ID_SPACE;
+	}
+}
+
+export function createAutomationRuleId(rules: readonly AutomationRule[]): string {
+	return availableRuleId(new Set(rules.map(rule => rule.id)), Math.floor(Math.random() * RULE_ID_SPACE));
+}
+
+/** Stable across backup previews, reloads and retries, including a collision between two legacy IDs. */
+export function migrateAutomationRuleIds(settings: AutomationRulesSettings): AutomationRulesSettings {
+	const legacy = settings.rules.map(rule => rule.id).filter(id => !RULE_ID_FORMAT.test(id));
+	if (!legacy.length) return settings;
+	const used = new Set(settings.rules.map(rule => rule.id));
+	const replacements = new Map<string, string>();
+	for (const previous of legacy.sort()) {
+		const suffix = previous.toLowerCase().replace(/[^0-9a-z]/gu, '').slice(-7);
+		const id = availableRuleId(used, parseInt(suffix || '0', 36));
+		used.add(id);
+		replacements.set(previous, id);
+	}
+	const rules = settings.rules.map(rule => {
+		const id = replacements.get(rule.id);
+		return id ? { ...rule, id } : rule;
+	});
+	return { ...settings, rules };
+}
+
+export function createAutomationRule(name: string, rules: readonly AutomationRule[] = []): AutomationRule {
 	const root = (): FilterGroup => ({ id: crypto.randomUUID(), logic: 'all', children: [] });
-	return { id: crypto.randomUUID(), name: name.trim(), mode: 'manual', active: false, scope: root(), target: root(), actions: [] };
+	return { id: createAutomationRuleId(rules), name: name.trim(), mode: 'manual', active: false, scope: root(), target: root(), actions: [] };
 }

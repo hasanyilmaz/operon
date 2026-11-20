@@ -1,6 +1,6 @@
 import { App, Modal, Notice } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
-import { createAutomationRule, type AutomationAction, type AutomationRule } from '../core/automation-rules';
+import { createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { getOwnerWindow } from '../core/dom-compat';
 import { DATE_OPERATORS, getOperatorsForField, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS } from '../core/filter-display';
 import { t } from '../core/i18n';
@@ -82,7 +82,7 @@ export class AutomationRuleModal extends Modal {
 	constructor(app: App, private readonly source: AutomationEditorSource, private readonly existing: AutomationRule | undefined,
 		private readonly persist: (rule: AutomationRule) => Promise<boolean>) {
 		super(app);
-		this.draft = existing ? structuredClone(existing) : createAutomationRule('');
+		this.draft = existing ? structuredClone(existing) : createAutomationRule('', readAutomationRules(source.getSettings().automationRules).rules);
 		this.fields = new FilterFieldCatalog({ keyMappings: source.getSettings().keyMappings, getSettings: source.getSettings,
 			getRootGroup: () => ({ ...this.draft.scope, children: [this.draft.scope, this.draft.target] }),
 			getLayoutFields: () => this.draft.actions.map(action => action.field),

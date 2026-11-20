@@ -1,4 +1,4 @@
-import { isAutomationRulesSettings } from './automation-rules';
+import { isAutomationRulesSettings, migrateAutomationRuleIds } from './automation-rules';
 import { mergeImportedInlinePropertyDefinitions } from './inline-property-definitions';
 import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
@@ -721,7 +721,7 @@ function composeSelectedGroups(
 		candidate.kanbanDefaultPresetId = payloads.kanban.kanbanDefaultPresetId;
 	}
 	if (selected.has('automations') && payloads.automations) {
-		const restored = cloneJson(payloads.automations);
+		const restored = migrateAutomationRuleIds(cloneJson(payloads.automations));
 		for (const rule of restored.rules) rule.active = false;
 		if (target.automationRules !== undefined || restored.confirmation !== 'always' || restored.rules.length) candidate.automationRules = restored;
 	}
