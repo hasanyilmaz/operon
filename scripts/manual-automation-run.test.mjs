@@ -404,15 +404,29 @@ test('custom list and numeric actions use task mappings in both source formats',
 	assert.match(await f.read('A.md'),/Ana; Lee/u);
 	const data = parseYaml((await f.read('B.md')).split('---')[1]); assert.deepEqual(data.Members, ['Ana','Lee']); assert.equal(data.Points,3);
 });
-test('modal distinguishes explicit deactivation, dismissal and repeated Apply clicks', () => {
+test('modal distinguishes explicit deactivation, dismissal and repeated Apply clicks', t => {
+	const originalObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
+	t.after(() => {
+		if (originalObserver) Object.defineProperty(globalThis, 'MutationObserver', originalObserver);
+		else delete globalThis.MutationObserver;
+	});
+	const observed = new Set();
+	globalThis.MutationObserver = class {
+		observe(root) { observed.add(root); this.root = root; }
+		takeRecords() { return []; }
+		disconnect() { observed.delete(this.root); }
+	};
 	for (const [button, expected] of [[0,'deactivate'],[1,'apply'],[null,'dismiss']]) {
 		const outcomes = [], clicked = [];
 		const modal = automationApprovalModal({}, { changedTaskCount: 3, rules: [{ ruleId, changed: 3 }] }, [{ id: ruleId, name: 'Follow up' }], d => outcomes.push(d));
 		const el = { empty() {}, addClass() {}, createDiv() { return this; }, ownerDocument: { defaultView: null },
 			createEl(tag) { return { addClass() {}, addEventListener(_, cb) { if (tag === 'button') clicked.push(cb); } }; } };
+		modal.modalEl.querySelectorAll = () => [];
 		modal.contentEl = el; modal.open();
+		assert.ok(observed.has(modal.modalEl));
 		if (button === null) modal.close(); else { clicked[button](); clicked[button](); }
 		assert.deepEqual(outcomes,[expected]);
+		assert.equal(observed.size, 0);
 	}
 });
 

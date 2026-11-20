@@ -16,6 +16,7 @@ await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
+ export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
  export { buildInlineTaskCompactChipEntries } from './src/ui/compact-task-layout';
  export { localToday } from './src/core/local-time';
  export { resolveTaskDateTone } from './src/core/task-date-tone';
@@ -193,6 +194,7 @@ function modalHarness(cond = condition()) {
   hasInvalidTrackedOnCondition: () => false, close() { this.closed = true; }, onSave: value => saved.push(structuredClone(value)),
  };
  const deps = {
+  createFilterPickerTrigger: h.createFilterPickerTrigger,
   getPickerFieldOptions: compile('getPickerFieldOptions'), t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
   setAccessibleLabelWithoutTooltip: (el, value) => el.setAttribute('aria-label', value),
   getOperatorsForField: h.getOperatorsForField, NO_VALUE_OPERATORS: h.NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS: h.NUMERIC_INPUT_DATE_OPERATORS,
