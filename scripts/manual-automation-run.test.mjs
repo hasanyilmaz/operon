@@ -13,6 +13,9 @@ const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
 	export { TFile, parseYaml } from 'obsidian';
 	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
+	export { filterUsesLocalDay } from './src/core/filter-evaluator';
+	export { localToday } from './src/core/local-time';
+	export { registerWorkspaceDayRefresh } from './src/core/filter-day-refresh';
 	export { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
 	export { NativePropertyIndex, getNativePropertyIndex } from './src/indexer/native-property-index';
 	export { OperonIndexer } from './src/indexer/indexer';
@@ -33,7 +36,7 @@ await build({ stdin: { resolveDir: root, contents: `
 	} }] });
 const { TFile, parseYaml, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
-	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer } = await import(pathToFileURL(out).href);
+	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
 const ruleId = 'rule-a';
 const all = { id: 'root', logic: 'all', children: [] };
@@ -96,9 +99,9 @@ async function fixture(files, opts = {}) {
 		subscribeIndexReconciliation: () => () => {}, getTask: key => tasks.get(key) };
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
-	const ports = { available: () => true, now: () => asOf, settings: () => structuredClone(config),
-		plan: (saved, policy, _asOf, triggers) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf, ready: f.known,
-			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
+	const ports = { available: () => true, now: () => f.now ?? asOf, settings: () => structuredClone(config),
+		plan: (saved, policy, clock, triggers) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
+			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(), getFrontmatter: t => frontmatter.get(t.operonId), getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
@@ -114,6 +117,8 @@ async function fixture(files, opts = {}) {
 			return work;
 		},
 		confirm: async (plan, rules) => { f.prompts.push([plan, rules]); return f.confirm ? await f.confirm() : 'apply'; },
+		refreshBatch: batch => f.events?.refreshBatch(batch),
+		deferConfirmation: (batch, shown) => f.events?.deferConfirmation(batch, shown) ?? false,
 		deactivate: saved => deactivateAutomationRules({
 			getSettings: () => ({ automationRules: config }), saveAutomationRules: async (prior, next) => {
 				assert.equal(prior, config); if (f.saveFails) throw Error('save failed');
@@ -122,7 +127,13 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { pins, auto: ids => runner.runAuto(async () => ids, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: () => runner.run(ruleId, ports) });
+	return Object.assign(f, { pins, reindexInline: async key => {
+		const task = tasks.get(key);
+		const file = records.get(task.primary.filePath);
+		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
+		const current = scan.inlineTasks.find(item => item.operonId === key);
+		Object.assign(task, current, { fieldValues: Object.fromEntries(current.fields.map(field => [field.key,field.value])) });
+	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: () => runner.run(ruleId, ports) });
 }
 
 for (const [n, policy, asks] of [[0,'always',0], [1,'always',1], [5,5,0], [6,5,1], [6,'none',0]]) {
@@ -327,11 +338,12 @@ function eventFixture(overrides = {}) {
 	const events = new AutoAutomationEvents({
 		taskIds: () => tasks.keys(), image: key => tasks.get(key),
 		pins: () => [...pins].filter(([,p]) => p.pinned).map(([key]) => key), pin: key => pins.get(key) ?? null,
+		today: () => asOf.slice(0,10), foreground: () => true,
 		settled: () => true, currentPath: key => key, settle: async () => {}, run: take => { runs.push(take); return new Promise(resolve => queueMicrotask(resolve)).then(async () => {
-			const batch = await take(); if (batch.size) batches.push([...batch].map(([key,ids]) => [key,[...ids]]));
+			const { rules } = await take(); if (rules.size) batches.push([...rules].map(([key,ids]) => [key,ids === 'day' ? ids : [...ids]]));
 		}); }, error: error => { throw error; }, ...overrides,
 	});
-	const rule = { id:'r', mode:'auto', active:true }, settle = () => new Promise(resolve => setImmediate(resolve));
+	const rule = { id:'r', mode:'auto', active:true, scope:all, target:all }, settle = () => new Promise(resolve => setImmediate(resolve));
 	return { tasks, pins, batches, runs, events, rule, settle };
 }
 
@@ -434,4 +446,190 @@ test('native properties are isolated per inline task; startup hydration of a fil
 	native.accept(file.path,{...raw,frontmatter:{...frontmatter,datetimeModified:'2026-02-02T12:00:00'},inline:[fields(a,'Z'),fields(b,'Y')]},false);
 	assert.notEqual(automationTaskImage(a,native).native,imageA.native); assert.deepEqual(automationTaskImage(b,native),imageB);
 	assert.notEqual(automationTaskImage(yaml,native).dates,before.dates);
+});
+
+const dueToday = rootGroup('dateDue','date','isToday');
+const calendarRule = (rule, overrides = {}) => asAuto(rule, 'daily', {target:dueToday, ...overrides});
+const dueFiles = (...days) => Object.fromEntries(days.map((day, i) => [id(i)+'.md',inline(id(i),' {{dateDue:: '+day+'}}')]));
+
+function watchCalendar(f) {
+	let visible = true, current;
+	const results = [];
+	const { events } = eventFixture({
+		today: () => f.now.slice(0,10), foreground: () => visible,
+		pins: () => f.pins.getPinnedIds(), pin: key => f.pins.getCanonicalEntry(key),
+		taskIds: () => f.tasks.keys(), image: key => {
+			const task = f.tasks.get(key); return task && {core:JSON.stringify(task)};
+		},
+		run: take => { current = f.runBatch(take).then(result => { results.push(result); }); return current; },
+	});
+	f.events = events; events.configure(f.config.rules);
+	return { events, results, visible: value => { visible=value; events.wake(); },
+		idle: async () => {
+			let observed;
+			do { observed=current; await observed; await new Promise(resolve=>setImmediate(resolve)); } while (observed !== current);
+		} };
+}
+
+test('local-day eligibility comes from filter operators on nested scope or target fields', () => {
+	for (const [field,type,operator,wanted] of [
+		['dateDue','date','afterToday',true],['custom','datetime','exactlyDaysAgo',true],
+		['file.property:Trip','date','nextWeek',true],['happensOn','date','lastMonth',true],
+		['trackedOn','date','inLastDays',true],['trackedOn','date','between',false],
+		['dateDue','date','dateIs',false],['dateDue','date','dayOfWeekIs',false],
+		['dateDue','date','monthIs',false],['file.property:Trip','date','propPresent',false],
+		['description','text','isToday',false],['custom','date','inLastDays',false],
+	]) assert.equal(filterUsesLocalDay({...all, logic:'none', children:[{...all,logic:'any',children:[rootGroup(field,type,operator,'3')]}]}),wanted,operator);
+});
+
+test('startup and wake use only the current day; saving and activating do not run until the next day', async () => {
+	let day = '2026-12-31';
+	const f = eventFixture({today:()=>day});
+	const initial = calendarRule(f.rule, {scope:dueToday,target:all});
+	f.events.configure([initial, {...initial,id:'manual',mode:'manual'}, {...initial,id:'constant',scope:all,target:all},
+		{...initial,id:'inactive',active:false}]);
+	f.events.wake(); f.events.wake(); await f.settle(); assert.deepEqual(f.batches,[[['daily','day']]]);
+	const later = {...initial,id:'added'}; f.events.configure([initial,later]); f.events.wake();
+	await f.settle(); assert.equal(f.batches.length,1);
+	day='2027-01-04'; f.events.wake(); f.events.wake(); await f.settle();
+	assert.deepEqual(f.batches[1],[['daily','day'],['added','day']]); assert.equal(f.batches.length,2);
+	f.events.dispose(); day='2027-01-05'; f.events.wake(); await f.settle(); assert.equal(f.batches.length,2);
+});
+
+test('date and task events share one graph, one confirmation and one write per affected task', async () => {
+	const f=await fixture(dueFiles('2026-12-31','2026-12-31','2027-01-01')); f.now='2026-12-31T10:00:00';
+	const everyday=calendarRule(f.rule), edited=asAuto(f.rule,'on-edit',{actions:[action('priority','High')]});
+	f.config.rules=[everyday,edited]; const watched=watchCalendar(f);
+	await f.pins.pin(id(0)); watched.events.wake(); watched.events.pinsChanged();
+	await watched.idle();
+	assert.equal(f.prompts.length,1); assert.equal(f.prompts[0][0].changedTaskCount,3);
+	assert.deepEqual(f.prompts[0][0].rules.map(r=>[r.ruleId,r.changed]),[['daily',2],['on-edit',3]]);
+	assert.equal(f.writes.length,3); assert.match(await f.read(id(0)+'.md'),/#follow/u);
+	assert.doesNotMatch(await f.read(id(2)+'.md'),/#follow/u);
+});
+
+test('an opening that needs approval releases the queue in the background and recomputes on return', async () => {
+	const f=await fixture(dueFiles('2026-12-31','2027-01-01','2027-01-01')); f.now='2026-12-31T23:50:00';
+	f.config.rules=[f.rule,calendarRule(f.rule)]; const watched=watchCalendar(f); watched.visible(false); await watched.idle();
+	assert.equal(watched.results.at(-1).status,'deferred'); assert.equal(f.prompts.length,0);
+	f.confirm=()=> 'dismiss'; assert.equal((await f.run()).status,'dismissed');
+	assert.equal(f.prompts.length,1);
+	f.now='2027-01-01T08:00:00'; watched.visible(true); await watched.idle();
+	assert.equal(f.prompts.length,2); assert.equal(f.prompts[1][0].changedTaskCount,2);
+	watched.visible(false); watched.visible(true); await watched.idle(); assert.equal(f.prompts.length,2);
+	assert.deepEqual(f.writes,[]); watched.events.dispose();
+	const reopened=watchCalendar(f); reopened.events.wake(); await reopened.idle();
+	assert.equal(f.prompts.length,3); assert.equal(f.prompts[2][0].changedTaskCount,2);
+});
+
+test('background work below the threshold applies and a later day preserves the previous label', async () => {
+	const f=await fixture(dueFiles('2027-01-31'),{policy:5}); f.now='2027-01-31T18:00:00';
+	f.config.rules=[calendarRule(f.rule)]; const watched=watchCalendar(f); watched.visible(false); await watched.idle();
+	assert.equal(f.prompts.length,0); assert.equal(f.writes.length,1);
+	await f.reindexInline(id(0)); f.now='2027-02-01T00:00:00'; watched.events.wake(); await watched.idle();
+	assert.match(await f.read(id(0)+'.md'),/#follow/u); assert.equal(f.writes.length,1);
+	const remove=calendarRule(f.rule,{id:'remove-old',target:rootGroup('dateDue','date','beforeToday'),actions:[action('tags','follow','remove')]});
+	f.config.rules.push(remove); watched.events.configure(f.config.rules); await watched.idle(); assert.equal(f.writes.length,1);
+	f.now='2027-02-02T00:00:00'; watched.events.wake(); await watched.idle();
+	assert.doesNotMatch(await f.read(id(0)+'.md'),/#follow/u); assert.equal(f.writes.length,2);
+});
+
+test('midnight during an approval rechecks current targets even when their count is unchanged', async () => {
+	const f=await fixture(dueFiles('2026-12-31','2027-01-01')); f.now='2026-12-31T23:59:58';
+	f.config.rules=[calendarRule(f.rule)]; const watched=watchCalendar(f);
+	f.confirm=()=>{if(f.prompts.length===1){ f.now='2027-01-01T00:00:01'; } return 'apply';};
+	watched.events.wake(); await watched.idle(); assert.equal(f.prompts.length,2);
+	assert.deepEqual(f.prompts.map(([p])=>p.changedTaskCount),[1,1]); assert.deepEqual(f.writes,[id(1)+'.md']);
+});
+
+test('deactivating or unloading discards a deferred approval without replaying it', async () => {
+	for(const stop of ['disable','unload']){
+		const f=await fixture(dueFiles('2027-01-01')); f.now='2027-01-01T02:00:00';
+		const rule=calendarRule(f.rule); f.config.rules=[rule]; const watched=watchCalendar(f);
+		watched.visible(false); await watched.idle(); assert.equal(watched.results.at(-1).status,'deferred');
+		if(stop==='disable'){rule.active=false;watched.events.configure(f.config.rules);} else watched.events.dispose();
+		watched.visible(true); await watched.idle(); assert.equal(f.prompts.length,0); assert.equal(f.writes.length,0);
+	}
+});
+
+test('a task edit and a date change during approval resolve opposing actions together', async () => {
+	const f = await fixture(dueFiles('2026-12-31','2027-01-01'));
+	f.now = '2026-12-31T23:59:58';
+	const daily = calendarRule(f.rule);
+	const opposite = asAuto(f.rule,'remove-on-edit',{target:rootGroup('description','text','is',id(1)), actions:[action('tags','follow','remove')]});
+	f.config.rules = [daily, opposite];
+	const watched = watchCalendar(f);
+	f.confirm = async () => {
+		f.now = '2027-01-01T00:00:01';
+		await f.pins.pin(id(1));
+		watched.events.pinsChanged();
+		return 'apply';
+	};
+	watched.events.wake();
+	await watched.idle();
+	assert.equal(f.prompts.length,1);
+	assert.deepEqual(f.writes,[]);
+	assert.ok(watched.results.some(result => result.plan?.issues.some(issue => issue.reason === 'conflict')));
+});
+
+test('a visible calendar approval that loses focus requires confirmation again on return', async () => {
+	const f = await fixture(dueFiles('2027-01-01'));
+	f.now = '2027-01-01T01:00:00';
+	f.config.rules = [calendarRule(f.rule)];
+	const watched = watchCalendar(f);
+	f.confirm = () => { watched.visible(false); return 'background'; };
+	watched.events.wake();
+	await watched.idle();
+	assert.equal(watched.results.at(-1).status,'deferred');
+	f.config.confirmation = 'none';
+	f.confirm = () => 'apply';
+	watched.visible(true); await watched.idle();
+	assert.equal(f.prompts.length,2);
+	assert.deepEqual(f.writes,[id(0)+'.md']);
+});
+
+test('one workspace clock follows local midnight, both DST transitions and popout wake after sleep', async t => {
+	const originalZone = process.env.TZ;
+	process.env.TZ = 'America/New_York';
+	t.after(() => { if (originalZone === undefined) delete process.env.TZ; else process.env.TZ = originalZone; });
+	t.mock.timers.enable({apis:['Date'], now: Date.parse('2027-03-14T04:59:00Z')});
+	const setTime = iso => t.mock.timers.setTime(Date.parse(iso));
+	const makeWindow = () => {
+		const win = new EventTarget();
+		win.document = new EventTarget();
+		win.document.defaultView = win;
+		return win;
+	};
+	const primary = makeWindow(), popout = makeWindow();
+	const listeners = new Map(), cleanup = [];
+	const app = { workspace: {
+		containerEl: {ownerDocument:primary.document},
+		on: (kind, fn) => { listeners.set(kind,fn); return kind; },
+	} };
+	const owner = { register: fn => cleanup.push(fn), registerEvent: key => cleanup.push(() => listeners.delete(key)) };
+	let tick, timers = 0, wakeCount = 0;
+	primary.setInterval = (fn, delay) => { assert.equal(delay,30_000); timers++; tick = fn; return 17; };
+	primary.clearInterval = token => { assert.equal(token,17); timers--; };
+	const f = eventFixture({today:localToday});
+	f.events.configure([calendarRule(f.rule)]);
+	registerWorkspaceDayRefresh(owner, app, () => { wakeCount++; f.events.wake(); });
+	await f.settle();
+	assert.equal(timers,1); assert.equal(f.batches.length,1);
+	setTime('2027-03-14T05:00:01Z'); tick(); await f.settle();
+	assert.equal(f.batches.length,2);
+	setTime('2027-03-14T06:59:59Z'); tick();
+	setTime('2027-03-14T07:00:01Z'); tick();
+	listeners.get('window-open')(null,popout); await f.settle();
+	assert.equal(f.batches.length,2);
+	setTime('2027-11-07T05:59:59Z'); popout.dispatchEvent(new Event('pageshow'));
+	tick(); await f.settle(); assert.equal(f.batches.length,3);
+	setTime('2027-11-07T06:00:01Z'); popout.document.dispatchEvent(new Event('visibilitychange'));
+	await f.settle(); assert.equal(f.batches.length,3);
+	setTime('2028-01-01T10:00:00Z'); primary.dispatchEvent(new Event('focus'));
+	popout.dispatchEvent(new Event('focus')); tick(); await f.settle(); assert.equal(f.batches.length,4);
+	listeners.get('window-close')(null,popout); const afterClose = wakeCount;
+	popout.dispatchEvent(new Event('focus')); assert.equal(wakeCount,afterClose);
+	cleanup.reverse().forEach(fn=>fn()); f.events.dispose();
+	primary.document.dispatchEvent(new Event('visibilitychange')); assert.equal(wakeCount,afterClose);
+	assert.equal(timers,0); assert.equal(listeners.size,0);
 });

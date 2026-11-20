@@ -1,3 +1,5 @@
+import { filterUsesLocalDay } from '../core/filter-evaluator';
+import type { AutoRunBatch } from './manual-automation-run';
 import type { AutomationRule } from '../core/automation-rules';
 import type { NativePropertyIndex } from '../indexer/native-property-index';
 import type { IndexedTask } from '../types/fields';
@@ -38,7 +40,9 @@ interface EventPorts {
 	settled(): boolean;
 	settle(): Promise<void>;
 	currentPath(id: string): string | undefined;
-	run(take: () => Promise<Map<string, Set<string>>>): Promise<unknown>;
+	today(): string;
+	foreground(): boolean;
+	run(take: () => Promise<AutoRunBatch>): Promise<unknown>;
 	error(error: unknown): void;
 }
 
@@ -48,7 +52,11 @@ export class AutoAutomationEvents {
 	private readonly known = new Map<string, TaskImage>();
 	private pins = new Set<string>();
 	private pending = new Map<string, Map<string, Change>>();
-	private inFlight?: Map<string, Set<string>>;
+	private inFlight?: AutoRunBatch;
+	private dayRules = new Set<string>();
+	private pendingDay = new Set<string>();
+	private observedDay?: string;
+	private deferred: AutoRunBatch = { rules: new Map(), confirmAgain: false };
 	private readonly ownSources = new Map<string, { image: TaskImage; since: number }>();
 	private readonly ownPins = new Map<string, Pin>();
 	private readonly activating = new Map<string, Set<string>>();
@@ -60,11 +68,15 @@ export class AutoAutomationEvents {
 
 	configure(rules: readonly AutomationRule[]): void {
 		if (this.disposed) return;
+		// A save after midnight must not retroactively enroll a newly enabled rule.
+		if (this.observedDay !== undefined) this.observeDay();
 		const previouslyEnabled = this.rules.size > 0;
 		const next = new Map(rules.filter(rule => rule.active && rule.mode === 'auto').map(rule => [rule.id, JSON.stringify(rule)]));
 		for (const [id, version] of this.rules) if (next.get(id) !== version) {
 			this.pending.delete(id);
-			this.inFlight?.delete(id);
+			this.inFlight?.rules.delete(id);
+			this.pendingDay.delete(id);
+			this.deferred.rules.delete(id);
 			this.activating.delete(id);
 		}
 		if (!this.ports.settled()) for (const [id, version] of next) if (this.rules.get(id) !== version) {
@@ -75,6 +87,9 @@ export class AutoAutomationEvents {
 				if (this.activating.get(id) === paths) this.activating.delete(id);
 			}).catch(error => this.ports.error(error));
 		}
+		if (!this.deferred.rules.size) this.deferred.confirmAgain = false;
+		this.dayRules = new Set(rules.filter(rule => next.has(rule.id)
+			&& (filterUsesLocalDay(rule.scope) || filterUsesLocalDay(rule.target))).map(rule => rule.id));
 		this.rules.clear();
 		for (const [id, version] of next) this.rules.set(id, version);
 		if (!next.size) this.clear();
@@ -85,6 +100,37 @@ export class AutoAutomationEvents {
 			}
 			this.pins = new Set(this.ports.pins());
 		}
+		this.schedule();
+	}
+
+	private observeDay(): void {
+		const today = this.ports.today();
+		if (this.observedDay === today) return;
+		this.observedDay = today;
+		this.pendingDay = new Set(this.dayRules);
+	}
+
+	wake(): void {
+		if (this.disposed) return;
+		this.observeDay();
+		this.schedule();
+	}
+
+	/** Include signals received while awaiting approval in the same conflict and confirmation calculation. */
+	refreshBatch(batch: AutoRunBatch): void {
+		if (this.disposed || this.inFlight !== batch) return;
+		this.observeDay();
+		if (this.pending.size && this.ports.settled()) this.mergeTaskChanges(batch);
+		for (const id of this.pendingDay) batch.rules.set(id, 'day');
+		this.pendingDay.clear();
+	}
+
+	deferConfirmation(batch: AutoRunBatch, alreadyShown: boolean): boolean {
+		if (this.disposed || this.inFlight !== batch || this.ports.foreground()
+			|| !Array.from(batch.rules.values()).includes('day')) return false;
+		// Retain trigger identities only. The runner rebuilds both the plan and physical work on return.
+		this.deferred = { rules: new Map(batch.rules), confirmAgain: alreadyShown || batch.confirmAgain };
+		return true;
 	}
 
 	get watching(): boolean { return this.rules.size > 0; }
@@ -149,12 +195,14 @@ export class AutoAutomationEvents {
 	}
 
 	private schedule(): void {
-		if (this.scheduled || this.disposed || !this.pending.size) return;
+		if (this.scheduled || this.disposed) return;
+		if (!this.pending.size && !this.pendingDay.size && !(this.deferred.rules.size && this.ports.foreground())) return;
 		this.scheduled = true;
 		void this.ports.run(async () => {
 			await this.ports.settle();
 			const batch = this.take();
 			this.inFlight = batch;
+			this.refreshBatch(batch);
 			return batch;
 		}).catch(error => { this.ports.error(error); }).finally(() => {
 			this.inFlight = undefined;
@@ -163,8 +211,14 @@ export class AutoAutomationEvents {
 		});
 	}
 
-	private take(): Map<string, Set<string>> {
-		const result = new Map<string, Set<string>>();
+	private take(): AutoRunBatch {
+		const batch = this.deferred;
+		this.deferred = { rules: new Map(), confirmAgain: false };
+		this.mergeTaskChanges(batch);
+		return batch;
+	}
+
+	private mergeTaskChanges(batch: AutoRunBatch): void {
 		const observedSources = new Set<string>(), observedPins = new Set<string>();
 		for (const [rule, changes] of this.pending) {
 			const triggers = new Set<string>();
@@ -183,20 +237,21 @@ export class AutoAutomationEvents {
 					if (change.pin !== this.pins.has(id) && (!own || own.updatedAt !== actual?.updatedAt || own.pinned !== actual.pinned)) triggers.add(id);
 				}
 			}
-			if (triggers.size) result.set(rule, triggers);
+			const previous = batch.rules.get(rule);
+			if (triggers.size && previous !== 'day') batch.rules.set(rule, new Set([...previous ?? [], ...triggers]));
 		}
 		for (const id of observedSources) this.ownSources.delete(id);
 		for (const id of observedPins) this.ownPins.delete(id);
 		this.pending.clear();
-		return result;
 	}
 
 	private clear(): void {
 		this.pending.clear(); this.known.clear(); this.pins.clear();
 		this.ownSources.clear(); this.ownPins.clear(); this.activating.clear();
+		this.pendingDay.clear(); this.deferred = { rules: new Map(), confirmAgain: false };
 	}
 	dispose(): void {
 		this.disposed = true;
-		this.rules.clear(); this.inFlight?.clear(); this.clear();
+		this.rules.clear(); this.dayRules.clear(); this.inFlight?.rules.clear(); this.clear();
 	}
 }

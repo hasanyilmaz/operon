@@ -1,4 +1,4 @@
-import type { AutomationChangePlan } from '../core/automation-change-plan';
+import type { AutomationChangePlan, AutoTriggers } from '../core/automation-change-plan';
 import { readAutomationRules, type AutomationRule, type AutomationRulesSettings } from '../core/automation-rules';
 import type { OperonStorage } from '../storage/operon-storage';
 
@@ -11,25 +11,30 @@ export async function deactivateAutomationRules(storage: Pick<OperonStorage, 'ge
 	return true;
 }
 
-export type AutomationDecision = 'apply' | 'dismiss' | 'deactivate' | 'replan';
+export type AutomationDecision = 'apply' | 'dismiss' | 'deactivate' | 'replan' | 'background';
 export interface AutomationWork {
 	/** Include source paths, exact before/after content and canonical pin entries. */
 	identity: readonly string[];
 	apply(current: () => boolean): Promise<{ applied: number; uncertain: number; refreshPending?: boolean }>;
 }
-export type AutoTriggers = ReadonlyMap<string, ReadonlySet<string>>;
+export interface AutoRunBatch {
+	rules: Map<string, Set<string> | 'day'>;
+	confirmAgain: boolean;
+}
 export interface AutomationRunPorts {
 	settings(): AutomationRulesSettings;
 	now(): string;
 	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string, triggers?: AutoTriggers): AutomationChangePlan;
 	prepare(plan: AutomationChangePlan): Promise<AutomationWork | null>;
-	confirm(plan: AutomationChangePlan, rules: AutomationRule[]): Promise<AutomationDecision>;
+	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
+	refreshBatch?(batch: AutoRunBatch): void;
+	deferConfirmation?(batch: AutoRunBatch, alreadyShown: boolean): boolean;
 	deactivate(rules: AutomationRule[]): Promise<boolean>;
 	exclusive<T>(operation: () => Promise<T>): Promise<T>;
 	available(): boolean;
 }
 export type ManualAutomationResult =
-	| { status: 'dismissed' | 'busy' | 'rule-changed' | 'save-failed' }
+	| { status: 'dismissed' | 'deferred' | 'busy' | 'rule-changed' | 'save-failed' }
 	| { status: 'deactivated'; names: string[] }
 	| { status: 'unavailable'; plan: AutomationChangePlan }
 	| { status: 'finished'; plan: AutomationChangePlan; applied: number; uncertain: number; refreshPending?: boolean };
@@ -52,16 +57,18 @@ export class AutomationRunner {
 		finally { this.manualPending = false; }
 	}
 
-	runAuto(take: () => Promise<AutoTriggers>, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
+	runAuto(take: () => Promise<AutoRunBatch>, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
 		return this.enqueue(async () => {
-			const triggers = await take();
-			return triggers.size ? this.runOnce(undefined, ports, triggers) : { status: 'dismissed' };
+			const batch = await take();
+			return batch.rules.size ? this.runOnce(undefined, ports, batch) : { status: 'dismissed' };
 		});
 	}
 
-	private async runOnce(id: string | undefined, ports: AutomationRunPorts, triggers?: AutoTriggers): Promise<ManualAutomationResult> {
+	private async runOnce(id: string | undefined, ports: AutomationRunPorts, batch?: AutoRunBatch): Promise<ManualAutomationResult> {
+		const triggers = batch?.rules;
 		let asOf = ports.now();
 		const read = async () => {
+			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
 			const rules = settings.rules.filter(item => item.active && (triggers
 				? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === id));
@@ -73,7 +80,7 @@ export class AutomationRunner {
 			return { rules, plan, work, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
 		};
 		let snapshot = await read();
-		let askAgain = false;
+		let askAgain = batch?.confirmAgain ?? false;
 		for (;;) {
 			if (!snapshot) return { status: 'rule-changed' };
 			const { rules, plan, work, key } = snapshot;
@@ -81,7 +88,12 @@ export class AutomationRunner {
 			if (plan.changedTaskCount === null || !work) return { status: 'unavailable', plan };
 			if (askAgain || plan.needsConfirmation) {
 				const listed = rules.filter(rule => plan.rules.some(entry => entry.ruleId === rule.id && entry.changed));
-				const decision = await ports.confirm(plan, listed);
+				if (batch && ports.deferConfirmation?.(batch, askAgain)) return { status: 'deferred' };
+				const decision = await ports.confirm(plan, listed, batch);
+				if (decision === 'background') {
+					if (batch && ports.deferConfirmation?.(batch, true)) return { status: 'deferred' };
+					snapshot = await read(); askAgain = true; continue;
+				}
 				if (decision === 'dismiss') return { status: 'dismissed' };
 				if (decision === 'replan') { snapshot = await read(); askAgain = true; continue; }
 				if (decision === 'deactivate') {

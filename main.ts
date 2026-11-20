@@ -61,10 +61,10 @@ import { prepareCreationCommit, type PreparedCreationContent } from './src/core/
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
-import { planAutomationChanges } from './src/core/automation-change-plan';
+import { planAutomationChanges, type AutoTriggers } from './src/core/automation-change-plan';
 import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
 import { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
-import { deactivateAutomationRules, AutomationRunner, type AutoTriggers } from './src/systems/manual-automation-run';
+import { deactivateAutomationRules, AutomationRunner, type AutoRunBatch } from './src/systems/manual-automation-run';
 import { captureAutomationReadState } from './src/systems/automation-read-state';
 import { prepareAutomationWork } from './src/systems/automation-task-writes';
 import { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
@@ -380,8 +380,10 @@ import {
 	getActiveWindow,
 	getOwnerWindow,
 	getWorkspaceWindows,
+	getFocusedVisibleWorkspaceWindow,
 	setWindowTimeout,
 } from './src/core/dom-compat';
+import { registerWorkspaceDayRefresh } from './src/core/filter-day-refresh';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
 import { evaluateFilterSet } from './src/core/filter-evaluator';
@@ -23534,6 +23536,7 @@ export default class OperonPlugin extends Plugin {
 	private startAutoAutomationEvents(): void {
 		const native = getNativePropertyIndex(this.app);
 		const pins = this.storage.pinned;
+		const foreground = () => getFocusedVisibleWorkspaceWindow(this.app) !== null;
 		const events = this.autoAutomationEvents = new AutoAutomationEvents({
 			taskIds: () => this.indexer.getAllTasks().map(task => task.operonId),
 			image: id => {
@@ -23544,6 +23547,7 @@ export default class OperonPlugin extends Plugin {
 			settled: () => this.indexer.getLiveReadAuthoritySnapshot().settled,
 			settle: async () => { await this.indexer.awaitRamSettlement(); },
 			currentPath: id => this.indexer.getTask(id)?.primary.filePath,
+			today: localToday, foreground,
 			run: take => this.runAutomation(take),
 			error: error => console.error('Operon: automatic task observation failed', error),
 		});
@@ -23560,14 +23564,19 @@ export default class OperonPlugin extends Plugin {
 		this.registerEvent(this.app.vault.on('modify', changed));
 		this.registerEvent(this.app.vault.on('rename', changed));
 		this.register(native.subscribeSource(path => events.reconcile(this.indexer.secondary.getTasksInFile(path))));
+		registerWorkspaceDayRefresh(this, this.app, () => {
+			events.wake();
+			if (this.backgroundAutomationApproval && !foreground()) this.backgroundAutomationApproval();
+		});
 	}
 	private automationApproval?: ConfirmActionModal;
+	private backgroundAutomationApproval?: () => void;
 
 	runManualAutomationRule(id: string): Promise<boolean> {
 		return this.runAutomation(id);
 	}
 
-	private async runAutomation(request: string | (() => Promise<AutoTriggers>)): Promise<boolean> {
+	private async runAutomation(request: string | (() => Promise<AutoRunBatch>)): Promise<boolean> {
 		let ruleNames = new Map<string, string>();
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
@@ -23619,23 +23628,32 @@ export default class OperonPlugin extends Plugin {
 					permit = owned;
 					try { return await operation(); } finally { permit = undefined; }
 				}),
-				confirm: (plan, rules) => new Promise(resolve => {
+				refreshBatch: batch => this.autoAutomationEvents?.refreshBatch(batch),
+				deferConfirmation: (batch, shown) => this.autoAutomationEvents?.deferConfirmation(batch, shown) ?? false,
+				confirm: (plan, rules, batch) => new Promise(resolve => {
 					const eligible = () => {
 						const stored = this.storage.getSettings().automationRules;
 						return isAutomationRulesSettings(stored) && rules.every(rule =>
-							stored.rules.some(item => item.id === rule.id && item.active && item.mode === rule.mode));
+							JSON.stringify(stored.rules.find(item => item.id === rule.id)) === JSON.stringify(rule));
 					};
 					if (!this.startupReady || this.agentRuntimeLifecycle.getPhase() === 'unloading') { resolve('dismiss'); return; }
 					if (!eligible()) { resolve('replan'); return; }
-					let invalidated = false;
+					let closeReason: 'background' | 'replan' | undefined;
 					const unsubscribe = this.storage.subscribeAutomationRules(() => {
-						if (!eligible()) { invalidated = true; this.automationApproval?.close(); }
+						if (!eligible()) { closeReason = 'replan'; this.automationApproval?.close(); }
 					});
 					this.automationApproval = automationApprovalModal(this.app, plan, rules, result => {
 						unsubscribe();
 						this.automationApproval = undefined;
-						resolve(invalidated ? 'replan' : result);
+						this.backgroundAutomationApproval = undefined;
+						resolve(closeReason ?? result);
 					});
+					if (batch) this.backgroundAutomationApproval = () => {
+						this.autoAutomationEvents?.refreshBatch(batch);
+						if (!Array.from(batch.rules.values()).includes('day')) return;
+						closeReason = 'background';
+						this.automationApproval?.close();
+					};
 					this.automationApproval.open();
 				}),
 				deactivate: rules => deactivateAutomationRules(this.storage, rules),

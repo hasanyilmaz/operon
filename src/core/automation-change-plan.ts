@@ -567,10 +567,13 @@ function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: Automa
 	}
 }
 
+/** A calendar event evaluates the scope even when no task was edited. */
+export type AutoTriggers = ReadonlyMap<string, ReadonlySet<string> | 'day'>;
+
 /** The caller chooses rules for a draft or a run. All matchers and actions read one original graph. */
 export function planAutomationChanges(
 	snapshot: AutomationPlanSnapshot, rules: readonly AutomationRule[], confirmation: AutomationConfirmation,
-	triggerTasks?: ReadonlyMap<string, ReadonlySet<string>>,
+	triggerTasks?: AutoTriggers,
 ): AutomationChangePlan {
 	const tasks = new Map(snapshot.tasks.map(task => [task.operonId, task]));
 	const issues: AutomationPlanIssue[] = [];
@@ -601,7 +604,8 @@ export function planAutomationChanges(
 	});
 	for (const rule of rules) {
 		const scope = matcher(rule.scope);
-		if (triggerTasks && !Array.from(triggerTasks.get(rule.id) ?? []).some(id => {
+		const trigger = triggerTasks?.get(rule.id);
+		if (triggerTasks && trigger !== 'day' && !Array.from(trigger ?? []).some(id => {
 			const task = tasks.get(id);
 			return task && scope(task) !== 'false';
 		})) continue;

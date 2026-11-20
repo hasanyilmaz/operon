@@ -165,22 +165,22 @@ export const DATE_OPERATORS = [
 	{ id: 'dateIs', label: 'date is' },
 	{ id: 'before', label: 'before' },
 	{ id: 'after', label: 'after' },
-	{ id: 'isToday', label: 'is today' },
-	{ id: 'notToday', label: 'not today' },
-	{ id: 'beforeToday', label: 'before today' },
-	{ id: 'afterToday', label: 'after today' },
-	{ id: 'exactlyDaysAgo', label: 'exactly X days ago' },
-	{ id: 'exactlyDaysAway', label: 'exactly X days away' },
-	{ id: 'underDaysAgo', label: 'under X days ago' },
-	{ id: 'underDaysAway', label: 'under X days away' },
-	{ id: 'overDaysAgo', label: 'over X days ago' },
-	{ id: 'overDaysAway', label: 'over X days away' },
-	{ id: 'thisWeek', label: 'this week' },
-	{ id: 'lastWeek', label: 'last week' },
-	{ id: 'nextWeek', label: 'next week' },
-	{ id: 'thisMonth', label: 'this month' },
-	{ id: 'lastMonth', label: 'last month' },
-	{ id: 'nextMonth', label: 'next month' },
+	{ id: 'isToday', relativeToToday: true, label: 'is today' },
+	{ id: 'notToday', relativeToToday: true, label: 'not today' },
+	{ id: 'beforeToday', relativeToToday: true, label: 'before today' },
+	{ id: 'afterToday', relativeToToday: true, label: 'after today' },
+	{ id: 'exactlyDaysAgo', relativeToToday: true, label: 'exactly X days ago' },
+	{ id: 'exactlyDaysAway', relativeToToday: true, label: 'exactly X days away' },
+	{ id: 'underDaysAgo', relativeToToday: true, label: 'under X days ago' },
+	{ id: 'underDaysAway', relativeToToday: true, label: 'under X days away' },
+	{ id: 'overDaysAgo', relativeToToday: true, label: 'over X days ago' },
+	{ id: 'overDaysAway', relativeToToday: true, label: 'over X days away' },
+	{ id: 'thisWeek', relativeToToday: true, label: 'this week' },
+	{ id: 'lastWeek', relativeToToday: true, label: 'last week' },
+	{ id: 'nextWeek', relativeToToday: true, label: 'next week' },
+	{ id: 'thisMonth', relativeToToday: true, label: 'this month' },
+	{ id: 'lastMonth', relativeToToday: true, label: 'last month' },
+	{ id: 'nextMonth', relativeToToday: true, label: 'next month' },
 	{ id: 'dayOfWeekIs', label: 'day of week is' },
 	{ id: 'dayOfWeekNot', label: 'day of week is not' },
 	{ id: 'monthIs', label: 'month is' },
@@ -282,8 +282,16 @@ export const NUMERIC_INPUT_DATE_OPERATORS = new Set([
 	'monthIs', 'monthNot',
 ]);
 
+interface FilterOperator { id: string; label: string; relativeToToday?: boolean }
+
+export function filterUsesLocalDay(node: FilterNode): boolean {
+	if ('children' in node) return node.children.some(filterUsesLocalDay);
+	if (node.fieldType !== 'date' && node.fieldType !== 'datetime') return false;
+	return getOperatorsForField(node.field, node.fieldType, true).some(op => op.id === node.operator && op.relativeToToday);
+}
+
 /** Get the operator list for a given field type */
-export function getOperatorsForType(type: FilterFieldType): readonly { id: string; label: string }[] {
+export function getOperatorsForType(type: FilterFieldType): readonly FilterOperator[] {
 	switch (type) {
 		case 'text': return TEXT_OPERATORS;
 		case 'number': return NUMBER_OPERATORS;
@@ -301,7 +309,7 @@ export function getOperatorsForType(type: FilterFieldType): readonly { id: strin
 }
 
 /** Operators for a raw YAML File Task property. Managed-field semantics stay unchanged. */
-export function getFilePropertyOperators(type: FilterFieldType): readonly { id: string; label: string }[] {
+export function getFilePropertyOperators(type: FilterFieldType): readonly FilterOperator[] {
 	switch (type) {
 		case 'checkbox': return FILE_PROPERTY_CHECKBOX_OPERATORS;
 		case 'date':
@@ -323,13 +331,13 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 }
 
 /** Resolve operators by both field origin and type. */
-export function getOperatorsForField(field: string, type: FilterFieldType, includeLegacy = false): readonly { id: string; label: string }[] {
+export function getOperatorsForField(field: string, type: FilterFieldType, includeLegacy = false): readonly FilterOperator[] {
 	if (field === 'trackedOn') {
 		// Keep saved development filters readable without offering retired operators for new conditions.
 		const dates = includeLegacy ? DATE_OPERATORS : DATE_OPERATORS.filter(op =>
 			!['afterToday', 'exactlyDaysAway', 'underDaysAway', 'overDaysAway', 'nextWeek', 'nextMonth'].includes(op.id),
 		);
-		return [...dates, { id: 'inLastDays', label: 'in the last X days' },
+		return [...dates, { id: 'inLastDays', relativeToToday: true, label: 'in the last X days' },
 			...(includeLegacy ? [{ id: 'between', label: 'is between' }] : [])];
 	}
 	if (field === 'trackers') return includeLegacy ? LIST_OPERATORS : LIST_OPERATORS.filter(op =>
