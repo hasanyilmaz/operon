@@ -8,6 +8,8 @@ import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { resolveWorkflowStatus } from '../types/pipeline';
 import type { FilterFieldType, OperonSettings } from '../types/settings';
 import type { IndexedTask } from '../types/fields';
+import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
+import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import type { FilterFieldPickerOption } from './filter-condition-editor';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
@@ -90,7 +92,7 @@ export class AutomationActionRow {
 	constructor(container: HTMLElement, private readonly action: AutomationAction, private readonly ctx: ActionEditorContext, remove: () => void) {
 		this.element = container.createDiv('operon-automation-action');
 		const row = this.element.createDiv('operon-condition-row operon-automation-action-row');
-		this.operation = row.createEl('button', { type: 'button', cls: 'operon-filter-modal-button is-icon' });
+		this.operation = row.createEl('button', { type: 'button', cls: 'operon-filter-modal-button is-icon operon-automation-operation' });
 		this.operation.addEventListener('click', () => {
 			action.operation = action.operation === 'add' ? 'remove' : 'add';
 			this.renderOperation();
@@ -154,8 +156,8 @@ export class AutomationActionRow {
 		const add = this.action.operation === 'add';
 		const label = t('settings', list ? add ? 'automationAddMembers' : 'automationRemoveMembers' : add ? 'automationSetValue' : 'automationClearMatch');
 		setIcon(this.operation, add ? 'plus' : 'minus');
-		this.operation.title = label;
-		this.operation.setAttribute('aria-label', label);
+		setAccessibleLabelWithoutTooltip(this.operation, label);
+		bindOperonHoverTooltip(this.operation, { content: label, taskColor: null });
 	}
 
 	private renderValue(): void {

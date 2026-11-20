@@ -10,6 +10,7 @@ import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import type { IndexedTask } from '../types/fields';
 import type { FilterFieldType, FilterGroup, OperonSettings } from '../types/settings';
 import { AutomationActionRow, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
+import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
 import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { FilterConditionEditor, FilterFieldCatalog, flattenConditions, type FilterFieldPickerOption } from './filter-condition-editor';
 import { closeFloatingPanelsForRoot, requestFloatingPanelCloseForRoot } from './field-pickers/common';
@@ -71,6 +72,7 @@ export class AutomationRuleModal extends Modal {
 	private summary!: HTMLElement;
 	private save!: HTMLButtonElement;
 	private timer?: number;
+	private unbindTooltips?: () => void;
 	private unbindActions?: () => void;
 	private unsubscribe?: () => void;
 	private pending = false;
@@ -153,6 +155,7 @@ export class AutomationRuleModal extends Modal {
 		this.unsubscribe = this.source.subscribe(() => { this.fieldsDirty = true; this.schedule(); });
 		this.updateCounts();
 		name.focus();
+		this.unbindTooltips = bindOperonSurfaceTooltips(this.modalEl);
 	}
 
 	private loadFields(): void {
@@ -262,6 +265,7 @@ export class AutomationRuleModal extends Modal {
 
 	onClose(): void {
 		this.closed = true;
+		this.unbindTooltips?.();
 		this.unbindActions?.();
 		this.unsubscribe?.();
 		getOwnerWindow(this.contentEl).clearTimeout(this.timer);

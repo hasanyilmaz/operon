@@ -12,6 +12,7 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 	let dismissed: AutomationDecision = 'dismiss';
 	const count = plan.changedTaskCount ?? 0;
 	return scopeSettingsModal(new ConfirmActionModal(app, {
+		operonTooltips: true,
 		title: t('settings', 'automationConfirmCount', { count: String(count) }),
 		message: '',
 		detailsTable: plan.rules.filter(entry => entry.changed).map(entry => ({

@@ -1,4 +1,5 @@
 import { App, Modal } from 'obsidian';
+import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
 
 export interface ConfirmActionComparisonRow {
 	label: string;
@@ -31,6 +32,7 @@ export interface ConfirmActionModalOptions {
 	danger?: boolean;
 	/** Called only by the explicit secondary button, before the result callback. */
 	onCancelButton?: () => void;
+	operonTooltips?: boolean;
 	initialFocus?: 'confirm' | 'cancel';
 	detailsTable?: Array<{ label: string; before: string; after: string }>;
 	comparisonTable?: ConfirmActionComparisonTable;
@@ -40,6 +42,7 @@ export class ConfirmActionModal extends Modal {
 	private readonly options: ConfirmActionModalOptions;
 	private readonly onCloseResult: (confirmed: boolean) => void;
 	private resolved = false;
+	private unbindTooltips?: () => void;
 
 	constructor(app: App, options: ConfirmActionModalOptions, onCloseResult: (confirmed: boolean) => void) {
 		super(app);
@@ -49,6 +52,7 @@ export class ConfirmActionModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
+		if (this.options.operonTooltips) this.unbindTooltips = bindOperonSurfaceTooltips(this.modalEl);
 		this.modalEl.addClass('operon-confirm-action-modal');
 		if (this.options.comparisonTable) {
 			this.modalEl.addClass('operon-confirm-action-modal-wide');
@@ -101,6 +105,7 @@ export class ConfirmActionModal extends Modal {
 	}
 
 	onClose(): void {
+		this.unbindTooltips?.();
 		this.contentEl.empty();
 		if (!this.resolved) {
 			this.resolved = true;

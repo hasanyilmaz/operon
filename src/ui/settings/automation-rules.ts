@@ -3,6 +3,7 @@ import { AUTOMATION_CONFIRMATIONS, readAutomationRules, type AutomationConfirmat
 import { t } from '../../core/i18n';
 import type { OperonStorage } from '../../storage/operon-storage';
 import { AutomationRuleModal, type AutomationEditorSource } from '../automation-rule-modal';
+import { cleanupOperonHoverTooltips } from '../operon-hover-tooltip';
 import { ConfirmActionModal } from '../confirm-action-modal';
 import { createSettingsListCard, createSettingsListCardActionButton, createSettingsListCardChip } from './settings-list-ui';
 import { scopeSettingsModal } from './settings-scope';
@@ -21,6 +22,7 @@ export function automationConfirmationOptions(): Record<string, string> {
 }
 
 export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
+	cleanupOperonHoverTooltips(el);
 	el.empty();
 	const expected = storage.getSettings().automationRules;
 	let snapshot: AutomationRulesSettings;
@@ -86,6 +88,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		});
 		button('trash-2', t('filterSets', 'deleteFilterConfirm'), () => {
 			scopeSettingsModal(new ConfirmActionModal(app, {
+				operonTooltips: true,
 				title: t('settings', 'automationDelete', { name: rule.name }), message: rule.name, danger: true, initialFocus: 'cancel',
 				confirmText: t('filterSets', 'deleteFilterConfirm'), cancelText: t('buttons', 'cancel'),
 			}, confirmed => { if (confirmed) void commit(rules.filter(item => item.id !== rule.id)); }), true).open();

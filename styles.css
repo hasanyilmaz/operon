@@ -16023,6 +16023,17 @@ button.operon-field-picker-trigger,
 	grid-template-columns: auto minmax(0, 2fr) minmax(0, 3fr) auto;
 }
 
+.operon-automation-action-row > button.operon-automation-operation.is-icon {
+	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	box-shadow: none;
+}
+
+.operon-automation-action-row > button.operon-automation-operation.is-icon:is(:hover, :focus-visible) {
+	border-color: var(--interactive-accent);
+	background: transparent;
+}
+
 .operon-automation-action-row > .operon-field-picker-trigger,
 .operon-automation-value,
 .operon-automation-value > :is(button, input, select) {
