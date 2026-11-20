@@ -19,7 +19,7 @@ export function automationConfirmationOptions(): Record<string, string> {
 	]));
 }
 
-export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource): void {
+export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
 	el.empty();
 	const expected = storage.getSettings().automationRules;
 	const section = new Setting(el).setName(t('settings', 'automationRuleList')).setHeading();
@@ -42,7 +42,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 			new Notice(t('settings', 'automationSaveFailed'));
 			return false;
 		}
-		renderAutomationRules(app, el, storage, source);
+		renderAutomationRules(app, el, storage, source, run);
 		return true;
 	};
 
@@ -70,6 +70,11 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		const button = (icon: string, label: string, onClick: () => void | Promise<void>): void => {
 			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, icon, ariaLabel: label + ' · ' + rule.name, onClick });
 		};
+		if (run && rule.active && rule.mode === 'manual') {
+			const label = t('settings', 'automationRun');
+			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, text: label, ariaLabel: label + ' · ' + rule.name,
+				onClick: async () => { if (await run(rule.id) && el.isConnected) renderAutomationRules(app, el, storage, source, run); } });
+		}
 		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
 		button('copy', t('table', 'duplicatePreset'), async () => {
 			const copy = { ...structuredClone(rule), id: crypto.randomUUID(), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };

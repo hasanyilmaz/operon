@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "新增所選項目",
       "automationAddRule": "新增規則",
       "automationAlwaysAsk": "一律詢問",
+      "automationApplied": "已變更的任務數：{{applied}}",
+      "automationApply": "套用變更",
       "automationAuto": "自動",
       "automationBlocked": "狀態轉換受阻",
+      "automationCancelMany": "取消並停用這些規則",
+      "automationCancelOne": "取消並停用規則",
       "automationChangedMany": "將變更 {{count}} 個任務",
       "automationChangedOne": "將變更 {{count}} 個任務",
       "automationClearMatch": "值相符時清除",
       "automationCompleteAction": "請補全操作值",
       "automationCompleteCondition": "請補全條件",
+      "automationConfirmCount": "要將變更套用至 {{count}} 個任務嗎？",
       "automationConfirmation": "套用變更前詢問",
       "automationConfirmationDesc": "要變更的不同任務數超過所選上限時詢問。例如，上限為 5 時，從 6 個任務起詢問。",
       "automationConflict": "操作衝突",
       "automationCopyName": "{{name}}（副本）",
+      "automationDeactivated": "已停用自動化規則「{{name}}」。",
       "automationDelete": "刪除 {{name}}？",
       "automationDeleteAction": "刪除操作",
       "automationEditRule": "編輯規則",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "無上限",
       "automationRelation": "無效的關聯",
       "automationRemoveMembers": "移除所選項目",
+      "automationRetry": "無法使用目前的規則或任務資料。請檢查規則後再試一次。",
       "automationRuleList": "自動化規則",
       "automationRuleListDesc": "管理任務自動化規則及其順序。",
+      "automationRun": "執行",
       "automationSaveFailed": "無法儲存自動化設定。請重新開啟自動化以查看目前的值。",
       "automationSaveRule": "儲存規則",
       "automationScope": "範圍條件",
       "automationSetValue": "設定值",
       "automationState": "規則狀態",
+      "automationStopped": "自動化已停止。已變更：{{applied}} · 剩餘：{{remaining}} · 結果未知：{{uncertain}}",
       "automationTarget": "目標條件",
       "automationUnavailable": "無法讀取這些自動化設定。",
       "automationUnknown": "無法計算",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "7b51658a91ef26510b58cf749a6905423b244563d58f52c43a79de5e6f782ddb"
+  "sourceVersion": "fa2c3738c9b873d5c59fbeef850a48c3f711d872750955ea97f46979777bc12e"
 }

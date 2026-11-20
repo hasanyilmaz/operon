@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Ajouter les éléments sélectionnés",
       "automationAddRule": "Ajouter une règle",
       "automationAlwaysAsk": "Toujours demander",
+      "automationApplied": "Tâches modifiées : {{applied}}",
+      "automationApply": "Appliquer les modifications",
       "automationAuto": "Auto",
       "automationBlocked": "Transition bloquée",
+      "automationCancelMany": "Annuler et désactiver les règles",
+      "automationCancelOne": "Annuler et désactiver la règle",
       "automationChangedMany": "{{count}} tâches seront modifiées",
       "automationChangedOne": "{{count}} tâche sera modifiée",
       "automationClearMatch": "Effacer si la valeur correspond",
       "automationCompleteAction": "Complétez la valeur de l’action",
       "automationCompleteCondition": "Complétez la condition",
+      "automationConfirmCount": "Appliquer les modifications à {{count}} tâche(s) ?",
       "automationConfirmation": "Demander avant d’appliquer les modifications",
       "automationConfirmationDesc": "Demander confirmation si le nombre de tâches distinctes à modifier dépasse la limite. Avec 5, la confirmation est demandée à partir de 6 tâches.",
       "automationConflict": "Actions en conflit",
       "automationCopyName": "{{name}} (copie)",
+      "automationDeactivated": "La règle « {{name}} » a été désactivée.",
       "automationDelete": "Supprimer {{name}} ?",
       "automationDeleteAction": "Supprimer l’action",
       "automationEditRule": "Modifier la règle",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Sans limite",
       "automationRelation": "Relation incorrecte",
       "automationRemoveMembers": "Retirer les éléments sélectionnés",
+      "automationRetry": "Les données actuelles de la règle ou des tâches sont indisponibles. Vérifiez la règle et réessayez.",
       "automationRuleList": "Règles d’automatisation",
       "automationRuleListDesc": "Gérer les règles des tâches et leur ordre.",
+      "automationRun": "Exécuter",
       "automationSaveFailed": "Impossible d’enregistrer les réglages. Rouvrez les automatisations pour consulter les valeurs actuelles.",
       "automationSaveRule": "Enregistrer la règle",
       "automationScope": "Logique du périmètre",
       "automationSetValue": "Définir la valeur",
       "automationState": "État de la règle",
+      "automationStopped": "Automatisation arrêtée. Modifiées : {{applied}} · Restantes : {{remaining}} · Résultat incertain : {{uncertain}}",
       "automationTarget": "Logique de la cible",
       "automationUnavailable": "Impossible de lire ces réglages d’automatisation.",
       "automationUnknown": "Calcul impossible",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d7d6331b96661c07096bab63392f59e183b7e8aa3b67a4880886e97b3ac2f5d2"
+  "sourceVersion": "b2fa6b4e668d3042d1b1ab2a8c7bb5c9f2333a9031fb5c685c3b0f4ada304c5e"
 }

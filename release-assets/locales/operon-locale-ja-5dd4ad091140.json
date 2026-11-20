@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "選択した項目を追加",
       "automationAddRule": "ルールを追加",
       "automationAlwaysAsk": "常に確認",
+      "automationApplied": "変更したタスク数：{{applied}}",
+      "automationApply": "変更を適用",
       "automationAuto": "自動",
       "automationBlocked": "状態の変更がブロックされました",
+      "automationCancelMany": "キャンセルしてルールを無効化",
+      "automationCancelOne": "キャンセルしてルールを無効化",
       "automationChangedMany": "{{count}} 件のタスクを変更します",
       "automationChangedOne": "{{count}} 件のタスクを変更します",
       "automationClearMatch": "値が一致したら消去",
       "automationCompleteAction": "アクションの値を入力してください",
       "automationCompleteCondition": "条件を完成させてください",
+      "automationConfirmCount": "{{count}} 件のタスクに変更を適用しますか？",
       "automationConfirmation": "変更を適用する前に確認",
       "automationConfirmationDesc": "変更されるタスクの数が上限を超えると確認します。同じタスクは一度だけ数えます。上限が5なら6件以上で確認します。",
       "automationConflict": "アクションが競合しています",
       "automationCopyName": "{{name}}（コピー）",
+      "automationDeactivated": "自動化ルール「{{name}}」を無効にしました。",
       "automationDelete": "{{name}} を削除しますか？",
       "automationDeleteAction": "アクションを削除",
       "automationEditRule": "ルールを編集",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "上限なし",
       "automationRelation": "無効な関連付け",
       "automationRemoveMembers": "選択した項目を取り除く",
+      "automationRetry": "現在のルールまたはタスクのデータを使用できません。ルールを確認してもう一度お試しください。",
       "automationRuleList": "自動化ルール",
       "automationRuleListDesc": "タスクの自動化ルールとその順序を管理します。",
+      "automationRun": "実行",
       "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
       "automationSaveRule": "ルールを保存",
       "automationScope": "範囲の条件",
       "automationSetValue": "値を設定",
       "automationState": "ルールの状態",
+      "automationStopped": "自動化を停止しました。変更済み：{{applied}} · 残り：{{remaining}} · 結果不明：{{uncertain}}",
       "automationTarget": "対象の条件",
       "automationUnavailable": "自動化の設定を読み込めませんでした。",
       "automationUnknown": "計算できません",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "5f18eeebbe63e993593bab5aaede62daf939528e8c1c9c27a4fa5661bf285625"
+  "sourceVersion": "b19847aab9725045a4744f3509a61a11ce4f0a34ca24432297ca4f726b095033"
 }

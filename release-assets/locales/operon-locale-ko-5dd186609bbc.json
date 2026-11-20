@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "선택한 항목 추가",
       "automationAddRule": "규칙 추가",
       "automationAlwaysAsk": "항상 확인",
+      "automationApplied": "변경된 작업: {{applied}}",
+      "automationApply": "변경 사항 적용",
       "automationAuto": "자동",
       "automationBlocked": "상태 변경 차단됨",
+      "automationCancelMany": "취소하고 규칙들 비활성화",
+      "automationCancelOne": "취소하고 규칙 비활성화",
       "automationChangedMany": "할 일 {{count}}개가 변경됩니다",
       "automationChangedOne": "할 일 {{count}}개가 변경됩니다",
       "automationClearMatch": "값이 일치하면 지우기",
       "automationCompleteAction": "작업 값을 입력하세요",
       "automationCompleteCondition": "조건을 완성하세요",
+      "automationConfirmCount": "작업 {{count}}개에 변경 사항을 적용할까요?",
       "automationConfirmation": "변경 사항 적용 전 확인",
       "automationConfirmationDesc": "변경할 작업 수가 한도를 초과하면 확인합니다. 같은 작업은 한 번만 세며 한도가 5이면 6개부터 확인합니다.",
       "automationConflict": "작업 충돌",
       "automationCopyName": "{{name}} (복사본)",
+      "automationDeactivated": "자동화 규칙 “{{name}}”을 비활성화했습니다.",
       "automationDelete": "{{name}}을(를) 삭제할까요?",
       "automationDeleteAction": "작업 삭제",
       "automationEditRule": "규칙 편집",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "제한 없음",
       "automationRelation": "잘못된 관계",
       "automationRemoveMembers": "선택한 항목 제거",
+      "automationRetry": "현재 규칙 또는 작업 데이터를 사용할 수 없습니다. 규칙을 확인한 후 다시 시도하세요.",
       "automationRuleList": "자동화 규칙",
       "automationRuleListDesc": "작업 자동화 규칙과 순서를 관리합니다.",
+      "automationRun": "실행",
       "automationSaveFailed": "자동화 설정을 저장할 수 없습니다. 자동화를 다시 열어 현재 값을 확인하세요.",
       "automationSaveRule": "규칙 저장",
       "automationScope": "범위 조건",
       "automationSetValue": "값 설정",
       "automationState": "규칙 상태",
+      "automationStopped": "자동화가 중단되었습니다. 변경: {{applied}} · 남음: {{remaining}} · 결과 불명: {{uncertain}}",
       "automationTarget": "대상 조건",
       "automationUnavailable": "자동화 설정을 읽을 수 없습니다.",
       "automationUnknown": "계산할 수 없음",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "9196f4bb449d1257853bf4a1919884e4d00ce9cf48f662e5fd52b45bc8afc678"
+  "sourceVersion": "5be6f737fa92c047f6e51690294eb4d025ef0bca3441bfb26cd0cfc62c01d9cb"
 }

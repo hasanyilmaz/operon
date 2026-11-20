@@ -29,6 +29,8 @@ export interface ConfirmActionModalOptions {
 	dismissText?: string;
 	readOnly?: boolean;
 	danger?: boolean;
+	/** Called only by the explicit secondary button, before the result callback. */
+	onCancelButton?: () => void;
 	initialFocus?: 'confirm' | 'cancel';
 	detailsTable?: Array<{ label: string; before: string; after: string }>;
 	comparisonTable?: ConfirmActionComparisonTable;
@@ -68,7 +70,7 @@ export class ConfirmActionModal extends Modal {
 					}
 				}
 			}
-			contentEl.createEl('p', { text: this.options.message });
+			if (this.options.message) contentEl.createEl('p', { text: this.options.message });
 
 			const actions = contentEl.createDiv('operon-confirm-action-buttons');
 
@@ -84,6 +86,8 @@ export class ConfirmActionModal extends Modal {
 
 		const cancelButton = actions.createEl('button', { text: this.options.cancelText ?? 'Cancel' });
 		cancelButton.addEventListener('click', () => {
+			if (this.resolved) return;
+			this.options.onCancelButton?.();
 			this.finish(false);
 		});
 
@@ -99,11 +103,13 @@ export class ConfirmActionModal extends Modal {
 	onClose(): void {
 		this.contentEl.empty();
 		if (!this.resolved) {
+			this.resolved = true;
 			this.onCloseResult(false);
 		}
 	}
 
 	private finish(confirmed: boolean): void {
+		if (this.resolved) return;
 		this.resolved = true;
 		this.close();
 		this.onCloseResult(confirmed);

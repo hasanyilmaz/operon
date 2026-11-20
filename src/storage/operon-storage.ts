@@ -1244,6 +1244,13 @@ export class OperonStorage {
   });
  }
 
+	private readonly automationRuleListeners = new Set<() => void>();
+
+	subscribeAutomationRules(listener: () => void): () => void {
+		this.automationRuleListeners.add(listener);
+		return () => { this.automationRuleListeners.delete(listener); };
+	}
+
 	async saveAutomationRules(expected: unknown, next: AutomationRulesSettings): Promise<void> {
 		const expectedSource = JSON.stringify(expected);
 		const updated = readAutomationRules(next);
@@ -1254,6 +1261,7 @@ export class OperonStorage {
 				return { ...current, automation: { ...current.automation, ruleSettings: updated } };
 			});
 			this.settings.automationRules = updated;
+			for (const listener of this.automationRuleListeners) listener();
 		});
 	}
 
@@ -1978,6 +1986,7 @@ export class OperonStorage {
 				await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, true);
 			}
 			this.notifyPropertyPoolChange();
+			if (result.changed) for (const listener of this.automationRuleListeners) listener();
 			return {
 				changed: result.changed,
 				diagnostics: result.diagnostics,

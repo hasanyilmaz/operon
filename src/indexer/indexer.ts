@@ -2816,6 +2816,11 @@ export class OperonIndexer {
 		this.emitIncrementalReconciliation([operonId]);
 	}
 
+	/** Match the physical source to the revision that supplied the task graph. */
+	isIndexedSourceCurrent(file: TFile): boolean {
+		return this.fileMtimes.get(file.path) === file.stat.mtime && this.fileSizes.get(file.path) === file.stat.size;
+	}
+
 	getGeneration(): number {
 		return this.generation;
 	}

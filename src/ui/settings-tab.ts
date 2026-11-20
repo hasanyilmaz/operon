@@ -905,6 +905,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
 	private pluginVersion: string;
+	private readonly runAutomationRule?: (id: string) => Promise<boolean>;
 	private readonly planAutomationRule: AutomationEditorSource['plan'];
 	private onSettingsChanged: (change?: 'property-icons') => void;
 	private onDockRefreshLayout: () => void;
@@ -967,7 +968,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	constructor(
 		app: App,
-		plugin: Plugin & { planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
+		plugin: Plugin & { runManualAutomationRule?(id: string): Promise<boolean>; planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
 		settings: OperonSettings,
 		storage: OperonStorage,
 		onSettingsChanged: (change?: 'property-icons') => void,
@@ -1018,6 +1019,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
+		if (plugin.runManualAutomationRule) this.runAutomationRule = id => plugin.runManualAutomationRule!(id);
 		this.planAutomationRule = rule => {
 			const current = storage.getSettings().automationRules;
 			return plugin.planAutomationRules?.([rule], isAutomationRulesSettings(current) ? current.confirmation : 'always');
@@ -4520,7 +4522,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 				};
 			},
 			plan: this.planAutomationRule,
-		});
+		}, this.runAutomationRule);
 	}
 
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {

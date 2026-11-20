@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "添加所选项目",
       "automationAddRule": "添加规则",
       "automationAlwaysAsk": "始终询问",
+      "automationApplied": "已更改的任务数：{{applied}}",
+      "automationApply": "应用更改",
       "automationAuto": "自动",
       "automationBlocked": "状态转换受阻",
+      "automationCancelMany": "取消并停用这些规则",
+      "automationCancelOne": "取消并停用规则",
       "automationChangedMany": "将更改 {{count}} 个任务",
       "automationChangedOne": "将更改 {{count}} 个任务",
       "automationClearMatch": "值匹配时清除",
       "automationCompleteAction": "请补全操作值",
       "automationCompleteCondition": "请补全条件",
+      "automationConfirmCount": "将更改应用到 {{count}} 个任务？",
       "automationConfirmation": "应用更改前询问",
       "automationConfirmationDesc": "要更改的不同任务数超过所选上限时询问。例如，上限为 5 时，从 6 个任务起询问。",
       "automationConflict": "操作冲突",
       "automationCopyName": "{{name}}（副本）",
+      "automationDeactivated": "已停用自动化规则“{{name}}”。",
       "automationDelete": "删除 {{name}}？",
       "automationDeleteAction": "删除操作",
       "automationEditRule": "编辑规则",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "无限制",
       "automationRelation": "无效关联",
       "automationRemoveMembers": "移除所选项目",
+      "automationRetry": "无法使用当前规则或任务数据。请检查规则后重试。",
       "automationRuleList": "自动化规则",
       "automationRuleListDesc": "管理任务自动化规则及其顺序。",
+      "automationRun": "运行",
       "automationSaveFailed": "无法保存自动化设置。请重新打开自动化以查看当前值。",
       "automationSaveRule": "保存规则",
       "automationScope": "范围条件",
       "automationSetValue": "设置值",
       "automationState": "规则状态",
+      "automationStopped": "自动化已停止。已更改：{{applied}} · 剩余：{{remaining}} · 结果未知：{{uncertain}}",
       "automationTarget": "目标条件",
       "automationUnavailable": "无法读取这些自动化设置。",
       "automationUnknown": "无法计算",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "099e7e81227f7e119f6e125fd68610d3f383092fcafd8f3ca0bb6e81274b885b"
+  "sourceVersion": "b19f238bc6f154b143384b7f3d7cec5fec32cd9841ea5f4aa031c23ac252dd92"
 }

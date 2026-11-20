@@ -49,7 +49,7 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 	});
 }
 
-const issueLabels: Record<AutomationPlanIssue['reason'], string> = {
+export const automationIssueLabels: Record<AutomationPlanIssue['reason'], string> = {
 	conflict: 'automationConflict', blocked: 'automationBlocked', 'invalid-value': 'automationInvalid',
 	'read-only': 'automationFilterOnly', 'invalid-relation': 'automationRelation',
 	'unsupported-source': 'taskRelationsUnavailable', 'source-unavailable': 'taskRelationsUnavailable',
@@ -213,7 +213,7 @@ export class AutomationRuleModal extends Modal {
 		for (const issue of plan?.issues ?? []) for (const origin of issue.origins ?? []) {
 			let group = messages.get(origin.actionId);
 			if (!group) { group = new Set(); messages.set(origin.actionId, group); }
-			group.add(t('settings', issueLabels[issue.reason]));
+			group.add(t('settings', automationIssueLabels[issue.reason]));
 		}
 		for (const action of chosen) {
 			if (valid.includes(action)) continue;

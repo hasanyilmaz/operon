@@ -62,7 +62,11 @@ import { creationDraftParentFields, CreationDraftProperties, type CreationDraftP
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
 import { planAutomationChanges } from './src/core/automation-change-plan';
-import type { AutomationRule, AutomationConfirmation } from './src/core/automation-rules';
+import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
+import { deactivateAutomationRules, ManualAutomationRunner } from './src/systems/manual-automation-run';
+import { captureAutomationReadState } from './src/systems/automation-read-state';
+import { prepareAutomationWork } from './src/systems/automation-task-writes';
+import { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
 import { projectIndexedNativeProperties, writeTableNativeProperty } from './src/ui/table/table-native-property';
 import type { TableFilePropertyUpdateRequest } from './src/ui/table/table-file-property-editor';
 import { nativeEditorPropertyTypes } from './src/core/task-editor-native-properties';
@@ -17667,6 +17671,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.automationApproval?.close();
 		this.ribbonActionsReady = false;
 		this.timeTracker?.cancelExternalRefresh();
 		this.tasksConversionController?.dispose();
@@ -23520,8 +23525,78 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private readonly manualAutomations = new ManualAutomationRunner();
+	private automationApproval?: ConfirmActionModal;
+
+	async runManualAutomationRule(id: string): Promise<boolean> {
+		let permit: TaskWriterExclusiveMutationPermit | undefined;
+		let name = id;
+		try {
+			const result = await this.manualAutomations.run(id, {
+				settings: () => readAutomationRules(this.storage.getSettings().automationRules),
+				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
+				now: localNow,
+				plan: (rule, policy, asOf) => {
+					name = rule.name;
+					return this.planAutomationRules([rule], policy, asOf);
+				},
+				prepare: plan => {
+					const tasks = this.indexer.getAllTasks();
+					const base = plan.changes.some(c => c.field.startsWith('file.property:')) ? this.getTableFilePropertySnapshot(tasks) : null;
+					return prepareAutomationWork(plan, {
+						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
+						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, () => JSON.stringify([
+							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
+							this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
+							this.settings.autoExpandParentTaskDateRange,
+							this.settings.keepInlineTasksWithParent, this.settings.pinnedDockAutoUnpinFinished, this.settings.fileTaskDisplayTitleEnabled,
+							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(), this.storage.repeatSeries.getRevision(),
+							getNativePropertyIndex(this.app).getTypes(),
+						])),
+						native: base ? projectIndexedNativeProperties(this.app, base, tasks, this.settings) : undefined,
+						getTask: taskId => this.indexer.getTask(taskId), indexed: file => this.indexer.isIndexedSourceCurrent(file),
+						validPath: (path, absent) => this.isPluginTaskWritePathContained(path, absent),
+						buffersMatch: (path, text) => this.taskEditorDeleteOpenViewsMatch(path, text),
+						withSources: (paths, allowed, apply) => withExcalidrawMarkdownSources(this.app, this.writer, paths, file => this.isExcalidrawTaskSource(file), allowed, apply),
+						sync: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after), permit: () => permit,
+						refresh: async paths => {
+							for (const path of paths) await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+							this.refreshViews();
+						},
+					});
+				},
+				exclusive: operation => this.writer.runExclusiveTaskMutation(async owned => {
+					permit = owned;
+					try { return await operation(); } finally { permit = undefined; }
+				}),
+				confirm: (plan, rules) => new Promise(resolve => {
+					const eligible = () => {
+						const stored = this.storage.getSettings().automationRules;
+						return isAutomationRulesSettings(stored) && rules.every(rule =>
+							stored.rules.some(item => item.id === rule.id && item.active && item.mode === rule.mode));
+					};
+					if (!eligible() || !this.startupReady || this.agentRuntimeLifecycle.getPhase() === 'unloading') { resolve('dismiss'); return; }
+					const unsubscribe = this.storage.subscribeAutomationRules(() => { if (!eligible()) this.automationApproval?.close(); });
+					this.automationApproval = automationApprovalModal(this.app, plan, rules, result => {
+						unsubscribe();
+						this.automationApproval = undefined;
+						resolve(result);
+					});
+					this.automationApproval.open();
+				}),
+				deactivate: rules => deactivateAutomationRules(this.storage, rules),
+			});
+			showAutomationResult(result, name);
+			return result.status === 'deactivated';
+		} catch (error) {
+			console.error('Operon: manual automation did not settle', error);
+			new Notice(t('settings', 'automationRetry'));
+			return false;
+		}
+	}
+
 	/** Synchronous draft/run calculation against the already indexed vault. */
-	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation) {
+	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation, asOf = localNow()) {
 		const tasks = this.indexer.getAllTasks();
 		const catalog = new FilterFieldCatalog({ keyMappings: this.settings.keyMappings, getRootGroup: () => undefined, getSettings: () => this.settings });
 		const expandParentDates = this.settings.autoExpandParentTaskDateRange;
@@ -23531,7 +23606,7 @@ export default class OperonPlugin extends Plugin {
 		const base = rules.some(rule => needsNative(rule.scope) || needsNative(rule.target)
 			|| rule.actions.some(action => action.field.startsWith('file.property:'))) ? this.getTableFilePropertySnapshot(tasks) : null;
 		return planAutomationChanges({
-			tasks, asOf: localNow(), conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
+			tasks, asOf, conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
 			ready: this.startupReady && this.taskCardIndexState === 'ready' && indexState.settled
 				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',
 			settings: this.settings, pins: this.pinnedCache ? new Set(this.pinnedCache.getPinnedIds()) : null,

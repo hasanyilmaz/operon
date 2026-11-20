@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Adicionar itens selecionados",
       "automationAddRule": "Adicionar regra",
       "automationAlwaysAsk": "Sempre perguntar",
+      "automationApplied": "Tarefas alteradas: {{applied}}",
+      "automationApply": "Aplicar alterações",
       "automationAuto": "Automático",
       "automationBlocked": "Transição bloqueada",
+      "automationCancelMany": "Cancelar e desativar as regras",
+      "automationCancelOne": "Cancelar e desativar a regra",
       "automationChangedMany": "{{count}} tarefas serão alteradas",
       "automationChangedOne": "{{count}} tarefa será alterada",
       "automationClearMatch": "Limpar se o valor corresponder",
       "automationCompleteAction": "Complete o valor da ação",
       "automationCompleteCondition": "Complete a condição",
+      "automationConfirmCount": "Aplicar alterações a {{count}} tarefa(s)?",
       "automationConfirmation": "Perguntar antes de aplicar alterações",
       "automationConfirmationDesc": "Pede confirmação quando o número de tarefas distintas a alterar supera o limite. Com limite de 5, pergunta a partir de 6 tarefas.",
       "automationConflict": "Ações conflitantes",
       "automationCopyName": "{{name}} (cópia)",
+      "automationDeactivated": "A regra “{{name}}” foi desativada.",
       "automationDelete": "Excluir {{name}}?",
       "automationDeleteAction": "Remover ação",
       "automationEditRule": "Editar regra",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Sem limite",
       "automationRelation": "Relação inválida",
       "automationRemoveMembers": "Remover itens selecionados",
+      "automationRetry": "Não foi possível usar os dados atuais da regra ou das tarefas. Verifique a regra e tente novamente.",
       "automationRuleList": "Regras de automação",
       "automationRuleListDesc": "Gerencie as regras de tarefas e sua ordem.",
+      "automationRun": "Executar",
       "automationSaveFailed": "Não foi possível salvar as configurações. Reabra Automações para ver os valores atuais.",
       "automationSaveRule": "Salvar regra",
       "automationScope": "Lógica do escopo",
       "automationSetValue": "Definir valor",
       "automationState": "Estado da regra",
+      "automationStopped": "Automação interrompida. Alteradas: {{applied}} · Restantes: {{remaining}} · Resultado incerto: {{uncertain}}",
       "automationTarget": "Lógica do alvo",
       "automationUnavailable": "Não foi possível ler estas configurações de automação.",
       "automationUnknown": "Não foi possível calcular",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "be3986f9b48ddd01b39f255457d58bc16e2b59ca4f54877733056a18f2175347"
+  "sourceVersion": "3128014e2e4dc338efb6cfae41f7021918c1cb9450de6844727246378748d047"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Seçilen öğeleri ekle",
       "automationAddRule": "Kural ekle",
       "automationAlwaysAsk": "Her zaman sor",
+      "automationApplied": "Değişen görev sayısı: {{applied}}",
+      "automationApply": "Değişiklikleri uygula",
       "automationAuto": "Otomatik",
       "automationBlocked": "Durum geçişi engellendi",
+      "automationCancelMany": "İptal et ve kuralları devre dışı bırak",
+      "automationCancelOne": "İptal et ve kuralı devre dışı bırak",
       "automationChangedMany": "{{count}} görev değişecek",
       "automationChangedOne": "{{count}} görev değişecek",
       "automationClearMatch": "Değer eşleşirse temizle",
       "automationCompleteAction": "İşlem değerini tamamla",
       "automationCompleteCondition": "Koşulu tamamla",
+      "automationConfirmCount": "{{count}} göreve değişiklikler uygulansın mı?",
       "automationConfirmation": "Değişiklikleri uygulamadan önce sor",
       "automationConfirmationDesc": "Değişecek farklı task sayısı seçilen sınırı aşarsa onay iste. Örneğin sınır 5 ise 6 veya daha fazla task için sorulur.",
       "automationConflict": "Çakışan işlemler",
       "automationCopyName": "{{name}} (kopya)",
+      "automationDeactivated": "“{{name}}” otomasyon kuralı devre dışı bırakıldı.",
       "automationDelete": "{{name}} silinsin mi?",
       "automationDeleteAction": "İşlemi kaldır",
       "automationEditRule": "Kuralı düzenle",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Sınır yok",
       "automationRelation": "Geçersiz ilişki",
       "automationRemoveMembers": "Seçilen öğeleri çıkar",
+      "automationRetry": "Güncel kural veya görev verileri kullanılamadı. Kuralı kontrol edip yeniden deneyin.",
       "automationRuleList": "Otomasyon kuralları",
       "automationRuleListDesc": "Task otomasyon kurallarını ve sıralarını yönet.",
+      "automationRun": "Çalıştır",
       "automationSaveFailed": "Otomasyon ayarları kaydedilemedi. Güncel değerleri görmek için Otomasyonlar’ı yeniden aç.",
       "automationSaveRule": "Kuralı kaydet",
       "automationScope": "Kapsam mantığı",
       "automationSetValue": "Değeri ayarla",
       "automationState": "Kural durumu",
+      "automationStopped": "Otomasyon durdu. Değişen: {{applied}} · Kalan: {{remaining}} · Sonucu belirsiz: {{uncertain}}",
       "automationTarget": "Hedef mantığı",
       "automationUnavailable": "Bu otomasyon ayarları okunamadı.",
       "automationUnknown": "Hesaplanamadı",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a1ca0d1447becd9a94a44671502c22cd808113c0303998553d07e7e85289b0c3"
+  "sourceVersion": "a81c38000f42f25c36380567f17e901380b4fdb666fc7c3ddc0df220efc2ef23"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Ausgewählte Einträge hinzufügen",
       "automationAddRule": "Regel hinzufügen",
       "automationAlwaysAsk": "Immer nachfragen",
+      "automationApplied": "Geänderte Aufgaben: {{applied}}",
+      "automationApply": "Änderungen anwenden",
       "automationAuto": "Automatisch",
       "automationBlocked": "Übergang blockiert",
+      "automationCancelMany": "Abbrechen und Regeln deaktivieren",
+      "automationCancelOne": "Abbrechen und Regel deaktivieren",
       "automationChangedMany": "{{count}} Aufgaben werden geändert",
       "automationChangedOne": "{{count}} Aufgabe wird geändert",
       "automationClearMatch": "Bei Übereinstimmung leeren",
       "automationCompleteAction": "Aktionswert vervollständigen",
       "automationCompleteCondition": "Bedingung vervollständigen",
+      "automationConfirmCount": "Änderungen auf {{count}} Aufgabe(n) anwenden?",
       "automationConfirmation": "Vor dem Anwenden von Änderungen nachfragen",
       "automationConfirmationDesc": "Nachfragen, wenn mehr unterschiedliche Aufgaben als angegeben geändert würden. Beim Limit 5 erfolgt die Nachfrage ab 6 Aufgaben.",
       "automationConflict": "Widersprüchliche Aktionen",
       "automationCopyName": "{{name}} (Kopie)",
+      "automationDeactivated": "Automatisierungsregel „{{name}}“ deaktiviert.",
       "automationDelete": "{{name}} löschen?",
       "automationDeleteAction": "Aktion entfernen",
       "automationEditRule": "Regel bearbeiten",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Kein Limit",
       "automationRelation": "Ungültige Beziehung",
       "automationRemoveMembers": "Ausgewählte Einträge entfernen",
+      "automationRetry": "Die aktuellen Regel- oder Aufgabendaten sind nicht verfügbar. Prüfe die Regel und versuche es erneut.",
       "automationRuleList": "Automatisierungsregeln",
       "automationRuleListDesc": "Regeln für Aufgaben und ihre Reihenfolge verwalten.",
+      "automationRun": "Ausführen",
       "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
       "automationSaveRule": "Regel speichern",
       "automationScope": "Bereichslogik",
       "automationSetValue": "Wert setzen",
       "automationState": "Regelstatus",
+      "automationStopped": "Automatisierung gestoppt. Geändert: {{applied}} · Ausstehend: {{remaining}} · Ergebnis unklar: {{uncertain}}",
       "automationTarget": "Ziellogik",
       "automationUnavailable": "Diese Automatisierungseinstellungen konnten nicht gelesen werden.",
       "automationUnknown": "Berechnung nicht möglich",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "effcd5f9428175811c0d597f0495533c0bc15516f882c8a402d96d02fe0360ce"
+  "sourceVersion": "528fa8c0f8fc8e9a5a8fc927626b79cb6b2a652c1fb8174a43fe410514c4996b"
 }

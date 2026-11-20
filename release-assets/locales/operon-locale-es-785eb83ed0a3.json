@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Añadir elementos seleccionados",
       "automationAddRule": "Añadir regla",
       "automationAlwaysAsk": "Preguntar siempre",
+      "automationApplied": "Tareas modificadas: {{applied}}",
+      "automationApply": "Aplicar cambios",
       "automationAuto": "Automático",
       "automationBlocked": "Transición bloqueada",
+      "automationCancelMany": "Cancelar y desactivar las reglas",
+      "automationCancelOne": "Cancelar y desactivar la regla",
       "automationChangedMany": "Cambiarán {{count}} tareas",
       "automationChangedOne": "Cambiará {{count}} tarea",
       "automationClearMatch": "Borrar si coincide",
       "automationCompleteAction": "Completa el valor de la acción",
       "automationCompleteCondition": "Completa la condición",
+      "automationConfirmCount": "¿Aplicar cambios a {{count}} tarea(s)?",
       "automationConfirmation": "Preguntar antes de aplicar cambios",
       "automationConfirmationDesc": "Pide confirmación si el número de tareas distintas que cambiarían supera el límite. Con un límite de 5, pregunta a partir de 6 tareas.",
       "automationConflict": "Acciones en conflicto",
       "automationCopyName": "{{name}} (copia)",
+      "automationDeactivated": "Se desactivó la regla «{{name}}».",
       "automationDelete": "¿Eliminar {{name}}?",
       "automationDeleteAction": "Quitar acción",
       "automationEditRule": "Editar regla",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Sin límite",
       "automationRelation": "Relación no válida",
       "automationRemoveMembers": "Quitar elementos seleccionados",
+      "automationRetry": "No se pudieron usar los datos actuales de la regla o las tareas. Revisa la regla e inténtalo de nuevo.",
       "automationRuleList": "Reglas de automatización",
       "automationRuleListDesc": "Gestiona las reglas de tareas y su orden.",
+      "automationRun": "Ejecutar",
       "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
       "automationSaveRule": "Guardar regla",
       "automationScope": "Lógica de alcance",
       "automationSetValue": "Asignar valor",
       "automationState": "Estado de la regla",
+      "automationStopped": "Automatización detenida. Modificadas: {{applied}} · Pendientes: {{remaining}} · Resultado incierto: {{uncertain}}",
       "automationTarget": "Lógica de destino",
       "automationUnavailable": "No se pudieron leer los ajustes de automatización.",
       "automationUnknown": "No se pudo calcular",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "d2ed340cf8c05287733c678852cc19c04c281ff2f7b05e021cbca243cca1cb3b"
+  "sourceVersion": "102615ad08a86bbcf2fce739366c9923d1e09a8a0507a0b79e4caaef9f9f4574"
 }

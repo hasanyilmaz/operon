@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3901,
-  "keyFingerprint": "97214c478206b144e978aa2863929696c1696c91aa334f5079e6834a7da6c56c",
+  "keyCount": 3910,
+  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1163,17 +1163,23 @@
       "automationAddMembers": "Добавить выбранные элементы",
       "automationAddRule": "Добавить правило",
       "automationAlwaysAsk": "Всегда спрашивать",
+      "automationApplied": "Изменено задач: {{applied}}",
+      "automationApply": "Применить изменения",
       "automationAuto": "Авто",
       "automationBlocked": "Переход заблокирован",
+      "automationCancelMany": "Отменить и отключить правила",
+      "automationCancelOne": "Отменить и отключить правило",
       "automationChangedMany": "Задач к изменению — {{count}}",
       "automationChangedOne": "Будет изменена {{count}} задача",
       "automationClearMatch": "Очистить при совпадении",
       "automationCompleteAction": "Укажите значение действия",
       "automationCompleteCondition": "Заполните условие",
+      "automationConfirmCount": "Применить изменения? Задач: {{count}}",
       "automationConfirmation": "Запрашивать подтверждение перед изменением",
       "automationConfirmationDesc": "Запрашивать подтверждение, если число изменяемых задач превышает предел. Каждая задача учитывается один раз. При пределе 5 запрос появится для 6 или более задач.",
       "automationConflict": "Конфликт действий",
       "automationCopyName": "{{name}} (копия)",
+      "automationDeactivated": "Правило «{{name}}» отключено.",
       "automationDelete": "Удалить {{name}}?",
       "automationDeleteAction": "Удалить действие",
       "automationEditRule": "Изменить правило",
@@ -1186,13 +1192,16 @@
       "automationNoLimit": "Без ограничений",
       "automationRelation": "Недопустимая связь",
       "automationRemoveMembers": "Удалить выбранные элементы",
+      "automationRetry": "Текущие данные правила или задач недоступны. Проверьте правило и попробуйте снова.",
       "automationRuleList": "Правила автоматизации",
       "automationRuleListDesc": "Настройте правила задач и их порядок.",
+      "automationRun": "Запустить",
       "automationSaveFailed": "Не удалось сохранить настройки. Откройте автоматизацию заново, чтобы увидеть текущие значения.",
       "automationSaveRule": "Сохранить правило",
       "automationScope": "Условия области",
       "automationSetValue": "Задать значение",
       "automationState": "Состояние правила",
+      "automationStopped": "Автоматизация остановлена. Изменено: {{applied}} · Осталось: {{remaining}} · Результат неизвестен: {{uncertain}}",
       "automationTarget": "Условия цели",
       "automationUnavailable": "Не удалось прочитать настройки автоматизации.",
       "automationUnknown": "Не удалось рассчитать",
@@ -3946,5 +3955,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "935eee62bc16a49f3f180aab74eaf2dbb3cee149ed98bc3885476e379ed5a7ab"
+  "sourceVersion": "1dbad5de96a3d833a3b237e6bbb5065af41b0e14d1fd4e52783827c84bbd023c"
 }
