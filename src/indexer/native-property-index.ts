@@ -8,7 +8,7 @@ import { isWritableRawYamlPropertyName } from '../core/raw-yaml-property';
 import { resolveInlinePropertyDefinition, type InlinePropertyType } from '../core/inline-property-definitions';
 import { loadPropertyTypeRegistry, type ObsidianPropertyTypeId } from '../core/property-type-registry';
 import { scanFileWithMappings } from './file-scanner';
-import { getManagedYamlAliases } from '../core/yaml-fields';
+import { getManagedYamlAliases, readYamlFields } from '../core/yaml-fields';
 import { compactNativeInline, persistNativePropertySource, restoreNativePropertySource, NATIVE_SOURCE_RESCAN,
  type NativePropertySource, type PersistedNativePropertySource } from './native-property-persistence';
 export type { NativePropertySource } from './native-property-persistence';
@@ -80,6 +80,7 @@ export class NativePropertyIndex {
  private readPlans = new Map<string, InlinePropertyReadPlan>();
  private aliasCache = new Map<string, string[]>();
  private listeners = new Set<() => void>();
+ private sourceListeners = new Set<(path: string) => void>();
  private revision = 0;
  private interpretationRevision = 0;
  private known: Map<string, IndexedTask> | null = null;
@@ -145,6 +146,7 @@ export class NativePropertyIndex {
   this.prepare([...(this.known?.values() ?? [])]);
   this.changed();
  }
+ subscribeSource(listener: (path: string) => void): () => void { this.sourceListeners.add(listener); return () => { this.sourceListeners.delete(listener); }; }
  subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
  private changed(notify = true): void {
   this.revision++; this.dirty = true;
@@ -203,6 +205,8 @@ export class NativePropertyIndex {
   this.sources.set(path, { raw, persisted, stamp, error: false, revision: this.revision + 1, rows: new Map() });
   this.prepare(this.tasksByPath.get(path) ?? []);
   this.changed(notify);
+  // An independent native-source refresh can finish without another task reconciliation.
+  if (notify) for (const listener of this.sourceListeners) listener(path);
  }
  /** Cache hydration uses the saved stamp, never the current file's possibly newer stamp. */
  restore(path: string, persisted: PersistedNativePropertySource, stamp: string): void {
@@ -313,6 +317,17 @@ export class NativePropertyIndex {
  prepare(tasks: readonly IndexedTask[]): void {
   for (const task of tasks) if (this.sourceReady(task)) this.getTask(task);
  }
+ /** File-stat fallbacks do not represent edits to stored task dates. Hydrated fragments can omit managed keys. */
+ storedTaskDates(task: IndexedTask): string | undefined {
+  const source = this.sources.get(task.primary.filePath);
+  if (!source || source.error) return undefined;
+  const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+  const frontmatter = source.hydrated && file instanceof TFile
+   ? this.app.metadataCache.getFileCache(file)?.frontmatter : source.raw?.frontmatter;
+  if (!frontmatter) return undefined;
+  const fields = readYamlFields(frontmatter, this.settings.keyMappings);
+  return JSON.stringify([fields.datetimeCreated, fields.datetimeModified]);
+ }
  getTask(task: IndexedTask): NativeTaskProperties {
   const source = this.sources.get(task.primary.filePath);
   const available = !!source?.raw && !source.error && this.registryState === 'ready'
@@ -397,7 +412,7 @@ export class NativePropertyIndex {
  }
  dispose(): void {
   this.draftReaders.clear(); this.usageNames = new Set(); this.usageRevision = -1;
-  this.disposed = true; this.listeners.clear(); this.sources.clear(); this.known = null; this.indexedStamps.clear(); this.tasksByPath.clear(); this.refreshSource = undefined;
+  this.disposed = true; this.listeners.clear(); this.sourceListeners.clear(); this.sources.clear(); this.known = null; this.indexedStamps.clear(); this.tasksByPath.clear(); this.refreshSource = undefined;
   for (const job of this.jobs.values()) job.resolve();
   for (const pending of this.pending.values()) pending.resolve();
   this.pending.clear();

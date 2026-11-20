@@ -12,7 +12,10 @@ after(() => rm(tmp, { recursive: true, force: true }));
 const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
 	export { TFile, parseYaml } from 'obsidian';
-	export { deactivateAutomationRules, ManualAutomationRunner } from './src/systems/manual-automation-run';
+	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
+	export { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
+	export { NativePropertyIndex, getNativePropertyIndex } from './src/indexer/native-property-index';
+	export { OperonIndexer } from './src/indexer/indexer';
 	export { captureAutomationReadState } from './src/systems/automation-read-state';
 	export { prepareAutomationWork } from './src/systems/automation-task-writes';
 	export { automationApprovalModal } from './src/ui/manual-automation-feedback';
@@ -28,8 +31,9 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, parseYaml, deactivateAutomationRules, ManualAutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
-	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings } = await import(pathToFileURL(out).href);
+const { TFile, parseYaml, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
+	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
+	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
 const ruleId = 'rule-a';
 const all = { id: 'root', logic: 'all', children: [] };
@@ -93,17 +97,18 @@ async function fixture(files, opts = {}) {
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { available: () => true, now: () => asOf, settings: () => structuredClone(config),
-		plan: (saved, policy) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf, ready: f.known,
+		plan: (saved, policy, _asOf, triggers) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf, ready: f.known,
 			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(), getFrontmatter: t => frontmatter.get(t.operonId), getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
-		}, [saved], policy),
+		}, saved, policy, triggers),
 		prepare: async plan => {
 			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
 				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], () => 'fixture'), indexed: () => true,
-				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => true, permit: () => permit,
+				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
+				observeSource: f.observeSource, observePin: f.observePin,
 				refresh: async () => { f.refreshes++; if (f.refreshFails) throw Error('refresh failed'); } });
 			await f.onPrepare?.();
 			return work;
@@ -116,8 +121,8 @@ async function fixture(files, opts = {}) {
 			} }, saved),
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
-	const runner = new ManualAutomationRunner();
-	return Object.assign(f, { pins, read: name => readFile(path.join(dir, name), 'utf8'), run: () => runner.run(ruleId, ports) });
+	const runner = new AutomationRunner();
+	return Object.assign(f, { pins, auto: ids => runner.runAuto(async () => ids, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: () => runner.run(ruleId, ports) });
 }
 
 for (const [n, policy, asks] of [[0,'always',0], [1,'always',1], [5,5,0], [6,5,1], [6,'none',0]]) {
@@ -256,4 +261,177 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 		if (button === null) modal.close(); else { clicked[button](); clicked[button](); }
 		assert.deepEqual(outcomes,[expected]);
 	}
+});
+
+const asAuto = (rule, key = rule.id, overrides = {}) => ({ ...rule, id: key, name: key, mode: 'auto', ...overrides });
+
+test('a change inside scope runs all targets in one batch, counting shared effects only once', async () => {
+	const f = await fixture(filesFor(3), { policy: 5 });
+	const a = asAuto(f.rule);
+	const b = asAuto(a, 'other', { target: rootGroup('description', 'text', 'is', id(0)), actions: [action('priority','High')] });
+	const outside = asAuto(a, 'outside', { scope: rootGroup('description','text','is',id(2)), actions: [action('note','wrong')] });
+	f.config.rules = [a, b, outside];
+	const triggers = new Map(f.config.rules.map(rule => [rule.id, new Set([id(0)])]));
+	const result = await f.auto(triggers);
+	assert.equal(result.applied, 3); assert.equal(f.prompts.length, 0);
+	assert.deepEqual(result.plan.rules.map(r => [r.ruleId, r.changed]), [[a.id,3],[b.id,1]]);
+	for (const file of f.writes) assert.doesNotMatch(await f.read(file), /wrong/u);
+});
+
+test('only rules listed in the multi-rule confirmation can be deactivated', async () => {
+	const f = await fixture(filesFor(2));
+	const a = asAuto(f.rule), b = asAuto(a, 'second'), noEffect = asAuto(a, 'no-effect', { actions: [] });
+	f.config.rules = [a, b, noEffect]; f.confirm = () => 'deactivate';
+	const result = await f.auto(new Map(f.config.rules.map(rule => [rule.id, new Set([id(0)])])));
+	assert.equal(f.prompts.length, 1); assert.equal(f.prompts[0][0].changedTaskCount, 2);
+	assert.deepEqual(f.prompts[0][1].map(rule => rule.id), [a.id,b.id]);
+	assert.deepEqual(result.names, [a.id,b.id]); assert.deepEqual(f.config.rules.map(rule => rule.active), [false,false,true]);
+	assert.deepEqual(f.writes, []);
+});
+
+test('two Auto rules that oppose each other leave the conflicting task untouched', async () => {
+	const f = await fixture(filesFor(2)); const a = asAuto(f.rule);
+	const b = asAuto(a, 'opposed', {target: rootGroup('description','text','is', id(1)), actions: [action('tags','follow','remove')]});
+	f.config.rules = [a,b];
+	const result = await f.auto(new Map([[a.id,new Set([id(0)])],[b.id,new Set([id(0)])]]));
+	assert.equal(result.applied,1); assert.ok(result.plan.issues.some(issue => issue.reason === 'conflict'));
+	assert.deepEqual(f.writes, [id(0)+'.md']);
+});
+
+test('Auto waits behind an open Manual confirmation and checks its current scope', async () => {
+	const f = await fixture(filesFor(2)); const a = asAuto(f.rule, 'auto');
+	f.config.rules.push(a);
+	const entered = Promise.withResolvers(), release = Promise.withResolvers();
+	f.confirm = () => { entered.resolve(); return release.promise; };
+	const manual = f.run(); await entered.promise;
+	const automatic = f.auto(new Map([[a.id, new Set([id(0)])]]));
+	assert.equal(f.prompts.length, 1);
+	a.scope = rootGroup('description','text','is',id(1)); release.resolve('dismiss');
+	assert.equal((await manual).status, 'dismissed'); assert.equal((await automatic).applied, 0);
+	assert.deepEqual(f.writes, []); assert.equal(f.prompts.length, 1);
+});
+
+test('writer registers an owned source after a lost acknowledgement is recovered by exact readback', async () => {
+	const f = await fixture(filesFor(1)); f.syncThrows = true;
+	const seen = new Set();
+	f.observeSource = async (ids, file, destination, content) => {
+		assert.equal(destination, file.path); assert.match(content, /#follow/u);
+		return () => { for (const key of ids) seen.add(key); };
+	};
+	assert.equal((await f.run()).applied, 1); assert.deepEqual([...seen], [id(0)]);
+});
+
+function eventFixture(overrides = {}) {
+	const tasks = new Map([['a', {core:'a'}], ['b', {core:'b'}]]);
+	const pins = new Map(), batches = [], runs = [];
+	const events = new AutoAutomationEvents({
+		taskIds: () => tasks.keys(), image: key => tasks.get(key),
+		pins: () => [...pins].filter(([,p]) => p.pinned).map(([key]) => key), pin: key => pins.get(key) ?? null,
+		settled: () => true, currentPath: key => key, settle: async () => {}, run: take => { runs.push(take); return new Promise(resolve => queueMicrotask(resolve)).then(async () => {
+			const batch = await take(); if (batch.size) batches.push([...batch].map(([key,ids]) => [key,[...ids]]));
+		}); }, error: error => { throw error; }, ...overrides,
+	});
+	const rule = { id:'r', mode:'auto', active:true }, settle = () => new Promise(resolve => setImmediate(resolve));
+	return { tasks, pins, batches, runs, events, rule, settle };
+}
+
+test('startup, activation and a full rebuild are silent; real indexed changes coalesce per task', async () => {
+	const { tasks, batches, events, rule, settle } = eventFixture();
+	events.configure([]); tasks.set('c',{core:'created'}); events.reconcile(['c']);
+	events.configure([rule]); tasks.set('admitted',{core:'from previously excluded folder'}); events.rebase();
+	events.reconcile(['a','b','c','admitted']); await settle(); assert.deepEqual(batches, []);
+	tasks.set('a',{core:'typed in Markdown'}); events.reconcile(['a','b']); events.reconcile(['a']);
+	tasks.set('d',{core:'new'}); events.reconcile(['d']); tasks.delete('d'); events.reconcile(['d']);
+	tasks.set('e',{core:'new'}); events.reconcile(['e']); await settle();
+	assert.deepEqual(batches, [[['r',['a','e']]]]);
+});
+
+test('own delayed index/pin/parent writes coalesce, while a newer edit to the same task runs', async () => {
+	const { tasks, pins, batches, events, rule, settle } = eventFixture(); events.configure([rule]);
+	const since = events.beginSource();
+	for (const key of ['a','b']) {
+		const after = {core:'automatic '+key}; events.ownSource(key, after, since);
+		tasks.set(key, after); events.reconcile([key]);
+	}
+	events.ownPin('a', true, 'auto'); pins.set('a', {pinned:true,updatedAt:'auto'}); events.pinsChanged();
+	tasks.set('b',{core:'a genuine concurrent edit'}); events.reconcile(['b']);
+	await settle(); assert.deepEqual(batches, [[['r',['b']]]]);
+	events.reconcile(['a','b']); events.pinsChanged(); await settle(); assert.equal(batches.length,1);
+	pins.set('a',{pinned:false,updatedAt:'user'}); events.pinsChanged(); await settle();
+	assert.deepEqual(batches[1], [['r',['a']]]);
+});
+
+test('rule edits, disabling and unloading discard stale queued observations', async () => {
+	const { tasks, batches, events, rule, settle } = eventFixture();
+	events.configure([rule]); tasks.set('a',{core:'updated'}); events.reconcile(['a']);
+	events.configure([{...rule,name:'edited'}]); await settle(); assert.deepEqual(batches, []);
+	tasks.set('b',{core:'edited'}); events.reconcile(['b']); events.configure([]); events.configure([rule]); await settle();
+	assert.deepEqual(batches, []);
+	tasks.set('a',{core:'last'}); events.reconcile(['a']); events.dispose(); await settle(); assert.deepEqual(batches, []);
+});
+
+test('activation ignores already queued edits but preserves new edits while the index settles', async () => {
+	const waiting = Promise.withResolvers();
+	const {tasks,batches,events,rule,settle} = eventFixture({settled:()=>false,settle:()=>waiting.promise});
+	events.configure([rule]);
+	tasks.set('a',{core:'old edit indexed after activation'}); events.reconcile(['a']);
+	events.fileChanged('b'); tasks.set('b',{core:'new edit'}); events.reconcile(['b']);
+	waiting.resolve(); await settle(); assert.deepEqual(batches, [[['r',['b']]]]);
+});
+
+test('closing an invalidated multi-rule modal rechecks the surviving Auto rule', async () => {
+	const f = await fixture(filesFor(2)); const a = asAuto(f.rule), b = asAuto(a,'second');
+	f.config.rules = [a,b]; f.confirm = () => {
+		if (f.prompts.length === 1) { b.active = false; return 'replan'; }
+		return 'apply';
+	};
+	const result = await f.auto(new Map([[a.id,new Set([id(0)])],[b.id,new Set([id(0)])]]));
+	assert.equal(result.applied,2);
+	assert.deepEqual(f.prompts.map(([,rules]) => rules.map(rule => rule.id)), [[a.id,b.id],[a.id]]);
+});
+
+test('real rescans distinguish a sibling Sync edit from the automation write to the same Markdown file', async () => {
+	const file = new TFile('Source.md'); file.stat = {mtime:1,ctime:1,size:1};
+	const app = {vault:{getAbstractFileByPath:()=>file,read:async()=>content}, metadataCache:{getFileCache:()=>({})}};
+	let content = inline(id(0),' {{Team:: Alpha}}') + inline(id(1),' {{Team:: Alpha}}');
+	const native = getNativePropertyIndex(app); native.configure(DEFAULT_SETTINGS); native.setTypes({team:'text'});
+	const index = new OperonIndexer(app,{getSettings:()=>DEFAULT_SETTINGS});
+	try {
+		await index.reindexFilePath(file.path);
+		const {events,rule,batches,settle} = eventFixture({
+			taskIds:()=>index.getAllTasks().map(task=>task.operonId),
+			image:key=>{const task=index.getTask(key); return task && automationTaskImage(task,native);},
+			settle:()=>index.awaitRamSettlement(),
+		});
+		events.configure([rule]);
+		const off = index.subscribeIndexReconciliation(event => events.reconcile(event.affectedOperonIds));
+		const since = events.beginSource(); const after = content.replace('Alpha','Beta');
+		const projected = await index.projectAutomationSource(file,after);
+		for (const task of projected.tasks) if (task.operonId === id(0)) events.ownSource(task.operonId,automationTaskImage(task,projected.native),since);
+		projected.native.dispose();
+		content = after.replace('Alpha','Gamma'); file.stat.mtime++;
+		await index.reindexFilePath(file.path); await settle(); off();
+		assert.deepEqual(batches, [[['r',[id(1)]]]]);
+	} finally {index.destroy();}
+});
+
+test('native properties are isolated per inline task; startup hydration of a file task retains real stored dates', () => {
+	const file = new TFile('Tasks.md'); file.stat = {mtime:1,size:1,ctime:1};
+	const frontmatter = {operonId:id(1),datetimeModified:'2026-01-01T12:00:00'};
+	const app = {vault:{getAbstractFileByPath: () => file},metadataCache:{getFileCache: () => ({frontmatter})}};
+	const native = new NativePropertyIndex(app); native.configure(DEFAULT_SETTINGS); native.setTypes({team:'text'});
+	const a = {operonId:id(0),fieldValues:{},tags:[],description:'a',checkbox:'open',primary:{format:'inline',filePath:file.path,lineNumber:0}};
+	const b = {...a,operonId:id(1),description:'b',primary:{...a.primary,lineNumber:1}};
+	const yaml = {...a,operonId:id(1),primary:{...a.primary,format:'yaml'}};
+	const fields = (task, team) => ({operonId:task.operonId,lineNumber:task.primary.lineNumber,fields:
+		[['operonId',task.operonId],['Team',team]].map(([key,value])=>({sourceKey:key,key,value,rawValue:value}))});
+	const raw = {frontmatter,order:Object.keys(frontmatter),inline:[fields(a,'X'),fields(b,'Y')]};
+	native.restore(file.path, native.persistSource(raw), '1:1');
+	const before = automationTaskImage(yaml,native);
+	native.accept(file.path,raw,false);
+	assert.deepEqual(automationTaskImage(yaml,native), before);
+	const imageA = automationTaskImage(a,native), imageB = automationTaskImage(b,native);
+	native.accept(file.path,{...raw,frontmatter:{...frontmatter,datetimeModified:'2026-02-02T12:00:00'},inline:[fields(a,'Z'),fields(b,'Y')]},false);
+	assert.notEqual(automationTaskImage(a,native).native,imageA.native); assert.deepEqual(automationTaskImage(b,native),imageB);
+	assert.notEqual(automationTaskImage(yaml,native).dates,before.dates);
 });

@@ -11,16 +11,17 @@ export async function deactivateAutomationRules(storage: Pick<OperonStorage, 'ge
 	return true;
 }
 
-export type AutomationDecision = 'apply' | 'dismiss' | 'deactivate';
+export type AutomationDecision = 'apply' | 'dismiss' | 'deactivate' | 'replan';
 export interface AutomationWork {
 	/** Include source paths, exact before/after content and canonical pin entries. */
 	identity: readonly string[];
 	apply(current: () => boolean): Promise<{ applied: number; uncertain: number; refreshPending?: boolean }>;
 }
-interface ManualAutomationPorts {
+export type AutoTriggers = ReadonlyMap<string, ReadonlySet<string>>;
+export interface AutomationRunPorts {
 	settings(): AutomationRulesSettings;
 	now(): string;
-	plan(rule: AutomationRule, confirmation: AutomationRulesSettings['confirmation'], asOf: string): AutomationChangePlan;
+	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string, triggers?: AutoTriggers): AutomationChangePlan;
 	prepare(plan: AutomationChangePlan): Promise<AutomationWork | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[]): Promise<AutomationDecision>;
 	deactivate(rules: AutomationRule[]): Promise<boolean>;
@@ -28,45 +29,66 @@ interface ManualAutomationPorts {
 	available(): boolean;
 }
 export type ManualAutomationResult =
-	| { status: 'dismissed' | 'busy' | 'deactivated' | 'rule-changed' | 'save-failed' }
+	| { status: 'dismissed' | 'busy' | 'rule-changed' | 'save-failed' }
+	| { status: 'deactivated'; names: string[] }
 	| { status: 'unavailable'; plan: AutomationChangePlan }
 	| { status: 'finished'; plan: AutomationChangePlan; applied: number; uncertain: number; refreshPending?: boolean };
 
-/** One outstanding Run per plugin, including time spent waiting for the modal. */
-export class ManualAutomationRunner {
-	private running = false;
+/** Both entry points hold the same queue through confirmation, apply and the index refresh. */
+export class AutomationRunner {
+	private tail = Promise.resolve();
+	private manualPending = false;
 
-	async run(id: string, ports: ManualAutomationPorts): Promise<ManualAutomationResult> {
-		if (this.running) return { status: 'busy' };
-		this.running = true;
-		try { return await this.runOnce(id, ports); }
-		finally { this.running = false; }
+	private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+		const result = this.tail.then(operation);
+		this.tail = result.then(() => undefined, () => undefined);
+		return result;
 	}
 
-	private async runOnce(id: string, ports: ManualAutomationPorts): Promise<ManualAutomationResult> {
+	async run(id: string, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
+		if (this.manualPending) return { status: 'busy' };
+		this.manualPending = true;
+		try { return await this.enqueue(() => this.runOnce(id, ports)); }
+		finally { this.manualPending = false; }
+	}
+
+	runAuto(take: () => Promise<AutoTriggers>, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
+		return this.enqueue(async () => {
+			const triggers = await take();
+			return triggers.size ? this.runOnce(undefined, ports, triggers) : { status: 'dismissed' };
+		});
+	}
+
+	private async runOnce(id: string | undefined, ports: AutomationRunPorts, triggers?: AutoTriggers): Promise<ManualAutomationResult> {
 		let asOf = ports.now();
 		const read = async () => {
 			const settings = ports.settings();
-			const rule = settings.rules.find(item => item.id === id && item.active && item.mode === 'manual');
-			if (!rule || !ports.available()) return null;
+			const rules = settings.rules.filter(item => item.active && (triggers
+				? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === id));
+			if (!rules.length || !ports.available()) return null;
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
-			const plan = ports.plan(rule, settings.confirmation, asOf);
+			const plan = ports.plan(rules, settings.confirmation, asOf, triggers);
 			const work = plan.changedTaskCount ? await ports.prepare(plan) : null;
-			return { rule, plan, work, policy: settings.confirmation, key: JSON.stringify([rule, plan, settings.confirmation]) };
+			return { rules, plan, work, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
 		};
 		let snapshot = await read();
 		let askAgain = false;
 		for (;;) {
 			if (!snapshot) return { status: 'rule-changed' };
-			const { rule, plan, work, key } = snapshot;
+			const { rules, plan, work, key } = snapshot;
 			if (plan.changedTaskCount === 0) return { status: 'finished', plan, applied: 0, uncertain: 0 };
 			if (plan.changedTaskCount === null || !work) return { status: 'unavailable', plan };
 			if (askAgain || plan.needsConfirmation) {
-				const decision = await ports.confirm(plan, [rule]);
+				const listed = rules.filter(rule => plan.rules.some(entry => entry.ruleId === rule.id && entry.changed));
+				const decision = await ports.confirm(plan, listed);
 				if (decision === 'dismiss') return { status: 'dismissed' };
+				if (decision === 'replan') { snapshot = await read(); askAgain = true; continue; }
 				if (decision === 'deactivate') {
-					try { return { status: ports.available() && await ports.deactivate([rule]) ? 'deactivated' : 'rule-changed' }; }
+					try {
+						if (!ports.available() || !await ports.deactivate(listed)) return { status: 'rule-changed' };
+						return { status: 'deactivated', names: listed.map(rule => rule.name) };
+					}
 					catch { return { status: 'save-failed' }; }
 				}
 			}
@@ -75,12 +97,12 @@ export class ManualAutomationRunner {
 				if (!fresh?.work || fresh.key !== key || fresh.work.identity.length !== work.identity.length
 					|| fresh.work.identity.some((value, index) => value !== work.identity[index])) return { fresh };
 				const policy = fresh.policy;
-				const savedRule = JSON.stringify(rule);
+				const savedRules = new Map(rules.map(rule => [rule.id, JSON.stringify(rule)]));
 				const current = () => {
 					try {
 						const settings = ports.settings();
 						return ports.available() && settings.confirmation === policy && ports.now().slice(0, 10) === asOf.slice(0, 10)
-							&& JSON.stringify(settings.rules.find(item => item.id === id)) === savedRule;
+							&& rules.every(rule => (!triggers || triggers.has(rule.id)) && JSON.stringify(settings.rules.find(item => item.id === rule.id)) === savedRules.get(rule.id));
 					} catch { return false; }
 				};
 				if (!current()) return { fresh: await read() };

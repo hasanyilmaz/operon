@@ -25,10 +25,13 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 	}, confirmed => done(confirmed ? 'apply' : dismissed)), true);
 }
 
-export function showAutomationResult(result: ManualAutomationResult, name: string): void {
-	if (result.status === 'busy' || result.status === 'dismissed') return;
+export function showAutomationResult(result: ManualAutomationResult, automatic: boolean, ruleNames: ReadonlyMap<string, string>): void {
+	if (result.status === 'busy' || result.status === 'dismissed' || automatic && result.status === 'finished' && result.plan.changedTaskCount === 0 && !result.plan.issues.length) return;
 	if (result.status === 'save-failed') { new Notice(t('settings', 'automationSaveFailed')); return; }
-	if (result.status === 'deactivated') { new Notice(t('settings', 'automationDeactivated', { name })); return; }
+	if (result.status === 'deactivated') {
+		new Notice(result.names.map(name => t('settings', 'automationDeactivated', { name })).join('\n'));
+		return;
+	}
 	if (result.status !== 'finished' && result.status !== 'unavailable') { new Notice(t('settings', 'automationRetry')); return; }
 	const remaining = result.status === 'finished' ? (result.plan.changedTaskCount ?? 0) - result.applied - result.uncertain : 0;
 	const lines = [result.status === 'unavailable' ? t('settings', 'automationRetry') : t('settings', remaining || result.uncertain ? 'automationStopped' : 'automationApplied', {
@@ -37,7 +40,8 @@ export function showAutomationResult(result: ManualAutomationResult, name: strin
 	const reasons = new Map<string, Set<string>>();
 	for (const issue of result.plan.issues) {
 		const label = t('settings', automationIssueLabels[issue.reason]);
-		const field = [issue.taskId, issue.field].filter(Boolean).join(' · ');
+		const rules = issue.reason === 'conflict' ? new Set(issue.origins?.map(origin => ruleNames.get(origin.ruleId) ?? origin.ruleId)) : [];
+		const field = [issue.taskId, issue.field, ...rules].filter(Boolean).join(' · ');
 		const details = reasons.get(label) ?? new Set<string>();
 		if (field) details.add(field);
 		reasons.set(label, details);

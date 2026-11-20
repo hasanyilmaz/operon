@@ -34,6 +34,9 @@ interface WritePorts {
 	sync(path: string, before: string, after: string): boolean;
 	permit(): TaskWriterExclusiveMutationPermit | undefined;
 	refresh(paths: Set<string>): Promise<void>;
+	/** Capture only writes this instance attempts, including conditional rollback. */
+	observeSource?(ids: ReadonlySet<string>, file: TFile, path: string, expected: string): Promise<() => void>;
+	observePin?(id: string, pinned: boolean, stamp: string): void;
 }
 interface Source {
 	file: TFile;
@@ -89,11 +92,15 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 	return update;
 }
 
-function sourceStep(s: Source, ports: WritePorts, current: () => boolean): PluginUiConversionStep {
+function sourceStep(s: Source, ports: WritePorts, current: () => boolean, ids: ReadonlySet<string>): PluginUiConversionStep {
 	const { app, writer } = ports;
 	const owns = (path: string) => s.file.path === path && app.vault.getAbstractFileByPath(path) === s.file;
 	const matches = async (path: string, text: string) => owns(path) && ports.buffersMatch(path, text) && await writer.readTaskMarkdownSource(s.file) === text;
+	let confirmAfter: (() => void) | undefined;
 	const change = async (from: string, to: string, before: string, after: string, permitted: () => boolean) => {
+		const acknowledged = from !== to || before !== after ? await ports.observeSource?.(ids, s.file, to, after) : undefined;
+		if (to === s.destination && after === s.after) confirmAfter = acknowledged;
+		else confirmAfter = undefined;
 		const write = async () => {
 			if (before === after) return await matches(to, before);
 			const guard = () => permitted() && owns(to) && ports.buffersMatch(to, before);
@@ -101,16 +108,26 @@ function sourceStep(s: Source, ports: WritePorts, current: () => boolean): Plugi
 			if (result.outcome !== 'committed') throw new Error('Automation source write did not settle');
 			return ports.sync(to, before, after);
 		};
-		if (from === to) return write();
+		if (from === to) {
+			const committed = await write();
+			if (committed) acknowledged?.();
+			return committed;
+		}
 		const eligible = () => permitted() && !Object.values(app.metadataCache.resolvedLinks).some(links => links[from]);
 		if (!await ports.validPath(to, true) || !await matches(from, before)) return false;
-		return executeTaskSourceRenameTransaction({ previousPath: from, candidatePath: to, currentPath: () => s.file.path,
+		const committed = await executeTaskSourceRenameTransaction({ previousPath: from, candidatePath: to, currentPath: () => s.file.path,
 			owns, occupied: path => !!app.vault.getAbstractFileByPath(path), read: () => app.vault.read(s.file),
 			rename: path => app.fileManager.renameFile(s.file, path), canCommit: eligible,
 			validate: value => value === before, validateCommitted: value => value === after,
 			commit: async rename => await rename() && await write() });
+		if (committed) acknowledged?.();
+		return committed;
 	};
-	return { isBefore: () => matches(s.path, s.before), isAfter: () => matches(s.destination, s.after),
+	return { isBefore: () => matches(s.path, s.before), isAfter: async () => {
+		const exact = await matches(s.destination, s.after);
+		if (exact) confirmAfter?.();
+		return exact;
+	},
 		apply: () => change(s.path, s.destination, s.before, s.after, current),
 		rollback: () => change(s.destination, s.path, s.after, s.before, () => true) };
 }
@@ -122,7 +139,7 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 	let entered = false;
 	return ports.withSources(paths, current, async allowed => {
 		const steps = group.sources.map(source => {
-			const step = sourceStep(source, ports, allowed);
+			const step = sourceStep(source, ports, allowed, group.ids);
 			return { ...step, apply: async () => {
 				if (source.path !== source.destination || source.before !== source.after) { state.ownPath(source.path); state.ownPath(source.destination); }
 				return step.apply();
@@ -137,7 +154,10 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 			});
 			steps.push({ isBefore: () => Promise.resolve(matches(false)), isAfter: () => Promise.resolve(matches(true)), irreversible: true,
 				apply: async () => {
-					for (const [id, pin] of group.pins) state.ownPin(id, pin.pinned);
+					for (const [id, pin] of group.pins) {
+						state.ownPin(id, pin.pinned);
+						ports.observePin?.(id, pin.pinned, stamp);
+					}
 					await ports.pins.applyAutomationPins(group.pins, stamp, allowed); return true;
 				}, rollback: () => Promise.resolve(false) });
 		}

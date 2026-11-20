@@ -1,6 +1,6 @@
 import { restoreNativePropertySource, type NativePropertyInline } from './native-property-persistence';
 import { readParsedInlinePropertyProjection } from '../core/inline-property-source';
-import { getNativePropertyIndex, type NativePropertySource } from './native-property-index';
+import { getNativePropertyIndex, NativePropertyIndex, type NativePropertySource } from './native-property-index';
 /**
  * Operon task indexer.
  * Builds and maintains the in-memory task index with storage-managed persistence.
@@ -2814,6 +2814,19 @@ export class OperonIndexer {
 		if (hadConflict === this.duplicateConflicts.has(operonId) && !transitionEnded) return;
 		this.generation += 1;
 		this.emitIncrementalReconciliation([operonId]);
+	}
+
+	/** Project a known automation write using the same scanner and property interpretation as a later reindex. */
+	async projectAutomationSource(file: TFile, content: string) {
+		const state = this.createEmptyIndexState();
+		await this.indexFile(file, state, undefined, undefined, undefined, undefined, content);
+		const native = new NativePropertyIndex(this.app);
+		const live = getNativePropertyIndex(this.app);
+		native.configure(this.storage.getSettings({ committedMappings: true }));
+		native.setTypes(live.typesAvailable() ? { ...live.getTypes() } : null);
+		const raw = state.nativeSources.get(file.path);
+		if (raw) native.accept(file.path, raw, false);
+		return { tasks: state.tasks.values(), native };
 	}
 
 	/** Match the physical source to the revision that supplied the task graph. */

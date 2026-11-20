@@ -570,6 +570,7 @@ function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: Automa
 /** The caller chooses rules for a draft or a run. All matchers and actions read one original graph. */
 export function planAutomationChanges(
 	snapshot: AutomationPlanSnapshot, rules: readonly AutomationRule[], confirmation: AutomationConfirmation,
+	triggerTasks?: ReadonlyMap<string, ReadonlySet<string>>,
 ): AutomationChangePlan {
 	const tasks = new Map(snapshot.tasks.map(task => [task.operonId, task]));
 	const issues: AutomationPlanIssue[] = [];
@@ -599,7 +600,12 @@ export function planAutomationChanges(
 		return !!cell?.nativeState && cell.readOnlyReason !== 'unavailable' && cell.readOnlyReason !== 'type-conflict';
 	});
 	for (const rule of rules) {
-		const scope = matcher(rule.scope), target = matcher(rule.target);
+		const scope = matcher(rule.scope);
+		if (triggerTasks && !Array.from(triggerTasks.get(rule.id) ?? []).some(id => {
+			const task = tasks.get(id);
+			return task && scope(task) !== 'false';
+		})) continue;
+		const target = matcher(rule.target);
 		const count = { ruleId: rule.id, scope: 0, target: 0, changed: 0 };
 		counts.push(count);
 		for (const task of tasks.values()) {
