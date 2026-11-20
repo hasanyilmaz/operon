@@ -23695,6 +23695,7 @@ export default class OperonPlugin extends Plugin {
 					|| Object.values(this.app.metadataCache.resolvedLinks).some(links => links[path])) return 'unknown';
 				return this.app.vault.getAbstractFileByPath(path) instanceof TFile ? 'available' : 'unknown';
 			},
+			getInlineList: (task, name) => getNativePropertyIndex(this.app).readMappedInlineList(task, name),
 			getDuplicateInstances: () => this.indexer.getAllDuplicateInstanceSnapshots(),
 			unavailableIds: new Set(tasks.filter(task => this.indexer.hasDuplicateOperonIdConflict(task.operonId)
 				|| this.indexer.isTaskSourceTransitionActive(task.operonId)).map(task => task.operonId)),

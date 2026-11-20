@@ -26,6 +26,7 @@ export interface AutomationPlanSnapshot {
 	getDuplicateInstances(): Iterable<Pick<IndexedTask, 'operonId' | 'fieldValues'>>;
 	activeTimerId: string | null | undefined;
 	native?: TableFilePropertyQueryContext;
+	getInlineList: AutomationFieldSource['getInlineList'];
 	getFrontmatter: AutomationFieldSource['getFrontmatter'];
 	fileRenameState(task: IndexedTask, destination: string): 'available' | 'occupied' | 'unknown';
 	getRepeatSkipDates: NonNullable<FilterEvaluationOptions['getRepeatSkipDates']>;
@@ -162,6 +163,8 @@ function actionBatch(ctx: PlanContext, task: IndexedTask, action: AutomationActi
 	const push = (taskId: string, fieldKey: string, before: PlanValue, literal: PlanValue, op: Intent['op'], indirect: boolean) =>
 		intents.push({ taskId, field: fieldKey, before, value: literal, op, indirect, origin });
 	if (Array.isArray(value)) {
+		if (field.typedList && task.primary.format === 'yaml' && add
+			&& value.some(member => typeof member !== 'string' || member.includes(';'))) return 'unsupported-source';
 		if (key === 'tags' && task.primary.format === 'inline' && value.some(member => !isLosslessInlineTag(String(member)))) return 'invalid-value';
 		for (const member of value) {
 			push(task.operonId, key, field.before, member, add ? 'include' : 'exclude', false);
@@ -591,7 +594,7 @@ export function planAutomationChanges(
 	const counts: RuleCount[] = [];
 	const batches: IntentBatch[] = [];
 	const nativeFields = new Map(snapshot.native?.fields.map(field => [field.key, field]));
-	const ctx: PlanContext = { snapshot, tasks, source: { settings: snapshot.settings, native: snapshot.native, getFrontmatter: snapshot.getFrontmatter, nativeFields, pins: snapshot.pins } };
+	const ctx: PlanContext = { snapshot, tasks, source: { settings: snapshot.settings, native: snapshot.native, getInlineList: snapshot.getInlineList, getFrontmatter: snapshot.getFrontmatter, nativeFields, pins: snapshot.pins } };
 	if (!snapshot.ready || tasks.size !== snapshot.tasks.length) issues.push({ reason: 'index-unavailable' });
 	const options: FilterEvaluationOptions = { today: snapshot.asOf.slice(0, 10), pipelines: snapshot.settings.pipelines,
 		projectSerialScopes: snapshot.settings.projectSerialScopes, filePropertyContext: snapshot.native, getRepeatSkipDates: snapshot.getRepeatSkipDates };

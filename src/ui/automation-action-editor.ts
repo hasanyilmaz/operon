@@ -1,5 +1,5 @@
 import { App, setIcon } from 'obsidian';
-import { isAutomationNativeKeyWritable, managedAutomationFieldType, readActionLiteral } from '../core/automation-action-fields';
+import { automationTypedListMapping, readAutomationListMembers, isAutomationNativeKeyWritable, managedAutomationFieldType, readActionLiteral } from '../core/automation-action-fields';
 import { createAutomationActionId, type AutomationAction } from '../core/automation-rules';
 import { t } from '../core/i18n';
 import { parseListValue } from '../core/parser';
@@ -17,7 +17,7 @@ import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pi
 import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
 import { showCustomListFieldPicker } from './field-pickers/custom/custom-list-field-picker';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
-import { collectCustomFieldValueCandidates, getCustomFieldMapping } from './custom-field-surfaces';
+import { collectCustomFieldValueCandidates, collectNativeFieldValueCandidates, getCustomFieldMapping } from './custom-field-surfaces';
 import type { TableFilePropertySnapshot } from './table/table-file-property';
 
 export interface ActionEditorContext {
@@ -42,14 +42,14 @@ export function expandListAction(action: AutomationAction, ctx: ActionEditorCont
 	const type = actionType(action.field, ctx);
 	if (type !== 'list' && type !== 'tags') return [action];
 	let members: string[];
+	if (action.valueEncoding === 'vault-v1') return [action];
 	if (isFilePropertyColumnKey(action.field)) {
 		const raw = Array.isArray(action.value) ? action.value : [action.value];
 		members = raw.flatMap(value => {
 			try {
-				const members = decodeVaultPropertyList(value);
-				return members.length ? members.map(member => encodeVaultPropertyValue([member], 'list')) : [value];
-			}
-			catch { return [value]; }
+				const values = decodeVaultPropertyList(value);
+				return values.length ? values.map(member => encodeVaultPropertyValue([member], 'list')) : [value];
+			} catch { return [value]; }
 		});
 	} else {
 		members = Array.isArray(action.value) ? action.value : parseListValue(action.value);
@@ -63,7 +63,8 @@ export function validAction(action: AutomationAction, ctx: ActionEditorContext):
 	const type = actionType(action.field, ctx);
 	if (!type) return false;
 	try {
-		const literal = readActionLiteral(action, { type, native: isFilePropertyColumnKey(action.field) });
+		const literal = readActionLiteral(action, { type, native: isFilePropertyColumnKey(action.field),
+			typedList: !!automationTypedListMapping(action.field, ctx.settings()) });
 		return literal !== '' && (action.field !== 'status' || action.operation === 'remove'
 			|| typeof literal === 'string' && !!resolveWorkflowStatus(ctx.settings().pipelines, literal));
 	} catch { return false; }
@@ -108,6 +109,7 @@ export class AutomationActionRow {
 					if (option.field === action.field || !actionType(option.field, this.ctx)) return;
 					action.field = option.field;
 					action.value = '';
+					delete action.valueEncoding;
 					this.refreshFields();
 					this.renderValue();
 					this.renderOperation();
@@ -176,7 +178,9 @@ export class AutomationActionRow {
 				trigger.label.setText(text || label);
 				trigger.button.setAttribute('aria-label', label + (text ? ' · ' + text : ''));
 			};
-			display(raw);
+			if (automationTypedListMapping(action.field, ctx.settings()) && !action.valueEncoding) {
+				display(encodeVaultPropertyValue(readAutomationListMembers(action, false), 'list'));
+			} else display(raw);
 			trigger.button.addEventListener('click', () => {
 				const onClose = () => {
 					trigger.button.setAttribute('aria-expanded', 'false');
@@ -238,25 +242,32 @@ export class AutomationActionRow {
 		}
 	}
 
-	private openListValue(anchor: HTMLElement, current: string[], commit: (values: string[]) => void, onClose: () => void): () => void {
+	private openListValue(anchor: HTMLElement, current: string[], commit: (values: string | string[]) => void, onClose: () => void): () => void {
 		const { action, ctx } = this;
 		const key = action.field;
 		const native = isFilePropertyColumnKey(key);
 		const mapping = getCustomFieldMapping(ctx.settings().keyMappings, key);
+		const typedMapping = automationTypedListMapping(key, ctx.settings());
 		const candidates = native ? ctx.native()?.getCandidates(key) ?? []
+			: typedMapping ? collectNativeFieldValueCandidates(ctx.app, ctx.tasks(), ctx.settings().keyMappings, typedMapping.visiblePropertyName, 'list', true)
 			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping)
 			: ctx.tasks().flatMap(task => key === 'blocking' || key === 'blockedBy' ? [task.operonId]
 				: key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : parseListValue(task.fieldValues[key] ?? ''));
 		let nativeValues: (string | number)[] | undefined;
-		if (native) {
-			try { nativeValues = current.flatMap(decodeVaultPropertyList); }
+		if (native || typedMapping) {
+			try { nativeValues = readAutomationListMembers(action, native); }
 			catch { nativeValues = []; } // An incomplete draft can still be replaced.
 		}
 		return showCustomListFieldPicker(anchor, {
 			app: ctx.app, canonicalKey: key, type: 'list', label: this.field.label.textContent ?? key,
 			singleValue: true, value: current, nativeValues, candidates: [...candidates], mediaReference: key === 'taskGallery',
 			onCommit: (_key, value) => commit(value ? [value] : []), onCommitValues: (_key, values) => commit(values),
-			onCommitNativeValues: values => commit(values.map(value => encodeVaultPropertyValue([value], 'list'))), onClose,
+			onCommitNativeValues: values => {
+				if (typedMapping) {
+					action.valueEncoding = 'vault-v1';
+					commit(encodeVaultPropertyValue(values, 'list'));
+				} else commit(values.map(value => encodeVaultPropertyValue([value], 'list')));
+			}, onClose,
 		});
 	}
 

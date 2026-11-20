@@ -24,6 +24,8 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { captureAutomationReadState } from './src/systems/automation-read-state';
 	export { prepareAutomationWork } from './src/systems/automation-task-writes';
 	export { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
+	export { expandListAction, validAction } from './src/ui/automation-action-editor';
+	export { collectNativeFieldValueCandidates } from './src/ui/custom-field-surfaces';
 	export { AutomationRuleModal } from './src/ui/automation-rule-modal';
 	export { TaskWriter } from './src/core/task-writer';
 	export { PinnedCache } from './src/storage/pinned-cache';
@@ -37,7 +39,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, Notice, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal,
+const { TFile, Notice, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
@@ -70,6 +72,7 @@ async function fixture(files, opts = {}) {
 	};
 	const vault = {
 		getAbstractFileByPath: name => records.get(name),
+		getMarkdownFiles: () => [...records.values()],
 		read: file => readFile(path.join(dir, file.path), 'utf8'),
 		on: (event, cb) => { const set = listeners.get(event) ?? new Set(); listeners.set(event, set); set.add(cb); return [set, cb]; },
 		offref: ([set, cb]) => set.delete(cb),
@@ -85,13 +88,16 @@ async function fixture(files, opts = {}) {
 			return next;
 		},
 	};
-	const app = { vault, metadataCache: { resolvedLinks: {} }, fileManager: { renameFile: async (file, name) => {
+	const app = { vault, metadataCache: { resolvedLinks: {}, getFileCache: () => null }, fileManager: { renameFile: async (file, name) => {
 		await rename(path.join(dir, file.path), path.join(dir, name)); records.delete(file.path); file.path = name; records.set(name, file);
 	} } };
+	const propertyIndex = getNativePropertyIndex(app);
+	propertyIndex.configure(settings);
 	for (const [name, value] of Object.entries(files)) {
 		const file = new TFile(name); file.stat = { mtime: 0, ctime: 0, size: Buffer.byteLength(value) }; records.set(name, file);
 		await writeFile(path.join(dir, name), value);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
+		propertyIndex.accept(name, scan.nativeProperties, false);
 		for (const task of scan.inlineTasks) indexTask({ ...task, tier: 'hot', datetimeModified: '',
 			fieldValues: Object.fromEntries(task.fields.map(field => [field.key, field.value])),
 			primary: { filePath: name, format: 'inline', lineNumber: task.lineNumber } });
@@ -116,7 +122,8 @@ async function fixture(files, opts = {}) {
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
 			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
-			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: () => [...duplicates.values()].flat(), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
+			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: () => [...duplicates.values()].flat(),
+			getInlineList: (task, name) => propertyIndex.readMappedInlineList(task, name), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
@@ -141,7 +148,7 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async key => {
+	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async key => {
 		const task = tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -437,6 +444,110 @@ test('custom list and numeric actions use task mappings in both source formats',
 	assert.equal((await f.run()).applied,2);
 	assert.match(await f.read('A.md'),/Ana; Lee/u);
 	const data = parseYaml((await f.read('B.md')).split('---')[1]); assert.deepEqual(data.Members, ['Ana','Lee']); assert.equal(data.Points,3);
+});
+const listMapping = { canonicalKey: 'participants', visiblePropertyName: 'Members', type: 'list', isSystem: false };
+const typedMembers = { keyMappings: [...DEFAULT_SETTINGS.keyMappings, listMapping], inlinePropertyDefinitions: {
+	version: 1, entries: [{ sourceName: 'Members', type: 'list', encoding: 'vault-v1' }],
+} };
+
+for (const [operation, literal, expected, legacy = Array.isArray(literal)] of [
+	['add', 'Lee', '2; "2"; "A; B"; Lee'],
+	['remove', '2', '"2"; "A; B"'],
+	['remove', '"2"', '2; "A; B"'],
+	['remove', '"A; B"', '2; "2"'],
+	['remove', ['2'], '2; "A; B"'],
+	['remove', ['A; B'], '2; "2"'],
+	['remove', '2', '2; "A; B"', true],
+]) {
+	test(`typed inline list ${operation} ${JSON.stringify(literal)} (${legacy ? 'legacy' : 'typed'}) preserves member identities on disk`, async () => {
+		const f = await fixture({ 'Mixed.md': inline(id(0), ' {{Members:: 2; "2"; "A; B"}}'),
+			'Simple.md': inline(id(1), ' {{Members:: Ana}}') }, {
+			settings: typedMembers, rule: { actions: [{ ...action('participants', literal, operation), ...(legacy ? {} : { valueEncoding: 'vault-v1' }) }] },
+		});
+		assert.equal((await f.run()).applied, operation === 'add' ? 2 : 1);
+		assert.ok((await f.read('Mixed.md')).includes('{{Members:: ' + expected + '}}'));
+		assert.ok((await f.read('Simple.md')).includes(operation === 'add' ? '{{Members:: Ana; Lee}}' : '{{Members:: Ana}}'));
+	});
+}
+
+test('typed inline list selections survive settings reload alongside unmarked legacy actions', async () => {
+	await withSettingsFixture({ table: false }, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const initial = storage.getSettings().automationRules;
+		const rule = createAutomationRule('List members');
+		rule.active = true;
+		rule.actions = [
+			{ ...action('participants', '2'), id: 'act_12345678' },
+			{ ...action('participants', '2'), id: 'act_23456789', valueEncoding: 'vault-v1' },
+			{ ...action('participants', '"A; B"'), id: 'act_34567890', valueEncoding: 'vault-v1' },
+		];
+		await storage.saveAutomationRules(initial, { ...readAutomationRules(initial), rules: [rule] });
+		const reopened = disk.createStorage();
+		await reopened.initialize();
+		const [saved] = reopened.getSettings().automationRules.rules;
+		assert.deepEqual(saved, rule);
+		const f = await fixture({ 'Task.md': inline(id(0)) }, { settings: typedMembers, rule: saved });
+		assert.equal((await f.run(rule.id)).applied, 1);
+		assert.ok((await f.read('Task.md')).includes('{{Members:: "2"; 2; "A; B"}}'));
+	});
+});
+
+test('typed inline list picker keeps encoded suggestions and saved row boundaries', async () => {
+	const f = await fixture({ 'Mixed.md': inline(id(0), ' {{Members:: 2; "2"; "A; B"}}') }, { settings: typedMembers });
+	const candidates = collectNativeFieldValueCandidates(f.app, [...f.tasks.values()], typedMembers.keyMappings, 'Members', 'list', true);
+	assert.deepEqual(new Set(candidates), new Set(['2', '"2"', '"A; B"']));
+	const ctx = { settings: () => typedMembers };
+	for (const [literal, expected] of [
+		['2; text', [['2'], ['text']]],
+		[['2', 'A; B'], [['2'], ['A; B']]],
+	]) {
+		const original = action('participants', literal, 'remove');
+		const rows = expandListAction(original, ctx, new Set([original.id]));
+		assert.deepEqual(rows.map(row => row.value), expected);
+		assert.equal(rows[0].id, original.id);
+		assert.ok(rows.every(row => validAction(row, ctx) && expandListAction(row, ctx, new Set()).length === 1));
+	}
+});
+
+test('typed inline list preserves escaped members from the raw source and rejects a stale removal', async () => {
+	const raw = String.raw` {{Members:: "C:\\tmp"; 2; "2"}}`;
+	const source = inline(id(0), raw);
+	const f = await fixture({ 'Task.md': source }, { settings: typedMembers, rule: { actions: [{ ...action('participants', '2', 'remove'), valueEncoding: 'vault-v1' }] } });
+	assert.equal((await f.run()).applied, 1);
+	assert.ok((await f.read('Task.md')).includes(raw.replace('; 2;', ';')));
+	const stale = await fixture({ 'Task.md': source }, { settings: typedMembers, rule: { actions: [{ ...action('participants', '2', 'remove'), valueEncoding: 'vault-v1' }] } });
+	const changed = source.replace(raw, '');
+	await stale.editFile('Task.md', changed);
+	assert.equal((await stale.run()).status, 'unavailable');
+	assert.deepEqual(stale.writes, []);
+	assert.equal(await stale.read('Task.md'), changed);
+});
+
+for (const [operation, color, icon] of [['add', '#445566', 'lucide-star'], ['remove', '#112233', 'lucide-bell']]) {
+	test(`managed YAML color and icon ${operation} matches prefixed source values`, async () => {
+		const f = await fixture({ 'Task.md': '---\noperonId: task001\ntaskColor: "#112233"\ntaskIcon: lucide-bell\nKeep: untouched\n---\nBody\n' },
+			{ rule: { actions: [action('taskColor', color, operation), action('taskIcon', icon, operation)] } });
+		assert.equal((await f.run()).applied, 1);
+		const content = await f.read('Task.md');
+		const data = parseYaml(content.split('---')[1]);
+		assert.equal(data.taskColor, operation === 'add' ? '#445566' : null);
+		assert.equal(data.taskIcon, operation === 'add' ? 'star' : null);
+		assert.equal(data.Keep, 'untouched');
+		assert.ok(content.endsWith('---\nBody\n'));
+	});
+}
+test('managed YAML color and icon guard newer source values', async () => {
+	const original = '---\noperonId: task001\ntaskColor: "#112233"\ntaskIcon: lucide-bell\n---\nBody\n';
+	for (const [field, from, to, value] of [
+		['taskColor', '#112233', '#abcdef', '#445566'], ['taskIcon', 'lucide-bell', 'lucide-house', 'star'],
+	]) {
+		const f = await fixture({ 'Task.md': original }, { rule: { actions: [action(field, value)] } });
+		await f.editFile('Task.md', original.replace(from, to));
+		assert.equal((await f.run()).status, 'unavailable');
+		assert.deepEqual(f.writes, []);
+		assert.equal(await f.read('Task.md'), original.replace(from, to));
+	}
 });
 test('modal distinguishes explicit deactivation, dismissal and repeated Apply clicks', t => {
 	const originalObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');

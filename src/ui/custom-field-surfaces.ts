@@ -199,6 +199,7 @@ export function collectCustomFieldValueCandidates(
 /** Native picker suggestions share the typed vault pool and ready task index. Never read sources or write drafts. */
 export function collectNativeFieldValueCandidates(
  app: App, tasks: readonly IndexedTask[], mappings: readonly KeyMapping[], sourceName: string, type: FilterFieldType,
+ mappedInlineList = false,
 ): string[] {
  if (type !== 'text' && type !== 'list') return [];
  const identity = sourceName.trim().toLowerCase();
@@ -216,6 +217,10 @@ export function collectNativeFieldValueCandidates(
  };
  const index = getNativePropertyIndex(app);
  for (const task of tasks) {
+  if (mappedInlineList && task.primary.format === 'inline') {
+   remember(index.readMappedInlineList(task, sourceName));
+   continue;
+  }
   const row = index.getTask(task);
   if (!row.available) continue;
   const properties = aliases.flatMap(alias => row.properties.has(alias) ? [row.properties.get(alias)!] : []);

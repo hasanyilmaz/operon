@@ -5,11 +5,12 @@ import { EDITABLE_TASK_FIELD_KEYS } from './editable-task-fields';
 import { getManagedCustomFieldOptionMapping, getManagedTaskFieldType } from './managed-task-fields';
 import { classifyFilePropertyCell, decodeFilePropertyColumnKey, hasFileTaskDisplayTitleMapping, isWritableRawYamlPropertyName } from './raw-yaml-property';
 import { getManagedYamlAliases, readYamlFields } from './yaml-fields';
+import { resolveInlinePropertyDefinition } from './inline-property-definitions';
 import { parseListValue } from './parser';
 import { parseTaskMediaReferenceList } from './task-media-reference';
 import { normalizeTaskColorValue } from './task-color-value';
 import { normalizeTaskIconValue } from './task-icon-value';
-import { decodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
+import { decodeVaultPropertyList, decodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
 import { canonicalizeLocalDatetime } from './local-time';
 import { parseRepeatRule } from './repeat-rule';
 import { parseAbsoluteReminder, parseReminderRule } from './reminder-rules';
@@ -18,14 +19,16 @@ import type { TableFilePropertyQueryContext, TableFilePropertyField } from '../u
 export type PlanValue = VaultPropertyValue;
 export type Member = string | number;
 export type ActionIssue = 'read-only' | 'invalid-value' | 'unsupported-source' | 'source-unavailable';
-export type AutomationFieldSettings = Pick<OperonSettings, 'keyMappings' | 'fileTaskDisplayTitleEnabled'>;
+export type AutomationFieldSettings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions' | 'fileTaskDisplayTitleEnabled'>;
 export interface ActionField {
 	type: FilterFieldType;
 	native: boolean;
+	typedList?: boolean;
 	before: PlanValue;
 }
 export interface AutomationFieldSource {
 	settings: AutomationFieldSettings;
+	getInlineList(task: IndexedTask, name: string): Member[] | null;
 	getFrontmatter(task: IndexedTask): Record<string, unknown> | null;
 	pins: ReadonlySet<string> | null;
 	native?: TableFilePropertyQueryContext;
@@ -49,6 +52,13 @@ export function managedAutomationFieldType(key: string, settings: AutomationFiel
 	} else if (!EDITABLE_TASK_FIELD_KEYS.has(key) && key !== 'reminderDatetimes' && key !== 'reminderRules'
 		&& !getManagedCustomFieldOptionMapping(key, settings.keyMappings, { includeCheckbox: true })) return null;
 	return getManagedTaskFieldType(key, settings.keyMappings);
+}
+
+export function automationTypedListMapping(key: string, settings: AutomationFieldSettings) {
+	const mapping = getManagedCustomFieldOptionMapping(key, settings.keyMappings);
+	if (mapping?.type !== 'list') return null;
+	const definition = resolveInlinePropertyDefinition(mapping.visiblePropertyName, 'list', settings.keyMappings, settings.inlinePropertyDefinitions);
+	return definition.encoding === 'vault-v1' ? mapping : null;
 }
 
 export function isAutomationNativeKeyWritable(key: string, settings: AutomationFieldSettings): boolean {
@@ -80,6 +90,11 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 	if (key === 'fileTaskDisplayTitle' && task.primary.format !== 'yaml') return 'read-only';
 	const type = managedAutomationFieldType(key, settings);
 	if (!type) return 'read-only';
+	const typedMapping = type === 'list' ? automationTypedListMapping(key, settings) : null;
+	if (typedMapping && task.primary.format === 'inline') {
+		const before = source.getInlineList(task, typedMapping.visiblePropertyName);
+		return before ? { before, type, native: false, typedList: true } : 'source-unavailable';
+	}
 	let raw = task.fieldValues[key] ?? '';
 	if (task.primary.format === 'yaml' && type === 'list') {
 		const fm = source.getFrontmatter(task);
@@ -90,24 +105,35 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 		const items = Array.isArray(value) ? value : value == null ? [] : [value];
 		if (!items.every(item => typeof item === 'string')) return 'unsupported-source';
 		if (key !== 'taskGallery' && items.some(item => item.includes(';'))) return 'unsupported-source';
-		if (Array.isArray(value)) return { before: [...items], type, native: false };
+		if (Array.isArray(value)) return { before: [...items], type, native: false, typedList: !!typedMapping };
 		raw = items[0] ?? '';
 	}
 	try {
 		const before = type === 'list' ? (key === 'taskGallery' ? parseTaskMediaReferenceList(raw) : parseListValue(raw)) : raw === '' ? null : scalar(raw, type);
-		return { before, type, native: false };
+		return { before, type, native: false, typedList: !!typedMapping };
 	} catch {
 		return 'source-unavailable';
 	}
 }
 
-export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native'>): PlanValue {
+/** Untagged actions keep their original text-member semantics. */
+export function readAutomationListMembers(action: AutomationAction, native: boolean): Member[] {
+	if (action.valueEncoding === 'vault-v1') {
+		if (typeof action.value !== 'string') throw new Error('Expected one encoded list member');
+		const members = decodeVaultPropertyList(action.value);
+		if (members.length !== 1) throw new Error('Expected one encoded list member');
+		return members;
+	}
+	if (native) return (Array.isArray(action.value) ? action.value : [action.value]).flatMap(decodeVaultPropertyList);
+	return Array.isArray(action.value) ? action.value : parseListValue(action.value);
+}
+
+export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native' | 'typedList'>): PlanValue {
 	const { type } = field;
+	if (action.valueEncoding && !field.typedList) throw new Error('Expected a typed mapped list');
 	if (type === 'list' || type === 'tags') {
-		const raw = Array.isArray(action.value) ? action.value : [action.value];
-		const values = field.native
-			? raw.flatMap(value => decodeVaultPropertyValue(value, 'list') as Member[])
-			: (Array.isArray(action.value) ? raw : raw.flatMap(value => parseListValue(value))).map(value => type === 'tags' ? value.replace(/^#/, '') : value);
+		const members = readAutomationListMembers(action, field.native);
+		const values = type === 'tags' && !field.native ? members.map(value => String(value).replace(/^#/, '')) : members;
 		if (!values.length || values.some(value => value === '' || (action.field === 'reminderRules' && !parseReminderRule(String(value)).ok)
 			|| (action.field === 'reminderDatetimes' && !parseAbsoluteReminder(String(value)).ok))) throw new Error('Invalid list literal');
 		return [...new Set(values)];

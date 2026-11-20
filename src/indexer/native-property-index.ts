@@ -328,6 +328,25 @@ export class NativePropertyIndex {
   const fields = readYamlFields(frontmatter, this.settings.keyMappings);
   return JSON.stringify([fields.datetimeCreated, fields.datetimeModified]);
  }
+ private inlineTaskSource(source: SourceEntry, id: string) {
+  if (!source.inlineById) {
+   source.inlineById = new Map();
+   for (const row of source.raw?.inline ?? []) source.inlineById.set(row.operonId, source.inlineById.has(row.operonId) ? null : row);
+  }
+  const row = source.inlineById.get(id);
+  return row && row.fields.filter(field => field.key === 'operonId').length === 1 ? row : null;
+ }
+ /** Read the raw tokens with the mapping's declared list type, including after cache hydration. */
+ readMappedInlineList(task: IndexedTask, name: string): (string | number)[] | null {
+  const source = this.sources.get(task.primary.filePath);
+  if (task.primary.format !== 'inline' || !source?.raw || source.error || !this.sourceReady(task)
+   || this.duplicateIds.has(task.operonId) || (this.known && !this.matchesKnown(task))) return null;
+  const row = this.inlineTaskSource(source, task.operonId);
+  if (!row) return null;
+  const [property] = readParsedInlinePropertyProjection(row, { [name]: 'list' }, this.settings.keyMappings, this.settings.inlinePropertyDefinitions).properties;
+  if (property.state === 'missing') return [];
+  return property.state === 'valid' && Array.isArray(property.value) ? property.value : null;
+ }
  getTask(task: IndexedTask): NativeTaskProperties {
   const source = this.sources.get(task.primary.filePath);
   const available = !!source?.raw && !source.error && this.registryState === 'ready'
@@ -341,12 +360,7 @@ export class NativePropertyIndex {
   const raw = source?.raw;
   let identity = false;
   if (raw && task.primary.format === 'inline') {
-   if (!source.inlineById) {
-    source.inlineById = new Map();
-    for (const candidate of raw.inline) source.inlineById.set(candidate.operonId, source.inlineById.has(candidate.operonId) ? null : candidate);
-   }
-   const candidate = source.inlineById.get(task.operonId);
-   const parsed = candidate && candidate.fields.filter(field => field.key === 'operonId').length === 1 ? candidate : null;
+   const parsed = this.inlineTaskSource(source, task.operonId);
    if (parsed) {
     identity = true;
     const types: Record<string, InlinePropertyType> = {};

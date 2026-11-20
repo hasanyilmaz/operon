@@ -77,7 +77,7 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 		}
 		const mapping = ports.settings.keyMappings.find(item => item.isSystem === false && item.canonicalKey === field);
 		const typed = mapping && inline.find(draft => [mapping.visiblePropertyName, mapping.canonicalKey].includes(draft.sourceName));
-		if (typed && typed.expected.present) {
+		if (typed && (typed.expected.present || typed.type === 'list')) {
 			const previous = decodeVaultPropertyValue(typed.expected.rawValue ?? '', typed.type);
 			if (JSON.stringify(previous) !== JSON.stringify(before)) return null;
 		}
@@ -98,6 +98,11 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 		} else {
 			update.expectedFieldValues![key] = field === 'tags' ? task.tags.join('; ') : field === 'description' ? task.description : task.fieldValues[field] ?? '';
 		}
+	}
+	if (format === 'yaml') {
+		const expected = ports.writer.prepareIndexedYamlExpectedFields(content, update.expectedFieldValues!, task);
+		if (!expected) return null;
+		update.expectedFieldValues = expected;
 	}
 	if (yaml.length) update.filePropertyDraft = { changes: yaml };
 	if (inline.length) update.inlinePropertyDraft = inline;
