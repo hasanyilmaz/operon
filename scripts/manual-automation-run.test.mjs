@@ -12,6 +12,8 @@ after(() => rm(tmp, { recursive: true, force: true }));
 const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
 	export { TFile, parseYaml } from 'obsidian';
+	export { withSettingsFixture } from './scripts/test-support/settings-preservation-harness';
+	export { createAutomationRule, readAutomationRules } from './src/core/automation-rules';
 	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
 	export { filterUsesLocalDay } from './src/core/filter-evaluator';
 	export { localToday } from './src/core/local-time';
@@ -34,7 +36,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, parseYaml, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
+const { TFile, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
@@ -99,9 +101,9 @@ async function fixture(files, opts = {}) {
 		subscribeIndexReconciliation: () => () => {}, getTask: key => tasks.get(key) };
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
-	const ports = { available: () => true, now: () => f.now ?? asOf, settings: () => structuredClone(config),
+	const ports = { available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
-			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
+			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(), getFrontmatter: t => frontmatter.get(t.operonId), getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
@@ -133,8 +135,60 @@ async function fixture(files, opts = {}) {
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
 		const current = scan.inlineTasks.find(item => item.operonId === key);
 		Object.assign(task, current, { fieldValues: Object.fromEntries(current.fields.map(field => [field.key,field.value])) });
-	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: () => runner.run(ruleId, ports) });
+	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: (id = ruleId) => runner.run(id, ports) });
 }
+
+test('a saved inactive rule survives storage reload and applies both tag actions to the selected tasks', async () => {
+	await withSettingsFixture({ table: false }, async disk => {
+		const settings = disk.createStorage();
+		await settings.initialize();
+		const draft = createAutomationRule('Review the queue');
+		assert.equal(draft.active, false);
+		draft.scope = rootGroup('tags', 'tags', 'anyContains', 'project');
+		const queue = rootGroup('tags', 'tags', 'anyContains', 'queue');
+		draft.target.children.push(queue);
+		draft.actions = [action('tags', ['review']), action('tags', ['queue'], 'remove')];
+		const initial = settings.getSettings().automationRules;
+		await settings.saveAutomationRules(initial, { ...readAutomationRules(initial), rules: [draft] });
+
+		const reopened = disk.createStorage();
+		await reopened.initialize();
+		const saved = reopened.getSettings().automationRules;
+		assert.deepEqual(saved.rules, [draft]);
+		assert.equal(saved.confirmation, 'always');
+		const sibling = inline(id(2), ' #project');
+		const outside = inline(id(3), ' #queue');
+		const files = {
+			'Inline.md': inline(id(0), ' #project #queue') + sibling,
+			'File.md': '---\noperonId: task001\ntags: [project, queue]\n---\nKeep this body.\n',
+			'Outside.md': outside,
+			'Ordinary.md': '---\ntags: [project, queue]\n---\nOrdinary note.\n',
+		};
+		const f = await fixture(files, { readRules: () => reopened.getSettings().automationRules });
+		assert.equal((await f.run(draft.id)).status, 'rule-changed');
+		await reopened.saveAutomationRules(saved, { ...saved, rules: [{ ...draft, active: true }] });
+		assert.deepEqual(f.writes, []);
+		assert.deepEqual(f.prompts, []);
+		const result = await f.run(draft.id);
+		assert.equal(result.status, 'finished');
+		assert.equal(result.applied, 2);
+		assert.equal(f.prompts.length, 1);
+		const [plan, listed] = f.prompts[0];
+		assert.equal(plan.changedTaskCount, 2);
+		assert.deepEqual(plan.rules, [{ ruleId: draft.id, scope: 3, target: 2, changed: 2 }]);
+		assert.deepEqual(listed.map(rule => rule.id), [draft.id]);
+		assert.deepEqual(f.writes.toSorted(), ['File.md', 'Inline.md']);
+		const inlineSource = await f.read('Inline.md');
+		assert.match(inlineSource, /#review\b/u);
+		assert.doesNotMatch(inlineSource, /#queue\b/u);
+		assert.ok(inlineSource.endsWith(sibling));
+		const fileSource = await f.read('File.md');
+		assert.deepEqual(parseYaml(fileSource.split('---')[1]).tags, ['project', 'review']);
+		assert.ok(fileSource.endsWith('Keep this body.\n'));
+		assert.equal(await f.read('Outside.md'), outside);
+		assert.equal(await f.read('Ordinary.md'), files['Ordinary.md']);
+	});
+});
 
 for (const [n, policy, asks] of [[0,'always',0], [1,'always',1], [5,5,0], [6,5,1], [6,'none',0]]) {
 	test('Run ' + n + ' tasks, confirmation ' + policy, async () => {
