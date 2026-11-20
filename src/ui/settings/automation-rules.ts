@@ -57,7 +57,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 	});
 	const list = section.createDiv('operon-filter-set-list');
 	for (const [index, rule] of rules.entries()) {
-		const card = createSettingsListCard({ containerEl: list, icon: 'workflow', title: rule.name, className: 'operon-filter-set-card' });
+		const card = createSettingsListCard({ containerEl: list, icon: 'cog', title: rule.name, className: 'operon-filter-set-card' });
 		createSettingsListCardChip({ containerEl: card.metaEl, label: rule.mode === 'auto' ? t('settings', 'automationAuto') : t('settings', 'pinnedTaskSortModeManual') });
 		createSettingsListCardChip({ containerEl: card.metaEl, label: rule.active ? t('settings', 'automationActive') : t('settings', 'automationInactive') });
 		for (const offset of [-1, 1]) {
