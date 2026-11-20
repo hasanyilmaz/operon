@@ -14,6 +14,8 @@ const method = name => {
 const compiled = await transform(`const t = (_ns, key) => key;
 export default class Harness {
 ${method('buildSettingsSearchTabPage')}
+${method('compactSettingsSearchItems')}
+${method('buildSettingsSearchSettingDefinitionFromEntry')}
 ${method('buildTaskCaptureSearchSections')}
 ${method('buildTaskCaptureSearchSection')}
 ${method('buildTaskRouterSettingsItems')}
@@ -52,6 +54,26 @@ for (const [tabId, count] of [['tasksFileTasks',7],['tasksInlineTasks',4],['task
   }
  });
 }
+
+test('Automation Rules renders below its heading in a full-width settings section', () => {
+ const harness = new Harness();
+ const entry = entriesFor('tasksAutomations').find(item => item.id === 'automation.ruleList');
+ const page = harness.buildSettingsSearchTabPage({ id: 'tasksAutomations' }, [entry]);
+ const [ruleList] = page.items;
+ assert.deepEqual(ruleList.aliases, entry.aliases);
+ const classes = new Set(['setting-item']);
+ const host = {
+  empty() {},
+  addClass(...names) { for (const name of names) classes.add(name); },
+  removeClass(name) { classes.delete(name); },
+ };
+ let rendered;
+ harness.renderAutomationList = element => { rendered = element; };
+ ruleList.render({ settingEl: host });
+ assert.equal(rendered, host);
+ assert.ok(!classes.has('setting-item'));
+ assert.ok(classes.has('operon-settings-tab-root'));
+});
 
 test('daily and weekly searches resolve separate existing renderers', () => {
  const harness = new Harness();

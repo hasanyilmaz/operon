@@ -1449,9 +1449,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		const pageName = this.getSettingsSearchTabPageName(tab);
 		const desc = this.getSettingsSearchTabDescription(tab.id);
 		if (tab.id === 'tasksAutomations') {
+			const ruleList = entries.find(entry => entry.id === 'automation.ruleList');
 			return { type: 'page', name: pageName, desc, items: this.compactSettingsSearchItems([
 				this.buildSettingsSearchSettingDefinitionFromEntry(entries.find(entry => entry.key === 'automationRules')),
-				this.buildSettingsSearchRenderDefinition(entries.find(entry => entry.id === 'automation.ruleList'), el => this.renderAutomationList(el)),
+				ruleList ? this.buildTaskCaptureSearchSection(ruleList, el => this.renderAutomationList(el)) : null,
 			]) };
 		}
 		if (tab.id === 'tasksTaskRouter') {
