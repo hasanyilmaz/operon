@@ -1,7 +1,7 @@
 import type { IndexedTask } from '../types/fields';
 import type { FilterGroup, FilterFieldType, FilterSetCondition, OperonSettings } from '../types/settings';
 import { resolveAutomationWorkflowStatus, resolveReverseWorkflowFromTerminalDate, resolveWorkflowStatus, shouldTriggerOneShotAutomation } from '../types/pipeline';
-import type { AutomationAction, AutomationConfirmation, AutomationRule } from './automation-rules';
+import { createAutomationProjectSerialValidator, type AutomationAction, type AutomationConfirmation, type AutomationRule } from './automation-rules';
 import { getOperatorsForField, prepareFilterGroupMatcher, type FilterEvaluationOptions } from './filter-evaluator';
 import { parseDependencyIdList, getDependencyEdgeForField, validateDependencyEdgeSet,
 	resolveActiveBlockers, resolveDependencyStatusChangeAttempt, isScheduledDependencyPlanningTransition } from './dependency-graph';
@@ -42,6 +42,8 @@ export interface AutomationPlanIssue {
 	taskId?: string;
 	field?: string;
 	ruleId?: string;
+	conditionId?: string;
+	projectSerialGroupId?: string;
 	origins?: Origin[];
 }
 export interface AutomationFieldChange {
@@ -585,6 +587,7 @@ export function planAutomationChanges(
 	const options: FilterEvaluationOptions = { today: snapshot.asOf.slice(0, 10), pipelines: snapshot.settings.pipelines,
 		projectSerialScopes: snapshot.settings.projectSerialScopes, filePropertyContext: snapshot.native, getRepeatSkipDates: snapshot.getRepeatSkipDates };
 	const pins = snapshot.pins;
+	const invalidProjectGroup = createAutomationProjectSerialValidator(snapshot.settings.projectSerialScopes);
 	const readableConditions = new WeakMap<FilterSetCondition, boolean>();
 	const matcher = (root: FilterGroup) => prepareFilterGroupMatcher(root, snapshot.tasks, pins && { isPinned: id => pins.has(id) }, options, (condition, task) => {
 		if (condition.field === 'pinned') return pins !== null;
@@ -592,7 +595,8 @@ export function planAutomationChanges(
 			let readable = readableConditions.get(condition);
 			if (readable === undefined) {
 				const type = snapshot.conditionFields.get(condition.field) ?? getManagedTaskFieldType(condition.field, snapshot.settings.keyMappings);
-				readable = condition.fieldType === type && getOperatorsForField(condition.field, condition.fieldType, true).some(op => op.id === condition.operator);
+				readable = condition.fieldType === type && getOperatorsForField(condition.field, condition.fieldType, true).some(op => op.id === condition.operator)
+					&& !invalidProjectGroup(condition);
 				readableConditions.set(condition, readable);
 			}
 			return readable;
@@ -609,14 +613,20 @@ export function planAutomationChanges(
 			const task = tasks.get(id);
 			return task && scope(task) !== 'false';
 		})) continue;
-		const target = matcher(rule.target);
+		const invalidScope = invalidProjectGroup(rule.scope);
+		const invalidTarget = invalidProjectGroup(rule.target);
 		const count = { ruleId: rule.id, scope: 0, target: 0, changed: 0 };
 		counts.push(count);
+		if (invalidScope) issues.push({ reason: 'condition-unavailable', field: 'scope', ruleId: rule.id, ...invalidScope });
+		if (invalidTarget) issues.push({ reason: 'condition-unavailable', field: 'target', ruleId: rule.id, ...invalidTarget });
+		if (invalidScope) continue;
+		const target = invalidTarget ? null : matcher(rule.target);
 		for (const task of tasks.values()) {
 			const scoped = scope(task);
 			if (scoped === 'unknown') issues.push({ reason: 'condition-unavailable', field: 'scope', taskId: task.operonId, ruleId: rule.id });
 			if (scoped !== 'true') continue;
 			count.scope++;
+			if (!target) continue;
 			const targeted = target(task);
 			if (targeted === 'unknown') issues.push({ reason: 'condition-unavailable', field: 'target', taskId: task.operonId, ruleId: rule.id });
 			if (targeted !== 'true') continue;

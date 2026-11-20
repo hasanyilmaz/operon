@@ -3,7 +3,7 @@ import type { AutomationChangePlan } from '../core/automation-change-plan';
 import type { AutomationRule } from '../core/automation-rules';
 import { t } from '../core/i18n';
 import type { AutomationDecision, ManualAutomationResult } from '../systems/manual-automation-run';
-import { automationIssueLabels } from './automation-rule-modal';
+import { automationIssueLabels, unavailableProjectGroupText } from './automation-rule-modal';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { scopeSettingsModal } from './settings/settings-scope';
 
@@ -42,7 +42,9 @@ export function showAutomationResult(result: ManualAutomationResult, automatic: 
 	for (const issue of result.plan.issues) {
 		const label = t('settings', automationIssueLabels[issue.reason]);
 		const rules = issue.reason === 'conflict' ? new Set(issue.origins?.map(origin => ruleNames.get(origin.ruleId) ?? origin.ruleId)) : [];
-		const field = [issue.taskId, issue.field, ...rules].filter(Boolean).join(' · ');
+		const field = issue.projectSerialGroupId && issue.ruleId
+			? [ruleNames.get(issue.ruleId) ?? issue.ruleId, unavailableProjectGroupText(issue)].join(' · ')
+			: [issue.taskId, issue.field, ...rules].filter(Boolean).join(' · ');
 		const details = reasons.get(label) ?? new Set<string>();
 		if (field) details.add(field);
 		reasons.set(label, details);

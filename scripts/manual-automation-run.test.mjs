@@ -11,7 +11,7 @@ const tmp = await mkdtemp(path.join(tmpdir(), 'operon-manual-rule-'));
 after(() => rm(tmp, { recursive: true, force: true }));
 const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
-	export { TFile, parseYaml } from 'obsidian';
+	export { TFile, Notice, parseYaml } from 'obsidian';
 	export { withSettingsFixture } from './scripts/test-support/settings-preservation-harness';
 	export { createAutomationRule, readAutomationRules } from './src/core/automation-rules';
 	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
@@ -23,7 +23,8 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { OperonIndexer } from './src/indexer/indexer';
 	export { captureAutomationReadState } from './src/systems/automation-read-state';
 	export { prepareAutomationWork } from './src/systems/automation-task-writes';
-	export { automationApprovalModal } from './src/ui/manual-automation-feedback';
+	export { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
+	export { AutomationRuleModal } from './src/ui/automation-rule-modal';
 	export { TaskWriter } from './src/core/task-writer';
 	export { PinnedCache } from './src/storage/pinned-cache';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
@@ -36,7 +37,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal,
+const { TFile, Notice, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
@@ -104,14 +105,14 @@ async function fixture(files, opts = {}) {
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
-			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
+			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
 		prepare: async (plan, yamlSources) => {
 			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
-				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], () => 'fixture'), indexed: () => true,
+				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], () => JSON.stringify(settings.projectSerialScopes)), indexed: () => true,
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
 				observeSource: f.observeSource, observePin: f.observePin,
@@ -130,7 +131,7 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { pins, reindexInline: async key => {
+	return Object.assign(f, { pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async key => {
 		const task = tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -416,6 +417,117 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 });
 
 const asAuto = (rule, key = rule.id, overrides = {}) => ({ ...rule, id: key, name: key, mode: 'auto', ...overrides });
+
+const serialGroup = { id: 'ps_abc', prefix: 'ABC', parentOperonId: id(0), createdAt: asOf, updatedAt: asOf };
+const outsideSerialGroup = { ...all, children: [{ id: 'nested', logic: 'all', children: [
+	{ id: 'serial-condition', field: 'projectSerialScope', fieldType: 'projectSerialScope', operator: 'isNoneOf', values: [serialGroup.id] },
+] }] };
+async function serialFixture(section, mode = 'manual', policy = 'always') {
+	const files = filesFor(3);
+	files[id(1) + '.md'] = inline(id(1), ' {{parentTask:: ' + id(0) + '}}');
+	const scopes = [{ ...serialGroup }];
+	const f = await fixture(files, { rule: { mode, [section]: outsideSerialGroup }, settings: { projectSerialScopes: scopes }, policy });
+	const execute = () => mode === 'manual' ? f.run() : f.auto(new Map([[ruleId, new Set([id(2)])]]));
+	return { f, scopes, execute };
+}
+
+for (const mode of ['manual', 'auto']) for (const section of ['scope', 'target']) {
+	test('Project Serial reference deletion stops ' + mode + ' writes from ' + section, async () => {
+		const { f, scopes, execute } = await serialFixture(section, mode, 'none');
+		const valid = await execute();
+		assert.equal(valid.applied, 1);
+		assert.deepEqual(f.writes, [id(2) + '.md']);
+		await f.reindexInline(id(2));
+		// A new group can reuse the prefix and parent. A saved selection still names the original ID.
+		scopes[0] = { ...serialGroup, id: 'ps_replacement' };
+		const result = await execute();
+		assert.deepEqual(f.writes, [id(2) + '.md']);
+		assert.equal(result.status, 'unavailable');
+		assert.equal(result.plan.changedTaskCount, null);
+		assert.deepEqual(result.plan.changes, []);
+		const issue = result.plan.issues.find(item => item.ruleId === ruleId && item.field === section);
+		assert.equal(issue?.conditionId, 'serial-condition');
+		assert.equal(issue.projectSerialGroupId, serialGroup.id);
+		assert.equal(f.prompts.length, 0);
+		assert.equal(f.config.rules[0].active, true);
+		assert.deepEqual(f.config.rules[0][section], outsideSerialGroup);
+		const repaired = structuredClone(f.rule[section]);
+		repaired.children[0].children[0].values = [scopes[0].id];
+		f.rule[section] = repaired;
+		const resumed = await execute();
+		assert.equal(resumed.status, 'finished');
+		assert.equal(resumed.plan.rules[0].target, 1);
+		assert.deepEqual(resumed.plan.issues, []);
+	});
+}
+
+test('Project Serial reference deletion during confirmation discards the approved write', async () => {
+	const { f, scopes, execute } = await serialFixture('target');
+	f.confirm = () => { scopes.length = 0; return 'apply'; };
+	const result = await execute();
+	assert.equal(result.status, 'unavailable');
+	assert.deepEqual(f.prompts.map(([p]) => p.changedTaskCount), [1]);
+	assert.deepEqual(f.writes, []);
+	const notices = [];
+	Notice.onNotice = message => notices.push(message);
+	try { showAutomationResult(result, false, new Map([[ruleId, f.rule.name]])); }
+	finally { Notice.onNotice = null; }
+	assert.equal(notices.length, 1);
+	for (const text of [f.rule.name, 'Target logic', 'Project Serial Group', serialGroup.id]) assert.ok(notices[0].includes(text), text);
+});
+
+test('Project Serial reference deletion at the final write boundary leaves Markdown intact', async () => {
+	const { f, scopes, execute } = await serialFixture('scope', 'manual', 'none');
+	const before = await f.read(id(2) + '.md');
+	f.beforeProcess = () => { scopes.length = 0; };
+	assert.equal((await execute()).applied, 0);
+	assert.equal(await f.read(id(2) + '.md'), before);
+});
+
+test('Project Serial references respect Auto event scope and stop a daily batch with an unresolved count', async () => {
+	const { f, scopes } = await serialFixture('scope', 'auto', 'none');
+	scopes.length = 0;
+	const broken = { ...f.rule, scope: { ...all, children: [
+		...rootGroup('description', 'text', 'is', id(0)).children, ...outsideSerialGroup.children,
+	] } };
+	const good = asAuto(f.rule, 'good', { scope: all, target: rootGroup('description', 'text', 'is', id(2)) });
+	f.config.rules = [broken, good];
+	const outside = await f.auto(new Map([[broken.id, new Set([id(2)])], [good.id, new Set([id(2)])]]));
+	assert.equal(outside.applied, 1);
+	assert.deepEqual(outside.plan.rules.map(item => item.ruleId), ['good']);
+	await f.reindexInline(id(2));
+	good.target = rootGroup('description', 'text', 'is', id(0));
+	const daily = await f.auto(new Map([[broken.id, 'day'], [good.id, 'day']]));
+	assert.equal(daily.status, 'unavailable');
+	assert.equal(daily.plan.rules.find(item => item.ruleId === broken.id).changed, null);
+	assert.deepEqual(f.writes, [id(2) + '.md']);
+	assert.deepEqual(f.prompts, []);
+});
+
+test('Project Serial reference deletion identifies the editor section and allows an inactive draft to be repaired', async () => {
+	const { f, scopes } = await serialFixture('scope');
+	const editor = new AutomationRuleModal({}, { getSettings: () => ({ ...DEFAULT_SETTINGS, projectSerialScopes: scopes }),
+		getTasks: () => [...f.tasks.values()], getNativeSnapshot: () => null, plan: f.preview }, f.rule, async () => assert.fail('invalid active rule saved'));
+	editor.loadFields();
+	editor.editors.push({}, {});
+	let summary;
+	editor.summary = { setText: text => { summary = text; } };
+	editor.save = { disabled: false };
+	editor.updateCounts();
+	assert.equal(editor.save.disabled, false);
+	scopes.length = 0;
+	editor.updateCounts();
+	assert.equal(editor.save.disabled, true);
+	for (const text of ['Scope logic', 'Project Serial Group', serialGroup.id]) assert.ok(summary.includes(text), text);
+	await editor.submit();
+	editor.draft.active = false;
+	assert.equal(editor.canSave(), true);
+	editor.draft.active = true;
+	scopes.push({ ...serialGroup, prefix: 'NEW' });
+	editor.updateCounts();
+	assert.equal(editor.save.disabled, false);
+	assert.equal(summary.includes(serialGroup.id), false);
+});
 
 test('a change inside scope runs all targets in one batch, counting shared effects only once', async () => {
 	const f = await fixture(filesFor(3), { policy: 5 });

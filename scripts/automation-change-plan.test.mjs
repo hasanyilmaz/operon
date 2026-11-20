@@ -287,6 +287,33 @@ test('unavailable conditions return unknown counters, including in inactive draf
 	assert.equal(p.changedTaskCount, 0);
 	assert.equal(plan([task('a')], [rule('r', [add('tags', 'x')], condition)]).changedTaskCount, null);
 });
+test('Project Serial references invalidate nested Any and None branches even when a sibling decides the match', () => {
+	const serial = { id: 'ps_live', prefix: 'LIVE', parentOperonId: 'root', createdAt: asOf, updatedAt: asOf };
+	const extra = { settings: { ...DEFAULT_SETTINGS, projectSerialScopes: [serial] } };
+	for (const tasks of [[], [task('a')]]) for (const section of ['scope', 'target']) {
+		for (const [logic, text] of [['any', 'a'], ['none', 'other']]) for (const operator of ['isAnyOf', 'isNoneOf']) {
+			const selected = { ...cond('projectSerialScope', 'projectSerialScope', operator), values: ['ps_live', 'ps_deleted'] };
+			const predicate = group(logic, cond('description', 'text', 'is', text), group('all', selected));
+			const r = { ...rule('r', [add('tags', 'changed')]), [section]: predicate };
+			const p = plan(tasks, [r], extra, 'none');
+			assert.equal(p.changedTaskCount, null);
+			assert.equal(p.rules[0].scope, section === 'scope' ? null : tasks.length);
+			assert.equal(p.rules[0].target, null);
+			assert.deepEqual(p.changes, []);
+			assert.equal(p.issues.filter(i => i.ruleId === 'r' && i.field === section && i.projectSerialGroupId === 'ps_deleted').length, 1);
+		}
+	}
+});
+
+test('Project Serial references leave prefix and membership operators independent of deleted IDs', () => {
+	const tasks = [task('a')];
+	for (const [operator, count] of [['startsWith', 0], ['doesNotStartWith', 1], ['hasProjectSerialGroup', 0], ['hasNoProjectSerialGroup', 1]]) {
+		const condition = { ...cond('projectSerialScope', 'projectSerialScope', operator, 'ABC'), values: ['ps_deleted'] };
+		const p = plan(tasks, [rule('r', [add('tags', 'ok')], group('all', condition))]);
+		assert.equal(p.changedTaskCount, count);
+		assert.deepEqual(p.issues, []);
+	}
+});
 test('a blocker reopened by checkbox or terminal date protects its dependent in the same batch', () => {
 	const tasks = [task('b', { status: 'Project.Finished', dateCompleted: '2026-11-19', blocking: 'a' }, { checkbox: 'done' }), task('a')];
 	for (const reopen of [add('checkbox', 'open'), del('dateCompleted', '2026-11-19')]) {

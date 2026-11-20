@@ -1,4 +1,5 @@
-import { FILTER_FIELD_TYPES, type FilterGroup, type FilterFieldType } from '../types/settings';
+import { FILTER_FIELD_TYPES, type FilterGroup, type FilterFieldType, type FilterNode, type ProjectSerialScope } from '../types/settings';
+import { normalizeProjectSerialScopes, PROJECT_SERIAL_SCOPE_FILTER_FIELD } from './project-serials';
 
 export const AUTOMATION_CONFIRMATIONS = ['always', 5, 10, 15, 20, 25, 50, 100, 'none'] as const;
 export type AutomationConfirmation = typeof AUTOMATION_CONFIRMATIONS[number];
@@ -24,6 +25,25 @@ export interface AutomationRulesSettings {
 	version: 1;
 	confirmation: AutomationConfirmation;
 	rules: AutomationRule[];
+}
+
+/** Validate saved group IDs independently of task matches and boolean short-circuiting. */
+export function createAutomationProjectSerialValidator(scopes: readonly ProjectSerialScope[]) {
+	let available: Set<string> | undefined;
+	return function findInvalidSelection(node: FilterNode): { conditionId: string; projectSerialGroupId?: string } | undefined {
+		if ('children' in node) {
+			for (const child of node.children) {
+				const issue = findInvalidSelection(child);
+				if (issue) return issue;
+			}
+		} else if (node.field === PROJECT_SERIAL_SCOPE_FILTER_FIELD && (node.operator === 'isAnyOf' || node.operator === 'isNoneOf')) {
+			if (!node.values?.length) return { conditionId: node.id };
+			const ids = available ??= new Set(normalizeProjectSerialScopes(scopes).map(scope => scope.id));
+			const missing = node.values.find(id => !ids.has(id));
+			if (missing !== undefined) return { conditionId: node.id, projectSerialGroupId: missing };
+		}
+		return undefined;
+	};
 }
 
 function record(value: unknown): value is Record<string, unknown> {

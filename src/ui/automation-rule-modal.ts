@@ -1,6 +1,6 @@
 import { App, Modal, Notice } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
-import { createAutomationActionId, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
+import { createAutomationActionId, createAutomationProjectSerialValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { getOwnerWindow } from '../core/dom-compat';
 import { DATE_OPERATORS, getOperatorsForField, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS } from '../core/filter-display';
 import { t } from '../core/i18n';
@@ -24,7 +24,7 @@ export interface AutomationEditorSource {
 	plan(rule: AutomationRule): AutomationChangePlan | undefined;
 }
 
-function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, FilterFieldPickerOption>, settings: OperonSettings): boolean {
+function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, FilterFieldPickerOption>, invalidProjectGroup: ReturnType<typeof createAutomationProjectSerialValidator>): boolean {
 	return flattenConditions(group).every(condition => {
 		const { field, fieldType, operator, value = '' } = condition;
 		const option = fields.get(field);
@@ -32,8 +32,7 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 		if (field === 'trackedOn') return isValidTrackedOnCondition(condition, DATE_OPERATORS.map(op => op.id));
 		if (NO_VALUE_OPERATORS.has(operator)) return true;
 		if (field === TASK_DATA_TYPE_FIELD_KEY) return isTaskDataType(value);
-		if (operator === 'isAnyOf' || operator === 'isNoneOf') return !!condition.values?.length
-			&& condition.values.every(id => settings.projectSerialScopes.some(scope => scope.id === id));
+		if (operator === 'isAnyOf' || operator === 'isNoneOf') return !invalidProjectGroup(condition);
 		if (!value.trim()) return false;
 		if (NUMERIC_INPUT_DATE_OPERATORS.has(operator) || operator.startsWith('count')) {
 			const number = Number(value);
@@ -57,6 +56,11 @@ export const automationIssueLabels: Record<AutomationPlanIssue['reason'], string
 	'unsupported-source': 'taskRelationsUnavailable', 'source-unavailable': 'taskRelationsUnavailable',
 	'dependent-effect-unavailable': 'automationUnknown', 'index-unavailable': 'automationUnknown', 'condition-unavailable': 'automationUnknown',
 };
+
+export function unavailableProjectGroupText(issue: AutomationPlanIssue): string {
+	return [t('settings', issue.field === 'scope' ? 'automationScope' : 'automationTarget'),
+		t('filterSets', 'fieldProjectSerialGroup'), issue.projectSerialGroupId, t('settings', 'taskRelationsUnavailable')].join(' · ');
+}
 
 export class AutomationRuleModal extends Modal {
 	private readonly draft: AutomationRule;
@@ -205,8 +209,9 @@ export class AutomationRuleModal extends Modal {
 	private chosen(): AutomationAction[] { return this.draft.actions.filter(action => action.field); }
 	private conditionValidity(): boolean[] {
 		const options = new Map(this.options.map(option => [option.field, option]));
+		const invalidProjectGroup = createAutomationProjectSerialValidator(this.source.getSettings().projectSerialScopes);
 		return (['scope', 'target'] as const).map((key, index) => !this.editors[index].validationError
-			&& completeConditions(this.draft[key], options, this.source.getSettings()));
+			&& completeConditions(this.draft[key], options, invalidProjectGroup));
 	}
 	private canSave(): boolean {
 		if (!this.draft.name.trim() || this.editors.some(e => e.hasInvalidRawValues)) return false;
@@ -242,7 +247,9 @@ export class AutomationRuleModal extends Modal {
 		}
 		for (const [id, row] of this.rows) row.setMessage([...(messages.get(id) ?? [])].join(' · '));
 		const total = plan?.changedTaskCount;
-		this.summary.setText(valid.length !== chosen.length || (!chosen.length && (this.rows.size > 0 || this.draft.active)) ? t('settings', 'automationCompleteAction')
+		const missingGroup = plan?.issues.find(issue => issue.projectSerialGroupId);
+		this.summary.setText(missingGroup ? unavailableProjectGroupText(missingGroup)
+			: valid.length !== chosen.length || (!chosen.length && (this.rows.size > 0 || this.draft.active)) ? t('settings', 'automationCompleteAction')
 			: !scopeValid || !targetValid ? t('settings', 'automationCompleteCondition')
 			: total == null ? t('settings', 'automationUnknown')
 			: t('settings', total === 1 ? 'automationChangedOne' : 'automationChangedMany', { count: String(total) }));
