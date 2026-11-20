@@ -9,7 +9,8 @@ import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
 import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import type { IndexedTask } from '../types/fields';
 import type { FilterFieldType, FilterGroup, OperonSettings } from '../types/settings';
-import { AutomationActionRow, validAction, type ActionEditorContext } from './automation-action-editor';
+import { AutomationActionRow, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
+import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { FilterConditionEditor, FilterFieldCatalog, flattenConditions, type FilterFieldPickerOption } from './filter-condition-editor';
 import { closeFloatingPanelsForRoot, requestFloatingPanelCloseForRoot } from './field-pickers/common';
 import type { TableFilePropertySnapshot } from './table/table-file-property';
@@ -70,6 +71,7 @@ export class AutomationRuleModal extends Modal {
 	private summary!: HTMLElement;
 	private save!: HTMLButtonElement;
 	private timer?: number;
+	private unbindActions?: () => void;
 	private unsubscribe?: () => void;
 	private pending = false;
 	private closed = false;
@@ -110,12 +112,15 @@ export class AutomationRuleModal extends Modal {
 			this.editors.push(editor);
 			editor.mount(this.contentEl);
 		}
-		const card = this.contentEl.createDiv('operon-filter-section').createDiv('operon-filter-group-card is-root');
+		const actionsSection = this.contentEl.createDiv('operon-filter-section');
+		const card = actionsSection.createDiv('operon-filter-group-card is-root');
+		this.unbindActions = bindFilterGroupInteractionState(actionsSection);
 		const header = card.createDiv('operon-filter-group-header').createDiv('operon-filter-group-heading');
 		header.createEl('strong', { cls: 'operon-filter-group-title', text: t('settings', 'automationActions') });
 		this.section = card.createDiv('operon-automation-actions');
+		this.draft.actions = this.draft.actions.flatMap(action => expandListAction(action, this.actionContext));
 		for (const action of this.draft.actions) this.mountAction(action);
-		const add = card.createDiv('operon-automation-add-row').createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button',
+		const add = card.createDiv('operon-filter-group-footer').createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button',
 			text: '+ ' + t('settings', 'automationAddAction') });
 		add.addEventListener('click', () => {
 			const action: AutomationAction = { id: crypto.randomUUID(), field: '', operation: 'add', value: '' };
@@ -127,9 +132,9 @@ export class AutomationRuleModal extends Modal {
 		this.summary = footer.createDiv('operon-filter-footer-left operon-automation-count');
 		this.summary.setAttribute('role', 'status');
 		const controls = footer.createDiv('operon-filter-footer-primary-actions');
-		controls.createEl('button', { type: 'button', text: t('buttons', 'cancel') }).addEventListener('click', () => this.close());
+		controls.createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button', text: t('buttons', 'cancel') }).addEventListener('click', () => this.close());
 		const dropdown = (title: string, value: string, options: [string, string][], set: (v: string) => void) => {
-			const select = controls.createEl('select', { cls: 'dropdown', attr: { 'aria-label': title } });
+			const select = controls.createEl('select', { cls: 'dropdown operon-filter-select', attr: { 'aria-label': title } });
 			for (const [key, text] of options) select.createEl('option', { value: key, text });
 			select.value = value;
 			select.addEventListener('change', () => { set(select.value); this.updateSave(); });
@@ -138,7 +143,7 @@ export class AutomationRuleModal extends Modal {
 			mode => { this.draft.mode = mode === 'auto' ? 'auto' : 'manual'; });
 		dropdown(t('settings', 'automationState'), String(this.draft.active), [['false', t('settings', 'automationInactive')], ['true', t('settings', 'automationActive')]],
 			state => { this.draft.active = state === 'true'; this.schedule(); });
-		this.save = controls.createEl('button', { type: 'button', cls: 'mod-cta', text: t('settings', 'automationSaveRule') });
+		this.save = controls.createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button', text: t('settings', 'automationSaveRule') });
 		this.save.addEventListener('click', () => { void this.submit(); });
 		this.scope.register([], 'Escape', event => {
 			if (!requestFloatingPanelCloseForRoot(this.contentEl, 'escape', true) && !this.editors.some(e => e.closeFolderDropdown())) this.close();
@@ -169,7 +174,17 @@ export class AutomationRuleModal extends Modal {
 		if (this.fieldsDirty) {
 			this.fieldsDirty = false;
 			this.loadFields();
-			for (const action of this.rows.values()) action.refreshFields();
+			this.draft.actions = this.draft.actions.flatMap(action => {
+				const row = this.rows.get(action.id);
+				const expanded = expandListAction(action, this.actionContext);
+				if (expanded.length > 1 && row) {
+					for (const member of expanded) row.element.before(this.mountAction(member).element);
+					row.dispose();
+				} else {
+					row?.refreshFields();
+				}
+				return expanded;
+			});
 		}
 		this.updateCounts();
 	}
@@ -247,6 +262,7 @@ export class AutomationRuleModal extends Modal {
 
 	onClose(): void {
 		this.closed = true;
+		this.unbindActions?.();
 		this.unsubscribe?.();
 		getOwnerWindow(this.contentEl).clearTimeout(this.timer);
 		closeFloatingPanelsForRoot(this.contentEl);

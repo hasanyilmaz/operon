@@ -12,6 +12,7 @@ const CUSTOM_LIST_LOAD_MORE_SCROLL_THRESHOLD_PX = 48;
 export type NativeListPickerOperation = { kind: 'append'; values: (string | number)[] } | { kind: 'edit'; index: number; value: string | number } | { kind: 'remove'; index: number } | { kind: 'clear' };
 
 export interface CustomListFieldPickerOptions extends CustomFieldPickerBaseOptions<'list'> {
+ singleValue?: boolean;
  preserveValues?: boolean;
  confirmValues?: boolean;
  nativeValues?: readonly (string | number)[];
@@ -226,6 +227,13 @@ export function showCustomListFieldPicker(
    try {
     const values = decodeVaultPropertyList(rawValue).map(value => encodeVaultPropertyValue([value], 'list'));
     if (!values.length) return;
+    if (options.singleValue) {
+     if (values.length !== 1) throw new Error('Expected one list member');
+     selectedValues = values;
+     commit();
+     close();
+     return;
+    }
     if (options.onNativeOperation) {
      const decoded = decodeVaultPropertyList(rawValue);
      if (editingIndex !== null && decoded.length !== 1) throw new Error('Edit one member at a time');
@@ -242,6 +250,12 @@ export function showCustomListFieldPicker(
   }
 		const normalized = normalizeCustomListValue(rawValue);
 		if (!normalized || selectedValues.includes(normalized)) return;
+		if (options.singleValue) {
+			selectedValues = [normalized];
+			commit();
+			close();
+			return;
+		}
 		selectedValues.push(normalized);
 		selectedValues = Array.from(new Set(selectedValues));
 		input.value = '';

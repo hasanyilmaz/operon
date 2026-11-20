@@ -15583,8 +15583,7 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	border-left: 2px solid color-mix(in srgb, var(--interactive-accent) 35%, var(--background-modifier-border-hover));
 }
 
-.operon-filter-group-footer,
-.operon-automation-add-row {
+.operon-filter-group-footer {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
@@ -16284,6 +16283,17 @@ body :is(
 	color: var(--text-muted);
 	cursor: default;
 	opacity: 0.48;
+}
+
+.operon-automation-rule-editor .operon-filter-footer-primary-actions > select {
+	width: auto;
+}
+
+/* Pointer focus can stay on a native select after its menu closes. */
+body .modal.operon-filter-set-modal-shell .operon-automation-rule-editor .operon-filter-footer-primary-actions > :is(button, select):focus:not(:focus-visible) {
+	background-color: transparent;
+	border-color: var(--operon-filter-modal-control-border);
+	box-shadow: none;
 }
 
 @media (max-width: 720px) {

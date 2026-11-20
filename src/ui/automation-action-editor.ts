@@ -5,14 +5,17 @@ import { t } from '../core/i18n';
 import { parseListValue } from '../core/parser';
 import { parseTaskMediaReferenceList } from '../core/task-media-reference';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
-import { composeStatusValue, resolveWorkflowStatus } from '../types/pipeline';
+import { resolveWorkflowStatus } from '../types/pipeline';
 import type { FilterFieldType, OperonSettings } from '../types/settings';
 import type { IndexedTask } from '../types/fields';
 import type { FilterFieldPickerOption } from './filter-condition-editor';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
-import { showSearchableMultiOptionPicker } from './field-pickers/list-picker';
+import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
+import { showCustomListFieldPicker } from './field-pickers/custom/custom-list-field-picker';
+import { openTaskFieldPicker } from './task-field-picker-dispatch';
+import { collectCustomFieldValueCandidates, getCustomFieldMapping } from './custom-field-surfaces';
 import type { TableFilePropertySnapshot } from './table/table-file-property';
 
 export interface ActionEditorContext {
@@ -30,6 +33,28 @@ export function actionType(field: string, ctx: ActionEditorContext): FilterField
 	if (!isFilePropertyColumnKey(field)) return managedAutomationFieldType(field, ctx.settings());
 	if (!isAutomationNativeKeyWritable(field, ctx.settings())) return null;
 	return ctx.nativeType(field);
+}
+
+/** Expand older multi-value actions in the editor draft, preserving the first action ID. */
+export function expandListAction(action: AutomationAction, ctx: ActionEditorContext): AutomationAction[] {
+	const type = actionType(action.field, ctx);
+	if (type !== 'list' && type !== 'tags') return [action];
+	let members: string[];
+	if (isFilePropertyColumnKey(action.field)) {
+		const raw = Array.isArray(action.value) ? action.value : [action.value];
+		members = raw.flatMap(value => {
+			try {
+				const members = decodeVaultPropertyList(value);
+				return members.length ? members.map(member => encodeVaultPropertyValue([member], 'list')) : [value];
+			}
+			catch { return [value]; }
+		});
+	} else {
+		members = Array.isArray(action.value) ? action.value : parseListValue(action.value);
+	}
+	return members.length > 1
+		? members.map((member, index) => ({ ...action, id: index ? crypto.randomUUID() : action.id, value: [member] }))
+		: [action];
 }
 
 export function validAction(action: AutomationAction, ctx: ActionEditorContext): boolean {
@@ -141,36 +166,38 @@ export class AutomationActionRow {
 		const label = t('settings', 'automationValue');
 		const raw = Array.isArray(action.value) ? action.value.join('; ') : action.value;
 		const change = (value: string | string[]) => { action.value = value; ctx.changed(); };
-		if (type === 'list' || type === 'tags') {
+		const list = type === 'list' || type === 'tags';
+		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate'].includes(action.field);
+		if (list || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
-			trigger.label.setText(raw || label);
-			trigger.button.setAttribute('aria-label', label + (raw ? ' · ' + raw : ''));
+			const display = (text: string) => {
+				trigger.label.setText(text || label);
+				trigger.button.setAttribute('aria-label', label + (text ? ' · ' + text : ''));
+			};
+			display(raw);
 			trigger.button.addEventListener('click', () => {
-				const native = isFilePropertyColumnKey(action.field);
-				const members = Array.isArray(action.value) ? action.value : native && action.value ? [action.value] : parseListValue(action.value);
-				const candidates = new Set(members);
-				if (native) for (const value of ctx.native()?.getCandidates(action.field) ?? []) candidates.add(value);
-				else for (const task of ctx.tasks()) {
-					const items = action.field === 'tags' ? task.tags : action.field === 'blocking' || action.field === 'blockedBy'
-						? [task.operonId] : action.field === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues.taskGallery) : parseListValue(task.fieldValues[action.field] ?? '');
-					for (const item of items) candidates.add(item);
-				}
+				const onClose = () => {
+					trigger.button.setAttribute('aria-expanded', 'false');
+					this.closePicker = null;
+					queueMicrotask(() => this.syncType());
+				};
+				const commit = (value: string | string[]) => {
+					display(Array.isArray(value) ? value.join('; ') : value);
+					change(value);
+				};
 				trigger.button.setAttribute('aria-expanded', 'true');
-				this.closePicker = showSearchableMultiOptionPicker(trigger.button, {
-					title: label, placeholder: label, value: [...members], allowCustom: true,
-					options: [...candidates].map(value => ({ value, label: value })),
-					onPanelClose: () => {
-						trigger.button.setAttribute('aria-expanded', 'false');
-						this.closePicker = null;
-						queueMicrotask(() => this.syncType());
-					},
-					onSave: values => {
-						const selected = values.join('; ');
-						trigger.label.setText(selected || label);
-						trigger.button.setAttribute('aria-label', label + (selected ? ' · ' + selected : ''));
-						change(values);
-					},
-				});
+				const current = Array.isArray(action.value) ? action.value : action.value ? [action.value] : [];
+				if (creatorField) {
+					this.closePicker = openTaskFieldPicker({
+						app: ctx.app, settings: ctx.settings(), allTasks: [...ctx.tasks()], canonicalKey: action.field,
+						anchor: trigger.button, currentFieldValues: { [action.field]: current.join('; ') },
+						currentTags: current, currentListValues: current, closeListPickerOnSelect: true,
+						onCommitListValues: (_key, values) => commit(values.slice(-1)),
+						onCommit: payload => { commit(payload[action.field]); onClose(); }, onClose,
+					});
+				} else {
+					this.closePicker = this.openListValue(trigger.button, current, commit, onClose);
+				}
 			});
 			return;
 		}
@@ -178,10 +205,6 @@ export class AutomationActionRow {
 		let choices: [string, string][] | undefined;
 		if (action.field === 'checkbox') choices = [['open', t('buttons', 'open')], ['done', t('buttons', 'done')], ['cancelled', t('taskEditor', 'cancelled')]];
 		else if (type === 'checkbox') choices = [['true', t('indexStats', 'diagnosticsYes')], ['false', t('indexStats', 'diagnosticsNo')]];
-		else if (action.field === 'status') choices = settings.pipelines.flatMap(p => p.statuses.map(s => {
-			const value = composeStatusValue(p.name, s.label);
-			return [value, value] as [string, string];
-		}));
 		if (choices) { selectValue(valueHost, label, raw, choices, change); return; }
 		const input = valueHost.createEl('input', { type: type === 'number' && (!raw || Number.isFinite(Number(raw))) ? 'number' : 'text',
 			cls: 'operon-filter-control', attr: { 'aria-label': label, placeholder: label } });
@@ -204,14 +227,35 @@ export class AutomationActionRow {
 			input.addEventListener('focus', openPicker);
 			input.addEventListener('click', openPicker);
 		}
-		const candidates = action.field === 'priority' ? settings.priorities.map(item => item.label)
-			: isFilePropertyColumnKey(action.field) && type === 'text' ? ctx.native()?.getCandidates(action.field) : undefined;
+		const candidates = isFilePropertyColumnKey(action.field) && type === 'text' ? ctx.native()?.getCandidates(action.field) : undefined;
 		if (candidates?.length) {
 			const list = valueHost.createEl('datalist');
 			list.id = 'operon-automation-values-' + crypto.randomUUID();
 			for (const value of candidates.slice(0, 500)) list.createEl('option', { value });
 			input.setAttribute('list', list.id);
 		}
+	}
+
+	private openListValue(anchor: HTMLElement, current: string[], commit: (values: string[]) => void, onClose: () => void): () => void {
+		const { action, ctx } = this;
+		const key = action.field;
+		const native = isFilePropertyColumnKey(key);
+		const mapping = getCustomFieldMapping(ctx.settings().keyMappings, key);
+		const candidates = native ? ctx.native()?.getCandidates(key) ?? []
+			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping)
+			: ctx.tasks().flatMap(task => key === 'blocking' || key === 'blockedBy' ? [task.operonId]
+				: key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : parseListValue(task.fieldValues[key] ?? ''));
+		let nativeValues: (string | number)[] | undefined;
+		if (native) {
+			try { nativeValues = current.flatMap(decodeVaultPropertyList); }
+			catch { nativeValues = []; } // An incomplete draft can still be replaced.
+		}
+		return showCustomListFieldPicker(anchor, {
+			app: ctx.app, canonicalKey: key, type: 'list', label: this.field.label.textContent ?? key,
+			singleValue: true, value: current, nativeValues, candidates: [...candidates], mediaReference: key === 'taskGallery',
+			onCommit: (_key, value) => commit(value ? [value] : []), onCommitValues: (_key, values) => commit(values),
+			onCommitNativeValues: values => commit(values.map(value => encodeVaultPropertyValue([value], 'list'))), onClose,
+		});
 	}
 
 	focusField(): void { this.field.button.focus(); }
