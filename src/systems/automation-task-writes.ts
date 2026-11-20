@@ -6,7 +6,8 @@ import { parseDependencyIdList } from '../core/dependency-graph';
 import { prepareMappedInlineProperties } from '../core/inline-property-source';
 import { isSupportedRawYamlPropertyValue } from '../core/raw-yaml-property';
 import { decodeVaultPropertyValue } from '../core/vault-property-codec';
-import { serializeTaskMediaReferenceList } from '../core/task-media-reference';
+import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from '../core/task-media-reference';
+import { readLosslessYamlListField } from '../core/yaml-fields';
 import type { GuardedTaskSourceFieldUpdate, TaskWriter, TaskWriterExclusiveMutationPermit } from '../core/task-writer';
 import type { IndexedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
@@ -16,10 +17,11 @@ import type { TableFilePropertyQueryContext } from '../ui/table/table-file-prope
 import { executePluginUiConversionTransaction, type PluginUiConversionStep } from './plugin-ui-conversion-transaction';
 import type { captureAutomationReadState } from './automation-read-state';
 import { renderAutomationSource } from './automation-source-render';
-import type { AutomationWork } from './manual-automation-run';
+import type { AutomationWork, AutomationYamlSources } from './manual-automation-run';
 
 interface WritePorts {
 	app: App;
+	yamlSources: AutomationYamlSources;
 	writer: TaskWriter;
 	pins: PinnedCache;
 	settings: OperonSettings;
@@ -85,7 +87,17 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 		// YAML Effective Modified can come from the file stat. The source revision guards that case.
 		if (field === 'datetimeModified' && format === 'yaml' || field === 'checkbox') continue;
 		if (typed) continue;
-		update.expectedFieldValues![key] = field === 'tags' ? task.tags.join('; ') : field === 'description' ? task.description : task.fieldValues[field] ?? '';
+		if (format === 'yaml' && field !== 'tags' && Array.isArray(before)) {
+			const source = ports.yamlSources.get(filePath);
+			if (!source) return null;
+			const expected = readLosslessYamlListField(source.frontmatter, field, ports.settings.keyMappings);
+			if (!expected.ok) return null;
+			const members = field === 'taskGallery' ? parseTaskMediaReferenceList(expected.value) : parseListValue(expected.value);
+			if (members.length !== before.length || members.some((member, index) => member !== before[index])) return null;
+			update.expectedFieldValues![key] = expected.value;
+		} else {
+			update.expectedFieldValues![key] = field === 'tags' ? task.tags.join('; ') : field === 'description' ? task.description : task.fieldValues[field] ?? '';
+		}
 	}
 	if (yaml.length) update.filePropertyDraft = { changes: yaml };
 	if (inline.length) update.inlinePropertyDraft = inline;
@@ -223,7 +235,7 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		groups.set(key, group);
 		const file = ports.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile) || !ports.indexed(file) || ports.writer.hasMarkdownSource(file) || !await ports.validPath(path, false)) return null;
-		const before = await ports.app.vault.read(file);
+		const before = ports.yamlSources.get(path)?.content ?? await ports.app.vault.read(file);
 		if (!ports.indexed(file) || !ports.buffersMatch(path, before)) return null;
 		const updates: GuardedTaskSourceFieldUpdate[] = [];
 		let destination = path;

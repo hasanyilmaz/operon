@@ -61,7 +61,7 @@ import { prepareCreationCommit, type PreparedCreationContent } from './src/core/
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
-import { planAutomationChanges, type AutoTriggers } from './src/core/automation-change-plan';
+import { planAutomationChanges, type AutomationPlanSnapshot, type AutoTriggers } from './src/core/automation-change-plan';
 import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
 import { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
 import { deactivateAutomationRules, AutomationRunner, type AutoRunBatch } from './src/systems/manual-automation-run';
@@ -23581,17 +23581,19 @@ export default class OperonPlugin extends Plugin {
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
 			const ports: import('./src/systems/manual-automation-run').AutomationRunPorts = {
+				vault: this.app.vault,
 				settings: () => readAutomationRules(this.storage.getSettings().automationRules),
 				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
 				now: localNow,
-				plan: (rules, policy, asOf, triggers) => {
+				plan: (rules, policy, asOf, triggers, getFrontmatter) => {
 					ruleNames = new Map(rules.map(rule => [rule.id, rule.name]));
-					return this.planAutomationRules(rules, policy, asOf, triggers);
+					return this.planAutomationRules(rules, policy, asOf, triggers, getFrontmatter);
 				},
-				prepare: plan => {
+				prepare: (plan, yamlSources) => {
 					const tasks = this.indexer.getAllTasks();
 					const base = plan.changes.some(c => c.field.startsWith('file.property:')) ? this.getTableFilePropertySnapshot(tasks) : null;
 					return prepareAutomationWork(plan, {
+						yamlSources,
 						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
 						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, () => JSON.stringify([
 							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
@@ -23668,8 +23670,9 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	/** Synchronous draft/run calculation against the already indexed vault. */
-	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation, asOf = localNow(), triggers?: AutoTriggers) {
+	/** Drafts use cached frontmatter. Executions supply the source documents used to prepare writes. */
+	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation, asOf = localNow(), triggers?: AutoTriggers,
+		getFrontmatter: AutomationPlanSnapshot['getFrontmatter'] = task => this.getSourceContextFrontmatter(task.primary.filePath)) {
 		const tasks = this.indexer.getAllTasks();
 		const catalog = new FilterFieldCatalog({ keyMappings: this.settings.keyMappings, getRootGroup: () => undefined, getSettings: () => this.settings });
 		const expandParentDates = this.settings.autoExpandParentTaskDateRange;
@@ -23684,7 +23687,7 @@ export default class OperonPlugin extends Plugin {
 				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',
 			settings: this.settings, pins: this.pinnedCache ? new Set(this.pinnedCache.getPinnedIds()) : null,
 			activeTimerId: this.timeTracker?.getActiveOperonId(),
-			getFrontmatter: task => this.getSourceContextFrontmatter(task.primary.filePath),
+			getFrontmatter,
 			fileRenameState: (task, destination) => {
 				const path = task.primary.filePath;
 				if (this.app.vault.getAbstractFileByPath(destination)) return 'occupied';

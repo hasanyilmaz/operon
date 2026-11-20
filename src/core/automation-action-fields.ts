@@ -80,6 +80,7 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 	if (key === 'fileTaskDisplayTitle' && task.primary.format !== 'yaml') return 'read-only';
 	const type = managedAutomationFieldType(key, settings);
 	if (!type) return 'read-only';
+	let raw = task.fieldValues[key] ?? '';
 	if (task.primary.format === 'yaml' && type === 'list') {
 		const fm = source.getFrontmatter(task);
 		if (!fm || readYamlFields(fm, settings.keyMappings).operonId !== task.operonId) return 'source-unavailable';
@@ -90,8 +91,8 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 		if (!items.every(item => typeof item === 'string')) return 'unsupported-source';
 		if (key !== 'taskGallery' && items.some(item => item.includes(';'))) return 'unsupported-source';
 		if (Array.isArray(value)) return { before: [...items], type, native: false };
+		raw = items[0] ?? '';
 	}
-	const raw = task.fieldValues[key] ?? '';
 	try {
 		const before = type === 'list' ? (key === 'taskGallery' ? parseTaskMediaReferenceList(raw) : parseListValue(raw)) : raw === '' ? null : scalar(raw, type);
 		return { before, type, native: false };

@@ -1,5 +1,7 @@
-import type { AutomationChangePlan, AutoTriggers } from '../core/automation-change-plan';
+import { TFile, type Vault } from 'obsidian';
+import type { AutomationChangePlan, AutomationPlanSnapshot, AutoTriggers } from '../core/automation-change-plan';
 import { readAutomationRules, type AutomationRule, type AutomationRulesSettings } from '../core/automation-rules';
+import { readFileTaskPropertyDocument } from '../core/file-task-property-draft';
 import type { OperonStorage } from '../storage/operon-storage';
 
 export async function deactivateAutomationRules(storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, rules: AutomationRule[]): Promise<boolean> {
@@ -21,11 +23,18 @@ export interface AutoRunBatch {
 	rules: Map<string, Set<string> | 'day'>;
 	confirmAgain: boolean;
 }
+interface AutomationYamlSource {
+	content: string;
+	frontmatter: Record<string, unknown>;
+}
+export type AutomationYamlSources = ReadonlyMap<string, AutomationYamlSource | null>;
 export interface AutomationRunPorts {
+	vault: Pick<Vault, 'getAbstractFileByPath' | 'read'>;
 	settings(): AutomationRulesSettings;
 	now(): string;
-	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string, triggers?: AutoTriggers): AutomationChangePlan;
-	prepare(plan: AutomationChangePlan): Promise<AutomationWork | null>;
+	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string,
+		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter']): AutomationChangePlan;
+	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources): Promise<AutomationWork | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
 	refreshBatch?(batch: AutoRunBatch): void;
 	deferConfirmation?(batch: AutoRunBatch, alreadyShown: boolean): boolean;
@@ -38,6 +47,27 @@ export type ManualAutomationResult =
 	| { status: 'deactivated'; names: string[] }
 	| { status: 'unavailable'; plan: AutomationChangePlan }
 	| { status: 'finished'; plan: AutomationChangePlan; applied: number; uncertain: number; refreshPending?: boolean };
+
+/** Resolve only the YAML documents the planner consults, including related tasks discovered in a later pass. */
+async function planWithYamlSources(vault: AutomationRunPorts['vault'], calculate: (read: AutomationPlanSnapshot['getFrontmatter']) => AutomationChangePlan) {
+	const sources = new Map<string, AutomationYamlSource | null>();
+	const missing = new Set<string>();
+	for (;;) {
+		const plan = calculate(task => {
+			const path = task.primary.filePath;
+			if (!sources.has(path)) missing.add(path);
+			return sources.get(path)?.frontmatter ?? null;
+		});
+		if (!missing.size) return { plan, sources };
+		for (const path of missing) {
+			const file = vault.getAbstractFileByPath(path);
+			const content = file instanceof TFile ? await vault.read(file) : '';
+			const document = readFileTaskPropertyDocument(content);
+			sources.set(path, document ? { content, frontmatter: document.frontmatter } : null);
+		}
+		missing.clear();
+	}
+}
 
 /** Both entry points hold the same queue through confirmation, apply and the index refresh. */
 export class AutomationRunner {
@@ -75,8 +105,9 @@ export class AutomationRunner {
 			if (!rules.length || !ports.available()) return null;
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
-			const plan = ports.plan(rules, settings.confirmation, asOf, triggers);
-			const work = plan.changedTaskCount ? await ports.prepare(plan) : null;
+			const { plan, sources } = await planWithYamlSources(ports.vault,
+				getFrontmatter => ports.plan(rules, settings.confirmation, asOf, triggers, getFrontmatter));
+			const work = plan.changedTaskCount ? await ports.prepare(plan, sources) : null;
 			return { rules, plan, work, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
 		};
 		let snapshot = await read();

@@ -55,7 +55,8 @@ async function fixture(files, opts = {}) {
 	const settings = { ...structuredClone(DEFAULT_SETTINGS), ...opts.settings };
 	let permit, pinData = { version: 1, itemsById: {} };
 	const records = new Map(), tasks = new Map(), frontmatter = new Map(), listeners = new Map();
-	const f = { writes: [], prompts: [], config, rule, tasks, refreshes: 0, known: true };
+	const f = { writes: [], prompts: [], config, rule, tasks, frontmatter, refreshes: 0, known: true,
+		editFile: (name, content) => writeFile(path.join(dir, name), content) };
 	const vault = {
 		getAbstractFileByPath: name => records.get(name),
 		read: file => readFile(path.join(dir, file.path), 'utf8'),
@@ -101,15 +102,15 @@ async function fixture(files, opts = {}) {
 		subscribeIndexReconciliation: () => () => {}, getTask: key => tasks.get(key) };
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
-	const ports = { available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
-		plan: (saved, policy, clock, triggers) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
+	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
+		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
 			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
-			unavailableIds: new Set(), getFrontmatter: t => frontmatter.get(t.operonId), getRepeatSkipDates: () => [], native: f.native,
+			unavailableIds: new Set(), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
-		prepare: async plan => {
-			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
+		prepare: async (plan, yamlSources) => {
+			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
 				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], () => 'fixture'), indexed: () => true,
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
@@ -306,6 +307,92 @@ test('deactivation updates only named rule versions and retains independent edit
 	f.confirm = () => { f.config.rules[1].name = 'New name'; return 'deactivate'; };
 	assert.equal((await f.run()).status, 'deactivated'); assert.ok(f.config.rules[1].active); assert.equal(f.config.rules[1].name, 'New name');
 });
+const membersSource = value => '---\noperonId: task001\n' + value + '\nKeep: unchanged\n---\nKeep this body.\n';
+async function membersFixture(source, cached, operation, value, mode = 'manual') {
+	const mapping = { canonicalKey: 'participants', visiblePropertyName: 'Members', type: 'list', isSystem: false };
+	const f = await fixture({ 'Members.md': membersSource(source) }, {
+		settings: { keyMappings: [...DEFAULT_SETTINGS.keyMappings, mapping] },
+		rule: { mode, actions: [action('participants', value, operation)] },
+	});
+	f.frontmatter.get(id(1)).Members = cached;
+	return f;
+}
+
+for (const [operation, value, expected] of [['add', 'Lee', ['Ana', 'Bob', 'Lee']], ['remove', 'Ana', ['Bob']]]) {
+	test('managed YAML list preserves unobserved members on ' + operation, async () => {
+		const f = await membersFixture('Members: [Ana, Bob]', ['Ana'], operation, value);
+		const result = await f.run();
+		assert.equal(result.status, 'finished');
+		assert.equal(result.applied, 1);
+		const content = await f.read('Members.md');
+		const yaml = parseYaml(content.split('---')[1]);
+		assert.deepEqual(yaml.Members, expected);
+		assert.equal(yaml.Keep, 'unchanged');
+		assert.ok(content.endsWith('Keep this body.\n'));
+		const change = f.prompts[0][0].changes.find(item => item.field === 'participants');
+		assert.deepEqual(change.before, ['Ana', 'Bob']);
+		assert.deepEqual(change.after, expected);
+	});
+}
+
+test('managed YAML list rechecks the actual source before treating an automatic run as a no-op', async () => {
+	const f = await membersFixture('Members: [Ana, Bob]', ['Ana', 'Lee'], 'add', 'Lee', 'auto');
+	const trigger = new Map([[ruleId, new Set([id(1)])]]);
+	assert.equal((await f.auto(trigger)).applied, 1);
+	assert.deepEqual(parseYaml((await f.read('Members.md')).split('---')[1]).Members, ['Ana', 'Bob', 'Lee']);
+	assert.equal((await f.auto(trigger)).applied, 0);
+	assert.equal(f.prompts.length, 1);
+	assert.deepEqual(f.writes, ['Members.md']);
+});
+
+test('managed YAML list reopens confirmation on a member edit and preserves the new member', async () => {
+	const f = await membersFixture('Members: [Ana]', ['Ana'], 'add', 'Lee');
+	f.confirm = async () => {
+		assert.deepEqual(f.writes, []);
+		if (f.prompts.length === 1) await f.editFile('Members.md', membersSource('Members: [Ana, Bob]'));
+		return 'apply';
+	};
+	assert.equal((await f.run()).applied, 1);
+	assert.deepEqual(f.prompts.map(([plan]) => plan.changes.find(c => c.field === 'participants').before), [['Ana'], ['Ana', 'Bob']]);
+	assert.deepEqual(f.writes, ['Members.md']);
+	assert.deepEqual(parseYaml((await f.read('Members.md')).split('---')[1]).Members, ['Ana', 'Bob', 'Lee']);
+});
+
+test('managed YAML list leaves unsupported member types and ambiguous aliases intact', async () => {
+	for (const source of ['Members: [Ana, 7]', 'Members: ["Ana; Bob"]', 'Members: [Ana]\nparticipants: [Bob]']) {
+		const f = await membersFixture(source, ['Ana'], 'add', 'Lee');
+		assert.equal((await f.run()).status, 'unavailable');
+		assert.deepEqual(f.writes, []);
+		assert.equal(await f.read('Members.md'), membersSource(source));
+	}
+});
+
+test('managed YAML list reads scalar, missing and null fields from the current document', async () => {
+	for (const [source, expected] of [['Members: Bob', ['Bob', 'Lee']], ['', ['Lee']], ['Members:', ['Lee']]]) {
+		const f = await membersFixture('Members: [Ana]', ['Ana'], 'add', 'Lee');
+		await f.editFile('Members.md', membersSource(source));
+		assert.equal((await f.run()).applied, 1);
+		assert.deepEqual(parseYaml((await f.read('Members.md')).split('---')[1]).Members, expected);
+	}
+});
+
+test('managed YAML list preserves a member edit at the final write boundary', async () => {
+	const f = await membersFixture('Members: [Ana]', ['Ana'], 'add', 'Lee');
+	const edited = membersSource('Members: [Ana, Bob]');
+	f.beforeProcess = () => f.editFile('Members.md', edited);
+	assert.equal((await f.run()).applied, 0);
+	assert.equal(await f.read('Members.md'), edited);
+});
+
+test('managed YAML list keeps a gallery member containing a semicolon intact', async () => {
+	const f = await fixture({ 'Gallery.md': membersSource('taskGallery: ["old.png"]') }, {
+		rule: { actions: [action('taskGallery', 'new.png')] },
+	});
+	await f.editFile('Gallery.md', membersSource('taskGallery: ["old.png", "album; cover.png"]'));
+	assert.equal((await f.run()).applied, 1);
+	assert.deepEqual(parseYaml((await f.read('Gallery.md')).split('---')[1]).taskGallery, ['old.png', 'album; cover.png', 'new.png']);
+});
+
 test('custom list and numeric actions use task mappings in both source formats', async () => {
 	const mappings = [{ canonicalKey:'participants', visiblePropertyName:'Members', type:'list', isSystem:false },
 		{ canonicalKey:'points', visiblePropertyName:'Points', type:'number', isSystem:false }];
