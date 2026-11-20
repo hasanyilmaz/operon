@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "選択した項目を取り除く",
       "automationRetry": "現在のルールまたはタスクのデータを使用できません。ルールを確認してもう一度お試しください。",
       "automationRuleList": "自動化ルール",
-      "automationRuleListDesc": "タスクの自動化ルールとその順序を管理します。",
+      "automationRuleListDesc": "ルールで更新するタスクと、タグの追加や優先度の設定などの操作を選びます。新しいルールは無効な状態で作成されます。",
       "automationRun": "実行",
       "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
       "automationSaveRule": "ルールを保存",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "b19847aab9725045a4744f3509a61a11ce4f0a34ca24432297ca4f726b095033"
+  "sourceVersion": "19ca13990eca176779f42479074561ddaee09a35fc713ff02244db0451e99810"
 }

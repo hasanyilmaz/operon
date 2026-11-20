@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "Immer nachfragen",
 		"automationNoLimit": "Kein Limit",
 		"automationRuleList": "Automatisierungsregeln",
-		"automationRuleListDesc": "Regeln für Aufgaben und ihre Reihenfolge verwalten.",
+		"automationRuleListDesc": "Lege fest, welche Aufgaben eine Regel aktualisiert und was sie ändert. Sie kann zum Beispiel ein Tag hinzufügen oder eine Priorität setzen. Neue Regeln sind zunächst inaktiv.",
 		"automationAddRule": "Regel hinzufügen",
 		"automationName": "Name der Automatisierung",
 		"automationEditRule": "Regel bearbeiten",

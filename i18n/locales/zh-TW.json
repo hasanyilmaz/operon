@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "一律詢問",
 		"automationNoLimit": "無上限",
 		"automationRuleList": "自動化規則",
-		"automationRuleListDesc": "管理任務自動化規則及其順序。",
+		"automationRuleListDesc": "選擇規則要更新的任務及要執行的動作，例如新增標籤或設定優先順序。新規則預設為停用。",
 		"automationAddRule": "新增規則",
 		"automationName": "自動化名稱",
 		"automationEditRule": "編輯規則",

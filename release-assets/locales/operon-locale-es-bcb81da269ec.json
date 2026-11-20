@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Quitar elementos seleccionados",
       "automationRetry": "No se pudieron usar los datos actuales de la regla o las tareas. Revisa la regla e inténtalo de nuevo.",
       "automationRuleList": "Reglas de automatización",
-      "automationRuleListDesc": "Gestiona las reglas de tareas y su orden.",
+      "automationRuleListDesc": "Elige qué tareas actualiza cada regla y qué cambios aplica, como añadir una etiqueta o asignar una prioridad. Las reglas nuevas están inactivas al principio.",
       "automationRun": "Ejecutar",
       "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
       "automationSaveRule": "Guardar regla",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "102615ad08a86bbcf2fce739366c9923d1e09a8a0507a0b79e4caaef9f9f4574"
+  "sourceVersion": "0499501c0dc487c11bedb28212f97964ee3a97c6898da800b31a9eba992440a1"
 }

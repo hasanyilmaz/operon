@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "常に確認",
 		"automationNoLimit": "上限なし",
 		"automationRuleList": "自動化ルール",
-		"automationRuleListDesc": "タスクの自動化ルールとその順序を管理します。",
+		"automationRuleListDesc": "ルールで更新するタスクと、タグの追加や優先度の設定などの操作を選びます。新しいルールは無効な状態で作成されます。",
 		"automationAddRule": "ルールを追加",
 		"automationName": "自動化の名前",
 		"automationEditRule": "ルールを編集",

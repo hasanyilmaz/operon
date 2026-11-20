@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Retirer les éléments sélectionnés",
       "automationRetry": "Les données actuelles de la règle ou des tâches sont indisponibles. Vérifiez la règle et réessayez.",
       "automationRuleList": "Règles d’automatisation",
-      "automationRuleListDesc": "Gérer les règles des tâches et leur ordre.",
+      "automationRuleListDesc": "Choisissez les tâches que la règle met à jour et les actions à appliquer, comme ajouter une étiquette ou définir une priorité. Les nouvelles règles sont inactives par défaut.",
       "automationRun": "Exécuter",
       "automationSaveFailed": "Impossible d’enregistrer les réglages. Rouvrez les automatisations pour consulter les valeurs actuelles.",
       "automationSaveRule": "Enregistrer la règle",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b2fa6b4e668d3042d1b1ab2a8c7bb5c9f2333a9031fb5c685c3b0f4ada304c5e"
+  "sourceVersion": "c58763539b754b29950e6a4177d87d2b5b3a4e11607544e1698df24497fec41e"
 }

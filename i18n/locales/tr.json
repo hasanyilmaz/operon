@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "Her zaman sor",
 		"automationNoLimit": "Sınır yok",
 		"automationRuleList": "Otomasyon kuralları",
-		"automationRuleListDesc": "Task otomasyon kurallarını ve sıralarını yönet.",
+		"automationRuleListDesc": "Bir kuralın hangi görevleri güncelleyeceğini ve bu görevlere ne yapacağını seç. Örneğin etiket ekleyebilir veya öncelik belirleyebilirsin. Yeni kurallar başlangıçta pasiftir.",
 		"automationAddRule": "Kural ekle",
 		"automationName": "Otomasyon adı",
 		"automationEditRule": "Kuralı düzenle",

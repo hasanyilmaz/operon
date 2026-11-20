@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "Всегда спрашивать",
 		"automationNoLimit": "Без ограничений",
 		"automationRuleList": "Правила автоматизации",
-		"automationRuleListDesc": "Настройте правила задач и их порядок.",
+		"automationRuleListDesc": "Выберите задачи, которые будет обновлять правило, и действия для них, например добавление тега или изменение приоритета. Новые правила по умолчанию неактивны.",
 		"automationAddRule": "Добавить правило",
 		"automationName": "Название автоматизации",
 		"automationEditRule": "Изменить правило",

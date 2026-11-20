@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Rimuovi elementi selezionati",
       "automationRetry": "I dati attuali della regola o delle attività non sono disponibili. Controlla la regola e riprova.",
       "automationRuleList": "Regole di automazione",
-      "automationRuleListDesc": "Gestisci le regole per le attività e il loro ordine.",
+      "automationRuleListDesc": "Scegli quali attività aggiornare con la regola e quali modifiche applicare, come aggiungere un tag o impostare una priorità. Le nuove regole sono inizialmente inattive.",
       "automationRun": "Esegui",
       "automationSaveFailed": "Impossibile salvare le impostazioni. Riapri Automazioni per vedere i valori attuali.",
       "automationSaveRule": "Salva regola",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "11aa729f02b30a9417e488aa9a50fc43c03d1541009727ce618cc190b9382898"
+  "sourceVersion": "f413e5e70c06efd869a2c6d9d711ba087abbd2850750d435eeebb73cdcbfb822"
 }

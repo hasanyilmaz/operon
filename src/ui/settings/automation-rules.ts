@@ -50,7 +50,11 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
 			commit(existing ? rules.map(rule => rule.id === existing.id ? draft : rule) : [...rules, draft])), true).open();
 	};
-	const section = el.createDiv('operon-settings-add-list-section operon-settings-card-list-section');
+	const section = el.createDiv('operon-automation-rules-settings-list operon-settings-add-list-section operon-settings-card-list-section');
+	section.createEl('p', {
+		cls: 'operon-settings-muted-block',
+		text: t('settings', 'automationRuleListDesc'),
+	});
 	const list = section.createDiv('operon-filter-set-list');
 	for (const [index, rule] of rules.entries()) {
 		const card = createSettingsListCard({ containerEl: list, icon: 'workflow', title: rule.name, className: 'operon-filter-set-card' });

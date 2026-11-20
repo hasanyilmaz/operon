@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "始终询问",
 		"automationNoLimit": "无限制",
 		"automationRuleList": "自动化规则",
-		"automationRuleListDesc": "管理任务自动化规则及其顺序。",
+		"automationRuleListDesc": "选择规则要更新的任务及要执行的操作，例如添加标签或设置优先级。新规则默认停用。",
 		"automationAddRule": "添加规则",
 		"automationName": "自动化名称",
 		"automationEditRule": "编辑规则",

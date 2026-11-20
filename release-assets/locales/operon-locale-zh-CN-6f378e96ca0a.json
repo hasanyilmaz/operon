@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "移除所选项目",
       "automationRetry": "无法使用当前规则或任务数据。请检查规则后重试。",
       "automationRuleList": "自动化规则",
-      "automationRuleListDesc": "管理任务自动化规则及其顺序。",
+      "automationRuleListDesc": "选择规则要更新的任务及要执行的操作，例如添加标签或设置优先级。新规则默认停用。",
       "automationRun": "运行",
       "automationSaveFailed": "无法保存自动化设置。请重新打开自动化以查看当前值。",
       "automationSaveRule": "保存规则",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "b19f238bc6f154b143384b7f3d7cec5fec32cd9841ea5f4aa031c23ac252dd92"
+  "sourceVersion": "498eb167e7358c9f41b6c9529268614e5611715a3c5724f463891bd4dd13a3f8"
 }

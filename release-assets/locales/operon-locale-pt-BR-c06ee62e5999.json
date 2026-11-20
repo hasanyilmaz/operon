@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Remover itens selecionados",
       "automationRetry": "Não foi possível usar os dados atuais da regra ou das tarefas. Verifique a regra e tente novamente.",
       "automationRuleList": "Regras de automação",
-      "automationRuleListDesc": "Gerencie as regras de tarefas e sua ordem.",
+      "automationRuleListDesc": "Escolha quais tarefas a regra atualiza e quais ações ela executa, como adicionar uma etiqueta ou definir uma prioridade. Novas regras começam inativas.",
       "automationRun": "Executar",
       "automationSaveFailed": "Não foi possível salvar as configurações. Reabra Automações para ver os valores atuais.",
       "automationSaveRule": "Salvar regra",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "3128014e2e4dc338efb6cfae41f7021918c1cb9450de6844727246378748d047"
+  "sourceVersion": "f0b5816d6ab110bb1472bcba7f53e3445230edf9b8fab140416d1635748939a2"
 }

@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "Always ask",
 		"automationNoLimit": "No limit",
 		"automationRuleList": "Automation Rules",
-		"automationRuleListDesc": "Manage task automation rules and their order.",
+		"automationRuleListDesc": "Choose which tasks a rule updates and what it changes, such as adding a tag or setting a priority. New rules start inactive.",
 		"automationAddRule": "Add Rule",
 		"automationName": "Automation name",
 		"automationEditRule": "Edit Rule",

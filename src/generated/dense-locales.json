@@ -5115,7 +5115,7 @@
       "Remove selected items",
       "The automation could not use the current rule or task data. Check the rule and try again.",
       "Automation Rules",
-      "Manage task automation rules and their order.",
+      "Choose which tasks a rule updates and what it changes, such as adding a tag or setting a priority. New rules start inactive.",
       "Run",
       "Could not save the automation settings. Reopen Automations to see the current values.",
       "Save Rule",

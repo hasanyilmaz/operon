@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "移除所選項目",
       "automationRetry": "無法使用目前的規則或任務資料。請檢查規則後再試一次。",
       "automationRuleList": "自動化規則",
-      "automationRuleListDesc": "管理任務自動化規則及其順序。",
+      "automationRuleListDesc": "選擇規則要更新的任務及要執行的動作，例如新增標籤或設定優先順序。新規則預設為停用。",
       "automationRun": "執行",
       "automationSaveFailed": "無法儲存自動化設定。請重新開啟自動化以查看目前的值。",
       "automationSaveRule": "儲存規則",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "fa2c3738c9b873d5c59fbeef850a48c3f711d872750955ea97f46979777bc12e"
+  "sourceVersion": "02ff2fc977985c1ca984046a79e8896dba46b0e3983a2eef10e6fd67ba271293"
 }

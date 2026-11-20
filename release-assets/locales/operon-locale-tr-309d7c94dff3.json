@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Seçilen öğeleri çıkar",
       "automationRetry": "Güncel kural veya görev verileri kullanılamadı. Kuralı kontrol edip yeniden deneyin.",
       "automationRuleList": "Otomasyon kuralları",
-      "automationRuleListDesc": "Task otomasyon kurallarını ve sıralarını yönet.",
+      "automationRuleListDesc": "Bir kuralın hangi görevleri güncelleyeceğini ve bu görevlere ne yapacağını seç. Örneğin etiket ekleyebilir veya öncelik belirleyebilirsin. Yeni kurallar başlangıçta pasiftir.",
       "automationRun": "Çalıştır",
       "automationSaveFailed": "Otomasyon ayarları kaydedilemedi. Güncel değerleri görmek için Otomasyonlar’ı yeniden aç.",
       "automationSaveRule": "Kuralı kaydet",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "a81c38000f42f25c36380567f17e901380b4fdb666fc7c3ddc0df220efc2ef23"
+  "sourceVersion": "456ea5bcbb0e3775b002c30044756a71801bb1d0b4486934900ef539d2d56e2a"
 }

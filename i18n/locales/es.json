@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "Preguntar siempre",
 		"automationNoLimit": "Sin límite",
 		"automationRuleList": "Reglas de automatización",
-		"automationRuleListDesc": "Gestiona las reglas de tareas y su orden.",
+		"automationRuleListDesc": "Elige qué tareas actualiza cada regla y qué cambios aplica, como añadir una etiqueta o asignar una prioridad. Las reglas nuevas están inactivas al principio.",
 		"automationAddRule": "Añadir regla",
 		"automationName": "Nombre de la automatización",
 		"automationEditRule": "Editar regla",

@@ -455,7 +455,7 @@
 		"automationAlwaysAsk": "항상 확인",
 		"automationNoLimit": "제한 없음",
 		"automationRuleList": "자동화 규칙",
-		"automationRuleListDesc": "작업 자동화 규칙과 순서를 관리합니다.",
+		"automationRuleListDesc": "규칙을 적용할 작업과 태그 추가, 우선순위 설정 등 수행할 동작을 선택하세요. 새 규칙은 비활성 상태로 시작합니다.",
 		"automationAddRule": "규칙 추가",
 		"automationName": "자동화 이름",
 		"automationEditRule": "규칙 편집",

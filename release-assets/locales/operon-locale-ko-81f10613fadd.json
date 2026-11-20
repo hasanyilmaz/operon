@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "선택한 항목 제거",
       "automationRetry": "현재 규칙 또는 작업 데이터를 사용할 수 없습니다. 규칙을 확인한 후 다시 시도하세요.",
       "automationRuleList": "자동화 규칙",
-      "automationRuleListDesc": "작업 자동화 규칙과 순서를 관리합니다.",
+      "automationRuleListDesc": "규칙을 적용할 작업과 태그 추가, 우선순위 설정 등 수행할 동작을 선택하세요. 새 규칙은 비활성 상태로 시작합니다.",
       "automationRun": "실행",
       "automationSaveFailed": "자동화 설정을 저장할 수 없습니다. 자동화를 다시 열어 현재 값을 확인하세요.",
       "automationSaveRule": "규칙 저장",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "5be6f737fa92c047f6e51690294eb4d025ef0bca3441bfb26cd0cfc62c01d9cb"
+  "sourceVersion": "08261a9e585d639c24f3462da618bb6f7b6aac7169d8fe6d6c7b2164de2595dc"
 }

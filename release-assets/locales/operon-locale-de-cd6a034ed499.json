@@ -1194,7 +1194,7 @@
       "automationRemoveMembers": "Ausgewählte Einträge entfernen",
       "automationRetry": "Die aktuellen Regel- oder Aufgabendaten sind nicht verfügbar. Prüfe die Regel und versuche es erneut.",
       "automationRuleList": "Automatisierungsregeln",
-      "automationRuleListDesc": "Regeln für Aufgaben und ihre Reihenfolge verwalten.",
+      "automationRuleListDesc": "Lege fest, welche Aufgaben eine Regel aktualisiert und was sie ändert. Sie kann zum Beispiel ein Tag hinzufügen oder eine Priorität setzen. Neue Regeln sind zunächst inaktiv.",
       "automationRun": "Ausführen",
       "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
       "automationSaveRule": "Regel speichern",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "528fa8c0f8fc8e9a5a8fc927626b79cb6b2a652c1fb8174a43fe410514c4996b"
+  "sourceVersion": "17071ec3fce8a8d4dcc15e01539c15e48fe1939f142f4d45446949e8078795a9"
 }
