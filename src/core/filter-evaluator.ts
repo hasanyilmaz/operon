@@ -9,7 +9,8 @@ import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from '.
 import { FilterFieldType, FilterGroup, FilterNode, FilterSet, FilterSetCondition, FilterSortSpec } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
-import { localToday, parseLocalTimestamp } from './local-time';
+import { localToday, parseLocalTimestamp, toLocalDate } from './local-time';
+import { getVaultPropertyDateError } from './vault-property-codec';
 import { PinnedCache } from '../storage/pinned-cache';
 import {
 	buildWorkflowStatusOrderIndex,
@@ -796,6 +797,7 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 				rawFieldValue ?? '',
 				cond.value ?? '',
 				context.today,
+				cond.fieldType,
 			));
 
 		case 'pinned':
@@ -947,7 +949,7 @@ function evaluateFilePropertyCondition(
 		case 'date':
 		case 'datetime':
 			if (typeof state.value !== 'string') return 'unknown';
-			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context.today));
+			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context.today, field.type));
 		case 'list':
 		case 'tags':
 			if (!Array.isArray(state.value)) return 'unknown';
@@ -1189,101 +1191,108 @@ function evaluateNumberCondition(op: string, rawValue: string | undefined, targe
 	}
 }
 
-function evaluateDateCondition(op: string, value: string, target: string, today: string): boolean {
-	const hasValue = value.trim() !== '';
+function evaluateDateCondition(op: string, rawValue: string, target: string, today: string, type: 'date' | 'datetime' = 'date'): boolean {
+	const hasValue = rawValue.trim() !== '';
 
 	switch (op) {
 		case 'hasAnyValue': return hasValue;
 		case 'hasNoValue': return !hasValue;
+		case 'dateIs': return rawValue === target;
+		case 'before': return hasValue && rawValue < target;
+		case 'after': return hasValue && rawValue > target;
+	}
+	if (!hasValue) return false;
+	let value = rawValue;
+	if (type === 'datetime') {
+		const stored = rawValue.trim().replace(' ', 'T');
+		if (getVaultPropertyDateError(stored, stored.length > 10)) return false;
+		// Only an explicit timezone can put a stored timestamp on a different local day.
+		if (/(?:Z|[+-]\d{2}:\d{2})$/u.test(stored)) {
+			const timestamp = parseLocalTimestamp(stored);
+			if (timestamp === null) return false;
+			value = toLocalDate(new Date(timestamp));
+		} else {
+			value = stored.slice(0, 10);
+		}
+	}
+
+	switch (op) {
 		case 'isToday': return value === today;
-		case 'notToday': return hasValue && value !== today;
-		case 'beforeToday': return hasValue && value < today;
-		case 'afterToday': return hasValue && value > today;
-		case 'dateIs': return value === target;
-		case 'before': return hasValue && value < target;
-		case 'after': return hasValue && value > target;
+		case 'notToday': return value !== today;
+		case 'beforeToday': return value < today;
+		case 'afterToday': return value > today;
 		case 'exactlyDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value === offsetDate(today, -n);
 		}
 		case 'exactlyDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value === offsetDate(today, n);
 		}
 		case 'underDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			const threshold = offsetDate(today, -n);
 			return value >= threshold && value < today;
 		}
 		case 'underDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			const threshold = offsetDate(today, n);
 			return value > today && value <= threshold;
 		}
 		case 'overDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value < offsetDate(today, -n);
 		}
 		case 'overDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value > offsetDate(today, n);
 		}
 		case 'thisWeek': {
-			if (!hasValue) return false;
 			const { start, end } = getWeekRange(today, 0);
 			const dateOnly = value.slice(0, 10); // handle datetime values
 			return dateOnly >= start && dateOnly <= end;
 		}
 		case 'lastWeek': {
-			if (!hasValue) return false;
 			const { start, end } = getWeekRange(today, -1);
 			const dateOnly = value.slice(0, 10);
 			return dateOnly >= start && dateOnly <= end;
 		}
 		case 'nextWeek': {
-			if (!hasValue) return false;
 			const { start, end } = getWeekRange(today, 1);
 			const dateOnly = value.slice(0, 10);
 			return dateOnly >= start && dateOnly <= end;
 		}
 		case 'thisMonth': {
-			if (!hasValue) return false;
 			const dateOnly = value.slice(0, 10);
 			return dateOnly.slice(0, 7) === today.slice(0, 7);
 		}
 		case 'lastMonth': {
-			if (!hasValue) return false;
 			const { ym } = getMonthOffset(today, -1);
 			return value.slice(0, 7) === ym;
 		}
 		case 'nextMonth': {
-			if (!hasValue) return false;
 			const { ym } = getMonthOffset(today, 1);
 			return value.slice(0, 7) === ym;
 		}
 		case 'dayOfWeekIs': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return d.getDay() === parseInt(target, 10);
 		}
 		case 'dayOfWeekNot': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return d.getDay() !== parseInt(target, 10);
 		}
 		case 'monthIs': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return (d.getMonth() + 1) === parseInt(target, 10);
 		}
 		case 'monthNot': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return (d.getMonth() + 1) !== parseInt(target, 10);
 		}
@@ -1651,7 +1660,7 @@ function getWeekRange(today: string, weekOffset: number): { start: string; end: 
 /** Get YYYY-MM string for a month offset from today (0 = this month, -1 = last, +1 = next) */
 function getMonthOffset(today: string, monthOffset: number): { ym: string } {
 	const d = new Date(today + 'T00:00:00');
-	d.setMonth(d.getMonth() + monthOffset);
+	d.setMonth(d.getMonth() + monthOffset, 1);
 	const pad = (n: number) => String(n).padStart(2, '0');
 	return { ym: `${d.getFullYear()}-${pad(d.getMonth() + 1)}` };
 }

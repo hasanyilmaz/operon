@@ -116,6 +116,22 @@ test('relative date comparisons preserve leap day, year and local DST boundaries
  for (const [now, stored] of [['2024-03-01', '2024-02-29'], ['2026-01-01', '2025-12-31'], ['2026-03-30', '2026-03-29'], ['2026-10-26', '2026-10-25']]) {
   assert.equal(matches(condition('exactlyDaysAgo', '1'), task(stored), now), true);
  }
+ for (const [now, op, expected, outside] of [
+  ['2027-01-31', 'nextMonth', '2027-02-28', '2027-03-01'],
+  ['2027-03-31', 'lastMonth', '2027-02-01', '2027-03-01'],
+  ['2028-01-31', 'nextMonth', '2028-02-29', '2028-03-01'],
+  ['2028-03-31', 'lastMonth', '2028-02-29', '2028-03-01'],
+  ['2026-12-31', 'nextMonth', '2027-01-01', '2026-12-31'],
+  ['2027-01-01', 'lastMonth', '2026-12-31', '2027-01-01'],
+ ]) {
+  for (const [day, wanted] of [[expected, true], [outside, false]]) {
+   assert.equal(matches(condition(op), task(day), now), wanted, [now, op, day].join(' '));
+   const timestamp = { ...condition(op), field: 'datetimeCreated', fieldType: 'datetime' };
+   const candidate = task(day);
+   candidate.fieldValues.datetimeCreated = day + 'T23:59:00';
+   assert.equal(matches(timestamp, candidate, now), wanted, [now, op, candidate.fieldValues.datetimeCreated].join(' '));
+  }
+ }
 });
 test('condition normalization and clone/reopen preserve key, type, operator and value', () => {
  for (const [operator, value] of cases) {

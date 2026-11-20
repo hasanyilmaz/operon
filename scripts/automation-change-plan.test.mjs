@@ -5,12 +5,29 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
+import ts from 'typescript';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temp = await mkdtemp(path.join(tmpdir(), 'operon-automation-plan-'));
 after(() => rm(temp, { recursive: true, force: true }));
 const outfile = path.join(temp, 'helpers.mjs');
-await build({ stdin: { resolveDir: root, contents: `
+// Run the production saved-filter entry point without starting Obsidian.
+const source = ts.createSourceFile('main.ts', await readFile(path.join(root, 'main.ts'), 'utf8'), ts.ScriptTarget.Latest, true);
+const plugin = source.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
+const savedFilterMethods = ['evaluateAgentRuntimeSavedFilter', 'getTableFilePropertySnapshot'].map(name =>
+	plugin.members.find(member => member.name?.getText(source) === name).getText(source)).join('\n');
+
+await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
+	import { TFile, TFolder } from 'obsidian';
+	import { structuredErrorV1 } from './src/agent-runtime/contracts/v1/primitives';
+	import { evaluateFilterSet } from './src/core/filter-evaluator';
+	import { savedFilterQueryDigestV1 } from './src/agent-runtime/runtime/settings-fingerprint';
+	import { sha256HexV1 } from './src/agent-runtime/contracts/v1/canonical';
+	export class SavedFilterHost { ${savedFilterMethods} }
+	export { TFile };
+	export { createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver } from './src/ui/table/table-file-property';
+	export { projectIndexedNativeProperties } from './src/ui/table/table-native-property';
+	export { getNativePropertyIndex } from './src/indexer/native-property-index';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
 	export { filterTasksOnly } from './src/core/filter-evaluator';
 	export { AggregateCoordinator } from './src/systems/aggregate-coordinator';
@@ -19,7 +36,8 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { DEFAULT_SETTINGS } from './src/types/settings';
 ` }, bundle: true, format: 'esm', platform: 'node', outfile,
 	alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
-const { planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog } = await import(pathToFileURL(outfile).href);
+const { SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
+	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog } = await import(pathToFileURL(outfile).href);
 const sharedFields = new Map(new FilterFieldCatalog({ keyMappings: DEFAULT_SETTINGS.keyMappings, getRootGroup: () => undefined })
 	.getFieldOptions(true).map(option => [option.field, option.type]));
 const asOf = '2026-11-20T10:20:30';
@@ -278,5 +296,105 @@ test('a blocker reopened by checkbox or terminal date protects its dependent in 
 		assert.equal(field(p, 'a', 'status'), undefined);
 		assert.deepEqual(field(p, 'a', 'tags').after, ['follow']);
 		assert.equal(field(p, 'b', 'status').after, 'Project.Brainstorming');
+	}
+});
+
+test('managed datetime calendar operators compare the local day while selected timestamps retain time precision', () => {
+	const match = (operator, at, value) => {
+		const conditions = group('all', cond('datetimeModified', 'datetime', operator, value));
+		return filterTasksOnly(filter(conditions), [task('a', { datetimeModified: at })], undefined, undefined,
+			{ today: '2026-11-20' }).length === 1;
+	};
+	for (const time of ['00:00:00', '09:15:00', '23:59:00']) {
+		const at = '2026-11-20T' + time;
+		for (const [operator, value, expected] of [
+			['isToday', '', true], ['notToday', '', false], ['beforeToday', '', false], ['afterToday', '', false],
+			['dayOfWeekIs', '5', true], ['dayOfWeekNot', '5', false], ['monthIs', '11', true], ['monthNot', '11', false],
+			['dayOfWeekIs', '6', false], ['dayOfWeekNot', '6', true], ['monthIs', '12', false], ['monthNot', '12', true],
+		]) assert.equal(match(operator, at, value), expected, [operator, at].join(' '));
+	}
+	for (const [operator, value, day, expected] of [
+		['beforeToday', '', 19, true], ['afterToday', '', 21, true], ['notToday', '', 19, true],
+		['exactlyDaysAgo', '2', 18, true], ['exactlyDaysAgo', '2', 19, false],
+		['exactlyDaysAway', '2', 22, true], ['exactlyDaysAway', '2', 21, false],
+		['underDaysAgo', '2', 18, true], ['underDaysAgo', '2', 17, false], ['underDaysAgo', '2', 20, false],
+		['underDaysAway', '2', 22, true], ['underDaysAway', '2', 23, false], ['underDaysAway', '2', 20, false],
+		['overDaysAgo', '2', 17, true], ['overDaysAgo', '2', 18, false],
+		['overDaysAway', '2', 23, true], ['overDaysAway', '2', 22, false],
+		['thisWeek', '', 22, true], ['nextWeek', '', 23, true], ['lastWeek', '', 15, true],
+	]) assert.equal(match(operator, '2026-11-' + day + 'T23:59:59', value), expected, [operator, day].join(' '));
+
+	const at = '2026-11-20T09:15:00';
+	for (const [operator, target, expected] of [
+		['dateIs', at, true], ['dateIs', '2026-11-20T09:16:00', false],
+		['before', '2026-11-20T09:16:00', true], ['after', '2026-11-20T09:14:00', true],
+		['before', at, false], ['after', at, false],
+	]) assert.equal(match(operator, at, target), expected, operator);
+	for (const operator of ['isToday', 'notToday', 'dayOfWeekNot', 'monthNot', 'hasAnyValue']) {
+		assert.equal(match(operator, '', '1'), false, operator);
+	}
+	assert.equal(match('hasNoValue', ''), true);
+	for (const invalid of ['2026-10-51T09:15:00', '2026-11-19T33:15:00', '2026-10-51T09:15:00Z', '0']) {
+		assert.equal(match('isToday', invalid), false, invalid);
+		assert.equal(match('notToday', invalid), false, invalid);
+	}
+});
+
+test('Filters, Runtime saved queries and automation scope and target select identical local calendar dates', t => {
+	const previousTZ = process.env.TZ;
+	process.env.TZ = 'America/New_York';
+	t.after(() => { if (previousTZ === undefined) delete process.env.TZ; else process.env.TZ = previousTZ; });
+	t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2027-01-31T12:00:00-05:00') });
+	const nativeKey = 'file.property:Review';
+	const fields = ['datetimeModified', 'datetimeCreated', 'reviewAt', nativeKey];
+	const dates = ['2027-02-01T04:59:00Z', '2027-01-31T20:30:00-10:00', '2027-02-28T23:59:00', ''];
+	const tasks = dates.map((at, i) => task('task' + i, { datetimeModified: at, datetimeCreated: at, reviewAt: at },
+		{ primary: { filePath: i + '.md', format: 'yaml', lineNumber: 0 } }));
+	const files = new Map(tasks.map(item => [item.primary.filePath,
+		Object.assign(new TFile(item.primary.filePath), { stat: { mtime: 1, size: 100 } })]));
+	const metadata = new Map(tasks.map(item => [item.primary.filePath, { operonId: item.operonId, Review: item.fieldValues.reviewAt }]));
+	const app = {
+		vault: { getAbstractFileByPath: name => files.get(name), getMarkdownFiles: () => [...files.values()] },
+		metadataCache: { getFileCache: file => ({ frontmatter: metadata.get(file.path) }) },
+	};
+	const settings = { ...DEFAULT_SETTINGS, keyMappings: [...DEFAULT_SETTINGS.keyMappings,
+		{ canonicalKey: 'reviewAt', visiblePropertyName: 'Review at', type: 'datetime', isSystem: false }] };
+	const registry = { Review: 'datetime' };
+	const host = Object.assign(new SavedFilterHost(), {
+		settings, indexer: { getAllTasks: () => tasks, getGeneration: () => 1 },
+		tableFilePropertyIndex: createTableFilePropertyIndex(app, { typeResolver: createCachedTableFilePropertyTypeResolver(registry) }),
+	});
+	const base = host.getTableFilePropertySnapshot(tasks);
+	const index = getNativePropertyIndex(app);
+	t.after(() => index.dispose());
+	index.configure(settings);
+	index.setTypes(registry);
+	for (const [filePath, frontmatter] of metadata) {
+		index.accept(filePath, { frontmatter, order: Object.keys(frontmatter), inline: [] }, false);
+	}
+	const native = projectIndexedNativeProperties(app, base, tasks, settings);
+	const clock = '2027-01-31T12:00:00';
+	for (const key of fields) {
+		for (const [operator, value, expected] of [
+			['isToday', '', ['task0']], ['thisWeek', '', ['task0']], ['nextWeek', '', ['task1']],
+			['thisMonth', '', ['task0']], ['nextMonth', '', ['task1', 'task2']], ['monthIs', '2', ['task1', 'task2']],
+		]) {
+			const tree = group('all', cond(key, 'datetime', operator, value));
+			const saved = filter(tree);
+			const context = [key, operator].join(' ');
+			const visible = filterTasksOnly(saved, tasks, undefined, undefined, { today: clock.slice(0, 10), filePropertyContext: base });
+			assert.deepEqual(visible.map(item => item.operonId), expected, context);
+			host.settings.filterSets = [saved];
+			for (const contiguous of [false, true]) {
+				const result = host.evaluateAgentRuntimeSavedFilter({ filterSetId: saved.id }, contiguous);
+				assert.equal(result.ok, true, context);
+				assert.deepEqual(result.tasks.map(item => item.operonId).sort(), expected, context);
+			}
+			for (const [target, scope] of [[tree, group('all')], [group('all'), tree]]) {
+				const result = plan(tasks, [rule('calendar', [add('tags', 'review')], target, scope)], { asOf: clock, settings, native });
+				assert.deepEqual(result.changes.filter(change => change.field === 'tags').map(change => change.taskId).sort(), expected, context);
+				assert.equal(result.changedTaskCount, expected.length, context);
+			}
+		}
 	}
 });
