@@ -63,7 +63,7 @@ export function automationTypedListMapping(key: string, settings: AutomationFiel
 
 export function isAutomationNativeKeyWritable(key: string, settings: AutomationFieldSettings): boolean {
 	const name = decodeFilePropertyColumnKey(key);
-	return !!name && isWritableRawYamlPropertyName(name, settings.keyMappings);
+	return !!name && isWritableRawYamlPropertyName(name, settings.keyMappings, 'case-insensitive');
 }
 
 /** Resolve the source and its write capability before interpreting the action's literal. */

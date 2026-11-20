@@ -46,15 +46,24 @@ function renderYaml(path: string, content: string, update: Update, writer: TaskW
 	const rendered = writer.renderGuardedTaskSourceContent(path, content, [update]);
 	const next = rendered.ok && readFileTaskPropertyDocument(rendered.content);
 	if (!next) return null;
-	const names = new Set(update.filePropertyDraft?.changes.map(change => change.propertyName));
+	const names = new Map<string, string>(update.filePropertyDraft?.changes.map(change => [change.propertyName, change.propertyName]));
 	for (const key of Object.keys(update.fieldValues)) {
-		if (key === '_tags') names.add('tags');
-		else if (!key.startsWith('_')) for (const alias of getManagedYamlAliases(key, settings.keyMappings)) names.add(alias);
+		if (key === '_tags') names.set('tags', 'tags');
+		if (key.startsWith('_')) continue;
+		const aliases = getManagedYamlAliases(key, settings.keyMappings);
+		const existing = aliases.filter(name => Object.prototype.hasOwnProperty.call(original.frontmatter, name));
+		if (existing.length === 1) {
+			// The managed writer can emit the new value under the configured name. Patch the original key in place.
+			const renderedName = Object.prototype.hasOwnProperty.call(next.frontmatter, aliases[0]) ? aliases[0] : existing[0];
+			names.set(existing[0], renderedName);
+		} else {
+			for (const name of aliases) names.set(name, name);
+		}
 	}
 	const changes: PropertyEditorChange[] = [];
-	for (const name of names) {
+	for (const [name, renderedName] of names) {
 		const expected = readRawYamlPropertyExpectation(original.frontmatter, name);
-		const value = readRawYamlPropertyExpectation(next.frontmatter, name);
+		const value = readRawYamlPropertyExpectation(next.frontmatter, renderedName);
 		if (!expected || !value) return null;
 		if (JSON.stringify(expected) === JSON.stringify(value)) continue;
 		changes.push({ name, expected, value: value.value ?? null, remove: !value.present });

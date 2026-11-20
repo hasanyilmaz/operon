@@ -21,6 +21,7 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { registerWorkspaceDayRefresh } from './src/core/filter-day-refresh';
 	export { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
 	export { NativePropertyIndex, getNativePropertyIndex } from './src/indexer/native-property-index';
+	export { projectIndexedNativeProperties } from './src/ui/table/table-native-property';
 	export { OperonIndexer } from './src/indexer/indexer';
 	export { captureAutomationReadState } from './src/systems/automation-read-state';
 	export { prepareAutomationWork } from './src/systems/automation-task-writes';
@@ -50,7 +51,7 @@ await build({ stdin: { resolveDir: root, contents: `
 const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, mountAutomationRules, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
-	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
+	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
 const ruleId = 'rule-a';
 const all = { id: 'root', logic: 'all', children: [] };
@@ -124,21 +125,24 @@ async function fixture(files, opts = {}) {
 			if (f.losePinAuthority) { f.pinStateUnknown = true; throw Error('Unreadable pin acknowledgement'); }
 			pinData = next; return structuredClone(next); } });
 	await pins.load();
-	const idx = { getGeneration: () => 1, getLiveReadAuthoritySnapshot: () => ({ settled: true }), isIndexedSourceCurrent: () => true,
+	const indexedStats = new Map([...records].map(([name, file]) => [name, { ...file.stat }]));
+	const idx = { getGeneration: () => 1, getLiveReadAuthoritySnapshot: () => ({ settled: true }),
+		isIndexedSourceCurrent: file => indexedStats.get(file.path)?.mtime === file.stat.mtime && indexedStats.get(file.path)?.size === file.stat.size,
+		getAllDuplicateInstanceSnapshots: () => [...duplicates.values()].flat(),
 		subscribeIndexReconciliation: () => () => {}, getTask: key => tasks.get(key) };
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
 			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
-			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: () => [...duplicates.values()].flat(),
+			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: idx.getAllDuplicateInstanceSnapshots,
 			getInlineList: (task, name) => propertyIndex.readMappedInlineList(task, name), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
 		prepare: async (plan, yamlSources) => {
 			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
-				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], () => JSON.stringify(settings.projectSerialScopes)), indexed: () => true,
+				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], plan.changes, () => JSON.stringify(settings.projectSerialScopes)), indexed: () => true,
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
 				observeSource: f.observeSource, observePin: f.observePin,
@@ -157,12 +161,13 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async key => {
-		const task = tasks.get(key);
+	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async (key, copyPath) => {
+		const task = copyPath ? duplicates.get(key).find(copy => copy.primary.filePath === copyPath) : tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
 		const current = scan.inlineTasks.find(item => item.operonId === key);
 		Object.assign(task, current, { fieldValues: Object.fromEntries(current.fields.map(field => [field.key,field.value])) });
+		indexedStats.set(file.path, { ...file.stat });
 	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: (id = ruleId) => runner.run(id, ports) });
 }
 
@@ -348,6 +353,56 @@ for (const relation of ['blockedBy', 'blocking']) {
 		});
 	}
 }
+for (const representative of ['Open.md', 'Done.md']) {
+	for (const boundary of ['approval', 'write']) {
+		test(`pending Auto closure rechecks a duplicate blocker at ${boundary} with ${representative} indexed last`, async () => {
+			const open = ['Open.md', inline(id(1))];
+			const done = ['Done.md', inline(id(1), ' {{status:: Project.Finished}}').replace('- [ ]', '- [x]')];
+			const dependent = inline(id(0));
+			const files = Object.fromEntries([['Dependent.md', dependent], ...(representative === open[0] ? [done, open] : [open, done])]);
+			const f = await fixture(files, { rule: { mode: 'auto', target: rootGroup('description', 'text', 'is', id(0)),
+				actions: [action('status', 'Project.Finished'), action('tags', 'follow')] } });
+			assert.equal(f.tasks.get(id(1)).primary.filePath, representative);
+			const changed = inline(id(1), ' {{blocking:: ' + id(0) + '}}');
+			const changeBlocker = async () => {
+				await f.editFile('Open.md', changed);
+				const file = f.app.vault.getAbstractFileByPath('Open.md');
+				file.stat.mtime++;
+				file.stat.size = Buffer.byteLength(changed);
+			};
+			if (boundary === 'approval') f.confirm = async () => { await changeBlocker(); return 'apply'; };
+			else f.beforeProcess = changeBlocker;
+			const trigger = new Map([[ruleId, new Set([id(0)])]]);
+			const interrupted = await f.auto(trigger);
+			if (boundary === 'approval') assert.equal(interrupted.status, 'unavailable');
+			else assert.equal(interrupted.applied, 0);
+			assert.deepEqual(f.writes, []);
+			assert.equal(await f.read('Dependent.md'), dependent);
+			await f.reindexInline(id(1), 'Open.md');
+			f.confirm = () => 'apply';
+			f.beforeProcess = undefined;
+			const result = await f.auto(trigger);
+			assert.equal(result.applied, 1);
+			assert.ok(result.plan.issues.some(issue => issue.reason === 'blocked'));
+			assert.match(await f.read('Dependent.md'), /^- \[ \].*#follow/u);
+			assert.deepEqual(f.writes, ['Dependent.md']);
+			assert.equal(await f.read('Open.md'), changed);
+		});
+	}
+}
+
+test('pending Auto closure accepts its own confirmed write in a file shared with a duplicate', async () => {
+	const f = await fixture({ 'First.md': inline(id(0)) + inline('shared'), 'Copy.md': inline('shared'), 'Second.md': inline(id(1)) }, {
+		rule: { mode: 'auto', target: rootGroup('description', 'text', 'startsWith', 'task'), actions: [action('checkbox', 'done')] },
+	});
+	f.app.vault.on('modify', file => { file.stat.mtime++; });
+	const result = await f.auto(new Map([[ruleId, new Set([id(0)])]]));
+	assert.equal(result.applied, 2);
+	assert.match(await f.read('First.md'), /^- \[x\].*\n- \[ \] shared/u);
+	assert.match(await f.read('Second.md'), /^- \[x\]/u);
+	assert.deepEqual(f.writes, ['First.md', 'Second.md']);
+});
+
 test('opposed writes skip the entire conflicting task', async () => {
 	const f = await fixture(filesFor(1), { rule: { actions: [action('tags','same'), action('tags','same','remove'), action('note','skip')] } });
 	const result = await f.run(); assert.equal(result.applied,0); assert.ok(result.plan.issues.some(i => i.reason === 'conflict')); assert.deepEqual(f.writes, []);
@@ -541,6 +596,72 @@ test('batched inline custom fields reject missing or ambiguous source identities
 	}
 });
 
+for (const sourceName of ['Members', 'members', 'PARTICIPANTS']) {
+	test('mapped aliases survive a mixed YAML and typed inline batch using ' + sourceName, async () => {
+		const settings = {
+			keyMappings: typedMembers.keyMappings.map(mapping => {
+				if (mapping.canonicalKey === 'taskColor') return { ...mapping, visiblePropertyName: 'Color' };
+				if (mapping.canonicalKey === 'taskIcon') return { ...mapping, visiblePropertyName: 'Icon' };
+				return mapping;
+			}),
+			inlinePropertyDefinitions: { version: 1, entries: ['Members', 'participants'].map(name =>
+				({ sourceName: name, type: 'list', encoding: 'vault-v1' })) },
+		};
+		const source = '---\noperonId: task900\nparticipants: [Ana, Bob] # members\ntaskColor: "#112233"\ntaskIcon: lucide-bell\nKeep: original\n---\n'
+			+ inline(id(0), ' {{' + sourceName + ':: 2; "2"; "A; B"}}');
+		const f = await fixture({ 'Batch.md': source }, { settings, rule: {
+			actions: [action('participants', ['Lee']), action('taskColor', '#445566'), action('taskIcon', 'lucide-star')],
+		} });
+		f.frontmatter.get('task900').participants = ['Ana'];
+		const result = await f.run();
+		assert.equal(result.applied, 2);
+		const updated = await f.read('Batch.md');
+		const yaml = parseYaml(updated.split('---')[1]);
+		assert.deepEqual(yaml.participants, ['Ana', 'Bob', 'Lee']);
+		assert.equal(yaml.taskColor, '#445566');
+		assert.equal(yaml.taskIcon, 'star');
+		for (const alias of ['Members', 'Color', 'Icon']) assert.ok(!Object.hasOwn(yaml, alias));
+		assert.ok(updated.includes('# members'));
+		assert.equal(yaml.Keep, 'original');
+		assert.ok(updated.includes('{{' + sourceName + ':: 2; "2"; "A; B"; Lee}}'));
+		assert.deepEqual(f.writes, ['Batch.md']);
+	});
+}
+
+test('stale typed inline tokens stop the whole note before writing a sibling task', async () => {
+	const sibling = inline(id(0), ' {{Members:: Ana}}');
+	const row = inline(id(1), ' {{Members:: 2; "2"; "A; B"}}');
+	for (const token of [' {{Members:: 2; "unfinished}}', ' {{Members:: 2}} {{Members:: 3}}']) {
+		const f = await fixture({ 'Batch.md': sibling + row }, { settings: typedMembers, rule: { actions: [action('participants', ['Lee'])] } });
+		const edited = sibling + inline(id(1), token);
+		f.confirm = async () => { await f.editFile('Batch.md', edited); return 'apply'; };
+		assert.equal((await f.run()).status, 'unavailable');
+		assert.deepEqual(f.writes, []);
+		assert.equal(await f.read('Batch.md'), edited);
+	}
+});
+
+test('native aliases cannot shadow a managed YAML list while an independent native action still applies', async () => {
+	const overlap = action('file.property:members', 'Zoe');
+	const independent = action('file.property:Team', '"New; member"');
+	const f = await fixture({ 'Task.md': membersSource('participants: [Ana, Bob]\nTeam: [2, "2"]') }, {
+		settings: typedMembers, rule: { actions: [action('participants', ['Lee']), overlap, independent] },
+	});
+	getNativePropertyIndex(f.app).setTypes({ members: 'multitext', Team: 'multitext' });
+	f.native = projectIndexedNativeProperties(f.app, { fields: [] }, [...f.tasks.values()], typedMembers);
+	const ctx = { settings: () => typedMembers, nativeType: key => f.native.fields.find(field => field.key === key)?.type };
+	const result = await f.run();
+	assert.equal(result.applied, 1);
+	assert.ok(result.plan.issues.some(issue => issue.field === overlap.field && issue.reason === 'read-only'));
+	assert.equal(validAction(overlap, ctx), false);
+	assert.equal(validAction(independent, ctx), true);
+	const yaml = parseYaml((await f.read('Task.md')).split('---')[1]);
+	assert.deepEqual(yaml.participants, ['Ana', 'Bob', 'Lee']);
+	assert.deepEqual(yaml.Team, [2, '2', 'New; member']);
+	assert.ok(!Object.hasOwn(yaml, 'members') && !Object.hasOwn(yaml, 'Members'));
+	assert.deepEqual(f.writes, ['Task.md']);
+});
+
 test('typed inline list selections survive settings reload alongside unmarked legacy actions', async () => {
 	await withSettingsFixture({ table: false }, async disk => {
 		const storage = disk.createStorage();
@@ -714,6 +835,35 @@ test('Project Serial reference deletion at the final write boundary leaves Markd
 	assert.equal(await f.read(id(2) + '.md'), before);
 });
 
+test('a missing Project Serial group stops an Auto YAML list write even after renewed approval', async () => {
+	const scopes = [{ ...serialGroup }];
+	const f = await fixture({ 'Task.md': membersSource('participants: [Ana]') }, {
+		settings: { ...typedMembers, projectSerialScopes: scopes },
+		rule: { mode: 'auto', target: outsideSerialGroup, actions: [action('participants', ['Lee'])] },
+	});
+	const edited = membersSource('participants: [Ana, Bob] # user edit');
+	f.confirm = async () => {
+		if (f.prompts.length === 1) await f.editFile('Task.md', edited);
+		else scopes.length = 0;
+		return 'apply';
+	};
+	const trigger = new Map([[ruleId, new Set([id(1)])]]);
+	const stopped = await f.auto(trigger);
+	assert.equal(stopped.status, 'unavailable');
+	assert.ok(stopped.plan.issues.some(issue => issue.projectSerialGroupId === serialGroup.id));
+	assert.equal(f.prompts.length, 2);
+	assert.deepEqual(f.writes, []);
+	assert.equal(await f.read('Task.md'), edited);
+	scopes.push(serialGroup);
+	f.confirm = () => 'apply';
+	assert.equal((await f.auto(trigger)).applied, 1);
+	const updated = await f.read('Task.md');
+	assert.ok(updated.includes('# user edit'));
+	assert.deepEqual(parseYaml(updated.split('---')[1]).participants, ['Ana', 'Bob', 'Lee']);
+	assert.equal((await f.auto(trigger)).applied, 0);
+	assert.deepEqual(f.writes, ['Task.md']);
+});
+
 test('Project Serial references respect Auto event scope and stop a daily batch with an unresolved count', async () => {
 	const { f, scopes } = await serialFixture('scope', 'auto', 'none');
 	scopes.length = 0;
@@ -843,6 +993,12 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		const cards = () => host.querySelectorAll('.operon-filter-set-card');
 		const status = card => card.querySelectorAll('.operon-settings-list-card-chip-label').at(-1).textContent;
 		const draft = { ...createAutomationRule('Watch queue'), active: true, mode: 'auto' };
+		draft.target.children = structuredClone(outsideSerialGroup.children);
+		draft.actions = [
+			{ ...action('participants', '2'), id: 'act_12345678' },
+			{ ...action('participants', '2'), id: 'act_23456789', valueEncoding: 'vault-v1' },
+			{ ...action('participants', '"A; B"'), id: 'act_34567890', valueEncoding: 'vault-v1' },
+		];
 		await storage.saveAutomationRules(undefined, { ...readAutomationRules(undefined), rules: [draft] });
 		assert.equal(status(cards()[0]), t('settings', 'automationActive'));
 		tasks.set('a', { core: 'first edit' });
@@ -851,6 +1007,7 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		assert.deepEqual(batches, [[[draft.id, ['a']]]]);
 
 		const imported = { ...createAutomationRule('Restored queue'), active: true, mode: 'auto' };
+		imported.actions = [{ ...action('participants', '"A; B"', 'remove'), id: 'act_abcdef12', valueEncoding: 'vault-v1' }];
 		const backup = exportOperonSettingsBackupJsonV1({
 			settings: { ...storage.getSettings(), automationRules: { ...readAutomationRules(undefined), rules: [imported] } },
 			source: { pluginVersion: '4.8.0', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
@@ -868,6 +1025,7 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		assert.equal(restored.status, 'success');
 		const title = () => cards()[0].querySelector('.operon-settings-list-card-title').textContent;
 		assert.equal(title(), imported.name);
+		assert.deepEqual(rules()[0].actions, imported.actions);
 		assert.equal(status(cards()[0]), t('settings', 'automationInactive'));
 		tasks.set('a', { core: 'while restored rules are inactive' });
 		events.reconcile(['a']);
@@ -877,6 +1035,7 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		const undo = await storage.undoSettingsBackupRestoreV1(receipt.recovery.undoTokenId, receipt.receiptId);
 		assert.equal(undo.status, 'success');
 		assert.equal(title(), draft.name);
+		assert.deepEqual(rules()[0], draft);
 		assert.equal(status(cards()[0]), t('settings', 'automationActive'));
 		await settle();
 		assert.equal(batches.length, 1, 'Undo only establishes a baseline');
@@ -905,6 +1064,8 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		assert.equal(original.id, draft.id);
 		assert.notEqual(duplicate.id, original.id);
 		assert.equal(duplicate.active, false);
+		assert.deepEqual(duplicate.target.children, original.target.children);
+		assert.deepEqual(duplicate.actions, original.actions);
 		assert.equal(cards().length, 2);
 		emitWindow('pagehide', {});
 		assert.equal(windowListeners.get('pagehide').size, 0);

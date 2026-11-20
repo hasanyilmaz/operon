@@ -23595,7 +23595,7 @@ export default class OperonPlugin extends Plugin {
 					return prepareAutomationWork(plan, {
 						yamlSources,
 						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
-						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, () => JSON.stringify([
+						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, plan.changes, () => JSON.stringify([
 							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
 							this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
 							this.settings.autoExpandParentTaskDateRange,

@@ -3,9 +3,8 @@ import type { AutomationChangePlan, AutomationFieldChange } from '../core/automa
 import type { FileTaskPropertyChange } from '../core/file-task-property-draft';
 import { parseListValue } from '../core/parser';
 import { parseDependencyIdList } from '../core/dependency-graph';
-import { draftMappedInlineProperties } from '../core/inline-property-source';
+import { createInlinePropertyReadPlan, readParsedInlinePropertyProjection, type InlinePropertyChange } from '../core/inline-property-source';
 import { isSupportedRawYamlPropertyValue } from '../core/raw-yaml-property';
-import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from '../core/task-media-reference';
 import { readLosslessYamlListField } from '../core/yaml-fields';
 import type { GuardedTaskSourceFieldUpdate, TaskWriter, TaskWriterExclusiveMutationPermit } from '../core/task-writer';
@@ -53,8 +52,7 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 	const { format, lineNumber, filePath } = task.primary;
 	const update: GuardedTaskSourceFieldUpdate = { operonId: task.operonId, format, lineNumber, fieldValues: {}, expectedFieldValues: {} };
 	const yaml: FileTaskPropertyChange[] = [];
-	const inline = row ? draftMappedInlineProperties(row, changes.map(c => ({ field: c.field, value: c.after ?? undefined })),
-		ports.settings.keyMappings, ports.settings.inlinePropertyDefinitions) : [];
+	const inline: InlinePropertyChange[] = [];
 	for (const { field, before, after } of changes) {
 		if (field === 'pinned' || field === 'sourcePath' || field === 'description' && format === 'yaml') continue;
 		if (field.startsWith('file.property:')) {
@@ -75,17 +73,28 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 			continue;
 		}
 		const mapping = ports.settings.keyMappings.find(item => item.isSystem === false && item.canonicalKey === field);
-		const typed = mapping && inline.find(draft => [mapping.visiblePropertyName, mapping.canonicalKey].includes(draft.sourceName));
-		if (typed && (typed.expected.present || typed.type === 'list')) {
-			const previous = decodeVaultPropertyValue(typed.expected.rawValue ?? '', typed.type);
-			if (JSON.stringify(previous) !== JSON.stringify(before)) return null;
+		if (row && mapping) {
+			const { keyMappings, inlinePropertyDefinitions } = ports.settings;
+			const name = mapping.visiblePropertyName;
+			const plan = createInlinePropertyReadPlan(name, mapping.type, keyMappings, inlinePropertyDefinitions);
+			if (!plan.encoding) return null;
+			if (plan.encoding === 'vault-v1') {
+				const [property] = readParsedInlinePropertyProjection(row, { [name]: mapping.type }, keyMappings, inlinePropertyDefinitions, () => plan).properties;
+				if (property.state === 'conflict' || property.state === 'unsupported') return null;
+				const previous = property.present ? property.value : mapping.type === 'list' ? [] : null;
+				if (JSON.stringify(previous) !== JSON.stringify(before)) return null;
+				const source = row.fields.find(token => plan.aliases.has(token.sourceKey.toLowerCase()));
+				inline.push({ sourceName: source?.sourceKey ?? name, type: mapping.type,
+					expected: { present: property.present, rawValue: property.rawValue },
+					mutation: after === null ? { kind: 'remove' } : { kind: 'set', value: after } });
+				continue;
+			}
 		}
 		const key = ['tags', 'checkbox', 'description'].includes(field) ? '_' + field : field;
 		update.fieldValues[key] = Array.isArray(after) ? field === 'taskGallery' ? serializeTaskMediaReferenceList(after.map(String)) : after.join('; ') : String(after ?? '');
-		if (Array.isArray(after) && field !== 'taskGallery' && !typed && JSON.stringify(parseListValue(update.fieldValues[key])) !== JSON.stringify(after)) return null;
+		if (Array.isArray(after) && field !== 'taskGallery' && JSON.stringify(parseListValue(update.fieldValues[key])) !== JSON.stringify(after)) return null;
 		// YAML Effective Modified can come from the file stat. The source revision guards that case.
 		if (field === 'datetimeModified' && format === 'yaml' || field === 'checkbox') continue;
-		if (typed) continue;
 		if (format === 'yaml' && field !== 'tags' && Array.isArray(before)) {
 			const source = ports.yamlSources.get(filePath);
 			if (!source) return null;
@@ -156,9 +165,13 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 	return ports.withSources(paths, current, async allowed => {
 		const steps = group.sources.map(source => {
 			const step = sourceStep(source, ports, allowed, group.ids);
-			return { ...step, apply: async () => {
+			const recordCommit = (confirmed: boolean) => {
+				if (confirmed) state.sourceCommitted(source.file);
+				return confirmed;
+			};
+			return { ...step, isAfter: async () => recordCommit(await step.isAfter()), apply: async () => {
 				if (source.path !== source.destination || source.before !== source.after) { state.ownPath(source.path); state.ownPath(source.destination); }
-				return step.apply();
+				return recordCommit(await step.apply());
 			} };
 		});
 		if (group.pins.size) {
