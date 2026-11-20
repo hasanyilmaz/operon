@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "ファイルタスク内にインラインタスクを作成するとき、その親を自動的にそのファイルタスクに設定します。",
       "autoParentLinkedFileSubtasks": "リンクされたファイルサブタスクの親を自動設定",
       "autoParentLinkedFileSubtasksDesc": "ファイルタスク内にリンクされたファイルタスクを作成するとき、その親を自動的にそのファイルタスクに設定します。",
+      "automationActive": "有効",
+      "automationAddRule": "ルールを追加",
+      "automationAlwaysAsk": "常に確認",
+      "automationAuto": "自動",
+      "automationConfirmation": "変更を適用する前に確認",
+      "automationConfirmationDesc": "変更されるタスクの数が上限を超えると確認します。同じタスクは一度だけ数えます。上限が5なら6件以上で確認します。",
+      "automationCopyName": "{{name}}（コピー）",
+      "automationDelete": "{{name}} を削除しますか？",
+      "automationInactive": "無効",
+      "automationName": "自動化の名前",
+      "automationNoLimit": "上限なし",
+      "automationRuleList": "自動化ルール",
+      "automationRuleListDesc": "タスクの自動化ルールとその順序を管理します。",
+      "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
+      "automationUnavailable": "自動化の設定を読み込めませんでした。",
+      "automationsRestoreInactive": "復元したルールはすべて無効になります。",
+      "automationsTitle": "自動化",
       "backgroundDimmingDecrease": "背景を明るくする",
       "backgroundDimmingIncrease": "背景を暗くする",
       "backgroundDimmingSaveFailed": "背景の暗さを保存できませんでした。",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "865264a98a093d6622b255f30466d7eca85542c4d57560842526e587bcfe7d21"
+  "sourceVersion": "8e05ac434a3f8f4d4f8f23543be1ebfd33406df1b1b66cc24d59ce4c06122bc7"
 }

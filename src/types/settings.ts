@@ -1688,6 +1688,7 @@ export interface OperonSettings extends TaskCardSettings {
 	/** Internal source interpretation metadata; not a user-facing preference. */
 	inlinePropertyDefinitions?: import('../core/inline-property-definitions').InlinePropertyDefinitions;
 	/** Raw optional UI preferences; preserve unknown/future content without repair. */
+	automationRules?: unknown;
 	propertyValuePool?: unknown;
 	settingsVersion: number;
 
@@ -2772,7 +2773,7 @@ export function setNumericSetting(settings: OperonSettings, key: NumericSettingK
 	(settings as OperonSettings & NumericSettings)[key] = value;
 }
 
-const FILTER_FIELD_TYPES = new Set<FilterFieldType>([
+export const FILTER_FIELD_TYPES = new Set<FilterFieldType>([
 	'text',
 	'number',
 	'date',
@@ -4202,6 +4203,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		validateInlinePropertyDefinitions(src.inlinePropertyDefinitions);
 		out.inlinePropertyDefinitions = cloneInlinePropertyDefinitions(src.inlinePropertyDefinitions);
 	}
+	if (src.automationRules !== undefined) out.automationRules = structuredClone(src.automationRules);
 	if (src.propertyValuePool !== undefined) out.propertyValuePool = JSON.parse(JSON.stringify(src.propertyValuePool)) as unknown;
 	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
 		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)

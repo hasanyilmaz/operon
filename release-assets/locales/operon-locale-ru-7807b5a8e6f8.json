@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "При создании встроенной задачи внутри файловой задачи автоматически назначать её родителем эту файловую задачу.",
       "autoParentLinkedFileSubtasks": "Автоматическое назначение родителя для связанных файловых подзадач",
       "autoParentLinkedFileSubtasksDesc": "При создании связанной файловой задачи внутри файловой задачи автоматически назначать её родителем эту файловую задачу.",
+      "automationActive": "Активно",
+      "automationAddRule": "Добавить правило",
+      "automationAlwaysAsk": "Всегда спрашивать",
+      "automationAuto": "Авто",
+      "automationConfirmation": "Запрашивать подтверждение перед изменением",
+      "automationConfirmationDesc": "Запрашивать подтверждение, если число изменяемых задач превышает предел. Каждая задача учитывается один раз. При пределе 5 запрос появится для 6 или более задач.",
+      "automationCopyName": "{{name}} (копия)",
+      "automationDelete": "Удалить {{name}}?",
+      "automationInactive": "Неактивно",
+      "automationName": "Название автоматизации",
+      "automationNoLimit": "Без ограничений",
+      "automationRuleList": "Правила автоматизации",
+      "automationRuleListDesc": "Настройте правила задач и их порядок.",
+      "automationSaveFailed": "Не удалось сохранить настройки. Откройте автоматизацию заново, чтобы увидеть текущие значения.",
+      "automationUnavailable": "Не удалось прочитать настройки автоматизации.",
+      "automationsRestoreInactive": "Все восстановленные правила будут неактивны.",
+      "automationsTitle": "Автоматизация",
       "backgroundDimmingDecrease": "Уменьшить затемнение фона",
       "backgroundDimmingIncrease": "Увеличить затемнение фона",
       "backgroundDimmingSaveFailed": "Не удалось сохранить затемнение фона.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "fd41fcfe1d2e9ed5813cbbb43801c86fc5f5948f04a995a6338dcb6d7a95f6e7"
+  "sourceVersion": "270d99f91cfcc75aba624dcae60c2dc02cb5490ff2f11f1d671ed4ec7a1e2342"
 }

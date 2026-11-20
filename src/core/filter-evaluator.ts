@@ -77,6 +77,7 @@ export interface GroupedFilterResults {
 }
 
 interface EvalContext {
+	canReadCondition?: (condition: FilterSetCondition, task: IndexedTask) => boolean;
 	getRepeatSkipDates?: RepeatSkipDateResolver;
 	occurrenceDates: WeakMap<IndexedTask, string>;
 	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
@@ -84,7 +85,7 @@ interface EvalContext {
 	today: string;
 	priorityRankMap: Record<string, number> | null;
 	workflowStatusOrder: WorkflowStatusOrderIndex;
-	pinnedCache: PinnedCache | null;
+	pinnedCache: Pick<PinnedCache, 'isPinned'> | null;
 	taskById: Map<string, IndexedTask>;
 	childIdsByParentId: Map<string, string[]>;
 	dependencyTaskById: Map<string, IndexedTask>;
@@ -356,7 +357,7 @@ export function evaluateFilterSet(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
@@ -367,7 +368,7 @@ export function evaluateFilterSetWithTimeScope(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): ScopedFilterResult {
@@ -403,7 +404,7 @@ export function sortFilterTasks(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
@@ -417,7 +418,7 @@ export function filterTasksOnly(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
 	const context = createEvalContext(tasks, priorities, pinnedCache, undefined, {
@@ -434,7 +435,7 @@ export function evaluateFilterSetGrouped(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): GroupedFilterResults {
@@ -457,7 +458,7 @@ export function groupFilterTasks(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): GroupedFilterResults {
@@ -568,7 +569,7 @@ function isUnavailableFilePropertyGroupField(field: string, context: EvalContext
 export function getTaskGroupKey(
 	task: IndexedTask,
 	groupBy: string,
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 ): string {
 	if (groupBy === 'checkbox') return task.checkbox;
@@ -624,18 +625,34 @@ function getTaskGroupLabel(
 type FilterTruth = 'true' | 'false' | 'unknown';
 
 function matchesFilterSet(filterSet: FilterSet, task: IndexedTask, context: EvalContext): boolean {
-	const rootGroup = getRootGroup(filterSet);
+	return matchRootGroup(getRootGroup(filterSet), task, context) === 'true';
+}
+
+/** Evaluate a condition tree against candidates while retaining the entire task hierarchy. */
+export function prepareFilterGroupMatcher(
+	root: FilterGroup,
+	tasks: IndexedTask[],
+	pinned: Pick<PinnedCache, 'isPinned'> | null,
+	options: FilterEvaluationOptions,
+	canReadCondition: NonNullable<EvalContext['canReadCondition']>,
+): (task: IndexedTask) => FilterTruth {
+	const context = createEvalContext(tasks, undefined, pinned, undefined, {
+		dependencyState: root.children.some(nodeUsesDependencyState),
+	}, options);
+	context.canReadCondition = canReadCondition;
+	return task => matchRootGroup(root, task, context);
+}
+
+function matchRootGroup(rootGroup: FilterGroup, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (context.trackedOnEvaluation === undefined) {
 		context.trackedOnEvaluation = usesTrackedOn(rootGroup)
 			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id), evaluateDateCondition,
 				(node, candidate) => matchesFilterNode(node, candidate, context))
 			: null;
 	}
-	if (context.trackedOnEvaluation) return context.trackedOnEvaluation.evaluate(task).truth === 'true';
-	if (rootGroup.children.length === 0) return true;
-	// Unknown at the root is deliberately excluded. It represents a stale or
-	// type-incompatible raw property rule, never permission to include a task.
-	return matchesFilterGroup(rootGroup, task, context) === 'true';
+	if (context.trackedOnEvaluation) return context.trackedOnEvaluation.evaluate(task).truth;
+	if (rootGroup.children.length === 0) return 'true';
+	return matchesFilterGroup(rootGroup, task, context);
 }
 
 function getRootGroup(filterSet: FilterSet): FilterGroup {
@@ -648,18 +665,20 @@ function getRootGroup(filterSet: FilterSet): FilterGroup {
 }
 
 function filterSetUsesDependencyState(filterSet: FilterSet): boolean {
-	const visit = (node: FilterNode): boolean => {
-		if (isFilterGroup(node)) return node.children.some(visit);
-		return node.operator === 'hasActiveBlockers'
-			|| node.operator === 'hasNoActiveBlockers'
-			|| node.operator === 'isActivelyBlockingTasks'
-			|| node.operator === 'isNotActivelyBlockingTasks';
-	};
-	return getRootGroup(filterSet).children.some(visit);
+	return getRootGroup(filterSet).children.some(nodeUsesDependencyState);
+}
+
+function nodeUsesDependencyState(node: FilterNode): boolean {
+	if (isFilterGroup(node)) return node.children.some(nodeUsesDependencyState);
+	return node.operator === 'hasActiveBlockers'
+		|| node.operator === 'hasNoActiveBlockers'
+		|| node.operator === 'isActivelyBlockingTasks'
+		|| node.operator === 'isNotActivelyBlockingTasks';
 }
 
 function matchesFilterNode(node: FilterNode, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (isFilterGroup(node)) return matchesFilterGroup(node, task, context);
+	if (context.canReadCondition && !context.canReadCondition(node, task)) return 'unknown';
 	if (node.field.startsWith('file.property:')) return evaluateFilePropertyCondition(node, task, context);
 	return evaluateCondition(node, task, context);
 }
@@ -967,7 +986,7 @@ function evaluateCheckboxCondition(op: string, checkbox: string): boolean {
 	}
 }
 
-function evaluatePinnedCondition(op: string, task: IndexedTask, pinnedCache?: PinnedCache | null): boolean {
+function evaluatePinnedCondition(op: string, task: IndexedTask, pinnedCache?: Pick<PinnedCache, 'isPinned'> | null): boolean {
 	switch (op) {
 		case 'isPinned':
 			return pinnedCache?.isPinned(task.operonId) ?? false;
@@ -1339,7 +1358,7 @@ function sortTasks(
 	sorts: FilterSortSpec[],
 	priorityRankMap: Record<string, number> | null | undefined,
 	workflowStatusOrder: WorkflowStatusOrderIndex,
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 	filePropertyContext?: FilePropertyQueryContext | null,
 	getRepeatSkipDates?: RepeatSkipDateResolver,
@@ -1632,7 +1651,7 @@ function getMonthOffset(today: string, monthOffset: number): { ym: string } {
 function createEvalContext(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	orderRequirements: {
 		sorts?: readonly FilterSortSpec[];

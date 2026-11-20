@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Lors de la création d'une tâche en ligne à l'intérieur d'une tâche-fichier, définir automatiquement son parent sur cette tâche-fichier.",
       "autoParentLinkedFileSubtasks": "Rattacher automatiquement les sous-tâches-fichiers liées",
       "autoParentLinkedFileSubtasksDesc": "Lors de la création d'une tâche-fichier liée à l'intérieur d'une tâche-fichier, définir automatiquement son parent sur cette tâche-fichier.",
+      "automationActive": "Active",
+      "automationAddRule": "Ajouter une règle",
+      "automationAlwaysAsk": "Toujours demander",
+      "automationAuto": "Auto",
+      "automationConfirmation": "Demander avant d’appliquer les modifications",
+      "automationConfirmationDesc": "Demander confirmation si le nombre de tâches distinctes à modifier dépasse la limite. Avec 5, la confirmation est demandée à partir de 6 tâches.",
+      "automationCopyName": "{{name}} (copie)",
+      "automationDelete": "Supprimer {{name}} ?",
+      "automationInactive": "Inactive",
+      "automationName": "Nom de l’automatisation",
+      "automationNoLimit": "Sans limite",
+      "automationRuleList": "Règles d’automatisation",
+      "automationRuleListDesc": "Gérer les règles des tâches et leur ordre.",
+      "automationSaveFailed": "Impossible d’enregistrer les réglages. Rouvrez les automatisations pour consulter les valeurs actuelles.",
+      "automationUnavailable": "Impossible de lire ces réglages d’automatisation.",
+      "automationsRestoreInactive": "Toutes les règles restaurées seront inactives.",
+      "automationsTitle": "Automatisations",
       "backgroundDimmingDecrease": "Réduire l’assombrissement du fond",
       "backgroundDimmingIncrease": "Augmenter l’assombrissement du fond",
       "backgroundDimmingSaveFailed": "Impossible d’enregistrer l’assombrissement du fond.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "71e4ab5bdfe24033edf2ce90fae5ccceef0877912f2ad536c369a1d6a21a7000"
+  "sourceVersion": "e9acf2adf8bd06c933e608a3b185c19a01084f78efa324bef7f8c1496b71608f"
 }

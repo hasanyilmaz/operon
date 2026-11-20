@@ -19,6 +19,8 @@ import { changeTaskEditorLayout } from '../core/task-editor-layout';
 import { renderTaskEditorSectionsSettings } from './settings/task-editor-section-settings';
 import { editorSectionLabel } from './editor-sections-layout';
 import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
+import { AUTOMATION_CONFIRMATIONS, isAutomationRulesSettings, readAutomationRules } from '../core/automation-rules';
+import { automationConfirmationOptions, automationOptionKey, renderAutomationRules } from './settings/automation-rules';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
 import { buildPropertyValuePoolSettings } from './settings/property-value-pool-settings';
@@ -371,6 +373,7 @@ type OperonSettingsSecondaryTabId =
 	| 'tasksInlineTasks'
 	| 'tasksFileTasks'
 	| 'tasksTaskRouter'
+	| 'tasksAutomations'
 	| 'tasksRelationships'
 	| 'tasksRecurrence'
 	| 'tasksReminders'
@@ -773,6 +776,7 @@ const SETTINGS_SEARCH_TAB_DESCRIPTION_KEYS: Partial<Record<OperonSettingsSeconda
 	coreCustomKeys: { namespace: 'settings', key: 'customKeysDesc' },
 	tasksInlineTasks: { namespace: 'settings', key: 'settingsPageInlineTasksDesc' },
 	tasksFileTasks: { namespace: 'settings', key: 'settingsPageFileTasksDesc' },
+	tasksAutomations: { namespace: 'settings', key: 'automationRuleListDesc' },
 	tasksTaskRouter: { namespace: 'settings', key: 'settingsPageTaskRouterDesc' },
 	tasksRelationships: { namespace: 'settings', key: 'settingsPageRelationshipsDesc' },
 	tasksRecurrence: { namespace: 'settings', key: 'settingsPageRecurrenceDesc' },
@@ -1217,6 +1221,21 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === 'automationRules') {
+			const choice = AUTOMATION_CONFIRMATIONS.find(option => automationOptionKey(option) === value);
+			if (choice === undefined) return;
+			try {
+				const expected = this.settings.automationRules;
+				const rules = readAutomationRules(expected);
+				if (choice !== rules.confirmation) await this.storage.saveAutomationRules(expected, { ...rules, confirmation: choice });
+			} catch (error) {
+				console.error('Operon: Automation confirmation save failed', error);
+				new Notice(t('settings', 'automationSaveFailed'));
+			} finally {
+				this.updateNativeSettingsDefinitions();
+			}
+			return;
+		}
 		if (key === 'trackerStopOnObsidianQuit') {
 			try {
 				await this.storage.updateSettings({ trackerStopOnObsidianQuit: value === true || value === 'true' });
@@ -1420,6 +1439,12 @@ export class OperonSettingsTab extends PluginSettingTab {
 	): SettingDefinitionPage {
 		const pageName = this.getSettingsSearchTabPageName(tab);
 		const desc = this.getSettingsSearchTabDescription(tab.id);
+		if (tab.id === 'tasksAutomations') {
+			return { type: 'page', name: pageName, desc, items: this.compactSettingsSearchItems([
+				this.buildSettingsSearchSettingDefinitionFromEntry(entries.find(entry => entry.key === 'automationRules')),
+				this.buildSettingsSearchRenderDefinition(entries.find(entry => entry.id === 'automation.ruleList'), el => this.renderAutomationList(el)),
+			]) };
+		}
 		if (tab.id === 'tasksTaskRouter') {
 			return { type: 'page', name: pageName, desc, items: this.buildTaskRouterSettingsItems(entries) };
 		}
@@ -3178,6 +3203,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 					? fallbackValue
 					: Object.keys(options)[0] ?? '',
 				options,
+				...(key === 'automationRules' && this.settings.automationRules !== undefined && !isAutomationRulesSettings(this.settings.automationRules) ? { disabled: true } : {}),
 			};
 		}
 		if (entry.control === 'folder') {
@@ -3612,6 +3638,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private getSettingsSearchDropdownValue(key: OperonSettingSearchKey, value: unknown): string {
+		if (key === 'automationRules') return automationOptionKey(isAutomationRulesSettings(value) ? value.confirmation : 'always');
 		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return resolveCoreQuickSwitcherOpenBehavior(value);
 		if (key === 'statusDockTimerDialSize') return `${normalizeStatusDockTimerDialSize(value) ?? DEFAULT_STATUS_DOCK_TIMER_DIAL_SIZE}x`;
 		if (key === 'fileTaskFilenameRule') return normalizeFilenameRule(value).preset;
@@ -3887,6 +3914,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
  }
 
 	private getSettingsSearchDropdownOptions(key: OperonSettingSearchKey): Record<string, string> {
+		if (key === 'automationRules') return automationConfirmationOptions();
 		if (key === 'workspaceTweaksCoreQuickSwitcherOpenBehavior') return {
 			default: t('settings', 'workspaceTweaksQuickSwitcherDefault'),
 			source: t('settings', 'taskFinderResultSourceOnly'),
@@ -4421,6 +4449,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			{ id: 'tasksInlineTasks', groupId: 'tasks', label: t('settings', 'subtabInlineTasks') },
 			{ id: 'tasksFileTasks', groupId: 'tasks', label: t('settings', 'subtabFileTasks') },
 			{ id: 'tasksTaskRouter', groupId: 'tasks', label: t('settings', 'subtabTaskRouter') },
+			{ id: 'tasksAutomations', groupId: 'tasks', label: t('settings', 'automationsTitle') },
 			{ id: 'tasksRelationships', groupId: 'tasks', label: t('settings', 'subtabRelationships') },
 			{ id: 'tasksRecurrence', groupId: 'tasks', label: t('settings', 'subtabRecurrence') },
 			{ id: 'tasksReminders', groupId: 'tasks', label: t('settings', 'subtabReminders') },
@@ -4449,12 +4478,28 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		];
 	}
 
+	private renderAutomationList(containerEl: HTMLElement): void {
+		renderAutomationRules(this.app, containerEl, this.storage);
+	}
+
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {
 		for (const dispose of this.tasksConversionSettings.values()) dispose();
 		for (const dispose of this.propertyPoolSettings.values()) dispose();
 		this.propertyPoolSettings.clear();
 		if (tabId !== 'tasksReminders') this.disposeReminderSoundPreview();
-		if (tabId === 'corePipelines') {
+		if (tabId === 'tasksAutomations') {
+			new Setting(contentEl).setName(t('settings', 'automationConfirmation')).setDesc(t('settings', 'automationConfirmationDesc'))
+				.addDropdown(dropdown => dropdown.addOptions(automationConfirmationOptions())
+					.setDisabled(this.settings.automationRules !== undefined && !isAutomationRulesSettings(this.settings.automationRules))
+					.setValue(String(this.getControlValue('automationRules')))
+					.onChange(async value => {
+						await this.setControlValue('automationRules', value);
+						dropdown.setValue(String(this.getControlValue('automationRules')));
+						this.renderAutomationList(list);
+					}));
+			const list = contentEl.createDiv();
+			this.renderAutomationList(list);
+		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
 
 		} else if (tabId === 'interfaceTaskFinder') {

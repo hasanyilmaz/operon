@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Bir dosya görevi içinde satır içi görev oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
       "autoParentLinkedFileSubtasks": "Bağlı dosya alt görevlerine otomatik üst görev ata",
       "autoParentLinkedFileSubtasksDesc": "Bir dosya görevi içinde bağlı dosya görevi oluştururken üst görev değerini otomatik olarak o dosya görevi yap.",
+      "automationActive": "Etkin",
+      "automationAddRule": "Kural ekle",
+      "automationAlwaysAsk": "Her zaman sor",
+      "automationAuto": "Otomatik",
+      "automationConfirmation": "Değişiklikleri uygulamadan önce sor",
+      "automationConfirmationDesc": "Değişecek farklı task sayısı seçilen sınırı aşarsa onay iste. Örneğin sınır 5 ise 6 veya daha fazla task için sorulur.",
+      "automationCopyName": "{{name}} (kopya)",
+      "automationDelete": "{{name}} silinsin mi?",
+      "automationInactive": "İnaktif",
+      "automationName": "Otomasyon adı",
+      "automationNoLimit": "Sınır yok",
+      "automationRuleList": "Otomasyon kuralları",
+      "automationRuleListDesc": "Task otomasyon kurallarını ve sıralarını yönet.",
+      "automationSaveFailed": "Otomasyon ayarları kaydedilemedi. Güncel değerleri görmek için Otomasyonlar’ı yeniden aç.",
+      "automationUnavailable": "Bu otomasyon ayarları okunamadı.",
+      "automationsRestoreInactive": "Geri yüklenen tüm kurallar inaktif olacak.",
+      "automationsTitle": "Otomasyonlar",
       "backgroundDimmingDecrease": "Arka plan karartmasını azalt",
       "backgroundDimmingIncrease": "Arka plan karartmasını artır",
       "backgroundDimmingSaveFailed": "Arka plan karartması kaydedilemedi.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "71077fc884f700b4ebb994a5eb3f7336e1cb74bffab8a367181846097398801b"
+  "sourceVersion": "4506647c05fd0c7e66e52e4d9dc268c338327e62cc030d6c48eec6bfb9a6c6a3"
 }

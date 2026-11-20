@@ -1,3 +1,5 @@
+import { FilterFieldCatalog } from './src/ui/filter-condition-editor';
+import type { FilterGroup } from './src/types/settings';
 import { isEmptyFilePropertyValue } from './src/core/raw-yaml-property';
 import { editorMappedProperties } from './src/core/file-task-property-draft';
 import type { MiniCalendarNoteRequest } from './src/ui/calendar/mini-calendar-notes';
@@ -59,7 +61,9 @@ import { prepareCreationCommit, type PreparedCreationContent } from './src/core/
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
-import { writeTableNativeProperty } from './src/ui/table/table-native-property';
+import { planAutomationChanges } from './src/core/automation-change-plan';
+import type { AutomationRule, AutomationConfirmation } from './src/core/automation-rules';
+import { projectIndexedNativeProperties, writeTableNativeProperty } from './src/ui/table/table-native-property';
 import type { TableFilePropertyUpdateRequest } from './src/ui/table/table-file-property-editor';
 import { nativeEditorPropertyTypes } from './src/core/task-editor-native-properties';
 import { decodeVaultPropertyValue, encodeVaultPropertyValue, type VaultPropertyValue } from './src/core/vault-property-codec';
@@ -23513,6 +23517,38 @@ export default class OperonPlugin extends Plugin {
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			getProjectSerialSignature: () => this.getProjectSerialSignature(),
 		};
+	}
+
+	/** Synchronous draft/run calculation against the already indexed vault. */
+	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation) {
+		const tasks = this.indexer.getAllTasks();
+		const catalog = new FilterFieldCatalog({ keyMappings: this.settings.keyMappings, getRootGroup: () => undefined, getSettings: () => this.settings });
+		const expandParentDates = this.settings.autoExpandParentTaskDateRange;
+		const indexState = this.indexer.getLiveReadAuthoritySnapshot();
+		const needsNative = (node: FilterGroup): boolean => node.children.some(child =>
+			'children' in child ? needsNative(child) : child.field.startsWith('file.property:'));
+		const base = rules.some(rule => needsNative(rule.scope) || needsNative(rule.target)
+			|| rule.actions.some(action => action.field.startsWith('file.property:'))) ? this.getTableFilePropertySnapshot(tasks) : null;
+		return planAutomationChanges({
+			tasks, asOf: localNow(), conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
+			ready: this.startupReady && this.taskCardIndexState === 'ready' && indexState.settled
+				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',
+			settings: this.settings, pins: this.pinnedCache ? new Set(this.pinnedCache.getPinnedIds()) : null,
+			activeTimerId: this.timeTracker?.getActiveOperonId(),
+			getFrontmatter: task => this.getSourceContextFrontmatter(task.primary.filePath),
+			fileRenameState: (task, destination) => {
+				const path = task.primary.filePath;
+				if (this.app.vault.getAbstractFileByPath(destination)) return 'occupied';
+				if (tasks.some(other => other.operonId !== task.operonId && other.primary.filePath === path)
+					|| Object.values(this.app.metadataCache.resolvedLinks).some(links => links[path])) return 'unknown';
+				return this.app.vault.getAbstractFileByPath(path) instanceof TFile ? 'available' : 'unknown';
+			},
+			unavailableIds: new Set(tasks.filter(task => this.indexer.hasDuplicateOperonIdConflict(task.operonId)
+				|| this.indexer.isTaskSourceTransitionActive(task.operonId)).map(task => task.operonId)),
+			native: base ? projectIndexedNativeProperties(this.app, base, tasks, this.settings) : undefined,
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+			projectAggregates: (graph, affected) => this.aggregateCoordinator.projectAutomationAggregateFields(graph, affected, expandParentDates),
+		}, rules, confirmation);
 	}
 
 	private getTableFilePropertySnapshot(tasks: readonly IndexedTask[] = this.indexer.getAllTasks()) {

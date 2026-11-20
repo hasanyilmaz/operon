@@ -73,6 +73,7 @@ const SETTINGS_BACKUP_GROUP_LABELS = {
 	filters: { namespace: 'filterSets', key: 'tabLabel' },
 	calendar: { namespace: 'settings', key: 'tabCalendar' },
 	kanban: { namespace: 'settings', key: 'tabKanban' },
+	automations: { namespace: 'settings', key: 'automationsTitle' },
 	'preset-favorites': { namespace: 'settings', key: 'settingsBackupGroupPresetFavorites' },
 	'table-global': { namespace: 'settings', key: 'settingsBackupGroupTablePreferences' },
 	'external-calendars': { namespace: 'calendar', key: 'externalCalendarsSection' },
@@ -458,6 +459,7 @@ export class SettingsBackupRestoreModal extends Modal {
 		if (group.status === 'blocked') return settingsBackupT('settingsBackupGroupUnavailable');
 		if (group.status === 'skipped-unsupported') return settingsBackupT('settingsBackupGroupUnsupportedPreserved');
 		if (group.status === 'not-included') return settingsBackupT('settingsBackupGroupNotIncluded');
+		if (group.id === 'automations' && this.decisions.selectedGroups?.includes('automations')) return t('settings', 'automationsRestoreInactive');
 		return '';
 	}
 

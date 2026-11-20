@@ -14,6 +14,7 @@ import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sy
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
+import { readAutomationRules, type AutomationRulesSettings } from '../core/automation-rules';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
@@ -1243,6 +1244,19 @@ export class OperonStorage {
   });
  }
 
+	async saveAutomationRules(expected: unknown, next: AutomationRulesSettings): Promise<void> {
+		const expectedSource = JSON.stringify(expected);
+		const updated = readAutomationRules(next);
+		await this.enqueueSettingsTransaction(async () => {
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				if (JSON.stringify(current.automation.ruleSettings) !== expectedSource) throw new Error('Automation rules changed before save');
+				readAutomationRules(current.automation.ruleSettings);
+				return { ...current, automation: { ...current.automation, ruleSettings: updated } };
+			});
+			this.settings.automationRules = updated;
+		});
+	}
+
 	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
 	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown, canCommit: () => boolean = () => true): Promise<void> {
 		const pending = JSON.parse(JSON.stringify(edit)) as PropertyPoolEdit;
@@ -1532,6 +1546,7 @@ export class OperonStorage {
 				: currentPackage.views.tablePresets;
 			const nextPackage = {
 				...dataPackage,
+				automation: { ...currentPackage.automation, taskAutomationPolicy: dataPackage.automation.taskAutomationPolicy },
 				views: this.tablePresetRecovery.health === 'degraded'
 					? { ...dataPackage.views, tablePresets: degradedTablePresets }
 					: dataPackage.views,
@@ -1880,6 +1895,7 @@ export class OperonStorage {
 					candidateSettings: entry.previousSettings,
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
+				if (entry.selectedGroups.includes('automations') && entry.previousSettings.automationRules === undefined) delete candidateInput.automationRules;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete candidateInput.workspaceTweaksCoreQuickSwitcherOpenBehavior;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockCreatorStartsTimer === undefined) delete candidateInput.statusDockCreatorStartsTimer;
@@ -1939,6 +1955,7 @@ export class OperonStorage {
 	 * Update settings and persist.
 	 */
 	async updateSettings(partial: Partial<OperonSettings>): Promise<void> {
+		if (Object.prototype.hasOwnProperty.call(partial, 'automationRules')) throw new Error('Automation rules require a conditional save');
 		const pendingUpdate = cloneOperonSettingsPartial(partial);
 		if (pendingUpdate.pipelines?.length === 0) {
 			throw new Error('Operon requires at least one configured pipeline');
@@ -2004,6 +2021,7 @@ export class OperonStorage {
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockAlignment')) delete this.settings.statusDockAlignment;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'contextualMenuActionOrder')) delete this.settings.contextualMenuActionOrder;
+		if (normalized.automationRules === undefined) delete this.settings.automationRules;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;

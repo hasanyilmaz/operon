@@ -80,6 +80,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| 'statusDockClickAction'
 	| 'statusDockMode'
 	| 'statusDockAlignment'
+	| 'automationRules'
 	| 'propertyValuePool'
 	| 'presetFavorites'
 	| keyof TaskAutomationPolicyStoreSettings;
@@ -117,6 +118,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'statusDockClickAction',
 	'statusDockMode',
 	'statusDockAlignment',
+	'automationRules',
 	'propertyValuePool',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
@@ -401,6 +403,7 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 }
 
 export interface OperonAutomationPackageV1 {
+	ruleSettings?: unknown;
 	taskAutomationPolicy: VersionedStoreSlice<
 		Omit<TaskAutomationPolicyStoreSettings, 'trackerStopOnObsidianQuit'> & {
 			trackerStopOnObsidianQuit?: boolean;
@@ -592,6 +595,7 @@ export function composeOperonSettingsFromDataPackage(
 			? cloneUnknown(dataPackage.ui.presetFavorites)
 			: undefined,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
+		automationRules: dataPackage.automation.ruleSettings,
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
 	});
 }
@@ -791,6 +795,7 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		automation: {
+			...(normalized.automationRules === undefined ? {} : { ruleSettings: cloneUnknown(normalized.automationRules) }),
 			taskAutomationPolicy: {
 				version: 1,
 				keepInlineTasksWithParent: normalized.keepInlineTasksWithParent,

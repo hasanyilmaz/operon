@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Beim Erstellen einer Inline-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
       "autoParentLinkedFileSubtasks": "Verknüpfte Datei-Unteraufgaben automatisch zuordnen",
       "autoParentLinkedFileSubtasksDesc": "Beim Erstellen einer verknüpften Datei-Aufgabe innerhalb einer Datei-Aufgabe deren übergeordnete Aufgabe automatisch auf diese Datei-Aufgabe setzen.",
+      "automationActive": "Aktiv",
+      "automationAddRule": "Regel hinzufügen",
+      "automationAlwaysAsk": "Immer nachfragen",
+      "automationAuto": "Automatisch",
+      "automationConfirmation": "Vor dem Anwenden von Änderungen nachfragen",
+      "automationConfirmationDesc": "Nachfragen, wenn mehr unterschiedliche Aufgaben als angegeben geändert würden. Beim Limit 5 erfolgt die Nachfrage ab 6 Aufgaben.",
+      "automationCopyName": "{{name}} (Kopie)",
+      "automationDelete": "{{name}} löschen?",
+      "automationInactive": "Inaktiv",
+      "automationName": "Name der Automatisierung",
+      "automationNoLimit": "Kein Limit",
+      "automationRuleList": "Automatisierungsregeln",
+      "automationRuleListDesc": "Regeln für Aufgaben und ihre Reihenfolge verwalten.",
+      "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
+      "automationUnavailable": "Diese Automatisierungseinstellungen konnten nicht gelesen werden.",
+      "automationsRestoreInactive": "Alle wiederhergestellten Regeln sind zunächst inaktiv.",
+      "automationsTitle": "Automatisierungen",
       "backgroundDimmingDecrease": "Hintergrund weniger abdunkeln",
       "backgroundDimmingIncrease": "Hintergrund stärker abdunkeln",
       "backgroundDimmingSaveFailed": "Die Hintergrundabdunklung konnte nicht gespeichert werden.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "8e8966996658b931449400a001d79753eb2a2ab646002d90e7246351f3b9d0fa"
+  "sourceVersion": "36423d1c8a4f6062472abebfdea71459cf78330545b4984d59eccee68ce22a2e"
 }

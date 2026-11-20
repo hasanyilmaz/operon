@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Quando crei un'attività in linea all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
       "autoParentLinkedFileSubtasks": "Assegna automaticamente il genitore alle sotto-attività-file collegate",
       "autoParentLinkedFileSubtasksDesc": "Quando crei un'attività-file collegata all'interno di un'attività-file, imposta automaticamente il suo genitore su quell'attività-file.",
+      "automationActive": "Attiva",
+      "automationAddRule": "Aggiungi regola",
+      "automationAlwaysAsk": "Chiedi sempre",
+      "automationAuto": "Automatico",
+      "automationConfirmation": "Chiedi prima di applicare le modifiche",
+      "automationConfirmationDesc": "Chiede conferma se il numero di attività distinte da modificare supera il limite. Con un limite di 5, chiede conferma a partire da 6 attività.",
+      "automationCopyName": "{{name}} (copia)",
+      "automationDelete": "Eliminare {{name}}?",
+      "automationInactive": "Inattiva",
+      "automationName": "Nome automazione",
+      "automationNoLimit": "Nessun limite",
+      "automationRuleList": "Regole di automazione",
+      "automationRuleListDesc": "Gestisci le regole per le attività e il loro ordine.",
+      "automationSaveFailed": "Impossibile salvare le impostazioni. Riapri Automazioni per vedere i valori attuali.",
+      "automationUnavailable": "Impossibile leggere queste impostazioni di automazione.",
+      "automationsRestoreInactive": "Tutte le regole ripristinate saranno inattive.",
+      "automationsTitle": "Automazioni",
       "backgroundDimmingDecrease": "Riduci l’oscuramento dello sfondo",
       "backgroundDimmingIncrease": "Aumenta l’oscuramento dello sfondo",
       "backgroundDimmingSaveFailed": "Impossibile salvare l’oscuramento dello sfondo.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "9d1332869457732779b152fa64a75438818e422eb497b3d8c2e79f6c4810f23e"
+  "sourceVersion": "b6aad57e8c2d4959347ae0b28899c3fba77f2d1c520f13dcf4689e81be7b2d44"
 }

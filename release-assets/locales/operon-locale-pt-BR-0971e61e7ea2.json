@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Ao criar uma tarefa inline dentro de uma tarefa em arquivo, seu pai será automaticamente definido como essa tarefa em arquivo.",
       "autoParentLinkedFileSubtasks": "Subtarefas vinculadas a arquivos com pai automático",
       "autoParentLinkedFileSubtasksDesc": "Ao criar uma tarefa em arquivo vinculada dentro de uma tarefa em arquivo, defina automaticamente a tarefa em arquivo externa como tarefa pai.",
+      "automationActive": "Ativa",
+      "automationAddRule": "Adicionar regra",
+      "automationAlwaysAsk": "Sempre perguntar",
+      "automationAuto": "Automático",
+      "automationConfirmation": "Perguntar antes de aplicar alterações",
+      "automationConfirmationDesc": "Pede confirmação quando o número de tarefas distintas a alterar supera o limite. Com limite de 5, pergunta a partir de 6 tarefas.",
+      "automationCopyName": "{{name}} (cópia)",
+      "automationDelete": "Excluir {{name}}?",
+      "automationInactive": "Inativa",
+      "automationName": "Nome da automação",
+      "automationNoLimit": "Sem limite",
+      "automationRuleList": "Regras de automação",
+      "automationRuleListDesc": "Gerencie as regras de tarefas e sua ordem.",
+      "automationSaveFailed": "Não foi possível salvar as configurações. Reabra Automações para ver os valores atuais.",
+      "automationUnavailable": "Não foi possível ler estas configurações de automação.",
+      "automationsRestoreInactive": "Todas as regras restauradas ficarão inativas.",
+      "automationsTitle": "Automações",
       "backgroundDimmingDecrease": "Diminuir o escurecimento do fundo",
       "backgroundDimmingIncrease": "Aumentar o escurecimento do fundo",
       "backgroundDimmingSaveFailed": "Não foi possível salvar o escurecimento do fundo.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "f72640aeb21638fa9766f5f57991e265bcd994f53a9607e7e2d97947a901e1f0"
+  "sourceVersion": "f435fb7521c642813d8b3bed78d472e15114bdfe064e8e518d7ffc3ceac8f403"
 }

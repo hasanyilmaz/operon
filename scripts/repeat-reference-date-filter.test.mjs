@@ -34,10 +34,12 @@ await build({ stdin: { contents: `
  export { getTableTaskField, isEditableTableTaskFieldKey } from './src/ui/table/table-field-catalog';
 `, resolveDir: root }, outfile: path.join(temp, 'helpers.mjs'), bundle: true, format: 'esm', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const h = await import(pathToFileURL(path.join(temp, 'helpers.mjs')).href);
-const modalFile = 'src/ui/filter-set-modal.ts';
-function compile(name, deps = {}, method = false) {
- const source = read(modalFile), ast = ts.createSourceFile(modalFile, source, ts.ScriptTarget.Latest, true);
- const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === 'FilterSetModal').members : ast.statements;
+const editorFile = 'src/ui/filter-condition-editor.ts';
+function compile(name, deps = {}, owner = '') {
+ const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : editorFile;
+ const source = read(file), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+ const method = Boolean(owner);
+ const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === owner).members : ast.statements;
  const node = nodes.find(node => node.name?.getText(ast) === name); assert.ok(node, name);
  const declaration = method ? `class Subject { ${node.getText(ast)} }` : node.getText(ast).replace(/^export\s+/u, '');
  const js = ts.transpileModule(declaration, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
@@ -51,7 +53,7 @@ const getFieldOptions = compile('getFieldOptions', {
  getFilterSetFieldPickerMappingCandidates: compile('getFilterSetFieldPickerMappingCandidates', { getManagedCustomFieldOptions: h.getManagedCustomFieldOptions }),
  resolveFilterFieldGroupForMapping: () => 'task', getConfiguredKeyMappingIcon: h.getConfiguredKeyMappingIcon,
  getFilterFieldTypeIcon: compile('getFilterFieldTypeIcon'), compareFilterFieldPickerOptions: compile('compareFilterFieldPickerOptions'),
-}, true);
+}, 'FilterFieldCatalog');
 const subject = { getPropertyIconSettings: () => h.DEFAULT_SETTINGS, keyMappings: h.DEFAULT_SETTINGS.keyMappings, getFilePropertyFieldOptions: () => [], getFieldOptions, getProjectSerialScopeOptions: () => [] };
 const condition = (operator = 'dateIs', value = today) => ({ id: 'condition', field: key, fieldType: 'date', operator, value });
 const filter = cond => ({ id: 'reference-filter', name: 'Reference date', rootGroup: { id: 'root', logic: 'all', children: [cond] }, sorts: [], matchLogic: 'all', conditions: [cond] });
@@ -66,7 +68,7 @@ test('reference date shares the Table label/icon/type in conditions and sorting 
  assert.equal(h.DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === key).isInternal, true);
  for (const happensOn of [false, true]) assert.equal(getFieldOptions.call(subject, false, happensOn).some(field => field.field === key), false);
  assert.deepEqual(getFieldOptions.call(subject, false, true, true).filter(field => field.field === key), options);
- assert.match(read(modalFile), /const sortFieldOptions = this\.getFieldOptions\(false, true, true\)/);
+ assert.match(read('src/ui/filter-set-modal.ts'), /const sortFieldOptions = this\.fields\.getFieldOptions\(false, true, true\)/);
  assert.equal(fields.some(field => field.field === 'repeatSeriesId'), false);
 });
 test('reference date sorts file and inline tasks in both directions and survives settings normalization', () => {
@@ -133,8 +135,8 @@ test('group clipboard round-trip is compatible with the actual destination field
  assert.equal(decoded.ok, true);
  assert.notEqual(decoded.group.id, original.id);
  assert.equal(decoded.group.children[0].field, key); assert.equal(decoded.group.children[0].value, today);
- const compatibility = compile('getFilterGroupPasteCompatibilityIssue', { findFilterGroupPasteCompatibilityIssue: h.findFilterGroupPasteCompatibilityIssue, isFilePropertyColumnKey: () => false }, true);
- assert.equal(compatibility.call(subject, decoded.group), null);
+ const compatibility = compile('getFilterGroupPasteCompatibilityIssue', { findFilterGroupPasteCompatibilityIssue: h.findFilterGroupPasteCompatibilityIssue, isFilePropertyColumnKey: () => false }, 'FilterConditionEditor');
+ assert.equal(compatibility.call({ options: { fields: subject } }, decoded.group), null);
 });
 test('settings backup serialization, parsing and validation preserve the date condition', () => {
  const body = JSON.parse(read('scripts/settings-backup-fixtures/representative-body.json'));
@@ -165,26 +167,25 @@ class Element {
 }
 function modalHarness(cond = condition()) {
  const root = new Element(), draft = h.cloneFilterSet(filter(cond)), saved = [], popovers = [], fieldPickers = [];
- const state = { ...subject, filterSet: draft, options: {}, invalidRawConditionIds: new Set(),
+ const state = { ...subject, filterSet: draft, options: { fields: subject, onChange: () => state.syncMirroredFilterFields() }, invalidRawValues: new Map(),
   addClasses: (el, ...names) => el.addClass(...names), renderNodeMoveButtons() {}, renderQuickActions() {},
   measureControlContentWidth: () => 180, measureSelectContentWidth: () => 180,
   getFilterOperatorLabel: option => option.label, getPickerFieldOptions: fields => fields,
   openDateConditionPopover: (input, condition) => popovers.push({ input, condition }),
   createModalSelect: (parent, options, value, onChange) => { const select = parent.createDiv().createEl('select', { value }); select.onChange = onChange; return select; },
-  flattenConditions: compile('flattenConditions', { isFilterGroupNode: node => Array.isArray(node.children) }, true),
-  syncMirroredFilterFields: compile('syncMirroredFilterFields', {}, true),
+  syncMirroredFilterFields: compile('syncMirroredFilterFields', { flattenConditions: compile('flattenConditions', { isFilterGroupNode: node => Array.isArray(node.children) }) }, 'FilterSetModal'),
   hasInvalidTrackedOnCondition: () => false, close() { this.closed = true; }, onSave: value => saved.push(structuredClone(value)),
  };
  const deps = {
-  t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
+  getPickerFieldOptions: compile('getPickerFieldOptions'), t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
   setAccessibleLabelWithoutTooltip: (el, value) => el.setAttribute('aria-label', value),
   getOperatorsForField: h.getOperatorsForField, NO_VALUE_OPERATORS: h.NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS: h.NUMERIC_INPUT_DATE_OPERATORS,
   TASK_DATA_TYPE_FIELD_KEY: '__taskDataType', isFilePropertyColumnKey: () => false,
   normalizeFilterDateInput: compile('normalizeFilterDateInput', { CANONICAL_FILTER_DATE_PATTERN: /^(\d{4})-(\d{2})-(\d{2})$/u }),
   showFilterConditionPicker: (el, options) => fieldPickers.push(options),
  };
- compile('renderConditionRow', deps, true).call(state, root, draft.rootGroup, draft.rootGroup.children[0], 0);
- compile('renderButtons', deps, true).call(state, root);
+ compile('renderConditionRow', deps, 'FilterConditionEditor').call(state, root, draft.rootGroup, draft.rootGroup.children[0], 0);
+ compile('renderButtons', deps, 'FilterSetModal').call(state, root);
  return { root, state, saved, popovers, fieldPickers, cond: draft.rootGroup.children[0] };
 }
 test('date operators render the shared date picker, numeric or no-value controls', () => {

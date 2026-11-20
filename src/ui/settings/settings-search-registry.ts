@@ -99,6 +99,8 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('taxonomy', 'coreKeymapping', 'keyMappings', 'settings', 'keyMappings', 'keyMappingsIntro', ['key mapping', 'property mapping', 'properties', 'fields', 'frontmatter', 'yaml', 'inline metadata', 'canonical key', 'visible property', 'task field']),
 	section('taxonomy', 'coreCustomKeys', 'customKeys', 'settings', 'tabCustomKeys', 'customKeysDesc', ['custom keys', 'custom fields', 'custom field', 'custom key', 'canonical custom key', 'add field', 'add custom field', 'show in editor', 'show in creator', 'show in chips', 'surface visibility', 'used in', 'usage', 'reorder custom field']),
 
+	e('automation', 'tasksAutomations', 'automationRules', 'settings', 'automationConfirmation', 'automationConfirmationDesc', 'dropdown', ['automations', 'task limit', 'confirmation']),
+	section('automation', 'tasksAutomations', 'ruleList', 'settings', 'automationRuleList', 'automationRuleListDesc', ['automations', 'rule', 'draft']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskHeading', 'settings', 'inlineTaskHeading', 'inlineTaskHeadingDesc', 'text', ['new task', 'task creator', 'inline task', 'heading', 'section']),

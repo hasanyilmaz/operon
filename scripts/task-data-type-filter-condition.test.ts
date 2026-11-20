@@ -184,13 +184,14 @@ equal(
 );
 
 const filterModalSource = readFileSync('src/ui/filter-set-modal.ts', 'utf8');
-const conditionOnlyStart = filterModalSource.indexOf('if (includeConditionOnly) {');
-const conditionOnlyEnd = filterModalSource.indexOf('\n\n\t\tconst mappingCandidates', conditionOnlyStart);
-const conditionOnlyBlock = filterModalSource.slice(conditionOnlyStart, conditionOnlyEnd);
+const editorSource = readFileSync('src/ui/filter-condition-editor.ts', 'utf8');
+const conditionOnlyStart = editorSource.indexOf('if (includeConditionOnly) {');
+const conditionOnlyEnd = editorSource.indexOf('\n\n\t\tconst mappings', conditionOnlyStart);
+const conditionOnlyBlock = editorSource.slice(conditionOnlyStart, conditionOnlyEnd);
 equal(conditionOnlyBlock.includes('TASK_DATA_TYPE_FIELD_KEY'), true, 'Condition-only picker options include Task Data Type.');
-equal(filterModalSource.includes("this.getFieldOptions(false, true)"), true, 'Sort and group continue using non-condition field options.');
-equal(filterModalSource.includes("{ value: 'inline', label: 'inline' }"), true, 'The value picker includes inline.');
-equal(filterModalSource.includes("{ value: 'file', label: 'file' }"), true, 'The value picker includes file.');
-equal(filterModalSource.includes('operon-task-data-type-value-select'), true, 'The value picker has a dedicated stable selector.');
+equal(filterModalSource.includes("this.fields.getFieldOptions(false, true)"), true, 'Sort and group continue using non-condition field options.');
+equal(editorSource.includes("{ value: 'inline', label: 'inline' }"), true, 'The value picker includes inline.');
+equal(editorSource.includes("{ value: 'file', label: 'file' }"), true, 'The value picker includes file.');
+equal(editorSource.includes('operon-task-data-type-value-select'), true, 'The value picker has a dedicated stable selector.');
 
 console.log(`Task Data Type filter condition: ${assertions}/${assertions} assertions passed`);

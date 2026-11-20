@@ -1,3 +1,4 @@
+import { createAutomationRule, readAutomationRules } from '../src/core/automation-rules';
 import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
@@ -262,7 +263,7 @@ interface Harness {
 	adapter: MemoryAdapter;
 }
 
-async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
+async function createHarness(initial: OperonDataPackageV1, observeBoot?: (data: ControlledPluginData) => void): Promise<Harness> {
 	const adapter = new MemoryAdapter();
 	const data = new ControlledPluginData(initial);
 	const tableSources = new Map((initial.views.tablePresets.fileBindings ?? []).map(binding => {
@@ -288,6 +289,7 @@ async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 	} as unknown as App;
 	const storage = new OperonStorage(app, connectPluginDataAdapter(adapter, { loadData: data.loadData, saveData: data.saveData }));
 	await storage.initialize();
+	observeBoot?.(data);
 	data.reset();
 	adapter.mutations = 0;
 	return { storage, data, adapter };
@@ -335,7 +337,7 @@ function exportLegacyArchiveJson(settings: OperonSettings): string {
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
+	selectedGroups: readonly ('general' | 'automations' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -375,6 +377,98 @@ function protectedProjection(dataPackage: OperonDataPackageV1) {
 		},
 	};
 }
+
+for (const schema of [2, 3] as const) {
+	test('automation drafts survive reload without initializing absent rules on schema ' + schema, async () => {
+		const defaultsWithFilters = clone(DEFAULT_SETTINGS);
+		defaultsWithFilters.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+		const initial = canonicalPackage(defaultsWithFilters);
+		initial.schemaVersion = schema;
+		if (schema === 3) initial.taxonomy.inlinePropertyDefinitions = { version: 1, entries: [] };
+		const observe = (data: ControlledPluginData): void => {
+			assert.equal(data.saveAttempts, 0, 'opening an existing package must not save settings');
+		};
+		const first = await createHarness(initial, observe);
+		const second = await createHarness(first.data.committed, observe);
+		first.storage.destroy();
+		const { storage, data } = second;
+		const draft = createAutomationRule(' Example ');
+		const defaults = readAutomationRules(storage.getSettings().automationRules);
+		assert.deepEqual(defaults, { version: 1, confirmation: 'always', rules: [] });
+		assert.equal(draft.name, 'Example');
+		assert.deepEqual([draft.mode, draft.active, draft.scope.children, draft.target.children, draft.actions], ['manual', false, [], [], []]);
+		assert.notEqual(draft.scope.id, draft.target.id);
+		const next = { ...defaults, confirmation: 10 as const, rules: [draft] };
+		const before = clone(data.committed);
+		await storage.saveAutomationRules(undefined, next);
+		assert.deepEqual(data.committed, { ...before, automation: { ...before.automation, ruleSettings: next } });
+		assert.equal(data.saveSuccesses, 1);
+		await assert.rejects(storage.saveAutomationRules(undefined, defaults));
+		assert.equal(data.saveSuccesses, 1);
+		data.mode = 'fail-clean';
+		await assert.rejects(storage.saveAutomationRules(next, defaults));
+		assert.deepEqual(storage.getSettings().automationRules, next);
+		assert.deepEqual(data.committed.automation.ruleSettings, next);
+		data.mode = 'normal';
+		await storage.saveAutomationRules(next, { ...next, rules: [{ ...draft, active: true }] });
+		const restarted = await createHarness(data.committed, observe);
+		assert.equal(readAutomationRules(restarted.storage.getSettings().automationRules).rules[0].active, true);
+		storage.destroy();
+		restarted.storage.destroy();
+	});
+}
+
+test('selected automation restore deactivates all imported rules and Undo restores the exact preimage', async () => {
+	const activeRule = { ...createAutomationRule('Existing'), active: true, mode: 'auto' as const };
+	const previous = { ...readAutomationRules(undefined), rules: [activeRule] };
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), automationRules: previous }));
+	const { storage, data } = harness;
+	const imported = [createAutomationRule('First'), { ...createAutomationRule('Second'), active: true }];
+	imported[1].actions.push({ id: 'action', field: 'tags', operation: 'add', value: 'review' });
+	const source = { ...storage.getSettings(), automationRules: { ...previous, confirmation: 25, rules: imported } };
+	const { sourceJson, plan } = await createPlan(storage, source, ['automations']);
+	assert.deepEqual(JSON.parse(sourceJson).body.groups.automations.data.rules.map((rule: { active: boolean }) => rule.active), [false, true]);
+	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, active: false })) };
+	assert.deepEqual(plan.candidateSettings.automationRules, expected);
+	const before = clone(data.committed);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(data.committed, { ...before, automation: { ...before.automation, ruleSettings: expected } });
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(data.committed, before);
+	const unselected = await createPlan(storage, source, ['general']);
+	assert.deepEqual(unselected.plan.candidateSettings.automationRules, previous);
+	const body = JSON.parse(sourceJson).body as OperonSettingsBackupBodyV1;
+	delete body.groups.automations;
+	const legacy = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(body));
+	const legacyPlan = preflightOperonSettingsBackupRestoreV1({ sourceJson: legacy, targetSnapshot: await storage.captureCommittedSettingsBackupSnapshot(), selectedGroups: ['general'] });
+	assert.ok(legacyPlan.ok && legacyPlan.restorePlan);
+	assert.deepEqual(legacyPlan.restorePlan.candidateSettings.automationRules, previous);
+	storage.destroy();
+});
+
+test('unreadable stored automation rules survive unrelated saves, reload and restore', async () => {
+	const future = { version: 2, rules: ['future format'] };
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), automationRules: future }));
+	const { storage, data } = harness;
+	const source = { ...storage.getSettings(), automationRules: readAutomationRules(undefined) };
+	await assert.rejects(storage.saveAutomationRules(future, source.automationRules));
+	await assert.rejects(storage.updateSettings({ automationRules: source.automationRules }));
+	await storage.updateSettings({ language: 'de' });
+	assert.deepEqual(data.committed.automation.ruleSettings, future);
+	const sourceJson = exportJson(source);
+	const snapshot = await storage.captureCommittedSettingsBackupSnapshot();
+	const blocked = preflightOperonSettingsBackupRestoreV1({ sourceJson, targetSnapshot: snapshot, selectedGroups: ['automations'] });
+	assert.ok(blocked.ok && !blocked.restorePlan);
+	const unrelated = await createPlan(storage, source, ['general']);
+	assert.deepEqual(unrelated.plan.candidateSettings.automationRules, future);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(unrelated.sourceJson, unrelated.plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(data.committed.automation.ruleSettings, future);
+	storage.destroy();
+});
 
 test('plugin coordinator source boundary keeps apply and recovery receipt-owned and fully settled', () => {
 	const source = readFileSync(path.resolve('main.ts'), 'utf8');

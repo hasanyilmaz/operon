@@ -94,6 +94,18 @@ interface AggregateProjectionGraph {
 	children: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
+function indexProjectionChildren(tasks: ReadonlyMap<string, IndexedTask>): Map<string, Set<string>> {
+	const children = new Map<string, Set<string>>();
+	for (const task of tasks.values()) {
+		const parentId = (task.fieldValues['parentTask'] ?? '').trim();
+		if (!parentId) continue;
+		const childIds = children.get(parentId) ?? new Set<string>();
+		childIds.add(task.operonId);
+		children.set(parentId, childIds);
+	}
+	return children;
+}
+
 class AggregateHierarchyFallbackError extends Error {}
 
 interface SameFileStatusCycleAggregatePlan {
@@ -201,14 +213,7 @@ export class AggregateCoordinator {
 				datetimeModified: task.fieldValues['datetimeModified'] ?? modifiedTimestamp,
 			} as IndexedTask);
 		}
-		const children = new Map<string, Set<string>>();
-		for (const task of tasks.values()) {
-			const parentId = (task.fieldValues['parentTask'] ?? '').trim();
-			if (!parentId) continue;
-			const childIds = children.get(parentId) ?? new Set<string>();
-			childIds.add(task.operonId);
-			children.set(parentId, childIds);
-		}
+		const children = indexProjectionChildren(tasks);
 		const affected = new Set<string>();
 		for (const rootOperonId of [
 			...createdTasks.map(task => task.operonId),
@@ -247,6 +252,24 @@ export class AggregateCoordinator {
 					: { lineNumber: task.primary.lineNumber }),
 				fieldValues: payload,
 			});
+		}
+		return patches;
+	}
+
+	/** Calculate field changes using only the supplied post-action graph. */
+	projectAutomationAggregateFields(
+		tasks: ReadonlyMap<string, IndexedTask>,
+		affected: ReadonlySet<string>,
+		expandParentDates: boolean,
+	): Map<string, Record<string, string>> {
+		const projection = { tasks, children: indexProjectionChildren(tasks) };
+		const cache = new Map<string, AggregateSubtreeContribution>();
+		const patches = new Map<string, Record<string, string>>();
+		for (const id of affected) {
+			const task = tasks.get(id);
+			if (!task) throw new Error('Incomplete automation hierarchy');
+			const { summary } = this.calculateAggregateSubtreeContribution(task, cache, new Set(), projection);
+			patches.set(id, this.buildAggregatePayloadFromSummary(task, 'full', summary, expandParentDates).payload);
 		}
 		return patches;
 	}
@@ -657,6 +680,7 @@ export class AggregateCoordinator {
 		parentTask: IndexedTask,
 		mode: AggregateRefreshMode,
 		summary: AggregateSummary,
+		expandParentDates = this.isParentDateRangeExpansionEnabled(),
 	): AggregatePayloadResult {
 		const payload: Record<string, string> = {};
 
@@ -701,7 +725,7 @@ export class AggregateCoordinator {
 			Object.assign(payload, buildParentTaskDateRangeExpansionPatch(
 				parentTask,
 				summary.dateRangeBounds,
-				this.isParentDateRangeExpansionEnabled(),
+				expandParentDates,
 			));
 		}
 

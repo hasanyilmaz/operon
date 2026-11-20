@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3859,
-  "keyFingerprint": "45d54ea3dcaa316fd5123e6f27a6185c00150dfd8697bdffb7b82b015865bb27",
+  "keyCount": 3876,
+  "keyFingerprint": "102cbf8c20e4dbaab370a3be390c95d3fd31ca58a9fb280782f5e024b0710b42",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1157,6 +1157,23 @@
       "autoParentInlineSubtasksDesc": "Al crear una tarea en línea dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
       "autoParentLinkedFileSubtasks": "Asignar automáticamente la tarea principal a las subtareas de archivo enlazadas",
       "autoParentLinkedFileSubtasksDesc": "Al crear una tarea de archivo enlazada dentro de una tarea de archivo, establecer automáticamente su tarea principal como esa tarea de archivo.",
+      "automationActive": "Activa",
+      "automationAddRule": "Añadir regla",
+      "automationAlwaysAsk": "Preguntar siempre",
+      "automationAuto": "Automático",
+      "automationConfirmation": "Preguntar antes de aplicar cambios",
+      "automationConfirmationDesc": "Pide confirmación si el número de tareas distintas que cambiarían supera el límite. Con un límite de 5, pregunta a partir de 6 tareas.",
+      "automationCopyName": "{{name}} (copia)",
+      "automationDelete": "¿Eliminar {{name}}?",
+      "automationInactive": "Inactiva",
+      "automationName": "Nombre de la automatización",
+      "automationNoLimit": "Sin límite",
+      "automationRuleList": "Reglas de automatización",
+      "automationRuleListDesc": "Gestiona las reglas de tareas y su orden.",
+      "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
+      "automationUnavailable": "No se pudieron leer los ajustes de automatización.",
+      "automationsRestoreInactive": "Todas las reglas restauradas estarán inactivas.",
+      "automationsTitle": "Automatizaciones",
       "backgroundDimmingDecrease": "Reducir el oscurecimiento del fondo",
       "backgroundDimmingIncrease": "Aumentar el oscurecimiento del fondo",
       "backgroundDimmingSaveFailed": "No se pudo guardar el oscurecimiento del fondo.",
@@ -3904,5 +3921,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "dc56cb5de282f9223e63f9c3e7df9955173b0dc4f88fdf310cfd14117b30cbc1"
+  "sourceVersion": "fbcada904a53ebb44c3da224c654a75546ebcc558d060854b6a9d0bf25db5513"
 }
