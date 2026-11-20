@@ -12,6 +12,7 @@ after(() => rm(tmp, { recursive: true, force: true }));
 const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
 	export { TFile, Notice, parseYaml } from 'obsidian';
+	export { countNoteScans } from './scripts/test-support/automation-markdown-scan-probe.mjs';
 	export { withSettingsFixture } from './scripts/test-support/settings-preservation-harness';
 	export { createAutomationRule, readAutomationRules } from './src/core/automation-rules';
 	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
@@ -35,11 +36,12 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { scanFileWithMappings } from './src/indexer/file-scanner';
 ` }, outfile: out, banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, bundle: true, format: 'esm', platform: 'node',
 	plugins: [{ name: 'fixture', setup(builder) {
+		builder.onResolve({ filter: /\/markdown-fenced-lines$/ }, () => ({ path: path.join(root, 'scripts/test-support/automation-markdown-scan-probe.mjs') }));
 		builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'fixture' }));
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, Notice, parseYaml, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, expandListAction, validAction, collectNativeFieldValueCandidates,
+const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
@@ -469,6 +471,68 @@ for (const [operation, literal, expected, legacy = Array.isArray(literal)] of [
 		assert.ok((await f.read('Simple.md')).includes(operation === 'add' ? '{{Members:: Ana; Lee}}' : '{{Members:: Ana}}'));
 	});
 }
+
+test('batched inline custom fields scan each note once per preparation regardless of task count', async t => {
+	const bodyPrefix = 'Batch of inline tasks\r\n';
+	const prefix = '---\r\nKeep: original\r\n---\r\n' + bodyPrefix;
+	const marker = ' {{Members:: 2; "2"; "A; B"}}';
+	const untouched = inline('outside', marker) + '~~~md\n' + inline(id(0), marker) + '~~~\nEnd';
+	let firstScanCount;
+	for (const count of [16, 64, 128]) {
+		const rows = Array.from({ length: count }, (_, i) => inline(id(i), marker)).join('');
+		const note = prefix + (rows + untouched).replaceAll('\n', '\r\n');
+		const f = await fixture({ 'Batch.md': note }, { settings: typedMembers, rule: {
+			target: rootGroup('description', 'text', 'startsWith', 'task'),
+			actions: [action('participants', ['follow'])],
+		} });
+		let preparations = 0;
+		f.onPrepare = () => { preparations++; };
+		const start = performance.now();
+		const { result, scans } = await countNoteScans(bodyPrefix, () => f.run());
+		t.diagnostic(`${count} tasks, ${scans} note scans, ${preparations} preparations, ${(performance.now() - start).toFixed(1)} ms`);
+		assert.equal(result.applied, count);
+		assert.deepEqual(f.writes, ['Batch.md']);
+		const updated = await f.read('Batch.md');
+		assert.ok(updated.startsWith(prefix));
+		assert.ok(updated.endsWith(untouched.replaceAll('\n', '\r\n')));
+		const changed = updated.slice(prefix.length).split('\r\n').slice(0, count);
+		for (const [i, line] of changed.entries()) {
+			assert.ok(line.includes('{{operonId:: ' + id(i) + '}}'));
+			assert.ok(line.includes('{{Members:: 2; "2"; "A; B"; follow}}'));
+		}
+		assert.ok(preparations > 0);
+		assert.equal(scans, preparations);
+		firstScanCount ??= scans;
+		assert.equal(scans, firstScanCount);
+	}
+});
+
+test('batched inline custom fields prepare File Task and inline updates in the same note', async () => {
+	const source = '---\noperonId: task900\nMembers: [root]\nKeep: original\n---\nBody\n'
+		+ inline(id(0), ' {{Members:: 2; "2"}}') + inline(id(1), ' {{Members:: "A; B"}}');
+	const f = await fixture({ 'Shared.md': source }, { settings: typedMembers, rule: { actions: [action('participants', ['follow'])] } });
+	assert.equal((await f.run()).applied, 3);
+	assert.deepEqual(f.writes, ['Shared.md']);
+	const updated = await f.read('Shared.md');
+	const data = parseYaml(updated.split('---')[1]);
+	assert.deepEqual(data.Members, ['root', 'follow']);
+	assert.equal(data.Keep, 'original');
+	assert.ok(updated.includes('---\nBody\n'));
+	assert.ok(updated.includes('{{Members:: 2; "2"; follow}}'));
+	assert.ok(updated.includes('{{Members:: "A; B"; follow}}'));
+});
+
+test('batched inline custom fields reject missing or ambiguous source identities before writing any row', async () => {
+	const first = inline(id(0), ' {{Members:: Ana}}');
+	const last = inline(id(1), ' {{Members:: Lee}}');
+	for (const changed of [first, first + last + last, first + inline(id(1), ' {{operonId:: task001}} {{Members:: Lee}}')]) {
+		const f = await fixture({ 'Batch.md': first + last }, { settings: typedMembers, rule: { actions: [action('participants', ['follow'])] } });
+		await f.editFile('Batch.md', changed);
+		assert.equal((await f.run()).status, 'unavailable');
+		assert.deepEqual(f.writes, []);
+		assert.equal(await f.read('Batch.md'), changed);
+	}
+});
 
 test('typed inline list selections survive settings reload alongside unmarked legacy actions', async () => {
 	await withSettingsFixture({ table: false }, async disk => {

@@ -1,4 +1,4 @@
-import type { ParsedTask } from '../types/fields';
+import type { IndexedTask, ParsedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 import { fileTaskPropertyIdentityMatches, readFileTaskPropertyDocument } from '../core/file-task-property-draft';
 import { readParsedInlinePropertyProjection } from '../core/inline-property-source';
@@ -64,8 +64,11 @@ function renderYaml(path: string, content: string, update: Update, writer: TaskW
 }
 
 /** Render only the matching source lines and YAML key spans; unrelated Markdown stays byte-exact. */
-export function renderAutomationSource(path: string, content: string, updates: Update[], writer: TaskWriter, settings: OperonSettings): string | null {
-	const inline = new Map(updates.filter(item => item.format === 'inline').map(item => [item.operonId, item]));
+export function renderAutomationSource(
+	path: string, content: string, tasks: IndexedTask[], writer: TaskWriter, settings: OperonSettings,
+	buildUpdate: (task: IndexedTask, row?: ParsedTask) => Update | null,
+): string | null {
+	const inline = new Map(tasks.filter(task => task.primary.format === 'inline').map(task => [task.operonId, task]));
 	if (inline.size) {
 		const lines = content.split('\n');
 		const seen = new Set<string>();
@@ -75,10 +78,12 @@ export function renderAutomationSource(path: string, content: string, updates: U
 			const index = start + offset;
 			const before = parseTaskLine(line, index, path, settings.keyMappings);
 			const id = before?.operonId;
-			const update = id && inline.get(id);
-			if (!before || !id || !update) continue;
+			const task = id && inline.get(id);
+			if (!before || !id || !task) continue;
 			if (seen.has(id) || before.fields.filter(field => field.key === 'operonId').length !== 1) return null;
 			seen.add(id);
+			const update = buildUpdate(task, before);
+			if (!update) return null;
 			if (!Object.keys(update.fieldValues).length && !update.inlinePropertyDraft?.length) continue;
 			const rendered = writer.renderGuardedTaskSourceContent(path, line.replace(/\r$/u, ''), [{ ...update, lineNumber: 0 }]);
 			if (!rendered.ok || /[\r\n]/u.test(rendered.content)) return null;
@@ -89,6 +94,8 @@ export function renderAutomationSource(path: string, content: string, updates: U
 		if (seen.size !== inline.size) return null;
 		content = lines.join('\n');
 	}
-	const yaml = updates.find(item => item.format === 'yaml');
-	return yaml ? renderYaml(path, content, yaml, writer, settings) : content;
+	const yaml = tasks.find(task => task.primary.format === 'yaml');
+	if (!yaml) return content;
+	const update = buildUpdate(yaml);
+	return update && renderYaml(path, content, update, writer, settings);
 }

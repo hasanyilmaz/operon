@@ -3,13 +3,13 @@ import type { AutomationChangePlan, AutomationFieldChange } from '../core/automa
 import type { FileTaskPropertyChange } from '../core/file-task-property-draft';
 import { parseListValue } from '../core/parser';
 import { parseDependencyIdList } from '../core/dependency-graph';
-import { prepareMappedInlineProperties } from '../core/inline-property-source';
+import { draftMappedInlineProperties } from '../core/inline-property-source';
 import { isSupportedRawYamlPropertyValue } from '../core/raw-yaml-property';
 import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from '../core/task-media-reference';
 import { readLosslessYamlListField } from '../core/yaml-fields';
 import type { GuardedTaskSourceFieldUpdate, TaskWriter, TaskWriterExclusiveMutationPermit } from '../core/task-writer';
-import type { IndexedTask } from '../types/fields';
+import type { IndexedTask, ParsedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 import type { PinnedCache, PinnedCacheEntrySnapshot } from '../storage/pinned-cache';
 import { executeTaskSourceRenameTransaction } from '../storage/task-source-rename-transaction';
@@ -49,13 +49,12 @@ interface Source {
 }
 type Pin = { expected: PinnedCacheEntrySnapshot; pinned: boolean };
 
-function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], content: string, ports: WritePorts): GuardedTaskSourceFieldUpdate | null {
+function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], content: string, ports: WritePorts, row?: ParsedTask): GuardedTaskSourceFieldUpdate | null {
 	const { format, lineNumber, filePath } = task.primary;
 	const update: GuardedTaskSourceFieldUpdate = { operonId: task.operonId, format, lineNumber, fieldValues: {}, expectedFieldValues: {} };
 	const yaml: FileTaskPropertyChange[] = [];
-	const mapped = changes.filter(c => ports.settings.keyMappings.some(m => !m.isSystem && m.canonicalKey === c.field));
-	const inline = format === 'inline' && mapped.length ? prepareMappedInlineProperties(content, filePath, task.operonId,
-		mapped.map(c => ({ field: c.field, value: c.after ?? undefined })), ports.settings.keyMappings, ports.settings.inlinePropertyDefinitions).changes : [];
+	const inline = row ? draftMappedInlineProperties(row, changes.map(c => ({ field: c.field, value: c.after ?? undefined })),
+		ports.settings.keyMappings, ports.settings.inlinePropertyDefinitions) : [];
 	for (const { field, before, after } of changes) {
 		if (field === 'pinned' || field === 'sourcePath' || field === 'description' && format === 'yaml') continue;
 		if (field.startsWith('file.property:')) {
@@ -242,7 +241,6 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		if (!(file instanceof TFile) || !ports.indexed(file) || ports.writer.hasMarkdownSource(file) || !await ports.validPath(path, false)) return null;
 		const before = ports.yamlSources.get(path)?.content ?? await ports.app.vault.read(file);
 		if (!ports.indexed(file) || !ports.buffersMatch(path, before)) return null;
-		const updates: GuardedTaskSourceFieldUpdate[] = [];
 		let destination = path;
 		for (const task of members) {
 			const changes = byId.get(task.operonId) ?? [];
@@ -259,11 +257,9 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 				group.pins.set(task.operonId, { expected, pinned: pin.after });
 				identity.push(JSON.stringify([task.operonId, expected, pin.after]));
 			}
-			const update = buildUpdate(task, changes, before, ports);
-			if (!update) return null;
-			updates.push(update);
 		}
-		const after = renderAutomationSource(path, before, updates, ports.writer, ports.settings);
+		const after = renderAutomationSource(path, before, members, ports.writer, ports.settings,
+			(task, row) => buildUpdate(task, byId.get(task.operonId) ?? [], before, ports, row));
 		if (after === null) return null;
 		group.sources.push({ file, path, destination, before, after });
 		identity.push(path, destination, before, after);
