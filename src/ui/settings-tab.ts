@@ -19,7 +19,9 @@ import { changeTaskEditorLayout } from '../core/task-editor-layout';
 import { renderTaskEditorSectionsSettings } from './settings/task-editor-section-settings';
 import { editorSectionLabel } from './editor-sections-layout';
 import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
-import { AUTOMATION_CONFIRMATIONS, isAutomationRulesSettings, readAutomationRules } from '../core/automation-rules';
+import { AUTOMATION_CONFIRMATIONS, isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from '../core/automation-rules';
+import type { AutomationEditorSource } from './automation-rule-modal';
+import { projectIndexedNativeProperties } from './table/table-native-property';
 import { automationConfirmationOptions, automationOptionKey, renderAutomationRules } from './settings/automation-rules';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
@@ -903,6 +905,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
 	private pluginVersion: string;
+	private readonly planAutomationRule: AutomationEditorSource['plan'];
 	private onSettingsChanged: (change?: 'property-icons') => void;
 	private onDockRefreshLayout: () => void;
 	private hasPendingSettingsChange = false;
@@ -964,7 +967,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	constructor(
 		app: App,
-		plugin: Plugin,
+		plugin: Plugin & { planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
 		settings: OperonSettings,
 		storage: OperonStorage,
 		onSettingsChanged: (change?: 'property-icons') => void,
@@ -1015,6 +1018,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.committedWorkflowSettingsSnapshot = this.captureWorkflowSettingsSnapshot();
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
+		this.planAutomationRule = rule => {
+			const current = storage.getSettings().automationRules;
+			return plugin.planAutomationRules?.([rule], isAutomationRulesSettings(current) ? current.confirmation : 'always');
+		};
 		this.onSettingsChanged = onSettingsChanged;
 		this.onDockRefreshLayout = onDockRefreshLayout ?? (() => { });
 		this.indexer = indexer ?? null;
@@ -4478,8 +4485,42 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		];
 	}
 
+	private readonly automationIndexReadyListeners = new Set<() => void>();
+
+	notifyAutomationIndexReady(): void {
+		for (const listener of this.automationIndexReadyListeners) listener();
+	}
+
 	private renderAutomationList(containerEl: HTMLElement): void {
-		renderAutomationRules(this.app, containerEl, this.storage);
+		const index = this.indexer;
+		renderAutomationRules(this.app, containerEl, this.storage, {
+			getSettings: () => this.storage.getSettings(),
+			getTasks: () => index?.getAllTasks() ?? [],
+			getNativeSnapshot: () => {
+				const tasks = index?.getAllTasks() ?? [];
+				const base = this.getFilterFilePropertySnapshot(tasks);
+				return base ? projectIndexedNativeProperties(this.app, base, tasks, this.storage.getSettings()) : null;
+			},
+			subscribe: listener => {
+				let open = true;
+				const update = () => {
+					listener();
+					if (index && !index.getLiveReadAuthoritySnapshot().settled) {
+						void index.awaitRamSettlement().then(() => { if (open) listener(); });
+					}
+				};
+				const offUpdates = index?.subscribeIndexUpdates(update);
+				const offNative = getNativePropertyIndex(this.app).subscribe(update);
+				const offPins = this.pinnedCache?.subscribe(update);
+				this.automationIndexReadyListeners.add(update);
+				return () => {
+					open = false;
+					offUpdates?.(); offNative(); offPins?.();
+					this.automationIndexReadyListeners.delete(update);
+				};
+			},
+			plan: this.planAutomationRule,
+		});
 	}
 
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {

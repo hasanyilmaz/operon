@@ -1,7 +1,8 @@
-import { App, Modal, Notice, Setting } from 'obsidian';
-import { AUTOMATION_CONFIRMATIONS, createAutomationRule, readAutomationRules, type AutomationConfirmation, type AutomationRule, type AutomationRulesSettings } from '../../core/automation-rules';
+import { App, Notice, Setting } from 'obsidian';
+import { AUTOMATION_CONFIRMATIONS, readAutomationRules, type AutomationConfirmation, type AutomationRule, type AutomationRulesSettings } from '../../core/automation-rules';
 import { t } from '../../core/i18n';
 import type { OperonStorage } from '../../storage/operon-storage';
+import { AutomationRuleModal, type AutomationEditorSource } from '../automation-rule-modal';
 import { ConfirmActionModal } from '../confirm-action-modal';
 import { createSettingsListCard, createSettingsListCardActionButton, createSettingsListCardChip } from './settings-list-ui';
 import { scopeSettingsModal } from './settings-scope';
@@ -18,47 +19,7 @@ export function automationConfirmationOptions(): Record<string, string> {
 	]));
 }
 
-class RuleNameModal extends Modal {
-	constructor(app: App, private readonly initialName: string, private readonly saveName: (name: string) => Promise<boolean>) {
-		super(app);
-	}
-
-	onOpen(): void {
-		this.titleEl.setText(this.initialName ? t('taskEditor', 'fileTaskRenameAction') : t('settings', 'automationAddRule'));
-		const field = new Setting(this.contentEl).setName(t('settings', 'automationName'));
-		const input = field.controlEl.createEl('input', { type: 'text', value: this.initialName });
-		input.setAttribute('aria-label', t('settings', 'automationName'));
-		const actions = new Setting(this.contentEl);
-		actions.addButton(button => button.setButtonText(t('buttons', 'cancel')).onClick(() => this.close()));
-		actions.addButton(button => {
-			let pending = false;
-			const update = (): void => { button.setDisabled(pending || !input.value.trim()); };
-			const submit = async (): Promise<void> => {
-				if (pending || !input.value.trim()) return;
-				pending = true;
-				update();
-				try {
-					if (await this.saveName(input.value.trim())) this.close();
-				} finally {
-					pending = false;
-					update();
-				}
-			};
-			button.setButtonText(t('buttons', 'save')).setCta().onClick(submit);
-			input.addEventListener('input', update);
-			input.addEventListener('keydown', event => {
-				if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); void submit(); }
-			});
-			update();
-		});
-		input.focus();
-		input.select();
-	}
-
-	onClose(): void { this.contentEl.empty(); }
-}
-
-export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>): void {
+export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource): void {
 	el.empty();
 	const expected = storage.getSettings().automationRules;
 	const section = new Setting(el).setName(t('settings', 'automationRuleList')).setHeading();
@@ -81,18 +42,15 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 			new Notice(t('settings', 'automationSaveFailed'));
 			return false;
 		}
-		renderAutomationRules(app, el, storage);
+		renderAutomationRules(app, el, storage, source);
 		return true;
 	};
 
-	const editName = (existing?: AutomationRule): void => {
-		scopeSettingsModal(new RuleNameModal(app, existing?.name ?? '', async name => {
-			if (!existing) return commit([...rules, createAutomationRule(name)]);
-			if (name === existing.name) return true;
-			return commit(rules.map(rule => rule.id === existing.id ? { ...rule, name } : rule));
-		}), true).open();
+	const editRule = (existing?: AutomationRule): void => {
+		scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
+			commit(existing ? rules.map(rule => rule.id === existing.id ? draft : rule) : [...rules, draft])), true).open();
 	};
-	section.addButton(button => button.setButtonText('+ ' + t('settings', 'automationAddRule')).onClick(() => editName()));
+	section.addButton(button => button.setButtonText('+ ' + t('settings', 'automationAddRule')).onClick(() => editRule()));
 	const list = el.createDiv('operon-filter-set-list');
 	for (const [index, rule] of rules.entries()) {
 		const card = createSettingsListCard({ containerEl: list, icon: 'workflow', title: rule.name, className: 'operon-filter-set-card' });
@@ -112,7 +70,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		const button = (icon: string, label: string, onClick: () => void | Promise<void>): void => {
 			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, icon, ariaLabel: label + ' · ' + rule.name, onClick });
 		};
-		button('pencil', t('taskEditor', 'fileTaskRenameAction'), () => editName(rule));
+		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
 		button('copy', t('table', 'duplicatePreset'), async () => {
 			const copy = { ...structuredClone(rule), id: crypto.randomUUID(), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };
 			await commit([...rules.slice(0, index + 1), copy, ...rules.slice(index + 1)]);

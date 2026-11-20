@@ -125,7 +125,7 @@ export interface FilterSetFieldPickerMappingCandidate {
 
 /** The mapping-backed portion of the FilterSet field picker. */
 export function getFilterSetFieldPickerMappingCandidates(
-	keyMappings: readonly KeyMapping[],
+	keyMappings: readonly KeyMapping[], includeCustomCheckbox = false,
 ): FilterSetFieldPickerMappingCandidate[] {
 	const builtIn = keyMappings
 		.filter(mapping => (
@@ -133,7 +133,7 @@ export function getFilterSetFieldPickerMappingCandidates(
 			&& !mapping.isInternal
 		))
 		.map(mapping => ({ kind: 'builtIn' as const, mapping }));
-	const custom = getManagedCustomFieldOptions(keyMappings)
+	const custom = getManagedCustomFieldOptions(keyMappings, { includeCheckbox: includeCustomCheckbox })
 		.map(option => ({ kind: 'custom' as const, mapping: option.mapping }));
 	return [...builtIn, ...custom];
 }
@@ -393,6 +393,7 @@ export class FilterFieldCatalog {
 		includeConditionOnly = false,
 		includeHappensOn = false,
 		includeSortOnly = false,
+		includeCustomCheckbox = false,
 	): FilterFieldPickerOption[] {
 		const pseudoFields: FilterFieldPickerOption[] = [
 			buildFilterFieldPickerOption('checkbox', t('filterSets', 'fieldCheckbox'), 'checkbox', 'workflow', 'square-check-big'),
@@ -416,7 +417,7 @@ export class FilterFieldCatalog {
 			pseudoFields.push(buildFilterFieldPickerOption(PLAIN_CHECKBOXES_FILTER_FIELD_KEY, t('filterSets', 'fieldPlainCheckboxes'), 'checkbox', 'workflow', 'list-checks'));
 		}
 
-		const mappings = getFilterSetFieldPickerMappingCandidates(this.getPropertyIconSettings().keyMappings)
+		const mappings = getFilterSetFieldPickerMappingCandidates(this.getPropertyIconSettings().keyMappings, includeCustomCheckbox)
 			.map(({ kind, mapping }) => {
 				const resolveIcon = () => getConfiguredKeyMappingIcon(mapping.canonicalKey, this.getPropertyIconSettings().keyMappings)
 					|| getFilterFieldTypeIcon(mapping.type);
@@ -458,6 +459,8 @@ export interface FilterConditionEditorOptions {
 	rootGroup: FilterGroup;
 	title: string;
 	fields: FilterFieldCatalog;
+	rootFooterStatus?: HTMLElement;
+	preserveUnknownValues?: boolean;
 	pickerPresentation?: 'floating' | 'modal';
 	onChange: () => void;
 }
@@ -507,9 +510,11 @@ export class FilterConditionEditor {
 		return true;
 	}
 
+	get hasInvalidRawValues(): boolean { return this.invalidRawValues.size > 0; }
+
 	get validationError(): 'trackedOnInvalid' | 'filePropertyInvalidConditionValue' | null {
 		if (this.hasInvalidTrackedOnCondition()) return 'trackedOnInvalid';
-		return this.invalidRawValues.size ? 'filePropertyInvalidConditionValue' : null;
+		return this.hasInvalidRawValues ? 'filePropertyInvalidConditionValue' : null;
 	}
 
 	private render(): void {
@@ -979,6 +984,7 @@ export class FilterConditionEditor {
 		});
 
 		const clipboardActions = footer.createDiv('operon-filter-group-clipboard-actions');
+		if (isRoot && this.options.rootFooterStatus) clipboardActions.appendChild(this.options.rootFooterStatus);
 		if (!isRoot) {
 			const copyBtn = clipboardActions.createEl('button');
 			copyBtn.type = 'button';
@@ -1134,7 +1140,7 @@ export class FilterConditionEditor {
 		const row = listEl.createDiv('operon-condition-row');
 
 		this.renderNodeMoveButtons(row, group, index);
-		const fieldOptions = this.options.fields.getFieldOptions(true);
+		let fieldOptions = this.options.fields.getFieldOptions(true);
 
 		// --- Field picker ---
 		const fieldWrap = row.createDiv('operon-filter-select-wrap is-content operon-condition-field-picker-wrap');
@@ -1183,6 +1189,7 @@ export class FilterConditionEditor {
 		updateFieldButton();
 
 		const openConditionFieldPicker = (): void => {
+			fieldOptions = this.options.fields.getFieldOptions(true);
 			const pickerFields = getPickerFieldOptions(fieldOptions, cond.field);
 			if (this.options.pickerPresentation === 'modal') {
 				this.settingsPicker = openSettingsOptionPickerModal(this.options.app, {
@@ -1261,11 +1268,12 @@ export class FilterConditionEditor {
 				return;
 			}
 			if (cond.field === TASK_DATA_TYPE_FIELD_KEY) {
-				const selectedValue = isTaskDataType(cond.value) ? cond.value : 'inline';
+				const selectedValue = this.options.preserveUnknownValues && cond.value !== undefined ? cond.value : isTaskDataType(cond.value) ? cond.value : 'inline';
 				cond.value = selectedValue;
 				const valueSelect = this.createModalSelect(valueWrapper, [
 					{ value: 'inline', label: 'inline' },
 					{ value: 'file', label: 'file' },
+					...(!isTaskDataType(selectedValue) ? [{ value: selectedValue, label: selectedValue }] : []),
 				], selectedValue, (value) => {
 					cond.value = isTaskDataType(value) ? value : undefined;
 					this.options.onChange();
@@ -1491,6 +1499,8 @@ export class FilterConditionEditor {
 					: undefined;
 				if (legacy) {
 					opSel.createEl('option', { value: legacy.id, text: this.getFilterOperatorLabel(legacy) }).disabled = true;
+				} else if (cond.operator && this.options.preserveUnknownValues) {
+					opSel.createEl('option', { value: cond.operator, text: cond.operator }).disabled = true;
 				} else cond.operator = ops[0]?.id ?? '';
 			}
 			opSel.value = cond.operator;

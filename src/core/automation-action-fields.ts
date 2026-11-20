@@ -39,12 +39,28 @@ function scalar(raw: string, type: FilterFieldType): PlanValue {
 	return type === 'datetime' && typeof value === 'string' ? canonicalizeLocalDatetime(value) : value;
 }
 
+/** Field-level capability shared by the rule editor and the per-task planner. */
+export function managedAutomationFieldType(key: string, settings: AutomationFieldSettings): FilterFieldType | null {
+	if (key === 'tags') return 'tags';
+	if (key === 'pinned') return 'checkbox';
+	if (key === 'checkbox' || key === 'description') return 'text';
+	if (key === 'fileTaskDisplayTitle') {
+		if (!settings.fileTaskDisplayTitleEnabled || !hasFileTaskDisplayTitleMapping(settings.keyMappings)) return null;
+	} else if (!EDITABLE_TASK_FIELD_KEYS.has(key) && key !== 'reminderDatetimes' && key !== 'reminderRules'
+		&& !getManagedCustomFieldOptionMapping(key, settings.keyMappings, { includeCheckbox: true })) return null;
+	return getManagedTaskFieldType(key, settings.keyMappings);
+}
+
+export function isAutomationNativeKeyWritable(key: string, settings: AutomationFieldSettings): boolean {
+	const name = decodeFilePropertyColumnKey(key);
+	return !!name && isWritableRawYamlPropertyName(name, settings.keyMappings);
+}
+
 /** Resolve the source and its write capability before interpreting the action's literal. */
 export function readAutomationField(task: IndexedTask, key: string, source: AutomationFieldSource): ActionField | ActionIssue {
 	const { settings } = source;
 	if (key.startsWith('file.property:')) {
-		const name = decodeFilePropertyColumnKey(key);
-		if (!name || !isWritableRawYamlPropertyName(name, settings.keyMappings)) return 'read-only';
+		if (!isAutomationNativeKeyWritable(key, settings)) return 'read-only';
 		const field = source.nativeFields.get(key);
 		if (!field || !source.native || field.unavailable) return 'source-unavailable';
 		const cell = source.native.getCell(task, key);
@@ -61,11 +77,8 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 	if (key === 'pinned') return source.pins ? { before: source.pins.has(task.operonId), type: 'checkbox', native: false } : 'source-unavailable';
 	if (key === 'checkbox') return { before: task.checkbox, type: 'text', native: false };
 	if (key === 'description') return { before: task.description, type: 'text', native: false };
-	const custom = getManagedCustomFieldOptionMapping(key, settings.keyMappings, { includeCheckbox: true });
-	if (key === 'fileTaskDisplayTitle') {
-		if (task.primary.format !== 'yaml' || !settings.fileTaskDisplayTitleEnabled || !hasFileTaskDisplayTitleMapping(settings.keyMappings)) return 'read-only';
-	} else if (!EDITABLE_TASK_FIELD_KEYS.has(key) && !custom && key !== 'reminderDatetimes' && key !== 'reminderRules') return 'read-only';
-	const type = getManagedTaskFieldType(key, settings.keyMappings);
+	if (key === 'fileTaskDisplayTitle' && task.primary.format !== 'yaml') return 'read-only';
+	const type = managedAutomationFieldType(key, settings);
 	if (!type) return 'read-only';
 	if (task.primary.format === 'yaml' && type === 'list') {
 		const fm = source.getFrontmatter(task);
@@ -87,7 +100,7 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 	}
 }
 
-export function readActionLiteral(action: AutomationAction, field: ActionField): PlanValue {
+export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native'>): PlanValue {
 	const { type } = field;
 	if (type === 'list' || type === 'tags') {
 		const raw = Array.isArray(action.value) ? action.value : [action.value];

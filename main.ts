@@ -17557,6 +17557,7 @@ export default class OperonPlugin extends Plugin {
 				this.initializeActiveTrackerMonitor();
 				this.agentRuntimeLifecycle.markReady();
 				this.taskCardIndexState = 'ready';
+				this.settingsTab?.notifyAutomationIndexReady();
 				this.agentRuntimeStartupSettlementRelease?.();
 				this.agentRuntimeStartupSettlementRelease = null;
 				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('startup-reconciled');

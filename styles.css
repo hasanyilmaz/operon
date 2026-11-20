@@ -16009,6 +16009,52 @@ button.operon-field-picker-trigger,
 	margin-left: auto;
 }
 
+.operon-automation-rule-editor .operon-filter-name-row .operon-filter-form-control {
+	grid-column: 2 / -1;
+}
+
+.operon-automation-actions {
+	display: grid;
+	gap: 6px;
+}
+
+.operon-condition-row.operon-automation-action-row {
+	display: grid;
+	grid-template-columns: auto minmax(0, 2fr) minmax(0, 3fr) auto;
+}
+
+.operon-automation-action-row > select,
+.operon-automation-value,
+.operon-automation-value > :is(button, input, select) {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.operon-automation-value > button {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.operon-automation-count,
+.operon-automation-diagnostic {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.operon-automation-diagnostic:not(:empty) {
+	padding: 4px 8px;
+}
+
+@media (max-width: 600px) {
+	.operon-automation-rule-editor .operon-filter-name-row .operon-filter-form-control {
+		grid-column: 1 / -1;
+	}
+}
+
 .operon-filter-footer-button {
 	min-height: 34px;
 	padding: 6px 16px;
