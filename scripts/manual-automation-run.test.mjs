@@ -28,6 +28,12 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { expandListAction, validAction } from './src/ui/automation-action-editor';
 	export { collectNativeFieldValueCandidates } from './src/ui/custom-field-surfaces';
 	export { AutomationRuleModal } from './src/ui/automation-rule-modal';
+	export { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
+	export { preflightOperonSettingsBackupRestoreV1 } from './src/core/settings-backup-preflight';
+	export { createOperonSettingsBackupApplyAcknowledgementV1 } from './src/core/settings-backup-apply';
+	export { mountAutomationRules } from './src/ui/settings/automation-rules';
+	export { statusDockDocument } from './scripts/test-support/status-dock-dom';
+	export { t } from './src/core/i18n';
 	export { TaskWriter } from './src/core/task-writer';
 	export { PinnedCache } from './src/storage/pinned-cache';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
@@ -41,7 +47,8 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, expandListAction, validAction, collectNativeFieldValueCandidates,
+const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, mountAutomationRules, statusDockDocument, t,
+	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
@@ -822,6 +829,92 @@ function eventFixture(overrides = {}) {
 	const rule = { id:'r', mode:'auto', active:true, scope:all, target:all }, settle = () => new Promise(resolve => setImmediate(resolve));
 	return { tasks, pins, batches, runs, events, rule, settle };
 }
+
+test('rule changes reach Auto and open Settings through Restore, Undo, deactivation and Copy', async () => {
+	await withSettingsFixture({ table: false }, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const { events, tasks, batches, settle } = eventFixture();
+		const rules = () => readAutomationRules(storage.getSettings().automationRules).rules;
+		const stopWatching = storage.subscribeAutomationRules(() => events.configure(rules()));
+		const { doc, emitWindow, windowListeners } = statusDockDocument();
+		const host = doc.body.createDiv();
+		const closeList = mountAutomationRules({}, host, storage, {});
+		const cards = () => host.querySelectorAll('.operon-filter-set-card');
+		const status = card => card.querySelectorAll('.operon-settings-list-card-chip-label').at(-1).textContent;
+		const draft = { ...createAutomationRule('Watch queue'), active: true, mode: 'auto' };
+		await storage.saveAutomationRules(undefined, { ...readAutomationRules(undefined), rules: [draft] });
+		assert.equal(status(cards()[0]), t('settings', 'automationActive'));
+		tasks.set('a', { core: 'first edit' });
+		events.reconcile(['a']);
+		await settle();
+		assert.deepEqual(batches, [[[draft.id, ['a']]]]);
+
+		const imported = { ...createAutomationRule('Restored queue'), active: true, mode: 'auto' };
+		const backup = exportOperonSettingsBackupJsonV1({
+			settings: { ...storage.getSettings(), automationRules: { ...readAutomationRules(undefined), rules: [imported] } },
+			source: { pluginVersion: '4.8.0', obsidianVersion: '1.13.0', dataPackageSchemaVersion: 2 },
+			createdAt: '2026-11-20T12:00:00.000Z',
+		});
+		assert.equal(backup.ok, true);
+		const { restorePlan } = preflightOperonSettingsBackupRestoreV1({
+			sourceJson: backup.json, targetSnapshot: await storage.captureCommittedSettingsBackupSnapshot(), selectedGroups: ['automations'],
+		});
+		assert.ok(restorePlan);
+		const restored = await storage.applySettingsBackupRestorePlanV1({
+			sourceJson: backup.json, restorePlan, acknowledgement: createOperonSettingsBackupApplyAcknowledgementV1(restorePlan),
+			appliedAt: '2026-11-20T13:00:00.000Z', refreshedVaultReferenceChecks: restorePlan.vaultReferenceChecks,
+		});
+		assert.equal(restored.status, 'success');
+		const title = () => cards()[0].querySelector('.operon-settings-list-card-title').textContent;
+		assert.equal(title(), imported.name);
+		assert.equal(status(cards()[0]), t('settings', 'automationInactive'));
+		tasks.set('a', { core: 'while restored rules are inactive' });
+		events.reconcile(['a']);
+		await settle();
+		assert.equal(batches.length, 1);
+		const receipt = restored.receipt;
+		const undo = await storage.undoSettingsBackupRestoreV1(receipt.recovery.undoTokenId, receipt.receiptId);
+		assert.equal(undo.status, 'success');
+		assert.equal(title(), draft.name);
+		assert.equal(status(cards()[0]), t('settings', 'automationActive'));
+		await settle();
+		assert.equal(batches.length, 1, 'Undo only establishes a baseline');
+		tasks.set('b', { core: 'after Undo' });
+		events.reconcile(['b']);
+		await settle();
+		assert.deepEqual(batches[1], [[draft.id, ['b']]]);
+
+		assert.equal(await deactivateAutomationRules(storage, [draft]), true);
+		assert.equal(status(cards()[0]), t('settings', 'automationInactive'));
+		tasks.set('a', { core: 'after deactivation' });
+		events.reconcile(['a']);
+		await settle();
+		assert.equal(batches.length, 2);
+
+		const copyLabel = t('table', 'duplicatePreset') + ' · ' + draft.name;
+		const copy = cards()[0].querySelectorAll('.operon-settings-list-card-action')
+			.find(button => button.querySelector(':scope > [data-operon-accessible-label="true"]').textContent === copyLabel);
+		assert.ok(copy, 'the inactive card still offers Copy');
+		const copied = new Promise(resolve => {
+			const unsubscribe = storage.subscribeAutomationRules(() => { unsubscribe(); resolve(); });
+		});
+		copy.click();
+		await copied;
+		const [original, duplicate] = rules();
+		assert.equal(original.id, draft.id);
+		assert.notEqual(duplicate.id, original.id);
+		assert.equal(duplicate.active, false);
+		assert.equal(cards().length, 2);
+		emitWindow('pagehide', {});
+		assert.equal(windowListeners.get('pagehide').size, 0);
+		await storage.saveAutomationRules(storage.getSettings().automationRules, readAutomationRules(undefined));
+		assert.equal(cards().length, 2, 'closing the window removes the subscription even if the host skips cleanup');
+		closeList();
+		stopWatching();
+		events.dispose();
+	});
+});
 
 test('startup, activation and a full rebuild are silent; real indexed changes coalesce per task', async () => {
 	const { tasks, batches, events, rule, settle } = eventFixture();

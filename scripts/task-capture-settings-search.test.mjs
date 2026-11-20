@@ -78,8 +78,9 @@ test('Automation Rules renders below its heading in a full-width settings sectio
   removeClass(name) { classes.delete(name); },
  };
  let rendered;
- harness.renderAutomationList = element => { rendered = element; };
- ruleList.render({ settingEl: host });
+ const dispose = () => {};
+ harness.renderAutomationList = element => { rendered = element; return dispose; };
+ assert.equal(ruleList.render({ settingEl: host }), dispose);
  assert.equal(rendered, host);
  assert.ok(!classes.has('setting-item'));
  assert.ok(classes.has('operon-settings-tab-root'));

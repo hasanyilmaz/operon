@@ -21,7 +21,25 @@ export function automationConfirmationOptions(): Record<string, string> {
 	]));
 }
 
-export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
+export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules' | 'subscribeAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): () => void {
+	const render = () => renderAutomationRules(app, el, storage, source, run);
+	render();
+	const unsubscribe = storage.subscribeAutomationRules(render);
+	const owner = el.ownerDocument.defaultView;
+	let disposed = false;
+	const dispose = () => {
+		if (disposed) return;
+		disposed = true;
+		owner?.removeEventListener('pagehide', dispose);
+		unsubscribe();
+		cleanupOperonHoverTooltips(el);
+	};
+	// Obsidian may destroy a settings window without disposing its rendered rows.
+	owner?.addEventListener('pagehide', dispose);
+	return dispose;
+}
+
+function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
 	cleanupOperonHoverTooltips(el);
 	el.empty();
 	const expected = storage.getSettings().automationRules;
@@ -44,7 +62,6 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 			new Notice(t('settings', 'automationSaveFailed'));
 			return false;
 		}
-		renderAutomationRules(app, el, storage, source, run);
 		return true;
 	};
 
@@ -79,7 +96,7 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		if (run && rule.active && rule.mode === 'manual') {
 			const label = t('settings', 'automationRun');
 			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, text: label, ariaLabel: label + ' · ' + rule.name,
-				onClick: async () => { if (await run(rule.id) && el.isConnected) renderAutomationRules(app, el, storage, source, run); } });
+				onClick: async () => { await run(rule.id); } });
 		}
 		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
 		button('copy', t('table', 'duplicatePreset'), async () => {

@@ -22,7 +22,7 @@ import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
 import { AUTOMATION_CONFIRMATIONS, isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from '../core/automation-rules';
 import type { AutomationEditorSource } from './automation-rule-modal';
 import { projectIndexedNativeProperties } from './table/table-native-property';
-import { automationConfirmationOptions, automationOptionKey, renderAutomationRules } from './settings/automation-rules';
+import { automationConfirmationOptions, automationOptionKey, mountAutomationRules } from './settings/automation-rules';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
 import { buildPropertyValuePoolSettings } from './settings/property-value-pool-settings';
@@ -964,6 +964,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		tabId: OperonSettingsTabId;
 		containerEl: HTMLElement;
 		taskChipsPageId?: TaskChipsSettingsPageId;
+		dispose?: () => void;
 	} | null = null;
 
 	constructor(
@@ -3105,13 +3106,15 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.clearActiveNativeSettingsPage(containerEl);
 		}
 
+		this.activeNativeSettingsPage?.dispose?.();
 		this.activeNativeSettingsPage = { tabId, containerEl };
 		this.clearTaskEditorSectionCards(containerEl);
 		containerEl.empty();
 		setSettingsScope(containerEl, true);
 		containerEl.addClass('operon-settings-tab-root');
 		containerEl.addClass('operon-settings-native-page-root');
-		this.renderSettingsTab(tabId, containerEl);
+		const cleanup = this.renderSettingsTab(tabId, containerEl);
+		if (cleanup) this.activeNativeSettingsPage.dispose = cleanup;
 	}
 
 	private renderNativeTaskChipsSettingsPage(pageId: TaskChipsSettingsPageId, containerEl: HTMLElement): void {
@@ -3119,6 +3122,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			this.clearActiveNativeSettingsPage(containerEl);
 		}
 
+		this.activeNativeSettingsPage?.dispose?.();
 		this.activeNativeSettingsPage = { tabId: 'interfaceTaskChips', containerEl, taskChipsPageId: pageId };
 		containerEl.empty();
 		setSettingsScope(containerEl, true);
@@ -3141,6 +3145,9 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private clearNativeSettingsPage(containerEl: HTMLElement): void {
+		if (this.activeNativeSettingsPage?.containerEl === containerEl) {
+			this.activeNativeSettingsPage.dispose?.();
+		}
 		this.clearTaskEditorSectionCards(containerEl);
 		for (const [host, dispose] of this.tasksConversionSettings) if (containerEl.contains(host)) dispose();
 		this.disposeReminderSoundPreview();
@@ -4498,9 +4505,9 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		for (const listener of this.automationIndexReadyListeners) listener();
 	}
 
-	private renderAutomationList(containerEl: HTMLElement): void {
+	private renderAutomationList(containerEl: HTMLElement): () => void {
 		const index = this.indexer;
-		renderAutomationRules(this.app, containerEl, this.storage, {
+		return mountAutomationRules(this.app, containerEl, this.storage, {
 			getSettings: () => this.storage.getSettings(),
 			getTasks: () => index?.getAllTasks() ?? [],
 			getNativeSnapshot: () => {
@@ -4530,7 +4537,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		}, this.runAutomationRule);
 	}
 
-	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void {
+	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void | (() => void) {
 		for (const dispose of this.tasksConversionSettings.values()) dispose();
 		for (const dispose of this.propertyPoolSettings.values()) dispose();
 		this.propertyPoolSettings.clear();
@@ -4543,11 +4550,10 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 					.onChange(async value => {
 						await this.setControlValue('automationRules', value);
 						dropdown.setValue(String(this.getControlValue('automationRules')));
-						this.renderAutomationList(list);
 					}));
 			renderSettingsHeading(contentEl, t('settings', 'automationRuleList'));
 			const list = contentEl.createDiv();
-			this.renderAutomationList(list);
+			return this.renderAutomationList(list);
 		} else if (tabId === 'corePipelines') {
 			this.renderPipelinesTab(contentEl);
 

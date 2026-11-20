@@ -1245,10 +1245,22 @@ export class OperonStorage {
  }
 
 	private readonly automationRuleListeners = new Set<() => void>();
+	private automationRulesSignature?: string;
 
 	subscribeAutomationRules(listener: () => void): () => void {
+		if (!this.automationRuleListeners.size) this.automationRulesSignature = JSON.stringify(this.settings.automationRules);
 		this.automationRuleListeners.add(listener);
 		return () => { this.automationRuleListeners.delete(listener); };
+	}
+
+	private notifyAutomationRulesChange(): void {
+		if (!this.automationRuleListeners.size) return;
+		const signature = JSON.stringify(this.settings.automationRules);
+		if (signature === this.automationRulesSignature) return;
+		this.automationRulesSignature = signature;
+		for (const listener of [...this.automationRuleListeners]) {
+			try { listener(); } catch (error) { console.error('Operon: Automation rules refresh failed', error); }
+		}
 	}
 
 	async saveAutomationRules(expected: unknown, next: AutomationRulesSettings): Promise<void> {
@@ -1261,7 +1273,7 @@ export class OperonStorage {
 				return { ...current, automation: { ...current.automation, ruleSettings: updated } };
 			});
 			this.settings.automationRules = updated;
-			for (const listener of this.automationRuleListeners) listener();
+			this.notifyAutomationRulesChange();
 		});
 	}
 
@@ -1796,6 +1808,7 @@ export class OperonStorage {
 					// The canonical package is already committed. Main owns explicit reload recovery.
 				}
 			}
+			if (!runtimeCommitFailed) this.notifyAutomationRulesChange();
 			const retainSessionUndo = input.retainSessionUndo !== false;
 			const recoveryTokenId = retainSessionUndo && (runtimeCommitFailed || previousSettings)
 				? buildSettingsBackupUndoTokenId(activePlan.planId, input.appliedAt)
@@ -1955,6 +1968,7 @@ export class OperonStorage {
 				};
 			}
 			this.settingsBackupUndoEntries.delete(undoTokenId);
+			this.notifyAutomationRulesChange();
 			return { status: 'success', receiptId, blockedReason: null };
 		}, true);
 	}
@@ -1986,7 +2000,7 @@ export class OperonStorage {
 				await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, true);
 			}
 			this.notifyPropertyPoolChange();
-			if (result.changed) for (const listener of this.automationRuleListeners) listener();
+			this.notifyAutomationRulesChange();
 			return {
 				changed: result.changed,
 				diagnostics: result.diagnostics,
