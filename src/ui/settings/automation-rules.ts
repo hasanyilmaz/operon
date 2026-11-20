@@ -1,4 +1,4 @@
-import { App, Notice, Setting } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import { AUTOMATION_CONFIRMATIONS, readAutomationRules, type AutomationConfirmation, type AutomationRule, type AutomationRulesSettings } from '../../core/automation-rules';
 import { t } from '../../core/i18n';
 import type { OperonStorage } from '../../storage/operon-storage';
@@ -6,6 +6,7 @@ import { AutomationRuleModal, type AutomationEditorSource } from '../automation-
 import { ConfirmActionModal } from '../confirm-action-modal';
 import { createSettingsListCard, createSettingsListCardActionButton, createSettingsListCardChip } from './settings-list-ui';
 import { scopeSettingsModal } from './settings-scope';
+import { createSettingsAddButton } from './settings-ui';
 
 // Non-integer option keys keep the two named choices on either end of an HTML dropdown.
 export function automationOptionKey(option: AutomationConfirmation): string {
@@ -22,7 +23,6 @@ export function automationConfirmationOptions(): Record<string, string> {
 export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
 	el.empty();
 	const expected = storage.getSettings().automationRules;
-	const section = new Setting(el).setName(t('settings', 'automationRuleList')).setHeading();
 	let snapshot: AutomationRulesSettings;
 	try {
 		snapshot = readAutomationRules(expected);
@@ -50,8 +50,8 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 		scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
 			commit(existing ? rules.map(rule => rule.id === existing.id ? draft : rule) : [...rules, draft])), true).open();
 	};
-	section.addButton(button => button.setButtonText('+ ' + t('settings', 'automationAddRule')).onClick(() => editRule()));
-	const list = el.createDiv('operon-filter-set-list');
+	const section = el.createDiv('operon-settings-add-list-section operon-settings-card-list-section');
+	const list = section.createDiv('operon-filter-set-list');
 	for (const [index, rule] of rules.entries()) {
 		const card = createSettingsListCard({ containerEl: list, icon: 'workflow', title: rule.name, className: 'operon-filter-set-card' });
 		createSettingsListCardChip({ containerEl: card.metaEl, label: rule.mode === 'auto' ? t('settings', 'automationAuto') : t('settings', 'pinnedTaskSortModeManual') });
@@ -87,4 +87,6 @@ export function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<O
 			}, confirmed => { if (confirmed) void commit(rules.filter(item => item.id !== rule.id)); }), true).open();
 		});
 	}
+	const addRow = section.createDiv('operon-settings-add-row');
+	createSettingsAddButton(addRow, t('settings', 'automationAddRule')).addEventListener('click', () => editRule());
 }

@@ -1452,7 +1452,11 @@ export class OperonSettingsTab extends PluginSettingTab {
 			const ruleList = entries.find(entry => entry.id === 'automation.ruleList');
 			return { type: 'page', name: pageName, desc, items: this.compactSettingsSearchItems([
 				this.buildSettingsSearchSettingDefinitionFromEntry(entries.find(entry => entry.key === 'automationRules')),
-				ruleList ? this.buildTaskCaptureSearchSection(ruleList, el => this.renderAutomationList(el)) : null,
+				ruleList ? {
+					type: 'group',
+					heading: this.getSettingsSearchText(ruleList.name),
+					items: [this.buildTaskCaptureSearchSection(ruleList, el => this.renderAutomationList(el))],
+				} : null,
 			]) };
 		}
 		if (tab.id === 'tasksTaskRouter') {
@@ -4541,6 +4545,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 						dropdown.setValue(String(this.getControlValue('automationRules')));
 						this.renderAutomationList(list);
 					}));
+			renderSettingsHeading(contentEl, t('settings', 'automationRuleList'));
 			const list = contentEl.createDiv();
 			this.renderAutomationList(list);
 		} else if (tabId === 'corePipelines') {
