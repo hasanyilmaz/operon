@@ -106,15 +106,16 @@ export class AutomationRuleModal extends Modal {
 			this.counters.set(key, count);
 			const editor = new FilterConditionEditor({ app: this.app, rootGroup: this.draft[key], fields: this.fields,
 				title: t('settings', key === 'scope' ? 'automationScope' : 'automationTarget'), rootFooterStatus: count,
-				pickerPresentation: 'modal', preserveUnknownValues: true, onChange: () => this.changed() });
+				pickerPresentation: 'floating', preserveUnknownValues: true, onChange: () => this.changed() });
 			this.editors.push(editor);
 			editor.mount(this.contentEl);
 		}
 		const card = this.contentEl.createDiv('operon-filter-section').createDiv('operon-filter-group-card is-root');
-		card.createEl('h4', { text: t('settings', 'automationActions') });
+		const header = card.createDiv('operon-filter-group-header').createDiv('operon-filter-group-heading');
+		header.createEl('strong', { cls: 'operon-filter-group-title', text: t('settings', 'automationActions') });
 		this.section = card.createDiv('operon-automation-actions');
 		for (const action of this.draft.actions) this.mountAction(action);
-		const add = card.createDiv('operon-filter-group-footer').createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button',
+		const add = card.createDiv('operon-automation-add-row').createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button',
 			text: '+ ' + t('settings', 'automationAddAction') });
 		add.addEventListener('click', () => {
 			const action: AutomationAction = { id: crypto.randomUUID(), field: '', operation: 'add', value: '' };
@@ -128,7 +129,7 @@ export class AutomationRuleModal extends Modal {
 		const controls = footer.createDiv('operon-filter-footer-primary-actions');
 		controls.createEl('button', { type: 'button', text: t('buttons', 'cancel') }).addEventListener('click', () => this.close());
 		const dropdown = (title: string, value: string, options: [string, string][], set: (v: string) => void) => {
-			const select = controls.createEl('select', { attr: { 'aria-label': title } });
+			const select = controls.createEl('select', { cls: 'dropdown', attr: { 'aria-label': title } });
 			for (const [key, text] of options) select.createEl('option', { value: key, text });
 			select.value = value;
 			select.addEventListener('change', () => { set(select.value); this.updateSave(); });

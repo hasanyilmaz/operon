@@ -16,7 +16,7 @@ import { createOwnerElement, getOwnerBody, getOwnerWindow } from '../core/dom-co
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
-import { showFilterConditionPicker } from './field-pickers/filter-condition-picker';
+import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { showSearchableMultiOptionPicker, type SearchableMultiOption } from './field-pickers/list-picker';
 import type { SearchableFieldPickerOption } from './field-pickers/searchable-field-picker';
 import { getManagedCustomFieldOptions } from '../core/managed-task-fields';
@@ -1144,16 +1144,10 @@ export class FilterConditionEditor {
 
 		// --- Field picker ---
 		const fieldWrap = row.createDiv('operon-filter-select-wrap is-content operon-condition-field-picker-wrap');
-		const fieldButton = fieldWrap.createEl('button', {
-			cls: 'operon-filter-select operon-field-picker-trigger operon-condition-field-picker-trigger',
-		});
-		fieldButton.type = 'button';
-		fieldButton.setAttribute('aria-haspopup', 'listbox');
-		fieldButton.setAttribute('aria-expanded', 'false');
-		const fieldButtonLabel = fieldButton.createSpan('operon-field-picker-trigger-label operon-condition-field-picker-trigger-label');
-		const fieldButtonSecondary = fieldButton.createSpan('operon-field-picker-trigger-secondary');
-		const fieldButtonIcon = fieldButton.createSpan('operon-field-picker-trigger-icon operon-condition-field-picker-trigger-icon');
-		setIcon(fieldButtonIcon, 'chevron-down');
+		const { button: fieldButton, label: fieldButtonLabel, secondary: fieldButtonSecondary, icon } = createFilterPickerTrigger(fieldWrap);
+		fieldButton.addClass('operon-condition-field-picker-trigger');
+		fieldButtonLabel.addClass('operon-condition-field-picker-trigger-label');
+		icon.addClass('operon-condition-field-picker-trigger-icon');
 		const fieldStatus = fieldWrap.createDiv('operon-filter-file-property-status');
 
 		const getSelectedFieldOption = () => fieldOptions.find(optionDef => optionDef.field === cond.field);

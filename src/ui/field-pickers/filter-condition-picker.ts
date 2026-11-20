@@ -1,3 +1,4 @@
+import { setIcon } from 'obsidian';
 import { t } from '../../core/i18n';
 import type { FilterFieldType } from '../../types/settings';
 import { showSearchableFieldPicker } from './searchable-field-picker';
@@ -13,6 +14,19 @@ interface FilterConditionPickerOptions {
 	fields: readonly FilterConditionPickerOption[];
 	onSelect: (option: FilterConditionPickerOption) => void;
 	onClose?: () => void;
+}
+
+export function createFilterPickerTrigger(container: HTMLElement) {
+	const button = container.createEl('button', {
+		type: 'button',
+		cls: 'operon-filter-select operon-field-picker-trigger',
+		attr: { 'aria-haspopup': 'listbox', 'aria-expanded': 'false' },
+	});
+	const label = button.createSpan('operon-field-picker-trigger-label');
+	const secondary = button.createSpan('operon-field-picker-trigger-secondary is-hidden');
+	const icon = button.createSpan('operon-field-picker-trigger-icon');
+	setIcon(icon, 'chevron-down');
+	return { button, label, secondary, icon };
 }
 
 export function showFilterConditionPicker(anchor: HTMLElement | DOMRect, options: FilterConditionPickerOptions): () => void {

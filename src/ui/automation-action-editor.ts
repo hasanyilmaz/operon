@@ -8,10 +8,11 @@ import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { composeStatusValue, resolveWorkflowStatus } from '../types/pipeline';
 import type { FilterFieldType, OperonSettings } from '../types/settings';
 import type { IndexedTask } from '../types/fields';
-import { bindSettingsModalPickerTrigger, type FilterFieldPickerOption } from './filter-condition-editor';
+import type { FilterFieldPickerOption } from './filter-condition-editor';
 import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
-import { openSettingsMultiOptionPickerModal } from './settings/settings-option-picker-modal';
+import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
+import { showSearchableMultiOptionPicker } from './field-pickers/list-picker';
 import type { TableFilePropertySnapshot } from './table/table-file-property';
 
 export interface ActionEditorContext {
@@ -42,7 +43,7 @@ export function validAction(action: AutomationAction, ctx: ActionEditorContext):
 }
 
 function selectValue(parent: HTMLElement, label: string, value: string, values: [string, string][], change: (value: string) => void): HTMLSelectElement {
-	const select = parent.createEl('select', { cls: 'operon-filter-control', attr: { 'aria-label': label } });
+	const select = parent.createEl('select', { cls: 'operon-filter-control dropdown', attr: { 'aria-label': label } });
 	select.createEl('option', { value: '', text: label });
 	for (const [key, text] of values) select.createEl('option', { value: key, text });
 	if (value && !values.some(([key]) => key === value)) select.createEl('option', { value, text: value });
@@ -53,12 +54,11 @@ function selectValue(parent: HTMLElement, label: string, value: string, values: 
 
 export class AutomationActionRow {
 	readonly element: HTMLElement;
-	private readonly field: HTMLSelectElement;
+	private readonly field: ReturnType<typeof createFilterPickerTrigger>;
 	private readonly valueHost: HTMLElement;
 	private readonly operation: HTMLButtonElement;
 	private readonly message: HTMLElement;
-	private picker: { close(): void } | null = null;
-	private fieldsPending = false;
+	private closePicker: (() => void) | null = null;
 	private popoverOpen = false;
 	private renderedType: FilterFieldType | null = null;
 
@@ -71,14 +71,27 @@ export class AutomationActionRow {
 			this.renderOperation();
 			ctx.changed();
 		});
-		this.field = row.createEl('select', { cls: 'operon-filter-control', attr: { 'aria-label': t('settings', 'automationField') } });
-		this.field.addEventListener('blur', () => { if (this.fieldsPending) queueMicrotask(() => this.refreshFields()); });
-		this.field.addEventListener('change', () => {
-			action.field = this.field.value;
-			action.value = '';
-			this.renderValue();
-			this.renderOperation();
-			ctx.changed();
+		this.field = createFilterPickerTrigger(row);
+		this.field.button.addEventListener('click', () => {
+			const fields = this.ctx.options().filter(option => !option.unavailable && actionType(option.field, this.ctx));
+			this.field.button.setAttribute('aria-expanded', 'true');
+			this.closePicker = showFilterConditionPicker(this.field.button, {
+				value: action.field, fields,
+				onSelect: option => {
+					if (option.field === action.field || !actionType(option.field, this.ctx)) return;
+					action.field = option.field;
+					action.value = '';
+					this.refreshFields();
+					this.renderValue();
+					this.renderOperation();
+					ctx.changed();
+				},
+				onClose: () => {
+					this.field.button.setAttribute('aria-expanded', 'false');
+					this.closePicker = null;
+					queueMicrotask(() => this.syncType());
+				},
+			});
 		});
 		this.valueHost = row.createDiv('operon-automation-value');
 		this.valueHost.addEventListener('focusout', () => queueMicrotask(() => this.syncType()));
@@ -92,37 +105,19 @@ export class AutomationActionRow {
 	}
 
 	refreshFields(): void {
-		const options = this.ctx.options();
-		// Keep a keyboard-open native menu and its selection intact during index updates.
-		if (this.field.ownerDocument.activeElement === this.field && this.field.options.length) {
-			this.fieldsPending = true;
-			return;
-		}
-		this.fieldsPending = false;
-		this.field.empty();
-		this.field.createEl('option', { value: '', text: t('settings', 'automationField') });
-		const groups = new Map<string, HTMLOptGroupElement>();
-		for (const option of options) {
-			const group = option.groupLabel ?? '';
-			let host = groups.get(group);
-			if (!host) {
-				host = this.field.createEl('optgroup', { attr: { label: group } });
-				groups.set(group, host);
-			}
-			const writable = !!actionType(option.field, this.ctx);
-			const label = writable ? option.label : option.label + ' · ' + t('settings', 'automationFilterOnly');
-			host.createEl('option', { value: option.field, text: label }).disabled = !writable;
-		}
-		if (this.action.field && !options.some(item => item.field === this.action.field)) {
-			this.field.createEl('option', { value: this.action.field, text: this.action.field }).disabled = true;
-		}
-		this.field.value = this.action.field;
+		const option = this.ctx.options().find(item => item.field === this.action.field);
+		const label = option?.label || this.action.field || t('settings', 'automationField');
+		this.field.label.setText(label);
+		this.field.secondary.setText(option?.secondaryLabel ?? '');
+		this.field.secondary.toggleClass('is-hidden', !option?.secondaryLabel);
+		this.field.button.dataset.value = this.action.field;
+		this.field.button.setAttribute('aria-label', t('settings', 'automationField') + ' · ' + label);
 		this.syncType();
 	}
 
 	private syncType(): void {
 		if (!this.element.isConnected) return;
-		if (this.renderedType !== actionType(this.action.field, this.ctx) && !this.valueHost.contains(this.element.ownerDocument.activeElement) && !this.picker && !this.popoverOpen) {
+		if (this.renderedType !== actionType(this.action.field, this.ctx) && !this.valueHost.contains(this.element.ownerDocument.activeElement) && !this.closePicker && !this.popoverOpen) {
 			this.renderValue();
 			this.renderOperation();
 		}
@@ -147,8 +142,10 @@ export class AutomationActionRow {
 		const raw = Array.isArray(action.value) ? action.value.join('; ') : action.value;
 		const change = (value: string | string[]) => { action.value = value; ctx.changed(); };
 		if (type === 'list' || type === 'tags') {
-			const button = valueHost.createEl('button', { type: 'button', cls: 'operon-filter-control', text: raw || label, attr: { 'aria-label': label } });
-			bindSettingsModalPickerTrigger(button, () => {
+			const trigger = createFilterPickerTrigger(valueHost);
+			trigger.label.setText(raw || label);
+			trigger.button.setAttribute('aria-label', label + (raw ? ' · ' + raw : ''));
+			trigger.button.addEventListener('click', () => {
 				const native = isFilePropertyColumnKey(action.field);
 				const members = Array.isArray(action.value) ? action.value : native && action.value ? [action.value] : parseListValue(action.value);
 				const candidates = new Set(members);
@@ -158,11 +155,21 @@ export class AutomationActionRow {
 						? [task.operonId] : action.field === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues.taskGallery) : parseListValue(task.fieldValues[action.field] ?? '');
 					for (const item of items) candidates.add(item);
 				}
-				this.picker = openSettingsMultiOptionPickerModal(ctx.app, {
-					settingsScope: true, title: label, placeholder: label, value: [...members], allowCustom: true,
+				trigger.button.setAttribute('aria-expanded', 'true');
+				this.closePicker = showSearchableMultiOptionPicker(trigger.button, {
+					title: label, placeholder: label, value: [...members], allowCustom: true,
 					options: [...candidates].map(value => ({ value, label: value })),
-					onClose: () => { this.picker = null; queueMicrotask(() => this.syncType()); },
-					onSave: values => { this.picker = null; button.setText(values.join('; ') || label); change(values); queueMicrotask(() => this.syncType()); },
+					onPanelClose: () => {
+						trigger.button.setAttribute('aria-expanded', 'false');
+						this.closePicker = null;
+						queueMicrotask(() => this.syncType());
+					},
+					onSave: values => {
+						const selected = values.join('; ');
+						trigger.label.setText(selected || label);
+						trigger.button.setAttribute('aria-label', label + (selected ? ' · ' + selected : ''));
+						change(values);
+					},
 				});
 			});
 			return;
@@ -207,7 +214,7 @@ export class AutomationActionRow {
 		}
 	}
 
-	focusField(): void { this.field.focus(); }
+	focusField(): void { this.field.button.focus(); }
 	setMessage(message: string): void { this.message.setText(message); }
-	dispose(): void { this.picker?.close(); this.element.remove(); }
+	dispose(): void { this.closePicker?.(); this.element.remove(); }
 }

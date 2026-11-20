@@ -15583,7 +15583,8 @@ body:not(.is-mobile) .mod-root .workspace-leaf-content[data-type="operon-filter-
 	border-left: 2px solid color-mix(in srgb, var(--interactive-accent) 35%, var(--background-modifier-border-hover));
 }
 
-.operon-filter-group-footer {
+.operon-filter-group-footer,
+.operon-automation-add-row {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
@@ -16023,20 +16024,13 @@ button.operon-field-picker-trigger,
 	grid-template-columns: auto minmax(0, 2fr) minmax(0, 3fr) auto;
 }
 
-.operon-automation-action-row > select,
+.operon-automation-action-row > .operon-field-picker-trigger,
 .operon-automation-value,
 .operon-automation-value > :is(button, input, select) {
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
 	box-sizing: border-box;
-}
-
-.operon-automation-value > button {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .operon-automation-count,
