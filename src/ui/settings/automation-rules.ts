@@ -21,8 +21,8 @@ export function automationConfirmationOptions(): Record<string, string> {
 	]));
 }
 
-export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules' | 'subscribeAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): () => void {
-	const render = () => renderAutomationRules(app, el, storage, source, run);
+export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules' | 'subscribeAutomationRules'>, source: AutomationEditorSource): () => void {
+	const render = () => renderAutomationRules(app, el, storage, source);
 	render();
 	const unsubscribe = storage.subscribeAutomationRules(render);
 	const owner = el.ownerDocument.defaultView;
@@ -39,7 +39,7 @@ export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<Op
 	return dispose;
 }
 
-function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource, run?: (id: string) => Promise<boolean>): void {
+function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource): void {
 	cleanupOperonHoverTooltips(el);
 	el.empty();
 	const expected = storage.getSettings().automationRules;
@@ -93,11 +93,6 @@ function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonSt
 		const button = (icon: string, label: string, onClick: () => void | Promise<void>): void => {
 			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, icon, ariaLabel: label + ' · ' + rule.name, onClick });
 		};
-		if (run && rule.active && rule.mode === 'manual') {
-			const label = t('settings', 'automationRun');
-			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, text: label, ariaLabel: label + ' · ' + rule.name,
-				onClick: async () => { await run(rule.id); } });
-		}
 		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
 		button('copy', t('table', 'duplicatePreset'), async () => {
 			const copy = { ...structuredClone(rule), id: createAutomationRuleId(rules), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };
