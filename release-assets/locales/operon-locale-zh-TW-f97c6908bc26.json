@@ -1205,7 +1205,7 @@
       "automationSetValue": "設定值",
       "automationState": "規則狀態",
       "automationStopped": "自動化已停止。已變更：{{applied}} · 剩餘：{{remaining}} · 結果未知：{{uncertain}}",
-      "automationTarget": "要更新的任務",
+      "automationTarget": "觸發條件",
       "automationUnavailable": "無法讀取這些自動化設定。",
       "automationUnknown": "無法計算",
       "automationUnsavedRule": "未儲存的規則",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "d30398e893672e157a7638b568861b51bc29e501f75dc5a825d6be35932849a3"
+  "sourceVersion": "df8cc686c9a2e91e7f1a0911e938aab86c16bcf2ed6c18bf0a4bd1a06abef849"
 }

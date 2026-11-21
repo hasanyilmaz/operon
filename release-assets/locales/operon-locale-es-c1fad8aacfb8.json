@@ -1205,7 +1205,7 @@
       "automationSetValue": "Asignar valor",
       "automationState": "Estado de la regla",
       "automationStopped": "Automatización detenida. Modificadas: {{applied}} · Pendientes: {{remaining}} · Resultado incierto: {{uncertain}}",
-      "automationTarget": "Tareas a actualizar",
+      "automationTarget": "Desencadenantes",
       "automationUnavailable": "No se pudieron leer los ajustes de automatización.",
       "automationUnknown": "No se pudo calcular",
       "automationUnsavedRule": "Regla sin guardar",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "7c24820497f15f0a9075e17a9a3003542944955fffd85bdc5824a7a473be4c97"
+  "sourceVersion": "ff598b670083a336cf929f5bd683129b4dbbe24e4f4326982142441d124456b6"
 }

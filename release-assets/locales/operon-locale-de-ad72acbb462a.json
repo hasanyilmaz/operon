@@ -1205,7 +1205,7 @@
       "automationSetValue": "Wert setzen",
       "automationState": "Regelstatus",
       "automationStopped": "Automatisierung gestoppt. Geändert: {{applied}} · Ausstehend: {{remaining}} · Ergebnis unklar: {{uncertain}}",
-      "automationTarget": "Zu aktualisierende Aufgaben",
+      "automationTarget": "Auslöser",
       "automationUnavailable": "Diese Automatisierungseinstellungen konnten nicht gelesen werden.",
       "automationUnknown": "Berechnung nicht möglich",
       "automationUnsavedRule": "Ungespeicherte Regel",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "08d9e88fd3dd0f3df0cf9bc05325d1bd85cd8592483de61a363b183c98caa730"
+  "sourceVersion": "1b320fba7a7cba640734a04401ed93165fb0db7e0bb5e214da54caca7838b82f"
 }

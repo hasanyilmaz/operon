@@ -1205,7 +1205,7 @@
       "automationSetValue": "Задать значение",
       "automationState": "Состояние правила",
       "automationStopped": "Автоматизация остановлена. Изменено: {{applied}} · Осталось: {{remaining}} · Результат неизвестен: {{uncertain}}",
-      "automationTarget": "Задачи для обновления",
+      "automationTarget": "Триггеры",
       "automationUnavailable": "Не удалось прочитать настройки автоматизации.",
       "automationUnknown": "Не удалось рассчитать",
       "automationUnsavedRule": "Несохранённое правило",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "150e7e72b78a2c7a5fb92b6851d1bf65e304f131e1d41a386142a1fb6cacc918"
+  "sourceVersion": "f8d733aec6561f032e92efce4c9564749f2cdb4131e119616b443e2eab8e155f"
 }

@@ -1205,7 +1205,7 @@
       "automationSetValue": "값 설정",
       "automationState": "규칙 상태",
       "automationStopped": "자동화가 중단되었습니다. 변경: {{applied}} · 남음: {{remaining}} · 결과 불명: {{uncertain}}",
-      "automationTarget": "업데이트할 작업",
+      "automationTarget": "트리거",
       "automationUnavailable": "자동화 설정을 읽을 수 없습니다.",
       "automationUnknown": "계산할 수 없음",
       "automationUnsavedRule": "저장되지 않은 규칙",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "64e1e344e1a4a04a259bb8dcca8074d9a5c1d938f368132d25eac997454f3f89"
+  "sourceVersion": "b05f42f08593f2b05b12ad1e751fe9071a64201d64c823bbe01273672e93550f"
 }

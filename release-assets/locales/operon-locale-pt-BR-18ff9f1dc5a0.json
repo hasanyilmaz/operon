@@ -1205,7 +1205,7 @@
       "automationSetValue": "Definir valor",
       "automationState": "Estado da regra",
       "automationStopped": "Automação interrompida. Alteradas: {{applied}} · Restantes: {{remaining}} · Resultado incerto: {{uncertain}}",
-      "automationTarget": "Tarefas a atualizar",
+      "automationTarget": "Gatilhos",
       "automationUnavailable": "Não foi possível ler estas configurações de automação.",
       "automationUnknown": "Não foi possível calcular",
       "automationUnsavedRule": "Regra não salva",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "b346b7cb1e5d1fb5e9ff3676db1b95220a84fdac44effb84163d5ec55853aaf3"
+  "sourceVersion": "e752b0fe72d541aea9eef4220913e843b06856fecc9f87fa622d9c1593174f78"
 }

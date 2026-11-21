@@ -1205,7 +1205,7 @@
       "automationSetValue": "Imposta valore",
       "automationState": "Stato della regola",
       "automationStopped": "Automazione interrotta. Modificate: {{applied}} · Rimanenti: {{remaining}} · Esito incerto: {{uncertain}}",
-      "automationTarget": "Attività da aggiornare",
+      "automationTarget": "Trigger",
       "automationUnavailable": "Impossibile leggere queste impostazioni di automazione.",
       "automationUnknown": "Calcolo non riuscito",
       "automationUnsavedRule": "Regola non salvata",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "c12e511fcb3462e7c9b5894b4617bd6c7350a3e4f8ae00ac420262158f1f822c"
+  "sourceVersion": "a456060c75f4e971b49494849b8068a7d1e53982c4f38df4e0ac630f45e0c66c"
 }

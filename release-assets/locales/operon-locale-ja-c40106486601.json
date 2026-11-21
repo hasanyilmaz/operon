@@ -1205,7 +1205,7 @@
       "automationSetValue": "値を設定",
       "automationState": "ルールの状態",
       "automationStopped": "自動化を停止しました。変更済み：{{applied}} · 残り：{{remaining}} · 結果不明：{{uncertain}}",
-      "automationTarget": "更新するタスク",
+      "automationTarget": "トリガー",
       "automationUnavailable": "自動化の設定を読み込めませんでした。",
       "automationUnknown": "計算できません",
       "automationUnsavedRule": "未保存のルール",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "76d1f958557eecf7134b076c5d2645e5373a24ab81474e1975f5104a4a7035b8"
+  "sourceVersion": "c8fc9bdef4732c12094b62612bc5bc320370ac7d084ba8c274ec1e9a45734251"
 }

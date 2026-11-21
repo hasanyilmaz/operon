@@ -1205,7 +1205,7 @@
       "automationSetValue": "Değeri ayarla",
       "automationState": "Kural durumu",
       "automationStopped": "Otomasyon durdu. Değişen: {{applied}} · Kalan: {{remaining}} · Sonucu belirsiz: {{uncertain}}",
-      "automationTarget": "Güncellenecek görevler",
+      "automationTarget": "Tetikleyiciler",
       "automationUnavailable": "Bu otomasyon ayarları okunamadı.",
       "automationUnknown": "Hesaplanamadı",
       "automationUnsavedRule": "Kaydedilmemiş kural",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "3d16f3dad6e92aaeb733daa8f2d8db44c0bdf5d28c15cd87add17bde9e4d4d91"
+  "sourceVersion": "606082006bd2028f34de659ff82dcce4c8116787b84cb1c66c575043d8d69ace"
 }

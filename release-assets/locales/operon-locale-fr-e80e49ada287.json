@@ -1205,7 +1205,7 @@
       "automationSetValue": "Définir la valeur",
       "automationState": "État de la règle",
       "automationStopped": "Automatisation arrêtée. Modifiées : {{applied}} · Restantes : {{remaining}} · Résultat incertain : {{uncertain}}",
-      "automationTarget": "Tâches à modifier",
+      "automationTarget": "Déclencheurs",
       "automationUnavailable": "Impossible de lire ces réglages d’automatisation.",
       "automationUnknown": "Calcul impossible",
       "automationUnsavedRule": "Règle non enregistrée",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "36c109209688a70338827f4b3ea4ccc68587da1f48d549b6568b0a410794fb54"
+  "sourceVersion": "d43822c07aebb8d2aedd2b635e6a7b097309e05ef9f7c28f0f54a2a97db15cf0"
 }

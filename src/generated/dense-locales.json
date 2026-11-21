@@ -5130,7 +5130,7 @@
       "Set value",
       "Rule state",
       "Automation stopped. Changed: {{applied}} · Remaining: {{remaining}} · Outcome unknown: {{uncertain}}",
-      "Tasks to Update",
+      "Triggers",
       "These automation settings could not be read.",
       "Could not calculate",
       "Unsaved rule",

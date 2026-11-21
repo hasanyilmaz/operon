@@ -1205,7 +1205,7 @@
       "automationSetValue": "设置值",
       "automationState": "规则状态",
       "automationStopped": "自动化已停止。已更改：{{applied}} · 剩余：{{remaining}} · 结果未知：{{uncertain}}",
-      "automationTarget": "要更新的任务",
+      "automationTarget": "触发条件",
       "automationUnavailable": "无法读取这些自动化设置。",
       "automationUnknown": "无法计算",
       "automationUnsavedRule": "未保存的规则",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "ff2e1fb9a45efb963335e631984fa4d33b7de437562174c6549c09428fcc3b4a"
+  "sourceVersion": "8954afc6fdc3e838cca6d482d22ff26a717481ab78bb9938b21637d375c82905"
 }

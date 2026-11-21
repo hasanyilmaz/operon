@@ -464,7 +464,7 @@
 		"automationEditRule": "編輯自動化規則",
 		"automationSaveRule": "儲存規則",
 		"automationScope": "範圍內的任務",
-		"automationTarget": "要更新的任務",
+		"automationTarget": "觸發條件",
 		"automationModifiedGroup": "最後修改：{{date}}",
 		"automationActions": "操作",
 		"automationAddAction": "新增操作",

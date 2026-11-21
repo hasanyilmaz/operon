@@ -464,7 +464,7 @@
 		"automationEditRule": "Automatisierungsregel bearbeiten",
 		"automationSaveRule": "Regel speichern",
 		"automationScope": "Berücksichtigte Aufgaben",
-		"automationTarget": "Zu aktualisierende Aufgaben",
+		"automationTarget": "Auslöser",
 		"automationModifiedGroup": "Zuletzt geändert: {{date}}",
 		"automationActions": "Aktionen",
 		"automationAddAction": "Aktion hinzufügen",

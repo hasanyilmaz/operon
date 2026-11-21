@@ -464,7 +464,7 @@
 		"automationEditRule": "自動化ルールを編集",
 		"automationSaveRule": "ルールを保存",
 		"automationScope": "範囲内のタスク",
-		"automationTarget": "更新するタスク",
+		"automationTarget": "トリガー",
 		"automationModifiedGroup": "最終更新：{{date}}",
 		"automationActions": "アクション",
 		"automationAddAction": "アクションを追加",

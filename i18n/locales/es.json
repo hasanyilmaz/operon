@@ -464,7 +464,7 @@
 		"automationEditRule": "Editar regla de automatización",
 		"automationSaveRule": "Guardar regla",
 		"automationScope": "Tareas incluidas",
-		"automationTarget": "Tareas a actualizar",
+		"automationTarget": "Desencadenantes",
 		"automationModifiedGroup": "Última modificación: {{date}}",
 		"automationActions": "Acciones",
 		"automationAddAction": "Añadir acción",

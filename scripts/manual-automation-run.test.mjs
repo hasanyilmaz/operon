@@ -904,7 +904,7 @@ test('Project Serial reference deletion during confirmation discards the approve
 	try { showAutomationResult(result, false, new Map([[ruleId, f.rule.name]])); }
 	finally { Notice.onNotice = null; }
 	assert.equal(notices.length, 1);
-	for (const text of [f.rule.name, 'Tasks to Update', 'Project Serial Group', serialGroup.id]) assert.ok(notices[0].includes(text), text);
+	for (const text of [f.rule.name, 'Triggers', 'Project Serial Group', serialGroup.id]) assert.ok(notices[0].includes(text), text);
 });
 
 test('Project Serial reference deletion at the final write boundary leaves Markdown intact', async () => {

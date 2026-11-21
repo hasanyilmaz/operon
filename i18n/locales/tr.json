@@ -464,7 +464,7 @@
 		"automationEditRule": "Otomasyon kuralını düzenle",
 		"automationSaveRule": "Kuralı kaydet",
 		"automationScope": "Kapsamdaki görevler",
-		"automationTarget": "Güncellenecek görevler",
+		"automationTarget": "Tetikleyiciler",
 		"automationModifiedGroup": "Son değişiklik: {{date}}",
 		"automationActions": "İşlemler",
 		"automationAddAction": "İşlem ekle",

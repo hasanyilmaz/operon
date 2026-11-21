@@ -464,7 +464,7 @@
 		"automationEditRule": "자동화 규칙 편집",
 		"automationSaveRule": "규칙 저장",
 		"automationScope": "범위 내 작업",
-		"automationTarget": "업데이트할 작업",
+		"automationTarget": "트리거",
 		"automationModifiedGroup": "마지막 수정: {{date}}",
 		"automationActions": "작업",
 		"automationAddAction": "작업 추가",

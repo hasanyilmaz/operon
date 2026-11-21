@@ -464,7 +464,7 @@
 		"automationEditRule": "Изменить правило автоматизации",
 		"automationSaveRule": "Сохранить правило",
 		"automationScope": "Задачи в области действия",
-		"automationTarget": "Задачи для обновления",
+		"automationTarget": "Триггеры",
 		"automationModifiedGroup": "Последнее изменение: {{date}}",
 		"automationActions": "Действия",
 		"automationAddAction": "Добавить действие",
