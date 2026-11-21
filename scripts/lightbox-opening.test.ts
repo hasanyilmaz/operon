@@ -695,3 +695,44 @@ test('missing task-file modifier target does not create a file or open a fallbac
   assert.equal(f.opens.length, 0);
  } finally { f.cleanup(); }
 });
+
+for (const mode of ['lightbox', 'tab'] as const) test(`Open Source from a tabless Settings preview opens the task in the vault window (${mode})`, async () => {
+ const f = fixture();
+ const settings = lightboxFixture();
+ const preview = settings.doc.body.createDiv();
+ preview.appendChild(settings.anchor);
+ settings.anchor.closest = (selector: string) => selector === '.operon-filter-preview-modal-shell' ? preview : null;
+ f.app.workspace.iterateAllLeaves = (visit: (leaf: unknown) => void) => visit(f.app.workspace.getMostRecentLeaf());
+ let focused = 0;
+ f.doc.defaultView.focus = () => focused++;
+ try {
+  const result = await openLightboxTarget(f.app, settings.anchor, {
+   kind: 'local', linktext: f.file.path, sourcePath: f.file.path, operonId: 'abcdefg', line: 3, caretCh: 7,
+  }, mode);
+  await tick();
+  assert.equal(result, 'opened');
+  assert.equal(f.opens.length, 1);
+  assert.deepEqual(f.opens[0].eState.cursor.from, {line: 3, ch: 7});
+  assert.equal(f.root.ownerDocument, f.doc);
+  assert.equal(focused, 1);
+  assert.equal(preview.isConnected, true);
+  assert.equal(f.stats().saves, 0);
+ } finally { f.cleanup(); }
+});
+
+test('Open Source keeps a preview in its own window when that window has workspace tabs', async () => {
+ const f = fixture();
+ const main = lightboxFixture();
+ f.app.workspace.containerEl = main.doc.body;
+ const preview = f.doc.body.createDiv();
+ f.anchor.closest = (selector: string) => selector === '.operon-filter-preview-modal-shell' ? preview : null;
+ let focusedMain = false;
+ main.doc.defaultView.focus = () => { focusedMain = true; };
+ try {
+  await openLightboxTarget(f.app, f.anchor, {kind: 'local', linktext: f.file.path, sourcePath: f.file.path, operonId: 'abcdefg'});
+  await tick();
+  assert.equal(f.opens.length, 1);
+  assert.equal(f.root.ownerDocument, f.doc);
+  assert.equal(focusedMain, false);
+ } finally { f.cleanup(); }
+});
