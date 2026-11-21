@@ -83,8 +83,10 @@ export interface AutomationChangePlan {
 	rules: Array<{ ruleId: string; scope: number | null; target: number | null; changed: number | null; taskIds?: AutomationPreviewTaskIds }>;
 	changes: AutomationFieldChange[];
 	issues: AutomationPlanIssue[];
-	/** Null when an input or a domain effect could not be resolved. */
+	/** Distinct targets with a direct action change; null when the plan is unresolved. */
 	changedTaskCount: number | null;
+	/** All tasks the writer must apply, including dependent effects. */
+	affectedTaskCount: number | null;
 	needsConfirmation: boolean | null;
 }
 
@@ -358,7 +360,7 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 	return derived;
 }
 
-function resolveIntents(intents: Intent[]): AutomationFieldChange | 'conflict' | undefined {
+function resolveIntents(intents: Intent[], directByRule: Map<string, Set<string>>): AutomationFieldChange | 'conflict' | undefined {
 	const first = intents[0];
 	const sets = intents.filter(i => i.op === 'set' || i.op === 'include');
 	const removes = intents.filter(i => i.op === 'clear-if' || i.op === 'exclude');
@@ -377,6 +379,13 @@ function resolveIntents(intents: Intent[]): AutomationFieldChange | 'conflict' |
 		contributing = sets.length ? sets : removes.filter(i => equal(first.before, i.value));
 	}
 	if (equal(first.before, after)) return;
+	for (const intent of contributing) {
+		if (intent.indirect) continue;
+		const ruleId = intent.origin.ruleId;
+		const ids = directByRule.get(ruleId);
+		if (ids) ids.add(intent.taskId);
+		else directByRule.set(ruleId, new Set([intent.taskId]));
+	}
 	return { taskId: first.taskId, field: first.field, before: first.before, after,
 		origins: uniqueOrigins(contributing.map(i => i.origin)), indirect: contributing.every(i => i.indirect) };
 }
@@ -523,16 +532,17 @@ function guardProjectedTransitions(
 	}
 }
 
-function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: AutomationPlanIssue[]): AutomationFieldChange[] {
+function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: AutomationPlanIssue[]) {
 	const excluded = new Set<string>();
 	const rejected = new Set<string>();
 	const excludeOrigins = (origins: Origin[]) => { for (const origin of origins) rejected.add(originKey(origin)); };
 	for (;;) {
 		const previous = excluded.size + rejected.size;
 		const changes: AutomationFieldChange[] = [];
+		const directByRule = new Map<string, Set<string>>();
 		const groups = organize(batches.filter(batch => !rejected.has(originKey(batch.origin))), excluded);
 		for (const intents of groups.values()) {
-			const change = resolveIntents(intents);
+			const change = resolveIntents(intents, directByRule);
 			if (change === 'conflict') {
 				const { taskId, field } = intents[0];
 				excluded.add(taskId);
@@ -581,7 +591,7 @@ function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: Automa
 		guardProjectedTransitions(ctx, finalGraph, transitions, excludeOrigins, issues);
 		if (previous !== excluded.size + rejected.size) continue;
 		const indirect = projectIndirectChanges(ctx, changes, finalGraph, groups, excluded, excludeOrigins, issues);
-		if (previous === excluded.size + rejected.size) return [...changes, ...indirect];
+		if (previous === excluded.size + rejected.size) return { changes: [...changes, ...indirect], directByRule };
 	}
 }
 
@@ -658,13 +668,8 @@ export function planAutomationChanges(
 			}
 		}
 	}
-	const changes = combineBatches(ctx, batches, issues);
-	const byRule = new Map<string, Set<string>>();
-	for (const change of changes) for (const { ruleId } of change.origins) {
-		const ids = byRule.get(ruleId);
-		if (ids) ids.add(change.taskId); else byRule.set(ruleId, new Set([change.taskId]));
-	}
-	for (const count of counts) count.changed = byRule.get(count.ruleId)?.size ?? 0;
+	const { changes, directByRule } = combineBatches(ctx, batches, issues);
+	for (const count of counts) count.changed = directByRule.get(count.ruleId)?.size ?? 0;
 	const actionable = new Set(rules.filter(rule => rule.actions.length).map(rule => rule.id));
 	const unknownScope = new Set<string>(), unknownTarget = new Set<string>(), unknownChanges = new Set<string>();
 	for (const issue of issues) {
@@ -687,11 +692,15 @@ export function planAutomationChanges(
 		return { ...result, taskIds: {
 			scope: scope === null ? null : count.matches.scope,
 			target: target === null ? null : count.matches.target,
-			changed: changed === null ? null : Array.from(byRule.get(id) ?? []),
+			changed: changed === null ? null : Array.from(directByRule.get(id) ?? []),
 		} };
 	});
-	const changedTaskCount = result.some(rule => rule.changed === null) ? null : new Set(changes.map(change => change.taskId)).size;
-	const needsConfirmation = changedTaskCount === null ? null : changedTaskCount > 0
-		&& (confirmation === 'always' || (typeof confirmation === 'number' && changedTaskCount > confirmation));
-	return { rules: result, changes, issues, changedTaskCount, needsConfirmation };
+	const unresolved = result.some(rule => rule.changed === null);
+	const directIds = new Set<string>();
+	for (const ids of directByRule.values()) for (const id of ids) directIds.add(id);
+	const changedTaskCount = unresolved ? null : directIds.size;
+	const affectedTaskCount = unresolved ? null : new Set(changes.map(change => change.taskId)).size;
+	const needsConfirmation = changedTaskCount === null ? null
+		: (confirmation === 'always' && changes.length > 0) || (typeof confirmation === 'number' && changedTaskCount > confirmation);
+	return { rules: result, changes, issues, changedTaskCount, affectedTaskCount, needsConfirmation };
 }

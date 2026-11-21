@@ -360,11 +360,41 @@ test('file task rename and managed values commit together', async () => {
 	const f = await fixture({ 'Original.md': '---\noperonId: task001\n---\nBody\n' }, { rule: { actions: [action('description','Renamed'), action('priority','High')] } });
 	assert.equal((await f.run()).applied,1); assert.match(await f.read('Renamed.md'), /priority: High/u); await assert.rejects(f.read('Original.md'), { code: 'ENOENT' });
 });
-test('the parent timestamp and child multi-action change count as two distinct tasks', async () => {
-	const f = await fixture({ 'Parent.md': inline(id(1)), 'Child.md': inline(id(0), ' {{parentTask:: task001}}') },
-		{ rule: { target: rootGroup('description','text','is',id(0)), actions: [action('tags','child'), action('note','a note')] } });
-	assert.equal((await f.run()).applied, 2); assert.equal(f.prompts[0][0].rules[0].target, 1);
-	assert.match(await f.read('Parent.md'), /datetimeModified::/u);
+test('five changed children stay within a limit of five while the writer also updates their parent', async () => {
+	for (const policy of [5, 'always']) {
+		const children = Array.from({ length: 5 }, (_, i) => id(i));
+		const files = Object.fromEntries(children.map(key => [key + '.md', inline(key, ' #target {{parentTask:: task005}}')]));
+		files['Parent.md'] = inline(id(5));
+		const f = await fixture(files, { policy, rule: { target: rootGroup('tags','tags','anyContains','target'),
+			actions: [action('tags','child'), action('note','a note')] } });
+		assert.deepEqual(f.preview(f.rule).rules[0].taskIds.changed.toSorted(), children);
+		const result = await f.run();
+		assert.equal(result.applied, 6);
+		assert.equal(f.prompts.length, Number(policy === 'always'));
+		if (f.prompts.length) {
+			assert.equal(f.prompts[0][0].changedTaskCount, 5);
+			assert.equal(f.prompts[0][0].rules[0].changed, 5);
+		}
+		const parent = await f.read('Parent.md');
+		assert.match(parent, /datetimeModified::/u);
+		assert.doesNotMatch(parent, /#child|a note/u);
+	}
+});
+test('a reciprocal repair keeps its write and Always ask policy with zero direct changes', async () => {
+	for (const policy of [5, 'always']) {
+		const f = await fixture({ 'Source.md': inline(id(0), ' {{blocking:: task001}}'), 'Peer.md': inline(id(1)) },
+			{ policy, rule: { target: rootGroup('description','text','is',id(0)), actions: [action('blocking', id(1))] } });
+		assert.deepEqual(f.preview(f.rule).rules[0].taskIds.changed, []);
+		const result = await f.run();
+		assert.equal(result.applied, 1);
+		assert.equal(f.prompts.length, Number(policy === 'always'));
+		if (f.prompts.length) {
+			const [plan, listed] = f.prompts[0];
+			assert.equal(plan.changedTaskCount, 0);
+			assert.deepEqual(listed.map(rule => rule.id), [f.rule.id]);
+		}
+		assert.match(await f.read('Peer.md'), /blockedBy:: task000/u);
+	}
 });
 test('a blocked transition can still tag the target; transitions relying on another write roll back together', async () => {
 	const files = { 'A.md': inline(id(0), ' {{blockedBy:: task001}}'), 'B.md': inline(id(1), ' {{blocking:: task000}}') };

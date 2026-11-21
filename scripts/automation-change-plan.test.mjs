@@ -81,18 +81,48 @@ test('editor preview returns exact scope, target and changed task IDs from one p
 	assert.ok(!('taskIds' in plan(tasks, [draft]).rules[0]));
 });
 
-test('preview deduplicates multiple actions and attributes indirect changes to the owning rule', () => {
+test('preview counts distinct direct targets and retains indirect changes for the writer', () => {
 	const tasks = [task('parent'), task('child', { parentTask: 'parent' }), task('other')];
 	const child = rule('child-rule', [add('estimate', '120'), add('priority', 'High'), add('tags', 'review')], select('child'));
 	const other = rule('other-rule', [add('tags', 'review')], select('other'));
 	const p = plan(tasks, [child, other], { includePreviewTaskIds: true });
 	assert.deepEqual(p.rules[0].taskIds.target, ['child']);
-	assert.deepEqual([...p.rules[0].taskIds.changed].sort(), ['child', 'parent']);
+	assert.deepEqual(p.rules[0].taskIds.changed, ['child']);
 	assert.deepEqual(p.rules[1].taskIds.changed, ['other']);
-	assert.equal(p.changedTaskCount, 3);
+	assert.equal(p.changedTaskCount, 2);
+	assert.equal(p.affectedTaskCount, 3);
 	for (const r of p.rules) for (const key of ['scope', 'target', 'changed']) assert.equal(r[key], r.taskIds[key].length);
 });
 
+test('17 direct targets and 6 ancestors share one counter, preview and threshold', () => {
+	const parents = Array.from({ length: 6 }, (_, i) => task('parent' + i));
+	const children = Array.from({ length: 17 }, (_, i) => task('child' + i, { parentTask: parents[i % 6].operonId }));
+	const targets = group('all', cond('description', 'text', 'startsWith', 'child'));
+	const update = rule('children', [add('note', 'review'), add('tags', 'review')], targets);
+	const tasks = [...parents, ...children, task('child-noop', { note: 'review' }, { tags: ['review'] })];
+	for (const [limit, ask] of [[15, true], [20, false], ['always', true], ['none', false]]) {
+		const p = plan(tasks, [update], { includePreviewTaskIds: true }, limit);
+		assert.equal(p.rules[0].target, 18);
+		assert.deepEqual(p.rules[0].taskIds.changed, children.map(t => t.operonId));
+		assert.equal(p.rules[0].changed, 17);
+		assert.equal(p.changedTaskCount, 17);
+		assert.equal(p.affectedTaskCount, 23);
+		assert.equal(p.needsConfirmation, ask);
+		for (const parent of parents) assert.equal(field(p, parent.operonId, 'datetimeModified').after, asOf);
+	}
+	const withParent = plan(tasks, [update, rule('parent', [add('note', 'direct')], select('parent0'))], { includePreviewTaskIds: true });
+	assert.deepEqual(withParent.rules[1].taskIds.changed, ['parent0']);
+	assert.equal(withParent.changedTaskCount, 18);
+	assert.equal(withParent.affectedTaskCount, 23);
+});
+
+test('a shared reciprocal field counts only the rule that directly changes that endpoint', () => {
+	const a = rule('forward', [add('blocking', 'b')], select('a'));
+	const b = rule('inverse', [add('blockedBy', 'a')], select('b'));
+	const p = plan([task('a'), task('b')], [a, b], { includePreviewTaskIds: true });
+	assert.deepEqual(p.rules.map(r => r.taskIds.changed), [['a'], ['b']]);
+	assert.equal(p.changedTaskCount, 2);
+});
 test('unavailable preview memberships are null, while the known scope remains accessible', () => {
 	const tasks = [task('a'), task('b')];
 	const unresolved = group('all', cond('missing-field', 'text', 'is', 'value'));
@@ -135,11 +165,13 @@ test('lists preserve unrelated members and scalars clear only when equal', () =>
 	assert.equal(field(p, 'a', 'note').after, null);
 	assert.equal(field(p, 'a', 'priority'), undefined);
 });
-test('reciprocal dependencies count both ends and repair half-links without redundant changes', () => {
+test('reciprocal dependency repairs retain both writes but count only a directly changed endpoint', () => {
 	for (const [a, b, ids] of [[{}, {}, ['a', 'b']], [{ blocking: 'b' }, {}, ['b']], [{}, { blockedBy: 'a' }, ['a']]]) {
 		const p = plan([task('a', a), task('b', b)], [rule('rel', [add('blocking', 'b')], select('a'))]);
 		assert.equal(p.rules[0].target, 1);
-		assert.equal(p.rules[0].changed, ids.length);
+		assert.equal(p.rules[0].changed, Number(ids.includes('a')));
+		assert.equal(p.affectedTaskCount, ids.length);
+		assert.equal(p.needsConfirmation, true);
 		assert.deepEqual([...new Set(p.changes.map(c => c.taskId))].sort(), ids);
 	}
 });
@@ -166,7 +198,7 @@ test('blocker protects status, keeps target and other actions, and permits first
 });
 test('a newly proposed dependency protects the same transition', () => {
 	const p = plan([task('a'), task('b')], [rule('r', [add('blockedBy', 'b'), add('status', 'Project.Finished')], select('a'))]);
-	assert.equal(p.changedTaskCount, 2);
+	assert.equal(p.changedTaskCount, 1);
 	assert.ok(p.issues.some(i => i.reason === 'blocked'));
 	assert.equal(field(p, 'a', 'checkbox'), undefined);
 });
@@ -182,7 +214,8 @@ test('parent aggregates and timestamp count as one indirect task', () => {
 	const tasks = [task('parent', { dateDue: '2026-11-20' }), task('child', { parentTask: 'parent' })];
 	const p = plan(tasks, [rule('r', [add('dateDue', '2026-11-25'), add('estimate', '120')], select('child'))]);
 	assert.equal(p.rules[0].target, 1);
-	assert.equal(p.changedTaskCount, 2);
+	assert.equal(p.changedTaskCount, 1);
+	assert.equal(p.affectedTaskCount, 2);
 	assert.equal(field(p, 'parent', 'dateDue').after, '2026-11-25');
 	assert.equal(field(p, 'parent', 'datetimeModified').after, asOf);
 	assert.equal(field(p, 'parent', 'totalEstimate').indirect, true);

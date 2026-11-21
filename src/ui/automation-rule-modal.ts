@@ -343,7 +343,7 @@ export class AutomationRuleModal extends Modal {
 			messages.set(action.id, new Set([t('settings', action.value.length ? 'automationInvalid' : 'automationCompleteAction')]));
 		}
 		for (const [id, row] of this.rows) row.setMessage([...(messages.get(id) ?? [])].join(' · '));
-		const total = this.previewTaskIds?.changed?.length;
+		const total = diagnostic ? null : plan?.affectedTaskCount;
 		if (this.run) this.run.disabled = this.pending || !this.source.runDraft || !(total != null && total > 0)
 			|| !scopeValid || !targetValid || !chosen.length || valid.length !== chosen.length || this.editors.some(editor => editor.hasInvalidRawValues);
 		this.updateSave();

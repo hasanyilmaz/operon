@@ -116,7 +116,7 @@ export class AutomationRunner {
 				indexPending = calculated.issues.some(issue => issue.reason === 'index-unavailable') && ports.indexSettling?.() === true;
 				return calculated;
 			});
-			const preparation = plan.changedTaskCount ? await ports.prepare(plan, sources) : null;
+			const preparation = plan.affectedTaskCount ? await ports.prepare(plan, sources) : null;
 			const reason = typeof preparation === 'string' ? preparation
 				: indexPending ? 'index-pending' as const : undefined;
 			const work = typeof preparation === 'object' ? preparation : null;
@@ -130,10 +130,11 @@ export class AutomationRunner {
 			const { rules, plan, work, key } = snapshot;
 			if (snapshot.reason === 'index-pending' && batch && ports.deferIndexRetry?.(batch, askAgain)) return { status: 'deferred' };
 			if (snapshot.reason) return { status: 'unavailable', plan, reason: snapshot.reason };
-			if (plan.changedTaskCount === 0) return { status: 'finished', plan, applied: 0, uncertain: 0 };
-			if (plan.changedTaskCount === null || !work) return { status: 'unavailable', plan };
+			if (plan.affectedTaskCount === 0) return { status: 'finished', plan, applied: 0, uncertain: 0 };
+			if (plan.affectedTaskCount === null || !work) return { status: 'unavailable', plan };
 			if (askAgain || plan.needsConfirmation) {
-				const listed = rules.filter(rule => plan.rules.some(entry => entry.ruleId === rule.id && entry.changed));
+				const participating = new Set(plan.changes.flatMap(change => change.origins.map(origin => origin.ruleId)));
+				const listed = rules.filter(rule => participating.has(rule.id));
 				if (batch && ports.deferConfirmation?.(batch, askAgain)) return { status: 'deferred' };
 				const decision = await ports.confirm(plan, listed, batch);
 				if (decision === 'background') {

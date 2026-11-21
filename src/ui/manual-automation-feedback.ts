@@ -15,7 +15,7 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 		operonTooltips: true,
 		title: t('settings', 'automationConfirmCount', { count: String(count) }),
 		message: '',
-		detailsTable: plan.rules.filter(entry => entry.changed).map(entry => ({
+		detailsTable: plan.rules.filter(entry => rules.some(rule => rule.id === entry.ruleId)).map(entry => ({
 			label: rules.find(rule => rule.id === entry.ruleId)?.name.trim() || (draftRun ? t('settings', 'automationUnsavedRule') : entry.ruleId),
 			before: t('filterSets', entry.changed === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(entry.changed) }).trim(),
 			after: '',
@@ -27,14 +27,14 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 }
 
 export function showAutomationResult(result: ManualAutomationResult, automatic: boolean, ruleNames: ReadonlyMap<string, string>): void {
-	if (result.status === 'busy' || result.status === 'deferred' || result.status === 'dismissed' || automatic && result.status === 'finished' && result.plan.changedTaskCount === 0 && !result.plan.issues.length) return;
+	if (result.status === 'busy' || result.status === 'deferred' || result.status === 'dismissed' || automatic && result.status === 'finished' && result.plan.affectedTaskCount === 0 && !result.plan.issues.length) return;
 	if (result.status === 'save-failed') { new Notice(t('settings', 'automationSaveFailed')); return; }
 	if (result.status === 'deactivated') {
 		new Notice(result.names.map(name => t('settings', 'automationDeactivated', { name })).join('\n'));
 		return;
 	}
 	if (result.status !== 'finished' && result.status !== 'unavailable') { new Notice(t('settings', 'automationRetry')); return; }
-	const remaining = result.status === 'finished' ? (result.plan.changedTaskCount ?? 0) - result.applied - result.uncertain : 0;
+	const remaining = result.status === 'finished' ? (result.plan.affectedTaskCount ?? 0) - result.applied - result.uncertain : 0;
 	const lines = [result.status === 'unavailable' ? t('settings', 'automationRetry') : t('settings', remaining || result.uncertain ? 'automationStopped' : 'automationApplied', {
 		applied: String(result.applied), remaining: String(remaining), uncertain: String(result.uncertain),
 	})];
