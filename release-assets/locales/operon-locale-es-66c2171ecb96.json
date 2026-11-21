@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Borrar si coincide",
       "automationCompleteAction": "Completa el valor de la acción",
       "automationCompleteCondition": "Completa la condición",
-      "automationConfirmCount": "¿Aplicar cambios a {{count}} tarea(s)?",
+      "automationConfirmCount": "¿Aplicar cambios a {{count}}?",
       "automationConfirmation": "Preguntar antes de aplicar cambios",
       "automationConfirmationDesc": "Pide confirmación si el número de tareas distintas que cambiarían supera el límite. Con un límite de 5, pregunta a partir de 6 tareas.",
       "automationConflict": "Acciones en conflicto",
@@ -1191,7 +1191,9 @@
       "automationMode": "Modo de ejecución",
       "automationModifiedGroup": "Última modificación: {{date}}",
       "automationName": "Nombre de la automatización",
+      "automationNextPage": "Página siguiente",
       "automationNoLimit": "Sin límite",
+      "automationPreviousPage": "Página anterior",
       "automationRelation": "Relación no válida",
       "automationRemoveMembers": "Quitar elementos seleccionados",
       "automationRetry": "No se pudieron usar los datos actuales de la regla o las tareas. Revisa la regla e inténtalo de nuevo.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "cb845f733fe51166a67b30be73ba34aa6cb78bf2fbda6418f8ef12a5d192dd7a"
+  "sourceVersion": "02319df416c82d96b1aee421ea22b3e8595e3c4ff0f2be1901b3d7a101b7b069"
 }

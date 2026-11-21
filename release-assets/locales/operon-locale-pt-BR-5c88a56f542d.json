@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Limpar se o valor corresponder",
       "automationCompleteAction": "Complete o valor da ação",
       "automationCompleteCondition": "Complete a condição",
-      "automationConfirmCount": "Aplicar alterações a {{count}} tarefa(s)?",
+      "automationConfirmCount": "Aplicar alterações a {{count}}?",
       "automationConfirmation": "Perguntar antes de aplicar alterações",
       "automationConfirmationDesc": "Pede confirmação quando o número de tarefas distintas a alterar supera o limite. Com limite de 5, pergunta a partir de 6 tarefas.",
       "automationConflict": "Ações conflitantes",
@@ -1191,7 +1191,9 @@
       "automationMode": "Modo de execução",
       "automationModifiedGroup": "Última modificação: {{date}}",
       "automationName": "Nome da automação",
+      "automationNextPage": "Próxima página",
       "automationNoLimit": "Sem limite",
+      "automationPreviousPage": "Página anterior",
       "automationRelation": "Relação inválida",
       "automationRemoveMembers": "Remover itens selecionados",
       "automationRetry": "Não foi possível usar os dados atuais da regra ou das tarefas. Verifique a regra e tente novamente.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "fef9053cf7a469202c387217044eb074e5df21d07ec225075c9899eb155b05f0"
+  "sourceVersion": "e9ca45dbb13a1308c1b7f5235272e2d428e754aa83a8a305628c2c14e765deab"
 }

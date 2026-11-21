@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Effacer si la valeur correspond",
       "automationCompleteAction": "Complétez la valeur de l’action",
       "automationCompleteCondition": "Complétez la condition",
-      "automationConfirmCount": "Appliquer les modifications à {{count}} tâche(s) ?",
+      "automationConfirmCount": "Appliquer les modifications à {{count}} ?",
       "automationConfirmation": "Demander avant d’appliquer les modifications",
       "automationConfirmationDesc": "Demander confirmation si le nombre de tâches distinctes à modifier dépasse la limite. Avec 5, la confirmation est demandée à partir de 6 tâches.",
       "automationConflict": "Actions en conflit",
@@ -1191,7 +1191,9 @@
       "automationMode": "Mode d’exécution",
       "automationModifiedGroup": "Dernière modification : {{date}}",
       "automationName": "Nom de l’automatisation",
+      "automationNextPage": "Page suivante",
       "automationNoLimit": "Sans limite",
+      "automationPreviousPage": "Page précédente",
       "automationRelation": "Relation incorrecte",
       "automationRemoveMembers": "Retirer les éléments sélectionnés",
       "automationRetry": "Les données actuelles de la règle ou des tâches sont indisponibles. Vérifiez la règle et réessayez.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "05ad1077ba1c524d62831ef7c4678f6f084b03ff471a5d2851a6e51b78f4389b"
+  "sourceVersion": "a36f9b8ce1daa111075a54393ce61d101e2596c5e13dc988d1438651b8d6e1b6"
 }

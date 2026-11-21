@@ -62,7 +62,7 @@ const filter = rootGroup => ({ rootGroup, conditions: [], sorts: [], matchLogic:
 
 test('inactive drafts, empty Scope/Target and zero-action limits', () => {
 	const p = plan([task('a'), task('b')], [rule('r')]);
-	assert.deepEqual(p.rules, [{ ruleId: 'r', scope: 2, target: 2, changed: 0 }]);
+	assert.deepEqual(p.rules, [{ ruleId: 'r', scope: 2, target: 2, changed: 0, directTaskIds: [] }]);
 	assert.equal(p.changedTaskCount, 0);
 	assert.equal(p.needsConfirmation, false);
 });
@@ -190,7 +190,7 @@ test('a cycle introduced jointly rejects its edges together', () => {
 test('blocker protects status, keeps target and other actions, and permits first schedule', () => {
 	const tasks = [task('a', { blockedBy: 'b' }), task('b')];
 	const p = plan(tasks, [rule('r', [add('status', 'Project.Finished'), add('tags', 'follow')], select('a'))]);
-	assert.deepEqual(p.rules[0], { ruleId: 'r', target: 1, scope: 2, changed: 1 });
+	assert.deepEqual(p.rules[0], { ruleId: 'r', target: 1, scope: 2, changed: 1, directTaskIds: ['a'] });
 	assert.equal(field(p, 'a', 'status'), undefined);
 	assert.ok(p.issues.some(i => i.reason === 'blocked'));
 	const s = plan(tasks, [rule('s', [add('dateScheduled', '2026-11-22')], select('a'))]);
@@ -353,7 +353,7 @@ test('tracked time and pinned scopes agree with Filters on the same complete sna
 test('unavailable conditions return unknown counters, including in inactive drafts', () => {
 	const condition = group('all', cond('file.property:missing', 'number', 'eq', '1'));
 	const p = plan([task('a')], [rule('r', [], condition)]);
-	assert.deepEqual(p.rules[0], { ruleId: 'r', scope: 1, target: null, changed: 0 });
+	assert.deepEqual(p.rules[0], { ruleId: 'r', scope: 1, target: null, changed: 0, directTaskIds: [] });
 	assert.equal(p.changedTaskCount, 0);
 	assert.equal(plan([task('a')], [rule('r', [add('tags', 'x')], condition)]).changedTaskCount, null);
 });

@@ -34,6 +34,7 @@ export interface ConfirmActionModalOptions {
 	onCancelButton?: () => void;
 	operonTooltips?: boolean;
 	initialFocus?: 'confirm' | 'cancel';
+	renderDetails?: (content: HTMLElement, title: HTMLElement) => void;
 	detailsTable?: Array<{ label: string; before: string; after: string }>;
 	comparisonTable?: ConfirmActionComparisonTable;
 }
@@ -59,6 +60,7 @@ export class ConfirmActionModal extends Modal {
 		}
 		contentEl.empty();
 		this.titleEl.setText(this.options.title);
+		this.options.renderDetails?.(contentEl, this.titleEl);
 		if (this.options.comparisonTable) {
 			this.renderComparisonTable(contentEl, this.options.comparisonTable);
 		} else if (this.options.detailsTable?.length) {

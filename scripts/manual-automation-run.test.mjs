@@ -11,7 +11,7 @@ const tmp = await mkdtemp(path.join(tmpdir(), 'operon-manual-rule-'));
 after(() => rm(tmp, { recursive: true, force: true }));
 const out = path.join(tmp, 'helpers.mjs');
 await build({ stdin: { resolveDir: root, contents: `
-	export { TFile, Notice, parseYaml } from 'obsidian';
+	export { Modal, TFile, Notice, parseYaml } from 'obsidian';
 	export { countNoteScans } from './scripts/test-support/automation-markdown-scan-probe.mjs';
 	export { withSettingsFixture } from './scripts/test-support/settings-preservation-harness';
 	export { createAutomationRule, readAutomationRules } from './src/core/automation-rules';
@@ -48,7 +48,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, shouldRunSavedRule, mountAutomationRules, statusDockDocument, t,
+const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, shouldRunSavedRule, mountAutomationRules, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
@@ -210,7 +210,8 @@ test('a saved inactive rule survives storage reload and applies both tag actions
 		assert.equal(f.prompts.length, 1);
 		const [plan, listed] = f.prompts[0];
 		assert.equal(plan.changedTaskCount, 2);
-		assert.deepEqual(plan.rules, [{ ruleId: draft.id, scope: 3, target: 2, changed: 2 }]);
+		assert.deepEqual(plan.rules.map(r => ({ ...r, directTaskIds: r.directTaskIds.toSorted() })),
+			[{ ruleId: draft.id, scope: 3, target: 2, changed: 2, directTaskIds: [id(0), id(1)] }]);
 		assert.deepEqual(listed.map(rule => rule.id), [draft.id]);
 		assert.deepEqual(f.writes.toSorted(), ['File.md', 'Inline.md']);
 		const inlineSource = await f.read('Inline.md');
@@ -830,20 +831,85 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 		disconnect() { observed.delete(this.root); }
 	};
 	for (const [button, expected, draftRun] of [[0,'deactivate',false],[1,'apply',false],[null,'dismiss',false],[0,'dismiss',true],[null,'dismiss',true],[1,'apply',true]]) {
-		const outcomes = [], clicked = [];
-		const modal = automationApprovalModal({}, { changedTaskCount: 3, rules: [{ ruleId, changed: 3 }] }, [{ id: ruleId, name: draftRun ? '' : 'Follow up' }], d => outcomes.push(d), draftRun);
+		const outcomes = [];
+		const modal = automationApprovalModal({}, { changedTaskCount: 1, rules: [{ ruleId, changed: 1, directTaskIds: ['a'] }] },
+			[{ id: ruleId, name: draftRun ? '' : 'Follow up' }], d => outcomes.push(d), draftRun, () => undefined, []);
+		const { doc } = statusDockDocument();
+		modal.modalEl = doc.body.createDiv(); modal.titleEl = modal.modalEl.createDiv(); modal.contentEl = modal.modalEl.createDiv();
+		modal.open();
 		if (draftRun) {
-			assert.equal(modal.options.detailsTable[0].label, 'Unsaved rule');
+			assert.equal(modal.contentEl.querySelector('.operon-approval-rule-name').textContent, 'Unsaved rule');
 			assert.equal(modal.options.cancelText, 'Cancel run');
 		}
-		const el = { empty() {}, addClass() {}, createDiv() { return this; }, ownerDocument: { defaultView: null },
-			createEl(tag) { return { addClass() {}, addEventListener(_, cb) { if (tag === 'button') clicked.push(cb); } }; } };
-		modal.modalEl.querySelectorAll = () => [];
-		modal.contentEl = el; modal.open();
 		assert.ok(observed.has(modal.modalEl));
-		if (button === null) modal.close(); else { clicked[button](); clicked[button](); }
+		if (button === null) modal.close();
+		else {
+			const el = modal.contentEl.querySelector('.operon-confirm-action-buttons').children[button];
+			el.click(); el.click();
+		}
 		assert.deepEqual(outcomes,[expected]);
 		assert.equal(observed.size, 0);
+	}
+});
+
+test('approval pages keep the full union, exact per-rule membership and a read-only nested preview', t => {
+	const { doc } = statusDockDocument();
+	const opened = [];
+	t.mock.method(Modal.prototype, 'open', function () {
+		this.modalEl = doc.body.createDiv(); this.titleEl = this.modalEl.createDiv(); this.contentEl = this.modalEl.createDiv();
+		opened.push(this); this.onOpen();
+	});
+	const original = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
+	t.after(() => { if (original) Object.defineProperty(globalThis, 'MutationObserver', original); else delete globalThis.MutationObserver; });
+	globalThis.MutationObserver = class { observe() {} takeRecords() { return []; } disconnect() {} };
+	const memberships = [['a','b'], ['b'], ['c'], [], ['d','a']];
+	const tasks = new Map(['a','b','c','d'].map(key => [key, { operonId: key, description: key, tags: [], checkbox: 'open',
+		datetimeModified: key === 'b' ? '2026-11-20' : '2026-11-21', fieldValues: { priority: key === 'd' ? 'High' : 'Low' } }]));
+	for (const size of [1,4,5]) {
+		const rules = memberships.slice(0,size).map((ids,i) => ({ id: 'r'+i, name: 'Rule '+i, directTaskIds: ids }));
+		const plan = { rules: rules.map(r => ({ ruleId:r.id, changed:r.directTaskIds.length, directTaskIds:r.directTaskIds })) };
+		const outcomes = [];
+		const modal = automationApprovalModal({}, plan, rules, d => outcomes.push(d), false, id => tasks.get(id), [{label:'High'},{label:'Low'}]);
+		modal.open();
+		const rows = () => modal.contentEl.querySelectorAll('.operon-approval-row');
+		assert.equal(rows().length, Math.min(4,size));
+		const pages = modal.contentEl.querySelector('.operon-approval-pages');
+		assert.equal(!!pages, size > 4);
+		const openPreview = button => {
+			button.click();
+			const child = opened.at(-1);
+			assert.notEqual(child,modal);
+			assert.equal(child.contentEl.querySelectorAll('*').filter(el => ['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(el.tagName)).length,1);
+			assert.equal(child.contentEl.querySelector('.operon-confirm-action-buttons').children[0].textContent,'Close');
+			return child;
+		};
+		if (size >= 4) {
+			const zero = openPreview(rows()[3].children[2]);
+			assert.equal(zero.contentEl.querySelectorAll('.operon-approval-task').length,0);
+			assert.equal(zero.contentEl.querySelector('.operon-embed-count').textContent,'0 tasks');
+			zero.close();
+		}
+		if (pages) {
+			assert.ok(pages.children[1].disabled);
+			pages.children[2].click();
+			assert.ok(pages.children[2].disabled);
+			assert.equal(rows()[0].children[1].textContent, 'Rule 4');
+			const child = openPreview(rows()[0].children[2]);
+			assert.equal(child.titleEl.textContent,'Rule 4: Actions');
+			assert.deepEqual(child.contentEl.querySelectorAll('.operon-approval-task').map(el=>el.children[0].textContent),['d','a']);
+			child.close();
+			assert.equal(doc.activeElement, rows()[0].children[2]);
+			assert.equal(rows()[0].children[1].textContent, 'Rule 4');
+			pages.children[1].click();
+			assert.equal(rows().length,4);
+		}
+		const total = openPreview(modal.titleEl.querySelector('.operon-approval-total'));
+		const actual = total.contentEl.querySelectorAll('.operon-approval-task').map(el=>el.children[0].textContent);
+		assert.deepEqual(actual.toSorted(), [...new Set(rules.flatMap(r=>r.directTaskIds))].sort());
+		assert.deepEqual(outcomes, []);
+		modal.close();
+		assert.equal(total.contentEl.children.length,0);
+		assert.deepEqual(outcomes,['dismiss']);
 	}
 });
 

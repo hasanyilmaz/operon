@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "値が一致したら消去",
       "automationCompleteAction": "アクションの値を入力してください",
       "automationCompleteCondition": "条件を完成させてください",
-      "automationConfirmCount": "{{count}} 件のタスクに変更を適用しますか？",
+      "automationConfirmCount": "{{count}}に変更を適用しますか？",
       "automationConfirmation": "変更を適用する前に確認",
       "automationConfirmationDesc": "変更されるタスクの数が上限を超えると確認します。同じタスクは一度だけ数えます。上限が5なら6件以上で確認します。",
       "automationConflict": "アクションが競合しています",
@@ -1191,7 +1191,9 @@
       "automationMode": "実行モード",
       "automationModifiedGroup": "最終更新：{{date}}",
       "automationName": "自動化の名前",
+      "automationNextPage": "次のページ",
       "automationNoLimit": "上限なし",
+      "automationPreviousPage": "前のページ",
       "automationRelation": "無効な関連付け",
       "automationRemoveMembers": "選択した項目を取り除く",
       "automationRetry": "現在のルールまたはタスクのデータを使用できません。ルールを確認してもう一度お試しください。",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "fa752344efb54c1a335ea1ddb504bec9f47960fe3f4d8386f711cb1fe81fe283"
+  "sourceVersion": "a021dd7d2131fcae341134d596a311167ad210c5e743c9253ff2a0505c10cf30"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "值相符時清除",
       "automationCompleteAction": "請補全操作值",
       "automationCompleteCondition": "請補全條件",
-      "automationConfirmCount": "要將變更套用至 {{count}} 個任務嗎？",
+      "automationConfirmCount": "將變更套用至{{count}}？",
       "automationConfirmation": "套用變更前詢問",
       "automationConfirmationDesc": "要變更的不同任務數超過所選上限時詢問。例如，上限為 5 時，從 6 個任務起詢問。",
       "automationConflict": "操作衝突",
@@ -1191,7 +1191,9 @@
       "automationMode": "執行模式",
       "automationModifiedGroup": "最後修改：{{date}}",
       "automationName": "自動化名稱",
+      "automationNextPage": "下一頁",
       "automationNoLimit": "無上限",
+      "automationPreviousPage": "上一頁",
       "automationRelation": "無效的關聯",
       "automationRemoveMembers": "移除所選項目",
       "automationRetry": "無法使用目前的規則或任務資料。請檢查規則後再試一次。",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "a795017c296cf1ca34bfa907b826b828da8df19344c7af62622e6d7d118b24bd"
+  "sourceVersion": "216022105a49265ad86c146d05e90c1ae4b1eebe63c3d7581f3f6e0621a411b0"
 }

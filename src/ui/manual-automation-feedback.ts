@@ -1,30 +1,8 @@
-import { App, Notice } from 'obsidian';
-import type { AutomationChangePlan } from '../core/automation-change-plan';
-import type { AutomationRule } from '../core/automation-rules';
+import { Notice } from 'obsidian';
 import { t } from '../core/i18n';
-import type { AutomationDecision, ManualAutomationResult } from '../systems/manual-automation-run';
+import type { ManualAutomationResult } from '../systems/manual-automation-run';
 import { automationIssueLabels, unavailableProjectGroupText } from './automation-rule-modal';
-import { ConfirmActionModal } from './confirm-action-modal';
-import { scopeSettingsModal } from './settings/settings-scope';
-
-export function automationApprovalModal(app: App, plan: AutomationChangePlan, rules: AutomationRule[],
-	done: (decision: AutomationDecision) => void, draftRun = false): ConfirmActionModal {
-	let dismissed: AutomationDecision = 'dismiss';
-	const count = plan.changedTaskCount ?? 0;
-	return scopeSettingsModal(new ConfirmActionModal(app, {
-		operonTooltips: true,
-		title: t('settings', 'automationConfirmCount', { count: String(count) }),
-		message: '',
-		detailsTable: plan.rules.filter(entry => rules.some(rule => rule.id === entry.ruleId)).map(entry => ({
-			label: rules.find(rule => rule.id === entry.ruleId)?.name.trim() || (draftRun ? t('settings', 'automationUnsavedRule') : entry.ruleId),
-			before: t('filterSets', entry.changed === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(entry.changed) }).trim(),
-			after: '',
-		})),
-		confirmText: t('settings', 'automationApply'),
-		cancelText: t('settings', draftRun ? 'automationCancelRun' : rules.length === 1 ? 'automationCancelOne' : 'automationCancelMany'),
-		onCancelButton: draftRun ? undefined : () => { dismissed = 'deactivate'; },
-	}, confirmed => done(confirmed ? 'apply' : dismissed)), true);
-}
+export { automationApprovalModal } from './automation-approval-modal';
 
 export function showAutomationResult(result: ManualAutomationResult, automatic: boolean, ruleNames: ReadonlyMap<string, string>): void {
 	if (result.status === 'busy' || result.status === 'deferred' || result.status === 'dismissed' || automatic && result.status === 'finished' && result.plan.affectedTaskCount === 0 && !result.plan.issues.length) return;

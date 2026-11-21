@@ -80,7 +80,7 @@ interface RuleCount {
 	changed: number;
 }
 export interface AutomationChangePlan {
-	rules: Array<{ ruleId: string; scope: number | null; target: number | null; changed: number | null; taskIds?: AutomationPreviewTaskIds }>;
+	rules: Array<{ ruleId: string; scope: number | null; target: number | null; changed: number | null; directTaskIds: readonly string[] | null; taskIds?: AutomationPreviewTaskIds }>;
 	changes: AutomationFieldChange[];
 	issues: AutomationPlanIssue[];
 	/** Distinct targets with a direct action change; null when the plan is unresolved. */
@@ -687,12 +687,13 @@ export function planAutomationChanges(
 		const scope = unknownScope.has(id) ? null : count.scope;
 		const target = scope === null || unknownTarget.has(id) ? null : count.target;
 		const changed = actionable.has(id) && (target === null || unknownChanges.has(id)) ? null : count.changed;
-		const result = { ruleId: id, scope, target, changed };
+		const directTaskIds = changed === null ? null : Array.from(directByRule.get(id) ?? []);
+		const result = { ruleId: id, scope, target, changed, directTaskIds };
 		if (!count.matches) return result;
 		return { ...result, taskIds: {
 			scope: scope === null ? null : count.matches.scope,
 			target: target === null ? null : count.matches.target,
-			changed: changed === null ? null : Array.from(directByRule.get(id) ?? []),
+			changed: directTaskIds,
 		} };
 	});
 	const unresolved = result.some(rule => rule.changed === null);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Bei Übereinstimmung leeren",
       "automationCompleteAction": "Aktionswert vervollständigen",
       "automationCompleteCondition": "Bedingung vervollständigen",
-      "automationConfirmCount": "Änderungen auf {{count}} Aufgabe(n) anwenden?",
+      "automationConfirmCount": "Änderungen auf {{count}} anwenden?",
       "automationConfirmation": "Vor dem Anwenden von Änderungen nachfragen",
       "automationConfirmationDesc": "Nachfragen, wenn mehr unterschiedliche Aufgaben als angegeben geändert würden. Beim Limit 5 erfolgt die Nachfrage ab 6 Aufgaben.",
       "automationConflict": "Widersprüchliche Aktionen",
@@ -1191,7 +1191,9 @@
       "automationMode": "Ausführungsmodus",
       "automationModifiedGroup": "Zuletzt geändert: {{date}}",
       "automationName": "Name der Automatisierung",
+      "automationNextPage": "Nächste Seite",
       "automationNoLimit": "Kein Limit",
+      "automationPreviousPage": "Vorherige Seite",
       "automationRelation": "Ungültige Beziehung",
       "automationRemoveMembers": "Ausgewählte Einträge entfernen",
       "automationRetry": "Die aktuellen Regel- oder Aufgabendaten sind nicht verfügbar. Prüfe die Regel und versuche es erneut.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "691fc9ba11535487761f2ba6dff0ffcf51d92ffed2011df818575d497c438272"
+  "sourceVersion": "d5041a39f464cf48760ed40fb86691fba7d9743dbbb951421a98c9396d3909a3"
 }

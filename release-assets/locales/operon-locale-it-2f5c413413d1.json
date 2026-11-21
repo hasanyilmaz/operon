@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Cancella se il valore corrisponde",
       "automationCompleteAction": "Completa il valore dell’azione",
       "automationCompleteCondition": "Completa la condizione",
-      "automationConfirmCount": "Applicare le modifiche a {{count}} attività?",
+      "automationConfirmCount": "Applicare le modifiche a {{count}}?",
       "automationConfirmation": "Chiedi prima di applicare le modifiche",
       "automationConfirmationDesc": "Chiede conferma se il numero di attività distinte da modificare supera il limite. Con un limite di 5, chiede conferma a partire da 6 attività.",
       "automationConflict": "Azioni in conflitto",
@@ -1191,7 +1191,9 @@
       "automationMode": "Modalità di esecuzione",
       "automationModifiedGroup": "Ultima modifica: {{date}}",
       "automationName": "Nome automazione",
+      "automationNextPage": "Pagina successiva",
       "automationNoLimit": "Nessun limite",
+      "automationPreviousPage": "Pagina precedente",
       "automationRelation": "Relazione non valida",
       "automationRemoveMembers": "Rimuovi elementi selezionati",
       "automationRetry": "I dati attuali della regola o delle attività non sono disponibili. Controlla la regola e riprova.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "5909b56952eabb3b1702d60954ffe46db99e16f95f54853618b54a00a5a44187"
+  "sourceVersion": "29f88a03a94e4250dae81e5671a97d4b7e9eb7bc448f97d7b4ae60bf513af342"
 }

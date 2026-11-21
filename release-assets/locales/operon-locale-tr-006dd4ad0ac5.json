@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Değer eşleşirse temizle",
       "automationCompleteAction": "İşlem değerini tamamla",
       "automationCompleteCondition": "Koşulu tamamla",
-      "automationConfirmCount": "{{count}} göreve değişiklikler uygulansın mı?",
+      "automationConfirmCount": "{{count}} için değişiklikler uygulansın mı?",
       "automationConfirmation": "Değişiklikleri uygulamadan önce sor",
       "automationConfirmationDesc": "Değişecek farklı task sayısı seçilen sınırı aşarsa onay iste. Örneğin sınır 5 ise 6 veya daha fazla task için sorulur.",
       "automationConflict": "Çakışan işlemler",
@@ -1191,7 +1191,9 @@
       "automationMode": "Çalıştırma modu",
       "automationModifiedGroup": "Son değişiklik: {{date}}",
       "automationName": "Otomasyon adı",
+      "automationNextPage": "Sonraki sayfa",
       "automationNoLimit": "Sınır yok",
+      "automationPreviousPage": "Önceki sayfa",
       "automationRelation": "Geçersiz ilişki",
       "automationRemoveMembers": "Seçilen öğeleri çıkar",
       "automationRetry": "Güncel kural veya görev verileri kullanılamadı. Kuralı kontrol edip yeniden deneyin.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "1e7ea50e09f6dd0e92bb0f8ae9459f13d53964ee86ccdd21fdeaf5d48247c4f5"
+  "sourceVersion": "dd79031cc143b1039d9a989ef10a90bb30dde804610b5ecc4f6c104361184414"
 }

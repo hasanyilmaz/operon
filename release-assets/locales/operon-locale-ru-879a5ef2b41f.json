@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3914,
-  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
+  "keyCount": 3916,
+  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1175,7 +1175,7 @@
       "automationClearMatch": "Очистить при совпадении",
       "automationCompleteAction": "Укажите значение действия",
       "automationCompleteCondition": "Заполните условие",
-      "automationConfirmCount": "Применить изменения? Задач: {{count}}",
+      "automationConfirmCount": "Применить изменения? {{count}}",
       "automationConfirmation": "Запрашивать подтверждение перед изменением",
       "automationConfirmationDesc": "Запрашивать подтверждение, если число изменяемых задач превышает предел. Каждая задача учитывается один раз. При пределе 5 запрос появится для 6 или более задач.",
       "automationConflict": "Конфликт действий",
@@ -1191,7 +1191,9 @@
       "automationMode": "Режим запуска",
       "automationModifiedGroup": "Последнее изменение: {{date}}",
       "automationName": "Название автоматизации",
+      "automationNextPage": "Следующая страница",
       "automationNoLimit": "Без ограничений",
+      "automationPreviousPage": "Предыдущая страница",
       "automationRelation": "Недопустимая связь",
       "automationRemoveMembers": "Удалить выбранные элементы",
       "automationRetry": "Текущие данные правила или задач недоступны. Проверьте правило и попробуйте снова.",
@@ -3959,5 +3961,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "d19fd9b47194b57587cbdd58b61c60194a99de885c78d7a6229ef33ed623991b"
+  "sourceVersion": "39323a856fbf7bca602b735bd874b91e33a71f47c0dc36799b768a65172ff03b"
 }
