@@ -157,6 +157,7 @@ export class AutomationActionRow {
 		const list = type === 'list' || type === 'tags';
 		const add = this.action.operation === 'add';
 		const label = t('settings', list ? add ? 'automationAddMembers' : 'automationRemoveMembers' : add ? 'automationSetValue' : 'automationClearMatch');
+		this.operation.querySelectorAll(':scope > svg').forEach(icon => icon.remove());
 		setIcon(this.operation, add ? 'plus' : 'minus');
 		setAccessibleLabelWithoutTooltip(this.operation, label);
 		bindOperonHoverTooltip(this.operation, { content: label, taskColor: null });
