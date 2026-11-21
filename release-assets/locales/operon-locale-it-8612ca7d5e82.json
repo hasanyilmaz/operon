@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Inattiva",
       "automationInvalid": "Valore non valido",
       "automationMode": "Modalità di esecuzione",
+      "automationModifiedGroup": "Ultima modifica: {{date}}",
       "automationName": "Nome automazione",
       "automationNoLimit": "Nessun limite",
       "automationRelation": "Relazione non valida",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "28c1ef5668354cbb6c1b64c9bef0a5e8ca415b6710aa224a6710202f863f5640"
+  "sourceVersion": "c12e511fcb3462e7c9b5894b4617bd6c7350a3e4f8ae00ac420262158f1f822c"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1189,6 +1189,7 @@
       "automationInactive": "未启用",
       "automationInvalid": "无效值",
       "automationMode": "运行模式",
+      "automationModifiedGroup": "最后修改：{{date}}",
       "automationName": "自动化名称",
       "automationNoLimit": "无限制",
       "automationRelation": "无效关联",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "6d36bb32c05782b192c3aa645969ce5daf4ff187d7de1276e6d1d985ec7eba0b"
+  "sourceVersion": "ff2e1fb9a45efb963335e631984fa4d33b7de437562174c6549c09428fcc3b4a"
 }

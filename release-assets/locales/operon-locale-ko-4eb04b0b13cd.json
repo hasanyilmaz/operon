@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1189,6 +1189,7 @@
       "automationInactive": "비활성",
       "automationInvalid": "잘못된 값",
       "automationMode": "실행 모드",
+      "automationModifiedGroup": "마지막 수정: {{date}}",
       "automationName": "자동화 이름",
       "automationNoLimit": "제한 없음",
       "automationRelation": "잘못된 관계",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "932217bb4e2f9673fca12e6b444ff79ec87e88191b56aab7869cc69d93f77cff"
+  "sourceVersion": "64e1e344e1a4a04a259bb8dcca8074d9a5c1d938f368132d25eac997454f3f89"
 }

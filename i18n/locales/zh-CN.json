@@ -465,6 +465,7 @@
 		"automationSaveRule": "保存规则",
 		"automationScope": "范围内的任务",
 		"automationTarget": "要更新的任务",
+		"automationModifiedGroup": "最后修改：{{date}}",
 		"automationActions": "操作",
 		"automationAddAction": "添加操作",
 		"automationDeleteAction": "删除操作",

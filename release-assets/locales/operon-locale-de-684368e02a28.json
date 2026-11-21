@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Inaktiv",
       "automationInvalid": "Ungültiger Wert",
       "automationMode": "Ausführungsmodus",
+      "automationModifiedGroup": "Zuletzt geändert: {{date}}",
       "automationName": "Name der Automatisierung",
       "automationNoLimit": "Kein Limit",
       "automationRelation": "Ungültige Beziehung",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "26322f022a68cef0ecba580ff67991fd691a9a8444e03187d6c7bdcfb600800f"
+  "sourceVersion": "08d9e88fd3dd0f3df0cf9bc05325d1bd85cd8592483de61a363b183c98caa730"
 }

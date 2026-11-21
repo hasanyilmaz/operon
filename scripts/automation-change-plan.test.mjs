@@ -31,13 +31,14 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	export { planAutomationChanges } from './src/core/automation-change-plan';
 	export { filterTasksOnly } from './src/core/filter-evaluator';
 	export { AggregateCoordinator } from './src/systems/aggregate-coordinator';
+	export { groupAutomationPreviewTasks } from './src/ui/automation-task-preview';
 	export { FilterFieldCatalog } from './src/ui/filter-condition-editor';
 	export { parseTaskLine } from './src/core/parser';
 	export { DEFAULT_SETTINGS } from './src/types/settings';
 ` }, bundle: true, format: 'esm', platform: 'node', outfile,
 	alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const { SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
-	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog } = await import(pathToFileURL(outfile).href);
+	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog, groupAutomationPreviewTasks } = await import(pathToFileURL(outfile).href);
 const sharedFields = new Map(new FilterFieldCatalog({ keyMappings: DEFAULT_SETTINGS.keyMappings, getRootGroup: () => undefined })
 	.getFieldOptions(true).map(option => [option.field, option.type]));
 const asOf = '2026-11-20T10:20:30';
@@ -460,4 +461,28 @@ test('Filters, Runtime saved queries and automation scope and target select iden
 			}
 		}
 	}
+});
+
+
+test('preview groups distinct planned roots by local day, then configured priority and description', () => {
+	const records = [
+		task('z', { priority: 'First' }, { datetimeModified: '2026-11-20T08:00:00' }),
+		task('a', { priority: 'First' }, { datetimeModified: '2026-11-20' }),
+		task('b', { priority: 'Second' }, { datetimeModified: '2026-11-20T23:59:59' }),
+		task('c', {}, { datetimeModified: '2026-11-21T00:00:00' }),
+		task('d', {}, { datetimeModified: '' }), task('child'),
+	];
+	const lookup = new Map(records.map(item => [item.operonId, item]));
+	const groups = groupAutomationPreviewTasks(['b', 'z', 'a', 'd', 'c', 'z'], id => lookup.get(id),
+		[{ label: 'First' }, { label: 'Second' }]);
+	assert.equal(groups.totalCount, 5);
+	assert.deepEqual(groups.groups.map(({ key, count, tasks }) => [key, count, tasks.map(t => t.operonId)]),
+		[['2026-11-21', 1, ['c']], ['2026-11-20', 3, ['a', 'z', 'b']], ['', 1, ['d']]]);
+});
+
+test('preview distinguishes known zero from pending membership and a stale task ID', () => {
+	const lookup = id => id === 'known' ? task(id) : undefined;
+	assert.deepEqual(groupAutomationPreviewTasks([], lookup, []), { totalCount: 0, groups: [] });
+	assert.equal(groupAutomationPreviewTasks(null, lookup, []), null);
+	assert.equal(groupAutomationPreviewTasks(['known', 'removed'], lookup, []), null);
 });

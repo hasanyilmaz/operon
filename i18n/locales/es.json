@@ -465,6 +465,7 @@
 		"automationSaveRule": "Guardar regla",
 		"automationScope": "Tareas incluidas",
 		"automationTarget": "Tareas a actualizar",
+		"automationModifiedGroup": "Última modificación: {{date}}",
 		"automationActions": "Acciones",
 		"automationAddAction": "Añadir acción",
 		"automationDeleteAction": "Quitar acción",

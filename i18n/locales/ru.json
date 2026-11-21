@@ -465,6 +465,7 @@
 		"automationSaveRule": "Сохранить правило",
 		"automationScope": "Задачи в области действия",
 		"automationTarget": "Задачи для обновления",
+		"automationModifiedGroup": "Последнее изменение: {{date}}",
 		"automationActions": "Действия",
 		"automationAddAction": "Добавить действие",
 		"automationDeleteAction": "Удалить действие",

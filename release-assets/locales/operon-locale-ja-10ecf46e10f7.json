@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1189,6 +1189,7 @@
       "automationInactive": "無効",
       "automationInvalid": "無効な値",
       "automationMode": "実行モード",
+      "automationModifiedGroup": "最終更新：{{date}}",
       "automationName": "自動化の名前",
       "automationNoLimit": "上限なし",
       "automationRelation": "無効な関連付け",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "e8b915514c4026de312decb6e663178fd229421cf5e61560ccf5d1f2a58ae767"
+  "sourceVersion": "76d1f958557eecf7134b076c5d2645e5373a24ab81474e1975f5104a4a7035b8"
 }

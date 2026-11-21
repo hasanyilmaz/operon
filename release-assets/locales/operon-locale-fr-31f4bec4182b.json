@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Inactive",
       "automationInvalid": "Valeur incorrecte",
       "automationMode": "Mode d’exécution",
+      "automationModifiedGroup": "Dernière modification : {{date}}",
       "automationName": "Nom de l’automatisation",
       "automationNoLimit": "Sans limite",
       "automationRelation": "Relation incorrecte",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b615c9affde0fec07c960851dc661ce3a7cf16cbaca747e0cc52e9a5bbf4e8ad"
+  "sourceVersion": "36c109209688a70338827f4b3ea4ccc68587da1f48d549b6568b0a410794fb54"
 }

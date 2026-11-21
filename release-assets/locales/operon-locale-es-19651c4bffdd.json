@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Inactiva",
       "automationInvalid": "Valor no válido",
       "automationMode": "Modo de ejecución",
+      "automationModifiedGroup": "Última modificación: {{date}}",
       "automationName": "Nombre de la automatización",
       "automationNoLimit": "Sin límite",
       "automationRelation": "Relación no válida",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "44789b35aac192a468161cc915b27e69c278d138d08f1244f3fb012014b7f9f8"
+  "sourceVersion": "7c24820497f15f0a9075e17a9a3003542944955fffd85bdc5824a7a473be4c97"
 }

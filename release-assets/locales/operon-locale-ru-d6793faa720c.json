@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Неактивно",
       "automationInvalid": "Недопустимое значение",
       "automationMode": "Режим запуска",
+      "automationModifiedGroup": "Последнее изменение: {{date}}",
       "automationName": "Название автоматизации",
       "automationNoLimit": "Без ограничений",
       "automationRelation": "Недопустимая связь",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b41fd582df1bd6cfec98fafaa802ffc4817cb1b7b3cdef1b3c6de964299fa4b2"
+  "sourceVersion": "150e7e72b78a2c7a5fb92b6851d1bf65e304f131e1d41a386142a1fb6cacc918"
 }

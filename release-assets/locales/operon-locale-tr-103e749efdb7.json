@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1189,6 +1189,7 @@
       "automationInactive": "İnaktif",
       "automationInvalid": "Geçersiz değer",
       "automationMode": "Çalıştırma modu",
+      "automationModifiedGroup": "Son değişiklik: {{date}}",
       "automationName": "Otomasyon adı",
       "automationNoLimit": "Sınır yok",
       "automationRelation": "Geçersiz ilişki",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "51f11859b1772b5c35a76b9a2a31cd3bb2b35d6f8e1eec36e6029f3bb71d85f6"
+  "sourceVersion": "3d16f3dad6e92aaeb733daa8f2d8db44c0bdf5d28c15cd87add17bde9e4d4d91"
 }

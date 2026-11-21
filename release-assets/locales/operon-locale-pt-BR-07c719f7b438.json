@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1189,6 +1189,7 @@
       "automationInactive": "Inativa",
       "automationInvalid": "Valor inválido",
       "automationMode": "Modo de execução",
+      "automationModifiedGroup": "Última modificação: {{date}}",
       "automationName": "Nome da automação",
       "automationNoLimit": "Sem limite",
       "automationRelation": "Relação inválida",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "194a30d44103cb6da30ad48559cea8b7291d9f2e396ef2237030c744abcdf933"
+  "sourceVersion": "b346b7cb1e5d1fb5e9ff3676db1b95220a84fdac44effb84163d5ec55853aaf3"
 }

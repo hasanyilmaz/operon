@@ -465,6 +465,7 @@
 		"automationSaveRule": "Save Rule",
 		"automationScope": "Tasks in Scope",
 		"automationTarget": "Tasks to Update",
+		"automationModifiedGroup": "Last Modified: {{date}}",
 		"automationActions": "Actions",
 		"automationAddAction": "Add Action",
 		"automationDeleteAction": "Remove action",

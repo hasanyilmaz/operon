@@ -465,6 +465,7 @@
 		"automationSaveRule": "Enregistrer la règle",
 		"automationScope": "Tâches incluses",
 		"automationTarget": "Tâches à modifier",
+		"automationModifiedGroup": "Dernière modification : {{date}}",
 		"automationActions": "Actions",
 		"automationAddAction": "Ajouter une action",
 		"automationDeleteAction": "Supprimer l’action",

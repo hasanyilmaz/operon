@@ -7,6 +7,7 @@ import { isSettingsScope, scopeSettingsModal } from './settings/settings-scope';
 import { App, Modal, Notice, setIcon } from 'obsidian';
 import { FilterSet, FilterSortSpec, KeyMapping, OperonSettings } from '../types/settings';
 import { evaluateFilterSet, evaluateFilterSetGrouped, getFilterSortSpecs, prepareTaskSortContext } from '../core/filter-display';
+import { automationPreviewSorts, groupAutomationPreviewTasks, type AutomationTaskPreview } from './automation-task-preview';
 import { PinnedCache } from '../storage/pinned-cache';
 import { buildFilterTaskRowElement, FilterTaskRowCallbacks, shouldAutoExpandFilterTaskSubtasks } from './filter-task-row';
 import { t } from '../core/i18n';
@@ -1033,22 +1034,18 @@ export class FilterSetModal extends Modal {
 }
 
 /**
- * Quick preview modal — shows the task list for the current filter state.
+ * Interactive task list for a filter or the current membership of an automation stage.
  */
-class FilterPreviewModal extends Modal {
-	private filterSet: FilterSet;
-	private deps: FilterModalEvalDeps;
+export class FilterPreviewModal extends Modal {
 	private lastRenderSignature: string | null = null;
 	private expandedTaskIds = new Set<string>();
 
 	constructor(
 		app: App,
-		filterSet: FilterSet,
-		deps: FilterModalEvalDeps,
+		private readonly source: FilterSet | (() => AutomationTaskPreview),
+		private readonly deps: FilterModalEvalDeps,
 	) {
 		super(app);
-		this.filterSet = filterSet;
-		this.deps = deps;
 	}
 
 	onOpen(): void {
@@ -1058,8 +1055,11 @@ class FilterPreviewModal extends Modal {
 	}
 
 	refresh(): void {
+		const filterSet = typeof this.source === 'function' ? null : this.source;
+		const automation = typeof this.source === 'function' ? this.source() : null;
+		const priorities = this.deps.getPriorities();
 		const allTasks = this.deps.indexer.getAllTasks();
-		const filePropertySnapshot = this.deps.getFilePropertySnapshot?.(allTasks) ?? null;
+		const filePropertySnapshot = filterSet ? this.deps.getFilePropertySnapshot?.(allTasks) ?? null : null;
 		const renderSignature = [
 			this.deps.indexer.getGeneration(),
 			this.deps.pinnedCache?.getGeneration() ?? 0,
@@ -1067,7 +1067,8 @@ class FilterPreviewModal extends Modal {
 			this.deps.getProjectSerialSignature?.() ?? '',
 			this.deps.getRepeatSkipSignature?.() ?? '',
 			filePropertySnapshot?.signature ?? '',
-			JSON.stringify(this.filterSet),
+			JSON.stringify(filterSet ?? automation),
+			automation ? JSON.stringify(priorities.map(priority => priority.label)) : '',
 			this.deps.getSettings().filterShowSubtasks ? '1' : '0',
 			String(this.deps.getSettings().filterSubtaskAutoExpandLimit),
 			this.deps.getSettings().filterShowOnlyOpenSubtasks ? '1' : '0',
@@ -1097,17 +1098,16 @@ class FilterPreviewModal extends Modal {
 		if (this.lastRenderSignature === renderSignature) return;
 		this.lastRenderSignature = renderSignature;
 
-		const priorities = this.deps.getPriorities();
 		const pipelines = this.deps.getPipelines();
 		const settings = this.deps.getSettings();
-		const dynamicFilePreview = isDynamicFileTaskFilterSet(this.filterSet);
-		const dynamicSubtasksPreview = isDynamicSubtasksFilterSet(this.filterSet);
-		const showSubtasks = dynamicFilePreview || dynamicSubtasksPreview || settings.filterShowSubtasks === true;
+		const dynamicFilePreview = filterSet && isDynamicFileTaskFilterSet(filterSet);
+		const dynamicSubtasksPreview = filterSet && isDynamicSubtasksFilterSet(filterSet);
+		const showSubtasks = !!automation || dynamicFilePreview || dynamicSubtasksPreview || settings.filterShowSubtasks === true;
 		const showOnlyOpenSubtasks = dynamicFilePreview
 			? settings.dynamicFileTaskFilterShowOnlyOpenSubtasks
 			: dynamicSubtasksPreview
 				? settings.dynamicSubtasksFilterShowOnlyOpenSubtasks
-				: settings.filterShowOnlyOpenSubtasks === true;
+				: !automation && settings.filterShowOnlyOpenSubtasks === true;
 		const autoExpandLimit = dynamicFilePreview
 			? settings.dynamicFileTaskFilterSubtaskAutoExpandLimit
 			: dynamicSubtasksPreview
@@ -1124,15 +1124,17 @@ class FilterPreviewModal extends Modal {
 			pipelines,
 			filePropertyContext: filePropertySnapshot ?? undefined,
 		};
-		const groupedResult = this.filterSet.groupBy
-			? evaluateFilterSetGrouped(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions)
-			: null;
+		const groupedResult = automation
+			? groupAutomationPreviewTasks(automation.taskIds, id => this.deps.indexer.getTask(id), priorities)
+			: filterSet?.groupBy
+				? evaluateFilterSetGrouped(filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions)
+				: null;
 		const grouped = groupedResult?.groupingSuspended ? null : groupedResult;
 		const tasks = groupedResult?.groupingSuspended
 			? groupedResult.ungroupedTasks ?? []
-			: grouped
-				? null
-			: evaluateFilterSet(this.filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions);
+			: filterSet && !grouped
+				? evaluateFilterSet(filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions)
+				: null;
 		const callbacks: FilterTaskRowCallbacks = {
 			getRepeatSkipDates: this.deps.getRepeatSkipDates,
 			app: this.app,
@@ -1167,19 +1169,24 @@ class FilterPreviewModal extends Modal {
 
 		// Header
 		const header = surface.createDiv('operon-embed-header operon-filter-preview-header');
-		header.createSpan({ cls: 'operon-embed-name', text: this.filterSet.name });
-		const count = grouped
-			? grouped.totalCount
-			: tasks!.length;
+		const title = automation
+			? `${automation.name.trim() || t('settings', 'automationUnsavedRule')}: ${t('settings', {
+				scope: 'automationScope', target: 'automationTarget', changed: 'automationActions',
+			}[automation.section])}`
+			: filterSet?.name;
+		header.createSpan({ cls: 'operon-embed-name', text: title });
+		const count = grouped?.totalCount ?? tasks?.length;
 		header.createSpan({
 			cls: 'operon-embed-count',
-			text: t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) }),
+			text: count === undefined ? t('settings', 'automationUnknown')
+				: t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) }),
 		});
-		const configuredSubtaskSorts = getFilterSortSpecs(this.filterSet);
+		if (count === undefined) return;
+		const configuredSubtaskSorts = filterSet ? getFilterSortSpecs(filterSet) : automationPreviewSorts;
 		const subtaskSorts = configuredSubtaskSorts.length > 0 ? configuredSubtaskSorts : undefined;
 		const taskRowOptions = {
 			allowExpand: showSubtasks,
-			defaultExpandAll: (task: import('../types/fields').IndexedTask) => shouldAutoExpandFilterTaskSubtasks(
+			defaultExpandAll: automation ? false : (task: IndexedTask) => shouldAutoExpandFilterTaskSubtasks(
 				task.operonId,
 				callbacks,
 				showOnlyOpenSubtasks,
@@ -1207,7 +1214,8 @@ class FilterPreviewModal extends Modal {
 		const list = surface.createDiv('operon-embed-list operon-filter-list');
 
 		if (count === 0) {
-			list.createDiv({ cls: 'operon-embed-empty', text: t('filters', 'noMatches') });
+			list.createDiv({ cls: 'operon-embed-empty', text: automation?.section === 'changed'
+				? t('settings', 'automationChangedMany', { count: '0' }) : t('filters', 'noMatches') });
 			return;
 		}
 
@@ -1216,10 +1224,9 @@ class FilterPreviewModal extends Modal {
 				const gh = list.createDiv('operon-group-header');
 				gh.createSpan({
 					cls: 'operon-group-header-label',
-					text: resolveFilterGroupDateDisplay(
-						getFilterGroupDisplayLabel(group.key, group.label),
-						settings,
-					).displayLabel,
+					text: automation
+						? t('settings', 'automationModifiedGroup', { date: group.label || t('filterSets', 'groupEmpty') })
+						: resolveFilterGroupDateDisplay(getFilterGroupDisplayLabel(group.key, group.label), settings).displayLabel,
 				});
 				gh.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
 				if (group.subgroups?.length) {
@@ -1253,6 +1260,7 @@ class FilterPreviewModal extends Modal {
 	onClose(): void {
 		activeFilterPreviewModals.delete(this);
 		this.lastRenderSignature = null;
+		this.expandedTaskIds.clear();
 		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);
 		this.contentEl.empty();

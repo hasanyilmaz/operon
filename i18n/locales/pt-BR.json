@@ -465,6 +465,7 @@
 		"automationSaveRule": "Salvar regra",
 		"automationScope": "Tarefas incluídas",
 		"automationTarget": "Tarefas a atualizar",
+		"automationModifiedGroup": "Última modificação: {{date}}",
 		"automationActions": "Ações",
 		"automationAddAction": "Adicionar ação",
 		"automationDeleteAction": "Remover ação",

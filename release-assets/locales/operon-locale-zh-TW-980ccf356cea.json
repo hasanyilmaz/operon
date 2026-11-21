@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3913,
-  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
+  "keyCount": 3914,
+  "keyFingerprint": "dfe938de9b567d2a432be92c15ecb23a7786b124838c5cbfe5977119a1285c99",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1189,6 +1189,7 @@
       "automationInactive": "未啟用",
       "automationInvalid": "無效的值",
       "automationMode": "執行模式",
+      "automationModifiedGroup": "最後修改：{{date}}",
       "automationName": "自動化名稱",
       "automationNoLimit": "無上限",
       "automationRelation": "無效的關聯",
@@ -3958,5 +3959,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "767d5f3727632475994310b380a1c582f080e47705dcc0486e7a32a4e5c99b89"
+  "sourceVersion": "d30398e893672e157a7638b568861b51bc29e501f75dc5a825d6be35932849a3"
 }
