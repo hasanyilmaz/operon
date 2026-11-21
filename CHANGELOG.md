@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Creating a daily or weekly note from the **Mini Calendar** now opens the selected editor without a false task identity warning while indexing finishes.
 - **Filters** now match timestamped tasks against the correct local calendar day. A task modified this morning appears under **Modified is today**, and **next month** and **last month** select the adjacent month even from the 31st.
 
 ### Validation
