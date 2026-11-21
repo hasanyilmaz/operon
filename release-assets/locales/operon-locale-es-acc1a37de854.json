@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Ejecutar esta regla una vez sin guardarla",
       "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
       "automationSaveRule": "Guardar regla",
-      "automationScope": "Tareas incluidas",
+      "automationScope": "Ámbito",
       "automationSetValue": "Asignar valor",
       "automationState": "Estado de la regla",
       "automationStopped": "Automatización detenida. Modificadas: {{applied}} · Pendientes: {{remaining}} · Resultado incierto: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "ff598b670083a336cf929f5bd683129b4dbbe24e4f4326982142441d124456b6"
+  "sourceVersion": "cb845f733fe51166a67b30be73ba34aa6cb78bf2fbda6418f8ef12a5d192dd7a"
 }

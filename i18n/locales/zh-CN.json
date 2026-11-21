@@ -463,7 +463,7 @@
 		"automationName": "自动化名称",
 		"automationEditRule": "编辑自动化规则",
 		"automationSaveRule": "保存规则",
-		"automationScope": "范围内的任务",
+		"automationScope": "范围",
 		"automationTarget": "触发条件",
 		"automationModifiedGroup": "最后修改：{{date}}",
 		"automationActions": "操作",

@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "執行此規則一次，但不儲存",
       "automationSaveFailed": "無法儲存自動化設定。請重新開啟自動化以查看目前的值。",
       "automationSaveRule": "儲存規則",
-      "automationScope": "範圍內的任務",
+      "automationScope": "範圍",
       "automationSetValue": "設定值",
       "automationState": "規則狀態",
       "automationStopped": "自動化已停止。已變更：{{applied}} · 剩餘：{{remaining}} · 結果未知：{{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "df8cc686c9a2e91e7f1a0911e938aab86c16bcf2ed6c18bf0a4bd1a06abef849"
+  "sourceVersion": "a795017c296cf1ca34bfa907b826b828da8df19344c7af62622e6d7d118b24bd"
 }

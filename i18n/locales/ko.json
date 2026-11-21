@@ -463,7 +463,7 @@
 		"automationName": "자동화 이름",
 		"automationEditRule": "자동화 규칙 편집",
 		"automationSaveRule": "규칙 저장",
-		"automationScope": "범위 내 작업",
+		"automationScope": "범위",
 		"automationTarget": "트리거",
 		"automationModifiedGroup": "마지막 수정: {{date}}",
 		"automationActions": "작업",

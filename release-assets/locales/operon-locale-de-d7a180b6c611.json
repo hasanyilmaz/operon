@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Diese Regel einmal ausführen, ohne sie zu speichern",
       "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
       "automationSaveRule": "Regel speichern",
-      "automationScope": "Berücksichtigte Aufgaben",
+      "automationScope": "Geltungsbereich",
       "automationSetValue": "Wert setzen",
       "automationState": "Regelstatus",
       "automationStopped": "Automatisierung gestoppt. Geändert: {{applied}} · Ausstehend: {{remaining}} · Ergebnis unklar: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "1b320fba7a7cba640734a04401ed93165fb0db7e0bb5e214da54caca7838b82f"
+  "sourceVersion": "691fc9ba11535487761f2ba6dff0ffcf51d92ffed2011df818575d497c438272"
 }

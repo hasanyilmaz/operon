@@ -5126,7 +5126,7 @@
       "Run once without saving this rule",
       "Could not save the automation settings. Reopen Automations to see the current values.",
       "Save Rule",
-      "Tasks in Scope",
+      "Scope",
       "Set value",
       "Rule state",
       "Automation stopped. Changed: {{applied}} · Remaining: {{remaining}} · Outcome unknown: {{uncertain}}",

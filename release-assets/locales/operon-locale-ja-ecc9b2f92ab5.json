@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "このルールを保存せずに一度だけ実行",
       "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
       "automationSaveRule": "ルールを保存",
-      "automationScope": "範囲内のタスク",
+      "automationScope": "範囲",
       "automationSetValue": "値を設定",
       "automationState": "ルールの状態",
       "automationStopped": "自動化を停止しました。変更済み：{{applied}} · 残り：{{remaining}} · 結果不明：{{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c8fc9bdef4732c12094b62612bc5bc320370ac7d084ba8c274ec1e9a45734251"
+  "sourceVersion": "fa752344efb54c1a335ea1ddb504bec9f47960fe3f4d8386f711cb1fe81fe283"
 }

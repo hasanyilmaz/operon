@@ -463,7 +463,7 @@
 		"automationName": "Nom de l’automatisation",
 		"automationEditRule": "Modifier la règle d’automatisation",
 		"automationSaveRule": "Enregistrer la règle",
-		"automationScope": "Tâches incluses",
+		"automationScope": "Périmètre",
 		"automationTarget": "Déclencheurs",
 		"automationModifiedGroup": "Dernière modification : {{date}}",
 		"automationActions": "Actions",

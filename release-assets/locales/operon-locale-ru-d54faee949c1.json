@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Выполнить правило один раз без сохранения",
       "automationSaveFailed": "Не удалось сохранить настройки. Откройте автоматизацию заново, чтобы увидеть текущие значения.",
       "automationSaveRule": "Сохранить правило",
-      "automationScope": "Задачи в области действия",
+      "automationScope": "Область действия",
       "automationSetValue": "Задать значение",
       "automationState": "Состояние правила",
       "automationStopped": "Автоматизация остановлена. Изменено: {{applied}} · Осталось: {{remaining}} · Результат неизвестен: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f8d733aec6561f032e92efce4c9564749f2cdb4131e119616b443e2eab8e155f"
+  "sourceVersion": "d19fd9b47194b57587cbdd58b61c60194a99de885c78d7a6229ef33ed623991b"
 }

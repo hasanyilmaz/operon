@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Executar esta regra uma vez sem salvá-la",
       "automationSaveFailed": "Não foi possível salvar as configurações. Reabra Automações para ver os valores atuais.",
       "automationSaveRule": "Salvar regra",
-      "automationScope": "Tarefas incluídas",
+      "automationScope": "Escopo",
       "automationSetValue": "Definir valor",
       "automationState": "Estado da regra",
       "automationStopped": "Automação interrompida. Alteradas: {{applied}} · Restantes: {{remaining}} · Resultado incerto: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e752b0fe72d541aea9eef4220913e843b06856fecc9f87fa622d9c1593174f78"
+  "sourceVersion": "fef9053cf7a469202c387217044eb074e5df21d07ec225075c9899eb155b05f0"
 }

@@ -463,7 +463,7 @@
 		"automationName": "Otomasyon adı",
 		"automationEditRule": "Otomasyon kuralını düzenle",
 		"automationSaveRule": "Kuralı kaydet",
-		"automationScope": "Kapsamdaki görevler",
+		"automationScope": "Kapsam",
 		"automationTarget": "Tetikleyiciler",
 		"automationModifiedGroup": "Son değişiklik: {{date}}",
 		"automationActions": "İşlemler",

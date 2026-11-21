@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Exécuter cette règle une fois sans l’enregistrer",
       "automationSaveFailed": "Impossible d’enregistrer les réglages. Rouvrez les automatisations pour consulter les valeurs actuelles.",
       "automationSaveRule": "Enregistrer la règle",
-      "automationScope": "Tâches incluses",
+      "automationScope": "Périmètre",
       "automationSetValue": "Définir la valeur",
       "automationState": "État de la règle",
       "automationStopped": "Automatisation arrêtée. Modifiées : {{applied}} · Restantes : {{remaining}} · Résultat incertain : {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d43822c07aebb8d2aedd2b635e6a7b097309e05ef9f7c28f0f54a2a97db15cf0"
+  "sourceVersion": "05ad1077ba1c524d62831ef7c4678f6f084b03ff471a5d2851a6e51b78f4389b"
 }

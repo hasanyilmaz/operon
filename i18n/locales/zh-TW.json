@@ -463,7 +463,7 @@
 		"automationName": "自動化名稱",
 		"automationEditRule": "編輯自動化規則",
 		"automationSaveRule": "儲存規則",
-		"automationScope": "範圍內的任務",
+		"automationScope": "範圍",
 		"automationTarget": "觸發條件",
 		"automationModifiedGroup": "最後修改：{{date}}",
 		"automationActions": "操作",

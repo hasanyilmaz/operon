@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Esegui questa regola una volta senza salvarla",
       "automationSaveFailed": "Impossibile salvare le impostazioni. Riapri Automazioni per vedere i valori attuali.",
       "automationSaveRule": "Salva regola",
-      "automationScope": "Attività incluse",
+      "automationScope": "Ambito",
       "automationSetValue": "Imposta valore",
       "automationState": "Stato della regola",
       "automationStopped": "Automazione interrotta. Modificate: {{applied}} · Rimanenti: {{remaining}} · Esito incerto: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "a456060c75f4e971b49494849b8068a7d1e53982c4f38df4e0ac630f45e0c66c"
+  "sourceVersion": "5909b56952eabb3b1702d60954ffe46db99e16f95f54853618b54a00a5a44187"
 }

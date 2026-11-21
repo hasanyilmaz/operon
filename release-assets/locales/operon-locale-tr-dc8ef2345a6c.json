@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "Bu kuralı kaydetmeden bir kez çalıştır",
       "automationSaveFailed": "Otomasyon ayarları kaydedilemedi. Güncel değerleri görmek için Otomasyonlar’ı yeniden aç.",
       "automationSaveRule": "Kuralı kaydet",
-      "automationScope": "Kapsamdaki görevler",
+      "automationScope": "Kapsam",
       "automationSetValue": "Değeri ayarla",
       "automationState": "Kural durumu",
       "automationStopped": "Otomasyon durdu. Değişen: {{applied}} · Kalan: {{remaining}} · Sonucu belirsiz: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "606082006bd2028f34de659ff82dcce4c8116787b84cb1c66c575043d8d69ace"
+  "sourceVersion": "1e7ea50e09f6dd0e92bb0f8ae9459f13d53964ee86ccdd21fdeaf5d48247c4f5"
 }

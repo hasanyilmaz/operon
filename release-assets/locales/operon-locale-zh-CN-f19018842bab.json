@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "运行此规则一次，但不保存",
       "automationSaveFailed": "无法保存自动化设置。请重新打开自动化以查看当前值。",
       "automationSaveRule": "保存规则",
-      "automationScope": "范围内的任务",
+      "automationScope": "范围",
       "automationSetValue": "设置值",
       "automationState": "规则状态",
       "automationStopped": "自动化已停止。已更改：{{applied}} · 剩余：{{remaining}} · 结果未知：{{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "8954afc6fdc3e838cca6d482d22ff26a717481ab78bb9938b21637d375c82905"
+  "sourceVersion": "40adbc5bedb9745b511cddd7fff177d8218f485b1275bdad2ce1925aa3f1775b"
 }

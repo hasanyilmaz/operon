@@ -463,7 +463,7 @@
 		"automationName": "Nome da automação",
 		"automationEditRule": "Editar regra de automação",
 		"automationSaveRule": "Salvar regra",
-		"automationScope": "Tarefas incluídas",
+		"automationScope": "Escopo",
 		"automationTarget": "Gatilhos",
 		"automationModifiedGroup": "Última modificação: {{date}}",
 		"automationActions": "Ações",

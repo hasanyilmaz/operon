@@ -1007,7 +1007,7 @@ test('Project Serial reference deletion identifies the editor section and allows
 	scopes.length = 0;
 	editor.updateCounts();
 	assert.equal(editor.save.disabled, true);
-	for (const text of ['Tasks in Scope', 'Project Serial Group', serialGroup.id]) assert.ok(counters.changed.text.includes(text), text);
+	for (const text of ['Scope', 'Project Serial Group', serialGroup.id]) assert.ok(counters.changed.text.includes(text), text);
 	await editor.submit();
 	editor.draft.active = false;
 	assert.equal(editor.canSave(), true);

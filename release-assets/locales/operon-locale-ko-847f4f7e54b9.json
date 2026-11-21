@@ -1201,7 +1201,7 @@
       "automationRunDraftHint": "이 규칙을 저장하지 않고 한 번 실행",
       "automationSaveFailed": "자동화 설정을 저장할 수 없습니다. 자동화를 다시 열어 현재 값을 확인하세요.",
       "automationSaveRule": "규칙 저장",
-      "automationScope": "범위 내 작업",
+      "automationScope": "범위",
       "automationSetValue": "값 설정",
       "automationState": "규칙 상태",
       "automationStopped": "자동화가 중단되었습니다. 변경: {{applied}} · 남음: {{remaining}} · 결과 불명: {{uncertain}}",
@@ -3959,5 +3959,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "b05f42f08593f2b05b12ad1e751fe9071a64201d64c823bbe01273672e93550f"
+  "sourceVersion": "b6b9332eb0b2db54e7317d36305ad18f5fcf02309c454c8e47eeb769373c4b35"
 }
