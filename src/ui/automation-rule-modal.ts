@@ -1,5 +1,5 @@
 import { App, Modal, Notice, setIcon } from 'obsidian';
-import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
+import type { AutomationChangePlan, AutomationPlanIssue, AutomationPreviewTaskIds } from '../core/automation-change-plan';
 import { createAutomationActionId, createAutomationProjectSerialValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { automationTypedListMapping, readActionLiteral } from '../core/automation-action-fields';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
@@ -113,6 +113,7 @@ export class AutomationRuleModal extends Modal {
 	private readonly actionContext: ActionEditorContext;
 	private readonly editors: FilterConditionEditor[] = [];
 	private readonly rows = new Map<string, AutomationActionRow>();
+	private previewTaskIds?: AutomationPreviewTaskIds;
 	private readonly counters = new Map<'scope' | 'target', HTMLElement>();
 	private options: FilterFieldPickerOption[] = [];
 	private native: TableFilePropertySnapshot | null = null;
@@ -249,6 +250,7 @@ export class AutomationRuleModal extends Modal {
 		this.updateCounts();
 	}
 	private schedule(): void {
+		this.previewTaskIds = undefined;
 		this.run.disabled = true;
 		const win = getOwnerWindow(this.contentEl);
 		win.clearTimeout(this.timer);
@@ -281,9 +283,14 @@ export class AutomationRuleModal extends Modal {
 		try { plan = this.source.plan({ ...this.draft, actions: valid }); }
 		catch (error) { console.warn('Operon: could not calculate automation changes', error); }
 		const [scopeValid, targetValid] = this.conditionValidity();
-		const count = plan?.rules[0];
+		const matches = plan?.rules[0]?.taskIds;
+		this.previewTaskIds = matches && {
+			scope: scopeValid ? matches.scope : null,
+			target: scopeValid && targetValid ? matches.target : null,
+			changed: scopeValid && targetValid && valid.length === chosen.length ? matches.changed : null,
+		};
 		for (const [key, node] of this.counters) {
-			const value = scopeValid && (key === 'scope' || targetValid) ? count?.[key] : null;
+			const value = this.previewTaskIds?.[key]?.length;
 			node.setText(value == null ? t('settings', 'automationUnknown') : t('filterSets',
 				value === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(value) }).trim());
 		}
@@ -298,7 +305,7 @@ export class AutomationRuleModal extends Modal {
 			messages.set(action.id, new Set([t('settings', action.value.length ? 'automationInvalid' : 'automationCompleteAction')]));
 		}
 		for (const [id, row] of this.rows) row.setMessage([...(messages.get(id) ?? [])].join(' · '));
-		const total = plan?.changedTaskCount;
+		const total = this.previewTaskIds?.changed?.length;
 		if (this.run) this.run.disabled = this.pending || !this.source.runDraft || !(total != null && total > 0)
 			|| !scopeValid || !targetValid || !chosen.length || valid.length !== chosen.length || this.editors.some(editor => editor.hasInvalidRawValues);
 		const missingGroup = plan?.issues.find(issue => issue.projectSerialGroupId);

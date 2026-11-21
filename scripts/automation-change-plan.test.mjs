@@ -65,6 +65,42 @@ test('inactive drafts, empty Scope/Target and zero-action limits', () => {
 	assert.equal(p.changedTaskCount, 0);
 	assert.equal(p.needsConfirmation, false);
 });
+test('editor preview returns exact scope, target and changed task IDs from one plan', () => {
+	const tasks = Array.from({ length: 281 }, (_, index) => task(String(index), {}, {
+		tags: [...(index < 280 ? ['daily'] : []), ...(index < 7 || index === 280 ? ['queue'] : [])],
+	}));
+	const tags = value => group('all', cond('tags', 'tags', 'anyContains', value));
+	const draft = rule('review', [], tags('queue'), tags('daily'));
+	const p = plan(tasks, [draft], { includePreviewTaskIds: true });
+	const count = p.rules[0];
+	assert.deepEqual([count.scope, count.target, count.changed], [280, 7, 0]);
+	assert.deepEqual(count.taskIds, { scope: tasks.slice(0, 280).map(t => t.operonId),
+		target: tasks.slice(0, 7).map(t => t.operonId), changed: [] });
+	assert.equal(p.changedTaskCount, count.taskIds.changed.length);
+	assert.ok(!('taskIds' in plan(tasks, [draft]).rules[0]));
+});
+
+test('preview deduplicates multiple actions and attributes indirect changes to the owning rule', () => {
+	const tasks = [task('parent'), task('child', { parentTask: 'parent' }), task('other')];
+	const child = rule('child-rule', [add('estimate', '120'), add('priority', 'High'), add('tags', 'review')], select('child'));
+	const other = rule('other-rule', [add('tags', 'review')], select('other'));
+	const p = plan(tasks, [child, other], { includePreviewTaskIds: true });
+	assert.deepEqual(p.rules[0].taskIds.target, ['child']);
+	assert.deepEqual([...p.rules[0].taskIds.changed].sort(), ['child', 'parent']);
+	assert.deepEqual(p.rules[1].taskIds.changed, ['other']);
+	assert.equal(p.changedTaskCount, 3);
+	for (const r of p.rules) for (const key of ['scope', 'target', 'changed']) assert.equal(r[key], r.taskIds[key].length);
+});
+
+test('unavailable preview memberships are null, while the known scope remains accessible', () => {
+	const tasks = [task('a'), task('b')];
+	const unresolved = group('all', cond('missing-field', 'text', 'is', 'value'));
+	const draft = rule('review', [add('tags', 'review')], unresolved);
+	const ids = ready => plan(tasks, [draft], { includePreviewTaskIds: true, ready }).rules[0].taskIds;
+	assert.deepEqual(ids(true), { scope: ['a', 'b'], target: null, changed: null });
+	assert.deepEqual(ids(false), { scope: null, target: null, changed: null });
+});
+
 test('nested Filters parity uses one day, complete hierarchy and a scoped target', () => {
 	const tasks = [task('root'), task('middle', { parentTask: 'root' }), task('leaf', { parentTask: 'middle', dateDue: asOf.slice(0, 10) })];
 	const scope = group('any', cond('dateDue', 'date', 'isToday'), cond('description', 'text', 'is', 'middle'));

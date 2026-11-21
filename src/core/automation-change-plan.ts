@@ -16,6 +16,7 @@ import { readAutomationField, readActionLiteral, type ActionIssue, type Automati
 import type { TableFilePropertyQueryContext } from '../ui/table/table-file-property';
 
 export interface AutomationPlanSnapshot {
+	includePreviewTaskIds?: boolean;
 	tasks: IndexedTask[];
 	ready: boolean;
 	conditionFields: ReadonlyMap<string, FilterFieldType>;
@@ -69,14 +70,17 @@ interface IntentBatch {
 	intents: Intent[];
 	origin: Origin;
 }
+export type AutomationPreviewTaskIds = Record<'scope' | 'target' | 'changed', readonly string[] | null>;
+
 interface RuleCount {
+	matches?: { scope: string[]; target: string[] };
 	ruleId: string;
 	scope: number;
 	target: number;
 	changed: number;
 }
 export interface AutomationChangePlan {
-	rules: Array<{ ruleId: string; scope: number | null; target: number | null; changed: number | null }>;
+	rules: Array<{ ruleId: string; scope: number | null; target: number | null; changed: number | null; taskIds?: AutomationPreviewTaskIds }>;
 	changes: AutomationFieldChange[];
 	issues: AutomationPlanIssue[];
 	/** Null when an input or a domain effect could not be resolved. */
@@ -627,7 +631,8 @@ export function planAutomationChanges(
 		})) continue;
 		const invalidScope = invalidProjectGroup(rule.scope);
 		const invalidTarget = invalidProjectGroup(rule.target);
-		const count = { ruleId: rule.id, scope: 0, target: 0, changed: 0 };
+		const count: RuleCount = { ruleId: rule.id, scope: 0, target: 0, changed: 0 };
+		if (snapshot.includePreviewTaskIds) count.matches = { scope: [], target: [] };
 		counts.push(count);
 		if (invalidScope) issues.push({ reason: 'condition-unavailable', field: 'scope', ruleId: rule.id, ...invalidScope });
 		if (invalidTarget) issues.push({ reason: 'condition-unavailable', field: 'target', ruleId: rule.id, ...invalidTarget });
@@ -638,11 +643,13 @@ export function planAutomationChanges(
 			if (scoped === 'unknown') issues.push({ reason: 'condition-unavailable', field: 'scope', taskId: task.operonId, ruleId: rule.id });
 			if (scoped !== 'true') continue;
 			count.scope++;
+			count.matches?.scope.push(task.operonId);
 			if (!target) continue;
 			const targeted = target(task);
 			if (targeted === 'unknown') issues.push({ reason: 'condition-unavailable', field: 'target', taskId: task.operonId, ruleId: rule.id });
 			if (targeted !== 'true') continue;
 			count.target++;
+			count.matches?.target.push(task.operonId);
 			for (const action of rule.actions) {
 				const origin = { ruleId: rule.id, actionId: action.id, taskId: task.operonId };
 				const batch = actionBatch(ctx, task, action, origin);
@@ -675,7 +682,13 @@ export function planAutomationChanges(
 		const scope = unknownScope.has(id) ? null : count.scope;
 		const target = scope === null || unknownTarget.has(id) ? null : count.target;
 		const changed = actionable.has(id) && (target === null || unknownChanges.has(id)) ? null : count.changed;
-		return { ruleId: id, scope, target, changed };
+		const result = { ruleId: id, scope, target, changed };
+		if (!count.matches) return result;
+		return { ...result, taskIds: {
+			scope: scope === null ? null : count.matches.scope,
+			target: target === null ? null : count.matches.target,
+			changed: changed === null ? null : Array.from(byRule.get(id) ?? []),
+		} };
 	});
 	const changedTaskCount = result.some(rule => rule.changed === null) ? null : new Set(changes.map(change => change.taskId)).size;
 	const needsConfirmation = changedTaskCount === null ? null : changedTaskCount > 0

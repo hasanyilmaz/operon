@@ -133,7 +133,7 @@ async function fixture(files, opts = {}) {
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
-		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
+		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId), includePreviewTaskIds = false) => planAutomationChanges({ includePreviewTaskIds, tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
 			conditionFields: new Map([['taskIcon', 'text'], ['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: idx.getAllDuplicateInstanceSnapshots,
 			getInlineList: (task, name) => propertyIndex.readMappedInlineList(task, name), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
@@ -163,7 +163,7 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf), reindexInline: async (key, copyPath) => {
+	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf, undefined, undefined, true), reindexInline: async (key, copyPath) => {
 		const task = copyPath ? duplicates.get(key).find(copy => copy.primary.filePath === copyPath) : tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -932,6 +932,18 @@ test('Project Serial references respect Auto event scope and stop a daily batch 
 	assert.equal(daily.plan.rules.find(item => item.ruleId === broken.id).changed, null);
 	assert.deepEqual(f.writes, [id(2) + '.md']);
 	assert.deepEqual(f.prompts, []);
+});
+
+test('an unfinished target keeps only the scope preview available in the rule editor', async () => {
+	const f = await fixture(filesFor(2), { rule: { target: rootGroup('description', 'text', 'is', '') } });
+	const editor = new AutomationRuleModal({}, { getSettings: () => DEFAULT_SETTINGS, getTasks: () => [...f.tasks.values()],
+		getNativeSnapshot: () => null, plan: f.preview }, f.rule, async () => assert.fail('unexpected save'));
+	editor.loadFields();
+	editor.editors.push({}, {});
+	editor.summary = { setText() {} };
+	editor.updateCounts();
+	assert.deepEqual(editor.previewTaskIds, { scope: [id(0), id(1)], target: null, changed: null });
+	assert.deepEqual(f.writes, []);
 });
 
 test('Project Serial reference deletion identifies the editor section and allows an inactive draft to be repaired', async () => {

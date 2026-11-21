@@ -971,7 +971,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	constructor(
 		app: App,
-		plugin: Plugin & { runManualAutomationRule?(id: string): Promise<boolean>; runAutomationDraft?(draft: AutomationRule): Promise<void>; requestSavedAutomationRun?(rule: AutomationRule): void; planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
+		plugin: Plugin & { runManualAutomationRule?(id: string): Promise<boolean>; runAutomationDraft?(draft: AutomationRule): Promise<void>; requestSavedAutomationRun?(rule: AutomationRule): void; planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation, options: { includePreviewTaskIds: boolean }): ReturnType<AutomationEditorSource['plan']> },
 		settings: OperonSettings,
 		storage: OperonStorage,
 		onSettingsChanged: (change?: 'property-icons') => void,
@@ -1027,7 +1027,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (plugin.runAutomationDraft) this.runAutomationDraft = draft => plugin.runAutomationDraft!(draft);
 		this.planAutomationRule = rule => {
 			const current = storage.getSettings().automationRules;
-			return plugin.planAutomationRules?.([rule], isAutomationRulesSettings(current) ? current.confirmation : 'always');
+			return plugin.planAutomationRules?.([rule], isAutomationRulesSettings(current) ? current.confirmation : 'always', { includePreviewTaskIds: true });
 		};
 		this.onSettingsChanged = onSettingsChanged;
 		this.onDockRefreshLayout = onDockRefreshLayout ?? (() => { });

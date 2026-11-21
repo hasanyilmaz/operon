@@ -23617,7 +23617,7 @@ export default class OperonPlugin extends Plugin {
 				now: localNow,
 				plan: (rules, policy, asOf, triggers, getFrontmatter) => {
 					ruleNames = new Map(rules.map(rule => [rule.id, rule.name.trim() || t('settings', 'automationUnsavedRule')]));
-					return this.planAutomationRules(rules, policy, asOf, triggers, getFrontmatter);
+					return this.planAutomationRules(rules, policy, { asOf, triggers, getFrontmatter });
 				},
 				prepare: (plan, yamlSources) => {
 					const tasks = this.indexer.getAllTasks();
@@ -23705,8 +23705,9 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	/** Drafts use cached frontmatter. Executions supply the source documents used to prepare writes. */
-	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation, asOf = localNow(), triggers?: AutoTriggers,
-		getFrontmatter: AutomationPlanSnapshot['getFrontmatter'] = task => this.getSourceContextFrontmatter(task.primary.filePath)) {
+	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation,
+		{ asOf = localNow(), triggers, includePreviewTaskIds, getFrontmatter = task => this.getSourceContextFrontmatter(task.primary.filePath) }:
+			Partial<Pick<AutomationPlanSnapshot, 'asOf' | 'getFrontmatter' | 'includePreviewTaskIds'>> & { triggers?: AutoTriggers } = {}) {
 		const tasks = this.indexer.getAllTasks();
 		const catalog = new FilterFieldCatalog({ keyMappings: this.settings.keyMappings, getRootGroup: () => undefined, getSettings: () => this.settings });
 		const expandParentDates = this.settings.autoExpandParentTaskDateRange;
@@ -23716,7 +23717,7 @@ export default class OperonPlugin extends Plugin {
 		const base = rules.some(rule => needsNative(rule.scope) || needsNative(rule.target)
 			|| rule.actions.some(action => action.field.startsWith('file.property:'))) ? this.getTableFilePropertySnapshot(tasks) : null;
 		return planAutomationChanges({
-			tasks, asOf, conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
+			tasks, asOf, includePreviewTaskIds, conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
 			ready: this.startupReady && this.taskCardIndexState === 'ready' && indexState.settled
 				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',
 			settings: this.settings, pins: this.pinnedCache ? new Set(this.pinnedCache.getPinnedIds()) : null,
