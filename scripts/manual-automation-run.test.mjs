@@ -833,7 +833,7 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 	for (const [button, expected, draftRun] of [[0,'deactivate',false],[1,'apply',false],[null,'dismiss',false],[0,'dismiss',true],[null,'dismiss',true],[1,'apply',true]]) {
 		const outcomes = [];
 		const modal = automationApprovalModal({}, { changedTaskCount: 1, rules: [{ ruleId, changed: 1, directTaskIds: ['a'] }] },
-			[{ id: ruleId, name: draftRun ? '' : 'Follow up' }], d => outcomes.push(d), draftRun, () => undefined, []);
+			[{ id: ruleId, name: draftRun ? '' : 'Follow up' }], d => outcomes.push(d), draftRun, { indexer: { getTask: () => undefined } });
 		const { doc } = statusDockDocument();
 		modal.modalEl = doc.body.createDiv(); modal.titleEl = modal.modalEl.createDiv(); modal.contentEl = modal.modalEl.createDiv();
 		modal.open();
@@ -855,6 +855,7 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 test('approval pages keep the full union, exact per-rule membership and a read-only nested preview', t => {
 	const { doc } = statusDockDocument();
 	const opened = [];
+	Object.defineProperty(doc.defaultView.HTMLElement.prototype, 'outerHTML', { configurable: true, get() { return '<' + this.tagName + '>'; } });
 	t.mock.method(Modal.prototype, 'open', function () {
 		this.modalEl = doc.body.createDiv(); this.titleEl = this.modalEl.createDiv(); this.contentEl = this.modalEl.createDiv();
 		opened.push(this); this.onOpen();
@@ -863,13 +864,16 @@ test('approval pages keep the full union, exact per-rule membership and a read-o
 	t.after(() => { if (original) Object.defineProperty(globalThis, 'MutationObserver', original); else delete globalThis.MutationObserver; });
 	globalThis.MutationObserver = class { observe() {} takeRecords() { return []; } disconnect() {} };
 	const memberships = [['a','b'], ['b'], ['c'], [], ['d','a']];
-	const tasks = new Map(['a','b','c','d'].map(key => [key, { operonId: key, description: key, tags: [], checkbox: 'open',
+	const tasks = new Map(['a','b','c','d'].map(key => [key, { operonId: key, description: key, tags: [], checkbox: 'open', primary: { filePath: key+'.md', format: 'inline', lineNumber: 1 },
 		datetimeModified: key === 'b' ? '2026-11-20' : '2026-11-21', fieldValues: { priority: key === 'd' ? 'High' : 'Low' } }]));
 	for (const size of [1,4,5]) {
 		const rules = memberships.slice(0,size).map((ids,i) => ({ id: 'r'+i, name: 'Rule '+i, directTaskIds: ids }));
 		const plan = { rules: rules.map(r => ({ ruleId:r.id, changed:r.directTaskIds.length, directTaskIds:r.directTaskIds })) };
 		const outcomes = [];
-		const modal = automationApprovalModal({}, plan, rules, d => outcomes.push(d), false, id => tasks.get(id), [{label:'High'},{label:'Low'}]);
+		const modal = automationApprovalModal({}, plan, rules, d => outcomes.push(d), false, {
+			indexer: { getTask: id => tasks.get(id), getAllTasks: () => [...tasks.values()], getGeneration: () => 1 },
+			getSettings: () => DEFAULT_SETTINGS, getPipelines: () => [], getPriorities: () => [{label:'High'},{label:'Low'}],
+		});
 		modal.open();
 		const rows = () => modal.contentEl.querySelectorAll('.operon-approval-row');
 		assert.equal(rows().length, Math.min(4,size));
@@ -879,13 +883,13 @@ test('approval pages keep the full union, exact per-rule membership and a read-o
 			button.click();
 			const child = opened.at(-1);
 			assert.notEqual(child,modal);
-			assert.equal(child.contentEl.querySelectorAll('*').filter(el => ['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(el.tagName)).length,1);
-			assert.equal(child.contentEl.querySelector('.operon-confirm-action-buttons').children[0].textContent,'Close');
+			assert.equal(child.contentEl.querySelectorAll('*').filter(el => ['BUTTON','A','INPUT','SELECT','TEXTAREA'].includes(el.tagName)).length,0);
+			assert.ok(child.modalEl.classList.contains('operon-filter-preview-modal-shell'));
 			return child;
 		};
 		if (size >= 4) {
 			const zero = openPreview(rows()[3].children[2]);
-			assert.equal(zero.contentEl.querySelectorAll('.operon-approval-task').length,0);
+			assert.equal(zero.contentEl.querySelectorAll('.operon-reading-task-description').length,0);
 			assert.equal(zero.contentEl.querySelector('.operon-embed-count').textContent,'0 tasks');
 			zero.close();
 		}
@@ -895,8 +899,8 @@ test('approval pages keep the full union, exact per-rule membership and a read-o
 			assert.ok(pages.children[2].disabled);
 			assert.equal(rows()[0].children[1].textContent, 'Rule 4');
 			const child = openPreview(rows()[0].children[2]);
-			assert.equal(child.titleEl.textContent,'Rule 4: Actions');
-			assert.deepEqual(child.contentEl.querySelectorAll('.operon-approval-task').map(el=>el.children[0].textContent),['d','a']);
+			assert.equal(child.contentEl.querySelector('.operon-embed-name').textContent,'Rule 4: Actions');
+			assert.deepEqual(child.contentEl.querySelectorAll('.operon-reading-task-description').map(el=>el.textContent),['d','a']);
 			child.close();
 			assert.equal(doc.activeElement, rows()[0].children[2]);
 			assert.equal(rows()[0].children[1].textContent, 'Rule 4');
@@ -904,7 +908,7 @@ test('approval pages keep the full union, exact per-rule membership and a read-o
 			assert.equal(rows().length,4);
 		}
 		const total = openPreview(modal.titleEl.querySelector('.operon-approval-total'));
-		const actual = total.contentEl.querySelectorAll('.operon-approval-task').map(el=>el.children[0].textContent);
+		const actual = total.contentEl.querySelectorAll('.operon-reading-task-description').map(el=>el.textContent);
 		assert.deepEqual(actual.toSorted(), [...new Set(rules.flatMap(r=>r.directTaskIds))].sort());
 		assert.deepEqual(outcomes, []);
 		modal.close();

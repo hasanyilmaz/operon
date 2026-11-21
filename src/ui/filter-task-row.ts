@@ -53,6 +53,7 @@ export function shouldAutoExpandFilterTaskSubtasks(
 }
 
 interface FilterTaskRowOptions {
+	staticPreview?: boolean;
  retainDom?: boolean;
 	allowExpand?: boolean;
 	ancestorIds?: Set<string>;
@@ -86,7 +87,7 @@ export function buildFilterTaskRowElement(
   callbacks = { ...callbacks };
   options = { ...options };
  }
-	const allowExpand = options?.allowExpand !== false;
+	const allowExpand = !options?.staticPreview && options?.allowExpand !== false;
 	const ancestorIds = options?.ancestorIds ?? new Set<string>();
 	const workflowStatusIdentityIndex = options?.workflowStatusIdentityIndex
 		?? buildWorkflowStatusIdentityIndex(callbacks.getPipelines());
@@ -156,6 +157,7 @@ export function buildFilterTaskRowElement(
 	const plainCheckboxProgress = computePlainCheckboxProgressIndicator(task.plainCheckboxProgress);
 	const row = buildReadingTaskRowElement(options?.retainDom ? task : renderedTask, callbacks, undefined, {
 		owner: wrapper,
+		staticPreview: options?.staticPreview,
         retainDom: options?.retainDom,
 		workflowStatusIdentityIndex,
 		chipItems: callbacks.getSettings().filterTaskCompactChips,
@@ -237,7 +239,7 @@ export function buildFilterTaskRowElement(
                 tail.appendChild(expandButton);
 			}
 			: undefined,
-		beforeEditAction: callbacks.getSettings().filterTaskShowPlainCheckboxAction
+		beforeEditAction: !options?.staticPreview && callbacks.getSettings().filterTaskShowPlainCheckboxAction
 			? (actions, context) => {
 				const progress = plainCheckboxProgress;
 				const control = el('span', 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-filter-checkbox-progress-control operon-task-chip-action operon-task-chip-progress', actions);

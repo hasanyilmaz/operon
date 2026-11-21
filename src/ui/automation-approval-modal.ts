@@ -3,46 +3,24 @@ import type { AutomationChangePlan } from '../core/automation-change-plan';
 import type { AutomationRule } from '../core/automation-rules';
 import { t } from '../core/i18n';
 import type { AutomationDecision } from '../systems/manual-automation-run';
-import type { IndexedTask } from '../types/fields';
-import { groupAutomationPreviewTasks } from './automation-task-preview';
+import { FilterPreviewModal, type FilterModalEvalDeps } from './filter-set-modal';
 import { ConfirmActionModal } from './confirm-action-modal';
 import { scopeSettingsModal } from './settings/settings-scope';
 
 const pageSize = 4;
 const taskCount = (count: number) => t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) });
 
-/** An approval only exposes text from the planned tasks; it has no task interaction callbacks. */
-function renderReadOnlyTasks(content: HTMLElement, groups: ReturnType<typeof groupAutomationPreviewTasks>, count: number): void {
-	const list = content.createDiv('operon-embed-list operon-filter-list operon-approval-preview');
-	list.createDiv({ cls: 'operon-embed-count', text: taskCount(count) });
-	if (!groups || !count) {
-		list.createDiv({ cls: 'operon-embed-empty', text: groups ? t('settings', 'automationChangedMany', { count: '0' }) : t('settings', 'automationUnknown') });
-		return;
-	}
-	for (const group of groups.groups) {
-		const header = list.createDiv('operon-group-header');
-		header.createSpan({ cls: 'operon-group-header-label', text: t('settings', 'automationModifiedGroup', { date: group.label || t('filterSets', 'groupEmpty') }) });
-		header.createSpan({ cls: 'operon-group-header-count', text: String(group.count) });
-		for (const task of group.tasks) {
-			const row = list.createDiv('operon-approval-task');
-			row.createSpan({ text: task.description || task.operonId });
-			if (task.fieldValues.priority) row.createSpan({ cls: 'operon-approval-priority', text: task.fieldValues.priority });
-		}
-	}
-}
-
 export function automationApprovalModal(app: App, plan: AutomationChangePlan, rules: AutomationRule[],
-	done: (decision: AutomationDecision) => void, draftRun: boolean, getTask: (id: string) => IndexedTask | undefined,
-	priorities: { label: string }[]): ConfirmActionModal {
+	done: (decision: AutomationDecision) => void, draftRun: boolean, deps: FilterModalEvalDeps): ConfirmActionModal {
 	const counts = new Map(plan.rules.map(entry => [entry.ruleId, entry]));
 	const rows = rules.map(rule => ({
 		name: rule.name.trim() || (draftRun ? t('settings', 'automationUnsavedRule') : rule.id),
 		ids: counts.get(rule.id)?.directTaskIds ?? [],
 	}));
 	const allIds = [...new Set(rows.flatMap(row => row.ids))];
-	const tasks = new Map(allIds.map(id => [id, getTask(id)]));
+	const tasks = new Map(allIds.map(id => [id, deps.indexer.getTask(id)]));
 	const actions = t('settings', 'automationActions');
-	let child: ConfirmActionModal | undefined;
+	let child: FilterPreviewModal | undefined;
 	let dismissed: AutomationDecision = 'dismiss';
 	let closed = false;
 
@@ -53,15 +31,10 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 		button.createSpan({ text: taskCount(ids.length) });
 		button.addEventListener('click', () => {
 			if (closed || child) return;
-			const groups = groupAutomationPreviewTasks(ids, id => tasks.get(id), priorities);
-			child = scopeSettingsModal(new ConfirmActionModal(app, {
-				title: name + ': ' + actions, message: '', readOnly: true, operonTooltips: true,
-				dismissText: t('buttons', 'close'),
-				renderDetails: content => renderReadOnlyTasks(content, groups, ids.length),
-			}, () => {
+			child = scopeSettingsModal(new FilterPreviewModal(app, () => ({ name, section: 'changed', taskIds: ids }), deps, () => {
 				child = undefined;
 				if (!closed && button.isConnected) button.focus();
-			}), true);
+			}, tasks), true);
 			child.open();
 		});
 	}

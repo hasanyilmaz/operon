@@ -5256,6 +5256,11 @@ body .operon-searchable-option-picker-panel .operon-searchable-option-picker-ite
 	opacity: 0.92;
 }
 
+.operon-filter-preview-modal .operon-reading-task-description:not([role="button"]),
+.operon-filter-preview-modal .operon-compact-task-markdown--visual-only .operon-reading-task-description-wikilink {
+	cursor: text;
+}
+
 .operon-reading-task-description-markdown {
 	display: inline;
 	margin: 0;
@@ -10809,8 +10814,7 @@ body.active-line .operon-task-editor-file-source-editor.is-active-line-disabled
 }
 
 .operon-approval-row,
-.operon-approval-pages,
-.operon-approval-task {
+.operon-approval-pages {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -10823,13 +10827,11 @@ body.active-line .operon-task-editor-file-source-editor.is-active-line-disabled
 	background: var(--background-secondary);
 }
 
-.operon-approval-rule-icon,
-.operon-approval-priority {
+.operon-approval-rule-icon {
 	color: var(--text-muted);
 }
 
-.operon-approval-rule-name,
-.operon-approval-task > :first-child {
+.operon-approval-rule-name {
 	flex: 1;
 	min-width: 0;
 	overflow-wrap: anywhere;
@@ -10853,14 +10855,8 @@ body.active-line .operon-task-editor-file-source-editor.is-active-line-disabled
 	cursor: pointer;
 }
 
-.operon-approval-pages,
-.operon-approval-preview {
+.operon-approval-pages {
 	margin-bottom: 12px;
-}
-
-.operon-approval-preview {
-	max-height: 60vh;
-	overflow-y: auto;
 }
 
 .operon-approval-pages > span {
@@ -10871,10 +10867,6 @@ body.active-line .operon-task-editor-file-source-editor.is-active-line-disabled
 
 .operon-automation-approval .operon-confirm-action-buttons {
 	flex-wrap: wrap;
-}
-
-.operon-approval-task {
-	padding: 7px 4px;
 }
 
 .operon-confirm-action-modal-wide {

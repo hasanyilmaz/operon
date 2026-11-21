@@ -1045,12 +1045,14 @@ export class FilterPreviewModal extends Modal {
 		private readonly source: FilterSet | (() => AutomationTaskPreview),
 		private readonly deps: FilterModalEvalDeps,
 		private readonly onDismiss?: () => void,
+		/** Approval previews show the captured plan and never subscribe to live task changes. */
+		private readonly approvalTasks?: ReadonlyMap<string, IndexedTask | undefined>,
 	) {
 		super(app);
 	}
 
 	onOpen(): void {
-		activeFilterPreviewModals.add(this);
+		if (!this.approvalTasks) activeFilterPreviewModals.add(this);
 		this.modalEl.addClass('operon-filter-preview-modal-shell');
 		this.refresh();
 	}
@@ -1126,7 +1128,7 @@ export class FilterPreviewModal extends Modal {
 			filePropertyContext: filePropertySnapshot ?? undefined,
 		};
 		const groupedResult = automation
-			? groupAutomationPreviewTasks(automation.taskIds, id => this.deps.indexer.getTask(id), priorities)
+			? groupAutomationPreviewTasks(automation.taskIds, id => this.approvalTasks ? this.approvalTasks.get(id) : this.deps.indexer.getTask(id), priorities)
 			: filterSet?.groupBy
 				? evaluateFilterSetGrouped(filterSet, allTasks, priorities, this.deps.pinnedCache, pipelines, filterEvaluationOptions)
 				: null;
@@ -1187,6 +1189,7 @@ export class FilterPreviewModal extends Modal {
 		const configuredSubtaskSorts = filterSet ? getFilterSortSpecs(filterSet) : automationPreviewSorts;
 		const subtaskSorts = configuredSubtaskSorts.length > 0 ? configuredSubtaskSorts : undefined;
 		const taskRowOptions = {
+			staticPreview: !!this.approvalTasks,
 			allowExpand: showSubtasks,
 			defaultExpandAll: automation ? false : (task: IndexedTask) => shouldAutoExpandFilterTaskSubtasks(
 				task.operonId,

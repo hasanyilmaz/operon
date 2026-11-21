@@ -152,6 +152,8 @@ export interface ReadingTaskRowOptions {
 	workflowStatusIdentityIndex?: WorkflowStatusIdentityIndex;
 	chipItems?: InlineTaskCompactChipItem[];
 	readOnly?: boolean;
+	/** Display task content without navigation, popovers or editing (pending approval). */
+	staticPreview?: boolean;
 	/** Show normal controls, but route attempts to explicit identity repair. */
 	onBlockedAction?: () => void;
 	showPlayAction?: boolean;
@@ -257,7 +259,7 @@ export function buildReadingTaskRowElement(
 ): HTMLElement {
 	const owner = renderedDescription ?? options?.owner ?? null;
 	const row = el('div', 'operon-reading-task-row operon-task-chip-surface', owner);
-	if (Platform.isDesktopApp) bindDescendantFocusVisible(row);
+	if (!options?.staticPreview && Platform.isDesktopApp) bindDescendantFocusVisible(row);
 	if (options?.rowClassName) row.classList.add(options.rowClassName);
  if (options?.retainDom) {
   const state = { task, callbacks, adopt: (nextTask: IndexedTask, nextCallbacks: ReadingTaskRowCallbacks) => { task = nextTask; callbacks = nextCallbacks; state.task = task; state.callbacks = callbacks; } };
@@ -284,7 +286,8 @@ export function buildReadingTaskRowElement(
 			if (event.key === 'Enter' || event.key === ' ') block(event);
 		}, true);
 	}
-	const readOnly = options?.readOnly === true && !onBlockedAction;
+	const staticPreview = options?.staticPreview === true;
+	const readOnly = staticPreview || (options?.readOnly === true && !onBlockedAction);
 	if (readOnly) row.classList.add('is-read-only');
 	const head = el('div', 'operon-reading-task-head', row);
 	const tail = el('div', 'operon-reading-task-tail', row);
@@ -343,37 +346,39 @@ export function buildReadingTaskRowElement(
 	head.appendChild(iconButton);
 
 	const description = el('div', 'operon-reading-task-description operon-task-description', row);
-	description.setAttribute('role', 'button');
-	description.setAttribute('tabindex', '0');
 	if (renderedDescription) {
 		description.appendChild(renderedDescription);
 	} else {
-		renderTaskDescription(description, task, callbacks);
+		renderTaskDescription(description, task, callbacks, staticPreview);
 	}
 	if (terminalVisualState === 'done') {
 		description.classList.add('operon-task-done');
 	} else if (terminalVisualState === 'cancelled') {
 		description.classList.add('operon-task-cancelled');
 	}
-	description.addEventListener('click', (event) => {
-		if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
-		event.preventDefault();
-		if (Platform.isDesktopApp && callbacks.activateDescription) {
-			if (event.button !== 0 || event.detail > 1) return;
-			event.stopPropagation();
-			callbacks.activateDescription(task, event, description);
-		} else callbacks.navigateToTask(task);
-	});
-	description.addEventListener('keydown', (event) => {
-		if (event.target !== description) return;
-		if (event.key !== 'Enter' && event.key !== ' ') return;
-		event.preventDefault();
-		if (Platform.isDesktopApp && callbacks.activateDescription) {
-			if (event.repeat) return;
-			event.stopPropagation();
-			callbacks.activateDescription(task, event, description);
-		} else callbacks.navigateToTask(task);
-	});
+	if (!staticPreview) {
+		description.setAttribute('role', 'button');
+		description.setAttribute('tabindex', '0');
+		description.addEventListener('click', (event) => {
+			if (isCompactTaskMarkdownLinkEventTarget(event.target, description)) return;
+			event.preventDefault();
+			if (Platform.isDesktopApp && callbacks.activateDescription) {
+				if (event.button !== 0 || event.detail > 1) return;
+				event.stopPropagation();
+				callbacks.activateDescription(task, event, description);
+			} else callbacks.navigateToTask(task);
+		});
+		description.addEventListener('keydown', (event) => {
+			if (event.target !== description) return;
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			if (Platform.isDesktopApp && callbacks.activateDescription) {
+				if (event.repeat) return;
+				event.stopPropagation();
+				callbacks.activateDescription(task, event, description);
+			} else callbacks.navigateToTask(task);
+		});
+	}
 	head.appendChild(description);
 
 	options?.beforeTailContent?.(tail, {
@@ -386,9 +391,13 @@ export function buildReadingTaskRowElement(
 	const entries = options?.preparedEntries ?? prepareReadingTaskChips(task, callbacks, options, workflowStatusIdentityIndex);
 	for (const entry of entries) {
 		const renderEntry = readOnly && entry.interactive ? { ...entry, interactive: false } : entry;
-		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip');
+		const chip = createInlineTaskCompactChipElement(renderEntry, 'operon-reading-task-chip operon-task-chip', { owner: tail });
 		bindAssigneeChipImage(chip, renderEntry, callbacks.app, task.primary.filePath, settings.assigneeImageProperty);
 		applyCompactChipVisualStyles(chip, renderEntry, task, callbacks, statusColor, taskColor);
+		if (staticPreview) {
+			tail.appendChild(chip);
+			continue;
+		}
 		if (renderEntry.iconOnly) {
 			bindAdaptiveIconOnlyExpansion(chip, renderEntry.label, taskColor ?? null, {
 				showTooltip: !isCompactTaskMediaChipKey(renderEntry.key),
@@ -457,7 +466,7 @@ export function buildReadingTaskRowElement(
 
 	const showPlayAction = !readOnly && (options?.showPlayAction ?? callbacks.getSettings().inlineTaskShowPlayAction);
 	const showPinAction = !readOnly && (options?.showPinAction ?? callbacks.getSettings().inlineTaskShowPinAction);
-	const showNoteAction = options?.showNoteAction ?? callbacks.getSettings().inlineTaskShowNoteAction;
+	const showNoteAction = !staticPreview && (options?.showNoteAction ?? callbacks.getSettings().inlineTaskShowNoteAction);
 	const showSubtaskAction = !readOnly && (options?.showSubtaskAction ?? callbacks.getSettings().inlineTaskShowSubtaskAction);
 	const showEditAction = !readOnly && (options?.showEditAction ?? true);
 
@@ -585,7 +594,7 @@ export function buildReadingTaskRowElement(
 		actions.appendChild(noteButton);
 	}
 
-	if (Platform.isDesktopApp && !options?.onBlockedAction && (options?.showSourceAction ?? settings.inlineTaskShowSourceAction)) {
+	if (!staticPreview && Platform.isDesktopApp && !options?.onBlockedAction && (options?.showSourceAction ?? settings.inlineTaskShowSourceAction)) {
   const sourceButton = createTaskSourceActionButton({ app: callbacks.app, owner: actions,
    getSettings: callbacks.getSettings, getTask: () => callbacks.getAllTasks().find(current => current.operonId === task.operonId),
    taskColor, className: 'operon-live-preview-edit operon-reading-task-edit operon-live-preview-action operon-task-chip-action',
@@ -635,6 +644,7 @@ function renderTaskDescription(
 	descriptionEl: HTMLElement,
 	task: IndexedTask,
 	callbacks: ReadingTaskRowCallbacks,
+	staticPreview: boolean,
 ): void {
 	const description = getTaskDisplayTitle(
 		task,
@@ -643,18 +653,18 @@ function renderTaskDescription(
 	const rendered = renderCompactTaskMarkdown(descriptionEl, {
 		app: callbacks.app,
 		value: description,
-		bindLink: taskDescriptionOpening(
+		bindLink: staticPreview ? undefined : taskDescriptionOpening(
 			callbacks.app,
 			() => callbacks.getAllTasks().find(current => current.operonId === task.operonId),
 			undefined,
 			callbacks.getSettings().fileTaskDisplayTitleEnabled,
 		),
 		sourcePath: task.primary.filePath,
-		mode: 'interactive',
+		mode: staticPreview ? 'visual-only' : 'interactive',
 		containerClassName: 'operon-reading-task-description-markdown',
 		linkClassName: 'operon-reading-task-description-wikilink',
 	});
-	if (rendered.hasLinks) enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
+	if (!staticPreview && rendered.hasLinks) enhanceTaskDescriptionWikilinkOverlays(descriptionEl, task, callbacks);
 }
 
 function enhanceTaskDescriptionWikilinkOverlays(

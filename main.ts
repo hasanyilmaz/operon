@@ -23679,7 +23679,7 @@ export default class OperonPlugin extends Plugin {
 						this.automationApproval = undefined;
 						this.backgroundAutomationApproval = undefined;
 						resolve(closeReason ?? result);
-					}, draftRun, id => this.indexer.getTask(id), this.settings.priorities ?? DEFAULT_PRIORITIES);
+					}, draftRun, this.buildFilterModalEvalDeps());
 					if (batch) this.backgroundAutomationApproval = () => {
 						this.autoAutomationEvents?.refreshBatch(batch);
 						if (!Array.from(batch.rules.values()).includes('all')) return;
