@@ -26665,6 +26665,12 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	background-color: var(--background-primary-alt);
 }
 
+.operon-automation-rules-settings-list .operon-settings-list-card-main {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	flex: 1 1 12rem;
+}
+
 /* Keep a rule row neutral when the editor restores focus to its action. */
 .operon-automation-rules-settings-list .operon-filter-set-list > .operon-settings-list-card:focus-within:not(:hover) {
 	border-color: var(--background-modifier-border);
