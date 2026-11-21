@@ -26581,6 +26581,12 @@ button.operon-kanban-descendant-toggle:focus-visible {
 	background-color: var(--background-primary-alt);
 }
 
+/* Keep a rule row neutral when the editor restores focus to its action. */
+.operon-automation-rules-settings-list .operon-filter-set-list > .operon-settings-list-card:focus-within:not(:hover) {
+	border-color: var(--background-modifier-border);
+	background-color: var(--background-primary);
+}
+
 .operon-settings-native-page-root:where(.operon-settings-scope, .operon-settings-scope *) .operon-settings-card-list-section > :is(
 	.operon-filter-set-list,
 	.operon-calendar-preset-list,
