@@ -1182,7 +1182,7 @@
       "automationDeactivated": "已停用自動化規則「{{name}}」。",
       "automationDelete": "刪除 {{name}}？",
       "automationDeleteAction": "刪除操作",
-      "automationEditRule": "編輯規則",
+      "automationEditRule": "編輯自動化規則",
       "automationField": "操作欄位",
       "automationFilterOnly": "僅供篩選",
       "automationInactive": "未啟用",
@@ -1198,11 +1198,11 @@
       "automationRun": "執行",
       "automationSaveFailed": "無法儲存自動化設定。請重新開啟自動化以查看目前的值。",
       "automationSaveRule": "儲存規則",
-      "automationScope": "範圍條件",
+      "automationScope": "範圍內的任務",
       "automationSetValue": "設定值",
       "automationState": "規則狀態",
       "automationStopped": "自動化已停止。已變更：{{applied}} · 剩餘：{{remaining}} · 結果未知：{{uncertain}}",
-      "automationTarget": "目標條件",
+      "automationTarget": "要更新的任務",
       "automationUnavailable": "無法讀取這些自動化設定。",
       "automationUnknown": "無法計算",
       "automationValue": "操作值",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "02ff2fc977985c1ca984046a79e8896dba46b0e3983a2eef10e6fd67ba271293"
+  "sourceVersion": "5203fd029a41ffa5fe4a0cf4dcaf20a6aeeb8e586cba91f2c8dffa169bfa6379"
 }

@@ -1182,7 +1182,7 @@
       "automationDeactivated": "Правило «{{name}}» отключено.",
       "automationDelete": "Удалить {{name}}?",
       "automationDeleteAction": "Удалить действие",
-      "automationEditRule": "Изменить правило",
+      "automationEditRule": "Изменить правило автоматизации",
       "automationField": "Поле действия",
       "automationFilterOnly": "Только для фильтра",
       "automationInactive": "Неактивно",
@@ -1198,11 +1198,11 @@
       "automationRun": "Запустить",
       "automationSaveFailed": "Не удалось сохранить настройки. Откройте автоматизацию заново, чтобы увидеть текущие значения.",
       "automationSaveRule": "Сохранить правило",
-      "automationScope": "Условия области",
+      "automationScope": "Задачи в области действия",
       "automationSetValue": "Задать значение",
       "automationState": "Состояние правила",
       "automationStopped": "Автоматизация остановлена. Изменено: {{applied}} · Осталось: {{remaining}} · Результат неизвестен: {{uncertain}}",
-      "automationTarget": "Условия цели",
+      "automationTarget": "Задачи для обновления",
       "automationUnavailable": "Не удалось прочитать настройки автоматизации.",
       "automationUnknown": "Не удалось рассчитать",
       "automationValue": "Значение действия",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f3566f8ae91898ad013eb3ab737a8c5f27859101998e2d3976a8a4372c323715"
+  "sourceVersion": "26c499c4d1bb76834a11baa0a8637adbaf154136b95f4bf85dbea32feaefb878"
 }

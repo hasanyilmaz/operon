@@ -826,7 +826,7 @@ test('Project Serial reference deletion during confirmation discards the approve
 	try { showAutomationResult(result, false, new Map([[ruleId, f.rule.name]])); }
 	finally { Notice.onNotice = null; }
 	assert.equal(notices.length, 1);
-	for (const text of [f.rule.name, 'Target logic', 'Project Serial Group', serialGroup.id]) assert.ok(notices[0].includes(text), text);
+	for (const text of [f.rule.name, 'Tasks to Update', 'Project Serial Group', serialGroup.id]) assert.ok(notices[0].includes(text), text);
 });
 
 test('Project Serial reference deletion at the final write boundary leaves Markdown intact', async () => {
@@ -900,7 +900,7 @@ test('Project Serial reference deletion identifies the editor section and allows
 	scopes.length = 0;
 	editor.updateCounts();
 	assert.equal(editor.save.disabled, true);
-	for (const text of ['Scope logic', 'Project Serial Group', serialGroup.id]) assert.ok(summary.includes(text), text);
+	for (const text of ['Tasks in Scope', 'Project Serial Group', serialGroup.id]) assert.ok(summary.includes(text), text);
 	await editor.submit();
 	editor.draft.active = false;
 	assert.equal(editor.canSave(), true);

@@ -1182,7 +1182,7 @@
       "automationDeactivated": "Regola «{{name}}» disattivata.",
       "automationDelete": "Eliminare {{name}}?",
       "automationDeleteAction": "Rimuovi azione",
-      "automationEditRule": "Modifica regola",
+      "automationEditRule": "Modifica regola di automazione",
       "automationField": "Campo dell’azione",
       "automationFilterOnly": "Solo filtro",
       "automationInactive": "Inattiva",
@@ -1198,11 +1198,11 @@
       "automationRun": "Esegui",
       "automationSaveFailed": "Impossibile salvare le impostazioni. Riapri Automazioni per vedere i valori attuali.",
       "automationSaveRule": "Salva regola",
-      "automationScope": "Logica dell’ambito",
+      "automationScope": "Attività incluse",
       "automationSetValue": "Imposta valore",
       "automationState": "Stato della regola",
       "automationStopped": "Automazione interrotta. Modificate: {{applied}} · Rimanenti: {{remaining}} · Esito incerto: {{uncertain}}",
-      "automationTarget": "Logica della destinazione",
+      "automationTarget": "Attività da aggiornare",
       "automationUnavailable": "Impossibile leggere queste impostazioni di automazione.",
       "automationUnknown": "Calcolo non riuscito",
       "automationValue": "Valore dell’azione",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "f413e5e70c06efd869a2c6d9d711ba087abbd2850750d435eeebb73cdcbfb822"
+  "sourceVersion": "230e0a9867d46bd87d44f511ed6cb83d08d67c9bc715d33ef00e49948953d75c"
 }

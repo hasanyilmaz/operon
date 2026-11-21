@@ -1182,7 +1182,7 @@
       "automationDeactivated": "Se desactivó la regla «{{name}}».",
       "automationDelete": "¿Eliminar {{name}}?",
       "automationDeleteAction": "Quitar acción",
-      "automationEditRule": "Editar regla",
+      "automationEditRule": "Editar regla de automatización",
       "automationField": "Campo de la acción",
       "automationFilterOnly": "Solo filtro",
       "automationInactive": "Inactiva",
@@ -1198,11 +1198,11 @@
       "automationRun": "Ejecutar",
       "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
       "automationSaveRule": "Guardar regla",
-      "automationScope": "Lógica de alcance",
+      "automationScope": "Tareas incluidas",
       "automationSetValue": "Asignar valor",
       "automationState": "Estado de la regla",
       "automationStopped": "Automatización detenida. Modificadas: {{applied}} · Pendientes: {{remaining}} · Resultado incierto: {{uncertain}}",
-      "automationTarget": "Lógica de destino",
+      "automationTarget": "Tareas a actualizar",
       "automationUnavailable": "No se pudieron leer los ajustes de automatización.",
       "automationUnknown": "No se pudo calcular",
       "automationValue": "Valor de la acción",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "0499501c0dc487c11bedb28212f97964ee3a97c6898da800b31a9eba992440a1"
+  "sourceVersion": "e5b599d91af94e7f1fb5a49d837b5808f8114ba491e676138a08be416129dd85"
 }

@@ -1182,7 +1182,7 @@
       "automationDeactivated": "自動化ルール「{{name}}」を無効にしました。",
       "automationDelete": "{{name}} を削除しますか？",
       "automationDeleteAction": "アクションを削除",
-      "automationEditRule": "ルールを編集",
+      "automationEditRule": "自動化ルールを編集",
       "automationField": "アクションの項目",
       "automationFilterOnly": "フィルター専用",
       "automationInactive": "無効",
@@ -1198,11 +1198,11 @@
       "automationRun": "実行",
       "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
       "automationSaveRule": "ルールを保存",
-      "automationScope": "範囲の条件",
+      "automationScope": "範囲内のタスク",
       "automationSetValue": "値を設定",
       "automationState": "ルールの状態",
       "automationStopped": "自動化を停止しました。変更済み：{{applied}} · 残り：{{remaining}} · 結果不明：{{uncertain}}",
-      "automationTarget": "対象の条件",
+      "automationTarget": "更新するタスク",
       "automationUnavailable": "自動化の設定を読み込めませんでした。",
       "automationUnknown": "計算できません",
       "automationValue": "アクションの値",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "19ca13990eca176779f42479074561ddaee09a35fc713ff02244db0451e99810"
+  "sourceVersion": "09de55989b9d484c291d5b9b8d1d22772e2f16ac27601c6ca5719fdfb581d658"
 }

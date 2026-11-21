@@ -1182,7 +1182,7 @@
       "automationDeactivated": "“{{name}}” otomasyon kuralı devre dışı bırakıldı.",
       "automationDelete": "{{name}} silinsin mi?",
       "automationDeleteAction": "İşlemi kaldır",
-      "automationEditRule": "Kuralı düzenle",
+      "automationEditRule": "Otomasyon kuralını düzenle",
       "automationField": "İşlem alanı",
       "automationFilterOnly": "Yalnızca filtre",
       "automationInactive": "İnaktif",
@@ -1198,11 +1198,11 @@
       "automationRun": "Çalıştır",
       "automationSaveFailed": "Otomasyon ayarları kaydedilemedi. Güncel değerleri görmek için Otomasyonlar’ı yeniden aç.",
       "automationSaveRule": "Kuralı kaydet",
-      "automationScope": "Kapsam mantığı",
+      "automationScope": "Kapsamdaki görevler",
       "automationSetValue": "Değeri ayarla",
       "automationState": "Kural durumu",
       "automationStopped": "Otomasyon durdu. Değişen: {{applied}} · Kalan: {{remaining}} · Sonucu belirsiz: {{uncertain}}",
-      "automationTarget": "Hedef mantığı",
+      "automationTarget": "Güncellenecek görevler",
       "automationUnavailable": "Bu otomasyon ayarları okunamadı.",
       "automationUnknown": "Hesaplanamadı",
       "automationValue": "İşlem değeri",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "456ea5bcbb0e3775b002c30044756a71801bb1d0b4486934900ef539d2d56e2a"
+  "sourceVersion": "55fe91650b2fb65f652c365394e23a3627f4f804364e31f18072fcda77f403d4"
 }

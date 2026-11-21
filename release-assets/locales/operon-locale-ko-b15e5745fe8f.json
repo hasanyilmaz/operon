@@ -1182,7 +1182,7 @@
       "automationDeactivated": "자동화 규칙 “{{name}}”을 비활성화했습니다.",
       "automationDelete": "{{name}}을(를) 삭제할까요?",
       "automationDeleteAction": "작업 삭제",
-      "automationEditRule": "규칙 편집",
+      "automationEditRule": "자동화 규칙 편집",
       "automationField": "작업 필드",
       "automationFilterOnly": "필터 전용",
       "automationInactive": "비활성",
@@ -1198,11 +1198,11 @@
       "automationRun": "실행",
       "automationSaveFailed": "자동화 설정을 저장할 수 없습니다. 자동화를 다시 열어 현재 값을 확인하세요.",
       "automationSaveRule": "규칙 저장",
-      "automationScope": "범위 조건",
+      "automationScope": "범위 내 작업",
       "automationSetValue": "값 설정",
       "automationState": "규칙 상태",
       "automationStopped": "자동화가 중단되었습니다. 변경: {{applied}} · 남음: {{remaining}} · 결과 불명: {{uncertain}}",
-      "automationTarget": "대상 조건",
+      "automationTarget": "업데이트할 작업",
       "automationUnavailable": "자동화 설정을 읽을 수 없습니다.",
       "automationUnknown": "계산할 수 없음",
       "automationValue": "작업 값",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "08261a9e585d639c24f3462da618bb6f7b6aac7169d8fe6d6c7b2164de2595dc"
+  "sourceVersion": "b5bb189838fcf7115e143833870d450b2cedcd8985073b5db54e73b0970eaeb8"
 }

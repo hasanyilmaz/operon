@@ -1182,7 +1182,7 @@
       "automationDeactivated": "已停用自动化规则“{{name}}”。",
       "automationDelete": "删除 {{name}}？",
       "automationDeleteAction": "删除操作",
-      "automationEditRule": "编辑规则",
+      "automationEditRule": "编辑自动化规则",
       "automationField": "操作字段",
       "automationFilterOnly": "仅供筛选",
       "automationInactive": "未启用",
@@ -1198,11 +1198,11 @@
       "automationRun": "运行",
       "automationSaveFailed": "无法保存自动化设置。请重新打开自动化以查看当前值。",
       "automationSaveRule": "保存规则",
-      "automationScope": "范围条件",
+      "automationScope": "范围内的任务",
       "automationSetValue": "设置值",
       "automationState": "规则状态",
       "automationStopped": "自动化已停止。已更改：{{applied}} · 剩余：{{remaining}} · 结果未知：{{uncertain}}",
-      "automationTarget": "目标条件",
+      "automationTarget": "要更新的任务",
       "automationUnavailable": "无法读取这些自动化设置。",
       "automationUnknown": "无法计算",
       "automationValue": "操作值",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "498eb167e7358c9f41b6c9529268614e5611715a3c5724f463891bd4dd13a3f8"
+  "sourceVersion": "a40b10918bb33b00429462f9482b16273825eda6c7f0fe91764dd138e51ecedc"
 }

@@ -1182,7 +1182,7 @@
       "automationDeactivated": "Automatisierungsregel „{{name}}“ deaktiviert.",
       "automationDelete": "{{name}} löschen?",
       "automationDeleteAction": "Aktion entfernen",
-      "automationEditRule": "Regel bearbeiten",
+      "automationEditRule": "Automatisierungsregel bearbeiten",
       "automationField": "Aktionsfeld",
       "automationFilterOnly": "Nur Filter",
       "automationInactive": "Inaktiv",
@@ -1198,11 +1198,11 @@
       "automationRun": "Ausführen",
       "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
       "automationSaveRule": "Regel speichern",
-      "automationScope": "Bereichslogik",
+      "automationScope": "Berücksichtigte Aufgaben",
       "automationSetValue": "Wert setzen",
       "automationState": "Regelstatus",
       "automationStopped": "Automatisierung gestoppt. Geändert: {{applied}} · Ausstehend: {{remaining}} · Ergebnis unklar: {{uncertain}}",
-      "automationTarget": "Ziellogik",
+      "automationTarget": "Zu aktualisierende Aufgaben",
       "automationUnavailable": "Diese Automatisierungseinstellungen konnten nicht gelesen werden.",
       "automationUnknown": "Berechnung nicht möglich",
       "automationValue": "Aktionswert",
@@ -3955,5 +3955,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "17071ec3fce8a8d4dcc15e01539c15e48fe1939f142f4d45446949e8078795a9"
+  "sourceVersion": "6933e1d46562960cc2579c6674607208495427a92159fe0378c09a90648a0503"
 }
