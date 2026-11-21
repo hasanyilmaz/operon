@@ -16043,6 +16043,23 @@ button.operon-field-picker-trigger,
 	box-sizing: border-box;
 }
 
+.operon-automation-value {
+	position: relative;
+}
+
+.operon-automation-value > select {
+	--operon-filter-modal-control-chevron: none;
+	min-height: var(--input-height);
+	padding-inline-start: 10px;
+}
+
+.operon-automation-value > .operon-field-picker-trigger-icon {
+	position: absolute;
+	inset-block: 0;
+	inset-inline-end: 8px;
+	pointer-events: none;
+}
+
 .operon-automation-count,
 .operon-automation-diagnostic {
 	color: var(--text-muted);

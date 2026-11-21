@@ -71,11 +71,13 @@ export function validAction(action: AutomationAction, ctx: ActionEditorContext):
 }
 
 function selectValue(parent: HTMLElement, label: string, value: string, values: [string, string][], change: (value: string) => void): HTMLSelectElement {
-	const select = parent.createEl('select', { cls: 'operon-filter-control dropdown', attr: { 'aria-label': label } });
+	const select = parent.createEl('select', { cls: 'operon-filter-select dropdown', attr: { 'aria-label': label } });
 	select.createEl('option', { value: '', text: label });
 	for (const [key, text] of values) select.createEl('option', { value: key, text });
 	if (value && !values.some(([key]) => key === value)) select.createEl('option', { value, text: value });
 	select.value = value;
+	const icon = parent.createSpan({ cls: 'operon-field-picker-trigger-icon', attr: { 'aria-hidden': 'true' } });
+	setIcon(icon, 'chevron-down');
 	select.addEventListener('change', () => change(select.value));
 	return select;
 }
