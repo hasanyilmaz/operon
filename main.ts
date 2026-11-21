@@ -21746,11 +21746,20 @@ export default class OperonPlugin extends Plugin {
 			await this.indexer.reindexFilePath(path, { notify: false });
 			if (!canOpen()) return;
 			try {
-				const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
-				const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
-				const indexedId = this.getQuickSwitcherFileTaskId(file);
-				identity = scanned.yamlTask ? (indexedId === scanned.yamlTask.operonId ? indexedId : undefined)
-					: indexedId === null ? null : undefined;
+				const readIdentity = async () => {
+					const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
+					const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
+					const indexedId = this.getQuickSwitcherFileTaskId(file);
+					return scanned.yamlTask ? (indexedId === scanned.yamlTask.operonId ? indexedId : undefined)
+						: indexedId === null ? null : undefined;
+				};
+				identity = await readIdentity();
+				// Creation can leave a vault event queued after the explicit file reindex.
+				if (identity === undefined && this.indexer.getLiveReadAuthoritySnapshot().state === 'settling') {
+					await this.indexer.awaitRamSettlement();
+					if (!canOpen()) return;
+					identity = await readIdentity();
+				}
 			} catch { identity = undefined; }
 		}
 		if (!canOpen()) return;
