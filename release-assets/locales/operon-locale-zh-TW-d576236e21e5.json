@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "自動化規則",
       "automationRuleListDesc": "選擇規則要更新的任務及要執行的動作，例如新增標籤或設定優先順序。新規則預設為停用。",
       "automationRun": "執行",
+      "automationRunDraftHint": "執行此規則一次，但不儲存",
       "automationSaveFailed": "無法儲存自動化設定。請重新開啟自動化以查看目前的值。",
       "automationSaveRule": "儲存規則",
       "automationScope": "範圍內的任務",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "877f4386f4ddb5911de277df423b9aa2c335648024bf787102513af3ba3e68a1"
+  "sourceVersion": "767d5f3727632475994310b380a1c582f080e47705dcc0486e7a32a4e5c99b89"
 }

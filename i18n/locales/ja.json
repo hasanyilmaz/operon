@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "自動化",
+		"automationRunDraftHint": "このルールを保存せずに一度だけ実行",
 		"automationRun": "実行",
 		"automationConfirmCount": "{{count}} 件のタスクに変更を適用しますか？",
 		"automationApply": "変更を適用",

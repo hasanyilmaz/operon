@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "Règles d’automatisation",
       "automationRuleListDesc": "Choisissez les tâches que la règle met à jour et les actions à appliquer, comme ajouter une étiquette ou définir une priorité. Les nouvelles règles sont inactives par défaut.",
       "automationRun": "Exécuter",
+      "automationRunDraftHint": "Exécuter cette règle une fois sans l’enregistrer",
       "automationSaveFailed": "Impossible d’enregistrer les réglages. Rouvrez les automatisations pour consulter les valeurs actuelles.",
       "automationSaveRule": "Enregistrer la règle",
       "automationScope": "Tâches incluses",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "ca9f826cf27598a2b6d625d4db9810f859d997a0df0d730141e4967e9da29f0f"
+  "sourceVersion": "b615c9affde0fec07c960851dc661ce3a7cf16cbaca747e0cc52e9a5bbf4e8ad"
 }

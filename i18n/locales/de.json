@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "Automatisierungen",
+		"automationRunDraftHint": "Diese Regel einmal ausführen, ohne sie zu speichern",
 		"automationRun": "Ausführen",
 		"automationConfirmCount": "Änderungen auf {{count}} Aufgabe(n) anwenden?",
 		"automationApply": "Änderungen anwenden",

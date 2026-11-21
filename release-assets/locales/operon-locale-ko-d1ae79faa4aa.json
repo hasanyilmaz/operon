@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "자동화 규칙",
       "automationRuleListDesc": "규칙을 적용할 작업과 태그 추가, 우선순위 설정 등 수행할 동작을 선택하세요. 새 규칙은 비활성 상태로 시작합니다.",
       "automationRun": "실행",
+      "automationRunDraftHint": "이 규칙을 저장하지 않고 한 번 실행",
       "automationSaveFailed": "자동화 설정을 저장할 수 없습니다. 자동화를 다시 열어 현재 값을 확인하세요.",
       "automationSaveRule": "규칙 저장",
       "automationScope": "범위 내 작업",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "44ffff96a636e2e5b246ae89de078b743cc505efe9cb4534710776681a4b8699"
+  "sourceVersion": "932217bb4e2f9673fca12e6b444ff79ec87e88191b56aab7869cc69d93f77cff"
 }

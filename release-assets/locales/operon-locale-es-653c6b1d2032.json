@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "Reglas de automatización",
       "automationRuleListDesc": "Elige qué tareas actualiza cada regla y qué cambios aplica, como añadir una etiqueta o asignar una prioridad. Las reglas nuevas están inactivas al principio.",
       "automationRun": "Ejecutar",
+      "automationRunDraftHint": "Ejecutar esta regla una vez sin guardarla",
       "automationSaveFailed": "No se pudieron guardar los ajustes. Vuelve a abrir Automatizaciones para ver los valores actuales.",
       "automationSaveRule": "Guardar regla",
       "automationScope": "Tareas incluidas",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "3964d855bc2f2b48be1659e0a58c0546879f739eeb84b3c256b8f6eab93de024"
+  "sourceVersion": "44789b35aac192a468161cc915b27e69c278d138d08f1244f3fb012014b7f9f8"
 }

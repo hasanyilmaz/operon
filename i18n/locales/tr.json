@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "Otomasyonlar",
+		"automationRunDraftHint": "Bu kuralı kaydetmeden bir kez çalıştır",
 		"automationRun": "Çalıştır",
 		"automationConfirmCount": "{{count}} göreve değişiklikler uygulansın mı?",
 		"automationApply": "Değişiklikleri uygula",

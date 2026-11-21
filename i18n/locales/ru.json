@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "Автоматизация",
+		"automationRunDraftHint": "Выполнить правило один раз без сохранения",
 		"automationRun": "Запустить",
 		"automationConfirmCount": "Применить изменения? Задач: {{count}}",
 		"automationApply": "Применить изменения",

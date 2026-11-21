@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "自動化",
+		"automationRunDraftHint": "執行此規則一次，但不儲存",
 		"automationRun": "執行",
 		"automationConfirmCount": "要將變更套用至 {{count}} 個任務嗎？",
 		"automationApply": "套用變更",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "Automatisierungsregeln",
       "automationRuleListDesc": "Lege fest, welche Aufgaben eine Regel aktualisiert und was sie ändert. Sie kann zum Beispiel ein Tag hinzufügen oder eine Priorität setzen. Neue Regeln sind zunächst inaktiv.",
       "automationRun": "Ausführen",
+      "automationRunDraftHint": "Diese Regel einmal ausführen, ohne sie zu speichern",
       "automationSaveFailed": "Speichern fehlgeschlagen. Öffne die Automatisierungen erneut, um die aktuellen Werte zu sehen.",
       "automationSaveRule": "Regel speichern",
       "automationScope": "Berücksichtigte Aufgaben",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "faf3d0b9f74f5f72190ec08850f1f7c0b7f770a4d704c784c308a9aeaf064d65"
+  "sourceVersion": "26322f022a68cef0ecba580ff67991fd691a9a8444e03187d6c7bdcfb600800f"
 }

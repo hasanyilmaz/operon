@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "Правила автоматизации",
       "automationRuleListDesc": "Выберите задачи, которые будет обновлять правило, и действия для них, например добавление тега или изменение приоритета. Новые правила по умолчанию неактивны.",
       "automationRun": "Запустить",
+      "automationRunDraftHint": "Выполнить правило один раз без сохранения",
       "automationSaveFailed": "Не удалось сохранить настройки. Откройте автоматизацию заново, чтобы увидеть текущие значения.",
       "automationSaveRule": "Сохранить правило",
       "automationScope": "Задачи в области действия",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "a4024ba0e7951967b3fb05887c110433cabd67d54edf2f404b8dc34d8e6fe684"
+  "sourceVersion": "b41fd582df1bd6cfec98fafaa802ffc4817cb1b7b3cdef1b3c6de964299fa4b2"
 }

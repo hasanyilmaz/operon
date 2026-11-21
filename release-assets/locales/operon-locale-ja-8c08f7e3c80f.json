@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "自動化ルール",
       "automationRuleListDesc": "ルールで更新するタスクと、タグの追加や優先度の設定などの操作を選びます。新しいルールは無効な状態で作成されます。",
       "automationRun": "実行",
+      "automationRunDraftHint": "このルールを保存せずに一度だけ実行",
       "automationSaveFailed": "自動化の設定を保存できませんでした。自動化を開き直して現在の値を確認してください。",
       "automationSaveRule": "ルールを保存",
       "automationScope": "範囲内のタスク",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "cbbb1f8b0275e3f9c9a9ef503334f33ca2cdc2e835cb9348ab586f627c6fc1bd"
+  "sourceVersion": "e8b915514c4026de312decb6e663178fd229421cf5e61560ccf5d1f2a58ae767"
 }

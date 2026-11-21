@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "Regole di automazione",
       "automationRuleListDesc": "Scegli quali attività aggiornare con la regola e quali modifiche applicare, come aggiungere un tag o impostare una priorità. Le nuove regole sono inizialmente inattive.",
       "automationRun": "Esegui",
+      "automationRunDraftHint": "Esegui questa regola una volta senza salvarla",
       "automationSaveFailed": "Impossibile salvare le impostazioni. Riapri Automazioni per vedere i valori attuali.",
       "automationSaveRule": "Salva regola",
       "automationScope": "Attività incluse",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "d47612e231eb2bf974a9c6f37218be9a06eb97faf354b4da3b8baef0b83e1607"
+  "sourceVersion": "28c1ef5668354cbb6c1b64c9bef0a5e8ca415b6710aa224a6710202f863f5640"
 }

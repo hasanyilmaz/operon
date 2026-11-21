@@ -16296,6 +16296,18 @@ body :is(
 	opacity: 0.48;
 }
 
+.operon-automation-draft-run {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.operon-automation-draft-run svg {
+	display: block;
+	width: 14px;
+	height: 14px;
+}
+
 .operon-automation-rule-editor .operon-filter-footer-primary-actions > select {
 	width: auto;
 }

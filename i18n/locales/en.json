@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "Automations",
+		"automationRunDraftHint": "Run once without saving this rule",
 		"automationRun": "Run",
 		"automationConfirmCount": "Apply changes to {{count}} task(s)?",
 		"automationApply": "Apply changes",

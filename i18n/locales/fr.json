@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "Automatisations",
+		"automationRunDraftHint": "Exécuter cette règle une fois sans l’enregistrer",
 		"automationRun": "Exécuter",
 		"automationConfirmCount": "Appliquer les modifications à {{count}} tâche(s) ?",
 		"automationApply": "Appliquer les modifications",

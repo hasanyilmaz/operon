@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, setIcon } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
 import { createAutomationActionId, createAutomationProjectSerialValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -10,6 +10,7 @@ import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import type { IndexedTask } from '../types/fields';
 import type { FilterFieldType, FilterGroup, OperonSettings } from '../types/settings';
 import { AutomationActionRow, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
+import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
 import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { FilterConditionEditor, FilterFieldCatalog, flattenConditions, type FilterFieldPickerOption } from './filter-condition-editor';
@@ -21,6 +22,7 @@ export interface AutomationEditorSource {
 	getTasks: () => readonly IndexedTask[];
 	getNativeSnapshot(): TableFilePropertySnapshot | null;
 	subscribe(listener: () => void): () => void;
+	runDraft?(rule: AutomationRule): Promise<void>;
 	plan(rule: AutomationRule): AutomationChangePlan | undefined;
 }
 
@@ -76,6 +78,7 @@ export class AutomationRuleModal extends Modal {
 	private section!: HTMLElement;
 	private summary!: HTMLElement;
 	private save!: HTMLButtonElement;
+	private run!: HTMLButtonElement;
 	private timer?: number;
 	private unbindTooltips?: () => void;
 	private unbindActions?: () => void;
@@ -137,7 +140,13 @@ export class AutomationRuleModal extends Modal {
 			this.changed();
 		});
 		const footer = this.contentEl.createDiv('operon-filter-footer');
-		this.summary = footer.createDiv('operon-filter-footer-left operon-automation-count');
+		const left = footer.createDiv('operon-filter-footer-left');
+		this.run = left.createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button operon-automation-draft-run' });
+		setIcon(this.run.createSpan({ attr: { 'aria-hidden': 'true' } }), 'play');
+		this.run.createSpan({ text: t('settings', 'automationRun') });
+		bindOperonHoverTooltip(this.run, { content: t('settings', 'automationRunDraftHint'), taskColor: null });
+		this.run.addEventListener('click', () => { void this.submit(true); });
+		this.summary = left.createDiv('operon-automation-count');
 		this.summary.setAttribute('role', 'status');
 		const controls = footer.createDiv('operon-filter-footer-primary-actions');
 		controls.createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button', text: t('buttons', 'cancel') }).addEventListener('click', () => this.close());
@@ -198,6 +207,7 @@ export class AutomationRuleModal extends Modal {
 		this.updateCounts();
 	}
 	private schedule(): void {
+		this.run.disabled = true;
 		const win = getOwnerWindow(this.contentEl);
 		win.clearTimeout(this.timer);
 		this.timer = win.setTimeout(() => { if (!this.closed) this.refresh(); }, 140);
@@ -247,6 +257,8 @@ export class AutomationRuleModal extends Modal {
 		}
 		for (const [id, row] of this.rows) row.setMessage([...(messages.get(id) ?? [])].join(' · '));
 		const total = plan?.changedTaskCount;
+		if (this.run) this.run.disabled = this.pending || !this.source.runDraft || !(total != null && total > 0)
+			|| !scopeValid || !targetValid || !chosen.length || valid.length !== chosen.length || this.editors.some(editor => editor.hasInvalidRawValues);
 		const missingGroup = plan?.issues.find(issue => issue.projectSerialGroupId);
 		this.summary.setText(missingGroup ? unavailableProjectGroupText(missingGroup)
 			: valid.length !== chosen.length || (!chosen.length && (this.rows.size > 0 || this.draft.active)) ? t('settings', 'automationCompleteAction')
@@ -256,17 +268,27 @@ export class AutomationRuleModal extends Modal {
 		this.updateSave();
 	}
 
-	private async submit(): Promise<void> {
+	private async submit(runDraft = false): Promise<void> {
 		if (this.pending) return;
-		if (this.fieldsDirty) this.refresh();
-		if (!this.canSave()) return;
+		if (runDraft && this.run.disabled) return;
+		if (this.fieldsDirty || runDraft) this.refresh();
+		if (runDraft ? this.run.disabled : !this.canSave()) return;
 		this.pending = true;
 		this.contentEl.inert = true;
+		if (this.run) this.run.disabled = true;
 		this.updateSave();
 		let saved = false;
-		try { saved = await this.persist(structuredClone({ ...this.draft, name: this.draft.name.trim(), actions: this.chosen() })); }
-		catch { new Notice(t('settings', 'automationSaveFailed')); }
-		finally { this.pending = false; this.contentEl.inert = false; this.updateSave(); }
+		try {
+			const rule = structuredClone({ ...this.draft, name: this.draft.name.trim(), actions: this.chosen() });
+			if (runDraft) await this.source.runDraft?.(rule);
+			else saved = await this.persist(rule);
+		} catch { new Notice(t('settings', runDraft ? 'automationRetry' : 'automationSaveFailed')); }
+		finally {
+			this.pending = false;
+			this.contentEl.inert = false;
+			if (!saved && !this.closed) this.refresh();
+			else this.updateSave();
+		}
 		if (saved) this.close();
 	}
 

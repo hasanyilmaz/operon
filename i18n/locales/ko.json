@@ -441,6 +441,7 @@
 	},
 	"settings": {
 		"automationsTitle": "자동화",
+		"automationRunDraftHint": "이 규칙을 저장하지 않고 한 번 실행",
 		"automationRun": "실행",
 		"automationConfirmCount": "작업 {{count}}개에 변경 사항을 적용할까요?",
 		"automationApply": "변경 사항 적용",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3912,
-  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
+  "keyCount": 3913,
+  "keyFingerprint": "ecfa0206336481602dc8d8747fee7461b019d7b7f05f908d2df1fc2e2bd1354a",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1197,6 +1197,7 @@
       "automationRuleList": "自动化规则",
       "automationRuleListDesc": "选择规则要更新的任务及要执行的操作，例如添加标签或设置优先级。新规则默认停用。",
       "automationRun": "运行",
+      "automationRunDraftHint": "运行此规则一次，但不保存",
       "automationSaveFailed": "无法保存自动化设置。请重新打开自动化以查看当前值。",
       "automationSaveRule": "保存规则",
       "automationScope": "范围内的任务",
@@ -3957,5 +3958,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "e33e6b6c7c05f72a864763f669b180a47e0a855e91bd0ec92f17ee182ea1ac8b"
+  "sourceVersion": "6d36bb32c05782b192c3aa645969ce5daf4ff187d7de1276e6d1d985ec7eba0b"
 }
