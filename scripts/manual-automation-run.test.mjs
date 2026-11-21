@@ -934,15 +934,33 @@ test('Project Serial references respect Auto event scope and stop a daily batch 
 	assert.deepEqual(f.prompts, []);
 });
 
+function mountCounterFixtures(editor) {
+	const controls = Object.fromEntries(['scope', 'target', 'changed'].map(section => {
+		const control = { disabled: false, text: '' };
+		editor.counters.set(section, { button: control, label: { setText: text => { control.text = text; } } });
+		return [section, control];
+	}));
+	editor.previewDeps = {};
+	return controls;
+}
+
 test('an unfinished target keeps only the scope preview available in the rule editor', async () => {
 	const f = await fixture(filesFor(2), { rule: { target: rootGroup('description', 'text', 'is', '') } });
 	const editor = new AutomationRuleModal({}, { getSettings: () => DEFAULT_SETTINGS, getTasks: () => [...f.tasks.values()],
 		getNativeSnapshot: () => null, plan: f.preview }, f.rule, async () => assert.fail('unexpected save'));
 	editor.loadFields();
 	editor.editors.push({}, {});
-	editor.summary = { setText() {} };
+	const counters = mountCounterFixtures(editor);
 	editor.updateCounts();
 	assert.deepEqual(editor.previewTaskIds, { scope: [id(0), id(1)], target: null, changed: null });
+	assert.equal(counters.scope.disabled, false);
+	assert.equal(counters.target.disabled, true);
+	assert.equal(counters.changed.disabled, true);
+	editor.draft.target = rootGroup('description', 'text', 'is', 'missing');
+	editor.updateCounts();
+	assert.deepEqual(editor.previewTaskIds.target, []);
+	assert.equal(counters.target.disabled, false);
+	assert.equal(counters.changed.disabled, false);
 	assert.deepEqual(f.writes, []);
 });
 
@@ -952,15 +970,14 @@ test('Project Serial reference deletion identifies the editor section and allows
 		getTasks: () => [...f.tasks.values()], getNativeSnapshot: () => null, plan: f.preview }, f.rule, async () => assert.fail('invalid active rule saved'));
 	editor.loadFields();
 	editor.editors.push({}, {});
-	let summary;
-	editor.summary = { setText: text => { summary = text; } };
+	const counters = mountCounterFixtures(editor);
 	editor.save = { disabled: false };
 	editor.updateCounts();
 	assert.equal(editor.save.disabled, false);
 	scopes.length = 0;
 	editor.updateCounts();
 	assert.equal(editor.save.disabled, true);
-	for (const text of ['Tasks in Scope', 'Project Serial Group', serialGroup.id]) assert.ok(summary.includes(text), text);
+	for (const text of ['Tasks in Scope', 'Project Serial Group', serialGroup.id]) assert.ok(counters.changed.text.includes(text), text);
 	await editor.submit();
 	editor.draft.active = false;
 	assert.equal(editor.canSave(), true);
@@ -968,7 +985,7 @@ test('Project Serial reference deletion identifies the editor section and allows
 	scopes.push({ ...serialGroup, prefix: 'NEW' });
 	editor.updateCounts();
 	assert.equal(editor.save.disabled, false);
-	assert.equal(summary.includes(serialGroup.id), false);
+	assert.equal(counters.changed.text.includes(serialGroup.id), false);
 });
 
 test('a change inside scope runs all targets in one batch, counting shared effects only once', async () => {

@@ -1044,6 +1044,7 @@ export class FilterPreviewModal extends Modal {
 		app: App,
 		private readonly source: FilterSet | (() => AutomationTaskPreview),
 		private readonly deps: FilterModalEvalDeps,
+		private readonly onDismiss?: () => void,
 	) {
 		super(app);
 	}
@@ -1178,7 +1179,8 @@ export class FilterPreviewModal extends Modal {
 		const count = grouped?.totalCount ?? tasks?.length;
 		header.createSpan({
 			cls: 'operon-embed-count',
-			text: count === undefined ? t('settings', 'automationUnknown')
+			text: automation && automation.taskIds === undefined ? '…'
+				: count === undefined ? t('settings', 'automationUnknown')
 				: t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) }),
 		});
 		if (count === undefined) return;
@@ -1264,5 +1266,6 @@ export class FilterPreviewModal extends Modal {
 		requestCloseTextFieldPopoversForOwner(this.contentEl);
 		cleanupOperonRenderRoot(this.contentEl);
 		this.contentEl.empty();
+		this.onDismiss?.();
 	}
 }

@@ -11,6 +11,8 @@ import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
 import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import type { IndexedTask } from '../types/fields';
 import type { FilterFieldType, FilterGroup, FilterNode, OperonSettings } from '../types/settings';
+import { FilterPreviewModal, type FilterModalEvalDeps } from './filter-set-modal';
+import { scopeSettingsModal } from './settings/settings-scope';
 import { AutomationActionRow, actionType, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
@@ -22,6 +24,7 @@ import type { TableFilePropertySnapshot } from './table/table-file-property';
 export interface AutomationEditorSource {
 	getSettings: () => OperonSettings;
 	getTasks: () => readonly IndexedTask[];
+	getPreviewDeps(): FilterModalEvalDeps | null;
 	getNativeSnapshot(): TableFilePropertySnapshot | null;
 	subscribe(listener: () => void): () => void;
 	runDraft?(rule: AutomationRule): Promise<void>;
@@ -114,12 +117,13 @@ export class AutomationRuleModal extends Modal {
 	private readonly editors: FilterConditionEditor[] = [];
 	private readonly rows = new Map<string, AutomationActionRow>();
 	private previewTaskIds?: AutomationPreviewTaskIds;
-	private readonly counters = new Map<'scope' | 'target', HTMLElement>();
+	private readonly counters = new Map<keyof AutomationPreviewTaskIds, { button: HTMLButtonElement; label: HTMLElement }>();
+	private previewDeps: FilterModalEvalDeps | null = null;
+	private preview?: FilterPreviewModal;
 	private options: FilterFieldPickerOption[] = [];
 	private native: TableFilePropertySnapshot | null = null;
 	private nativeTypes = new Map<string, FilterFieldType>();
 	private section!: HTMLElement;
-	private summary!: HTMLElement;
 	private save!: HTMLButtonElement;
 	private run!: HTMLButtonElement;
 	private timer?: number;
@@ -145,6 +149,7 @@ export class AutomationRuleModal extends Modal {
 
 	onOpen(): void {
 		this.closed = false;
+		this.previewDeps = this.source.getPreviewDeps();
 		this.modalEl.addClass('operon-filter-set-modal-shell');
 		this.contentEl.addClass('operon-filter-set-modal', 'operon-automation-rule-editor');
 		this.contentEl.createEl('h3', { cls: 'operon-filter-modal-title', text: t('settings', this.existing ? 'automationEditRule' : 'automationAddRule') });
@@ -154,12 +159,10 @@ export class AutomationRuleModal extends Modal {
 		row.createDiv({ cls: 'operon-filter-form-label', text: label });
 		const name = row.createDiv('operon-filter-form-control').createEl('input', { cls: 'operon-filter-name-input',
 			type: 'text', value: this.draft.name, attr: { 'aria-label': label } });
-		name.addEventListener('input', () => { this.draft.name = name.value; this.updateSave(); });
+		name.addEventListener('input', () => { this.draft.name = name.value; this.updateSave(); this.preview?.refresh(); });
 		this.loadFields();
 		for (const key of ['scope', 'target'] as const) {
-			const count = this.contentEl.ownerDocument.win.createSpan();
-			count.className = 'operon-automation-count';
-			this.counters.set(key, count);
+			const count = this.createCounter(key);
 			const editor = new FilterConditionEditor({ app: this.app, rootGroup: this.draft[key], fields: this.fields,
 				title: t('settings', key === 'scope' ? 'automationScope' : 'automationTarget'), rootFooterStatus: count,
 				pickerPresentation: 'floating', preserveUnknownValues: true, onChange: () => this.changed() });
@@ -189,8 +192,7 @@ export class AutomationRuleModal extends Modal {
 		this.run.createSpan({ text: t('settings', 'automationRun') });
 		bindOperonHoverTooltip(this.run, { content: t('settings', 'automationRunDraftHint'), taskColor: null });
 		this.run.addEventListener('click', () => { void this.submit(true); });
-		this.summary = left.createDiv('operon-automation-count');
-		this.summary.setAttribute('role', 'status');
+		left.createSpan({ attr: { role: 'status' } }).appendChild(this.createCounter('changed'));
 		const controls = footer.createDiv('operon-filter-footer-primary-actions');
 		controls.createEl('button', { type: 'button', cls: 'operon-filter-modal-button operon-filter-modal-add-button', text: t('buttons', 'cancel') }).addEventListener('click', () => this.close());
 		const dropdown = (title: string, value: string, options: [string, string][], set: (v: string) => void) => {
@@ -214,6 +216,41 @@ export class AutomationRuleModal extends Modal {
 		this.updateCounts();
 		name.focus();
 		this.unbindTooltips = bindOperonSurfaceTooltips(this.modalEl);
+	}
+
+	private createCounter(section: keyof AutomationPreviewTaskIds): HTMLButtonElement {
+		const button = this.contentEl.ownerDocument.win.createEl('button');
+		button.type = 'button';
+		button.className = 'operon-filter-count-badge operon-automation-count';
+		button.setAttribute('aria-haspopup', 'dialog');
+		const sectionName = t('settings', section === 'scope' ? 'automationScope' : section === 'target' ? 'automationTarget' : 'automationActions');
+		button.setAttribute('aria-description', sectionName);
+		setIcon(button.createSpan({ cls: 'operon-count-badge-icon', attr: { 'aria-hidden': 'true' } }), 'list');
+		this.counters.set(section, { button, label: button.createSpan() });
+		button.addEventListener('click', () => {
+			if (this.closed || this.pending || !this.previewDeps || !this.previewTaskIds?.[section]) return;
+			this.preview?.close();
+			this.preview = scopeSettingsModal(new FilterPreviewModal(this.app, () => ({
+				name: this.draft.name, section, taskIds: this.previewTaskIds?.[section],
+			}), this.previewDeps, () => { this.preview = undefined; }), this.modalEl);
+			this.preview.open();
+		});
+		return button;
+	}
+
+	private renderCounters(diagnostic?: string, calculating = false): void {
+		for (const [section, { button, label }] of this.counters) {
+			const count = this.previewTaskIds?.[section]?.length;
+			button.disabled = count === undefined || !this.previewDeps;
+			let text: string;
+			if (calculating) text = '…';
+			else if (section === 'changed' && diagnostic) text = diagnostic;
+			else if (count === undefined) text = t('settings', 'automationUnknown');
+			else if (section === 'changed') text = t('settings', count === 1 ? 'automationChangedOne' : 'automationChangedMany', { count: String(count) });
+			else text = t('filterSets', count === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(count) }).trim();
+			label.setText(text);
+		}
+		this.preview?.refresh();
 	}
 
 	private loadFields(): void {
@@ -251,6 +288,7 @@ export class AutomationRuleModal extends Modal {
 	}
 	private schedule(): void {
 		this.previewTaskIds = undefined;
+		this.renderCounters(undefined, true);
 		this.run.disabled = true;
 		const win = getOwnerWindow(this.contentEl);
 		win.clearTimeout(this.timer);
@@ -283,17 +321,17 @@ export class AutomationRuleModal extends Modal {
 		try { plan = this.source.plan({ ...this.draft, actions: valid }); }
 		catch (error) { console.warn('Operon: could not calculate automation changes', error); }
 		const [scopeValid, targetValid] = this.conditionValidity();
+		const missingGroup = plan?.issues.find(issue => issue.projectSerialGroupId);
+		const diagnostic = missingGroup ? unavailableProjectGroupText(missingGroup)
+			: valid.length !== chosen.length || (!chosen.length && (this.rows.size > 0 || this.draft.active)) ? t('settings', 'automationCompleteAction')
+			: !scopeValid || !targetValid ? t('settings', 'automationCompleteCondition') : undefined;
 		const matches = plan?.rules[0]?.taskIds;
-		this.previewTaskIds = matches && {
-			scope: scopeValid ? matches.scope : null,
-			target: scopeValid && targetValid ? matches.target : null,
-			changed: scopeValid && targetValid && valid.length === chosen.length ? matches.changed : null,
+		this.previewTaskIds = {
+			scope: scopeValid ? matches?.scope ?? null : null,
+			target: scopeValid && targetValid ? matches?.target ?? null : null,
+			changed: diagnostic ? null : matches?.changed ?? null,
 		};
-		for (const [key, node] of this.counters) {
-			const value = this.previewTaskIds?.[key]?.length;
-			node.setText(value == null ? t('settings', 'automationUnknown') : t('filterSets',
-				value === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(value) }).trim());
-		}
+		this.renderCounters(diagnostic);
 		const messages = new Map<string, Set<string>>();
 		for (const issue of plan?.issues ?? []) for (const origin of issue.origins ?? []) {
 			let group = messages.get(origin.actionId);
@@ -308,12 +346,6 @@ export class AutomationRuleModal extends Modal {
 		const total = this.previewTaskIds?.changed?.length;
 		if (this.run) this.run.disabled = this.pending || !this.source.runDraft || !(total != null && total > 0)
 			|| !scopeValid || !targetValid || !chosen.length || valid.length !== chosen.length || this.editors.some(editor => editor.hasInvalidRawValues);
-		const missingGroup = plan?.issues.find(issue => issue.projectSerialGroupId);
-		this.summary.setText(missingGroup ? unavailableProjectGroupText(missingGroup)
-			: valid.length !== chosen.length || (!chosen.length && (this.rows.size > 0 || this.draft.active)) ? t('settings', 'automationCompleteAction')
-			: !scopeValid || !targetValid ? t('settings', 'automationCompleteCondition')
-			: total == null ? t('settings', 'automationUnknown')
-			: t('settings', total === 1 ? 'automationChangedOne' : 'automationChangedMany', { count: String(total) }));
 		this.updateSave();
 	}
 
@@ -349,6 +381,8 @@ export class AutomationRuleModal extends Modal {
 
 	onClose(): void {
 		this.closed = true;
+		this.preview?.close();
+		this.counters.clear();
 		this.unbindTooltips?.();
 		this.unbindActions?.();
 		this.unsubscribe?.();

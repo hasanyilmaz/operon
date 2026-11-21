@@ -7,7 +7,8 @@ import type { FilterSortSpec } from '../types/settings';
 export interface AutomationTaskPreview {
 	name: string;
 	section: keyof AutomationPreviewTaskIds;
-	taskIds: readonly string[] | null;
+	/** Undefined while the editor recalculates, null for an unavailable result. */
+	taskIds: readonly string[] | null | undefined;
 }
 
 export const automationPreviewSorts: FilterSortSpec[] = [

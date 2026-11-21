@@ -4513,6 +4513,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		const index = this.indexer;
 		return mountAutomationRules(this.app, containerEl, this.storage, {
 			getSettings: () => this.storage.getSettings(),
+			getPreviewDeps: () => this.makeEvalDeps(),
 			getTasks: () => index?.getAllTasks() ?? [],
 			getNativeSnapshot: () => {
 				const tasks = index?.getAllTasks() ?? [];
