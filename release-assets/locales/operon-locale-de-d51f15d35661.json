@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "Übergang blockiert",
       "automationCancelMany": "Abbrechen und Regeln deaktivieren",
       "automationCancelOne": "Abbrechen und Regel deaktivieren",
+      "automationCancelRun": "Ausführung abbrechen",
       "automationChangedMany": "{{count}} Aufgaben werden geändert",
       "automationChangedOne": "{{count}} Aufgabe wird geändert",
       "automationClearMatch": "Bei Übereinstimmung leeren",
@@ -1205,6 +1206,7 @@
       "automationTarget": "Zu aktualisierende Aufgaben",
       "automationUnavailable": "Diese Automatisierungseinstellungen konnten nicht gelesen werden.",
       "automationUnknown": "Berechnung nicht möglich",
+      "automationUnsavedRule": "Ungespeicherte Regel",
       "automationValue": "Aktionswert",
       "automationsRestoreInactive": "Alle wiederhergestellten Regeln sind zunächst inaktiv.",
       "automationsTitle": "Automatisierungen",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "6933e1d46562960cc2579c6674607208495427a92159fe0378c09a90648a0503"
+  "sourceVersion": "faf3d0b9f74f5f72190ec08850f1f7c0b7f770a4d704c784c308a9aeaf064d65"
 }

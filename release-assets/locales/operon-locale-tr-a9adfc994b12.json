@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "Durum geçişi engellendi",
       "automationCancelMany": "İptal et ve kuralları devre dışı bırak",
       "automationCancelOne": "İptal et ve kuralı devre dışı bırak",
+      "automationCancelRun": "Çalıştırmayı iptal et",
       "automationChangedMany": "{{count}} görev değişecek",
       "automationChangedOne": "{{count}} görev değişecek",
       "automationClearMatch": "Değer eşleşirse temizle",
@@ -1205,6 +1206,7 @@
       "automationTarget": "Güncellenecek görevler",
       "automationUnavailable": "Bu otomasyon ayarları okunamadı.",
       "automationUnknown": "Hesaplanamadı",
+      "automationUnsavedRule": "Kaydedilmemiş kural",
       "automationValue": "İşlem değeri",
       "automationsRestoreInactive": "Geri yüklenen tüm kurallar inaktif olacak.",
       "automationsTitle": "Otomasyonlar",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "55fe91650b2fb65f652c365394e23a3627f4f804364e31f18072fcda77f403d4"
+  "sourceVersion": "361dd2a883889ef1be73bfd910de6d7d5a718120e37209816c154422159f9405"
 }

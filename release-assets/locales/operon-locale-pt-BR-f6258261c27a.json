@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "Transição bloqueada",
       "automationCancelMany": "Cancelar e desativar as regras",
       "automationCancelOne": "Cancelar e desativar a regra",
+      "automationCancelRun": "Cancelar execução",
       "automationChangedMany": "{{count}} tarefas serão alteradas",
       "automationChangedOne": "{{count}} tarefa será alterada",
       "automationClearMatch": "Limpar se o valor corresponder",
@@ -1205,6 +1206,7 @@
       "automationTarget": "Tarefas a atualizar",
       "automationUnavailable": "Não foi possível ler estas configurações de automação.",
       "automationUnknown": "Não foi possível calcular",
+      "automationUnsavedRule": "Regra não salva",
       "automationValue": "Valor da ação",
       "automationsRestoreInactive": "Todas as regras restauradas ficarão inativas.",
       "automationsTitle": "Automações",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "d75fbdc08c9f927ff28526a59f8095f4fe9333d127ea1e1e5cef46378fcbab0b"
+  "sourceVersion": "00ef727ad8919ad102e0bb970b0c2f29e17d602a07305e3b7958f7b5a2848385"
 }

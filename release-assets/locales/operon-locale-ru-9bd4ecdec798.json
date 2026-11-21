@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "Переход заблокирован",
       "automationCancelMany": "Отменить и отключить правила",
       "automationCancelOne": "Отменить и отключить правило",
+      "automationCancelRun": "Отменить запуск",
       "automationChangedMany": "Задач к изменению — {{count}}",
       "automationChangedOne": "Будет изменена {{count}} задача",
       "automationClearMatch": "Очистить при совпадении",
@@ -1205,6 +1206,7 @@
       "automationTarget": "Задачи для обновления",
       "automationUnavailable": "Не удалось прочитать настройки автоматизации.",
       "automationUnknown": "Не удалось рассчитать",
+      "automationUnsavedRule": "Несохранённое правило",
       "automationValue": "Значение действия",
       "automationsRestoreInactive": "Все восстановленные правила будут неактивны.",
       "automationsTitle": "Автоматизация",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "26c499c4d1bb76834a11baa0a8637adbaf154136b95f4bf85dbea32feaefb878"
+  "sourceVersion": "a4024ba0e7951967b3fb05887c110433cabd67d54edf2f404b8dc34d8e6fe684"
 }

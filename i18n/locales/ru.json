@@ -444,6 +444,8 @@
 		"automationRun": "Запустить",
 		"automationConfirmCount": "Применить изменения? Задач: {{count}}",
 		"automationApply": "Применить изменения",
+		"automationCancelRun": "Отменить запуск",
+		"automationUnsavedRule": "Несохранённое правило",
 		"automationCancelOne": "Отменить и отключить правило",
 		"automationCancelMany": "Отменить и отключить правила",
 		"automationDeactivated": "Правило «{{name}}» отключено.",

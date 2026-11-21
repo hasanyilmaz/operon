@@ -444,6 +444,8 @@
 		"automationRun": "Çalıştır",
 		"automationConfirmCount": "{{count}} göreve değişiklikler uygulansın mı?",
 		"automationApply": "Değişiklikleri uygula",
+		"automationCancelRun": "Çalıştırmayı iptal et",
+		"automationUnsavedRule": "Kaydedilmemiş kural",
 		"automationCancelOne": "İptal et ve kuralı devre dışı bırak",
 		"automationCancelMany": "İptal et ve kuralları devre dışı bırak",
 		"automationDeactivated": "“{{name}}” otomasyon kuralı devre dışı bırakıldı.",

@@ -8,7 +8,7 @@ import { ConfirmActionModal } from './confirm-action-modal';
 import { scopeSettingsModal } from './settings/settings-scope';
 
 export function automationApprovalModal(app: App, plan: AutomationChangePlan, rules: AutomationRule[],
-	done: (decision: AutomationDecision) => void): ConfirmActionModal {
+	done: (decision: AutomationDecision) => void, draftRun = false): ConfirmActionModal {
 	let dismissed: AutomationDecision = 'dismiss';
 	const count = plan.changedTaskCount ?? 0;
 	return scopeSettingsModal(new ConfirmActionModal(app, {
@@ -16,13 +16,13 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 		title: t('settings', 'automationConfirmCount', { count: String(count) }),
 		message: '',
 		detailsTable: plan.rules.filter(entry => entry.changed).map(entry => ({
-			label: rules.find(rule => rule.id === entry.ruleId)?.name ?? entry.ruleId,
+			label: rules.find(rule => rule.id === entry.ruleId)?.name.trim() || (draftRun ? t('settings', 'automationUnsavedRule') : entry.ruleId),
 			before: t('filterSets', entry.changed === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(entry.changed) }).trim(),
 			after: '',
 		})),
 		confirmText: t('settings', 'automationApply'),
-		cancelText: t('settings', rules.length === 1 ? 'automationCancelOne' : 'automationCancelMany'),
-		onCancelButton: () => { dismissed = 'deactivate'; },
+		cancelText: t('settings', draftRun ? 'automationCancelRun' : rules.length === 1 ? 'automationCancelOne' : 'automationCancelMany'),
+		onCancelButton: draftRun ? undefined : () => { dismissed = 'deactivate'; },
 	}, confirmed => done(confirmed ? 'apply' : dismissed)), true);
 }
 

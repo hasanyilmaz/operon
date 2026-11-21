@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "Transizione bloccata",
       "automationCancelMany": "Annulla e disattiva le regole",
       "automationCancelOne": "Annulla e disattiva la regola",
+      "automationCancelRun": "Annulla esecuzione",
       "automationChangedMany": "Verranno modificate {{count}} attività",
       "automationChangedOne": "Verrà modificata {{count}} attività",
       "automationClearMatch": "Cancella se il valore corrisponde",
@@ -1205,6 +1206,7 @@
       "automationTarget": "Attività da aggiornare",
       "automationUnavailable": "Impossibile leggere queste impostazioni di automazione.",
       "automationUnknown": "Calcolo non riuscito",
+      "automationUnsavedRule": "Regola non salvata",
       "automationValue": "Valore dell’azione",
       "automationsRestoreInactive": "Tutte le regole ripristinate saranno inattive.",
       "automationsTitle": "Automazioni",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "230e0a9867d46bd87d44f511ed6cb83d08d67c9bc715d33ef00e49948953d75c"
+  "sourceVersion": "d47612e231eb2bf974a9c6f37218be9a06eb97faf354b4da3b8baef0b83e1607"
 }

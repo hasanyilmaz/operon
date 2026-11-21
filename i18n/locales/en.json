@@ -444,6 +444,8 @@
 		"automationRun": "Run",
 		"automationConfirmCount": "Apply changes to {{count}} task(s)?",
 		"automationApply": "Apply changes",
+		"automationCancelRun": "Cancel run",
+		"automationUnsavedRule": "Unsaved rule",
 		"automationCancelOne": "Cancel and deactivate rule",
 		"automationCancelMany": "Cancel and deactivate rules",
 		"automationDeactivated": "Deactivated automation rule “{{name}}”.",

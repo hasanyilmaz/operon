@@ -444,6 +444,8 @@
 		"automationRun": "実行",
 		"automationConfirmCount": "{{count}} 件のタスクに変更を適用しますか？",
 		"automationApply": "変更を適用",
+		"automationCancelRun": "実行をキャンセル",
+		"automationUnsavedRule": "未保存のルール",
 		"automationCancelOne": "キャンセルしてルールを無効化",
 		"automationCancelMany": "キャンセルしてルールを無効化",
 		"automationDeactivated": "自動化ルール「{{name}}」を無効にしました。",

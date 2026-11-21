@@ -233,6 +233,50 @@ for (const [n, policy, asks] of [[0,'always',0], [1,'always',1], [5,5,0], [6,5,1
 		for (const name of f.writes) assert.match(await f.read(name), /#follow/u);
 	});
 }
+for (const [count, policy, asks] of [[0, 'always', 0], [1, 'always', 1], [5, 5, 0], [6, 5, 1], [6, 'none', 0]]) {
+	test(`unnamed draft respects ${policy} for ${count} distinct tasks without creating a rule`, async () => {
+		const f = await fixture(filesFor(count), { policy });
+		const draft = { ...f.rule, name: '', active: false, mode: 'auto' };
+		f.config.rules = [];
+		const result = await f.run(draft);
+		assert.equal(result.applied, count);
+		assert.equal(f.prompts.length, asks);
+		assert.deepEqual(f.config.rules, []);
+	});
+}
+for (const mode of ['manual', 'auto']) for (const active of [true, false]) {
+	test(`draft Run takes the clicked ${mode}/${active} snapshot and preserves the saved version`, async () => {
+		const f = await fixture(filesFor(1));
+		const saved = structuredClone(f.config);
+		const draft = { ...f.rule, mode, active, actions: [action('tags', 'draft-only')] };
+		const pending = f.run(draft);
+		draft.actions[0].value = 'later-edit';
+		assert.equal((await pending).applied, 1);
+		assert.match(await f.read(id(0) + '.md'), /#draft-only/u);
+		assert.doesNotMatch(await f.read(id(0) + '.md'), /#(?:later-edit|follow)/u);
+		assert.deepEqual(f.config, saved);
+	});
+}
+test('draft cancellation cannot deactivate the stored rule or write tasks', async () => {
+	const f = await fixture(filesFor(1));
+	const saved = structuredClone(f.config);
+	for (const decision of ['dismiss', 'deactivate']) {
+		f.confirm = () => decision;
+		assert.equal((await f.run(structuredClone(f.rule))).status, 'dismissed');
+	}
+	assert.deepEqual(f.config, saved);
+	assert.deepEqual(f.writes, []);
+});
+test('draft approval is renewed when a target leaves while the prompt is open', async () => {
+	const f = await fixture(filesFor(2));
+	f.confirm = () => {
+		if (f.prompts.length === 1) f.tasks.delete(id(1));
+		return 'apply';
+	};
+	assert.equal((await f.run(structuredClone(f.rule))).applied, 1);
+	assert.deepEqual(f.prompts.map(([plan]) => plan.changedTaskCount), [2, 1]);
+	assert.deepEqual(f.writes, [id(0) + '.md']);
+});
 test('unknown count, hidden modes, cancelled modal and deactivation failure never write', async () => {
 	const f = await fixture(filesFor(1)); f.known = false;
 	assert.equal((await f.run()).status, 'unavailable'); f.known = true;
@@ -755,9 +799,13 @@ test('modal distinguishes explicit deactivation, dismissal and repeated Apply cl
 		takeRecords() { return []; }
 		disconnect() { observed.delete(this.root); }
 	};
-	for (const [button, expected] of [[0,'deactivate'],[1,'apply'],[null,'dismiss']]) {
+	for (const [button, expected, draftRun] of [[0,'deactivate',false],[1,'apply',false],[null,'dismiss',false],[0,'dismiss',true],[null,'dismiss',true],[1,'apply',true]]) {
 		const outcomes = [], clicked = [];
-		const modal = automationApprovalModal({}, { changedTaskCount: 3, rules: [{ ruleId, changed: 3 }] }, [{ id: ruleId, name: 'Follow up' }], d => outcomes.push(d));
+		const modal = automationApprovalModal({}, { changedTaskCount: 3, rules: [{ ruleId, changed: 3 }] }, [{ id: ruleId, name: draftRun ? '' : 'Follow up' }], d => outcomes.push(d), draftRun);
+		if (draftRun) {
+			assert.equal(modal.options.detailsTable[0].label, 'Unsaved rule');
+			assert.equal(modal.options.cancelText, 'Cancel run');
+		}
 		const el = { empty() {}, addClass() {}, createDiv() { return this; }, ownerDocument: { defaultView: null },
 			createEl(tag) { return { addClass() {}, addEventListener(_, cb) { if (tag === 'button') clicked.push(cb); } }; } };
 		modal.modalEl.querySelectorAll = () => [];

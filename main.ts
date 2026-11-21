@@ -23585,7 +23585,11 @@ export default class OperonPlugin extends Plugin {
 		return this.runAutomation(id);
 	}
 
-	private async runAutomation(request: string | (() => Promise<AutoRunBatch>)): Promise<boolean> {
+	async runAutomationDraft(draft: AutomationRule): Promise<void> {
+		await this.runAutomation(draft);
+	}
+
+	private async runAutomation(request: string | AutomationRule | (() => Promise<AutoRunBatch>)): Promise<boolean> {
 		let ruleNames = new Map<string, string>();
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
@@ -23595,7 +23599,7 @@ export default class OperonPlugin extends Plugin {
 				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
 				now: localNow,
 				plan: (rules, policy, asOf, triggers, getFrontmatter) => {
-					ruleNames = new Map(rules.map(rule => [rule.id, rule.name]));
+					ruleNames = new Map(rules.map(rule => [rule.id, rule.name.trim() || t('settings', 'automationUnsavedRule')]));
 					return this.planAutomationRules(rules, policy, asOf, triggers, getFrontmatter);
 				},
 				prepare: (plan, yamlSources) => {
@@ -23644,7 +23648,9 @@ export default class OperonPlugin extends Plugin {
 				refreshBatch: batch => this.autoAutomationEvents?.refreshBatch(batch),
 				deferConfirmation: (batch, shown) => this.autoAutomationEvents?.deferConfirmation(batch, shown) ?? false,
 				confirm: (plan, rules, batch) => new Promise(resolve => {
+					const draftRun = typeof request === 'object';
 					const eligible = () => {
+						if (draftRun) return true;
 						const stored = this.storage.getSettings().automationRules;
 						return isAutomationRulesSettings(stored) && rules.every(rule =>
 							JSON.stringify(stored.rules.find(item => item.id === rule.id)) === JSON.stringify(rule));
@@ -23660,7 +23666,7 @@ export default class OperonPlugin extends Plugin {
 						this.automationApproval = undefined;
 						this.backgroundAutomationApproval = undefined;
 						resolve(closeReason ?? result);
-					});
+					}, draftRun);
 					if (batch) this.backgroundAutomationApproval = () => {
 						this.autoAutomationEvents?.refreshBatch(batch);
 						if (!Array.from(batch.rules.values()).includes('day')) return;
@@ -23671,8 +23677,8 @@ export default class OperonPlugin extends Plugin {
 				}),
 				deactivate: rules => deactivateAutomationRules(this.storage, rules),
 			};
-			const result = typeof request === 'string' ? await this.automationRunner.run(request, ports) : await this.automationRunner.runAuto(request, ports);
-			showAutomationResult(result, typeof request !== 'string', ruleNames);
+			const result = typeof request === 'function' ? await this.automationRunner.runAuto(request, ports) : await this.automationRunner.run(request, ports);
+			showAutomationResult(result, typeof request === 'function', ruleNames);
 			return result.status === 'deactivated';
 		} catch (error) {
 			console.error('Operon: task automation did not settle', error);

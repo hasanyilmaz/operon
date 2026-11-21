@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "状態の変更がブロックされました",
       "automationCancelMany": "キャンセルしてルールを無効化",
       "automationCancelOne": "キャンセルしてルールを無効化",
+      "automationCancelRun": "実行をキャンセル",
       "automationChangedMany": "{{count}} 件のタスクを変更します",
       "automationChangedOne": "{{count}} 件のタスクを変更します",
       "automationClearMatch": "値が一致したら消去",
@@ -1205,6 +1206,7 @@
       "automationTarget": "更新するタスク",
       "automationUnavailable": "自動化の設定を読み込めませんでした。",
       "automationUnknown": "計算できません",
+      "automationUnsavedRule": "未保存のルール",
       "automationValue": "アクションの値",
       "automationsRestoreInactive": "復元したルールはすべて無効になります。",
       "automationsTitle": "自動化",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "09de55989b9d484c291d5b9b8d1d22772e2f16ac27601c6ca5719fdfb581d658"
+  "sourceVersion": "cbbb1f8b0275e3f9c9a9ef503334f33ca2cdc2e835cb9348ab586f627c6fc1bd"
 }

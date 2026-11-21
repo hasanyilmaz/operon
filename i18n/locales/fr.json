@@ -444,6 +444,8 @@
 		"automationRun": "Exécuter",
 		"automationConfirmCount": "Appliquer les modifications à {{count}} tâche(s) ?",
 		"automationApply": "Appliquer les modifications",
+		"automationCancelRun": "Annuler l’exécution",
+		"automationUnsavedRule": "Règle non enregistrée",
 		"automationCancelOne": "Annuler et désactiver la règle",
 		"automationCancelMany": "Annuler et désactiver les règles",
 		"automationDeactivated": "La règle « {{name}} » a été désactivée.",

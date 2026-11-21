@@ -444,6 +444,8 @@
 		"automationRun": "运行",
 		"automationConfirmCount": "将更改应用到 {{count}} 个任务？",
 		"automationApply": "应用更改",
+		"automationCancelRun": "取消运行",
+		"automationUnsavedRule": "未保存的规则",
 		"automationCancelOne": "取消并停用规则",
 		"automationCancelMany": "取消并停用这些规则",
 		"automationDeactivated": "已停用自动化规则“{{name}}”。",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "状态转换受阻",
       "automationCancelMany": "取消并停用这些规则",
       "automationCancelOne": "取消并停用规则",
+      "automationCancelRun": "取消运行",
       "automationChangedMany": "将更改 {{count}} 个任务",
       "automationChangedOne": "将更改 {{count}} 个任务",
       "automationClearMatch": "值匹配时清除",
@@ -1205,6 +1206,7 @@
       "automationTarget": "要更新的任务",
       "automationUnavailable": "无法读取这些自动化设置。",
       "automationUnknown": "无法计算",
+      "automationUnsavedRule": "未保存的规则",
       "automationValue": "操作值",
       "automationsRestoreInactive": "所有还原的规则都将处于未启用状态。",
       "automationsTitle": "自动化",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "a40b10918bb33b00429462f9482b16273825eda6c7f0fe91764dd138e51ecedc"
+  "sourceVersion": "e33e6b6c7c05f72a864763f669b180a47e0a855e91bd0ec92f17ee182ea1ac8b"
 }

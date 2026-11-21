@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "狀態轉換受阻",
       "automationCancelMany": "取消並停用這些規則",
       "automationCancelOne": "取消並停用規則",
+      "automationCancelRun": "取消執行",
       "automationChangedMany": "將變更 {{count}} 個任務",
       "automationChangedOne": "將變更 {{count}} 個任務",
       "automationClearMatch": "值相符時清除",
@@ -1205,6 +1206,7 @@
       "automationTarget": "要更新的任務",
       "automationUnavailable": "無法讀取這些自動化設定。",
       "automationUnknown": "無法計算",
+      "automationUnsavedRule": "未儲存的規則",
       "automationValue": "操作值",
       "automationsRestoreInactive": "所有還原的規則都將處於未啟用狀態。",
       "automationsTitle": "自動化",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "5203fd029a41ffa5fe4a0cf4dcaf20a6aeeb8e586cba91f2c8dffa169bfa6379"
+  "sourceVersion": "877f4386f4ddb5911de277df423b9aa2c335648024bf787102513af3ba3e68a1"
 }

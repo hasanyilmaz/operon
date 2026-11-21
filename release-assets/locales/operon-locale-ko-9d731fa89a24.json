@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3910,
-  "keyFingerprint": "9172706b717835d2428f18e862aeb2e75a5ba75f8e1327109bae71db17cb8801",
+  "keyCount": 3912,
+  "keyFingerprint": "be68d92e4e57ce75ec7fa6a468998c3fc7924166b49ee165a54d87c53a02b194",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1169,6 +1169,7 @@
       "automationBlocked": "상태 변경 차단됨",
       "automationCancelMany": "취소하고 규칙들 비활성화",
       "automationCancelOne": "취소하고 규칙 비활성화",
+      "automationCancelRun": "실행 취소",
       "automationChangedMany": "할 일 {{count}}개가 변경됩니다",
       "automationChangedOne": "할 일 {{count}}개가 변경됩니다",
       "automationClearMatch": "값이 일치하면 지우기",
@@ -1205,6 +1206,7 @@
       "automationTarget": "업데이트할 작업",
       "automationUnavailable": "자동화 설정을 읽을 수 없습니다.",
       "automationUnknown": "계산할 수 없음",
+      "automationUnsavedRule": "저장되지 않은 규칙",
       "automationValue": "작업 값",
       "automationsRestoreInactive": "복원된 규칙은 모두 비활성화됩니다.",
       "automationsTitle": "자동화",
@@ -3955,5 +3957,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "b5bb189838fcf7115e143833870d450b2cedcd8985073b5db54e73b0970eaeb8"
+  "sourceVersion": "44ffff96a636e2e5b246ae89de078b743cc505efe9cb4534710776681a4b8699"
 }

@@ -72,7 +72,7 @@ async function planWithYamlSources(vault: AutomationRunPorts['vault'], calculate
 	}
 }
 
-/** Both entry points hold the same queue through confirmation, apply and the index refresh. */
+/** All entry points hold the same queue through confirmation, apply and the index refresh. */
 export class AutomationRunner {
 	private tail = Promise.resolve();
 	private manualPending = false;
@@ -83,10 +83,11 @@ export class AutomationRunner {
 		return result;
 	}
 
-	async run(id: string, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
+	async run(request: string | AutomationRule, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
 		if (this.manualPending) return { status: 'busy' };
+		const selection = typeof request === 'string' ? request : structuredClone(request);
 		this.manualPending = true;
-		try { return await this.enqueue(() => this.runOnce(id, ports)); }
+		try { return await this.enqueue(() => this.runOnce(selection, ports)); }
 		finally { this.manualPending = false; }
 	}
 
@@ -97,14 +98,15 @@ export class AutomationRunner {
 		});
 	}
 
-	private async runOnce(id: string | undefined, ports: AutomationRunPorts, batch?: AutoRunBatch): Promise<ManualAutomationResult> {
+	private async runOnce(selection: string | AutomationRule | undefined, ports: AutomationRunPorts, batch?: AutoRunBatch): Promise<ManualAutomationResult> {
+		const draft = typeof selection === 'object' ? selection : undefined;
 		const triggers = batch?.rules;
 		let asOf = ports.now();
 		const read = async () => {
 			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
-			const rules = settings.rules.filter(item => item.active && (triggers
-				? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === id));
+			const rules = draft ? [draft] : settings.rules.filter(item => item.active && (triggers
+				? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === selection));
 			if (!rules.length || !ports.available()) return null;
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
@@ -141,6 +143,7 @@ export class AutomationRunner {
 				if (decision === 'dismiss') return { status: 'dismissed' };
 				if (decision === 'replan') { snapshot = await read(); askAgain = true; continue; }
 				if (decision === 'deactivate') {
+					if (draft) return { status: 'dismissed' };
 					try {
 						if (!ports.available() || !await ports.deactivate(listed)) return { status: 'rule-changed' };
 						return { status: 'deactivated', names: listed.map(rule => rule.name) };
@@ -158,7 +161,7 @@ export class AutomationRunner {
 					try {
 						const settings = ports.settings();
 						return ports.available() && settings.confirmation === policy && ports.now().slice(0, 10) === asOf.slice(0, 10)
-							&& rules.every(rule => (!triggers || triggers.has(rule.id)) && JSON.stringify(settings.rules.find(item => item.id === rule.id)) === savedRules.get(rule.id));
+							&& (!!draft || rules.every(rule => (!triggers || triggers.has(rule.id)) && JSON.stringify(settings.rules.find(item => item.id === rule.id)) === savedRules.get(rule.id)));
 					} catch { return false; }
 				};
 				if (!current()) return { fresh: await read() };

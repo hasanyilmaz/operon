@@ -444,6 +444,8 @@
 		"automationRun": "Ausführen",
 		"automationConfirmCount": "Änderungen auf {{count}} Aufgabe(n) anwenden?",
 		"automationApply": "Änderungen anwenden",
+		"automationCancelRun": "Ausführung abbrechen",
+		"automationUnsavedRule": "Ungespeicherte Regel",
 		"automationCancelOne": "Abbrechen und Regel deaktivieren",
 		"automationCancelMany": "Abbrechen und Regeln deaktivieren",
 		"automationDeactivated": "Automatisierungsregel „{{name}}“ deaktiviert.",
