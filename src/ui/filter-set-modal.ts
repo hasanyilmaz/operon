@@ -58,7 +58,7 @@ export interface FilterModalEvalDeps {
 	getFilePropertySnapshot?: (tasks: readonly IndexedTask[]) => TableFilePropertySnapshot | null;
 	getPipelines: () => Pipeline[];
 	getPriorities: () => PriorityDefinition[];
-	openEditor: (operonId: string) => void;
+	openEditor: (operonId: string, preview: HTMLElement) => void;
 	cycleStatus: (operonId: string) => void;
 	getChildIds: (parentId: string) => string[];
 	navigateToTask: (task: import('../types/fields').IndexedTask) => void;
@@ -1145,7 +1145,7 @@ export class FilterPreviewModal extends Modal {
 			getFileTaskByPath: (filePath) => this.deps.indexer.getFileTaskByPath(filePath),
 			getDescendantTaskSummary: (operonId) => this.deps.indexer.getDescendantTaskSummary(operonId),
 			getChildIds: this.deps.getChildIds,
-			openEditor: this.deps.openEditor,
+			openEditor: id => this.deps.openEditor(id, this.modalEl),
 			cycleStatus: this.deps.cycleStatus,
 			navigateToTask: this.deps.navigateToTask,
 			activateDescription: this.deps.activateDescription,

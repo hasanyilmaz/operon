@@ -918,7 +918,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private indexer: OperonIndexer | null = null;
 	private openFilterInSidebar: (filterSetId: string) => Promise<void>;
 	private pinnedCache: PinnedCache | null = null;
-	private filterPreviewOpenEditor: (operonId: string) => void;
+	private filterPreviewOpenEditor: FilterModalEvalDeps['openEditor'];
 	private filterPreviewCycleStatus: (operonId: string) => void;
 	private filterPreviewNavigateToTask: (task: import('../types/fields').IndexedTask) => void;
 	private filterPreviewUpdateField: (operonId: string, key: string, value: string) => void;
@@ -979,7 +979,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		openFilterInSidebar?: (filterSetId: string) => Promise<void>,
 		onDockRefreshLayout?: () => void,
 		pinnedCache?: PinnedCache,
-		filterPreviewOpenEditor?: (operonId: string) => void,
+		filterPreviewOpenEditor?: FilterModalEvalDeps['openEditor'],
 		filterPreviewCycleStatus?: (operonId: string) => void,
 		filterPreviewNavigateToTask?: (task: import('../types/fields').IndexedTask) => void,
 		filterPreviewUpdateField?: (operonId: string, key: string, value: string) => void,

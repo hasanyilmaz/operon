@@ -100,7 +100,7 @@ import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
 import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
-import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, openPreparedPropertyWorkspace, lightboxFileState } from './src/ui/web-lightbox';
+import { disposeWebLightboxes, openTaskWorkspace, findLightboxOwnerLeaf, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, openPreparedPropertyWorkspace, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -17397,7 +17397,7 @@ export default class OperonPlugin extends Plugin {
 			(filterSetId) => this.openFilterViewById(filterSetId),
 			() => this.pinnedDock?.refreshLayout(),
 			this.storage.pinned,
-			(operonId) => this.openEditorForId(operonId),
+			this.openFilterPreviewEditor,
 				(operonId) => { void this.handleTaskIconClick(operonId); },
 				(task) => { this.navigateToTask(task); },
 				(operonId, key, value) => { void this.updateTaskFieldAndRefresh(operonId, key, value); },
@@ -23495,6 +23495,10 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private readonly openFilterPreviewEditor: FilterModalEvalDeps['openEditor'] = (id, preview) => {
+		void this.openEditorForId(id, undefined, preview, () => preview.isConnected && preview.ownerDocument === getActiveDocument());
+	};
+
 	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
 		return {
 			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
@@ -23503,15 +23507,7 @@ export default class OperonPlugin extends Plugin {
 			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 			getPipelines: () => this.settings.pipelines,
 			getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
-			openEditor: (operonId: string) => {
-				void (async () => {
-					const task = this.indexer.getTask(operonId);
-					if (!task) return;
-					await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
-						return await this.applyEditedTaskFromView(task, request);
-					});
-				})();
-			},
+			openEditor: this.openFilterPreviewEditor,
 			cycleStatus: (operonId: string) => {
 				void this.handleTaskIconClick(operonId);
 			},
@@ -25413,14 +25409,17 @@ export default class OperonPlugin extends Plugin {
    if (!current) { content.destroy({ skipCloseSave: true }); this.showPluginUiMutationOutcome('source-missing'); return; }
    if (!currentOpening()) { content.destroy({ skipCloseSave: true }); return; }
    openingSource = current;
-   const markdown = showSource ?? (current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource);
-   openingTrace?.kind(markdown ? 'paired' : 'editor');
-   const session = await openTaskWorkspace(this.app, anchor, {
-    file: current.file, subpath: '', operonId: indexed.operonId,
-    ...(current.format === 'inline' ? { line: current.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(current.parsed) } : {}),
-   }, { task: { file: current.file, operonId: indexed.operonId }, content, markdown, position: preferences.position, openingTrace }, canOpen ? currentOpening : undefined);
-   if (session) onOpen?.(session);
-   return;
+   // A separate Settings window can host an editor modal but has no tab group for a native workspace.
+   if (!openingAnchor?.matches('.operon-filter-preview-modal-shell') || findLightboxOwnerLeaf(this.app, document)) {
+    const markdown = showSource ?? (current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource);
+    openingTrace?.kind(markdown ? 'paired' : 'editor');
+    const session = await openTaskWorkspace(this.app, anchor, {
+     file: current.file, subpath: '', operonId: indexed.operonId,
+     ...(current.format === 'inline' ? { line: current.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(current.parsed) } : {}),
+    }, { task: { file: current.file, operonId: indexed.operonId }, content, markdown, position: preferences.position, openingTrace }, canOpen ? currentOpening : undefined);
+    if (session) onOpen?.(session);
+    return;
+   }
   }
   const modal = new TaskEditorModal(this.app, this.indexer, this.settings, task, onSave, this.timeTracker, options, content);
   modal.onCloseSaveSettled = () => this.refreshAfterTaskEditorClose(task?.filePath);

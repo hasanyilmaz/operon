@@ -105,7 +105,7 @@ export async function flushLightboxMarkdown(app: App, leaf: WorkspaceLeaf): Prom
 
 
 /** getLeaf('tab') can reuse an existing empty tab. Create in the owner's group instead. */
-export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
+export function findLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf | null {
  let origin = app.workspace.getMostRecentLeaf();
  const previousOwner = origin && layoutGuards.get(app)?.leaves.get(origin);
  if (previousOwner) origin = app.workspace.getLeafById((previousOwner as WorkspaceLeaf & {id: string}).id) === previousOwner ? previousOwner : null;
@@ -115,7 +115,12 @@ export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
    if (!origin && candidate.view.containerEl.ownerDocument === doc) origin = candidate;
   });
  }
- if (!origin?.parent) throw new Error('No tab group in this window');
+ return origin?.parent ? origin : null;
+}
+
+export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
+ const origin = findLightboxOwnerLeaf(app, doc);
+ if (!origin) throw new Error('No tab group in this window');
  return origin;
 }
 
