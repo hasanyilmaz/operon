@@ -12,11 +12,11 @@ export function captureAutomationReadState(vault: Vault, index: OperonIndexer, p
 	const blockerPaths = new Set(changes.some(change => change.field === 'status' || change.field === 'checkbox')
 		? index.getAllDuplicateInstanceSnapshots().map(copy => copy.primary.filePath) : []);
 	for (const path of blockerPaths) paths.add(path);
-	const ready = () => index.getLiveReadAuthoritySnapshot().settled && index.getGeneration() === generation
-		&& pins.getGeneration() === pinGeneration && config() === configAtStart
+	const indexCurrent = () => index.getLiveReadAuthoritySnapshot().settled && index.getGeneration() === generation
 		&& [...paths].every(path => { const file = vault.getAbstractFileByPath(path); return file instanceof TFile && index.isIndexedSourceCurrent(file); });
+	const ready = () => indexCurrent() && pins.getGeneration() === pinGeneration && config() === configAtStart;
 	return {
-		ready,
+		indexCurrent, ready,
 		watch() {
 			let valid = ready(), pinRevision = pinGeneration;
 			const blockerRevisions = new Map<TFile, { mtime: number; size: number }>();

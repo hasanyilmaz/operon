@@ -133,8 +133,8 @@ async function fixture(files, opts = {}) {
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
-		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.known,
-			conditionFields: new Map([['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
+		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId)) => planAutomationChanges({ tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
+			conditionFields: new Map([['taskIcon', 'text'], ['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: idx.getAllDuplicateInstanceSnapshots,
 			getInlineList: (task, name) => propertyIndex.readMappedInlineList(task, name), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
@@ -142,7 +142,7 @@ async function fixture(files, opts = {}) {
 		}, saved, policy, triggers),
 		prepare: async (plan, yamlSources) => {
 			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
-				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], plan.changes, () => JSON.stringify(settings.projectSerialScopes)), indexed: () => true,
+				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], plan.changes, () => JSON.stringify(settings.projectSerialScopes)), indexed: () => !f.staleIndex,
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
 				observeSource: f.observeSource, observePin: f.observePin,
@@ -152,6 +152,8 @@ async function fixture(files, opts = {}) {
 		},
 		confirm: async (plan, rules) => { f.prompts.push([plan, rules]); return f.confirm ? await f.confirm() : 'apply'; },
 		refreshBatch: batch => f.events?.refreshBatch(batch),
+		indexSettling: () => !f.known,
+		deferIndexRetry: (batch, shown) => f.events?.deferIndexRetry(batch, shown) ?? false,
 		deferConfirmation: (batch, shown) => f.events?.deferConfirmation(batch, shown) ?? false,
 		deactivate: saved => deactivateAutomationRules({
 			getSettings: () => ({ automationRules: config }), saveAutomationRules: async (prior, next) => {
@@ -1199,6 +1201,78 @@ function watchCalendar(f) {
 			let observed;
 			do { observed=current; await observed; await new Promise(resolve=>setImmediate(resolve)); } while (observed !== current);
 		} };
+}
+
+const carRule = { mode: 'auto', target: rootGroup('taskIcon', 'text', 'endsWith', 'car'),
+	actions: [action('tags', 'formula1'), action('dateScheduled', '2026-11-21')] };
+async function pendingCarRule(settlesDuringPlan) {
+	const f = await fixture({ 'Task.md': inline(id(0)) }, { rule: carRule });
+	f.now = asOf;
+	const watcher = watchCalendar(f);
+	await f.editFile('Task.md', inline(id(0), ' {{taskIcon:: car}}'));
+	await f.reindexInline(id(0));
+	if (settlesDuringPlan) {
+		f.known = false;
+		f.planReady = () => {
+			queueMicrotask(() => { f.known = true; });
+			return f.known;
+		};
+	} else f.staleIndex = true;
+	watcher.events.reconcile([id(0)]);
+	await watcher.idle();
+	assert.deepEqual(watcher.results.map(result => result.status), ['deferred']);
+	assert.equal(f.prompts.length, 0);
+	assert.deepEqual(f.writes, []);
+	return { f, watcher };
+}
+
+for (const outcome of ['ready', 'settled during planning', 'icon removed', 'inactive', 'deleted', 'edited', 'dismissed', 'expired']) {
+	test('Auto retains one car icon trigger during index lag: ' + outcome, async t => {
+		t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date(asOf) });
+		t.mock.method(globalThis.activeWindow, 'setTimeout', globalThis.setTimeout);
+		t.mock.method(globalThis.activeWindow, 'clearTimeout', globalThis.clearTimeout);
+		const { f, watcher } = await pendingCarRule(outcome === 'settled during planning');
+		t.after(() => watcher.events.dispose());
+		if (outcome === 'icon removed') {
+			await f.editFile('Task.md', inline(id(0)));
+			await f.reindexInline(id(0));
+		}
+		if (outcome === 'inactive' || outcome === 'deleted' || outcome === 'edited') {
+			if (outcome === 'inactive') f.rule.active = false;
+			if (outcome === 'deleted') f.config.rules = [];
+			if (outcome === 'edited') f.rule.name = 'Edited rule';
+			watcher.events.configure(f.config.rules);
+		}
+		f.confirm = () => {
+			assert.deepEqual(f.writes, []);
+			return outcome === 'dismissed' ? 'dismiss' : 'apply';
+		};
+		f.staleIndex = outcome === 'expired';
+		watcher.events.reconcile([id(0)]);
+		watcher.events.reconcile([id(0)]);
+		t.mock.timers.tick(outcome === 'expired' ? 5001 : 400);
+		await watcher.idle();
+		const run = watcher.results.at(-1);
+		if (outcome === 'ready' || outcome === 'settled during planning') {
+			assert.equal(run.applied, 1);
+			assert.equal(f.prompts.length, 1);
+			assert.deepEqual(f.writes, ['Task.md']);
+			const note = await f.read('Task.md');
+			assert.match(note, /#formula1/u);
+			assert.match(note, /dateScheduled:: 2026-11-21/u);
+		} else {
+			assert.deepEqual(f.writes, []);
+			assert.equal(f.prompts.length, outcome === 'dismissed' ? 1 : 0);
+			if (outcome === 'expired') {
+				assert.equal(run.status, 'unavailable');
+				assert.equal(run.reason, 'index-pending');
+			}
+		}
+		const count = watcher.results.length;
+		t.mock.timers.tick(10000);
+		await watcher.idle();
+		assert.equal(watcher.results.length, count);
+	});
 }
 
 test('local-day eligibility comes from filter operators on nested scope or target fields', () => {

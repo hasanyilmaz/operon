@@ -1,3 +1,4 @@
+import { clearWindowTimeout, setWindowTimeout, type WindowTimeoutHandle } from '../core/dom-compat';
 import { filterUsesLocalDay } from '../core/filter-evaluator';
 import type { AutoRunBatch } from './manual-automation-run';
 import type { AutomationRule } from '../core/automation-rules';
@@ -53,6 +54,9 @@ export class AutoAutomationEvents {
 	private pins = new Set<string>();
 	private pending = new Map<string, Map<string, Change>>();
 	private inFlight?: AutoRunBatch;
+	private retry?: AutoRunBatch & { retryUntil: number };
+	private retryTimer?: WindowTimeoutHandle;
+	private retryReady = false;
 	private dayRules = new Set<string>();
 	private pendingDay = new Set<string>();
 	private observedDay?: string;
@@ -74,6 +78,7 @@ export class AutoAutomationEvents {
 		const next = new Map(rules.filter(rule => rule.active && rule.mode === 'auto').map(rule => [rule.id, JSON.stringify(rule)]));
 		for (const [id, version] of this.rules) if (next.get(id) !== version) {
 			this.pending.delete(id);
+			this.retry?.rules.delete(id);
 			this.inFlight?.rules.delete(id);
 			this.pendingDay.delete(id);
 			this.deferred.rules.delete(id);
@@ -87,6 +92,7 @@ export class AutoAutomationEvents {
 				if (this.activating.get(id) === paths) this.activating.delete(id);
 			}).catch(error => this.ports.error(error));
 		}
+		if (!this.retry?.rules.size) this.clearRetry();
 		if (!this.deferred.rules.size) this.deferred.confirmAgain = false;
 		this.dayRules = new Set(rules.filter(rule => next.has(rule.id)
 			&& (filterUsesLocalDay(rule.scope) || filterUsesLocalDay(rule.target))).map(rule => rule.id));
@@ -123,6 +129,32 @@ export class AutoAutomationEvents {
 		if (this.pending.size && this.ports.settled()) this.mergeTaskChanges(batch);
 		for (const id of this.pendingDay) batch.rules.set(id, 'day');
 		this.pendingDay.clear();
+	}
+
+	/** Retain trigger identities only. All scope, target and source reads are repeated before approval. */
+	deferIndexRetry(batch: AutoRunBatch, confirmAgain: boolean): boolean {
+		if (this.disposed || this.inFlight !== batch || !batch.rules.size) return false;
+		const now = Date.now();
+		const retryUntil = batch.retryUntil ?? now + 5000;
+		if (now >= retryUntil) return false;
+		this.retry = { rules: new Map(batch.rules), confirmAgain, retryUntil };
+		this.armRetry(batch.retryUntil === undefined ? 350 : retryUntil - now);
+		return true;
+	}
+
+	private armRetry(delay: number): void {
+		clearWindowTimeout(this.retryTimer);
+		this.retryTimer = setWindowTimeout(() => {
+			this.retryReady = true;
+			this.schedule();
+		}, delay);
+	}
+
+	private clearRetry(): void {
+		clearWindowTimeout(this.retryTimer);
+		this.retryTimer = undefined;
+		this.retry = undefined;
+		this.retryReady = false;
 	}
 
 	deferConfirmation(batch: AutoRunBatch, alreadyShown: boolean): boolean {
@@ -169,6 +201,7 @@ export class AutoAutomationEvents {
 			this.known.set(id, after);
 			if (!baseline && (!before || !sameImage(before, after))) this.record(id, change => { change.source ??= { before, sequence }; }, true);
 		}
+		if (this.retry && this.ports.settled()) this.armRetry(Math.min(100, Math.max(0, this.retry.retryUntil - Date.now())));
 	}
 
 	pinsChanged(): void {
@@ -196,10 +229,10 @@ export class AutoAutomationEvents {
 
 	private schedule(): void {
 		if (this.scheduled || this.disposed) return;
-		if (!this.pending.size && !this.pendingDay.size && !(this.deferred.rules.size && this.ports.foreground())) return;
+		if (!this.retryReady && !this.pending.size && !this.pendingDay.size && !(this.deferred.rules.size && this.ports.foreground())) return;
 		this.scheduled = true;
 		void this.ports.run(async () => {
-			await this.ports.settle();
+			if (!this.retry) await this.ports.settle();
 			const batch = this.take();
 			this.inFlight = batch;
 			this.refreshBatch(batch);
@@ -214,6 +247,15 @@ export class AutoAutomationEvents {
 	private take(): AutoRunBatch {
 		const batch = this.deferred;
 		this.deferred = { rules: new Map(), confirmAgain: false };
+		if (this.retry) {
+			for (const [id, triggers] of this.retry.rules) {
+				const existing = batch.rules.get(id);
+				batch.rules.set(id, existing === 'day' || triggers === 'day' ? 'day' : new Set([...existing ?? [], ...triggers]));
+			}
+			batch.confirmAgain ||= this.retry.confirmAgain;
+			batch.retryUntil = this.retry.retryUntil;
+			this.clearRetry();
+		}
 		this.mergeTaskChanges(batch);
 		return batch;
 	}
@@ -246,6 +288,7 @@ export class AutoAutomationEvents {
 	}
 
 	private clear(): void {
+		this.clearRetry();
 		this.pending.clear(); this.known.clear(); this.pins.clear();
 		this.ownSources.clear(); this.ownPins.clear(); this.activating.clear();
 		this.pendingDay.clear(); this.deferred = { rules: new Map(), confirmAgain: false };

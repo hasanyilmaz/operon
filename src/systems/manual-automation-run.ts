@@ -22,6 +22,7 @@ export interface AutomationWork {
 export interface AutoRunBatch {
 	rules: Map<string, Set<string> | 'day'>;
 	confirmAgain: boolean;
+	retryUntil?: number;
 }
 interface AutomationYamlSource {
 	content: string;
@@ -34,8 +35,10 @@ export interface AutomationRunPorts {
 	now(): string;
 	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string,
 		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter']): AutomationChangePlan;
-	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources): Promise<AutomationWork | null>;
+	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
+	deferIndexRetry?(batch: AutoRunBatch, confirmAgain: boolean): boolean;
+	indexSettling?(): boolean;
 	refreshBatch?(batch: AutoRunBatch): void;
 	deferConfirmation?(batch: AutoRunBatch, alreadyShown: boolean): boolean;
 	deactivate(rules: AutomationRule[]): Promise<boolean>;
@@ -45,7 +48,7 @@ export interface AutomationRunPorts {
 export type ManualAutomationResult =
 	| { status: 'dismissed' | 'deferred' | 'busy' | 'rule-changed' | 'save-failed' }
 	| { status: 'deactivated'; names: string[] }
-	| { status: 'unavailable'; plan: AutomationChangePlan }
+	| { status: 'unavailable'; plan: AutomationChangePlan; reason?: 'index-pending' | 'source-conflict' }
 	| { status: 'finished'; plan: AutomationChangePlan; applied: number; uncertain: number; refreshPending?: boolean };
 
 /** Resolve only the YAML documents the planner consults, including related tasks discovered in a later pass. */
@@ -105,16 +108,26 @@ export class AutomationRunner {
 			if (!rules.length || !ports.available()) return null;
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
-			const { plan, sources } = await planWithYamlSources(ports.vault,
-				getFrontmatter => ports.plan(rules, settings.confirmation, asOf, triggers, getFrontmatter));
-			const work = plan.changedTaskCount ? await ports.prepare(plan, sources) : null;
-			return { rules, plan, work, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
+			let indexPending = false;
+			const { plan, sources } = await planWithYamlSources(ports.vault, getFrontmatter => {
+				const calculated = ports.plan(rules, settings.confirmation, asOf, triggers, getFrontmatter);
+				indexPending = calculated.issues.some(issue => issue.reason === 'index-unavailable') && ports.indexSettling?.() === true;
+				return calculated;
+			});
+			const preparation = plan.changedTaskCount ? await ports.prepare(plan, sources) : null;
+			const reason = typeof preparation === 'string' ? preparation
+				: indexPending ? 'index-pending' as const : undefined;
+			const work = typeof preparation === 'object' ? preparation : null;
+			return { rules, plan, work, reason, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
 		};
 		let snapshot = await read();
 		let askAgain = batch?.confirmAgain ?? false;
 		for (;;) {
+			if (batch && !batch.rules.size) return { status: 'dismissed' };
 			if (!snapshot) return { status: 'rule-changed' };
 			const { rules, plan, work, key } = snapshot;
+			if (snapshot.reason === 'index-pending' && batch && ports.deferIndexRetry?.(batch, askAgain)) return { status: 'deferred' };
+			if (snapshot.reason) return { status: 'unavailable', plan, reason: snapshot.reason };
 			if (plan.changedTaskCount === 0) return { status: 'finished', plan, applied: 0, uncertain: 0 };
 			if (plan.changedTaskCount === null || !work) return { status: 'unavailable', plan };
 			if (askAgain || plan.needsConfirmation) {

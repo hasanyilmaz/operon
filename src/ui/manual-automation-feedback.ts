@@ -38,9 +38,15 @@ export function showAutomationResult(result: ManualAutomationResult, automatic: 
 	const lines = [result.status === 'unavailable' ? t('settings', 'automationRetry') : t('settings', remaining || result.uncertain ? 'automationStopped' : 'automationApplied', {
 		applied: String(result.applied), remaining: String(remaining), uncertain: String(result.uncertain),
 	})];
+	if (result.status === 'unavailable') {
+		const names = result.plan.rules.map(rule => ruleNames.get(rule.ruleId) ?? rule.ruleId);
+		if (names.length) lines.push(names.join(', '));
+		if (result.reason === 'index-pending') lines.push(t('settings', 'pipelineRenamePhaseReindexPending'));
+		else if (result.reason === 'source-conflict') lines.push(t('taskEditor', 'filePropertiesUnavailable'));
+	}
 	const reasons = new Map<string, Set<string>>();
 	for (const issue of result.plan.issues) {
-		const label = t('settings', automationIssueLabels[issue.reason]);
+		const label = issue.reason === 'ambiguous-property' ? t('taskEditor', 'filePropertiesUnavailable') : t('settings', automationIssueLabels[issue.reason]);
 		const rules = issue.reason === 'conflict' ? new Set(issue.origins?.map(origin => ruleNames.get(origin.ruleId) ?? origin.ruleId)) : [];
 		const field = issue.projectSerialGroupId && issue.ruleId
 			? [ruleNames.get(issue.ruleId) ?? issue.ruleId, unavailableProjectGroupText(issue)].join(' · ')

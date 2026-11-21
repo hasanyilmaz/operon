@@ -53,7 +53,7 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 export const automationIssueLabels: Record<AutomationPlanIssue['reason'], string> = {
 	conflict: 'automationConflict', blocked: 'automationBlocked', 'invalid-value': 'automationInvalid',
 	'read-only': 'automationFilterOnly', 'invalid-relation': 'automationRelation',
-	'unsupported-source': 'taskRelationsUnavailable', 'source-unavailable': 'taskRelationsUnavailable',
+	'ambiguous-property': 'taskRelationsUnavailable', 'unsupported-source': 'taskRelationsUnavailable', 'source-unavailable': 'taskRelationsUnavailable',
 	'dependent-effect-unavailable': 'automationUnknown', 'index-unavailable': 'automationUnknown', 'condition-unavailable': 'automationUnknown',
 };
 

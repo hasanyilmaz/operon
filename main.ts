@@ -23630,6 +23630,8 @@ export default class OperonPlugin extends Plugin {
 					permit = owned;
 					try { return await operation(); } finally { permit = undefined; }
 				}),
+				indexSettling: () => this.indexer.getLiveReadAuthoritySnapshot().state === 'settling',
+				deferIndexRetry: (batch, shown) => this.autoAutomationEvents?.deferIndexRetry(batch, shown) ?? false,
 				refreshBatch: batch => this.autoAutomationEvents?.refreshBatch(batch),
 				deferConfirmation: (batch, shown) => this.autoAutomationEvents?.deferConfirmation(batch, shown) ?? false,
 				confirm: (plan, rules, batch) => new Promise(resolve => {

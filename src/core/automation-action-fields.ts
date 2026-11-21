@@ -18,7 +18,7 @@ import type { TableFilePropertyQueryContext, TableFilePropertyField } from '../u
 
 export type PlanValue = VaultPropertyValue;
 export type Member = string | number;
-export type ActionIssue = 'read-only' | 'invalid-value' | 'unsupported-source' | 'source-unavailable';
+export type ActionIssue = 'read-only' | 'invalid-value' | 'unsupported-source' | 'source-unavailable' | 'ambiguous-property';
 export type AutomationFieldSettings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions' | 'fileTaskDisplayTitleEnabled'>;
 export interface ActionField {
 	type: FilterFieldType;
@@ -100,7 +100,7 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 		const fm = source.getFrontmatter(task);
 		if (!fm || readYamlFields(fm, settings.keyMappings).operonId !== task.operonId) return 'source-unavailable';
 		const keys = getManagedYamlAliases(key, settings.keyMappings).filter(name => Object.prototype.hasOwnProperty.call(fm, name));
-		if (keys.length > 1) return 'source-unavailable';
+		if (keys.length > 1) return 'ambiguous-property';
 		const value: unknown = keys.length ? fm[keys[0]] : undefined;
 		const items = Array.isArray(value) ? value : value == null ? [] : [value];
 		if (!items.every(item => typeof item === 'string')) return 'unsupported-source';

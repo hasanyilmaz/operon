@@ -665,7 +665,7 @@ export function planAutomationChanges(
 		if (issue.reason === 'condition-unavailable' && issue.ruleId) {
 			(issue.field === 'scope' ? unknownScope : unknownTarget).add(issue.ruleId);
 		}
-		if (issue.reason === 'source-unavailable' || issue.reason === 'unsupported-source' || issue.reason === 'dependent-effect-unavailable') {
+		if (issue.reason === 'ambiguous-property' || issue.reason === 'source-unavailable' || issue.reason === 'unsupported-source' || issue.reason === 'dependent-effect-unavailable') {
 			if (issue.origins) for (const origin of issue.origins) unknownChanges.add(origin.ruleId);
 			else for (const rule of rules) unknownChanges.add(rule.id);
 		}

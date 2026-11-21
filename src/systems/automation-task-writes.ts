@@ -196,7 +196,7 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 }
 
 /** Shared files and changes with a common originating task must settle together. */
-export async function prepareAutomationWork(plan: AutomationChangePlan, ports: WritePorts): Promise<AutomationWork | null> {
+export async function prepareAutomationWork(plan: AutomationChangePlan, ports: WritePorts): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null> {
 	const tasks = new Map<string, IndexedTask>();
 	const byId = new Map<string, AutomationFieldChange[]>();
 	const parent = new Map<string, string>();
@@ -251,9 +251,11 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		const group = groups.get(key) ?? { ids: new Set<string>(), sources: [], pins: new Map<string, Pin>() };
 		groups.set(key, group);
 		const file = ports.app.vault.getAbstractFileByPath(path);
-		if (!(file instanceof TFile) || !ports.indexed(file) || ports.writer.hasMarkdownSource(file) || !await ports.validPath(path, false)) return null;
+		if (!(file instanceof TFile) || ports.writer.hasMarkdownSource(file) || !await ports.validPath(path, false)) return null;
+		if (!ports.indexed(file)) return 'index-pending';
 		const before = ports.yamlSources.get(path)?.content ?? await ports.app.vault.read(file);
-		if (!ports.indexed(file) || !ports.buffersMatch(path, before)) return null;
+		if (!ports.indexed(file)) return 'index-pending';
+		if (!ports.buffersMatch(path, before)) return 'source-conflict';
 		let destination = path;
 		for (const task of members) {
 			const changes = byId.get(task.operonId) ?? [];
@@ -273,11 +275,11 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		}
 		const after = renderAutomationSource(path, before, members, ports.writer, ports.settings,
 			(task, row) => buildUpdate(task, byId.get(task.operonId) ?? [], before, ports, row));
-		if (after === null) return null;
+		if (after === null) return ports.readState.indexCurrent() ? 'source-conflict' : 'index-pending';
 		group.sources.push({ file, path, destination, before, after });
 		identity.push(path, destination, before, after);
 	}
-	if (!ports.readState.ready()) return null;
+	if (!ports.readState.ready()) return ports.readState.indexCurrent() ? null : 'index-pending';
 	return { identity, apply: async permitted => {
 		const state = ports.readState.watch();
 		const current = () => permitted() && state.current();
