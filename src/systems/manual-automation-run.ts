@@ -20,7 +20,7 @@ export interface AutomationWork {
 	apply(current: () => boolean): Promise<{ applied: number; uncertain: number; refreshPending?: boolean }>;
 }
 export interface AutoRunBatch {
-	rules: Map<string, Set<string> | 'day'>;
+	rules: Map<string, Set<string> | 'all'>;
 	confirmAgain: boolean;
 	retryUntil?: number;
 }

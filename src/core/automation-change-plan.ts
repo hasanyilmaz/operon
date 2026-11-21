@@ -581,8 +581,8 @@ function combineBatches(ctx: PlanContext, batches: IntentBatch[], issues: Automa
 	}
 }
 
-/** A calendar event evaluates the scope even when no task was edited. */
-export type AutoTriggers = ReadonlyMap<string, ReadonlySet<string> | 'day'>;
+/** Date changes and explicit rule saves evaluate the whole scope without a triggering task. */
+export type AutoTriggers = ReadonlyMap<string, ReadonlySet<string> | 'all'>;
 
 /** The caller chooses rules for a draft or a run. All matchers and actions read one original graph. */
 export function planAutomationChanges(
@@ -621,7 +621,7 @@ export function planAutomationChanges(
 	for (const rule of rules) {
 		const scope = matcher(rule.scope);
 		const trigger = triggerTasks?.get(rule.id);
-		if (triggerTasks && trigger !== 'day' && !Array.from(trigger ?? []).some(id => {
+		if (triggerTasks && trigger !== 'all' && !Array.from(trigger ?? []).some(id => {
 			const task = tasks.get(id);
 			return task && scope(task) !== 'false';
 		})) continue;

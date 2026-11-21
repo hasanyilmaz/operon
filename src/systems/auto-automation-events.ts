@@ -58,7 +58,7 @@ export class AutoAutomationEvents {
 	private retryTimer?: WindowTimeoutHandle;
 	private retryReady = false;
 	private dayRules = new Set<string>();
-	private pendingDay = new Set<string>();
+	private readonly pendingFullScope = new Set<string>();
 	private observedDay?: string;
 	private deferred: AutoRunBatch = { rules: new Map(), confirmAgain: false };
 	private readonly ownSources = new Map<string, { image: TaskImage; since: number }>();
@@ -80,7 +80,7 @@ export class AutoAutomationEvents {
 			this.pending.delete(id);
 			this.retry?.rules.delete(id);
 			this.inFlight?.rules.delete(id);
-			this.pendingDay.delete(id);
+			this.pendingFullScope.delete(id);
 			this.deferred.rules.delete(id);
 			this.activating.delete(id);
 		}
@@ -113,7 +113,13 @@ export class AutoAutomationEvents {
 		const today = this.ports.today();
 		if (this.observedDay === today) return;
 		this.observedDay = today;
-		this.pendingDay = new Set(this.dayRules);
+		for (const id of this.dayRules) this.pendingFullScope.add(id);
+	}
+
+	requestSavedRule(rule: AutomationRule): void {
+		if (this.disposed || this.rules.get(rule.id) !== JSON.stringify(rule)) return;
+		this.pendingFullScope.add(rule.id);
+		this.schedule();
 	}
 
 	wake(): void {
@@ -127,8 +133,8 @@ export class AutoAutomationEvents {
 		if (this.disposed || this.inFlight !== batch) return;
 		this.observeDay();
 		if (this.pending.size && this.ports.settled()) this.mergeTaskChanges(batch);
-		for (const id of this.pendingDay) batch.rules.set(id, 'day');
-		this.pendingDay.clear();
+		for (const id of this.pendingFullScope) batch.rules.set(id, 'all');
+		this.pendingFullScope.clear();
 	}
 
 	/** Retain trigger identities only. All scope, target and source reads are repeated before approval. */
@@ -159,7 +165,7 @@ export class AutoAutomationEvents {
 
 	deferConfirmation(batch: AutoRunBatch, alreadyShown: boolean): boolean {
 		if (this.disposed || this.inFlight !== batch || this.ports.foreground()
-			|| !Array.from(batch.rules.values()).includes('day')) return false;
+			|| !Array.from(batch.rules.values()).includes('all')) return false;
 		// Retain trigger identities only. The runner rebuilds both the plan and physical work on return.
 		this.deferred = { rules: new Map(batch.rules), confirmAgain: alreadyShown || batch.confirmAgain };
 		return true;
@@ -229,7 +235,7 @@ export class AutoAutomationEvents {
 
 	private schedule(): void {
 		if (this.scheduled || this.disposed) return;
-		if (!this.retryReady && !this.pending.size && !this.pendingDay.size && !(this.deferred.rules.size && this.ports.foreground())) return;
+		if (!this.retryReady && !this.pending.size && !this.pendingFullScope.size && !(this.deferred.rules.size && this.ports.foreground())) return;
 		this.scheduled = true;
 		void this.ports.run(async () => {
 			if (!this.retry) await this.ports.settle();
@@ -250,7 +256,7 @@ export class AutoAutomationEvents {
 		if (this.retry) {
 			for (const [id, triggers] of this.retry.rules) {
 				const existing = batch.rules.get(id);
-				batch.rules.set(id, existing === 'day' || triggers === 'day' ? 'day' : new Set([...existing ?? [], ...triggers]));
+				batch.rules.set(id, existing === 'all' || triggers === 'all' ? 'all' : new Set([...existing ?? [], ...triggers]));
 			}
 			batch.confirmAgain ||= this.retry.confirmAgain;
 			batch.retryUntil = this.retry.retryUntil;
@@ -280,7 +286,7 @@ export class AutoAutomationEvents {
 				}
 			}
 			const previous = batch.rules.get(rule);
-			if (triggers.size && previous !== 'day') batch.rules.set(rule, new Set([...previous ?? [], ...triggers]));
+			if (triggers.size && previous !== 'all') batch.rules.set(rule, new Set([...previous ?? [], ...triggers]));
 		}
 		for (const id of observedSources) this.ownSources.delete(id);
 		for (const id of observedPins) this.ownPins.delete(id);
@@ -291,7 +297,7 @@ export class AutoAutomationEvents {
 		this.clearRetry();
 		this.pending.clear(); this.known.clear(); this.pins.clear();
 		this.ownSources.clear(); this.ownPins.clear(); this.activating.clear();
-		this.pendingDay.clear(); this.deferred = { rules: new Map(), confirmAgain: false };
+		this.pendingFullScope.clear(); this.deferred = { rules: new Map(), confirmAgain: false };
 	}
 	dispose(): void {
 		this.disposed = true;

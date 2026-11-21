@@ -17375,6 +17375,9 @@ export default class OperonPlugin extends Plugin {
 			this.taskCardLayout?.refresh();
 		}));
 
+		// Observe saved rule versions even while the startup index is being prepared.
+		this.register(this.storage.subscribeAutomationRules(() => this.syncAutoAutomationRules()));
+
 		// Register settings tab
 		this.settingsTab = new OperonSettingsTab(
 			this.app,
@@ -17675,6 +17678,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.startupAutomationRuns.clear();
 		this.autoAutomationEvents?.dispose();
 		this.automationApproval?.close();
 		this.ribbonActionsReady = false;
@@ -23542,6 +23546,22 @@ export default class OperonPlugin extends Plugin {
 	private readonly automationRunner = new AutomationRunner();
 	private autoAutomationEvents?: AutoAutomationEvents;
 
+	private readonly startupAutomationRuns = new Map<string, AutomationRule>();
+
+	private syncAutoAutomationRules(): void {
+		const saved = this.storage.getSettings().automationRules;
+		const rules = isAutomationRulesSettings(saved) ? saved.rules : [];
+		for (const [id, expected] of this.startupAutomationRuns) {
+			if (JSON.stringify(rules.find(rule => rule.id === id)) !== JSON.stringify(expected)) this.startupAutomationRuns.delete(id);
+		}
+		this.autoAutomationEvents?.configure(rules);
+	}
+
+	requestSavedAutomationRun(rule: AutomationRule): void {
+		if (this.autoAutomationEvents) this.autoAutomationEvents.requestSavedRule(rule);
+		else if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') this.startupAutomationRuns.set(rule.id, rule);
+	}
+
 	private startAutoAutomationEvents(): void {
 		const native = getNativePropertyIndex(this.app);
 		const pins = this.storage.pinned;
@@ -23560,12 +23580,9 @@ export default class OperonPlugin extends Plugin {
 			run: take => this.runAutomation(take),
 			error: error => console.error('Operon: automatic task observation failed', error),
 		});
-		const configure = () => {
-			const saved = this.storage.getSettings().automationRules;
-			events.configure(isAutomationRulesSettings(saved) ? saved.rules : []);
-		};
-		configure();
-		this.register(this.storage.subscribeAutomationRules(configure));
+		this.syncAutoAutomationRules();
+		for (const rule of this.startupAutomationRuns.values()) events.requestSavedRule(rule);
+		this.startupAutomationRuns.clear();
 		this.register(this.indexer.subscribeIndexReconciliation(event => event.kind === 'full' ? events.rebase() : events.reconcile(event.affectedOperonIds)));
 		this.register(pins.subscribe(() => events.pinsChanged()));
 		const changed = (file: TAbstractFile) => events.fileChanged(file.path);
@@ -23669,7 +23686,7 @@ export default class OperonPlugin extends Plugin {
 					}, draftRun);
 					if (batch) this.backgroundAutomationApproval = () => {
 						this.autoAutomationEvents?.refreshBatch(batch);
-						if (!Array.from(batch.rules.values()).includes('day')) return;
+						if (!Array.from(batch.rules.values()).includes('all')) return;
 						closeReason = 'background';
 						this.automationApproval?.close();
 					};

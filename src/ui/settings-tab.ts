@@ -906,6 +906,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private storage: OperonStorage;
 	private pluginVersion: string;
 	private readonly runAutomationRule?: (id: string) => Promise<boolean>;
+	private readonly onAutomationSaved?: AutomationEditorSource['runSaved'];
 	private readonly runAutomationDraft?: AutomationEditorSource['runDraft'];
 	private readonly planAutomationRule: AutomationEditorSource['plan'];
 	private onSettingsChanged: (change?: 'property-icons') => void;
@@ -970,7 +971,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	constructor(
 		app: App,
-		plugin: Plugin & { runManualAutomationRule?(id: string): Promise<boolean>; runAutomationDraft?(draft: AutomationRule): Promise<void>; planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
+		plugin: Plugin & { runManualAutomationRule?(id: string): Promise<boolean>; runAutomationDraft?(draft: AutomationRule): Promise<void>; requestSavedAutomationRun?(rule: AutomationRule): void; planAutomationRules?(rules: readonly AutomationRule[], confirmation: AutomationConfirmation): ReturnType<AutomationEditorSource['plan']> },
 		settings: OperonSettings,
 		storage: OperonStorage,
 		onSettingsChanged: (change?: 'property-icons') => void,
@@ -1022,6 +1023,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		this.storage = storage;
 		this.pluginVersion = plugin.manifest.version;
 		if (plugin.runManualAutomationRule) this.runAutomationRule = id => plugin.runManualAutomationRule!(id);
+		if (plugin.requestSavedAutomationRun) this.onAutomationSaved = rule => plugin.requestSavedAutomationRun!(rule);
 		if (plugin.runAutomationDraft) this.runAutomationDraft = draft => plugin.runAutomationDraft!(draft);
 		this.planAutomationRule = rule => {
 			const current = storage.getSettings().automationRules;
@@ -4537,6 +4539,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			},
 			plan: this.planAutomationRule,
 			runDraft: this.runAutomationDraft,
+			runSaved: this.onAutomationSaved,
 		}, this.runAutomationRule);
 	}
 

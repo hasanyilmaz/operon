@@ -28,7 +28,7 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
 	export { expandListAction, validAction } from './src/ui/automation-action-editor';
 	export { collectNativeFieldValueCandidates } from './src/ui/custom-field-surfaces';
-	export { AutomationRuleModal } from './src/ui/automation-rule-modal';
+	export { AutomationRuleModal, shouldRunSavedRule } from './src/ui/automation-rule-modal';
 	export { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
 	export { preflightOperonSettingsBackupRestoreV1 } from './src/core/settings-backup-preflight';
 	export { createOperonSettingsBackupApplyAcknowledgementV1 } from './src/core/settings-backup-apply';
@@ -48,7 +48,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, mountAutomationRules, statusDockDocument, t,
+const { TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, shouldRunSavedRule, mountAutomationRules, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
@@ -927,7 +927,7 @@ test('Project Serial references respect Auto event scope and stop a daily batch 
 	assert.deepEqual(outside.plan.rules.map(item => item.ruleId), ['good']);
 	await f.reindexInline(id(2));
 	good.target = rootGroup('description', 'text', 'is', id(0));
-	const daily = await f.auto(new Map([[broken.id, 'day'], [good.id, 'day']]));
+	const daily = await f.auto(new Map([[broken.id, 'all'], [good.id, 'all']]));
 	assert.equal(daily.status, 'unavailable');
 	assert.equal(daily.plan.rules.find(item => item.ruleId === broken.id).changed, null);
 	assert.deepEqual(f.writes, [id(2) + '.md']);
@@ -1023,7 +1023,7 @@ function eventFixture(overrides = {}) {
 		pins: () => [...pins].filter(([,p]) => p.pinned).map(([key]) => key), pin: key => pins.get(key) ?? null,
 		today: () => asOf.slice(0,10), foreground: () => true,
 		settled: () => true, currentPath: key => key, settle: async () => {}, run: take => { runs.push(take); return new Promise(resolve => queueMicrotask(resolve)).then(async () => {
-			const { rules } = await take(); if (rules.size) batches.push([...rules].map(([key,ids]) => [key,ids === 'day' ? ids : [...ids]]));
+			const { rules } = await take(); if (rules.size) batches.push([...rules].map(([key,ids]) => [key,ids === 'all' ? ids : [...ids]]));
 		}); }, error: error => { throw error; }, ...overrides,
 	});
 	const rule = { id:'r', mode:'auto', active:true, scope:all, target:all }, settle = () => new Promise(resolve => setImmediate(resolve));
@@ -1251,6 +1251,98 @@ function watchCalendar(f) {
 		} };
 }
 
+test('only creation, activation and changes to the effective Auto rule request an initial run', () => {
+	const ctx = { settings: () => ({ ...DEFAULT_SETTINGS, ...typedMembers }), nativeType: () => 'list' };
+	const rule = { ...createAutomationRule('Review'), active: true, mode: 'auto',
+		scope: rootGroup('tags', 'tags', 'anyContains', 'project'), actions: [action('tags', ['review', 'next'])] };
+	const changed = (previous, next) => shouldRunSavedRule(previous, next, ctx);
+	assert.ok(changed(undefined, rule));
+	for (const off of [{ ...rule, active: false }, { ...rule, mode: 'manual' }]) {
+		assert.ok(changed(off, rule));
+		assert.equal(changed(rule, off), false);
+		assert.equal(changed(undefined, off), false);
+	}
+	const equivalent = structuredClone(rule);
+	equivalent.name = 'Renamed';
+	equivalent.scope.id = 'new-root';
+	equivalent.scope.children[0].id = 'new-condition';
+	equivalent.actions = ['review', 'next'].map((tag, i) => ({ ...action('tags', [tag]), id: 'new-' + i }));
+	assert.equal(changed(rule, rule), false);
+	assert.equal(changed(rule, equivalent), false);
+	for (const key of ['scope', 'target']) assert.ok(changed(rule, { ...rule, [key]: rootGroup('tags', 'tags', 'anyContains', 'updated') }));
+	assert.ok(changed(rule, { ...equivalent, actions: [action('tags', 'new')] }));
+	assert.ok(changed(rule, { ...rule, actions: [action('tags', ['review', 'next'], 'remove')] }));
+	const set = (value, encoded) => ({ ...rule, actions: [{ ...action('participants', value), ...(encoded && { valueEncoding: 'vault-v1' }) }] });
+	assert.ok(changed(set('2'), set('2', true)), 'numeric member differs from legacy text');
+	assert.equal(changed(set('2'), set('"2"', true)), false);
+	const native = action('file.property:members', '2; "A; B"');
+	const before = { ...rule, actions: [native] };
+	assert.equal(changed(before, { ...rule, actions: expandListAction(native, ctx, new Set([native.id])) }), false);
+});
+
+test('a saved Auto rule evaluates every current target under its existing confirmation policy', async t => {
+	for (const choice of ['apply', 'deactivate']) await t.test(choice, async () => {
+		const f = await fixture(filesFor(2), { rule: { mode: 'auto' } });
+		f.now = asOf;
+		f.config.rules.push(asAuto(f.rule, 'other', { actions: [action('tags', 'unrelated')] }));
+		const watcher = watchCalendar(f);
+		f.confirm = () => choice;
+		try {
+			watcher.events.requestSavedRule(f.rule);
+			await watcher.idle();
+			assert.equal(f.prompts.length, 1);
+			assert.deepEqual(f.prompts[0][1].map(rule => rule.id), [ruleId]);
+			assert.equal(f.prompts[0][0].changedTaskCount, 2);
+			assert.equal(f.writes.length, choice === 'apply' ? 2 : 0);
+			assert.deepEqual(f.config.rules.map(rule => rule.active), [choice === 'apply', true]);
+		} finally { watcher.events.dispose(); }
+	});
+});
+
+test('Run followed by Save evaluates fresh task state and only asks for outstanding changes', async t => {
+	for (const newMatch of [false, true]) await t.test(newMatch ? 'another target now matches' : 'all changes applied', async () => {
+		const f = await fixture(filesFor(2), { rule: { active: false, mode: 'auto',
+			target: rootGroup('tags', 'tags', 'anyContains', 'queue') } });
+		f.now = asOf;
+		const addQueue = async n => {
+			await f.editFile(id(n) + '.md', inline(id(n), ' #queue'));
+			await f.reindexInline(id(n));
+		};
+		await addQueue(0);
+		assert.equal((await f.run(structuredClone(f.rule))).applied, 1);
+		await f.reindexInline(id(0));
+		if (newMatch) await addQueue(1);
+		f.rule.active = true;
+		const watcher = watchCalendar(f);
+		try {
+			watcher.events.requestSavedRule(f.rule);
+			await watcher.idle();
+			assert.equal(watcher.results.at(-1).plan.changedTaskCount, Number(newMatch));
+			assert.deepEqual(f.writes, (newMatch ? [0, 1] : [0]).map(n => id(n) + '.md'));
+			assert.equal(f.prompts.length, newMatch ? 2 : 1);
+		} finally { watcher.events.dispose(); }
+	});
+});
+
+test('saved rule requests coalesce and cannot survive deactivation, replacement or deletion', async () => {
+	const { events, rule, batches, settle } = eventFixture();
+	try {
+		for (const replacements of [[], [{ ...rule, active: false }], [{ ...rule, name: 'different version' }]]) {
+			events.configure([rule]);
+			events.requestSavedRule(rule);
+			events.configure(replacements);
+			events.requestSavedRule(rule);
+			await settle();
+			assert.deepEqual(batches, []);
+		}
+		events.configure([rule]);
+		events.requestSavedRule(rule);
+		events.requestSavedRule(rule);
+		await settle();
+		assert.deepEqual(batches, [[[rule.id, 'all']]]);
+	} finally { events.dispose(); }
+});
+
 const carRule = { mode: 'auto', target: rootGroup('taskIcon', 'text', 'endsWith', 'car'),
 	actions: [action('tags', 'formula1'), action('dateScheduled', '2026-11-21')] };
 async function pendingCarRule(settlesDuringPlan) {
@@ -1334,17 +1426,17 @@ test('local-day eligibility comes from filter operators on nested scope or targe
 	]) assert.equal(filterUsesLocalDay({...all, logic:'none', children:[{...all,logic:'any',children:[rootGroup(field,type,operator,'3')]}]}),wanted,operator);
 });
 
-test('startup and wake use only the current day; saving and activating do not run until the next day', async () => {
+test('startup and wake use only the current day; settings observation alone does not trigger newly activated rules', async () => {
 	let day = '2026-12-31';
 	const f = eventFixture({today:()=>day});
 	const initial = calendarRule(f.rule, {scope:dueToday,target:all});
 	f.events.configure([initial, {...initial,id:'manual',mode:'manual'}, {...initial,id:'constant',scope:all,target:all},
 		{...initial,id:'inactive',active:false}]);
-	f.events.wake(); f.events.wake(); await f.settle(); assert.deepEqual(f.batches,[[['daily','day']]]);
+	f.events.wake(); f.events.wake(); await f.settle(); assert.deepEqual(f.batches,[[['daily','all']]]);
 	const later = {...initial,id:'added'}; f.events.configure([initial,later]); f.events.wake();
 	await f.settle(); assert.equal(f.batches.length,1);
 	day='2027-01-04'; f.events.wake(); f.events.wake(); await f.settle();
-	assert.deepEqual(f.batches[1],[['daily','day'],['added','day']]); assert.equal(f.batches.length,2);
+	assert.deepEqual(f.batches[1],[['daily','all'],['added','all']]); assert.equal(f.batches.length,2);
 	f.events.dispose(); day='2027-01-05'; f.events.wake(); await f.settle(); assert.equal(f.batches.length,2);
 });
 

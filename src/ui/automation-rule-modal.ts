@@ -1,6 +1,8 @@
 import { App, Modal, Notice, setIcon } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue } from '../core/automation-change-plan';
 import { createAutomationActionId, createAutomationProjectSerialValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
+import { automationTypedListMapping, readActionLiteral } from '../core/automation-action-fields';
+import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { getOwnerWindow } from '../core/dom-compat';
 import { DATE_OPERATORS, getOperatorsForField, NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS } from '../core/filter-display';
 import { t } from '../core/i18n';
@@ -8,8 +10,8 @@ import { isTaskDataType, TASK_DATA_TYPE_FIELD_KEY } from '../core/task-data-type
 import { isValidTrackedOnCondition } from '../core/tracked-on-filter';
 import { decodeVaultPropertyValue } from '../core/vault-property-codec';
 import type { IndexedTask } from '../types/fields';
-import type { FilterFieldType, FilterGroup, OperonSettings } from '../types/settings';
-import { AutomationActionRow, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
+import type { FilterFieldType, FilterGroup, FilterNode, OperonSettings } from '../types/settings';
+import { AutomationActionRow, actionType, expandListAction, validAction, type ActionEditorContext } from './automation-action-editor';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
 import { bindFilterGroupInteractionState } from './surface-interaction-state';
@@ -23,6 +25,7 @@ export interface AutomationEditorSource {
 	getNativeSnapshot(): TableFilePropertySnapshot | null;
 	subscribe(listener: () => void): () => void;
 	runDraft?(rule: AutomationRule): Promise<void>;
+	runSaved?(rule: AutomationRule): void;
 	plan(rule: AutomationRule): AutomationChangePlan | undefined;
 }
 
@@ -50,6 +53,45 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 		}
 		return true;
 	});
+}
+
+function conditionSignature(node: FilterNode): string {
+	if ('children' in node) {
+		const children = node.children.map(conditionSignature).sort();
+		return '[' + [JSON.stringify(node.logic), ...children].join(',') + ']';
+	}
+	const { field, fieldType, operator, value, values } = node;
+	const operand = operator === 'isAnyOf' || operator === 'isNoneOf' ? values?.slice().sort()
+		: field === 'trackedOn' && operator === 'between' ? values : NO_VALUE_OPERATORS.has(operator) ? undefined : value;
+	return JSON.stringify([field, fieldType, operator, operand]);
+}
+
+export function shouldRunSavedRule(previous: AutomationRule | undefined, saved: AutomationRule, ctx: ActionEditorContext): boolean {
+	if (!saved.active || saved.mode !== 'auto') return false;
+	if (!previous?.active || previous.mode !== 'auto') return true;
+	if (conditionSignature(previous.scope) !== conditionSignature(saved.scope)
+		|| conditionSignature(previous.target) !== conditionSignature(saved.target)) return true;
+
+	// Compare the values the writer sees. Older list actions can occupy several rows after editing.
+	const actions = (rule: AutomationRule) => {
+		const members = new Set<string>();
+		for (const action of rule.actions) {
+			const type = actionType(action.field, ctx);
+			if (type) {
+				try {
+					const literal = readActionLiteral(action, { type, native: isFilePropertyColumnKey(action.field),
+						typedList: !!automationTypedListMapping(action.field, ctx.settings()) });
+					for (const value of Array.isArray(literal) ? literal : [literal]) {
+						members.add(JSON.stringify([action.field, action.operation, value]));
+					}
+					continue;
+				} catch { /* Compare unsupported saved values verbatim. */ }
+			}
+			members.add(JSON.stringify([action.field, action.operation, action.valueEncoding, action.value]));
+		}
+		return JSON.stringify([...members]);
+	};
+	return actions(previous) !== actions(saved);
 }
 
 export const automationIssueLabels: Record<AutomationPlanIssue['reason'], string> = {
@@ -281,8 +323,12 @@ export class AutomationRuleModal extends Modal {
 		try {
 			const rule = structuredClone({ ...this.draft, name: this.draft.name.trim(), actions: this.chosen() });
 			if (runDraft) await this.source.runDraft?.(rule);
-			else saved = await this.persist(rule);
-		} catch { new Notice(t('settings', runDraft ? 'automationRetry' : 'automationSaveFailed')); }
+			else {
+				const runAfterSave = shouldRunSavedRule(this.existing, rule, this.actionContext);
+				saved = await this.persist(rule);
+				if (saved && runAfterSave) this.source.runSaved?.(rule);
+			}
+		} catch { new Notice(t('settings', runDraft || saved ? 'automationRetry' : 'automationSaveFailed')); }
 		finally {
 			this.pending = false;
 			this.contentEl.inert = false;
