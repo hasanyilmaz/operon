@@ -4,8 +4,15 @@ import type { OperonCommandEntry } from '../../core/operon-command-catalog';
 import { buildOperonUri } from '../../core/operon-uri';
 import type { OperonCommandLinks } from '../../systems/operon-command-links';
 
+let nextListId = 0;
+
 class CommandSuggest extends AbstractInputSuggest<OperonCommandEntry> {
-	constructor(app: App, input: HTMLDivElement, private readonly links: OperonCommandLinks,
+	private readonly listId = `operon-uri-commands-${++nextListId}`;
+	private optionList: HTMLElement | null = null;
+	private activeOption: HTMLElement | null = null;
+	private readonly selectionObserver = new MutationObserver(() => this.syncActiveOption());
+
+	constructor(app: App, private readonly input: HTMLDivElement, private readonly links: OperonCommandLinks,
 		private readonly choose: (entry: OperonCommandEntry) => void, private readonly status: HTMLElement) {
 		super(app, input);
 		this.limit = 0;
@@ -22,7 +29,52 @@ class CommandSuggest extends AbstractInputSuggest<OperonCommandEntry> {
 		return results;
 	}
 
-	renderSuggestion(entry: OperonCommandEntry, el: HTMLElement): void { el.setText(entry.name); }
+	renderSuggestion(entry: OperonCommandEntry, el: HTMLElement): void {
+		const list = el.parentElement;
+		if (list && this.optionList !== list) {
+			this.selectionObserver.disconnect();
+			this.optionList = list;
+			list.id = this.listId;
+			list.setAttribute('role', 'listbox');
+			list.setAttribute('aria-label', t('settings', 'uriCommand'));
+			// Obsidian owns keyboard and pointer navigation. Mirror its highlighted row.
+			this.selectionObserver.observe(list, { subtree: true, attributes: true, attributeFilter: ['class'] });
+		}
+		el.id = `${this.listId}-${entry.id}`;
+		el.setAttribute('role', 'option');
+		el.setAttribute('aria-selected', 'false');
+		el.setText(entry.name);
+	}
+
+	override open(): void {
+		super.open();
+		this.input.setAttribute('aria-controls', this.listId);
+		this.input.setAttribute('aria-expanded', 'true');
+		this.syncActiveOption();
+	}
+
+	private syncActiveOption(): void {
+		const active = this.optionList?.querySelector<HTMLElement>('[role="option"].is-selected') ?? null;
+		if (this.activeOption === active) return;
+		this.activeOption?.setAttribute('aria-selected', 'false');
+		this.activeOption = active;
+		if (active) {
+			active.setAttribute('aria-selected', 'true');
+			this.input.setAttribute('aria-activedescendant', active.id);
+		} else {
+			this.input.removeAttribute('aria-activedescendant');
+		}
+	}
+
+	override close(): void {
+		this.selectionObserver.disconnect();
+		this.optionList = null;
+		this.activeOption = null;
+		this.input.removeAttribute('aria-activedescendant');
+		this.input.removeAttribute('aria-controls');
+		this.input.setAttribute('aria-expanded', 'false');
+		super.close();
+	}
 
 	selectSuggestion(entry: OperonCommandEntry): void {
 		this.choose(entry);
@@ -39,7 +91,7 @@ export function renderUriBuilder(app: App, el: HTMLElement, links: OperonCommand
 		command.controlEl.prepend(icon);
 	}
 	const input = command.controlEl.createDiv({ cls: 'operon-uri-builder-field', attr: {
-		contenteditable: 'plaintext-only', role: 'textbox', 'aria-autocomplete': 'list', spellcheck: 'false',
+		contenteditable: 'plaintext-only', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', spellcheck: 'false',
 		'data-placeholder': t('settings', 'uriSearch'), 'aria-label': t('settings', 'uriCommand'),
 	} });
 	const status = command.descEl;
