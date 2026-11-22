@@ -101,6 +101,21 @@ test('default hotkey ID and each named palette action resolve directly, includin
 	assert.deepEqual(errors, ['preset', 'command', 'command', 'command', 'invalid']);
 	assert.equal(calls.length, 4);
 });
+test('routed commands use the receiving vault and validate explicit vaults and target parameters', async () => {
+	const { links, vault, calls, errors } = fixture();
+	for (const data of [
+		{ action: 'operon', command: 'toggle-global-timer' },
+		{ action: 'operon', vault, command: 'toggle-global-timer' },
+		{ action: 'operon', vault: '', command: 'toggle-global-timer' },
+		{ action: 'operon', vault: 'Other', command: 'toggle-global-timer' },
+		{ action: 'operon', view: 'kanban', preset: 'missing' },
+		{ action: 'operon', view: 'kanban', command: 'toggle-global-timer' },
+		{ action: 'foreign', command: 'toggle-global-timer' },
+	]) await links.handleProtocol(data);
+	assert.deepEqual(calls, ['timer', 'timer']);
+	assert.deepEqual(errors, ['invalid', 'invalid', 'preset', 'invalid', 'invalid']);
+});
+
 test('Builder selects without executing, copies a routable vault URI, and clears or refreshes stale selections', async () => {
 	const { links, calls, presets, vault, dispatch, palette } = fixture();
 	const root = new Element();
@@ -192,7 +207,10 @@ test('production shortcuts focus the Builder and open the same new Kanban tab vi
 	builder.input.value = 'sprint'; builder.input.dispatchEvent(new Event('input'));
 	builder.input.suggest.selectSuggestion(builder.input.suggest.items[0]);
 	const uri = root.children[1].controlEl.children[0].value;
-	await host.commandLinks.handleProtocol({ action: 'operon', ...Object.fromEntries(new URL(uri).searchParams) });
+	const routed = new URL(uri).searchParams;
+	assert.equal(routed.get('vault'), host.app.vault.getName());
+	routed.delete('vault'); // Desktop consumes the vault parameter before dispatch to the plugin.
+	await host.commandLinks.handleProtocol({ action: 'operon', ...Object.fromEntries(routed) });
 	await palette.get('operon:open-kanban-preset-kp_sprint-tab').callback();
 	palette.get('operon:open-kanban-view').callback();
 	host.settings.kanbanDefaultPresetId = 'kp_sprint';

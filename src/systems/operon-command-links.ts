@@ -75,8 +75,11 @@ export class OperonCommandLinks {
 		for (const [key, value] of Object.entries(data)) {
 			if (key !== 'action') params.append(key, value);
 		}
+		const receivingVault = this.ports.vaultName();
+		// Desktop removes the vault parameter after routing the URI to this window.
+		if (!params.has('vault')) params.set('vault', receivingVault);
 		const link = parseOperonUri('obsidian://operon?' + params.toString());
-		if (data.action !== 'operon' || !link || link.vault !== this.ports.vaultName()) {
+		if (data.action !== 'operon' || !link || link.vault !== receivingVault) {
 			this.ports.unavailable('invalid');
 			return;
 		}

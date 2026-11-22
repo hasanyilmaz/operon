@@ -38089,9 +38089,19 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
  box-shadow: none;
 }
 
+:is(.operon-uri-builder-command, .operon-uri-builder-result).setting-item:where(.operon-settings-scope, .operon-settings-scope *) {
+	display: grid;
+	grid-template-columns: minmax(8ch, 1fr) minmax(0, 4fr);
+}
+:is(.operon-uri-builder-command, .operon-uri-builder-result).setting-item:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item-info {
+	align-self: center;
+}
+.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item-control {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+}
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control,
 .operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
-	flex: 3 1 18em;
 	min-width: 0;
 }
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) input[type="search"],
