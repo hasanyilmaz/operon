@@ -26,7 +26,7 @@ await build({ stdin: { contents: `
  export { appendDatePickerCandidateRow } from './src/ui/field-pickers/date-picker-row';
  export * from './src/ui/task-data-field-picker';
  export { createEmptyQueryRanker } from './src/ui/field-pickers/empty-query-ranking';
- export { normalizeCustomFieldRawValue } from './src/ui/custom-field-surfaces';
+ export { getCustomFieldMapping, getCustomFieldLabel, isProjectedCustomFieldType, collectCustomFieldValueCandidates, normalizeCustomFieldRawValue } from './src/ui/custom-field-surfaces';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
@@ -728,4 +728,41 @@ test('Actions route task type, image and gallery through the Creator pickers', (
    assert.equal(action.value, newValue);
   }
  }
+});
+
+test('custom text and number Actions open Creator pickers with the saved value', () => {
+ const source = 'src/ui/task-field-picker-dispatch.ts';
+ let picker;
+ const capture = (_anchor, options) => { picker = options; return () => {}; };
+ const openCustomTaskFieldPicker = compile('openCustomTaskFieldPicker', {
+  ...h, showCustomTextFieldPicker: capture, showCustomNumberFieldPicker: capture,
+ }, '', source);
+ const openTaskFieldPicker = compile('openTaskFieldPicker', { openCustomTaskFieldPicker }, '', source);
+ for (const type of ['text', 'number']) {
+  const field = 'custom-' + type;
+  const mapping = { canonicalKey: field, visiblePropertyName: 'Custom ' + type, type, isSystem: false };
+  const action = { field, operation: 'add', value: type === 'text' ? 'Previous' : '0' };
+  const render = compile('renderValue', {...h, actionType: () => type, openTaskFieldPicker, automationTypedListMapping: () => null}, 'AutomationActionRow');
+  const ctx = {settings: () => ({...h.DEFAULT_SETTINGS, keyMappings: [mapping]}), tasks: () => [{...task(today), fieldValues: {[field]: 'Existing'}}], changed() {}};
+  const host = new PickerElement();
+  render.call({ action, valueHost: host, ctx, syncType() {} });
+  host.children[0].fire('click');
+  assert.equal(picker.type, type);
+  assert.equal(picker.value, action.value);
+  if (type === 'text') assert.deepEqual(picker.candidates, ['Existing']);
+  const value = type === 'text' ? 'New text' : '-2.5';
+  picker.onCommit(field, value);
+  assert.equal(action.value, value);
+  host.children[0].fire('click');
+  assert.equal(picker.value, value);
+  picker.onRemove(field);
+  assert.equal(action.value, '');
+ }
+});
+
+test('ordinary custom list suggestions count tasks once per value and break ties alphabetically', () => {
+ const mapping = {canonicalKey: 'topics', visiblePropertyName: 'Topics', type: 'list'};
+ const tasks = ['B; B; B; A; Z', 'Z', 'Z'].map((topics, i) => ({...task(today), operonId: String(i), fieldValues: {topics}}));
+ assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping, 'usage'), ['Z', 'A', 'B']);
+ assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping), ['A', 'B', 'Z']);
 });

@@ -2079,3 +2079,11 @@ test('gallery Actions add or remove only the selected media reference', async ()
 		assert.deepEqual(parseYaml((await f.read('Gallery.md')).split('---')[1]).taskGallery, expected);
 	}
 });
+
+test('custom list suggestions rank by task count with distinct typed members', async () => {
+	const rows = ['2; "2"; "A; B"', '"2"; "A; B"', '"A; B"'];
+	const files = Object.fromEntries(rows.map((members, i) => [id(i) + '.md', inline(id(i), ' {{Members:: ' + members + '}}')]));
+	const f = await fixture(files, {settings: typedMembers});
+	const candidates = collectNativeFieldValueCandidates(f.app, [...f.tasks.values()], typedMembers.keyMappings, 'Members', 'list', true, 'usage');
+	assert.deepEqual(candidates, ['"A; B"', '"2"', '2']);
+});

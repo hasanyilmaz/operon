@@ -157,20 +157,32 @@ function getCustomSurfaceFallbackVisibility(mapping: KeyMapping, surface: Custom
 	return mapping.showInChips === true;
 }
 
+type CandidateOrder = 'alphabetical' | 'usage';
+
+function sortedCandidates(candidates: Set<string>, usage?: Map<string, number>): string[] {
+	return [...candidates].sort((a, b) => (usage?.get(b) ?? 0) - (usage?.get(a) ?? 0)
+		|| a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
 export function collectCustomFieldValueCandidates(
 	app: Pick<App, 'metadataCache' | 'vault'> | null | undefined,
 	tasks: readonly IndexedTask[],
 	mapping: Pick<KeyMapping, 'canonicalKey' | 'visiblePropertyName' | 'type'>,
+	order: CandidateOrder = 'alphabetical',
 ): string[] {
 	const candidates = new Set<string>();
+	const usage = order === 'usage' ? new Map<string, number>() : undefined;
 	const scalarOnly = mapping.type === 'number' || mapping.type === 'checkbox';
-	const rememberValue = (rawValue: unknown): void => {
+	const rememberValue = (rawValue: unknown, countUsage = false): void => {
 		if (scalarOnly && Array.isArray(rawValue)) return;
 		const normalized = normalizeCustomFieldRawValue(rawValue);
 		if (!normalized) return;
 		if (mapping.type === 'list') {
-			for (const item of parseListValue(normalized)) {
-				if (item) candidates.add(item);
+			const items = parseListValue(normalized);
+			for (const item of countUsage ? new Set(items) : items) {
+				if (!item) continue;
+				candidates.add(item);
+				if (usage && countUsage) usage.set(item, (usage.get(item) ?? 0) + 1);
 			}
 			return;
 		}
@@ -180,7 +192,7 @@ export function collectCustomFieldValueCandidates(
 	for (const task of tasks) {
 		// YAML projection loses native array/scalar distinctions; use raw metadata below.
 		if (scalarOnly && task.primary?.format === 'yaml') continue;
-		rememberValue((task.fieldValues as Record<string, unknown>)[mapping.canonicalKey]);
+		rememberValue((task.fieldValues as Record<string, unknown>)[mapping.canonicalKey], order === 'usage');
 	}
 
 	const fieldNames = new Set<string>([mapping.canonicalKey.toLocaleLowerCase()]);
@@ -193,13 +205,13 @@ export function collectCustomFieldValueCandidates(
 		}
 	}
 
-	return Array.from(candidates).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+	return sortedCandidates(candidates, usage);
 }
 
 /** Native picker suggestions share the typed vault pool and ready task index. Never read sources or write drafts. */
 export function collectNativeFieldValueCandidates(
  app: App, tasks: readonly IndexedTask[], mappings: readonly KeyMapping[], sourceName: string, type: FilterFieldType,
- mappedInlineList = false,
+ mappedInlineList = false, order: CandidateOrder = 'alphabetical',
 ): string[] {
  if (type !== 'text' && type !== 'list') return [];
  const identity = sourceName.trim().toLowerCase();
@@ -209,25 +221,30 @@ export function collectNativeFieldValueCandidates(
  const aliases = [...new Set([sourceName, ...(matches.length ? getManagedYamlAliases(matches[0].canonicalKey, [matches[0]]) : [])]
   .map(name => name.trim().toLowerCase()))];
  const candidates = new Set<string>();
- const remember = (value: unknown): void => {
+ const usage = order === 'usage' ? new Map<string, number>() : undefined;
+ const remember = (value: unknown, countUsage = false): void => {
   if (value === undefined || value === null || nativePropertyValueReadOnlyReason(value, type)) return;
   if (type === 'list') {
-   if (Array.isArray(value)) for (const member of value) candidates.add(encodeVaultPropertyValue([member], 'list'));
+   if (Array.isArray(value)) for (const member of countUsage ? new Set(value) : value) {
+    const key = encodeVaultPropertyValue([member], 'list');
+    candidates.add(key);
+    if (usage && countUsage) usage.set(key, (usage.get(key) ?? 0) + 1);
+   }
   } else if (typeof value === 'string' && value.trim()) candidates.add(value);
  };
  const index = getNativePropertyIndex(app);
  for (const task of tasks) {
   if (mappedInlineList && task.primary.format === 'inline') {
-   remember(index.readMappedInlineList(task, sourceName));
+   remember(index.readMappedInlineList(task, sourceName), order === 'usage');
    continue;
   }
   const row = index.getTask(task);
   if (!row.available) continue;
   const properties = aliases.flatMap(alias => row.properties.has(alias) ? [row.properties.get(alias)!] : []);
-  if (properties.length === 1 && !properties[0].reason && properties[0].type === type) remember(properties[0].value);
+  if (properties.length === 1 && !properties[0].reason && properties[0].type === type) remember(properties[0].value, order === 'usage');
  }
  for (const value of getVaultPropertyValueCandidates(app, aliases)) remember(value);
- return [...candidates].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+ return sortedCandidates(candidates, usage);
 }
 
 export function normalizeCustomFieldRawValue(value: unknown): string {

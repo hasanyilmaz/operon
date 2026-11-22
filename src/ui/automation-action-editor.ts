@@ -184,7 +184,8 @@ export class AutomationActionRow {
 			ctx.changed();
 		};
 		const list = type === 'list' || type === 'tags';
-		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate', 'taskType', 'taskImage', 'taskGallery'].includes(action.field);
+		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate', 'taskType', 'taskImage', 'taskGallery'].includes(action.field)
+			|| ((type === 'text' || type === 'number') && !!getCustomFieldMapping(ctx.settings().keyMappings, action.field));
 		if (list || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
 			const display = (text: string) => {
@@ -312,8 +313,8 @@ export class AutomationActionRow {
 		const mapping = getCustomFieldMapping(ctx.settings().keyMappings, key);
 		const typedMapping = automationTypedListMapping(key, ctx.settings());
 		const candidates = native ? ctx.native()?.getCandidates(key) ?? []
-			: typedMapping ? collectNativeFieldValueCandidates(ctx.app, ctx.tasks(), ctx.settings().keyMappings, typedMapping.visiblePropertyName, 'list', true)
-			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping)
+			: typedMapping ? collectNativeFieldValueCandidates(ctx.app, ctx.tasks(), ctx.settings().keyMappings, typedMapping.visiblePropertyName, 'list', true, 'usage')
+			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping, 'usage')
 			: ctx.tasks().flatMap(task => parseListValue(task.fieldValues[key] ?? ''));
 		let nativeValues: (string | number)[] | undefined;
 		if (native || typedMapping) {
