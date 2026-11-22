@@ -14,7 +14,9 @@ const temp = await mkdtemp(path.join(tmpdir(), 'operon-repeat-date-filter-'));
 after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
- export { buildDatePickerCandidates } from './src/ui/field-pickers/date-nlp';
+ export * from './src/ui/field-pickers/automation-date-options';
+ export { normalizeOperonDateKey } from './src/ui/field-pickers/day-picker';
+ export * from './src/ui/field-pickers/date-nlp';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
@@ -37,8 +39,8 @@ await build({ stdin: { contents: `
 `, resolveDir: root }, outfile: path.join(temp, 'helpers.mjs'), bundle: true, format: 'esm', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const h = await import(pathToFileURL(path.join(temp, 'helpers.mjs')).href);
 const editorFile = 'src/ui/filter-condition-editor.ts';
-function compile(name, deps = {}, owner = '') {
- const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : owner === 'AutomationActionRow' ? 'src/ui/automation-action-editor.ts' : editorFile;
+function compile(name, deps = {}, owner = '', sourceFile = editorFile) {
+ const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : owner === 'AutomationActionRow' ? 'src/ui/automation-action-editor.ts' : sourceFile;
  const source = read(file), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
  const method = Boolean(owner);
  const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === owner).members : ast.statements;
@@ -457,4 +459,78 @@ test('overdue plus open-state filter returns only the missed materialized task',
  const resolver=h.createTableValueResolver(candidates,h.DEFAULT_SETTINGS);
  assert.equal(resolver.getRawValue(candidates[0],'taskOccurrenceDate'),'2026-10-09');
  assert.equal(resolver.getRawValue(candidates[3],'taskOccurrenceDate'),'2026-10-30');
+});
+
+test('Date Action picker commits the selected meaning by mouse or keyboard and reopens the saved value', () => {
+ const file = 'src/ui/field-pickers/date-picker.ts';
+ let calendar, panel;
+ const showDatePicker = compile('showDatePicker', {
+  ...h, window: { requestAnimationFrame() {} }, resolvePickerApp() {}, getAppLocale: () => 'en',
+  joinDatePickerClasses: (...names) => names.filter(Boolean).join(' '), baseDatePickerClass: name => name,
+  createFloatingPanel: (_anchor, _classes, onClose) => {
+   panel = new PickerElement();
+   return { panel, close: onClose };
+  },
+  renderOperonDayPicker: (_host, options) => { calendar = options; return { setFocusedDate() {} }; },
+  normalizeManualDateValue: value => h.normalizeOperonDateKey(value) ?? '',
+  formatDatePickerInputDisplay: value => value,
+ }, '', file);
+ class PickerElement extends Element {
+  classList = { add: name => this.addClass(name), remove: name => this.removeClass(name) };
+  createEl(tag, options) { const child = new PickerElement(tag, options); this.children.push(child); return child; }
+  appendChild(child) { if (!this.children.includes(child)) this.children.push(child); }
+  replaceChildren() { this.empty(); }
+  key(key) { for (const cb of this.events.keydown ?? []) cb({ key, preventDefault() {} }); }
+ }
+ const render = compile('renderValue', { ...h, actionType: () => 'date', isFilePropertyColumnKey: () => false,
+  resolveDatePickerLanguage: () => 'en', showDatePicker }, 'AutomationActionRow');
+ for (const field of ['dateScheduled', 'file.property:Milestone']) {
+  const action = { field, value: '' };
+  const reopen = () => {
+   const host = new PickerElement();
+   render.call({ action, valueHost: host, ctx: { settings: () => h.DEFAULT_SETTINGS, changed() {} }, syncType() {} });
+   const input = host.children[0];
+   input.fire('focus');
+   const query = panel.children[0];
+   const type = value => { query.value = value; query.fire('input'); };
+   assert.equal(calendar.showToday, false);
+   return {input, query, type, buttons: () => panel.find(el => el.tag === 'button')};
+  };
+  let ui = reopen();
+  ui.type('Tom');
+  assert.deepEqual(ui.buttons().map(b => b.textContent), ['Tomorrow']);
+  ui.buttons()[0].fire('mousedown');
+  assert.equal(action.value, 'days:1');
+  assert.equal(action.valueEncoding, 'relative-day-v1');
+  ui = reopen();
+  assert.equal(ui.input.value, 'Tomorrow');
+  assert.equal(ui.query.value, 'Tomorrow');
+  for (const [query, expected] of [['Next weekend','nextWeekend'], ['3 days from now','days:3'], ['In 1 week','days:7']]) {
+   ui.type(query); ui.query.key('Enter');
+   assert.equal(action.value, expected);
+   ui = reopen();
+  }
+  ui.type('next week');
+  assert.equal(panel.children[1].textContent, 'Fixed date');
+  const fixedLabel = ui.buttons()[0].textContent;
+  assert.match(fixedLabel, /^\d{4}-\d{2}-\d{2}$/);
+  ui.buttons()[0].fire('mousedown');
+  assert.equal(action.value, fixedLabel);
+  assert.equal(action.valueEncoding, undefined);
+  ui = reopen();
+  calendar.onSelect('2026-11-23');
+  assert.equal(action.value, '2026-11-23');
+  assert.equal(action.valueEncoding, undefined);
+  ui = reopen();
+  assert.ok(ui.buttons().some(button => button.textContent === 'Tomorrow'));
+  ui.type('2026-12-04'); ui.query.key('Enter');
+  assert.equal(action.value, '2026-12-04');
+  assert.equal(action.valueEncoding, undefined);
+  ui = reopen();
+  ui.type('Tom'); ui.query.key('Enter');
+  assert.equal(action.valueEncoding, 'relative-day-v1');
+  reopen(); calendar.onClear();
+  assert.equal(action.value, '');
+  assert.equal(action.valueEncoding, undefined);
+ }
 });

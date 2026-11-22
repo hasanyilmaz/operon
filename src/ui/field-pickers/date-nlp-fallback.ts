@@ -1,6 +1,8 @@
 import { DateParseCandidate, DateParseContext, DatePickerLang } from './date-nlp';
 
 interface DatePickerStrings {
+	relativeToRun: string;
+	fixedDate: string;
 	searchPlaceholder: string;
 	clear: string;
 	apply: string;
@@ -34,6 +36,8 @@ interface MonthAlias {
 
 const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 	en: {
+		relativeToRun: 'Relative to run date',
+		fixedDate: 'Fixed date',
 		searchPlaceholder: 'Type a date like next tuesday',
 		clear: 'Clear',
 		apply: 'Apply',
@@ -60,6 +64,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Last ${name}`,
 	},
 	tr: {
+		relativeToRun: 'Çalıştırma gününe göre',
+		fixedDate: 'Sabit tarih',
 		searchPlaceholder: 'Gelecek sali gibi bir tarih yazin',
 		clear: 'Temizle',
 		apply: 'Uygula',
@@ -86,6 +92,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Gecen ${name.toLowerCase()}`,
 	},
 	de: {
+		relativeToRun: 'Relativ zum Ausführungstag',
+		fixedDate: 'Festes Datum',
 		searchPlaceholder: 'Ein Datum wie nächsten Dienstag eingeben',
 		clear: 'Löschen',
 		apply: 'Übernehmen',
@@ -112,6 +120,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Letzter ${name}`,
 	},
 	fr: {
+		relativeToRun: 'Par rapport au jour d’exécution',
+		fixedDate: 'Date fixe',
 		searchPlaceholder: 'Saisir une date comme mardi prochain',
 		clear: 'Effacer',
 		apply: 'Appliquer',
@@ -138,6 +148,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `${name} dernier`,
 	},
 	es: {
+		relativeToRun: 'Relativa al día de ejecución',
+		fixedDate: 'Fecha fija',
 		searchPlaceholder: 'Escribir una fecha como próximo martes',
 		clear: 'Limpiar',
 		apply: 'Aplicar',
@@ -164,6 +176,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `${name} pasado`,
 	},
 	'zh-CN': {
+		relativeToRun: '相对于运行日期',
+		fixedDate: '固定日期',
 		searchPlaceholder: '输入日期，如 下周二',
 		clear: '清除',
 		apply: '应用',
@@ -190,6 +204,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `上${name}`,
 	},
 	'zh-TW': {
+		relativeToRun: '相對於執行日期',
+		fixedDate: '固定日期',
 		searchPlaceholder: '輸入日期，例如 下週二',
 		clear: '清除',
 		apply: '套用',
@@ -216,6 +232,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `上${name}`,
 	},
 	ja: {
+		relativeToRun: '実行日を基準にする',
+		fixedDate: '固定日',
 		searchPlaceholder: '日付を入力（例: 来週火曜日）',
 		clear: 'クリア',
 		apply: '適用',
@@ -242,6 +260,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `先週${name}`,
 	},
 	ru: {
+		relativeToRun: 'Относительно даты запуска',
+		fixedDate: 'Фиксированная дата',
 		searchPlaceholder: 'Введите дату, например следующий вторник',
 		clear: 'Очистить',
 		apply: 'Применить',
@@ -268,6 +288,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Прошлый ${name}`,
 	},
 	it: {
+		relativeToRun: 'Relativa al giorno di esecuzione',
+		fixedDate: 'Data fissa',
 		searchPlaceholder: 'Digita una data come martedì prossimo',
 		clear: 'Cancella',
 		apply: 'Applica',
@@ -295,6 +317,8 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => (name === 'domenica' ? `${name} scorsa` : `${name} scorso`),
 	},
 	'pt-BR': {
+		relativeToRun: 'Relativa ao dia da execução',
+		fixedDate: 'Data fixa',
 		searchPlaceholder: 'Digite uma data, como próxima terça-feira',
 		clear: 'Limpar',
 		apply: 'Aplicar',

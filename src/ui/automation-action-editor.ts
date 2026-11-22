@@ -11,6 +11,8 @@ import type { IndexedTask } from '../types/fields';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import type { FilterFieldPickerOption } from './filter-condition-editor';
+import { automationDateLabel } from './field-pickers/automation-date-options';
+import { resolveDatePickerLanguage } from './field-pickers/date-nlp';
 import { showDatePicker } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
@@ -222,7 +224,8 @@ export class AutomationActionRow {
 		const input = valueHost.createEl('input', { type: type === 'number' && (!raw || Number.isFinite(Number(raw))) ? 'number' : 'text',
 			cls: 'operon-filter-control', attr: { 'aria-label': label, placeholder: label } });
 		input.disabled = !type;
-		input.value = raw;
+		input.value = type === 'date' && action.valueEncoding === 'relative-day-v1'
+			? automationDateLabel(raw, resolveDatePickerLanguage()) : raw;
 		if (type === 'number') input.step = 'any';
 		const update = (value: string) => { input.value = value; change(value); };
 		input.addEventListener('input', () => change(input.value));
@@ -231,7 +234,17 @@ export class AutomationActionRow {
 				if (this.popoverOpen) return;
 				this.popoverOpen = true;
 				const onClose = () => { this.popoverOpen = false; queueMicrotask(() => this.syncType()); };
-				if (type === 'date') showDatePicker(input, { app: ctx.app, fieldKey: action.field, value: input.value || undefined,
+				if (type === 'date') showDatePicker(input, { app: ctx.app, fieldKey: action.field,
+					value: action.valueEncoding === 'relative-day-v1' ? undefined : input.value || undefined,
+					relativeDay: {
+						value: action.valueEncoding === 'relative-day-v1' ? String(action.value) : undefined,
+						onSelect: (expression, display) => {
+							action.valueEncoding = 'relative-day-v1';
+							action.value = expression;
+							input.value = display;
+							ctx.changed();
+						},
+					},
 					dateDisplayFormat: settings.dateDisplayFormat,
 					manualDatePicker: { weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers },
 					canRemove: !!input.value, onRemove: () => update(''), onSelect: update, onClose });
