@@ -5,9 +5,10 @@ import { buildOperonUri } from '../../core/operon-uri';
 import type { OperonCommandLinks } from '../../systems/operon-command-links';
 
 class CommandSuggest extends AbstractInputSuggest<OperonCommandEntry> {
-	constructor(app: App, input: HTMLInputElement, private readonly links: OperonCommandLinks,
+	constructor(app: App, input: HTMLDivElement, private readonly links: OperonCommandLinks,
 		private readonly choose: (entry: OperonCommandEntry) => void, private readonly status: HTMLElement) {
 		super(app, input);
+		this.limit = 0;
 	}
 
 	getSuggestions(query: string): OperonCommandEntry[] {
@@ -15,7 +16,7 @@ class CommandSuggest extends AbstractInputSuggest<OperonCommandEntry> {
 		const results = words.length ? this.links.entries.filter(entry => {
 			const text = ('Operon: ' + entry.name).toLocaleLowerCase();
 			return words.every(word => text.includes(word));
-		}) : [];
+		}) : this.links.entries;
 		this.status.setText(words.length && !results.length ? t('settings', 'uriNoMatches') : '');
 		return results;
 	}
@@ -36,37 +37,41 @@ export function renderUriBuilder(app: App, el: HTMLElement, links: OperonCommand
 		icon.setAttribute('aria-hidden', 'true');
 		command.controlEl.prepend(icon);
 	}
-	const input = command.controlEl.createEl('input', { type: 'search', attr: {
-		autocomplete: 'off', spellcheck: 'false', placeholder: t('settings', 'uriSearch'), 'aria-label': t('settings', 'uriCommand'),
+	const input = command.controlEl.createDiv({ cls: 'operon-uri-builder-field', attr: {
+		contenteditable: 'plaintext-only', role: 'textbox', 'aria-autocomplete': 'list', spellcheck: 'false',
+		'data-placeholder': t('settings', 'uriSearch'), 'aria-label': t('settings', 'uriCommand'),
 	} });
 	const status = command.descEl;
 	status.setAttribute('role', 'status');
 	const result = new Setting(el).setName('URI');
 	result.settingEl.addClass('operon-uri-builder-result');
-	const output = result.controlEl.createEl('input', { type: 'text', attr: { readonly: '', 'aria-label': 'URI' } });
+	const output = result.controlEl.createDiv({ cls: 'operon-uri-builder-field', attr: {
+		role: 'textbox', 'aria-readonly': 'true', 'aria-label': 'URI', tabindex: '0', dir: 'ltr',
+	} });
 	let selectedId: string | undefined;
 	let copy: ButtonComponent;
 	result.addButton(button => {
 		copy = button;
-		button.setButtonText(t('settings', 'uriCopy')).setDisabled(true).onClick(async () => {
+		button.buttonEl.setAttribute('aria-label', t('settings', 'uriCopy'));
+		button.setIcon('copy').setDisabled(true).onClick(async () => {
 			refresh();
-			if (!output.value) return;
+			const uri = output.textContent;
+			if (!uri) return;
 			try {
-				await navigator.clipboard.writeText(output.value);
+				await navigator.clipboard.writeText(uri);
 				new Notice(t('notifications', 'linkCopied'));
 			} catch {
-				output.select();
+				output.focus();
+				output.ownerDocument.getSelection()?.selectAllChildren(output);
 				new Notice(t('notifications', 'clipboardWriteFailed'));
 			}
 		});
-		const icon = getIcon('copy');
-		if (icon) button.buttonEl.prepend(icon);
 	});
 	function refresh(): void {
 		const selected = selectedId ? links.entries.find(entry => entry.id === selectedId) : undefined;
-		if (selected) input.value = selected.name;
-		else if (selectedId) { selectedId = undefined; input.value = ''; }
-		output.value = selected ? buildOperonUri(app.vault.getName(), selected.target) : '';
+		if (selected && input.textContent !== selected.name) input.setText(selected.name);
+		if (selectedId && !selected) { selectedId = undefined; input.setText(''); }
+		output.setText(selected ? buildOperonUri(app.vault.getName(), selected.target) : '');
 		copy.setDisabled(!selected);
 	}
 	const suggest = new CommandSuggest(app, input, links, entry => {
@@ -74,7 +79,20 @@ export function renderUriBuilder(app: App, el: HTMLElement, links: OperonCommand
 		status.setText('');
 		refresh();
 	}, status);
-	const onEdit = () => { selectedId = undefined; refresh(); };
+	const onEdit = () => {
+		selectedId = undefined;
+		if (!input.textContent) input.empty(); // Browsers may leave a line break in an empty editable.
+		refresh();
+	};
+	const onClick = () => {
+		// Focus opens suggestions initially. Reopen on a second click after Escape as well.
+		if (!input.textContent) input.dispatchEvent(new Event('input'));
+	};
+	const onBeforeInput = (event: InputEvent) => {
+		if (event.inputType === 'insertParagraph' || event.inputType === 'insertLineBreak') event.preventDefault();
+	};
+	input.addEventListener('beforeinput', onBeforeInput);
+	input.addEventListener('click', onClick);
 	input.addEventListener('input', onEdit);
 	const unsubscribe = links.subscribe(() => {
 		refresh();
@@ -82,6 +100,8 @@ export function renderUriBuilder(app: App, el: HTMLElement, links: OperonCommand
 	});
 	return { input, dispose() {
 		unsubscribe();
+		input.removeEventListener('beforeinput', onBeforeInput);
+		input.removeEventListener('click', onClick);
 		input.removeEventListener('input', onEdit);
 		suggest.close();
 	} };

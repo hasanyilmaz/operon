@@ -38098,21 +38098,54 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 }
 .operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item-control {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr) var(--input-height);
 }
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control,
 .operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
 	min-width: 0;
 }
-.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) input[type="search"],
-.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) input[type="text"] {
-	flex: 1;
-	min-width: 0;
+.operon-uri-builder-field {
+	--uri-field-line-height: 1.35em;
+	--uri-field-padding: max(2px, calc((var(--input-height) - var(--uri-field-line-height)) / 2 - var(--input-border-width)));
+	box-sizing: border-box;
 	width: 100%;
-}
-.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) input[readonly] {
-	font-family: var(--font-monospace);
+	min-width: 0;
+	min-height: var(--input-height);
+	max-height: calc(var(--input-height) + var(--uri-field-line-height));
+	overflow-y: auto;
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
+	padding: var(--uri-field-padding) var(--size-4-2);
+	border: var(--input-border-width) solid var(--background-modifier-border);
+	border-radius: var(--input-radius);
+	background-color: var(--background-modifier-form-field);
+	color: var(--text-normal);
 	font-size: var(--font-ui-small);
+	line-height: var(--uri-field-line-height);
+	text-align: start;
+	cursor: text;
+	user-select: text;
+	-webkit-user-select: text;
+}
+.operon-uri-builder-field:focus-visible {
+	outline: 2px solid var(--background-modifier-border-focus);
+	outline-offset: -1px;
+}
+.operon-uri-builder-field[contenteditable]:empty::before {
+	content: attr(data-placeholder);
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-faint);
+	pointer-events: none;
+}
+.operon-uri-builder-result .operon-uri-builder-field {
+	font-family: var(--font-monospace);
+}
+.operon-uri-builder-result .setting-item-control > button {
+	width: var(--input-height);
+	padding-inline: 0;
 }
 
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
@@ -38126,6 +38159,6 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 	color: var(--text-muted);
 	pointer-events: none;
 }
-.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) input[type="search"] {
+.operon-uri-builder-command .operon-uri-builder-field {
 	padding-inline-start: var(--size-4-8);
 }

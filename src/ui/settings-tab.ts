@@ -908,7 +908,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private storage: OperonStorage;
 	private pluginVersion: string;
 	private commandLinks?: OperonCommandLinks;
-	private uriBuilderInput?: HTMLInputElement;
+	private uriBuilderInput?: HTMLDivElement;
 
 	setCommandLinks(links: OperonCommandLinks): void { this.commandLinks = links; }
 

@@ -11,9 +11,11 @@ export const notices = [];
 export function getIcon() { return new Element(); }
 export class Notice { constructor(message) { notices.push(message); } }
 export class Element extends EventTarget {
-	value = ''; textContent = ''; children = [];
-	createEl(type) { const child = new Element(); child.type = type; this.children.push(child); return child; }
-	addClass() {} setAttribute() {} prepend() {} select() { this.selected = true; }
+	textContent = ''; children = []; attrs = {};
+	ownerDocument = { getSelection: () => ({ selectAllChildren: el => { el.selected = true; } }) };
+	createDiv(opts = {}) { const child = new Element(); child.attrs = opts.attr ?? {}; this.children.push(child); return child; }
+	addClass() {} setAttribute(key, val) { this.attrs[key] = val; } prepend() {} focus() { this.dispatchEvent(new Event('focus')); }
+	empty() { this.textContent = ''; }
 	setText(text) { this.textContent = text; }
 }
 export class Setting {
@@ -21,7 +23,7 @@ export class Setting {
 	constructor(root) { root.children.push(this); }
 	setName(name) { this.name = name; return this; }
 	addButton(fn) {
-		const btn = this.button = { buttonEl: new Element(), setButtonText() { return this; },
+		const btn = this.button = { buttonEl: new Element(), setIcon(icon) { this.icon = icon; return this; },
 			setDisabled(value) { this.disabled = value; return this; }, onClick(callback) { this.click = callback; return this; } };
 		fn(btn); return this;
 	}
@@ -30,7 +32,14 @@ export class AbstractInputSuggest {
 	constructor(app, input) {
 		input.suggest = this;
 		this.open = false;
-		input.addEventListener('input', () => { this.items = this.getSuggestions(input.value); this.open = !!this.items.length; this.index = 0; });
+		const update = () => {
+			const matches = this.getSuggestions(input.textContent);
+			this.items = this.limit === 0 ? matches : matches.slice(0, 100);
+			this.open = !!this.items.length;
+			this.index = 0;
+		};
+		input.addEventListener('input', update);
+		input.addEventListener('focus', update);
 		input.addEventListener('keydown', e => {
 			if (e.key === 'Escape') this.close();
 			if (!this.open) return;
@@ -121,30 +130,30 @@ test('Builder selects without executing, copies a routable vault URI, and clears
 	const root = new Element();
 	const { input, dispose } = renderUriBuilder({ vault: { getName: () => vault } }, root, links);
 	const output = root.children[1].controlEl.children[0], copy = root.children[1].button;
-	const edit = text => { input.value = text; input.dispatchEvent(new Event('input')); };
+	const edit = text => { input.textContent = text; input.dispatchEvent(new Event('input')); };
 	const key = k => { const e = new Event('keydown'); e.key = k; input.dispatchEvent(e); };
 	const clip = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 	let copied;
 	Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value; } } });
 	try {
-		assert.equal(input.value, ''); assert.equal(output.value, ''); assert.ok(copy.disabled);
+		assert.equal(input.textContent, ''); assert.equal(output.textContent, ''); assert.ok(copy.disabled);
 		palette.get('operon:open-uri-builder').callback();
 		edit('kanban'); key('Escape'); assert.equal(input.suggest.open, false);
 		edit('kanban'); key('ArrowDown'); key('Enter');
-		assert.equal(input.value, 'Open Kanban › Sprint › New Tab');
-		edit('sprint kanban'); assert.ok(copy.disabled); assert.equal(output.value, '');
+		assert.equal(input.textContent, 'Open Kanban › Sprint › New Tab');
+		edit('sprint kanban'); assert.ok(copy.disabled); assert.equal(output.textContent, '');
 		key('Enter'); assert.equal(input.suggest.open, false); assert.equal(copy.disabled, false);
 		await copy.click();
 		assert.equal(copied, 'obsidian://operon?vault=Test%20%26%20Work&view=kanban&preset=kp_123');
 		assert.deepEqual(calls, ['builder']); assert.equal(notices.at(-1), 'Link copied to clipboard');
 		await dispatch(copied); assert.deepEqual(calls, ['builder', 'kp_123']);
 		presets[0].name = 'Next sprint'; links.refresh();
-		assert.match(input.value, /Next sprint/u); assert.equal(output.value, copied);
+		assert.match(input.textContent, /Next sprint/u); assert.equal(output.textContent, copied);
 		presets.splice(0); links.refresh();
-		assert.equal(input.value, ''); assert.ok(copy.disabled);
+		assert.equal(input.textContent, ''); assert.ok(copy.disabled);
 		edit('nothing matches'); assert.equal(root.children[0].descEl.textContent, 'No matching commands.');
 		edit('start/stop timer'); input.suggest.selectSuggestion(input.suggest.items[0]);
-		assert.equal(output.value, 'obsidian://operon?vault=Test%20%26%20Work&command=toggle-global-timer');
+		assert.equal(output.textContent, 'obsidian://operon?vault=Test%20%26%20Work&command=toggle-global-timer');
 		navigator.clipboard.writeText = () => Promise.reject(new Error('Clipboard unavailable'));
 		await copy.click(); assert.equal(notices.at(-1), 'Clipboard write failed'); assert.ok(output.selected);
 		assert.deepEqual(calls, ['builder', 'kp_123']);
@@ -152,6 +161,33 @@ test('Builder selects without executing, copies a routable vault URI, and clears
 		dispose();
 		if (clip) Object.defineProperty(navigator, 'clipboard', clip); else delete navigator.clipboard;
 	}
+});
+
+test('an empty Builder browses the full catalog and reopens after Escape without running a command', () => {
+	const { links, presets, calls, vault } = fixture();
+	for (let i = 0; i < 120; i++) presets.push({ id: 'kp_' + i, name: 'Board ' + i });
+	links.refresh();
+	const root = new Element();
+	const { input, dispose } = renderUriBuilder({ vault: { getName: () => vault } }, root, links);
+	const output = root.children[1].controlEl.children[0], copy = root.children[1].button;
+	assert.equal(copy.icon, 'copy');
+	assert.equal(copy.buttonEl.attrs['aria-label'], 'Copy');
+	assert.equal(copy.buttonEl.textContent, '');
+	assert.equal(output.attrs['aria-readonly'], 'true');
+	input.focus();
+	assert.deepEqual(input.suggest.items, links.entries);
+	input.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape' }));
+	assert.equal(input.suggest.open, false);
+	input.dispatchEvent(new Event('click'));
+	assert.equal(input.suggest.open, true);
+	assert.deepEqual(input.suggest.items, links.entries);
+	const lastBoard = input.suggest.items.find(entry => entry.name.includes('Board 119'));
+	assert.ok(lastBoard);
+	input.suggest.selectSuggestion(lastBoard);
+	assert.equal(input.textContent, lastBoard.name);
+	assert.equal(new URL(output.textContent).searchParams.get('preset'), 'kp_119');
+	assert.deepEqual(calls, []);
+	dispose();
 });
 
 // Exercise the actual plugin registrations and Settings navigation with an isolated host.
@@ -204,9 +240,9 @@ test('production shortcuts focus the Builder and open the same new Kanban tab vi
 	assert.deepEqual(calls.splice(0), ['settings', ['operon', ['General']], 'focus']);
 	const root = new Element();
 	const builder = renderUriBuilder(host.app, root, host.commandLinks);
-	builder.input.value = 'sprint'; builder.input.dispatchEvent(new Event('input'));
+	builder.input.textContent = 'sprint'; builder.input.dispatchEvent(new Event('input'));
 	builder.input.suggest.selectSuggestion(builder.input.suggest.items[0]);
-	const uri = root.children[1].controlEl.children[0].value;
+	const uri = root.children[1].controlEl.children[0].textContent;
 	const routed = new URL(uri).searchParams;
 	assert.equal(routed.get('vault'), host.app.vault.getName());
 	routed.delete('vault'); // Desktop consumes the vault parameter before dispatch to the plugin.
