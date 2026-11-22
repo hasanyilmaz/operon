@@ -165,7 +165,8 @@ export class AutomationRuleModal extends Modal {
 		this.draft = existing ? structuredClone(existing) : createAutomationRule('', readAutomationRules(source.getSettings().automationRules).rules);
 		this.usedActionIds = new Set(this.draft.actions.map(action => action.id));
 		this.fields = automationFieldCatalog(this.draft, source, () => this.native);
-		this.actionContext = { app, settings: source.getSettings, tasks: source.getTasks, native: () => this.native,
+		this.actionContext = { app, settings: source.getSettings, tasks: source.getTasks,
+			subscribeIndexUpdates: listener => source.subscribe(listener), native: () => this.native,
 			nativeType: key => this.nativeTypes.get(key) ?? null, options: () => this.options, changed: () => this.changed() };
 	}
 

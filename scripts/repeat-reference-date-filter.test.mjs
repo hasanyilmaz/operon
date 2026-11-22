@@ -676,12 +676,15 @@ test('dependency Actions search by title or ID, replace one member and reopen wi
  }, '', file);
  const render = compile('renderValue', {...h, actionType: () => 'list', automationTypedListMapping: () => null,
   showDependencyTaskPicker: picker}, 'AutomationActionRow');
- const tasks = ['old', 'first', 'second'].map((id, i) => ({...task(today), operonId: id, description: i ? 'Twin title' : 'Original'}));
+ const initialTasks = ['old', 'first', 'second'].map((id, i) => ({...task(today), operonId: id, description: i ? 'Twin title' : 'Original'}));
  for (const field of ['blocking', 'blockedBy']) for (const operation of ['add', 'remove']) {
+  let tasks = initialTasks;
+  const listeners = new Set();
+  const subscribeIndexUpdates = listener => { listeners.add(listener); return () => listeners.delete(listener); };
   const action = { field, operation, value: ['old'] };
   const row = draft => {
    const host = new DependencyElement();
-   render.call({action: draft, valueHost: host, ctx: {tasks: () => tasks, settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
+   render.call({action: draft, valueHost: host, ctx: {tasks: () => tasks, subscribeIndexUpdates, settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
    return host.children[0];
   };
   const button = row(action);
@@ -690,9 +693,20 @@ test('dependency Actions search by title or ID, replace one member and reopen wi
   const input = panel.find(el => el.tag === 'input')[0];
   input.value = 'Twin'; input.fire('input');
   assert.equal(panel.find(el => el.textContent === 'Twin title').length, 2);
-  input.value = 'second'; input.fire('input'); input.key('Enter');
+  tasks = [
+   ...tasks.map(task => task.operonId === 'second' ? {...task, description: 'Renamed task'} : task),
+   {...tasks[0], operonId: 'new-id', description: 'New task'},
+  ];
+  for (const listener of listeners) listener();
+  assert.equal(panel.find(el => el.textContent === 'Twin title').length, 1);
+  for (const [query, title] of [['New task', 'New task'], ['new-id', 'New task'], ['Renamed task', 'Renamed task'], ['second', 'Renamed task']]) {
+   input.value = query; input.fire('input');
+   assert.equal(panel.find(el => el.textContent === title).length, 1);
+  }
+  input.key('Enter');
+  assert.equal(listeners.size, 0);
   assert.deepEqual(action, {field, operation, value: ['second']});
-  assert.match(row(JSON.parse(JSON.stringify(action))).attrs['aria-label'], /Twin title/);
+  assert.match(row(JSON.parse(JSON.stringify(action))).attrs['aria-label'], /Renamed task/);
   assert.match(row({...action, value: ['missing-id']}).attrs['aria-label'], /missing-id/);
  }
 });

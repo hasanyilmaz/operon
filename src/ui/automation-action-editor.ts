@@ -35,6 +35,7 @@ export interface ActionEditorContext {
 	native: () => TableFilePropertySnapshot | null;
 	nativeType: (key: string) => FilterFieldType | null;
 	tasks: () => readonly IndexedTask[];
+	subscribeIndexUpdates: (listener: () => void) => () => void;
 	changed: () => void;
 }
 
@@ -233,7 +234,8 @@ export class AutomationActionRow {
 					const fieldKey = action.field;
 					const settings = ctx.settings();
 					this.closePicker = showDependencyTaskPicker(trigger.button, {
-						fieldKey, value: current[0] ?? '', oppositeValue: '', allTasks: [...ctx.tasks()],
+						fieldKey, value: current[0] ?? '', oppositeValue: '', allTasks: [],
+						getAllTasks: () => [...ctx.tasks()], subscribeIndexUpdates: ctx.subscribeIndexUpdates,
 						pipelines: settings.pipelines, keyMappings: settings.keyMappings,
 						singleValue: true, closeOnSelect: true,
 						onSave: values => commit(values[fieldKey] ? [values[fieldKey]] : []), onClose,
