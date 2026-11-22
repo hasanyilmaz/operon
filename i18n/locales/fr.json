@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "Ouvrir le générateur d’URI",
 		"openCurrentFileEditor": "Ouvrir l’éditeur de tâches ou de propriétés du fichier actuel",
 		"openMiniCalendar": "Ouvrir le mini calendrier",
 		"openExcalidrawPropertyPool": "Ouvrir Excalidraw Property Pool",
@@ -9,7 +10,7 @@
 		"createTask": "Créer une nouvelle tâche au curseur",
 		"toggleCompletion": "Basculer l'état d'achèvement de la tâche",
 		"toggleGlobalTimer": "Démarrer/arrêter le minuteur",
-		"toggleTimer": "Démarrer/arrêter le suivi du temps",
+		"toggleTimer": "Démarrer/arrêter le minuteur de la tâche sous le curseur",
 		"openTaskEditor": "Ouvrir l'éditeur de tâche (nouvelle tâche)",
 		"editTask": "Modifier la tâche au curseur",
 		"rebuildIndex": "Reconstruire l'index complet",
@@ -440,6 +441,13 @@
 		"introDock": "Résolvez ici les conflits de doublons d'operonId. Vous pouvez fermer cette fenêtre à tout moment et la rouvrir depuis la palette de commandes ou l'alerte de la dock de statut."
 	},
 	"settings": {
+		"uriBuilder": "Générateur d’URI",
+		"uriCommand": "Commande",
+		"uriSearch": "Rechercher une commande Operon…",
+		"uriCopy": "Copier",
+		"uriPresetMissing": "Préréglage introuvable.",
+		"uriUnavailable": "Cette commande Operon est indisponible ici.",
+		"uriNoMatches": "Aucune commande correspondante.",
 		"automationsTitle": "Automatisations",
 		"automationRunDraftHint": "Exécuter cette règle une fois sans l’enregistrer",
 		"automationRun": "Exécuter",

@@ -1,4 +1,4 @@
-export type CoreGeneralSettingsGroupId = 'languageFormats' | 'updates' | 'demoWorkspace' | 'operonDocs' | 'taskIndexing' | 'duplicateIdAlerts' | 'developerApi';
+export type CoreGeneralSettingsGroupId = 'languageFormats' | 'updates' | 'demoWorkspace' | 'operonDocs' | 'taskIndexing' | 'duplicateIdAlerts' | 'uriBuilder' | 'developerApi';
 
 export type CoreGeneralSettingsPlanItem =
 	| { type: 'entry'; entryId: string }
@@ -11,6 +11,7 @@ const CORE_GENERAL_SETTINGS_GROUPS: ReadonlyArray<{ groupId: CoreGeneralSettings
 	{ groupId: 'operonDocs', entryIds: ['settings.operonDocsFolder', 'settings.operonDocsAutoUpdateEnabled', 'settings.operonDocs'] },
 	{ groupId: 'taskIndexing', entryIds: ['settings.indexEventDebounceMs', 'settings.fullReindexOnStartup'] },
 	{ groupId: 'duplicateIdAlerts', entryIds: ['settings.duplicateAlertDelaySeconds', 'settings.duplicateAlertAutoOpenManager'] },
+	{ groupId: 'uriBuilder', entryIds: ['settings.uriBuilder'] },
 	{ groupId: 'developerApi', entryIds: ['integrations.developerApi'] },
 ];
 

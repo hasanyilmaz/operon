@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "URI-Builder öffnen",
 		"openCurrentFileEditor": "Aufgaben- oder Eigenschafteneditor der aktuellen Datei öffnen",
 		"openMiniCalendar": "Mini-Kalender öffnen",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool öffnen",
@@ -9,7 +10,7 @@
 		"createTask": "Neue Aufgabe an der Cursorposition erstellen",
 		"toggleCompletion": "Aufgabenerledigung umschalten",
 		"toggleGlobalTimer": "Timer starten/stoppen",
-		"toggleTimer": "Zeiterfassung starten/stoppen",
+		"toggleTimer": "Timer für Aufgabe am Cursor starten/stoppen",
 		"openTaskEditor": "Aufgaben-Editor öffnen (neue Aufgabe)",
 		"editTask": "Aufgabe an der Cursorposition bearbeiten",
 		"rebuildIndex": "Vollständigen Index neu aufbauen",
@@ -440,6 +441,13 @@
 		"introDock": "Löse hier Konflikte durch doppelte operonIds. Du kannst dieses Fenster jederzeit schließen und über die Befehlspalette oder die Status-Dock-Warnung wieder öffnen."
 	},
 	"settings": {
+		"uriBuilder": "URI-Builder",
+		"uriCommand": "Befehl",
+		"uriSearch": "Operon-Befehle suchen…",
+		"uriCopy": "Kopieren",
+		"uriPresetMissing": "Vorlage nicht gefunden.",
+		"uriUnavailable": "Dieser Operon-Befehl ist hier nicht verfügbar.",
+		"uriNoMatches": "Keine passenden Befehle.",
 		"automationsTitle": "Automatisierungen",
 		"automationRunDraftHint": "Diese Regel einmal ausführen, ohne sie zu speichern",
 		"automationRun": "Ausführen",

@@ -38088,3 +38088,34 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
  border: 1px solid var(--background-modifier-border);
  box-shadow: none;
 }
+
+.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control,
+.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
+	flex: 3 1 18em;
+	min-width: 0;
+}
+.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) input[type="search"],
+.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) input[type="text"] {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
+}
+.operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) input[readonly] {
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+}
+
+.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
+	position: relative;
+}
+.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control > svg {
+	position: absolute;
+	inset-inline-start: var(--size-4-2);
+	width: var(--icon-s);
+	height: var(--icon-s);
+	color: var(--text-muted);
+	pointer-events: none;
+}
+.operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) input[type="search"] {
+	padding-inline-start: var(--size-4-8);
+}

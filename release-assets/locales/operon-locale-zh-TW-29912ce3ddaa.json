@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -344,6 +344,7 @@
       "openTaskFinder": "任務查詢器",
       "openTimeSessionHistory": "開啟時間會話歷史面板",
       "openUpcomingTasks": "開啟即將到來的任務",
+      "openUriBuilder": "開啟 URI 建立工具",
       "rebuildIndex": "重建完整索引",
       "reloadSettingsFromStorage": "從儲存重新載入 Operon 設定",
       "repairRecurringFileTaskIdentities": "修復重複檔案任務識別",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "啟動/停止計時器",
       "togglePinnedDock": "切換置頂任務停靠欄",
       "toggleStatusDock": "切換狀態停靠列顯示",
-      "toggleTimer": "啟動/停止時間追蹤器",
+      "toggleTimer": "開始／停止游標所在任務的計時器",
       "trackDifferentTask": "追蹤另一項任務",
       "updateExternalCalendars": "更新外部日曆"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "獨立於釘選任務的卡片色彩。",
       "upcomingTimedFirst": "定時任務優先",
       "upcomingTimedGroup": "定時",
+      "uriBuilder": "URI 建立工具",
+      "uriCommand": "指令",
+      "uriCopy": "複製",
+      "uriNoMatches": "沒有相符的指令。",
+      "uriPresetMissing": "找不到預設。",
+      "uriSearch": "搜尋 Operon 指令…",
+      "uriUnavailable": "此處無法使用這個 Operon 指令。",
       "useLastTemplateAsDefault": "將上次使用的範本設為預設範本",
       "useLastTemplateAsDefaultDesc": "在 Task Creator 中成功建立任務後，將所用範本儲存為此任務類型的預設範本。命令和轉換也會使用此預設範本。",
       "visualPropertyPool": "Canvas、Excalidraw 和 Kanban Property Pool",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "216022105a49265ad86c146d05e90c1ae4b1eebe63c3d7581f3f6e0621a411b0"
+  "sourceVersion": "6aa40f515c86c19324c4bc8141bebc5967a6966b4489979368b4a6995ef5bbf8"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -344,6 +344,7 @@
       "openTaskFinder": "작업 찾기",
       "openTimeSessionHistory": "시간 세션 기록 패널 열기",
       "openUpcomingTasks": "예정된 작업 열기",
+      "openUriBuilder": "URI 빌더 열기",
       "rebuildIndex": "전체 인덱스 다시 구축",
       "reloadSettingsFromStorage": "저장소에서 Operon 설정 다시 불러오기",
       "repairRecurringFileTaskIdentities": "반복 파일 작업 식별 정보 복구",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "타이머 시작/중지",
       "togglePinnedDock": "고정 작업 dock 표시 전환",
       "toggleStatusDock": "상태 dock 전환",
-      "toggleTimer": "시간 추적 시작/중지",
+      "toggleTimer": "커서 위치 작업의 타이머 시작/중지",
       "trackDifferentTask": "다른 작업 추적",
       "updateExternalCalendars": "외부 캘린더 업데이트"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "고정 작업과 별도로 예정된 작업 카드의 색상 체계를 선택합니다.",
       "upcomingTimedFirst": "시간 지정 먼저",
       "upcomingTimedGroup": "시간 지정",
+      "uriBuilder": "URI 빌더",
+      "uriCommand": "명령",
+      "uriCopy": "복사",
+      "uriNoMatches": "일치하는 명령이 없습니다.",
+      "uriPresetMissing": "프리셋을 찾을 수 없습니다.",
+      "uriSearch": "Operon 명령 검색…",
+      "uriUnavailable": "여기서는 이 Operon 명령을 사용할 수 없습니다.",
       "useLastTemplateAsDefault": "마지막 사용 템플릿을 기본값으로 사용",
       "useLastTemplateAsDefaultDesc": "작업 생성기에서 생성에 성공하면 사용한 템플릿을 해당 작업 유형의 기본값으로 저장합니다. 명령어와 변환에서도 이 기본값을 사용합니다.",
       "visualPropertyPool": "Canvas, Excalidraw 및 Kanban 속성 풀",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "ff60bbae4f12f750d14d287baee5baa58fbc2734834faf9eafa4bef74dc98bb5"
+  "sourceVersion": "ab8935eba4ce3c20339b63edb9c22357f6b1a387055e3b72159e3dbcd23d4113"
 }

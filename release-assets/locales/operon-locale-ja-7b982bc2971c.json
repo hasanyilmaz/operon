@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -344,6 +344,7 @@
       "openTaskFinder": "タスクファインダー",
       "openTimeSessionHistory": "タイムセッション履歴パネルを開く",
       "openUpcomingTasks": "今後のタスクを開く",
+      "openUriBuilder": "URI ビルダーを開く",
       "rebuildIndex": "インデックスを再構築",
       "reloadSettingsFromStorage": "ストレージから Operon 設定を再読み込み",
       "repairRecurringFileTaskIdentities": "繰り返しファイルタスクの識別情報を修復",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "タイマーを開始/停止",
       "togglePinnedDock": "ピン留めタスクのドックを切り替え",
       "toggleStatusDock": "ステータスドックの表示を切り替え",
-      "toggleTimer": "タイムトラッカーを開始/停止",
+      "toggleTimer": "カーソル位置のタスクのタイマーを開始／停止",
       "trackDifferentTask": "別のタスクを計測",
       "updateExternalCalendars": "外部カレンダーを更新"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "ピン留めタスクとは別のカード色。",
       "upcomingTimedFirst": "時刻指定を先に表示",
       "upcomingTimedGroup": "時刻指定",
+      "uriBuilder": "URI ビルダー",
+      "uriCommand": "コマンド",
+      "uriCopy": "コピー",
+      "uriNoMatches": "一致するコマンドがありません。",
+      "uriPresetMissing": "プリセットが見つかりません。",
+      "uriSearch": "Operon のコマンドを検索…",
+      "uriUnavailable": "この Operon コマンドはここでは使えません。",
       "useLastTemplateAsDefault": "最後に使用したテンプレートを既定にする",
       "useLastTemplateAsDefaultDesc": "Task Creatorでタスクを正常に作成した後、使用したテンプレートをこのタスクの種類の既定として保存します。コマンドや変換でもこの既定が使用されます。",
       "visualPropertyPool": "Canvas、Excalidraw、KanbanのProperty Pool",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "a021dd7d2131fcae341134d596a311167ad210c5e743c9253ff2a0505c10cf30"
+  "sourceVersion": "fb9505781b003498428599a50700f0205c36f639c3555741a51cd4e6f11c2522"
 }

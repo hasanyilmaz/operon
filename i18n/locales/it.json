@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "Apri il generatore di URI",
 		"openCurrentFileEditor": "Apri l’editor delle attività o delle proprietà del file corrente",
 		"openMiniCalendar": "Apri mini calendario",
 		"openExcalidrawPropertyPool": "Apri Excalidraw Property Pool",
@@ -9,7 +10,7 @@
 		"createTask": "Crea nuova attività al cursore",
 		"toggleCompletion": "Alterna completamento attività",
 		"toggleGlobalTimer": "Avvia/arresta il timer",
-		"toggleTimer": "Avvia/arresta monitoraggio del tempo",
+		"toggleTimer": "Avvia/arresta il timer della task sotto il cursore",
 		"openTaskEditor": "Apri Editor attività (nuova attività)",
 		"editTask": "Modifica attività al cursore",
 		"rebuildIndex": "Ricostruisci indice completo",
@@ -440,6 +441,13 @@
 		"introDock": "Risolvi qui i conflitti di operonId duplicati. Puoi chiudere questa finestra in qualsiasi momento e riaprirla dalla tavolozza dei comandi o dall'avviso nella dock di stato."
 	},
 	"settings": {
+		"uriBuilder": "Generatore di URI",
+		"uriCommand": "Comando",
+		"uriSearch": "Cerca comandi Operon…",
+		"uriCopy": "Copia",
+		"uriPresetMissing": "Preset non trovato.",
+		"uriUnavailable": "Questo comando Operon non è disponibile qui.",
+		"uriNoMatches": "Nessun comando corrispondente.",
 		"automationsTitle": "Automazioni",
 		"automationRunDraftHint": "Esegui questa regola una volta senza salvarla",
 		"automationRun": "Esegui",

@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "開啟 URI 建立工具",
 		"openCurrentFileEditor": "開啟目前檔案的任務或屬性編輯器",
 		"openMiniCalendar": "開啟迷你日曆",
 		"openExcalidrawPropertyPool": "開啟 Excalidraw Property Pool",
@@ -9,7 +10,7 @@
 		"createTask": "在游標處新建任務",
 		"toggleCompletion": "切換任務完成狀態",
 		"toggleGlobalTimer": "啟動/停止計時器",
-		"toggleTimer": "啟動/停止時間追蹤器",
+		"toggleTimer": "開始／停止游標所在任務的計時器",
 		"openTaskEditor": "開啟任務編輯器（新任務）",
 		"editTask": "編輯游標處的任務",
 		"rebuildIndex": "重建完整索引",
@@ -440,6 +441,13 @@
 		"introDock": "在此解決重複的 operonId 衝突。你可以隨時關閉此視窗，並透過命令面板或狀態停靠列提醒重新開啟。"
 	},
 	"settings": {
+		"uriBuilder": "URI 建立工具",
+		"uriCommand": "指令",
+		"uriSearch": "搜尋 Operon 指令…",
+		"uriCopy": "複製",
+		"uriPresetMissing": "找不到預設。",
+		"uriUnavailable": "此處無法使用這個 Operon 指令。",
+		"uriNoMatches": "沒有相符的指令。",
 		"automationsTitle": "自動化",
 		"automationRunDraftHint": "執行此規則一次，但不儲存",
 		"automationRun": "執行",

@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "URI ビルダーを開く",
 		"openCurrentFileEditor": "現在のファイルのタスク／プロパティエディターを開く",
 		"openMiniCalendar": "ミニカレンダーを開く",
 		"openExcalidrawPropertyPool": "Excalidraw Property Poolを開く",
@@ -9,7 +10,7 @@
 		"createTask": "カーソル位置に新しいタスクを作成",
 		"toggleCompletion": "タスクの完了を切り替え",
 		"toggleGlobalTimer": "タイマーを開始/停止",
-		"toggleTimer": "タイムトラッカーを開始/停止",
+		"toggleTimer": "カーソル位置のタスクのタイマーを開始／停止",
 		"openTaskEditor": "タスクエディターを開く（新規タスク）",
 		"editTask": "カーソル位置のタスクを編集",
 		"rebuildIndex": "インデックスを再構築",
@@ -440,6 +441,13 @@
 		"introDock": "重複した operonId の競合をここで解決します。このウィンドウはいつでも閉じることができ、コマンドパレットまたはステータスドックの通知から再度開けます。"
 	},
 	"settings": {
+		"uriBuilder": "URI ビルダー",
+		"uriCommand": "コマンド",
+		"uriSearch": "Operon のコマンドを検索…",
+		"uriCopy": "コピー",
+		"uriPresetMissing": "プリセットが見つかりません。",
+		"uriUnavailable": "この Operon コマンドはここでは使えません。",
+		"uriNoMatches": "一致するコマンドがありません。",
 		"automationsTitle": "自動化",
 		"automationRunDraftHint": "このルールを保存せずに一度だけ実行",
 		"automationRun": "実行",

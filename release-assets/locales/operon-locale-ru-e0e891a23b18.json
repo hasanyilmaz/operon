@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Поиск задач",
       "openTimeSessionHistory": "Открыть панель истории сессий времени",
       "openUpcomingTasks": "Открыть предстоящие задачи",
+      "openUriBuilder": "Открыть конструктор URI",
       "rebuildIndex": "Перестроить полный индекс",
       "reloadSettingsFromStorage": "Перезагрузить настройки Operon из хранилища",
       "repairRecurringFileTaskIdentities": "Исправить идентификаторы повторяющихся файловых задач",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Запустить/остановить таймер",
       "togglePinnedDock": "Переключить док закреплённых задач",
       "toggleStatusDock": "Показать/скрыть док состояния",
-      "toggleTimer": "Запустить/остановить трекер времени",
+      "toggleTimer": "Запустить/остановить таймер задачи под курсором",
       "trackDifferentTask": "Отслеживать другую задачу",
       "updateExternalCalendars": "Обновить внешние календари"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Цвета независимо от закреплённых задач.",
       "upcomingTimedFirst": "Сначала задачи со временем",
       "upcomingTimedGroup": "Со временем",
+      "uriBuilder": "Конструктор URI",
+      "uriCommand": "Команда",
+      "uriCopy": "Копировать",
+      "uriNoMatches": "Подходящих команд нет.",
+      "uriPresetMissing": "Предустановка не найдена.",
+      "uriSearch": "Найти команду Operon…",
+      "uriUnavailable": "Эта команда Operon здесь недоступна.",
       "useLastTemplateAsDefault": "Использовать последний шаблон по умолчанию",
       "useLastTemplateAsDefaultDesc": "После успешного создания задачи в Task Creator сохранить использованный шаблон по умолчанию для этого типа задач. Команды и преобразования также используют этот шаблон.",
       "visualPropertyPool": "Property Pool для Canvas, Excalidraw и Kanban",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "39323a856fbf7bca602b735bd874b91e33a71f47c0dc36799b768a65172ff03b"
+  "sourceVersion": "9bad1c8caed14614a719c5e6af80bc3031f0ef53a61667e633e676b37654d897"
 }

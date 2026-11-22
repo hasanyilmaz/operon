@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Aufgabensuche",
       "openTimeSessionHistory": "Verlauf der Erfassungssitzungen öffnen",
       "openUpcomingTasks": "Anstehende Aufgaben öffnen",
+      "openUriBuilder": "URI-Builder öffnen",
       "rebuildIndex": "Vollständigen Index neu aufbauen",
       "reloadSettingsFromStorage": "Operon-Einstellungen aus dem Speicher neu laden",
       "repairRecurringFileTaskIdentities": "Identitäten wiederkehrender Datei-Aufgaben reparieren",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Timer starten/stoppen",
       "togglePinnedDock": "Dock für angeheftete Aufgaben umschalten",
       "toggleStatusDock": "Status-Dock ein-/ausblenden",
-      "toggleTimer": "Zeiterfassung starten/stoppen",
+      "toggleTimer": "Timer für Aufgabe am Cursor starten/stoppen",
       "trackDifferentTask": "Eine andere Aufgabe erfassen",
       "updateExternalCalendars": "Externe Kalender aktualisieren"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Kartenfarben unabhängig von angehefteten Aufgaben.",
       "upcomingTimedFirst": "Aufgaben mit Uhrzeit zuerst",
       "upcomingTimedGroup": "Mit Uhrzeit",
+      "uriBuilder": "URI-Builder",
+      "uriCommand": "Befehl",
+      "uriCopy": "Kopieren",
+      "uriNoMatches": "Keine passenden Befehle.",
+      "uriPresetMissing": "Vorlage nicht gefunden.",
+      "uriSearch": "Operon-Befehle suchen…",
+      "uriUnavailable": "Dieser Operon-Befehl ist hier nicht verfügbar.",
       "useLastTemplateAsDefault": "Zuletzt verwendete Vorlage als Standard verwenden",
       "useLastTemplateAsDefaultDesc": "Nach erfolgreicher Erstellung im Task Creator wird die verwendete Vorlage als Standard für diesen Aufgabentyp gespeichert. Befehle und Konvertierungen verwenden ebenfalls diesen Standard.",
       "visualPropertyPool": "Canvas, Excalidraw und Kanban Property Pool",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "d5041a39f464cf48760ed40fb86691fba7d9743dbbb951421a98c9396d3909a3"
+  "sourceVersion": "21d92fc577c3d5d22f8710fe8e242c1d0811c31493a6f8d0db9a621d2423a1c8"
 }

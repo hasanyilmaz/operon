@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "URI Builder’ı aç",
 		"openCurrentFileEditor": "Geçerli dosyanın Görev / Özellik Düzenleyicisini aç",
 		"openMiniCalendar": "Mini takvimi aç",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool’u aç",
@@ -9,7 +10,7 @@
 		"createTask": "İmlece yeni görev oluştur",
 		"toggleCompletion": "Görev tamamlanma durumunu değiştir",
 		"toggleGlobalTimer": "Sayacı başlat/durdur",
-		"toggleTimer": "Zaman takibini başlat/durdur",
+		"toggleTimer": "İmleçteki task’ın zamanlayıcısını başlat/durdur",
 		"openTaskEditor": "Görev Editörü aç (yeni görev)",
 		"editTask": "İmleçteki görevi düzenle",
 		"rebuildIndex": "Tam indeksi yeniden oluştur",
@@ -440,6 +441,13 @@
 		"introDock": "Çakışan operonId kopyalarını burada çöz. Bu pencereyi istediğin zaman kapatıp komut paletinden veya durum dock’u uyarısından tekrar açabilirsin."
 	},
 	"settings": {
+		"uriBuilder": "URI Builder",
+		"uriCommand": "Komut",
+		"uriSearch": "Operon komutlarını ara…",
+		"uriCopy": "Kopyala",
+		"uriPresetMissing": "Preset bulunamadı.",
+		"uriUnavailable": "Bu Operon komutu burada kullanılamıyor.",
+		"uriNoMatches": "Eşleşen komut bulunamadı.",
 		"automationsTitle": "Otomasyonlar",
 		"automationRunDraftHint": "Bu kuralı kaydetmeden bir kez çalıştır",
 		"automationRun": "Çalıştır",

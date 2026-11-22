@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "Open URI Builder",
 		"openCurrentFileEditor": "Open current file’s Task / Property Editor",
 		"openMiniCalendar": "Open mini calendar",
 		"openExcalidrawPropertyPool": "Open Excalidraw Property Pool",
@@ -9,7 +10,7 @@
 		"createTask": "Create new task at cursor",
 		"toggleCompletion": "Toggle task completion",
 		"toggleGlobalTimer": "Start/stop timer",
-		"toggleTimer": "Start/stop time tracker",
+		"toggleTimer": "Start/stop timer for task at cursor",
 		"openTaskEditor": "Open Task Editor (new task)",
 		"editTask": "Edit task at cursor",
 		"rebuildIndex": "Rebuild full index",
@@ -440,6 +441,13 @@
 		"introDock": "Resolve duplicate operonId conflicts here. You can close this window anytime and reopen it from the command palette or status dock alert."
 	},
 	"settings": {
+		"uriBuilder": "URI Builder",
+		"uriCommand": "Command",
+		"uriSearch": "Search Operon commands…",
+		"uriCopy": "Copy",
+		"uriPresetMissing": "Preset not found.",
+		"uriUnavailable": "This Operon command is unavailable here.",
+		"uriNoMatches": "No matching commands.",
 		"automationsTitle": "Automations",
 		"automationRunDraftHint": "Run once without saving this rule",
 		"automationRun": "Run",

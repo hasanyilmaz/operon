@@ -339,7 +339,7 @@ function exportLegacyArchiveJson(settings: OperonSettings): string {
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'automations' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
+	selectedGroups: readonly ('general' | 'automations' | 'kanban' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -521,6 +521,34 @@ test('automation ID migration recovers after backup failure, write rejection and
 		assert.deepEqual(restart.data.committed, expected);
 		restart.storage.destroy();
 	}
+});
+
+test('Kanban command names follow committed saves, Restore, Undo and canonical reload', async () => {
+	const { storage, data } = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
+	const before = clone(storage.getSettings().kanbanPresets);
+	const source = { ...storage.getSettings(), kanbanPresets: before.map(preset => ({ ...preset, name: 'Restored ' + preset.name })) };
+	const changes: string[][] = [];
+	const names = () => storage.getSettings().kanbanPresets.map(p => p.name);
+	const unsubscribe = storage.subscribeKanbanPresets(() => changes.push(names()));
+	const { sourceJson, plan } = await createPlan(storage, source, ['kanban']);
+	data.mode = 'fail-clean';
+	assert.equal((await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan))).status, 'failed');
+	assert.deepEqual(changes, []);
+	data.mode = 'normal';
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(changes, [source.kanbanPresets.map(p => p.name)]);
+	const restored = clone(data.committed);
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(changes[1], before.map(p => p.name));
+	data.committed = restored;
+	await storage.reloadCanonicalSettingsPackage();
+	await storage.reloadCanonicalSettingsPackage();
+	assert.deepEqual(changes, [source.kanbanPresets.map(p => p.name), before.map(p => p.name), source.kanbanPresets.map(p => p.name)]);
+	unsubscribe();
+	storage.destroy();
 });
 
 test('selected automation restore deactivates all imported rules and Undo restores the exact preimage', async () => {

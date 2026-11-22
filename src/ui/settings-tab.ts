@@ -109,6 +109,8 @@ import { OperonStorage } from '../storage/operon-storage';
 import type { TablePresetFileConflictResolutionResult } from '../types/table-preset-file-conflict';
 import { PinnedCache } from '../storage/pinned-cache';
 import { getPinnedTasksForDisplay, type PinnedTaskSortMode } from '../core/pinned-task-query';
+import type { OperonCommandLinks } from '../systems/operon-command-links';
+import { renderUriBuilder } from './settings/uri-builder';
 import { getCurrentLang, installI18nLocale, t } from '../core/i18n';
 import { getDateDisplayFormatDropdownOptions } from '../core/ui-date-format';
 import type { LocalePackManager } from '../core/locale-pack-manager';
@@ -905,6 +907,34 @@ export class OperonSettingsTab extends PluginSettingTab {
 	private settings: OperonSettings;
 	private storage: OperonStorage;
 	private pluginVersion: string;
+	private commandLinks?: OperonCommandLinks;
+	private uriBuilderInput?: HTMLInputElement;
+
+	setCommandLinks(links: OperonCommandLinks): void { this.commandLinks = links; }
+
+	openUriBuilder(): void {
+		const settings = (this.app as App & { setting?: {
+			open(): void;
+			openTabById(id: string): void;
+			openPagePath?(tabId: string, path: string[]): void;
+		} }).setting;
+		if (!settings) return;
+		settings.open();
+		const page = t('settings', 'tabGeneral');
+		if (settings.openPagePath) settings.openPagePath('operon', [page]);
+		else {
+			settings.openTabById('operon');
+			const row = Array.from(this.containerEl.querySelectorAll<HTMLElement>('.setting-item'))
+				.find(item => item.querySelector('.setting-item-name')?.textContent === page);
+			row?.click();
+		}
+		const focus = () => {
+			this.uriBuilderInput?.scrollIntoView({ block: 'nearest' });
+			this.uriBuilderInput?.focus();
+		};
+		this.containerEl.ownerDocument.defaultView?.requestAnimationFrame(focus);
+	}
+
 	private readonly onAutomationSaved?: AutomationEditorSource['runSaved'];
 	private readonly runAutomationDraft?: AutomationEditorSource['runDraft'];
 	private readonly planAutomationRule: AutomationEditorSource['plan'];
@@ -1982,7 +2012,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 				languageFormats: t('settings', 'generalLanguageFormats'), updates: t('settings', 'generalUpdates'),
 				demoWorkspace: t('settings', 'demoWorkspace'), operonDocs: t('settings', 'operonDocsSection'),
 				taskIndexing: t('settings', 'generalTaskIndexing'), duplicateIdAlerts: t('settings', 'duplicateIdAlertsSection'),
-				developerApi: t('settings', 'developerApiIntegrationsTitle'),
+				uriBuilder: t('settings', 'uriBuilder'), developerApi: t('settings', 'developerApiIntegrationsTitle'),
 			};
 			const title = titles[planItem.groupId];
 			const targets: Partial<Record<typeof planItem.groupId, string[]>> = {
@@ -2004,7 +2034,17 @@ export class OperonSettingsTab extends PluginSettingTab {
 					(targets[planItem.groupId]?.length ?? 0) > 1 ? `${title} — ${target}` : title,
 					target, 'operon-native-settings-declarative-docs-action--inline-heading',
 				)),
-				items: this.buildSettingsSearchTabItems(groupEntries),
+				items: planItem.groupId === 'uriBuilder'
+					? groupEntries.map(entry => this.buildTaskCaptureSearchSection(entry, el => {
+						if (!this.commandLinks) return;
+						const builder = renderUriBuilder(this.app, el, this.commandLinks);
+						this.uriBuilderInput = builder.input;
+						return () => {
+							builder.dispose();
+							if (this.uriBuilderInput === builder.input) this.uriBuilderInput = undefined;
+						};
+					}))
+					: this.buildSettingsSearchTabItems(groupEntries),
 			});
 		}
 

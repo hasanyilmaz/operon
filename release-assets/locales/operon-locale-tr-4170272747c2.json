@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Görev Bul",
       "openTimeSessionHistory": "Zaman Oturumları Geçmişi panelini aç",
       "openUpcomingTasks": "Yaklaşan görevleri aç",
+      "openUriBuilder": "URI Builder’ı aç",
       "rebuildIndex": "Tam indeksi yeniden oluştur",
       "reloadSettingsFromStorage": "Operon ayarlarını depolamadan yeniden yükle",
       "repairRecurringFileTaskIdentities": "Tekrarlanan File Task kimliklerini onar",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Sayacı başlat/durdur",
       "togglePinnedDock": "Sabitlenmiş görevler panelini aç/kapat",
       "toggleStatusDock": "Durum dock’unu aç/kapat",
-      "toggleTimer": "Zaman takibini başlat/durdur",
+      "toggleTimer": "İmleçteki task’ın zamanlayıcısını başlat/durdur",
       "trackDifferentTask": "Farklı bir görevi takip et",
       "updateExternalCalendars": "Harici takvimleri güncelle"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Sabitlenmiş görevlerden bağımsız kart renkleri.",
       "upcomingTimedFirst": "Önce saatli görevler",
       "upcomingTimedGroup": "Saatli",
+      "uriBuilder": "URI Builder",
+      "uriCommand": "Komut",
+      "uriCopy": "Kopyala",
+      "uriNoMatches": "Eşleşen komut bulunamadı.",
+      "uriPresetMissing": "Preset bulunamadı.",
+      "uriSearch": "Operon komutlarını ara…",
+      "uriUnavailable": "Bu Operon komutu burada kullanılamıyor.",
       "useLastTemplateAsDefault": "Son kullanılan şablonu varsayılan yap",
       "useLastTemplateAsDefaultDesc": "Task Creator ile görev başarıyla oluşturulduğunda kullanılan şablonu bu görev türünün varsayılanı olarak kaydeder. Komutlar ve dönüştürme de bu varsayılanı kullanır.",
       "visualPropertyPool": "Canvas, Excalidraw ve Kanban Property Pool",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "dd79031cc143b1039d9a989ef10a90bb30dde804610b5ecc4f6c104361184414"
+  "sourceVersion": "51606d7de686ba891e7a261610847e836be4dc03be31e919e318d02445b47223"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Localizador de tarefas",
       "openTimeSessionHistory": "Abrir painel Histórico de Sessão de Tempo",
       "openUpcomingTasks": "Abrir tarefas futuras",
+      "openUriBuilder": "Abrir gerador de URI",
       "rebuildIndex": "Reconstruir índice completo",
       "reloadSettingsFromStorage": "Recarregar configurações Operon do armazenamento",
       "repairRecurringFileTaskIdentities": "Reparar identidades de tarefas em arquivo recorrentes",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Iniciar/parar cronômetro",
       "togglePinnedDock": "Alternar dock de tarefas fixadas",
       "toggleStatusDock": "Mostrar/ocultar dock de status",
-      "toggleTimer": "Iniciar/parar rastreamento de tempo",
+      "toggleTimer": "Iniciar/parar o temporizador da tarefa sob o cursor",
       "trackDifferentTask": "Acompanhar outra tarefa",
       "updateExternalCalendars": "Atualizar calendários externos"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Cores independentes das tarefas fixadas.",
       "upcomingTimedFirst": "Tarefas com horário primeiro",
       "upcomingTimedGroup": "Com horário",
+      "uriBuilder": "Gerador de URI",
+      "uriCommand": "Comando",
+      "uriCopy": "Copiar",
+      "uriNoMatches": "Nenhum comando correspondente.",
+      "uriPresetMissing": "Predefinição não encontrada.",
+      "uriSearch": "Pesquisar comandos do Operon…",
+      "uriUnavailable": "Este comando do Operon não está disponível aqui.",
       "useLastTemplateAsDefault": "Usar o último modelo utilizado como padrão",
       "useLastTemplateAsDefaultDesc": "Após criar uma tarefa com sucesso no Task Creator, salvar o modelo utilizado como padrão para este tipo de tarefa. Comandos e conversões também usam esse padrão.",
       "visualPropertyPool": "Property Pool do Canvas, Excalidraw e Kanban",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e9ca45dbb13a1308c1b7f5235272e2d428e754aa83a8a305628c2c14e765deab"
+  "sourceVersion": "a826f66f579423644375ffe4915cf229b43e496b41a5d80f9afabf0b729ab235"
 }

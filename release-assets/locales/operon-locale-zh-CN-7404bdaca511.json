@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -344,6 +344,7 @@
       "openTaskFinder": "任务查找器",
       "openTimeSessionHistory": "打开时间会话历史面板",
       "openUpcomingTasks": "打开即将到来的任务",
+      "openUriBuilder": "打开 URI 构建器",
       "rebuildIndex": "重建完整索引",
       "reloadSettingsFromStorage": "从存储重新加载 Operon 设置",
       "repairRecurringFileTaskIdentities": "修复重复文件任务标识",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "启动/停止计时器",
       "togglePinnedDock": "切换置顶任务停靠栏",
       "toggleStatusDock": "切换状态停靠栏显示",
-      "toggleTimer": "启动/停止时间追踪器",
+      "toggleTimer": "启动/停止光标所在任务的计时器",
       "trackDifferentTask": "跟踪另一项任务",
       "updateExternalCalendars": "更新外部日历"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "独立于置顶任务的卡片颜色。",
       "upcomingTimedFirst": "定时任务优先",
       "upcomingTimedGroup": "定时",
+      "uriBuilder": "URI 构建器",
+      "uriCommand": "命令",
+      "uriCopy": "复制",
+      "uriNoMatches": "没有匹配的命令。",
+      "uriPresetMissing": "未找到预设。",
+      "uriSearch": "搜索 Operon 命令…",
+      "uriUnavailable": "此处无法使用此 Operon 命令。",
       "useLastTemplateAsDefault": "将上次使用的模板设为默认模板",
       "useLastTemplateAsDefaultDesc": "在 Task Creator 中成功创建任务后，将所用模板保存为此任务类型的默认模板。命令和转换也会使用此默认模板。",
       "visualPropertyPool": "Canvas、Excalidraw 和 Kanban Property Pool",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "bf6c6956b304b659d84f44f1b7b2b4801b5966b0c4abf22a76a917928f3600e4"
+  "sourceVersion": "0858531a090f5839c4039e55130108639f354cd14d93d8fcfc67bc38ff97c8d7"
 }

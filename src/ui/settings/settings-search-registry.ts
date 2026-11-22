@@ -229,6 +229,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarSidebarCalendarsDefaultExpanded', 'settings', 'calendarSidebarCalendarsDefaultState', 'calendarSidebarCalendarsDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'calendars section']),
 	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolDefaultExpanded', 'settings', 'calendarSidebarTaskPoolDefaultState', 'calendarSidebarTaskPoolDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'task pool section']),
 	section('integrations', 'viewsCalendar', 'externalCalendars', 'settings', 'externalCalendarsTitle', 'externalCalendarsDesc', ['calendar', 'ics', 'external calendar', 'external calendars', 'refresh', 'sync', 'vault', 'file']),
+	section('settings', 'coreGeneral', 'uriBuilder', 'settings', 'uriBuilder', 'uriSearch', ['URI Builder', 'command links', 'deep links', 'Kanban']),
 	section('integrations', 'coreGeneral', 'developerApi', 'settings', 'developerApiIntegrationsTitle', 'developerApiIntegrationsDesc', ['developer API', 'plugins', 'permissions', 'grants', 'audit', 'integration']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),

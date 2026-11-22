@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "Открыть конструктор URI",
 		"openCurrentFileEditor": "Открыть редактор задач или свойств текущего файла",
 		"openMiniCalendar": "Открыть мини-календарь",
 		"openExcalidrawPropertyPool": "Открыть Excalidraw Property Pool",
@@ -9,7 +10,7 @@
 		"createTask": "Создать новую задачу в позиции курсора",
 		"toggleCompletion": "Переключить выполнение задачи",
 		"toggleGlobalTimer": "Запустить/остановить таймер",
-		"toggleTimer": "Запустить/остановить трекер времени",
+		"toggleTimer": "Запустить/остановить таймер задачи под курсором",
 		"openTaskEditor": "Открыть редактор задач (новая задача)",
 		"editTask": "Редактировать задачу в позиции курсора",
 		"rebuildIndex": "Перестроить полный индекс",
@@ -440,6 +441,13 @@
 		"introDock": "Здесь можно разрешить конфликты дублирующихся operonId. Это окно можно закрыть в любой момент и снова открыть из палитры команд или уведомления в доке состояния."
 	},
 	"settings": {
+		"uriBuilder": "Конструктор URI",
+		"uriCommand": "Команда",
+		"uriSearch": "Найти команду Operon…",
+		"uriCopy": "Копировать",
+		"uriPresetMissing": "Предустановка не найдена.",
+		"uriUnavailable": "Эта команда Operon здесь недоступна.",
+		"uriNoMatches": "Подходящих команд нет.",
 		"automationsTitle": "Автоматизация",
 		"automationRunDraftHint": "Выполнить правило один раз без сохранения",
 		"automationRun": "Запустить",

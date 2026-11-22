@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Buscador de tareas",
       "openTimeSessionHistory": "Abrir el panel de historial de sesiones de tiempo",
       "openUpcomingTasks": "Abrir tareas próximas",
+      "openUriBuilder": "Abrir el generador de URI",
       "rebuildIndex": "Reconstruir índice completo",
       "reloadSettingsFromStorage": "Recargar la configuración de Operon desde el almacenamiento",
       "repairRecurringFileTaskIdentities": "Reparar identidades de tareas de archivo recurrentes",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Iniciar/detener temporizador",
       "togglePinnedDock": "Alternar panel de tareas fijadas",
       "toggleStatusDock": "Mostrar/ocultar el dock de estado",
-      "toggleTimer": "Iniciar/detener el seguimiento de tiempo",
+      "toggleTimer": "Iniciar/detener el temporizador de la tarea bajo el cursor",
       "trackDifferentTask": "Registrar el tiempo de otra tarea",
       "updateExternalCalendars": "Actualizar calendarios externos"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Colores independientes de las tareas fijadas.",
       "upcomingTimedFirst": "Primero tareas con hora",
       "upcomingTimedGroup": "Con hora",
+      "uriBuilder": "Generador de URI",
+      "uriCommand": "Comando",
+      "uriCopy": "Copiar",
+      "uriNoMatches": "Ningún comando coincide.",
+      "uriPresetMissing": "No se encontró el ajuste preestablecido.",
+      "uriSearch": "Buscar comandos de Operon…",
+      "uriUnavailable": "Este comando de Operon no está disponible aquí.",
       "useLastTemplateAsDefault": "Usar la última plantilla utilizada como predeterminada",
       "useLastTemplateAsDefaultDesc": "Tras crear una tarea correctamente en Task Creator, guardar la plantilla utilizada como predeterminada para este tipo de tarea. Los comandos y las conversiones también usan esta plantilla.",
       "visualPropertyPool": "Property Pool de Canvas, Excalidraw y Kanban",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "02319df416c82d96b1aee421ea22b3e8595e3c4ff0f2be1901b3d7a101b7b069"
+  "sourceVersion": "10100ff5ee8ed9e09f47611ca5beca14020b45db6ab217dd629a00d94ea1f80b"
 }

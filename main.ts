@@ -89,7 +89,8 @@ import { createCheckboxOwnershipRuntimeV1 } from './src/agent-runtime/extensions
 import { checkboxOwnershipExecutionKeyV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/decode';
 import type { CheckboxOwnershipApplyRequestV1, CheckboxOwnershipMutationResultV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/contracts';
 import { boundRuntimeTransactionIdV1 } from './src/agent-runtime/runtime/transaction-identifiers';
-import { getIcon, type App } from 'obsidian';
+import { OperonCommandLinks } from './src/systems/operon-command-links';
+import { getIcon, type App, type Command } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
 import { parseOperonGroupRule } from './src/core/canvas-group-rule';
 import { canWriteGroupCanvas } from './src/systems/canvas-group-background';
@@ -1801,6 +1802,7 @@ export default class OperonPlugin extends Plugin {
 	private tablePresetRegistry!: TablePresetRegistry<TFile>;
 	private tablePresetFileConflictResolver!: TablePresetFileConflictResolver<TFile>;
 	private readonly tablePresetRegistrySubscriptions = new Map<string, () => void>();
+	private commandLinks!: OperonCommandLinks;
 	private settingsTab: OperonSettingsTab | null = null;
 	private tablePresetRegistryRefreshTimer: WindowTimeoutHandle | null = null;
 	private readonly expectedTableFileModifyHashes = new Map<string, string>();
@@ -17434,7 +17436,11 @@ export default class OperonPlugin extends Plugin {
 			() => this.statusDock?.refresh(),
 			(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			);
+		this.settingsTab.setCommandLinks(this.commandLinks);
 		this.addSettingTab(this.settingsTab);
+		this.registerObsidianProtocolHandler('operon', data => {
+			runAsyncAction('open Operon URI failed', () => this.commandLinks.handleProtocol(data));
+		});
 
 		const openUpcoming = async (taskId: string, action: OperonSettings['upcomingStatusBarClickAction']): Promise<void> => {
 			if (action === 'start-timer') await this.startTimerForTask(taskId, 'status-bar');
@@ -38504,7 +38510,39 @@ export default class OperonPlugin extends Plugin {
   } catch (error) { return { status: error instanceof PropertyEditorSourceConflict ? 'conflict' : 'failed' }; }
  }
 
+	private cursorTimerContext() {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view?.file || view.getMode() !== 'source') return null;
+		const { line } = view.editor.getCursor();
+		const inline = this.parseInlineTaskLine(view.editor.getLine(line), line, view.file.path);
+		return {
+			inlineTaskId: inline?.operonId ?? null,
+			fileTaskId: this.indexer.getFileTaskByPath(view.file.path)?.operonId ?? null,
+		};
+	}
+
+	// Capture Operon registrations before Obsidian adds the plugin prefix and editor guards.
+	override addCommand(command: Command): Command {
+		return this.commandLinks ? this.commandLinks.register(command) : super.addCommand(command);
+	}
+
 	private registerCommands(): void {
+		const links = this.commandLinks = new OperonCommandLinks({
+			register: command => super.addCommand(command),
+			remove: id => this.removeCommand(id),
+			kanbanPresets: () => this.storage.getSettings().kanbanPresets,
+			vaultName: () => this.app.vault.getName(),
+			cursor: () => this.cursorTimerContext(),
+			openKanban: presetId => this.openKanbanView({ presetId }),
+			unavailable: reason => {
+				new Notice(reason === 'preset' ? t('settings', 'uriPresetMissing') : t('settings', 'uriUnavailable'));
+			},
+		});
+		this.addCommand({
+			id: 'open-uri-builder',
+			name: t('commands', 'openUriBuilder'),
+			callback: () => this.settingsTab?.openUriBuilder(),
+		});
   if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
   this.register(registerNativeTaskWorkspace(this.app, {
    position: () => this.settings.taskEditorPosition,
@@ -38906,34 +38944,23 @@ export default class OperonPlugin extends Plugin {
 			}),
 		});
 
-		// Start/stop timer
-			this.addCommand({
-				id: 'toggle-timer',
-				name: t('commands', 'toggleTimer'),
-				editorCallback: (editor: Editor, view: MarkdownView) => {
-					runAsyncAction('toggle timer command failed', async () => {
-					const cursor = editor.getCursor();
-					const line = editor.getLine(cursor.line);
-					const filePath = view.file?.path ?? '';
-
-				const parsed = this.parseInlineTaskLine(line, cursor.line, filePath);
-					if (!parsed?.operonId) {
-						new Notice(t('notifications', 'noTaskWithId'));
-						return;
+		this.addCommand({
+			id: 'toggle-timer',
+			name: t('commands', 'toggleTimer'),
+			checkCallback: checking => {
+				const context = this.cursorTimerContext();
+				const operonId = context?.inlineTaskId || context?.fileTaskId;
+				if (!operonId) return false;
+				if (!checking) runAsyncAction('toggle timer command failed', async () => {
+					if (this.timeTracker.isTimerRunning(operonId)) {
+						if (await this.stopActiveTimer('manual')) new Notice(t('notifications', 'timerStopped', { operonId }));
+					} else if (await this.startTimerForTask(operonId, 'command')) {
+						new Notice(t('notifications', 'timerStarted', { operonId }));
 					}
-
-					if (this.timeTracker.isTimerRunning(parsed.operonId)) {
-						const stopped = await this.stopActiveTimer('manual');
-						if (stopped) new Notice(t('notifications', 'timerStopped', { operonId: parsed.operonId }));
-					} else {
-							const started = await this.startTimerForTask(parsed.operonId, 'command');
-							if (started) new Notice(t('notifications', 'timerStarted', { operonId: parsed.operonId }));
-						}
-						});
-					},
-			});
-
-
+				});
+				return true;
+			},
+		});
 
 		// Rebuild full index
 		this.addCommand({
@@ -39108,6 +39135,9 @@ export default class OperonPlugin extends Plugin {
 					this.insertOperonTableEmbedAtCursor(editor, view);
 				},
 			});
+
+		links.refresh();
+		this.register(this.storage.subscribeKanbanPresets(() => links.refresh()));
 
 	}
 }

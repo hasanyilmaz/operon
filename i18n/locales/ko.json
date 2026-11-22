@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"openUriBuilder": "URI 빌더 열기",
 		"openCurrentFileEditor": "현재 파일의 작업 또는 속성 편집기 열기",
 		"openMiniCalendar": "미니 캘린더 열기",
 		"openExcalidrawPropertyPool": "Excalidraw 속성 풀 열기",
@@ -9,7 +10,7 @@
 		"createTask": "커서 위치에 새 작업 만들기",
 		"toggleCompletion": "작업 완료 상태 전환",
 		"toggleGlobalTimer": "타이머 시작/중지",
-		"toggleTimer": "시간 추적 시작/중지",
+		"toggleTimer": "커서 위치 작업의 타이머 시작/중지",
 		"openTaskEditor": "작업 편집기 열기(새 작업)",
 		"editTask": "커서 위치의 작업 편집",
 		"rebuildIndex": "전체 인덱스 다시 구축",
@@ -440,6 +441,13 @@
 		"introDock": "여기에서 중복 operonId 충돌을 해결하세요. 이 창은 언제든지 닫을 수 있으며 명령 팔레트나 상태 dock 경고에서 다시 열 수 있습니다."
 	},
 	"settings": {
+		"uriBuilder": "URI 빌더",
+		"uriCommand": "명령",
+		"uriSearch": "Operon 명령 검색…",
+		"uriCopy": "복사",
+		"uriPresetMissing": "프리셋을 찾을 수 없습니다.",
+		"uriUnavailable": "여기서는 이 Operon 명령을 사용할 수 없습니다.",
+		"uriNoMatches": "일치하는 명령이 없습니다.",
 		"automationsTitle": "자동화",
 		"automationRunDraftHint": "이 규칙을 저장하지 않고 한 번 실행",
 		"automationRun": "실행",

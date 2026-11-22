@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3916,
-  "keyFingerprint": "82c39a18af9c36325d0d54b6a468581cba05b01c4283278143e7d41b7df9b266",
+  "keyCount": 3924,
+  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -344,6 +344,7 @@
       "openTaskFinder": "Recherche de tâches",
       "openTimeSessionHistory": "Ouvrir le panneau d'historique des sessions de suivi",
       "openUpcomingTasks": "Ouvrir les tâches à venir",
+      "openUriBuilder": "Ouvrir le générateur d’URI",
       "rebuildIndex": "Reconstruire l'index complet",
       "reloadSettingsFromStorage": "Recharger les paramètres Operon depuis le stockage",
       "repairRecurringFileTaskIdentities": "Réparer les identités des tâches-fichiers récurrentes",
@@ -354,7 +355,7 @@
       "toggleGlobalTimer": "Démarrer/arrêter le minuteur",
       "togglePinnedDock": "Basculer le panneau des tâches épinglées",
       "toggleStatusDock": "Afficher/masquer le dock de statut",
-      "toggleTimer": "Démarrer/arrêter le suivi du temps",
+      "toggleTimer": "Démarrer/arrêter le minuteur de la tâche sous le curseur",
       "trackDifferentTask": "Suivre une autre tâche",
       "updateExternalCalendars": "Mettre à jour les calendriers externes"
     },
@@ -3114,6 +3115,13 @@
       "upcomingTaskColorSourceDesc": "Couleurs indépendantes des tâches épinglées.",
       "upcomingTimedFirst": "Tâches horaires en premier",
       "upcomingTimedGroup": "Avec horaire",
+      "uriBuilder": "Générateur d’URI",
+      "uriCommand": "Commande",
+      "uriCopy": "Copier",
+      "uriNoMatches": "Aucune commande correspondante.",
+      "uriPresetMissing": "Préréglage introuvable.",
+      "uriSearch": "Rechercher une commande Operon…",
+      "uriUnavailable": "Cette commande Operon est indisponible ici.",
       "useLastTemplateAsDefault": "Utiliser le dernier modèle utilisé par défaut",
       "useLastTemplateAsDefaultDesc": "Après une création réussie dans Task Creator, enregistrer le modèle utilisé comme modèle par défaut pour ce type de tâche. Les commandes et conversions utilisent aussi ce modèle.",
       "visualPropertyPool": "Property Pool de Canvas, Excalidraw et Kanban",
@@ -3961,5 +3969,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "a36f9b8ce1daa111075a54393ce61d101e2596c5e13dc988d1438651b8d6e1b6"
+  "sourceVersion": "d727f5944f709e5b7e0e9a39e302bd0b4cb65f1ecab92dcf007535ab90c143d7"
 }
