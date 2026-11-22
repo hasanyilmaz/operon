@@ -86,6 +86,27 @@ function fixture(overrides = {}) {
 	const dispatch = uri => links.handleProtocol({ action: 'operon', ...Object.fromEntries(new URL(uri).searchParams) });
 	return { links, palette, calls, errors, presets, vault, dispatch };
 }
+test('failed preset and default tab openings give one notice and log the cause from either entry point', async ctx => {
+	const failure = new Error('Cannot open tab');
+	const log = ctx.mock.method(console, 'error', () => {});
+	const rejectOpen = async () => { throw failure; };
+	const { links, palette, errors, dispatch } = fixture({ openPresetTab: rejectOpen });
+	// Register the default once, as Obsidian does when the plugin loads.
+	const defaultCommand = links.register({ id: 'open-calendar-view', name: 'Calendar', callback: rejectOpen });
+	for (const [callback, query] of [
+		[palette.get('operon:open-kanban-preset-kp_123-tab').callback, 'view=kanban&preset=kp_123'],
+		[defaultCommand.callback, 'view=calendar'],
+	]) {
+		for (const run of [callback, () => dispatch('obsidian://operon?vault=Test%20%26%20Work&' + query)]) {
+			await run();
+			assert.deepEqual(errors.splice(0), ['command']);
+			assert.equal(log.mock.callCount(), 1);
+			assert.equal(log.mock.calls[0].arguments[1], failure);
+			log.mock.resetCalls();
+		}
+	}
+});
+
 test('default hotkey ID and each named palette action resolve directly, including duplicate labels and Default', async () => {
 	const { links, palette, calls, errors, presets, vault, dispatch } = fixture();
 	const named = 'operon:open-kanban-preset-kp_123-tab';
@@ -366,7 +387,7 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 			MarkdownView: class {}, Notice: class {}, runAsyncAction: (_label, run) => pending.push(run()),
 			isAutomationRulesSettings: value => !!value?.rules, Platform: {isDesktopApp: true}, getNormalFilterSets, localToday: () => '2026-11-22',
 			normalizeCalendarSidebarTaskPoolMode: () => 'open', getActiveDocument: () => ({body: {}}),
-			openFileLightboxAsync: async (_app, _anchor, target) => calls.push(['lightbox', target.file.path]),
+			openFileLightboxAsync: async (_app, _anchor, target) => calls.push(['lightbox', target.file.path, target.expectedTablePresetId]),
 			FILTER_VIEW_TYPE: 'filter', OPERON_TABLE_VIEW_TYPE: 'table', CALENDAR_VIEW_TYPE: 'calendar', KANBAN_VIEW_TYPE: 'kanban', getNativePropertyIndex: () => ({}), createKanbanPropertyAccess: () => ({}),
 			normalizeKanbanAxisLeafState: (state, settings) => ({ presetId: state?.presetId ?? settings.kanbanDefaultPresetId }),
 		});
@@ -431,7 +452,7 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 		assert.equal(params.get('preset'), id);
 		assert.equal(params.get('paneType'), mode === 'tab' ? null : 'lightbox');
 		assert.deepEqual(calls, []);
-		const expected = mode === 'lightbox' ? [['lightbox', booksFile.path]] : ['tab',
+		const expected = mode === 'lightbox' ? [['lightbox', booksFile.path, 'tp_books']] : ['tab',
 			[view, id ?? {table:'tp_books', calendar:'cp_plan', filter:'fs_today'}[view], view === 'calendar' && !!id]];
 		await command.callback();
 		await Promise.all(pending);

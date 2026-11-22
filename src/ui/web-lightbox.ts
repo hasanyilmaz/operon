@@ -308,6 +308,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
  const openingTrace = initial?.openingTrace ?? (LIGHTBOX_PERF_ENABLED && 'file' in target && target.file.file.extension === 'md' ? beginLightboxOpeningTrace(doc, 'source') : undefined);
  if ('file' in target) openingTrace?.resource(target.file.file);
  const isFile = 'file' in target;
+ const expectedTablePresetId = isFile ? target.file.expectedTablePresetId : undefined;
  let origin: WorkspaceLeaf;
  let closed = false;
  let ready = false;
@@ -392,6 +393,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
     // The resolved target supplies its frame before native loading can yield a paint.
     surface = new NativeLightboxSurface(lightbox, isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer');
     host = surface.content;
+    if (expectedTablePresetId !== undefined) host.hidden = true;
     const provider = getNativeTaskWorkspaceProvider(app);
     if (provider && isFile && target.file.file.extension === 'md') {
      companion = new NativeTaskWorkspace(lightbox, host, provider, close, initial,
@@ -521,6 +523,15 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       endLoad?.();
       if (cancelled()) return;
       assertLightboxLeafMounted(owned, ownedTabs, doc);
+      if (expectedTablePresetId !== undefined) {
+       // File-mode Table state is normalized against the preset parsed by this load.
+       if (owned.view.getViewType() !== OPERON_TABLE_FILE_VIEW_TYPE || owned.view.getState().presetId !== expectedTablePresetId) {
+        close();
+        new Notice(t('settings', 'uriPresetMissing'));
+        return;
+       }
+       host.hidden = false;
+      }
       if (owned.view.getViewType() !== (isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer')) throw new Error('Unavailable native view');
       // Keep the complete native view tree inside the isolated tab group.
       initialMode = owned.getViewState().state?.mode;

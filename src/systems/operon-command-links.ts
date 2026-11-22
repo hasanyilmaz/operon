@@ -34,7 +34,10 @@ export class OperonCommandLinks {
 		const { id } = command;
 		const viewEntry = this.catalog.entries.find(entry => entry.target.kind === 'view' && entry.id === id);
 		const name = viewEntry?.name ?? command.name;
-		const registered = this.ports.register({ ...command, name });
+		const callback = command.callback;
+		const registered = this.ports.register(viewEntry && callback
+			? { ...command, name, callback: () => this.withFeedback(callback) }
+			: { ...command, name });
 		this.commands.set(id, { id, name, registered });
 		return registered;
 	}
@@ -66,7 +69,7 @@ export class OperonCommandLinks {
 		}
 		for (const entry of next.values()) {
 			if (this.dynamicCommands.has(entry.id)) continue;
-			this.ports.register({ id: entry.id, name: entry.name, callback: () => this.invoke(entry.target).catch(() => this.ports.unavailable('command')) });
+			this.ports.register({ id: entry.id, name: entry.name, callback: () => this.withFeedback(() => this.invoke(entry.target)) });
 			this.dynamicCommands.set(entry.id, entry.name);
 		}
 		if (previous.length !== this.entries.length || this.entries.some((entry, index) =>
@@ -88,7 +91,15 @@ export class OperonCommandLinks {
 			this.ports.unavailable('invalid');
 			return;
 		}
-		await this.invoke(link.target);
+		await this.withFeedback(() => this.invoke(link.target));
+	}
+
+	private async withFeedback(action: () => unknown): Promise<void> {
+		try { await action(); }
+		catch (error) {
+			console.error('Operon: command failed', error);
+			this.ports.unavailable('command');
+		}
 	}
 
 	private async invoke(target: OperonCommandTarget): Promise<void> {
@@ -126,7 +137,7 @@ export class OperonCommandLinks {
 		if (registered?.checkCallback) {
 			if (registered.checkCallback(true)) { registered.checkCallback(false); return; }
 		} else if (registered?.callback) {
-			registered.callback();
+			await registered.callback();
 			return;
 		}
 		this.ports.unavailable('command');

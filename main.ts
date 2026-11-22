@@ -38575,7 +38575,7 @@ export default class OperonPlugin extends Plugin {
 			new Notice(t('settings', 'uriPresetMissing'));
 			return;
 		}
-		await openFileLightboxAsync(this.app, getActiveDocument().body, { file, subpath: '' });
+		await openFileLightboxAsync(this.app, getActiveDocument().body, { file, subpath: '', expectedTablePresetId: presetId });
 	}
 
 	private registerCommands(): void {
@@ -39119,9 +39119,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-filter-view',
 				name: t('commands', 'openFilterView'),
-				callback: () => {
-					runAsyncAction('open filter view command failed', () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId));
-				},
+				callback: () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId),
 			});
 
 			this.addCommand({
@@ -39149,9 +39147,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-calendar-view',
 				name: t('commands', 'openCalendar'),
-				callback: () => {
-					runAsyncAction('open calendar command failed', () => this.openCalendarView());
-				},
+				callback: () => this.openCalendarView(),
 			});
 
 			this.addCommand({
@@ -39173,9 +39169,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-kanban-view',
 				name: t('commands', 'openKanban'),
-				callback: () => {
-					runAsyncAction('open kanban command failed', () => this.openKanbanView());
-				},
+				callback: () => this.openKanbanView(),
 			});
 
 			this.addCommand({
@@ -39189,9 +39183,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-table-view',
 				name: t('commands', 'openOperonTable'),
-				callback: () => {
-					runAsyncAction('open operon table command failed', () => this.openOperonTable());
-				},
+				callback: () => this.openOperonTable(),
 			});
 
 			this.addCommand({

@@ -14,7 +14,7 @@ export type LightboxTarget =
  | { kind: 'web'; url: string; media?: TaskMediaPreviewSource }
  | { kind: 'local'; linktext: string; sourcePath: string; line?: number; caretCh?: number; operonId?: string; label?: string };
 export type LightboxOpenResult = 'opened' | 'missing' | 'unsupported' | 'unavailable';
-export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number; operonId?: string }
+export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number; operonId?: string; expectedTablePresetId?: string }
 
 export function resolveLightboxFile(app: App, target: Extract<LightboxTarget, { kind: 'local' }>): ResolvedLightboxFile | null {
  const raw = target.linktext.trim().replace(/^!?\[\[([\s\S]*)\]\]$/u, '$1').split('|')[0];

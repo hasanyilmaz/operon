@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { Platform, TFile, WorkspaceTabs } from 'obsidian';
+import { Notice, Platform, TFile, WorkspaceTabs } from 'obsidian';
 import { lightboxFixture } from './test-support/lightbox-dom';
 import { activateResolvedOpening, resolveChipOpening } from '../src/ui/links-chip-action';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { openLightbox } from '../src/ui/lightbox';
 import { openLightboxTarget, openTaskFileLinkWithModifier, resolveLightboxFile } from '../src/ui/lightbox-opening';
-import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
+import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openFileLightboxAsync, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { bindTaskMediaChipPreview, cleanupTaskMediaChipPreviews } from '../src/ui/compact-chip-link-preview';
 
@@ -207,6 +207,37 @@ for(const extension of ['base','table']) test(`native ${extension} uses owned vi
   assert.equal(f.opens[1].eState.subpath,'#My view');
  }finally{f.cleanup();await tick();}
 });
+for (const loadedId of ['tp_requested', 'tp_replacement', null]) {
+ test(`a command Table lightbox checks the loaded file identity before showing ${loadedId}`, async () => {
+  const f = fixture('table');
+  const messages: string[] = [];
+  const notice = Notice as typeof Notice & { onNotice: ((text: string) => void) | null };
+  const previous = notice.onNotice;
+  notice.onNotice = message => messages.push(message);
+  let finishLoad!: () => void;
+  f.leaf.loadIfDeferred = () => new Promise<void>(resolve => { finishLoad = resolve; });
+  f.view.getState = () => ({ presetId: loadedId });
+  try {
+   const opened = openFileLightboxAsync(f.app, f.anchor, { file: f.file, subpath: '', expectedTablePresetId: 'tp_requested' });
+   await tick();
+   const host = f.doc.body.querySelectorAll().find((node: any) => node.classes.has('operon-native-lightbox-host'));
+   assert.equal(host?.hidden, true);
+   finishLoad();
+   await opened;
+   await tick();
+   if (loadedId === 'tp_requested') {
+    assert.equal(host.hidden, false);
+    assert.equal(f.stats().detached, 0);
+    assert.deepEqual(messages, []);
+   } else {
+    assert.equal(host.hidden, true);
+    assert.equal(f.stats().detached, 1);
+    assert.deepEqual(messages, ['Preset not found.']);
+   }
+  } finally { notice.onNotice = previous; f.cleanup(); await tick(); }
+ });
+}
+
 test('unavailable native Base view does not keep a raw text fallback or alter user tabs',async()=>{
  const f=fixture('base');try{
   f.view.getViewType=()=> 'markdown';
