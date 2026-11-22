@@ -14,7 +14,7 @@ import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sy
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
-import { readAutomationRules, type AutomationRulesSettings } from '../core/automation-rules';
+import { readAutomationRules, type AutomationRule, type AutomationRulesSettings } from '../core/automation-rules';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
@@ -1291,10 +1291,32 @@ export class OperonStorage {
 	async saveAutomationRules(expected: unknown, next: AutomationRulesSettings): Promise<void> {
 		const expectedSource = JSON.stringify(expected);
 		const updated = readAutomationRules(next);
+		await this.updateAutomationRules(raw => {
+			if (JSON.stringify(raw) !== expectedSource) throw new Error('Automation rules changed before save');
+			readAutomationRules(raw);
+			return updated;
+		});
+	}
+
+	async saveAutomationRule(original: AutomationRule | undefined, draft: AutomationRule): Promise<void> {
+		const expected = JSON.stringify(original);
+		const replacement = structuredClone(draft);
+		if (original && original.id !== replacement.id) throw new Error('Automation rule ID changed');
+		await this.updateAutomationRules(raw => {
+			const current = readAutomationRules(raw);
+			const index = current.rules.findIndex(rule => rule.id === replacement.id);
+			if (JSON.stringify(current.rules[index]) !== expected) throw new Error('Automation rule changed before save');
+			if (index < 0) current.rules.push(replacement);
+			else current.rules[index] = replacement;
+			return readAutomationRules(current);
+		});
+	}
+
+	private async updateAutomationRules(update: (raw: unknown) => AutomationRulesSettings): Promise<void> {
 		await this.enqueueSettingsTransaction(async () => {
+			let updated!: AutomationRulesSettings;
 			await this.dataPackageStore.updateDataPackageCas(current => {
-				if (JSON.stringify(current.automation.ruleSettings) !== expectedSource) throw new Error('Automation rules changed before save');
-				readAutomationRules(current.automation.ruleSettings);
+				updated = update(current.automation.ruleSettings);
 				return { ...current, automation: { ...current.automation, ruleSettings: updated } };
 			});
 			this.settings.automationRules = updated;

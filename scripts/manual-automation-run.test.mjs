@@ -202,6 +202,83 @@ test('opening a saved ID edits the existing rule and writes only on Save', async
 	});
 });
 
+test('palette and URI editors save different rules concurrently in the current order and policy', async ctx => {
+	const opened = [];
+	ctx.mock.method(Modal.prototype, 'open', function () { opened.push(this); });
+	await withSettingsFixture({ table: false }, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const a = createAutomationRule('First'), b = createAutomationRule('Second');
+		const initial = { ...readAutomationRules(undefined), rules: [a, b] };
+		await storage.saveAutomationRules(undefined, initial);
+		const source = { getSettings: () => storage.getSettings(), getTasks: () => [] };
+		const commands = new Map();
+		const links = new OperonCommandLinks({
+			vaultName: () => 'Example', rules: () => storage.getSettings().automationRules.rules,
+			viewSources: () => ({ presets: { table: [], calendar: [], kanban: [], filter: [] }, fileTableIds: new Set() }),
+			register: command => commands.set(command.id, command), unavailable: assert.fail,
+			openRule: id => openAutomationEditor({}, storage, source, id),
+		});
+		links.refresh();
+		await commands.get('automation-open-' + a.id).callback();
+		await links.handleProtocol({ action: 'operon', view: 'automation', rule: b.id });
+		const extra = createAutomationRule('Third');
+		await storage.saveAutomationRules(initial, { ...initial, confirmation: 25, rules: [b, extra, a] });
+		const [first, second] = opened;
+		first.draft.name = 'Edited first';
+		second.draft.name = 'Edited second';
+		await Promise.all([second.persist(second.draft), first.persist(first.draft)]);
+		const expected = { ...initial, confirmation: 25, rules: [second.draft, extra, first.draft] };
+		assert.deepEqual(storage.getSettings().automationRules, expected);
+		assert.deepEqual(disk.package().automation.ruleSettings, expected);
+	});
+});
+
+test('an editor keeps its draft after a conflicting edit, deletion or failed write and runs Auto only after commit', async ctx => {
+	let editor;
+	ctx.mock.method(Modal.prototype, 'open', function () { editor = this; });
+	await withSettingsFixture({ table: false }, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const a = createAutomationRule('First');
+		const initial = { ...readAutomationRules(undefined), rules: [a] };
+		await storage.saveAutomationRules(undefined, initial);
+		const runs = [];
+		const open = () => {
+			openAutomationEditor({}, storage, {
+				getSettings: () => storage.getSettings(), getTasks: () => [],
+				runSaved: saved => runs.push(saved),
+			}, a.id);
+			Object.assign(editor.draft, { active: true, mode: 'auto', actions: [action('tags', 'follow')] });
+			editor.canSave = () => true;
+			editor.refresh = () => {};
+			editor.close = () => { editor.closed = true; };
+		};
+		open();
+		disk.writeFault = 'throw-before';
+		await editor.submit();
+		assert.equal(editor.closed, false);
+		assert.deepEqual(runs, []);
+		assert.deepEqual(disk.package().automation.ruleSettings, initial);
+		await editor.submit();
+		assert.equal(editor.closed, true);
+		assert.deepEqual(runs, [editor.draft]);
+		for (const rules of [[{ ...a, name: 'Other edit' }], []]) {
+			open();
+			editor.draft.name = 'My draft';
+			const current = storage.getSettings().automationRules;
+			await storage.saveAutomationRules(current, { ...current, rules });
+			const writes = disk.canonicalAttempts;
+			await editor.submit();
+			assert.equal(editor.closed, false);
+			assert.equal(editor.draft.name, 'My draft');
+			assert.equal(disk.canonicalAttempts, writes);
+			assert.deepEqual(disk.package().automation.ruleSettings.rules, rules);
+			assert.equal(runs.length, 1);
+		}
+	});
+});
+
 test('a direct command run uses the saved version once in each mode and state', async () => {
 	for (const mode of ['manual', 'auto']) for (const active of [false, true]) {
 		const f = await fixture(filesFor(1), {rule: {mode, active}});

@@ -21,7 +21,7 @@ export function automationConfirmationOptions(): Record<string, string> {
 	]));
 }
 
-export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules' | 'subscribeAutomationRules'>, source: AutomationEditorSource): () => void {
+export function mountAutomationRules(app: App, el: HTMLElement, storage: RulesStorage & Pick<OperonStorage, 'subscribeAutomationRules'>, source: AutomationEditorSource): () => void {
 	const render = () => renderAutomationRules(app, el, storage, source);
 	render();
 	const unsubscribe = storage.subscribeAutomationRules(render);
@@ -39,7 +39,7 @@ export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<Op
 	return dispose;
 }
 
-type RulesStorage = Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>;
+type RulesStorage = Pick<OperonStorage, 'getSettings' | 'saveAutomationRules' | 'saveAutomationRule'>;
 
 async function commitRules(storage: RulesStorage, snapshot: AutomationRulesSettings, next: AutomationRule[]): Promise<boolean> {
 	try {
@@ -61,10 +61,10 @@ export function openAutomationEditor(app: App, storage: RulesStorage, source: Au
 	catch { new Notice(t('settings', 'automationUnavailable')); return; }
 	const existing = snapshot.rules.find(rule => rule.id === id);
 	if (id !== undefined && !existing) { new Notice(t('settings', 'uriRuleMissing')); return; }
-	scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
-		commitRules(storage, snapshot, existing
-			? snapshot.rules.map(rule => rule.id === existing.id ? draft : rule)
-			: [...snapshot.rules, draft])), true).open();
+	scopeSettingsModal(new AutomationRuleModal(app, source, existing, async draft => {
+		await storage.saveAutomationRule(existing, draft);
+		return true;
+	}), true).open();
 }
 
 function renderAutomationRules(app: App, el: HTMLElement, storage: RulesStorage, source: AutomationEditorSource): void {
