@@ -172,14 +172,15 @@ export class AutomationActionRow {
 
 	private renderValue(): void {
 		const { action, ctx, valueHost } = this;
-		const type = actionType(action.field, ctx);
-		this.renderedType = type;
+		this.renderedType = actionType(action.field, ctx);
+		const reminderDatetime = action.field === 'reminderDatetimes' && this.renderedType === 'list';
+		const type = reminderDatetime ? 'datetime' : this.renderedType;
 		valueHost.empty();
 		const label = t('settings', 'automationValue');
 		const raw = Array.isArray(action.value) ? action.value.join('; ') : action.value;
 		const change = (value: string | string[]) => {
 			if (action.valueEncoding === 'relative-day-v1') delete action.valueEncoding;
-			action.value = value;
+			action.value = reminderDatetime && typeof value === 'string' && value ? [value] : value;
 			ctx.changed();
 		};
 		const list = type === 'list' || type === 'tags';

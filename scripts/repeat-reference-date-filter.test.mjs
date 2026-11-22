@@ -562,10 +562,11 @@ test('Datetime Actions keep the day expression and wall time independent through
  };
  const renderDatetimePickerContent = compile('renderDatetimePickerContent', deps, '', file);
  const showDatetimePicker = compile('showDatetimePicker', {...deps, renderDatetimePickerContent}, '', file);
- const render = compile('renderValue', {...deps, showDatetimePicker, actionType: () => 'datetime',
+ const render = compile('renderValue', {...deps, showDatetimePicker, actionType: field => field === 'reminderDatetimes' ? 'list' : 'datetime',
   isFilePropertyColumnKey: () => false}, 'AutomationActionRow');
  for (const timeFormat of ['12h', '24h']) {
-  for (const field of ['datetimeStart', 'file.property:Meeting']) {
+  for (const field of ['datetimeStart', 'file.property:Meeting', 'reminderDatetimes']) {
+   const fixed = value => field === 'reminderDatetimes' ? [value] : value;
    const action = {field, value: '2026-11-23T14:45:00'};
    const reopen = () => {
     const host = new PickerElement();
@@ -580,7 +581,7 @@ test('Datetime Actions keep the day expression and wall time independent through
    action.value = '2026-11-23T14:45:31';
    let ui = reopen();
    calendar.onSelect('2026-11-25'); ui.time.key('Enter');
-   assert.equal(action.value, '2026-11-25T14:45:31');
+   assert.deepEqual(action.value, fixed('2026-11-25T14:45:31'));
    ui = reopen();
    ui.type('Tom'); ui.button('Tomorrow').fire('mousedown'); ui.time.key('Enter');
    assert.equal(action.value, 'tomorrow@14:45');
@@ -601,13 +602,13 @@ test('Datetime Actions keep the day expression and wall time independent through
    ui = reopen();
    assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 PM' : 'Tomorrow · 12:00');
    calendar.onSelect('2026-12-02'); ui.time.key('Enter');
-   assert.equal(action.value, '2026-12-02T12:00:00');
+   assert.deepEqual(action.value, fixed('2026-12-02T12:00:00'));
    assert.equal(action.valueEncoding, undefined);
    ui = reopen();
    ui.type('3'); ui.button('3 months ago').fire('mousedown'); ui.time.key('Enter');
    assert.equal(action.value, 'months:-3@12:00');
    ui = reopen(); ui.type('2026-12-24'); ui.query.key('Enter'); ui.time.key('Enter');
-   assert.equal(action.value, '2026-12-24T12:00:00');
+   assert.deepEqual(action.value, fixed('2026-12-24T12:00:00'));
    assert.equal(action.valueEncoding, undefined);
    ui = reopen(); ui.button('Clear').fire('click'); assert.equal(action.value, '');
   }

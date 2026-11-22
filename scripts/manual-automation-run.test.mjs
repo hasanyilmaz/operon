@@ -2031,3 +2031,37 @@ test('ReminderRules actions add and remove one reminder on a task with no anchor
 	assert.equal((await f.run()).applied, 1);
 	assert.doesNotMatch(await f.read(name), /datetimeStart\.30m/u);
 });
+
+test('ReminderDatetimes adds and removes a single resolved local time across run days', async () => {
+	const name = id(0) + '.md';
+	const relative = (day, op) => ({ ...action('reminderDatetimes', day + '@09:00', op), valueEncoding: 'relative-day-v1' });
+	const other = '2026-11-21T09:00:31';
+	const legacy = '2026-11-20T09:00';
+	const f = await fixture({ [name]: inline(id(0), ' {{reminderDatetimes:: ' + legacy + '; ' + other + '}}') },
+		{ rule: { actions: [relative('tomorrow', 'add')] } });
+	const run = async (day, operand, count) => {
+		f.now = day + 'T08:00:00';
+		f.rule.actions = [operand];
+		assert.equal((await f.run()).applied, count);
+		await f.reindexInline(id(0));
+		return f.read(name);
+	};
+	assert.match(await run('2026-11-19', relative('tomorrow', 'add'), 0), /2026-11-20T09:00\b/u);
+	assert.match(await run('2026-11-20', relative('tomorrow', 'add'), 1), /2026-11-21T09:00:00/u);
+	const after = await run('2026-11-21', relative('today', 'remove'), 1);
+	assert.ok(after.includes(other) && after.includes(legacy));
+	assert.ok(!after.includes('2026-11-21T09:00:00'));
+	assert.ok(!(await run('2026-12-01', action('reminderDatetimes', ['2026-11-20T09:00:00'], 'remove'), 1)).includes(legacy));
+	assert.ok((await run('2026-12-01', action('reminderDatetimes', ['2026-12-25T14:45:00']), 1)).includes('2026-12-25T14:45:00'));
+});
+
+test('a relative reminder changes only its matching YAML list member', async () => {
+	const name = 'Reminder.md';
+	const other = '2026-11-21T09:00:23';
+	const f = await fixture({ [name]: '---\noperonId: task001\nReminderDatetimes: ["2026-11-21T09:00", "' + other + '"]\n---\nBody\n' },
+		{ rule: { actions: [{ ...action('reminderDatetimes', 'tomorrow@09:00', 'remove'), valueEncoding: 'relative-day-v1' }] } });
+	assert.equal((await f.run()).applied, 1);
+	const text = await f.read(name);
+	assert.deepEqual(parseYaml(text.split('---')[1]).ReminderDatetimes, [other]);
+	assert.ok(text.endsWith('Body\n'));
+});

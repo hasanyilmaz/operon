@@ -1,3 +1,4 @@
+import { canonicalizeLocalDatetime } from './local-time';
 import type { IndexedTask } from '../types/fields';
 import type { FilterGroup, FilterFieldType, FilterSetCondition, OperonSettings } from '../types/settings';
 import { resolveAutomationWorkflowStatus, resolveReverseWorkflowFromTerminalDate, resolveWorkflowStatus, shouldTriggerOneShotAutomation } from '../types/pipeline';
@@ -174,6 +175,14 @@ function actionBatch(ctx: PlanContext, task: IndexedTask, action: AutomationActi
 			&& value.some(member => typeof member !== 'string' || member.includes(';'))) return 'unsupported-source';
 		if (key === 'tags' && task.primary.format === 'inline' && value.some(member => !isLosslessInlineTag(String(member)))) return 'invalid-value';
 		for (const member of value) {
+			if (key === 'reminderDatetimes' && Array.isArray(field.before)) {
+				// Match existing minute-precision reminders without rewriting unrelated list entries.
+				const matching = field.before.filter(item => typeof item === 'string' && canonicalizeLocalDatetime(item) === member);
+				for (const item of matching.length ? matching : [member]) {
+					push(task.operonId, key, field.before, item, add ? 'include' : 'exclude', false);
+				}
+				continue;
+			}
 			push(task.operonId, key, field.before, member, add ? 'include' : 'exclude', false);
 			if (key !== 'blocking' && key !== 'blockedBy') continue;
 			const peer = ctx.tasks.get(String(member));

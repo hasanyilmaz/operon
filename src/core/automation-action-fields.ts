@@ -153,13 +153,23 @@ function resolveRelativeActionDate(value: AutomationAction['value'], type: Filte
 
 export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native' | 'typedList'>, referenceDay?: string): PlanValue {
 	const { type } = field;
-	if (action.valueEncoding === 'relative-day-v1') return resolveRelativeActionDate(action.value, type, referenceDay ?? localToday());
-	if (action.valueEncoding && !field.typedList) throw new Error('Expected a typed mapped list');
+	const relative = action.valueEncoding === 'relative-day-v1';
+	const reminderList = type === 'list' && action.field === 'reminderDatetimes';
+	if (relative && !reminderList) return resolveRelativeActionDate(action.value, type, referenceDay ?? localToday());
+	if (action.valueEncoding === 'vault-v1' && !field.typedList) throw new Error('Expected a typed mapped list');
 	if (type === 'list' || type === 'tags') {
-		const members = readAutomationListMembers(action, field.native);
+		const members = relative ? [resolveRelativeActionDate(action.value, 'datetime', referenceDay ?? localToday())]
+			: readAutomationListMembers(action, field.native);
+		if (reminderList) {
+			if (!members.length) throw new Error('Expected a reminder datetime');
+			return [...new Set(members.map(member => {
+				const parsed = parseAbsoluteReminder(String(member));
+				if (!parsed.ok) throw new Error('Invalid reminder datetime');
+				return parsed.value.localDatetime;
+			}))];
+		}
 		const values = type === 'tags' && !field.native ? members.map(value => String(value).replace(/^#/, '')) : members;
-		if (!values.length || values.some(value => value === '' || (action.field === 'reminderRules' && !parseReminderRule(String(value)).ok)
-			|| (action.field === 'reminderDatetimes' && !parseAbsoluteReminder(String(value)).ok))) throw new Error('Invalid list literal');
+		if (!values.length || values.some(value => value === '' || (action.field === 'reminderRules' && !parseReminderRule(String(value)).ok))) throw new Error('Invalid list literal');
 		return [...new Set(values)];
 	}
 	if (typeof action.value !== 'string' || !action.value.trim()) throw new Error('Expected a value');
