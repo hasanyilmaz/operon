@@ -3,7 +3,7 @@ import type { FilterFieldType, OperonSettings } from '../types/settings';
 import type { AutomationAction } from './automation-rules';
 import { EDITABLE_TASK_FIELD_KEYS } from './editable-task-fields';
 import { getManagedCustomFieldOptionMapping, getManagedTaskFieldType } from './managed-task-fields';
-import { classifyFilePropertyCell, decodeFilePropertyColumnKey, hasFileTaskDisplayTitleMapping, isWritableRawYamlPropertyName } from './raw-yaml-property';
+import { classifyFilePropertyCell, decodeFilePropertyColumnKey, hasFileTaskDisplayTitleMapping, isWritableRawYamlPropertyName, readRawYamlPropertyExpectation } from './raw-yaml-property';
 import { getManagedYamlAliases, readYamlFields } from './yaml-fields';
 import { resolveInlinePropertyDefinition } from './inline-property-definitions';
 import { parseListValue } from './parser';
@@ -67,6 +67,24 @@ export function isAutomationNativeKeyWritable(key: string, settings: AutomationF
 	return !!name && isWritableRawYamlPropertyName(name, settings.keyMappings, 'case-insensitive');
 }
 
+/** Keep YAML member boundaries and the exact key that supplied them for the guarded write. */
+export function readAutomationTypedYamlList(frontmatter: Record<string, unknown>, key: string, settings: AutomationFieldSettings) {
+	const aliases = getManagedYamlAliases(key, settings.keyMappings);
+	const present = aliases.filter(name => Object.prototype.hasOwnProperty.call(frontmatter, name));
+	if (present.length > 1) return 'ambiguous-property' as const;
+	const name = present[0] ?? aliases[0];
+	const expected = readRawYamlPropertyExpectation(frontmatter, name);
+	if (!expected) return 'unsupported-source' as const;
+	const raw = expected.value;
+	if (Array.isArray(raw) && raw.every((item): item is Member => typeof item === 'string' ||
+		typeof item === 'number' && Number.isFinite(item) && (!Number.isInteger(item) || Number.isSafeInteger(item)))) {
+		return { name, expected, members: raw };
+	}
+	if (raw == null) return { name, expected, members: [] };
+	if (typeof raw === 'string' && !raw.includes(';')) return { name, expected, members: parseListValue(raw) };
+	return 'unsupported-source' as const;
+}
+
 /** Resolve the source and its write capability before interpreting the action's literal. */
 export function readAutomationField(task: IndexedTask, key: string, source: AutomationFieldSource): ActionField | ActionIssue {
 	const { settings } = source;
@@ -100,6 +118,10 @@ export function readAutomationField(task: IndexedTask, key: string, source: Auto
 	if (task.primary.format === 'yaml' && type === 'list') {
 		const fm = source.getFrontmatter(task);
 		if (!fm || readYamlFields(fm, settings.keyMappings).operonId !== task.operonId) return 'source-unavailable';
+		if (typedMapping) {
+			const list = readAutomationTypedYamlList(fm, key, settings);
+			return typeof list === 'string' ? list : { before: list.members, type, native: false, typedList: true };
+		}
 		const keys = getManagedYamlAliases(key, settings.keyMappings).filter(name => Object.prototype.hasOwnProperty.call(fm, name));
 		if (keys.length > 1) return 'ambiguous-property';
 		const value: unknown = keys.length ? fm[keys[0]] : undefined;

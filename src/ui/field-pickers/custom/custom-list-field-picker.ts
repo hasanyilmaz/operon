@@ -305,7 +305,7 @@ export function showCustomListFieldPicker(
 		}
 		if (event.key === 'Enter' || event.key === 'Tab' || (!native && (event.key === ',' || (!options.mediaReference && event.key === ';')))) {
 			const typed = input.value.trim();
-			if (event.key === 'Enter' && matches[activeIndex] && !native) {
+			if (event.key === 'Enter' && matches[activeIndex] && (!native || options.singleValue)) {
 				event.preventDefault();
 				addValue(matches[activeIndex]);
 				return;

@@ -179,8 +179,6 @@ function actionBatch(ctx: PlanContext, task: IndexedTask, action: AutomationActi
 	const push = (taskId: string, fieldKey: string, before: PlanValue, literal: PlanValue, op: Intent['op'], indirect: boolean) =>
 		intents.push({ taskId, field: fieldKey, before, value: literal, op, indirect, origin });
 	if (Array.isArray(value)) {
-		if (field.typedList && task.primary.format === 'yaml' && add
-			&& value.some(member => typeof member !== 'string' || member.includes(';'))) return 'unsupported-source';
 		if (key === 'tags' && task.primary.format === 'inline' && value.some(member => !isLosslessInlineTag(String(member)))) return 'invalid-value';
 		for (const member of value) {
 			if (key === 'reminderDatetimes' && Array.isArray(field.before)) {

@@ -10,10 +10,12 @@ import { markdownBodyStartLine } from '../core/markdown-body';
 import { iterateMarkdownLinesOutsideFences } from '../core/markdown-fenced-lines';
 import type { GuardedTaskSourceFieldUpdate, TaskWriter } from '../core/task-writer';
 
-type Update = GuardedTaskSourceFieldUpdate;
+export interface AutomationSourceUpdate extends GuardedTaskSourceFieldUpdate {
+	mappedYamlLists?: PropertyEditorChange[];
+}
 
 /** A literal in an inline row must still mean the same thing after Markdown parses it. */
-function inlineMatches(before: ParsedTask, after: ParsedTask, update: Update, settings: OperonSettings): boolean {
+function inlineMatches(before: ParsedTask, after: ParsedTask, update: AutomationSourceUpdate, settings: OperonSettings): boolean {
 	const fields = update.fieldValues;
 	if (after.operonId !== before.operonId || after.description !== (fields._description ?? before.description)
 		|| after.checkbox !== (fields._checkbox ?? before.checkbox) || after.timePrefix?.raw !== before.timePrefix?.raw) return false;
@@ -39,10 +41,10 @@ function inlineMatches(before: ParsedTask, after: ParsedTask, update: Update, se
 	return true;
 }
 
-function renderYaml(path: string, content: string, update: Update, writer: TaskWriter, settings: OperonSettings): string | null {
+function renderYaml(path: string, content: string, update: AutomationSourceUpdate, writer: TaskWriter, settings: OperonSettings): string | null {
 	const original = readFileTaskPropertyDocument(content);
 	if (!original || !fileTaskPropertyIdentityMatches(original.frontmatter, update.operonId, settings.keyMappings)) return null;
-	if (!Object.keys(update.fieldValues).length && !update.filePropertyDraft) return content;
+	if (!Object.keys(update.fieldValues).length && !update.filePropertyDraft && !update.mappedYamlLists?.length) return content;
 	const rendered = writer.renderGuardedTaskSourceContent(path, content, [update]);
 	const next = rendered.ok && readFileTaskPropertyDocument(rendered.content);
 	if (!next) return null;
@@ -60,7 +62,7 @@ function renderYaml(path: string, content: string, update: Update, writer: TaskW
 			for (const name of aliases) names.set(name, name);
 		}
 	}
-	const changes: PropertyEditorChange[] = [];
+	const changes = [...update.mappedYamlLists ?? []];
 	for (const [name, renderedName] of names) {
 		const expected = readRawYamlPropertyExpectation(original.frontmatter, name);
 		const value = readRawYamlPropertyExpectation(next.frontmatter, renderedName);
@@ -75,7 +77,7 @@ function renderYaml(path: string, content: string, update: Update, writer: TaskW
 /** Render only the matching source lines and YAML key spans; unrelated Markdown stays byte-exact. */
 export function renderAutomationSource(
 	path: string, content: string, tasks: IndexedTask[], writer: TaskWriter, settings: OperonSettings,
-	buildUpdate: (task: IndexedTask, row?: ParsedTask) => Update | null,
+	buildUpdate: (task: IndexedTask, row?: ParsedTask) => AutomationSourceUpdate | null,
 ): string | null {
 	const inline = new Map(tasks.filter(task => task.primary.format === 'inline').map(task => [task.operonId, task]));
 	if (inline.size) {

@@ -1,13 +1,14 @@
 import { TFile, type App } from 'obsidian';
 import type { AutomationChangePlan, AutomationFieldChange } from '../core/automation-change-plan';
 import type { FileTaskPropertyChange } from '../core/file-task-property-draft';
+import { automationTypedListMapping, readAutomationTypedYamlList } from '../core/automation-action-fields';
 import { parseListValue } from '../core/parser';
 import { parseDependencyIdList } from '../core/dependency-graph';
 import { createInlinePropertyReadPlan, readParsedInlinePropertyProjection, type InlinePropertyChange } from '../core/inline-property-source';
 import { isSupportedRawYamlPropertyValue } from '../core/raw-yaml-property';
 import { parseTaskMediaReferenceList, serializeTaskMediaReferenceList } from '../core/task-media-reference';
 import { readLosslessYamlListField } from '../core/yaml-fields';
-import type { GuardedTaskSourceFieldUpdate, TaskWriter, TaskWriterExclusiveMutationPermit } from '../core/task-writer';
+import type { TaskWriter, TaskWriterExclusiveMutationPermit } from '../core/task-writer';
 import type { IndexedTask, ParsedTask } from '../types/fields';
 import type { OperonSettings } from '../types/settings';
 import type { PinnedCache, PinnedCacheEntrySnapshot } from '../storage/pinned-cache';
@@ -15,7 +16,7 @@ import { executeTaskSourceRenameTransaction } from '../storage/task-source-renam
 import type { TableFilePropertyQueryContext } from '../ui/table/table-file-property';
 import { executePluginUiConversionTransaction, type PluginUiConversionStep } from './plugin-ui-conversion-transaction';
 import type { captureAutomationReadState } from './automation-read-state';
-import { renderAutomationSource } from './automation-source-render';
+import { renderAutomationSource, type AutomationSourceUpdate } from './automation-source-render';
 import type { AutomationWork, AutomationYamlSources } from './manual-automation-run';
 
 import { generateRepeatSeriesId } from '../core/id-generator';
@@ -56,9 +57,9 @@ interface Source {
 }
 type Pin = { expected: PinnedCacheEntrySnapshot; pinned: boolean };
 
-function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], content: string, ports: WritePorts, row?: ParsedTask): GuardedTaskSourceFieldUpdate | null {
+function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], content: string, ports: WritePorts, row?: ParsedTask): AutomationSourceUpdate | null {
 	const { format, lineNumber, filePath } = task.primary;
-	const update: GuardedTaskSourceFieldUpdate = { operonId: task.operonId, format, lineNumber, fieldValues: {}, expectedFieldValues: {} };
+	const update: AutomationSourceUpdate = { operonId: task.operonId, format, lineNumber, fieldValues: {}, expectedFieldValues: {} };
 	const yaml: FileTaskPropertyChange[] = [];
 	const inline: InlinePropertyChange[] = [];
 	for (const { field, before, after } of changes) {
@@ -81,6 +82,14 @@ function buildUpdate(task: IndexedTask, changes: AutomationFieldChange[], conten
 			continue;
 		}
 		const mapping = ports.settings.keyMappings.find(item => item.isSystem === false && item.canonicalKey === field);
+		if (format === 'yaml' && Array.isArray(after) && automationTypedListMapping(field, ports.settings)) {
+			const source = ports.yamlSources.get(filePath);
+			if (!source) return null;
+			const list = readAutomationTypedYamlList(source.frontmatter, field, ports.settings);
+			if (typeof list === 'string' || JSON.stringify(list.members) !== JSON.stringify(before)) return null;
+			(update.mappedYamlLists ??= []).push({ name: list.name, expected: list.expected, value: after });
+			continue;
+		}
 		if (row && mapping) {
 			const { keyMappings, inlinePropertyDefinitions } = ports.settings;
 			const name = mapping.visiblePropertyName;

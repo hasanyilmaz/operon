@@ -2230,3 +2230,52 @@ for (const format of ['inline', 'yaml']) {
 		}
 	});
 }
+
+test('mapped YAML Actions add and remove typed members without splitting or coercing their neighbours', async () => {
+	for (const key of ['Members', 'participants']) {
+		const f = await fixture({'Task.md': membersSource(key + ': [Keep, Tail] # existing list')}, {settings: typedMembers});
+		const run = async (literal, operation, expected, legacy = false) => {
+			f.rule.actions = [{...action('participants', literal, operation), ...(legacy ? {} : {valueEncoding: 'vault-v1'})}];
+			assert.equal((await f.run()).applied, 1);
+			const text = await f.read('Task.md');
+			const yaml = parseYaml(text.split('---')[1]);
+			assert.deepEqual(yaml[key], expected);
+			assert.deepEqual(Object.keys(yaml).filter(k => ['Members', 'participants'].includes(k)), [key]);
+			assert.ok(text.includes('# existing list') && text.endsWith('Keep this body.\n'));
+			await f.reindexYaml('task001');
+			assert.equal((await f.run()).applied, 0);
+		};
+		await run('2', 'add', ['Keep', 'Tail', 2]);
+		await run('"2"', 'add', ['Keep', 'Tail', 2, '2']);
+		await run('"A; B"', 'add', ['Keep', 'Tail', 2, '2', 'A; B']);
+		await run('2', 'remove', ['Keep', 'Tail', '2', 'A; B']);
+		await run('2', 'add', ['Keep', 'Tail', '2', 'A; B', 2]);
+		await run('2', 'remove', ['Keep', 'Tail', 'A; B', 2], true);
+		await run('"A; B"', 'remove', ['Keep', 'Tail', 2]);
+	}
+});
+
+test('typed YAML list Actions reject mixed unsupported members and ambiguous aliases', async () => {
+	for (const yaml of ['Members: [2, true]', 'Members: [null]', 'Members: [{x: 2}]', 'Members: [2]\nparticipants: ["2"]']) {
+		const before = membersSource(yaml);
+		const f = await fixture({'Task.md': before}, {settings: typedMembers, rule: {
+			actions: [{...action('participants', '2', 'remove'), valueEncoding: 'vault-v1'}],
+		}});
+		assert.equal((await f.run()).status, 'unavailable');
+		assert.equal(await f.read('Task.md'), before);
+		assert.deepEqual(f.writes, []);
+	}
+});
+
+test('typed YAML list rechecks member types after approval and preserves a concurrent edit', async () => {
+	const f = await fixture({'Task.md': membersSource('Members: [2, "2"]')}, {settings: typedMembers, rule: {
+		actions: [{...action('participants', '2', 'remove'), valueEncoding: 'vault-v1'}],
+	}});
+	f.confirm = async () => {
+		if (f.prompts.length === 1) await f.editFile('Task.md', membersSource('Members: ["A; B", 2, "2"]'));
+		return 'apply';
+	};
+	assert.equal((await f.run()).applied, 1);
+	assert.equal(f.prompts.length, 2);
+	assert.deepEqual(parseYaml((await f.read('Task.md')).split('---')[1]).Members, ['A; B', '2']);
+});

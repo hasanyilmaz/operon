@@ -14,6 +14,7 @@ const temp = await mkdtemp(path.join(tmpdir(), 'operon-repeat-date-filter-'));
 after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
+ export { decodeVaultPropertyList, encodeVaultPropertyValue } from './src/core/vault-property-codec';
  export * from './src/ui/field-pickers/automation-date-options';
  export * from './src/ui/field-pickers/datetime-time-grid';
  export { formatCompactDatetimeTime, formatUiTaskDatetime } from './src/core/ui-time-format';
@@ -786,4 +787,28 @@ test('Repeat Action picker reopens the rule and commits only its expression', ()
  assert.equal(picker.value, repeat);
  picker.onClear();
  assert.equal(action.value, '');
+});
+
+test('single-value list Actions commit the highlighted typed suggestion with Enter', () => {
+ const file = 'src/ui/field-pickers/custom/custom-list-field-picker.ts';
+ let panel;
+ const show = compile('showCustomListFieldPicker', {
+  ...h, CUSTOM_LIST_PAGE_SIZE: 20,
+  normalizeCustomListValue: value => value.trim(), formatCustomListDisplayValue: value => value,
+  buildCustomListSearchText: value => value.toLowerCase(), bindCustomListWikilinkPreview() {},
+  bindPickerListItemActivation() {}, requestFloatingInputFocus() {}, scrollChildIntoView() {},
+  createButton: (_label, _cls, parent) => parent.createEl('button'),
+  createCustomFieldPanel: (_anchor, _options, close) => { panel = new PickerElement(); return {panel, close}; },
+ }, '', file);
+ for (const [query, move, expected] of [['2', 0, 2], ['2', 1, '2'], ['A;', 0, 'A; B'], ['', 1, '2'], ['New', 0, 'New']]) {
+  let committed;
+  show(new PickerElement(), {value: [], nativeValues: [], singleValue: true, candidates: ['2', '"2"', '"A; B"'],
+   onCommitNativeValues: values => { committed = values; }});
+  const input = panel.children[1];
+  panel.children[2].style.removeProperty = () => {};
+  input.value = query; input.fire('input');
+  if (move) input.key('ArrowDown');
+  input.key('Enter');
+  assert.deepEqual(committed, [expected]);
+ }
 });
