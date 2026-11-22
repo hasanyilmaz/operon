@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "Tablo aç",
+		"openCalendarPreset": "Takvim aç",
+		"openKanbanPreset": "Kanban aç",
+		"openFilterPreset": "Filtre aç",
+		"openAutomation": "Otomasyon aç",
+		"runAutomation": "Otomasyon çalıştır",
+		"newTab": "Yeni Sekme",
 		"openUriBuilder": "URI Finder’ı aç",
 		"openCurrentFileEditor": "Geçerli dosyanın Görev / Özellik Düzenleyicisini aç",
 		"openMiniCalendar": "Mini takvimi aç",

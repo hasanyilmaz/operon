@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -324,21 +324,27 @@
       "editTask": "编辑光标处的任务",
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
       "moveInlineTaskHere": "将行内任务移动到此处",
+      "newTab": "新标签页",
+      "openAutomation": "打开自动化",
       "openCalendar": "Operon 日历",
+      "openCalendarPreset": "打开日历",
       "openCanvasPropertyValuePool": "打开 Canvas 属性值池",
       "openCanvasTaskPool": "打开 Canvas 任务池",
       "openCurrentFileEditor": "打开当前文件的任务或属性编辑器",
       "openDuplicateOperonIdManager": "打开重复 operonId 管理器",
       "openExcalidrawPropertyPool": "打开 Excalidraw Property Pool",
       "openExcalidrawTaskPool": "打开 Excalidraw 任务池",
+      "openFilterPreset": "打开筛选器",
       "openFilterView": "Operon 筛选视图",
       "openFlowTime": "打开 FlowTime 面板",
       "openKanban": "Operon 看板",
+      "openKanbanPreset": "打开看板",
       "openMiniCalendar": "打开迷你日历",
       "openMobileCalendar": "打开移动版日历",
       "openMobileKanban": "打开移动版看板",
       "openOperonTable": "Operon 表格",
       "openPinnedTasks": "打开置顶任务",
+      "openTablePreset": "打开表格",
       "openTaskCreator": "新建 Operon 任务",
       "openTaskEditor": "打开任务编辑器（新任务）",
       "openTaskFinder": "任务查找器",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "修复重复文件任务标识",
       "repairTaskWikilinkOverlayLinks": "修复任务维基链接叠加层链接",
       "retryPendingWorkflowRename": "重试待处理的工作流重命名",
+      "runAutomation": "运行自动化",
       "showIndexStats": "显示索引统计",
       "toggleCompletion": "切换任务完成状态",
       "toggleGlobalTimer": "启动/停止计时器",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "533d01beb0e33b0b62f415c1d3182e573537af606204daae2e0dad5ddec61a54"
+  "sourceVersion": "fc76e392a02baad775a695f5aea517fbd102780c0de0109e53748f0118ae2e78"
 }

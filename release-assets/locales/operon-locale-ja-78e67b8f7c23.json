@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -324,21 +324,27 @@
       "editTask": "カーソル位置のタスクを編集",
       "insertOperonTableEmbed": "埋め込み Operon テーブルを挿入",
       "moveInlineTaskHere": "インラインタスクをここに移動",
+      "newTab": "新しいタブ",
+      "openAutomation": "自動化を開く",
       "openCalendar": "Operon カレンダー",
+      "openCalendarPreset": "カレンダーを開く",
       "openCanvasPropertyValuePool": "Canvas プロパティ値プールを開く",
       "openCanvasTaskPool": "Canvas タスクプールを開く",
       "openCurrentFileEditor": "現在のファイルのタスク／プロパティエディターを開く",
       "openDuplicateOperonIdManager": "重複 operonId マネージャーを開く",
       "openExcalidrawPropertyPool": "Excalidraw Property Poolを開く",
       "openExcalidrawTaskPool": "Excalidrawタスクプールを開く",
+      "openFilterPreset": "フィルターを開く",
       "openFilterView": "Operon フィルタービュー",
       "openFlowTime": "FlowTime パネルを開く",
       "openKanban": "Operon カンバン",
+      "openKanbanPreset": "カンバンを開く",
       "openMiniCalendar": "ミニカレンダーを開く",
       "openMobileCalendar": "モバイルカレンダーを開く",
       "openMobileKanban": "モバイルカンバンを開く",
       "openOperonTable": "Operon テーブル",
       "openPinnedTasks": "ピン留めタスクを開く",
+      "openTablePreset": "テーブルを開く",
       "openTaskCreator": "新しい Operon タスクを作成",
       "openTaskEditor": "タスクエディターを開く（新規タスク）",
       "openTaskFinder": "タスクファインダー",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "繰り返しファイルタスクの識別情報を修復",
       "repairTaskWikilinkOverlayLinks": "タスクウィキリンクオーバーレイのリンクを修復",
       "retryPendingWorkflowRename": "保留中のワークフロー名変更を再試行",
+      "runAutomation": "自動化を実行",
       "showIndexStats": "インデックス統計を表示",
       "toggleCompletion": "タスクの完了を切り替え",
       "toggleGlobalTimer": "タイマーを開始/停止",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "50846de8d28b2e916a07d077375c551b8dbd757d06a28d033687a30c07343b46"
+  "sourceVersion": "af389ecd3f05466b77a3dd34b219bd312ddaa676ba7e4c447a10d39266976c30"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -324,21 +324,27 @@
       "editTask": "Редактировать задачу в позиции курсора",
       "insertOperonTableEmbed": "Вставить встроенную таблицу Operon",
       "moveInlineTaskHere": "Переместить встроенную задачу сюда",
+      "newTab": "Новая вкладка",
+      "openAutomation": "Открыть автоматизацию",
       "openCalendar": "Календарь Operon",
+      "openCalendarPreset": "Открыть календарь",
       "openCanvasPropertyValuePool": "Открыть пул значений свойств Canvas",
       "openCanvasTaskPool": "Открыть пул задач Canvas",
       "openCurrentFileEditor": "Открыть редактор задач или свойств текущего файла",
       "openDuplicateOperonIdManager": "Открыть менеджер дублирующихся operonId",
       "openExcalidrawPropertyPool": "Открыть Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Открыть пул задач Excalidraw",
+      "openFilterPreset": "Открыть фильтр",
       "openFilterView": "Представление фильтра Operon",
       "openFlowTime": "Открыть панель FlowTime",
       "openKanban": "Канбан Operon",
+      "openKanbanPreset": "Открыть канбан",
       "openMiniCalendar": "Открыть мини-календарь",
       "openMobileCalendar": "Открыть мобильный календарь",
       "openMobileKanban": "Открыть мобильную канбан-доску",
       "openOperonTable": "Таблица Operon",
       "openPinnedTasks": "Открыть закреплённые задачи",
+      "openTablePreset": "Открыть таблицу",
       "openTaskCreator": "Создать новую задачу Operon",
       "openTaskEditor": "Открыть редактор задач (новая задача)",
       "openTaskFinder": "Поиск задач",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "Исправить идентификаторы повторяющихся файловых задач",
       "repairTaskWikilinkOverlayLinks": "Восстановить ссылки оверлея вики-ссылок задач",
       "retryPendingWorkflowRename": "Повторить незавершённое переименование рабочего процесса",
+      "runAutomation": "Запустить автоматизацию",
       "showIndexStats": "Показать статистику индекса",
       "toggleCompletion": "Переключить выполнение задачи",
       "toggleGlobalTimer": "Запустить/остановить таймер",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "2dcd4f793fac460ddea55535dd653c1f68a036b071af1e3dbf957fa72f564d2e"
+  "sourceVersion": "5e76a3179159c7da9297cec353c62bafa08a41497ab251c44d8d2a7142e790ab"
 }

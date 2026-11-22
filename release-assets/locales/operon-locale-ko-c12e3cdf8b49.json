@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -324,21 +324,27 @@
       "editTask": "커서 위치의 작업 편집",
       "insertOperonTableEmbed": "Operon 테이블 임베드 삽입",
       "moveInlineTaskHere": "인라인 작업을 여기로 이동",
+      "newTab": "새 탭",
+      "openAutomation": "자동화 열기",
       "openCalendar": "Operon 캘린더",
+      "openCalendarPreset": "캘린더 열기",
       "openCanvasPropertyValuePool": "Canvas 속성값 풀 열기",
       "openCanvasTaskPool": "Canvas 작업 풀 열기",
       "openCurrentFileEditor": "현재 파일의 작업 또는 속성 편집기 열기",
       "openDuplicateOperonIdManager": "중복 operonId 관리자 열기",
       "openExcalidrawPropertyPool": "Excalidraw 속성 풀 열기",
       "openExcalidrawTaskPool": "Excalidraw 작업 풀 열기",
+      "openFilterPreset": "필터 열기",
       "openFilterView": "Operon 필터 보기",
       "openFlowTime": "FlowTime 패널 열기",
       "openKanban": "Operon 칸반",
+      "openKanbanPreset": "칸반 열기",
       "openMiniCalendar": "미니 캘린더 열기",
       "openMobileCalendar": "모바일 캘린더 열기",
       "openMobileKanban": "모바일 칸반 열기",
       "openOperonTable": "Operon 테이블",
       "openPinnedTasks": "고정된 작업 열기",
+      "openTablePreset": "테이블 열기",
       "openTaskCreator": "새 Operon 작업 만들기",
       "openTaskEditor": "작업 편집기 열기(새 작업)",
       "openTaskFinder": "작업 찾기",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "반복 파일 작업 식별 정보 복구",
       "repairTaskWikilinkOverlayLinks": "작업 위키링크 오버레이 링크 복구",
       "retryPendingWorkflowRename": "대기 중인 워크플로 이름 변경 재시도",
+      "runAutomation": "자동화 실행",
       "showIndexStats": "인덱스 통계 보기",
       "toggleCompletion": "작업 완료 상태 전환",
       "toggleGlobalTimer": "타이머 시작/중지",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "a1f746ef3dd94162a80cb7445ed513eec2b12909b13a3c78882cea42eaaed278"
+  "sourceVersion": "151963ad1f60d132482691e17c695e978e1c13f77b0406a3d345e3590c08f496"
 }

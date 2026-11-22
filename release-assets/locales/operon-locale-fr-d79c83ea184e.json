@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -324,21 +324,27 @@
       "editTask": "Modifier la tâche au curseur",
       "insertOperonTableEmbed": "Insérer une table Operon intégrée",
       "moveInlineTaskHere": "Déplacer une tâche en ligne ici",
+      "newTab": "Nouvel onglet",
+      "openAutomation": "Ouvrir l’automatisation",
       "openCalendar": "Calendrier Operon",
+      "openCalendarPreset": "Ouvrir le calendrier",
       "openCanvasPropertyValuePool": "Ouvrir la réserve de valeurs de propriétés Canvas",
       "openCanvasTaskPool": "Ouvrir la réserve de tâches Canvas",
       "openCurrentFileEditor": "Ouvrir l’éditeur de tâches ou de propriétés du fichier actuel",
       "openDuplicateOperonIdManager": "Ouvrir le gestionnaire des doublons d'operonId",
       "openExcalidrawPropertyPool": "Ouvrir Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Ouvrir le réservoir de tâches Excalidraw",
+      "openFilterPreset": "Ouvrir le filtre",
       "openFilterView": "Vue de filtre Operon",
       "openFlowTime": "Ouvrir le panneau FlowTime",
       "openKanban": "Kanban Operon",
+      "openKanbanPreset": "Ouvrir le Kanban",
       "openMiniCalendar": "Ouvrir le mini calendrier",
       "openMobileCalendar": "Ouvrir le calendrier mobile",
       "openMobileKanban": "Ouvrir le Kanban mobile",
       "openOperonTable": "Table Operon",
       "openPinnedTasks": "Ouvrir les tâches épinglées",
+      "openTablePreset": "Ouvrir le tableau",
       "openTaskCreator": "Créer une nouvelle tâche Operon",
       "openTaskEditor": "Ouvrir l'éditeur de tâche (nouvelle tâche)",
       "openTaskFinder": "Recherche de tâches",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "Réparer les identités des tâches-fichiers récurrentes",
       "repairTaskWikilinkOverlayLinks": "Réparer les liens Task Wikilink Overlay",
       "retryPendingWorkflowRename": "Réessayer le renommage du workflow en attente",
+      "runAutomation": "Exécuter l’automatisation",
       "showIndexStats": "Afficher les statistiques de l'index",
       "toggleCompletion": "Basculer l'état d'achèvement de la tâche",
       "toggleGlobalTimer": "Démarrer/arrêter le minuteur",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "aa455a2f6f8c30361f48497dc58a277d25217173a5c0a8ef68920d86369ed3c6"
+  "sourceVersion": "c946a52df04521752b1e692d3193beeb4a57fabf3475b3a16f188f9e5ecf2a80"
 }

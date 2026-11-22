@@ -97,6 +97,20 @@ test('duplicate labels and a named Default get ID suffixes, without changing exi
 	assert.equal(edited.name, 'Open Table › Renamed › New Tab');
 });
 
+test('literal ID suffixes, duplicate rule names and generic command labels remain distinguishable', () => {
+	const collision = buildOperonCommandCatalog({
+		...source, commands: [...source.commands, item('work-shortcut', 'Open Table › Default › New Tab')],
+		rules: [item('one', 'Work'), item('two', 'Work'), item('three', 'Work [one]'), item('four', 'Work [one] (2)')],
+	});
+	const names = collision.entries.map(entry => entry.name);
+	assert.equal(new Set(names).size, names.length);
+	assert.ok(names.includes('Run automation › Work [one] (3)'));
+	assert.ok(names.includes('Run automation › Work [one]'));
+	for (const entry of collision.entries) {
+		assert.equal(resolveOperonCommand(entry.target, collision, { inlineTaskId: 'task' }).entry?.id, entry.id);
+	}
+});
+
 test('both actions are listed for each saved rule, including Manual Inactive and Auto Inactive', () => {
 	for (const rule of rules) {
 		for (const action of ['open', 'run']) {

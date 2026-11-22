@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -324,21 +324,27 @@
       "editTask": "İmleçteki görevi düzenle",
       "insertOperonTableEmbed": "Gömülü Operon Table ekle",
       "moveInlineTaskHere": "Bir satır içi görevi buraya taşı",
+      "newTab": "Yeni Sekme",
+      "openAutomation": "Otomasyon aç",
       "openCalendar": "Operon Takvimi'ni aç",
+      "openCalendarPreset": "Takvim aç",
       "openCanvasPropertyValuePool": "Canvas Property Value Pool aç",
       "openCanvasTaskPool": "Canvas Task Pool aç",
       "openCurrentFileEditor": "Geçerli dosyanın Görev / Özellik Düzenleyicisini aç",
       "openDuplicateOperonIdManager": "Çakışan operonId yöneticisini aç",
       "openExcalidrawPropertyPool": "Excalidraw Property Pool’u aç",
       "openExcalidrawTaskPool": "Excalidraw Görev Havuzunu aç",
+      "openFilterPreset": "Filtre aç",
       "openFilterView": "Operon Filtre Görünümü'nü aç",
       "openFlowTime": "FlowTime panelini aç",
       "openKanban": "Operon Kanban'ı aç",
+      "openKanbanPreset": "Kanban aç",
       "openMiniCalendar": "Mini takvimi aç",
       "openMobileCalendar": "Mobil Takvimi aç",
       "openMobileKanban": "Mobil Kanban'ı aç",
       "openOperonTable": "Operon Table'ı aç",
       "openPinnedTasks": "Sabitlenmiş görevler panelini aç",
+      "openTablePreset": "Tablo aç",
       "openTaskCreator": "Yeni Operon görevi oluştur",
       "openTaskEditor": "Görev Editörü aç (yeni görev)",
       "openTaskFinder": "Görev Bul",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "Tekrarlanan File Task kimliklerini onar",
       "repairTaskWikilinkOverlayLinks": "Task Wikilink Overlay bağlantılarını onar",
       "retryPendingWorkflowRename": "Bekleyen iş akışı yeniden adlandırmasını tekrar dene",
+      "runAutomation": "Otomasyon çalıştır",
       "showIndexStats": "İndeks istatistiklerini göster",
       "toggleCompletion": "Görev tamamlanma durumunu değiştir",
       "toggleGlobalTimer": "Sayacı başlat/durdur",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "6aa17e83c53c567f52b00a03152bba397b7201f37eab1eeebf23623bbaa9f0af"
+  "sourceVersion": "220fc49504a3f9f120b4bbc7a145fac8b2018ae6da2834277e70f67cf508124d"
 }

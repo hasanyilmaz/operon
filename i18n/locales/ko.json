@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "테이블 열기",
+		"openCalendarPreset": "캘린더 열기",
+		"openKanbanPreset": "칸반 열기",
+		"openFilterPreset": "필터 열기",
+		"openAutomation": "자동화 열기",
+		"runAutomation": "자동화 실행",
+		"newTab": "새 탭",
 		"openUriBuilder": "URI 찾기 열기",
 		"openCurrentFileEditor": "현재 파일의 작업 또는 속성 편집기 열기",
 		"openMiniCalendar": "미니 캘린더 열기",

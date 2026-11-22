@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "Abrir tabla",
+		"openCalendarPreset": "Abrir calendario",
+		"openKanbanPreset": "Abrir Kanban",
+		"openFilterPreset": "Abrir filtro",
+		"openAutomation": "Abrir automatización",
+		"runAutomation": "Ejecutar automatización",
+		"newTab": "Nueva pestaña",
 		"openUriBuilder": "Abrir el buscador de URI",
 		"openCurrentFileEditor": "Abrir el editor de tareas o propiedades del archivo actual",
 		"openMiniCalendar": "Abrir mini calendario",

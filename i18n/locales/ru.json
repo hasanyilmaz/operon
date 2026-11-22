@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "Открыть таблицу",
+		"openCalendarPreset": "Открыть календарь",
+		"openKanbanPreset": "Открыть канбан",
+		"openFilterPreset": "Открыть фильтр",
+		"openAutomation": "Открыть автоматизацию",
+		"runAutomation": "Запустить автоматизацию",
+		"newTab": "Новая вкладка",
 		"openUriBuilder": "Открыть поиск URI",
 		"openCurrentFileEditor": "Открыть редактор задач или свойств текущего файла",
 		"openMiniCalendar": "Открыть мини-календарь",

@@ -216,7 +216,7 @@ test('palette and URI editors save different rules concurrently in the current o
 		const links = new OperonCommandLinks({
 			vaultName: () => 'Example', rules: () => storage.getSettings().automationRules.rules,
 			viewSources: () => ({ presets: { table: [], calendar: [], kanban: [], filter: [] }, fileTableIds: new Set() }),
-			register: command => commands.set(command.id, command), unavailable: assert.fail,
+			register: command => { commands.set(command.id, command); return command; }, unavailable: assert.fail,
 			openRule: id => openAutomationEditor({}, storage, source, id),
 		});
 		links.refresh();

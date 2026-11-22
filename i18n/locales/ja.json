@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "テーブルを開く",
+		"openCalendarPreset": "カレンダーを開く",
+		"openKanbanPreset": "カンバンを開く",
+		"openFilterPreset": "フィルターを開く",
+		"openAutomation": "自動化を開く",
+		"runAutomation": "自動化を実行",
+		"newTab": "新しいタブ",
 		"openUriBuilder": "URI 検索を開く",
 		"openCurrentFileEditor": "現在のファイルのタスク／プロパティエディターを開く",
 		"openMiniCalendar": "ミニカレンダーを開く",

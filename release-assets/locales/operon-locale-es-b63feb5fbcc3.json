@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -324,21 +324,27 @@
       "editTask": "Editar tarea en el cursor",
       "insertOperonTableEmbed": "Insertar tabla Operon incrustada",
       "moveInlineTaskHere": "Mover una tarea en línea aquí",
+      "newTab": "Nueva pestaña",
+      "openAutomation": "Abrir automatización",
       "openCalendar": "Calendario de Operon",
+      "openCalendarPreset": "Abrir calendario",
       "openCanvasPropertyValuePool": "Abrir panel de valores de propiedades de Canvas",
       "openCanvasTaskPool": "Abrir panel de tareas de Canvas",
       "openCurrentFileEditor": "Abrir el editor de tareas o propiedades del archivo actual",
       "openDuplicateOperonIdManager": "Abrir el gestor de operonId duplicados",
       "openExcalidrawPropertyPool": "Abrir Excalidraw Property Pool",
       "openExcalidrawTaskPool": "Abrir el grupo de tareas de Excalidraw",
+      "openFilterPreset": "Abrir filtro",
       "openFilterView": "Vista de filtros de Operon",
       "openFlowTime": "Abrir el panel de FlowTime",
       "openKanban": "Kanban de Operon",
+      "openKanbanPreset": "Abrir Kanban",
       "openMiniCalendar": "Abrir mini calendario",
       "openMobileCalendar": "Abrir calendario móvil",
       "openMobileKanban": "Abrir Kanban móvil",
       "openOperonTable": "Tabla de Operon",
       "openPinnedTasks": "Abrir tareas fijadas",
+      "openTablePreset": "Abrir tabla",
       "openTaskCreator": "Crear nueva tarea de Operon",
       "openTaskEditor": "Abrir editor de tareas (nueva tarea)",
       "openTaskFinder": "Buscador de tareas",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "Reparar identidades de tareas de archivo recurrentes",
       "repairTaskWikilinkOverlayLinks": "Reparar enlaces de Task Wikilink Overlay",
       "retryPendingWorkflowRename": "Reintentar cambio de nombre del flujo pendiente",
+      "runAutomation": "Ejecutar automatización",
       "showIndexStats": "Mostrar estadísticas del índice",
       "toggleCompletion": "Alternar finalización de la tarea",
       "toggleGlobalTimer": "Iniciar/detener temporizador",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f076e74a40e5a28c7b383ffe216cbb2255be574813207c65287d270e6475bb20"
+  "sourceVersion": "09def250528baecfcf3858999292ffd6512dd4ab68b0143e041e83260a1d30fb"
 }

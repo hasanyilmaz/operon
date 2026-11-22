@@ -1,5 +1,5 @@
 import { AbstractInputSuggest, type App, getIcon, Notice, Setting, type ButtonComponent } from 'obsidian';
-import { t } from '../../core/i18n';
+import { getCurrentLang, t } from '../../core/i18n';
 import type { OperonCommandEntry } from '../../core/operon-command-catalog';
 import { buildOperonUri } from '../../core/operon-uri';
 import type { OperonCommandLinks } from '../../systems/operon-command-links';
@@ -12,9 +12,10 @@ class CommandSuggest extends AbstractInputSuggest<OperonCommandEntry> {
 	}
 
 	getSuggestions(query: string): OperonCommandEntry[] {
-		const words = query.toLocaleLowerCase().trim().split(/\s+/u).filter(Boolean);
+		const language = getCurrentLang();
+		const words = query.toLocaleLowerCase(language).trim().split(/\s+/u).filter(Boolean);
 		const results = words.length ? this.links.entries.filter(entry => {
-			const text = ('Operon: ' + entry.name).toLocaleLowerCase();
+			const text = ('Operon: ' + entry.name).toLocaleLowerCase(language);
 			return words.every(word => text.includes(word));
 		}) : this.links.entries;
 		this.status.setText(words.length && !results.length ? t('settings', 'uriNoMatches') : '');

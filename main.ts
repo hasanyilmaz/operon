@@ -3384,7 +3384,9 @@ export default class OperonPlugin extends Plugin {
 			'mobile notifications snapshot settings reconciliation failed',
 			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
 		);
+		const previousLanguage = getCurrentLang();
 		initI18n(undefined, this.settings.language);
+		if (previousLanguage !== getCurrentLang()) this.commandLinks?.refresh();
 		if (
 			previousProjectSerialScopeSignature
 			&& previousProjectSerialScopeSignature !== this.projectSerialScopeSettingsSignature
@@ -3471,6 +3473,7 @@ export default class OperonPlugin extends Plugin {
 				installI18nLocale(language, pack.translations);
 				if (!shouldActivateReconciledLocale(language, this.settings.language)) continue;
 				if (!activateI18nLocale(language)) continue;
+				this.commandLinks?.refresh();
 				this.settingsTab?.refreshLanguageState();
 				this.statusDock?.refresh();
 				this.trackerStatusBar?.render();

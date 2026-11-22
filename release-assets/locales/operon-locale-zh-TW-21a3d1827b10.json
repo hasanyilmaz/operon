@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3927,
-  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
+  "keyCount": 3934,
+  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -324,21 +324,27 @@
       "editTask": "編輯游標處的任務",
       "insertOperonTableEmbed": "插入嵌入的 Operon 表格",
       "moveInlineTaskHere": "將行內任務移動到此處",
+      "newTab": "新分頁",
+      "openAutomation": "開啟自動化",
       "openCalendar": "Operon 日曆",
+      "openCalendarPreset": "開啟日曆",
       "openCanvasPropertyValuePool": "開啟 Canvas 屬性值池",
       "openCanvasTaskPool": "開啟 Canvas 任務池",
       "openCurrentFileEditor": "開啟目前檔案的任務或屬性編輯器",
       "openDuplicateOperonIdManager": "開啟重複 operonId 管理器",
       "openExcalidrawPropertyPool": "開啟 Excalidraw Property Pool",
       "openExcalidrawTaskPool": "開啟 Excalidraw 任務池",
+      "openFilterPreset": "開啟篩選器",
       "openFilterView": "Operon 篩選檢視",
       "openFlowTime": "開啟 FlowTime 面板",
       "openKanban": "Operon 看板",
+      "openKanbanPreset": "開啟看板",
       "openMiniCalendar": "開啟迷你日曆",
       "openMobileCalendar": "開啟行動版日曆",
       "openMobileKanban": "開啟行動版看板",
       "openOperonTable": "Operon 表格",
       "openPinnedTasks": "開啟置頂任務",
+      "openTablePreset": "開啟表格",
       "openTaskCreator": "新建 Operon 任務",
       "openTaskEditor": "開啟任務編輯器（新任務）",
       "openTaskFinder": "任務查詢器",
@@ -350,6 +356,7 @@
       "repairRecurringFileTaskIdentities": "修復重複檔案任務識別",
       "repairTaskWikilinkOverlayLinks": "修復任務維基連結覆蓋層連結",
       "retryPendingWorkflowRename": "重試待處理的工作流程重新命名",
+      "runAutomation": "執行自動化",
       "showIndexStats": "顯示索引統計",
       "toggleCompletion": "切換任務完成狀態",
       "toggleGlobalTimer": "啟動/停止計時器",
@@ -3972,5 +3979,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "2981bcdc73e45690c1930aa6dbf02e63d95b47a2a8f176ca7ac90675b33ee24c"
+  "sourceVersion": "6831d86d5d467b5a66b0d4d60878848aa02add82abc8a3013f8cc45d314973ba"
 }

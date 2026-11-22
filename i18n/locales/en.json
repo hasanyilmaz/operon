@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "Open Table",
+		"openCalendarPreset": "Open Calendar",
+		"openKanbanPreset": "Open Kanban",
+		"openFilterPreset": "Open Filter",
+		"openAutomation": "Open automation",
+		"runAutomation": "Run automation",
+		"newTab": "New Tab",
 		"openUriBuilder": "Open URI Finder",
 		"openCurrentFileEditor": "Open current file’s Task / Property Editor",
 		"openMiniCalendar": "Open mini calendar",

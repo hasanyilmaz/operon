@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { isOperonCommandSlug, OPERON_VIEWS, type OperonCommandTarget, type OperonView } from './operon-uri';
 
 interface NamedItem {
@@ -20,8 +21,6 @@ export interface OperonCommandEntry extends NamedItem {
 	target: OperonCommandTarget;
 }
 
-const viewNames: Record<OperonView, string> = { table: 'Table', calendar: 'Calendar', kanban: 'Kanban', filter: 'Filter' };
-
 function commandId(target: OperonCommandTarget): string {
 	switch (target.kind) {
 		case 'command':
@@ -35,11 +34,20 @@ function commandId(target: OperonCommandTarget): string {
 	}
 }
 
-function distinguishNames(items: readonly NamedItem[], reserveDefault: boolean): string[] {
+function distinguishNames(items: readonly NamedItem[], reservedName?: string): string[] {
 	const counts = new Map<string, number>();
-	if (reserveDefault) counts.set('Default', 1);
+	if (reservedName !== undefined) counts.set(reservedName, 1);
 	for (const { name } of items) counts.set(name, (counts.get(name) ?? 0) + 1);
-	return items.map(({ name, id }) => (counts.get(name) ?? 0) > 1 ? `${name} [${id}]` : name);
+	// Reserve literal names first, including user names that already look like generated labels.
+	const used = new Set(counts.keys());
+	return items.map(({ name, id }) => {
+		if (counts.get(name) === 1) return name;
+		const base = `${name} [${id}]`;
+		let label = base;
+		for (let n = 2; used.has(label); n++) label = `${base} (${n})`;
+		used.add(label);
+		return label;
+	});
 }
 
 export function buildOperonCommandCatalog(source: OperonCommandSources) {
@@ -48,29 +56,38 @@ export function buildOperonCommandCatalog(source: OperonCommandSources) {
 		entries.push({ id: commandId(target), name, target });
 	}
 
+	const viewLabels: Record<OperonView, string> = {
+		table: t('commands', 'openTablePreset'), calendar: t('commands', 'openCalendarPreset'),
+		kanban: t('commands', 'openKanbanPreset'), filter: t('commands', 'openFilterPreset'),
+	};
+	const defaultLabel = t('settings', 'default');
+	const tabLabel = t('commands', 'newTab');
+	const lightboxLabel = t('settings', 'workspaceTweaksLightboxSection');
 	const hasDefaultTable = source.presets.table.some(table => table.id === source.defaultTableId);
 	for (const view of OPERON_VIEWS) {
 		const items = source.presets[view];
-		const names = distinguishNames(items, true);
+		const names = distinguishNames(items, defaultLabel);
 		const addView = (name: string, preset?: string) => {
 			const named = preset === undefined ? {} : { preset };
-			const prefix = `Open ${viewNames[view]} › ${name} › `;
-			add(prefix + 'New Tab', { kind: 'view', view, ...named, paneType: 'tab' });
+			const prefix = `${viewLabels[view]} › ${name} › `;
+			add(prefix + tabLabel, { kind: 'view', view, ...named, paneType: 'tab' });
 			const tableId = preset ?? (hasDefaultTable ? source.defaultTableId : null);
 			if (view === 'table' && source.desktop && tableId && source.fileTableIds.has(tableId)) {
-				add(prefix + 'Lightbox', { kind: 'view', view, ...named, paneType: 'lightbox' });
+				add(prefix + lightboxLabel, { kind: 'view', view, ...named, paneType: 'lightbox' });
 			}
 		};
-		addView('Default');
+		addView(defaultLabel);
 		items.forEach((item, index) => addView(names[index], item.id));
 	}
 
 	// Both explicit actions are available for every saved rule, independent of Auto scheduling.
-	const ruleNames = distinguishNames(source.rules, false);
+	const ruleNames = distinguishNames(source.rules);
+	const openAutomation = t('commands', 'openAutomation');
+	const runAutomation = t('commands', 'runAutomation');
 	source.rules.forEach((rule, index) => {
 		const name = ruleNames[index];
-		add('Open automation › ' + name, { kind: 'automation', rule: rule.id, action: 'open' });
-		add('Run automation › ' + name, { kind: 'automation', rule: rule.id, action: 'run' });
+		add(openAutomation + ' › ' + name, { kind: 'automation', rule: rule.id, action: 'open' });
+		add(runAutomation + ' › ' + name, { kind: 'automation', rule: rule.id, action: 'run' });
 	});
 
 	// The four default tabs already own their existing command IDs (including any hotkeys).
@@ -78,12 +95,15 @@ export function buildOperonCommandCatalog(source: OperonCommandSources) {
 	for (const { id, name } of source.commands) {
 		if (catalogIds.has(id) || !isOperonCommandSlug(id) || id === 'cursor-timer' || id === 'open-uri-finder') continue;
 		if (id === 'toggle-timer') {
-			add('Start/stop timer for task at cursor', { kind: 'command', command: 'cursor-timer' });
+			add(t('commands', 'toggleTimer'), { kind: 'command', command: 'cursor-timer' });
+		} else if (id === 'open-uri-builder') {
+			add(t('commands', 'openUriBuilder'), { kind: 'command', command: 'open-uri-finder' });
 		} else {
-			add(name, { kind: 'command', command: id === 'open-uri-builder' ? 'open-uri-finder' : id });
+			add(name, { kind: 'command', command: id });
 		}
 	}
-	return { entries, hasDefaultTable };
+	const labels = distinguishNames(entries);
+	return { entries: entries.map((entry, index) => ({ ...entry, name: labels[index] })), hasDefaultTable };
 }
 
 type CommandCatalog = ReturnType<typeof buildOperonCommandCatalog>;

@@ -1,5 +1,12 @@
 {
 	"commands": {
+		"openTablePreset": "打开表格",
+		"openCalendarPreset": "打开日历",
+		"openKanbanPreset": "打开看板",
+		"openFilterPreset": "打开筛选器",
+		"openAutomation": "打开自动化",
+		"runAutomation": "运行自动化",
+		"newTab": "新标签页",
 		"openUriBuilder": "打开 URI 查找器",
 		"openCurrentFileEditor": "打开当前文件的任务或属性编辑器",
 		"openMiniCalendar": "打开迷你日历",

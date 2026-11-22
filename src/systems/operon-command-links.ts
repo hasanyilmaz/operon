@@ -19,10 +19,15 @@ interface Ports {
 	unavailable(reason: 'invalid' | 'preset' | 'rule' | 'command'): void;
 }
 
+interface Registration {
+	name: string;
+	registered: Command;
+}
+
 /** Own the same local IDs as the palette. Obsidian prefixes (and mutates) commands when registering them. */
 export class OperonCommandLinks {
-	private readonly commands = new Map<string, { id: string; name: string; registered: Command }>();
-	private readonly dynamicCommands = new Map<string, string>();
+	private readonly commands = new Map<string, Registration & { id: string; sourceName: string }>();
+	private readonly dynamicCommands = new Map<string, Registration>();
 	private readonly listeners = new Set<() => void>();
 	private catalog: ReturnType<typeof buildOperonCommandCatalog>;
 
@@ -38,15 +43,14 @@ export class OperonCommandLinks {
 		const registered = this.ports.register(viewEntry && callback
 			? { ...command, name, callback: () => this.withFeedback(callback) }
 			: { ...command, name });
-		this.commands.set(id, { id, name, registered });
+		this.commands.set(id, { id, name, registered, sourceName: command.name });
 		return registered;
 	}
 
 	private buildCatalog(sources = this.ports.viewSources()) {
-		const catalog = buildOperonCommandCatalog({ ...sources, commands: [...this.commands.values()], rules: this.ports.rules() });
-		return { ...catalog, entries: catalog.entries.map(entry => ({
-			...entry, name: this.commands.get(entry.id)?.name ?? entry.name,
-		})) };
+		return buildOperonCommandCatalog({ ...sources, rules: this.ports.rules(),
+			commands: Array.from(this.commands.values(), ({ id, sourceName }) => ({ id, name: sourceName })),
+		});
 	}
 
 	get entries() { return this.catalog.entries; }
@@ -59,18 +63,28 @@ export class OperonCommandLinks {
 	refresh(): void {
 		const previous = this.entries;
 		this.catalog = this.buildCatalog();
-		const next = new Map(this.entries.filter(({ target }) => target.kind === 'automation' ||
-			(target.kind === 'view' && (target.preset !== undefined || target.paneType === 'lightbox')))
-			.map(entry => [entry.id, entry]));
-		for (const [id, name] of this.dynamicCommands) {
-			if (next.get(id)?.name === name) continue;
+		const retained = new Set<string>();
+		for (const entry of this.entries) {
+			const dynamic = entry.target.kind === 'automation' || (entry.target.kind === 'view' &&
+				(entry.target.preset !== undefined || entry.target.paneType === 'lightbox'));
+			if (dynamic) retained.add(entry.id);
+			const registration = this.commands.get(entry.id) ?? this.dynamicCommands.get(entry.id);
+			if (registration) {
+				if (registration.name !== entry.name) {
+					// Obsidian prepends the plugin name. Keep that prefix and the host's original object.
+					const prefix = registration.registered.name.slice(0, registration.registered.name.length - registration.name.length);
+					registration.registered.name = prefix + entry.name;
+					registration.name = entry.name;
+				}
+			} else if (dynamic) {
+				const registered = this.ports.register({ id: entry.id, name: entry.name, callback: () => this.withFeedback(() => this.invoke(entry.target)) });
+				this.dynamicCommands.set(entry.id, { name: entry.name, registered });
+			}
+		}
+		for (const id of this.dynamicCommands.keys()) {
+			if (retained.has(id)) continue;
 			this.ports.remove(id);
 			this.dynamicCommands.delete(id);
-		}
-		for (const entry of next.values()) {
-			if (this.dynamicCommands.has(entry.id)) continue;
-			this.ports.register({ id: entry.id, name: entry.name, callback: () => this.withFeedback(() => this.invoke(entry.target)) });
-			this.dynamicCommands.set(entry.id, entry.name);
 		}
 		if (previous.length !== this.entries.length || this.entries.some((entry, index) =>
 			entry.id !== previous[index]?.id || entry.name !== previous[index]?.name)) {

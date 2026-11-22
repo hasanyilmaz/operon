@@ -51,14 +51,14 @@ export class AbstractInputSuggest {
 }`;
 const root = fileURLToPath(new URL('..', import.meta.url));
 const { outputFiles } = await build({
-	stdin: { contents: "export * from './src/systems/operon-command-links'; export * from './src/ui/settings/uri-builder'; export {getNormalFilterSets} from './src/core/dynamic-file-task-filter'; export {mergeTablePresetRegistryOrder,resolveTablePresetDefaultAfterRegistrySync} from './src/storage/table-preset-manifest'; export {Element, notices} from 'obsidian';", resolveDir: root },
+	stdin: { contents: "export * from './src/systems/operon-command-links'; export * from './src/ui/settings/uri-builder'; export {getNormalFilterSets} from './src/core/dynamic-file-task-filter'; export {mergeTablePresetRegistryOrder,resolveTablePresetDefaultAfterRegistrySync} from './src/storage/table-preset-manifest'; export {installI18nLocale, activateI18nLocale, resetI18nToEnglish} from './src/core/i18n'; export {Element, notices} from 'obsidian';", resolveDir: root },
 	platform: 'node', format: 'esm', write: false, bundle: true,
 	plugins: [{ name: 'host', setup(b) {
 		b.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'host' }));
 		b.onLoad({ filter: /.*/, namespace: 'host' }, () => ({ contents: mockHost }));
 	} }],
 });
-const { OperonCommandLinks, renderUriBuilder, getNormalFilterSets, mergeTablePresetRegistryOrder, resolveTablePresetDefaultAfterRegistrySync, Element, notices } = await import(
+const { installI18nLocale, activateI18nLocale, resetI18nToEnglish, OperonCommandLinks, renderUriBuilder, getNormalFilterSets, mergeTablePresetRegistryOrder, resolveTablePresetDefaultAfterRegistrySync, Element, notices } = await import(
 	'data:text/javascript;base64,' + Buffer.from(outputFiles[0].contents).toString('base64'));
 function fixture(overrides = {}) {
 	const palette = new Map();
@@ -86,6 +86,40 @@ function fixture(overrides = {}) {
 	const dispatch = uri => links.handleProtocol({ action: 'operon', ...Object.fromEntries(new URL(uri).searchParams) });
 	return { links, palette, calls, errors, presets, vault, dispatch };
 }
+test('locale changes update existing palette objects and Turkish Finder searches without changing the selected URI', () => {
+	const calendar = [{ id: 'cp_one', name: 'Varsayılan' }, { id: 'cp_two', name: 'Varsayılan [cp_one]' }];
+	const { links, palette, vault } = fixture({ viewSources: () => ({
+		presets: { table: [], filter: [], kanban: [], calendar }, defaultTableId: null, fileTableIds: new Set(), desktop: true,
+	}) });
+	const defaultCommand = links.register({ id: 'open-calendar-view', name: 'Calendar', callback() {} });
+	const namedCommand = palette.get('operon:open-calendar-preset-cp_one-tab');
+	const root = new Element();
+	const { input, dispose } = renderUriBuilder({ vault: { getName: () => vault } }, root, links);
+	const output = root.children[1].controlEl.children[0];
+	try {
+		input.suggest.selectSuggestion(links.entries.find(entry => entry.target.preset === 'cp_one'));
+		const initialUri = output.textContent;
+		installI18nLocale('tr', JSON.parse(readFileSync(new URL('../i18n/locales/tr.json', import.meta.url), 'utf8')));
+		assert.ok(activateI18nLocale('tr'));
+		links.refresh();
+		assert.equal(input.textContent, 'Takvim aç › Varsayılan [cp_one] (2) › Yeni Sekme');
+		assert.equal(defaultCommand.name, 'Operon: Takvim aç › Varsayılan › Yeni Sekme');
+		assert.equal(namedCommand.name, 'Operon: ' + input.textContent);
+		assert.equal(output.textContent, initialUri);
+		for (let i = 0; i < 20; i++) {
+			calendar[0].name = 'İş ' + i;
+			links.refresh();
+			assert.equal(palette.get(namedCommand.id), namedCommand);
+			assert.equal(namedCommand.name, 'Operon: Takvim aç › İş ' + i + ' › Yeni Sekme');
+			assert.equal(output.textContent, initialUri);
+		}
+		input.textContent = 'TAKVİM';
+		input.dispatchEvent(new Event('input'));
+		assert.equal(input.suggest.items.length, 3);
+		assert.ok(input.suggest.items.every(entry => entry.target.view === 'calendar'));
+	} finally { dispose(); resetI18nToEnglish(); }
+});
+
 test('failed preset and default tab openings give one notice and log the cause from either entry point', async ctx => {
 	const failure = new Error('Cannot open tab');
 	const log = ctx.mock.method(console, 'error', () => {});
@@ -287,6 +321,7 @@ test('Finder and palette keep stable per-rule links, disambiguate copies and dis
 	assert.equal(output.textContent, commands[1].uri);
 	for (const {command, uri, action} of commands) {
 		assert.ok(palette.has('operon:automation-' + action + '-ar_7654321'));
+		assert.equal(palette.get(command.id), command);
 		await command.callback();
 		await dispatch(uri);
 	}
