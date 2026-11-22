@@ -38152,6 +38152,18 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 	width: var(--input-height);
 	height: calc(var(--input-height) - var(--size-4-1));
 	padding: 0;
+	color: var(--text-muted);
+	background: transparent;
+	box-shadow: none;
+}
+.operon-uri-builder-result .setting-item-control > button:enabled:hover {
+	color: var(--text-normal);
+	background: transparent;
+	box-shadow: none;
+}
+.operon-uri-builder-result .setting-item-control > button:focus-visible {
+	outline: 2px solid var(--background-modifier-border-focus);
+	outline-offset: -2px;
 }
 
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
