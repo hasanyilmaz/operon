@@ -503,15 +503,45 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 	builder.dispose();
 });
 
-test('a named Calendar tab uses the selected source on phones while ordinary tabs use the mode preference', () => {
-	const Host = productionMethods('src/ui/calendar/calendar-view.ts', 'CalendarView', ['resolveMobileCalendarSourcePreset'], {
-		Base: class {}, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE: {agenda:'agendaSource'},
-	});
-	const settings = {calendarPresets:[{id:'week'},{id:'project'}], agendaSource:'week'};
-	const view = new Host();
-	const state = {presetId:'project', mobileSourcePresetId:'week'};
-	assert.equal(view.resolveMobileCalendarSourcePreset(settings, 'agenda', state).id, 'week');
-	assert.equal(view.resolveMobileCalendarSourcePreset(settings, 'agenda', {...state, useNamedPresetOnMobile:true}).id, 'project');
+test('a mobile Calendar picker selection supersedes a named opening and preserves per-mode preferences', () => {
+	const View = productionMethods('src/ui/calendar/calendar-view.ts', 'CalendarView',
+		['resolveMobileCalendarSourcePreset', 'renderMobileCalendarSourcePresetButton'], {
+			Base: class {}, setIcon() {}, setAccessibleLabelWithoutTooltip() {}, t: () => '',
+			CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE: { agenda: 'agendaSource', week: 'weekSource' },
+		});
+	const settings = { calendarPresets: ['project', 'inbox', 'work', 'family'].map(id => ({ id, name: id })),
+		agendaSource: 'inbox', weekSource: 'family' };
+	const named = new View(), ordinary = new View(), otherNamed = new View();
+	ordinary.state = { presetId: 'project', mobileSourcePresetId: 'inbox' };
+	named.state = { ...ordinary.state, useNamedPresetOnMobile: true };
+	otherNamed.state = { ...named.state };
+	const current = (view, mode = 'agenda') => view.resolveMobileCalendarSourcePreset(settings, mode, view.state).id;
+	assert.equal(current(named), 'project');
+	assert.equal(current(ordinary), 'inbox');
+
+	let savedLayout;
+	const select = new EventTarget();
+	select.createEl = () => ({});
+	const container = { createDiv: () => ({ createDiv: () => ({}), createEl: () => select }) };
+	const refreshes = [];
+	named.app = { workspace: { requestSaveLayout() { savedLayout = structuredClone(named.state); } } };
+	named.callbacks = { onMobileCalendarSettingsChange(patch) {
+		Object.assign(settings, patch);
+		refreshes.push(current(named));
+	} };
+	named.renderMobileCalendarSourcePresetButton(container, settings.calendarPresets[0], settings, 'agenda');
+	select.value = 'work';
+	select.dispatchEvent(new Event('change'));
+
+	assert.deepEqual(refreshes, ['work']);
+	assert.ok(savedLayout);
+	const restored = new View();
+	restored.state = savedLayout;
+	assert.equal(current(restored), 'work');
+	assert.equal(current(named, 'week'), 'family');
+	assert.equal(current(ordinary), 'work');
+	assert.equal(current(otherNamed), 'project');
+	assert.equal(savedLayout.presetId, 'project'); // Desktop still owns its original preset.
 });
 
 test('Table registry updates named shortcuts and reserves a missing default until its file returns', () => {

@@ -2971,6 +2971,10 @@ export class CalendarView extends ItemView {
 		}
 		setAccessibleLabelWithoutTooltip(presetSelect, t('calendar', 'mobileSourcePreset'));
 		presetSelect.addEventListener('change', () => {
+			if (this.state?.useNamedPresetOnMobile && this.callbacks.onMobileCalendarSettingsChange) {
+				delete this.state.useNamedPresetOnMobile;
+				this.app.workspace.requestSaveLayout();
+			}
 			const sourcePresetSettingKey = CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE[viewMode];
 			void this.callbacks.onMobileCalendarSettingsChange?.({
 				[sourcePresetSettingKey]: presetSelect.value,

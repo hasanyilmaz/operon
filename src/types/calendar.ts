@@ -47,7 +47,7 @@ export interface CalendarPreset {
 }
 
 export interface CalendarLeafState {
-	/** A named preset shortcut also selects the source for this tab’s mobile layout. */
+	/** Use the shortcut’s preset on mobile until the user selects a source in this tab. */
 	useNamedPresetOnMobile?: boolean;
 	forceMobileLayout: boolean;
 	presetId: string | null;
