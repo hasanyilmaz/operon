@@ -38098,7 +38098,7 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 }
 .operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) > .setting-item-control {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) var(--input-height);
+	grid-template-columns: minmax(0, 1fr);
 }
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control,
 .operon-uri-builder-result:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
@@ -38111,8 +38111,6 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 	width: 100%;
 	min-width: 0;
 	min-height: var(--input-height);
-	max-height: calc(var(--input-height) + var(--uri-field-line-height));
-	overflow-y: auto;
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 	padding: var(--uri-field-padding) var(--size-4-2);
@@ -38141,11 +38139,19 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 	pointer-events: none;
 }
 .operon-uri-builder-result .operon-uri-builder-field {
+	grid-area: 1 / 1;
+	padding-inline-end: calc(var(--input-height) + var(--size-4-2));
 	font-family: var(--font-monospace);
 }
 .operon-uri-builder-result .setting-item-control > button {
+	/* The URI is always LTR. Reserve its right edge for the copy control. */
+	grid-area: 1 / 1;
+	justify-self: right;
+	align-self: center;
+	margin-right: var(--size-4-1);
 	width: var(--input-height);
-	padding-inline: 0;
+	height: calc(var(--input-height) - var(--size-4-1));
+	padding: 0;
 }
 
 .operon-uri-builder-command:where(.operon-settings-scope, .operon-settings-scope *) .setting-item-control {
@@ -38160,5 +38166,7 @@ body .operon-property-editor .operon-editor-text-field-group.is-description > bu
 	pointer-events: none;
 }
 .operon-uri-builder-command .operon-uri-builder-field {
+	max-height: calc(var(--input-height) + var(--uri-field-line-height));
+	overflow-y: auto;
 	padding-inline-start: var(--size-4-8);
 }
