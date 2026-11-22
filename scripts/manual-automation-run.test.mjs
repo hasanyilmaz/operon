@@ -2019,3 +2019,15 @@ test('relative Actions do not register midnight triggers and their saved identit
 	assert.equal(shouldRunSavedRule(f.rule, structuredClone(f.rule), ctx), false);
 	assert.equal(shouldRunSavedRule(f.rule, {...f.rule, actions:[action('dateDue', localToday())]}, ctx), true);
 });
+
+test('ReminderRules actions add and remove one reminder on a task with no anchor date', async () => {
+	const f = await fixture(filesFor(1), { rule: { actions: [action('reminderRules', ['datetimeStart.30m'])] } });
+	const name = id(0) + '.md';
+	assert.equal((await f.run()).applied, 1);
+	assert.match(await f.read(name), /datetimeStart\.30m/u);
+	await f.reindexInline(id(0));
+	assert.equal((await f.run()).applied, 0);
+	f.rule.actions = [action('reminderRules', ['datetimeStart.30m'], 'remove')];
+	assert.equal((await f.run()).applied, 1);
+	assert.doesNotMatch(await f.read(name), /datetimeStart\.30m/u);
+});

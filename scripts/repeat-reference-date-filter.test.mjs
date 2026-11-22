@@ -19,6 +19,10 @@ await build({ stdin: { contents: `
  export { formatCompactDatetimeTime, formatUiTaskDatetime } from './src/core/ui-time-format';
  export { normalizeOperonDateKey } from './src/ui/field-pickers/day-picker';
  export * from './src/ui/field-pickers/date-nlp';
+ export { buildReminderRuleCandidates } from './src/ui/field-pickers/reminder-picker-model';
+ export { REMINDER_RULE_QUICK_OFFSETS, parseReminderRule, parseReminderOffsetInput } from './src/core/reminder-rules';
+ export { formatReminderDisplayItem } from './src/ui/reminder-display';
+ export { getVisiblePropertyName } from './src/core/yaml-fields';
  export { appendDatePickerCandidateRow } from './src/ui/field-pickers/date-picker-row';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
@@ -608,4 +612,39 @@ test('Datetime Actions keep the day expression and wall time independent through
    ui = reopen(); ui.button('Clear').fire('click'); assert.equal(action.value, '');
   }
  }
+});
+
+
+test('ReminderRules action row uses the reminder picker with five selectable anchors independently of task dates', () => {
+ const file = 'src/ui/field-pickers/reminder-picker.ts';
+ let panel;
+ const deps = { ...h, createButton: (text, cls, host) => host.createEl('button', {text, cls}), nextReminderRulesPickerId: () => 1, requestFloatingInputFocus() {}, scrollChildIntoView() {},
+  bindPickerListItemActivation: (button, cb) => button.addEventListener('click', cb),
+  createFloatingPanel: (_anchor, _classes, onClose) => { panel = new PickerElement(); return { panel, close: onClose }; },
+  setRuleDiagnostic: compile('setRuleDiagnostic', {}, '', file),
+  getAnchorLabel: compile('getAnchorLabel', h, '', file),
+ };
+ deps.formatRuleCandidateLabel = compile('formatRuleCandidateLabel', deps, '', file);
+ const picker = compile('showReminderRulesPicker', deps, '', file);
+ const render = compile('renderValue', {...h, showReminderRulesPicker: picker, actionType: () => 'list', automationTypedListMapping: () => null}, 'AutomationActionRow');
+ const host = new PickerElement(), action = { field: 'reminderRules', operation: 'remove', value: '' };
+ render.call({ action, valueHost: host, ctx: { settings: () => h.DEFAULT_SETTINGS, changed() {} }, syncType() {} });
+ const open = () => host.children[0].fire('click');
+ const options = () => panel.find(el => el.attrs.role === 'option');
+ open();
+ assert.equal(options().length, 5);
+ assert.ok(options().every(el => !el.disabled && el.children.length === 1));
+ panel.find(el => el.attrs['data-offset'] === '30m')[0].fire('click');
+ options()[4].fire('click');
+ assert.deepEqual(action.value, ['dateDue.30m']);
+ open();
+ const input = panel.find(el => el.tag === 'input')[0];
+ assert.equal(input.value, '30m');
+ assert.equal(options()[4].attrs['aria-selected'], 'true');
+ input.value = 'invalid'; input.fire('input');
+ assert.equal(options().length, 0);
+ input.value = '1h 15m'; input.fire('input'); input.key('Enter');
+ assert.deepEqual(action.value, ['dateDue.1h15m']);
+ open(); panel.find(el => el.tag === 'button' && el.textContent === h.t('buttons', 'clear'))[0].fire('click');
+ assert.deepEqual(action.value, []);
 });

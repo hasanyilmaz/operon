@@ -19,6 +19,8 @@ import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
 import { showCustomListFieldPicker } from './field-pickers/custom/custom-list-field-picker';
+import { showReminderRulesPicker } from './field-pickers/reminder-picker';
+import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
 import { collectCustomFieldValueCandidates, collectNativeFieldValueCandidates, getCustomFieldMapping } from './custom-field-surfaces';
 import type { TableFilePropertySnapshot } from './table/table-file-property';
@@ -185,8 +187,10 @@ export class AutomationActionRow {
 		if (list || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
 			const display = (text: string) => {
-				trigger.label.setText(text || label);
-				trigger.button.setAttribute('aria-label', label + (text ? ' · ' + text : ''));
+				const displayText = text && action.field === 'reminderRules'
+					? formatReminderDisplayItem({ settings: ctx.settings(), fieldKey: 'reminderRules', rawValue: text, fieldValues: {} }).text : text;
+				trigger.label.setText(displayText || label);
+				trigger.button.setAttribute('aria-label', label + (displayText ? ' · ' + displayText : ''));
 			};
 			if (automationTypedListMapping(action.field, ctx.settings()) && !action.valueEncoding) {
 				display(encodeVaultPropertyValue(readAutomationListMembers(action, false), 'list'));
@@ -203,7 +207,12 @@ export class AutomationActionRow {
 				};
 				trigger.button.setAttribute('aria-expanded', 'true');
 				const current = Array.isArray(action.value) ? action.value : action.value ? [action.value] : [];
-				if (creatorField) {
+				if (action.field === 'reminderRules') {
+					this.closePicker = showReminderRulesPicker(trigger.button, {
+						app: ctx.app, settings: ctx.settings(), actionValue: current[0] ?? '',
+						onCommit: value => commit(value ? [value] : []), onClose,
+					});
+				} else if (creatorField) {
 					this.closePicker = openTaskFieldPicker({
 						app: ctx.app, settings: ctx.settings(), allTasks: [...ctx.tasks()], canonicalKey: action.field,
 						anchor: trigger.button, currentFieldValues: { [action.field]: current.join('; ') },

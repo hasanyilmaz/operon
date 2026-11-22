@@ -56,7 +56,10 @@ interface ReminderPickerBaseOptions {
 }
 
 type ReminderDatetimePickerOptions = ReminderPickerBaseOptions;
-type ReminderRulesPickerOptions = ReminderPickerBaseOptions;
+type ReminderRulesPickerOptions = ReminderPickerBaseOptions | (
+	Pick<ReminderPickerBaseOptions, 'app' | 'settings' | 'onCommit' | 'onClose' | 'onCancel' | 'retainInputFocus'>
+	& { actionValue: string }
+);
 
 
 interface ReminderMutationSession {
@@ -115,7 +118,9 @@ export function showReminderRulesPicker(
 	options: ReminderRulesPickerOptions,
 ): () => void {
 	let completed = false;
-	const session = createReminderMutationSession('reminderRules', options);
+	const taskOptions = 'operation' in options ? options : undefined;
+	const session = taskOptions && createReminderMutationSession('reminderRules', taskOptions);
+	const savedRule = 'actionValue' in options ? parseReminderRule(options.actionValue) : undefined;
 	const { panel, close } = createFloatingPanel(
 		anchor,
 		'operon-floating-panel operon-reminder-rules-picker-panel',
@@ -142,7 +147,7 @@ export function showReminderRulesPicker(
 	input.type = 'text';
 	input.className = 'operon-floating-input operon-reminder-rules-picker-input';
 	input.placeholder = t('reminders', 'offsetPlaceholder');
-	input.value = getInitialRuleOffset(options.operation);
+	input.value = taskOptions ? getInitialRuleOffset(taskOptions.operation) : savedRule?.ok ? savedRule.value.offset.canonical : '0m';
 	const quickOffsets = panel.createDiv('operon-reminder-rules-picker-quick-offsets');
 	quickOffsets.setAttribute('role', 'group');
 	quickOffsets.setAttribute('aria-label', t('reminders', 'quickOffsets'));
@@ -174,6 +179,11 @@ export function showReminderRulesPicker(
 
 	const commitRule = (candidate: ReminderRuleCandidate): void => {
 		if (candidate.isPast) return;
+		if (!session) {
+			options.onCommit(candidate.canonicalRule);
+			closeAccepted();
+			return;
+		}
 		const currentCandidate = buildReminderRuleCandidates(input.value, session.modelInput()).candidates
 			.find(item => item.canonicalRule === candidate.canonicalRule);
 		if (!currentCandidate || currentCandidate.isPast) {
@@ -212,12 +222,13 @@ export function showReminderRulesPicker(
 			quickOffset.button.classList.toggle('is-selected', selected);
 			quickOffset.button.setAttribute('aria-pressed', String(selected));
 		}
-		const evaluation = buildReminderRuleCandidates(input.value, session.modelInput());
+		const evaluation = buildReminderRuleCandidates(input.value, session?.modelInput() ?? 'automation');
 		visibleCandidates = evaluation.candidates;
 		ruleList.replaceChildren();
 		input.removeAttribute('aria-activedescendant');
-		activeRuleIndex = visibleCandidates.findIndex(candidate => !candidate.isPast);
-		const editingDiagnostic = resolveEditingRuleDiagnostic(options.operation, session.getFieldValues());
+		activeRuleIndex = savedRule?.ok ? visibleCandidates.findIndex(candidate => candidate.anchor === savedRule.value.anchor) : -1;
+		if (activeRuleIndex < 0) activeRuleIndex = visibleCandidates.findIndex(candidate => !candidate.isPast);
+		const editingDiagnostic = taskOptions && session ? resolveEditingRuleDiagnostic(taskOptions.operation, session.getFieldValues()) : null;
 
 		if (evaluation.status !== 'ready') {
 			setRuleDiagnostic(
@@ -252,17 +263,20 @@ export function showReminderRulesPicker(
 				cls: 'operon-reminder-rules-picker-item-label',
 				text: formatRuleCandidateLabel(candidate, options),
 			});
-			const preview = button.createDiv('operon-reminder-rules-picker-preview');
-			preview.createDiv({
-				cls: 'operon-reminder-rules-picker-time',
-				text: formatReminderPreview(candidate.epochMs, options),
-			});
-			if (candidate.isPast) {
+			if (candidate.epochMs !== undefined) {
+				const preview = button.createDiv('operon-reminder-rules-picker-preview');
 				preview.createDiv({
-					cls: 'operon-reminder-rules-picker-state',
-					text: t('reminders', 'alreadyPassed'),
+					cls: 'operon-reminder-rules-picker-time',
+					text: formatReminderPreview(candidate.epochMs, options),
 				});
-			} else {
+				if (candidate.isPast) {
+					preview.createDiv({
+						cls: 'operon-reminder-rules-picker-state',
+						text: t('reminders', 'alreadyPassed'),
+					});
+				}
+			}
+			if (!candidate.isPast) {
 				button.addEventListener('mousemove', () => setActiveRuleIndex(index));
 				bindPickerListItemActivation(button, () => commitRule(candidate));
 			}
@@ -300,10 +314,15 @@ export function showReminderRulesPicker(
 		}
 	});
 
-	if (options.operation.kind === 'edit') {
+	if (taskOptions?.operation.kind === 'edit' || ('actionValue' in options && options.actionValue)) {
 		const actions = panel.createDiv('operon-reminder-rules-picker-actions');
 		const clearButton = createButton(t('buttons', 'clear'), 'operon-floating-btn is-secondary', actions);
 		clearButton.addEventListener('click', () => {
+			if (!session) {
+				options.onCommit('');
+				closeAccepted();
+				return;
+			}
 			const mutation = session.removeMutation();
 			if (!mutation) {
 				setRuleDiagnostic(diagnostic, t('reminders', 'staleItem'), 'error');
