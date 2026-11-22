@@ -445,6 +445,7 @@
 		"uriCommand": "명령",
 		"uriSearch": "Operon 명령 검색…",
 		"uriCopy": "복사",
+		"uriRuleMissing": "자동화 규칙을 찾을 수 없습니다.",
 		"uriPresetMissing": "프리셋을 찾을 수 없습니다.",
 		"uriOpenInNewTab": "새 탭에서 열기",
 		"uriLightboxUnavailable": "이 테이블에서는 라이트박스를 사용할 수 없습니다. 새 탭에서 열까요?",

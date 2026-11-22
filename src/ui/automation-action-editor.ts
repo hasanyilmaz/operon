@@ -31,7 +31,7 @@ export interface ActionEditorContext {
 }
 
 /** A missing source or unsupported literal can still be kept in an inactive draft. */
-export function actionType(field: string, ctx: ActionEditorContext): FilterFieldType | null {
+export function actionType(field: string, ctx: Pick<ActionEditorContext, 'settings' | 'nativeType'>): FilterFieldType | null {
 	if (!isFilePropertyColumnKey(field)) return managedAutomationFieldType(field, ctx.settings());
 	if (!isAutomationNativeKeyWritable(field, ctx.settings())) return null;
 	return ctx.nativeType(field);
@@ -59,7 +59,7 @@ export function expandListAction(action: AutomationAction, ctx: ActionEditorCont
 		: [action];
 }
 
-export function validAction(action: AutomationAction, ctx: ActionEditorContext): boolean {
+export function validAction(action: AutomationAction, ctx: Pick<ActionEditorContext, 'settings' | 'nativeType'>): boolean {
 	const type = actionType(action.field, ctx);
 	if (!type) return false;
 	try {

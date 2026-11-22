@@ -6,6 +6,11 @@ export { automationApprovalModal } from './automation-approval-modal';
 
 export function showAutomationResult(result: ManualAutomationResult, automatic: boolean, ruleNames: ReadonlyMap<string, string>): void {
 	if (result.status === 'busy' || result.status === 'deferred' || result.status === 'dismissed' || automatic && result.status === 'finished' && result.plan.affectedTaskCount === 0 && !result.plan.issues.length) return;
+	if (result.status === 'rule-missing') { new Notice(t('settings', 'uriRuleMissing')); return; }
+	if (result.status === 'invalid-rule') {
+		new Notice(t('settings', result.reason === 'condition' ? 'automationCompleteCondition' : 'automationCompleteAction'));
+		return;
+	}
 	if (result.status === 'save-failed') { new Notice(t('settings', 'automationSaveFailed')); return; }
 	if (result.status === 'deactivated') {
 		new Notice(result.names.map(name => t('settings', 'automationDeactivated', { name })).join('\n'));

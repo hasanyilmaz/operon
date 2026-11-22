@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "일치하는 명령이 없습니다.",
       "uriOpenInNewTab": "새 탭에서 열기",
       "uriPresetMissing": "프리셋을 찾을 수 없습니다.",
+      "uriRuleMissing": "자동화 규칙을 찾을 수 없습니다.",
       "uriSearch": "Operon 명령 검색…",
       "uriUnavailable": "여기서는 이 Operon 명령을 사용할 수 없습니다.",
       "useLastTemplateAsDefault": "마지막 사용 템플릿을 기본값으로 사용",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "77bcfdf3a011dabc5c1927726cbe0471e5039022325d9dd3cf4e9c3e1e704d5c"
+  "sourceVersion": "a1f746ef3dd94162a80cb7445ed513eec2b12909b13a3c78882cea42eaaed278"
 }

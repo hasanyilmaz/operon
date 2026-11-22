@@ -11,10 +11,10 @@ const pageSize = 4;
 const taskCount = (count: number) => t('filterSets', count === 1 ? 'taskCountOne' : 'taskCountMany', { count: String(count) });
 
 export function automationApprovalModal(app: App, plan: AutomationChangePlan, rules: AutomationRule[],
-	done: (decision: AutomationDecision) => void, draftRun: boolean, deps: FilterModalEvalDeps): ConfirmActionModal {
+	done: (decision: AutomationDecision) => void, cancelOnly: boolean, deps: FilterModalEvalDeps): ConfirmActionModal {
 	const counts = new Map(plan.rules.map(entry => [entry.ruleId, entry]));
 	const rows = rules.map(rule => ({
-		name: rule.name.trim() || (draftRun ? t('settings', 'automationUnsavedRule') : rule.id),
+		name: rule.name.trim() || (cancelOnly ? t('settings', 'automationUnsavedRule') : rule.id),
 		ids: counts.get(rule.id)?.directTaskIds ?? [],
 	}));
 	const allIds = [...new Set(rows.flatMap(row => row.ids))];
@@ -76,8 +76,8 @@ export function automationApprovalModal(app: App, plan: AutomationChangePlan, ru
 			updatePage();
 		},
 		confirmText: t('settings', 'automationApply'),
-		cancelText: t('settings', draftRun ? 'automationCancelRun' : rules.length === 1 ? 'automationCancelOne' : 'automationCancelMany'),
-		onCancelButton: draftRun ? undefined : () => { dismissed = 'deactivate'; },
+		cancelText: t('settings', cancelOnly ? 'automationCancelRun' : rules.length === 1 ? 'automationCancelOne' : 'automationCancelMany'),
+		onCancelButton: cancelOnly ? undefined : () => { dismissed = 'deactivate'; },
 	}, confirmed => {
 		closed = true;
 		child?.close();

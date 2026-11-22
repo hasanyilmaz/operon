@@ -29,7 +29,15 @@ interface AutomationYamlSource {
 	frontmatter: Record<string, unknown>;
 }
 export type AutomationYamlSources = ReadonlyMap<string, AutomationYamlSource | null>;
+export type ExplicitAutomationRequest = string | AutomationRule | { savedRuleId: string };
+
+// Stored rule objects may carry additional fields from older or imported settings.
+export function isSavedAutomationRequest(request: ExplicitAutomationRequest | undefined): request is { savedRuleId: string } {
+	return typeof request === 'object' && !('scope' in request) && 'savedRuleId' in request;
+}
+
 export interface AutomationRunPorts {
+	validateSavedRule(rule: AutomationRule): 'condition' | 'action' | null;
 	vault: Pick<Vault, 'getAbstractFileByPath' | 'read'>;
 	settings(): AutomationRulesSettings;
 	now(): string;
@@ -47,6 +55,8 @@ export interface AutomationRunPorts {
 }
 export type ManualAutomationResult =
 	| { status: 'dismissed' | 'deferred' | 'busy' | 'rule-changed' | 'save-failed' }
+	| { status: 'invalid-rule'; reason: 'condition' | 'action' }
+	| { status: 'rule-missing' }
 	| { status: 'deactivated'; names: string[] }
 	| { status: 'unavailable'; plan: AutomationChangePlan; reason?: 'index-pending' | 'source-conflict' }
 	| { status: 'finished'; plan: AutomationChangePlan; applied: number; uncertain: number; refreshPending?: boolean };
@@ -83,7 +93,7 @@ export class AutomationRunner {
 		return result;
 	}
 
-	async run(request: string | AutomationRule, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
+	async run(request: ExplicitAutomationRequest, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
 		if (this.manualPending) return { status: 'busy' };
 		const selection = typeof request === 'string' ? request : structuredClone(request);
 		this.manualPending = true;
@@ -98,16 +108,27 @@ export class AutomationRunner {
 		});
 	}
 
-	private async runOnce(selection: string | AutomationRule | undefined, ports: AutomationRunPorts, batch?: AutoRunBatch): Promise<ManualAutomationResult> {
-		const draft = typeof selection === 'object' ? selection : undefined;
+	private async runOnce(selection: ExplicitAutomationRequest | undefined, ports: AutomationRunPorts, batch?: AutoRunBatch): Promise<ManualAutomationResult> {
+		const savedId = isSavedAutomationRequest(selection) ? selection.savedRuleId : undefined;
+		const draft = typeof selection === 'object' && !isSavedAutomationRequest(selection) ? selection : undefined;
 		const triggers = batch?.rules;
 		let asOf = ports.now();
 		const read = async () => {
 			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
-			const rules = draft ? [draft] : settings.rules.filter(item => item.active && (triggers
-				? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === selection));
-			if (!rules.length || !ports.available()) return null;
+			if (!ports.available()) return null;
+			let rules: AutomationRule[];
+			if (savedId !== undefined) {
+				const rule = settings.rules.find(item => item.id === savedId);
+				if (!rule) return { stop: { status: 'rule-missing' } as const };
+				const reason = ports.validateSavedRule(rule);
+				if (reason) return { stop: { status: 'invalid-rule', reason } as const };
+				rules = [rule];
+			} else {
+				rules = draft ? [draft] : settings.rules.filter(item => item.active && (triggers
+					? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === selection));
+			}
+			if (!rules.length) return null;
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
 			let indexPending = false;
@@ -127,6 +148,7 @@ export class AutomationRunner {
 		for (;;) {
 			if (batch && !batch.rules.size) return { status: 'dismissed' };
 			if (!snapshot) return { status: 'rule-changed' };
+			if (snapshot.stop) return snapshot.stop;
 			const { rules, plan, work, key } = snapshot;
 			if (snapshot.reason === 'index-pending' && batch && ports.deferIndexRetry?.(batch, askAgain)) return { status: 'deferred' };
 			if (snapshot.reason) return { status: 'unavailable', plan, reason: snapshot.reason };
@@ -144,7 +166,7 @@ export class AutomationRunner {
 				if (decision === 'dismiss') return { status: 'dismissed' };
 				if (decision === 'replan') { snapshot = await read(); askAgain = true; continue; }
 				if (decision === 'deactivate') {
-					if (draft) return { status: 'dismissed' };
+					if (draft || savedId !== undefined) return { status: 'dismissed' };
 					try {
 						if (!ports.available() || !await ports.deactivate(listed)) return { status: 'rule-changed' };
 						return { status: 'deactivated', names: listed.map(rule => rule.name) };

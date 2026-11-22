@@ -445,6 +445,7 @@
 		"uriCommand": "コマンド",
 		"uriSearch": "Operon のコマンドを検索…",
 		"uriCopy": "コピー",
+		"uriRuleMissing": "自動化ルールが見つかりません。",
 		"uriPresetMissing": "プリセットが見つかりません。",
 		"uriOpenInNewTab": "新しいタブで開く",
 		"uriLightboxUnavailable": "このテーブルはライトボックスで開けません。新しいタブで開きますか？",

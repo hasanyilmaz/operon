@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "没有匹配的命令。",
       "uriOpenInNewTab": "在新标签页中打开",
       "uriPresetMissing": "未找到预设。",
+      "uriRuleMissing": "未找到自动化规则。",
       "uriSearch": "搜索 Operon 命令…",
       "uriUnavailable": "此处无法使用此 Operon 命令。",
       "useLastTemplateAsDefault": "将上次使用的模板设为默认模板",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "407c7df73cdb27d2e01ac950bc4c62ba4661f88e7a9f4f273d395f358e1352de"
+  "sourceVersion": "533d01beb0e33b0b62f415c1d3182e573537af606204daae2e0dad5ddec61a54"
 }

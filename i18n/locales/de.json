@@ -445,6 +445,7 @@
 		"uriCommand": "Befehl",
 		"uriSearch": "Operon-Befehle suchen…",
 		"uriCopy": "Kopieren",
+		"uriRuleMissing": "Automatisierungsregel nicht gefunden.",
 		"uriPresetMissing": "Vorlage nicht gefunden.",
 		"uriOpenInNewTab": "In neuem Tab öffnen",
 		"uriLightboxUnavailable": "Die Lightbox ist für diese Tabelle nicht verfügbar. In einem neuen Tab öffnen?",

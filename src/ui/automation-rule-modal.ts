@@ -58,6 +58,31 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 	});
 }
 
+function automationFieldCatalog(rule: AutomationRule, source: AutomationEditorSource, getFilePropertySnapshot: AutomationEditorSource['getNativeSnapshot']) {
+	return new FilterFieldCatalog({ keyMappings: source.getSettings().keyMappings, getSettings: source.getSettings,
+			getRootGroup: () => ({ ...rule.scope, children: [rule.scope, rule.target] }),
+			getLayoutFields: () => rule.actions.map(action => action.field),
+			getFilePropertySnapshot, getProjectSerialScopeTasks: source.getTasks });
+}
+
+function writableNativeTypes(native: TableFilePropertySnapshot | null) {
+	return new Map(native?.fields.filter(field => !field.unavailable && !field.readonly).map(field => [field.key, field.type]));
+}
+
+/** A saved inactive rule may contain unfinished conditions or actions. Use the editor's field and literal checks. */
+export function savedAutomationRunError(rule: AutomationRule, source: AutomationEditorSource) {
+	const conditions = [...flattenConditions(rule.scope), ...flattenConditions(rule.target)];
+	const needsNative = conditions.some(c => isFilePropertyColumnKey(c.field)) || rule.actions.some(a => isFilePropertyColumnKey(a.field));
+	const native = needsNative ? source.getNativeSnapshot() : null;
+	const fields = automationFieldCatalog(rule, source, () => native).getFieldOptions(true, false, false, true);
+	const options = new Map(fields.map(option => [option.field, option]));
+	const invalidGroup = createAutomationProjectSerialValidator(source.getSettings().projectSerialScopes);
+	if (!completeConditions(rule.scope, options, invalidGroup) || !completeConditions(rule.target, options, invalidGroup)) return 'condition';
+	const types = writableNativeTypes(native);
+	const context = { settings: source.getSettings, nativeType: (key: string) => types.get(key) ?? null };
+	return rule.actions.length && rule.actions.every(action => validAction(action, context)) ? null : 'action';
+}
+
 function conditionSignature(node: FilterNode): string {
 	if ('children' in node) {
 		const children = node.children.map(conditionSignature).sort();
@@ -139,10 +164,7 @@ export class AutomationRuleModal extends Modal {
 		super(app);
 		this.draft = existing ? structuredClone(existing) : createAutomationRule('', readAutomationRules(source.getSettings().automationRules).rules);
 		this.usedActionIds = new Set(this.draft.actions.map(action => action.id));
-		this.fields = new FilterFieldCatalog({ keyMappings: source.getSettings().keyMappings, getSettings: source.getSettings,
-			getRootGroup: () => ({ ...this.draft.scope, children: [this.draft.scope, this.draft.target] }),
-			getLayoutFields: () => this.draft.actions.map(action => action.field),
-			getFilePropertySnapshot: () => this.native, getProjectSerialScopeTasks: source.getTasks });
+		this.fields = automationFieldCatalog(this.draft, source, () => this.native);
 		this.actionContext = { app, settings: source.getSettings, tasks: source.getTasks, native: () => this.native,
 			nativeType: key => this.nativeTypes.get(key) ?? null, options: () => this.options, changed: () => this.changed() };
 	}
@@ -255,7 +277,7 @@ export class AutomationRuleModal extends Modal {
 
 	private loadFields(): void {
 		this.native = this.source.getNativeSnapshot();
-		this.nativeTypes = new Map(this.native?.fields.filter(field => !field.unavailable && !field.readonly).map(field => [field.key, field.type]));
+		this.nativeTypes = writableNativeTypes(this.native);
 		this.options = this.fields.getFieldOptions(true, false, false, true);
 	}
 	private mountAction(action: AutomationAction): AutomationActionRow {

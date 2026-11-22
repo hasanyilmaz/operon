@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Keine passenden Befehle.",
       "uriOpenInNewTab": "In neuem Tab öffnen",
       "uriPresetMissing": "Vorlage nicht gefunden.",
+      "uriRuleMissing": "Automatisierungsregel nicht gefunden.",
       "uriSearch": "Operon-Befehle suchen…",
       "uriUnavailable": "Dieser Operon-Befehl ist hier nicht verfügbar.",
       "useLastTemplateAsDefault": "Zuletzt verwendete Vorlage als Standard verwenden",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "2ab68471fd5d3e5b60d707d6e180bd7493fcedc42d0b272cf908d22d9ee5defa"
+  "sourceVersion": "b100e892b621df340b112d4805849a5d7a06526d9ff03a878538f10a4005a570"
 }

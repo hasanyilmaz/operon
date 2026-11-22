@@ -445,6 +445,7 @@
 		"uriCommand": "Commande",
 		"uriSearch": "Rechercher une commande Operon…",
 		"uriCopy": "Copier",
+		"uriRuleMissing": "Règle d’automatisation introuvable.",
 		"uriPresetMissing": "Préréglage introuvable.",
 		"uriOpenInNewTab": "Ouvrir dans un nouvel onglet",
 		"uriLightboxUnavailable": "La visionneuse est indisponible pour ce tableau. L’ouvrir dans un nouvel onglet ?",

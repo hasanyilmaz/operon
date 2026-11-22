@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Ningún comando coincide.",
       "uriOpenInNewTab": "Abrir en una pestaña nueva",
       "uriPresetMissing": "No se encontró el ajuste preestablecido.",
+      "uriRuleMissing": "No se ha encontrado la regla de automatización.",
       "uriSearch": "Buscar comandos de Operon…",
       "uriUnavailable": "Este comando de Operon no está disponible aquí.",
       "useLastTemplateAsDefault": "Usar la última plantilla utilizada como predeterminada",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "9013cf481f7ca4e4d17f5c3157ff1ae40c755cd9989fc7c9b304ed67b0092042"
+  "sourceVersion": "f076e74a40e5a28c7b383ffe216cbb2255be574813207c65287d270e6475bb20"
 }

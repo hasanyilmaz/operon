@@ -39,7 +39,35 @@ export function mountAutomationRules(app: App, el: HTMLElement, storage: Pick<Op
 	return dispose;
 }
 
-function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>, source: AutomationEditorSource): void {
+type RulesStorage = Pick<OperonStorage, 'getSettings' | 'saveAutomationRules'>;
+
+async function commitRules(storage: RulesStorage, snapshot: AutomationRulesSettings, next: AutomationRule[]): Promise<boolean> {
+	try {
+		const currentRaw = storage.getSettings().automationRules;
+		const current = readAutomationRules(currentRaw);
+		if (JSON.stringify(current.rules) !== JSON.stringify(snapshot.rules)) throw new Error('Automation rule list changed');
+		await storage.saveAutomationRules(currentRaw, { ...current, rules: next });
+	} catch (error) {
+		console.error('Operon: Automation rule save failed', error);
+		new Notice(t('settings', 'automationSaveFailed'));
+		return false;
+	}
+	return true;
+}
+
+export function openAutomationEditor(app: App, storage: RulesStorage, source: AutomationEditorSource, id?: string): void {
+	let snapshot: AutomationRulesSettings;
+	try { snapshot = readAutomationRules(storage.getSettings().automationRules); }
+	catch { new Notice(t('settings', 'automationUnavailable')); return; }
+	const existing = snapshot.rules.find(rule => rule.id === id);
+	if (id !== undefined && !existing) { new Notice(t('settings', 'uriRuleMissing')); return; }
+	scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
+		commitRules(storage, snapshot, existing
+			? snapshot.rules.map(rule => rule.id === existing.id ? draft : rule)
+			: [...snapshot.rules, draft])), true).open();
+}
+
+function renderAutomationRules(app: App, el: HTMLElement, storage: RulesStorage, source: AutomationEditorSource): void {
 	cleanupOperonHoverTooltips(el);
 	el.empty();
 	const expected = storage.getSettings().automationRules;
@@ -51,24 +79,6 @@ function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonSt
 		return;
 	}
 	const { rules } = snapshot;
-	const commit = async (next: AutomationRule[]): Promise<boolean> => {
-		try {
-			const currentRaw = storage.getSettings().automationRules;
-			const current = readAutomationRules(currentRaw);
-			if (JSON.stringify(current.rules) !== JSON.stringify(snapshot.rules)) throw new Error('Automation rule list changed');
-			await storage.saveAutomationRules(currentRaw, { ...current, rules: next });
-		} catch (error) {
-			console.error('Operon: Automation rule save failed', error);
-			new Notice(t('settings', 'automationSaveFailed'));
-			return false;
-		}
-		return true;
-	};
-
-	const editRule = (existing?: AutomationRule): void => {
-		scopeSettingsModal(new AutomationRuleModal(app, source, existing, draft =>
-			commit(existing ? rules.map(rule => rule.id === existing.id ? draft : rule) : [...rules, draft])), true).open();
-	};
 	const section = el.createDiv('operon-automation-rules-settings-list operon-settings-add-list-section operon-settings-card-list-section');
 	section.createEl('p', {
 		cls: 'operon-settings-muted-block',
@@ -87,25 +97,25 @@ function renderAutomationRules(app: App, el: HTMLElement, storage: Pick<OperonSt
 				onClick: async () => {
 					const next = [...rules];
 					[next[index], next[to]] = [next[to], next[index]];
-					await commit(next);
+					await commitRules(storage, snapshot, next);
 				} });
 		}
 		const button = (icon: string, label: string, onClick: () => void | Promise<void>): void => {
 			createSettingsListCardActionButton({ containerEl: card.actionsEl, label, icon, ariaLabel: label + ' · ' + rule.name, onClick });
 		};
-		button('pencil', t('settings', 'automationEditRule'), () => editRule(rule));
+		button('pencil', t('settings', 'automationEditRule'), () => openAutomationEditor(app, storage, source, rule.id));
 		button('copy', t('table', 'duplicatePreset'), async () => {
 			const copy = { ...structuredClone(rule), id: createAutomationRuleId(rules), name: t('settings', 'automationCopyName', { name: rule.name }), active: false };
-			await commit([...rules.slice(0, index + 1), copy, ...rules.slice(index + 1)]);
+			await commitRules(storage, snapshot, [...rules.slice(0, index + 1), copy, ...rules.slice(index + 1)]);
 		});
 		button('trash-2', t('filterSets', 'deleteFilterConfirm'), () => {
 			scopeSettingsModal(new ConfirmActionModal(app, {
 				operonTooltips: true,
 				title: t('settings', 'automationDelete', { name: rule.name }), message: rule.name, danger: true, initialFocus: 'cancel',
 				confirmText: t('filterSets', 'deleteFilterConfirm'), cancelText: t('buttons', 'cancel'),
-			}, confirmed => { if (confirmed) void commit(rules.filter(item => item.id !== rule.id)); }), true).open();
+			}, confirmed => { if (confirmed) void commitRules(storage, snapshot, rules.filter(item => item.id !== rule.id)); }), true).open();
 		});
 	}
 	const addRow = section.createDiv('operon-settings-add-row');
-	createSettingsAddButton(addRow, t('settings', 'automationAddRule')).addEventListener('click', () => editRule());
+	createSettingsAddButton(addRow, t('settings', 'automationAddRule')).addEventListener('click', () => openAutomationEditor(app, storage, source));
 }

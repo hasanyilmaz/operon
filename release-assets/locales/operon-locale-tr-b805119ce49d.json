@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Eşleşen komut bulunamadı.",
       "uriOpenInNewTab": "Yeni sekmede aç",
       "uriPresetMissing": "Preset bulunamadı.",
+      "uriRuleMissing": "Otomasyon kuralı bulunamadı.",
       "uriSearch": "Operon komutlarını ara…",
       "uriUnavailable": "Bu Operon komutu burada kullanılamıyor.",
       "useLastTemplateAsDefault": "Son kullanılan şablonu varsayılan yap",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "d46f3ef65ddaf409084c315219e06d158ea8cde1b3bd2d3002efef9bcbf59a49"
+  "sourceVersion": "6aa17e83c53c567f52b00a03152bba397b7201f37eab1eeebf23623bbaa9f0af"
 }

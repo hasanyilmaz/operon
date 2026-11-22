@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Nessun comando corrispondente.",
       "uriOpenInNewTab": "Apri in una nuova scheda",
       "uriPresetMissing": "Preset non trovato.",
+      "uriRuleMissing": "Regola di automazione non trovata.",
       "uriSearch": "Cerca comandi Operon…",
       "uriUnavailable": "Questo comando Operon non è disponibile qui.",
       "useLastTemplateAsDefault": "Usa l’ultimo modello utilizzato come predefinito",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "7352828fae61c4c7d41e2808ec639e2c712ce293a85e0902e057a0b5147f9333"
+  "sourceVersion": "117a81f8ba2eb21c8cde84c2d0b3e60bc3907891024a4d2ca2b0709e617c3350"
 }

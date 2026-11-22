@@ -68,9 +68,9 @@ export function buildOperonCommandCatalog(source: OperonCommandSources) {
 	// Both explicit actions are available for every saved rule, independent of Auto scheduling.
 	const ruleNames = distinguishNames(source.rules, false);
 	source.rules.forEach((rule, index) => {
-		const prefix = `Automation › ${ruleNames[index]} › `;
-		add(prefix + 'Open', { kind: 'automation', rule: rule.id, action: 'open' });
-		add(prefix + 'Run', { kind: 'automation', rule: rule.id, action: 'run' });
+		const name = ruleNames[index];
+		add('Open automation › ' + name, { kind: 'automation', rule: rule.id, action: 'open' });
+		add('Run automation › ' + name, { kind: 'automation', rule: rule.id, action: 'run' });
 	});
 
 	// The four default tabs already own their existing command IDs (including any hotkeys).

@@ -445,6 +445,7 @@
 		"uriCommand": "Comando",
 		"uriSearch": "Buscar comandos de Operon…",
 		"uriCopy": "Copiar",
+		"uriRuleMissing": "No se ha encontrado la regla de automatización.",
 		"uriPresetMissing": "No se encontró el ajuste preestablecido.",
 		"uriOpenInNewTab": "Abrir en una pestaña nueva",
 		"uriLightboxUnavailable": "Lightbox no está disponible para esta tabla. ¿Abrirla en una pestaña nueva?",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "沒有相符的指令。",
       "uriOpenInNewTab": "在新分頁開啟",
       "uriPresetMissing": "找不到預設。",
+      "uriRuleMissing": "找不到自動化規則。",
       "uriSearch": "搜尋 Operon 指令…",
       "uriUnavailable": "此處無法使用這個 Operon 指令。",
       "useLastTemplateAsDefault": "將上次使用的範本設為預設範本",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "3a0c539da2448aa1edb40c1129a92cf9bfd751f81776a0a906f776b0194f2072"
+  "sourceVersion": "2981bcdc73e45690c1930aa6dbf02e63d95b47a2a8f176ca7ac90675b33ee24c"
 }

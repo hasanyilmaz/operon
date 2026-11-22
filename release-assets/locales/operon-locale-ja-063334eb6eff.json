@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "一致するコマンドがありません。",
       "uriOpenInNewTab": "新しいタブで開く",
       "uriPresetMissing": "プリセットが見つかりません。",
+      "uriRuleMissing": "自動化ルールが見つかりません。",
       "uriSearch": "Operon のコマンドを検索…",
       "uriUnavailable": "この Operon コマンドはここでは使えません。",
       "useLastTemplateAsDefault": "最後に使用したテンプレートを既定にする",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "4927c305991327e7842a59e70acbc270c6e317e532f438624d4c6b33dfbeb37c"
+  "sourceVersion": "50846de8d28b2e916a07d077375c551b8dbd757d06a28d033687a30c07343b46"
 }

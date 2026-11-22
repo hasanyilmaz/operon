@@ -64,7 +64,7 @@ import { getNativePropertyIndex } from './src/indexer/native-property-index';
 import { planAutomationChanges, type AutomationPlanSnapshot, type AutoTriggers } from './src/core/automation-change-plan';
 import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
 import { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
-import { deactivateAutomationRules, AutomationRunner, type AutoRunBatch } from './src/systems/manual-automation-run';
+import { deactivateAutomationRules, isSavedAutomationRequest, AutomationRunner, type AutoRunBatch, type ExplicitAutomationRequest } from './src/systems/manual-automation-run';
 import { captureAutomationReadState } from './src/systems/automation-read-state';
 import { prepareAutomationWork } from './src/systems/automation-task-writes';
 import { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
@@ -23610,11 +23610,12 @@ export default class OperonPlugin extends Plugin {
 		await this.runAutomation(draft);
 	}
 
-	private async runAutomation(request: string | AutomationRule | (() => Promise<AutoRunBatch>)): Promise<boolean> {
+	private async runAutomation(request: ExplicitAutomationRequest | (() => Promise<AutoRunBatch>)): Promise<boolean> {
 		let ruleNames = new Map<string, string>();
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
 			const ports: import('./src/systems/manual-automation-run').AutomationRunPorts = {
+				validateSavedRule: rule => this.settingsTab!.validateAutomationRun(rule),
 				vault: this.app.vault,
 				settings: () => readAutomationRules(this.storage.getSettings().automationRules),
 				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
@@ -23669,7 +23670,8 @@ export default class OperonPlugin extends Plugin {
 				refreshBatch: batch => this.autoAutomationEvents?.refreshBatch(batch),
 				deferConfirmation: (batch, shown) => this.autoAutomationEvents?.deferConfirmation(batch, shown) ?? false,
 				confirm: (plan, rules, batch) => new Promise(resolve => {
-					const draftRun = typeof request === 'object';
+					const cancelOnly = typeof request === 'object';
+					const draftRun = cancelOnly && !isSavedAutomationRequest(request);
 					const eligible = () => {
 						if (draftRun) return true;
 						const stored = this.storage.getSettings().automationRules;
@@ -23687,7 +23689,7 @@ export default class OperonPlugin extends Plugin {
 						this.automationApproval = undefined;
 						this.backgroundAutomationApproval = undefined;
 						resolve(closeReason ?? result);
-					}, draftRun, this.buildFilterModalEvalDeps());
+					}, cancelOnly, this.buildFilterModalEvalDeps());
 					if (batch) this.backgroundAutomationApproval = () => {
 						this.autoAutomationEvents?.refreshBatch(batch);
 						if (!Array.from(batch.rules.values()).includes('all')) return;
@@ -38560,6 +38562,15 @@ export default class OperonPlugin extends Plugin {
 			register: command => super.addCommand(command),
 			remove: id => this.removeCommand(id),
 			viewSources: () => this.getCommandViewSources(),
+			rules: () => {
+				const stored = this.storage.getSettings().automationRules;
+				return isAutomationRulesSettings(stored) ? stored.rules : [];
+			},
+			openRule: id => {
+				if (this.settingsTab) this.settingsTab.openAutomationRule(id);
+				else new Notice(t('settings', 'uriUnavailable'));
+			},
+			runRule: async id => { await this.runAutomation({ savedRuleId: id }); },
 			vaultName: () => this.app.vault.getName(),
 			cursor: () => this.cursorTimerContext(),
 			openPresetTab: (type, presetId) => type === 'calendar'
@@ -38569,7 +38580,7 @@ export default class OperonPlugin extends Plugin {
 			confirmTableTab: () => this.promptConfirmAction(t('settings', 'uriOpenInNewTab'), t('settings', 'uriLightboxUnavailable'),
 				t('settings', 'uriOpenInNewTab'), t('buttons', 'cancel')),
 			unavailable: reason => {
-				new Notice(reason === 'preset' ? t('settings', 'uriPresetMissing') : t('settings', 'uriUnavailable'));
+				new Notice(t('settings', reason === 'rule' ? 'uriRuleMissing' : reason === 'preset' ? 'uriPresetMissing' : 'uriUnavailable'));
 			},
 		});
 		this.addCommand({
@@ -39172,6 +39183,7 @@ export default class OperonPlugin extends Plugin {
 
 		links.refresh();
 		this.register(this.storage.subscribeViewPresets(() => links.refresh()));
+		this.register(this.storage.subscribeAutomationRules(() => links.refresh()));
 
 	}
 }

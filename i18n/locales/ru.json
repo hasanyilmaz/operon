@@ -445,6 +445,7 @@
 		"uriCommand": "Команда",
 		"uriSearch": "Найти команду Operon…",
 		"uriCopy": "Копировать",
+		"uriRuleMissing": "Правило автоматизации не найдено.",
 		"uriPresetMissing": "Предустановка не найдена.",
 		"uriOpenInNewTab": "Открыть в новой вкладке",
 		"uriLightboxUnavailable": "Эту таблицу нельзя открыть в лайтбоксе. Открыть её в новой вкладке?",

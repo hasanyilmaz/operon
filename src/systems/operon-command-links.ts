@@ -8,18 +8,21 @@ interface Ports {
 	register(command: Command): Command;
 	remove(id: string): void;
 	viewSources(): OperonViewSources;
+	rules(): OperonCommandSources['rules'];
+	openRule(id: string): void;
+	runRule(id: string): Promise<void>;
 	vaultName(): string;
 	cursor(): ActiveMarkdownTimerContext | null;
 	openPresetTab(view: OperonView, id: string): Promise<void> | void;
 	openTableLightbox(id: string): Promise<void>;
 	confirmTableTab(): Promise<boolean>;
-	unavailable(reason: 'invalid' | 'preset' | 'command'): void;
+	unavailable(reason: 'invalid' | 'preset' | 'rule' | 'command'): void;
 }
 
 /** Own the same local IDs as the palette. Obsidian prefixes (and mutates) commands when registering them. */
 export class OperonCommandLinks {
 	private readonly commands = new Map<string, { id: string; name: string; registered: Command }>();
-	private readonly presets = new Map<string, string>();
+	private readonly dynamicCommands = new Map<string, string>();
 	private readonly listeners = new Set<() => void>();
 	private catalog: ReturnType<typeof buildOperonCommandCatalog>;
 
@@ -37,7 +40,7 @@ export class OperonCommandLinks {
 	}
 
 	private buildCatalog(sources = this.ports.viewSources()) {
-		const catalog = buildOperonCommandCatalog({ ...sources, commands: [...this.commands.values()], rules: [] });
+		const catalog = buildOperonCommandCatalog({ ...sources, commands: [...this.commands.values()], rules: this.ports.rules() });
 		return { ...catalog, entries: catalog.entries.map(entry => ({
 			...entry, name: this.commands.get(entry.id)?.name ?? entry.name,
 		})) };
@@ -53,17 +56,18 @@ export class OperonCommandLinks {
 	refresh(): void {
 		const previous = this.entries;
 		this.catalog = this.buildCatalog();
-		const next = new Map(this.entries.filter(entry => entry.target.kind === 'view' && (entry.target.preset !== undefined || entry.target.paneType === 'lightbox'))
+		const next = new Map(this.entries.filter(({ target }) => target.kind === 'automation' ||
+			(target.kind === 'view' && (target.preset !== undefined || target.paneType === 'lightbox')))
 			.map(entry => [entry.id, entry]));
-		for (const [id, name] of this.presets) {
+		for (const [id, name] of this.dynamicCommands) {
 			if (next.get(id)?.name === name) continue;
 			this.ports.remove(id);
-			this.presets.delete(id);
+			this.dynamicCommands.delete(id);
 		}
 		for (const entry of next.values()) {
-			if (this.presets.has(entry.id)) continue;
+			if (this.dynamicCommands.has(entry.id)) continue;
 			this.ports.register({ id: entry.id, name: entry.name, callback: () => this.invoke(entry.target).catch(() => this.ports.unavailable('command')) });
-			this.presets.set(entry.id, entry.name);
+			this.dynamicCommands.set(entry.id, entry.name);
 		}
 		if (previous.length !== this.entries.length || this.entries.some((entry, index) =>
 			entry.id !== previous[index]?.id || entry.name !== previous[index]?.name)) {
@@ -89,7 +93,7 @@ export class OperonCommandLinks {
 
 	private async invoke(target: OperonCommandTarget): Promise<void> {
 		const cursor = target.kind === 'command' && target.command === 'cursor-timer' ? this.ports.cursor() : null;
-		const sources = target.kind === 'view' ? this.ports.viewSources() : undefined;
+		const sources = target.kind !== 'command' ? this.ports.viewSources() : undefined;
 		const result = resolveOperonCommand(target, sources ? this.buildCatalog(sources) : this.catalog, cursor);
 		if (target.kind === 'view' && target.paneType === 'lightbox') {
 			const tableId = target.preset ?? sources?.defaultTableId;
@@ -105,7 +109,12 @@ export class OperonCommandLinks {
 			}
 		}
 		if (result.status !== 'ready') {
-			this.ports.unavailable(result.status === 'preset-not-found' ? 'preset' : 'command');
+			this.ports.unavailable(result.status === 'preset-not-found' ? 'preset' : result.status === 'rule-not-found' ? 'rule' : 'command');
+			return;
+		}
+		if (target.kind === 'automation') {
+			if (target.action === 'open') this.ports.openRule(target.rule);
+			else await this.ports.runRule(target.rule);
 			return;
 		}
 		if (target.kind === 'view' && target.preset !== undefined) {

@@ -20,9 +20,9 @@ import { renderTaskEditorSectionsSettings } from './settings/task-editor-section
 import { editorSectionLabel } from './editor-sections-layout';
 import type { InterfaceIconRowSelection } from './settings/interface-editor-ui';
 import { AUTOMATION_CONFIRMATIONS, isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from '../core/automation-rules';
-import type { AutomationEditorSource } from './automation-rule-modal';
+import { savedAutomationRunError, type AutomationEditorSource } from './automation-rule-modal';
 import { projectIndexedNativeProperties } from './table/table-native-property';
-import { automationConfirmationOptions, automationOptionKey, mountAutomationRules } from './settings/automation-rules';
+import { automationConfirmationOptions, automationOptionKey, mountAutomationRules, openAutomationEditor } from './settings/automation-rules';
 import { scopeSettingsModal, scopeSettingsDefinitions, setSettingsScope } from './settings/settings-scope';
 import { PropertyPoolValueSession } from './property-value-pool-values';
 import { buildPropertyValuePoolSettings } from './settings/property-value-pool-settings';
@@ -4548,8 +4548,20 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 	}
 
 	private renderAutomationList(containerEl: HTMLElement): () => void {
+		return mountAutomationRules(this.app, containerEl, this.storage, this.automationEditorSource());
+	}
+
+	openAutomationRule(id: string): void {
+		openAutomationEditor(this.app, this.storage, this.automationEditorSource(), id);
+	}
+
+	validateAutomationRun(rule: AutomationRule) {
+		return savedAutomationRunError(rule, this.automationEditorSource());
+	}
+
+	private automationEditorSource(): AutomationEditorSource {
 		const index = this.indexer;
-		return mountAutomationRules(this.app, containerEl, this.storage, {
+		return {
 			getSettings: () => this.storage.getSettings(),
 			getPreviewDeps: () => this.makeEvalDeps(),
 			getTasks: () => index?.getAllTasks() ?? [],
@@ -4579,7 +4591,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			plan: this.planAutomationRule,
 			runDraft: this.runAutomationDraft,
 			runSaved: this.onAutomationSaved,
-		});
+		};
 	}
 
 	private renderSettingsTab(tabId: OperonSettingsTabId, contentEl: HTMLElement): void | (() => void) {

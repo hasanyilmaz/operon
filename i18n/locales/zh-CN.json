@@ -445,6 +445,7 @@
 		"uriCommand": "命令",
 		"uriSearch": "搜索 Operon 命令…",
 		"uriCopy": "复制",
+		"uriRuleMissing": "未找到自动化规则。",
 		"uriPresetMissing": "未找到预设。",
 		"uriOpenInNewTab": "在新标签页中打开",
 		"uriLightboxUnavailable": "此表格无法在灯箱中打开。要在新标签页中打开吗？",

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Подходящих команд нет.",
       "uriOpenInNewTab": "Открыть в новой вкладке",
       "uriPresetMissing": "Предустановка не найдена.",
+      "uriRuleMissing": "Правило автоматизации не найдено.",
       "uriSearch": "Найти команду Operon…",
       "uriUnavailable": "Эта команда Operon здесь недоступна.",
       "useLastTemplateAsDefault": "Использовать последний шаблон по умолчанию",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "b5525912fd08acdba320eab644d75f44edb02dc65f83474a7771618224012bf7"
+  "sourceVersion": "2dcd4f793fac460ddea55535dd653c1f68a036b071af1e3dbf957fa72f564d2e"
 }

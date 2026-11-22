@@ -445,6 +445,7 @@
 		"uriCommand": "Komut",
 		"uriSearch": "Operon komutlarını ara…",
 		"uriCopy": "Kopyala",
+		"uriRuleMissing": "Otomasyon kuralı bulunamadı.",
 		"uriPresetMissing": "Preset bulunamadı.",
 		"uriOpenInNewTab": "Yeni sekmede aç",
 		"uriLightboxUnavailable": "Bu tablo Lightbox’ta açılamıyor. Yeni bir sekmede açılsın mı?",

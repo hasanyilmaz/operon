@@ -28,11 +28,12 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
 	export { expandListAction, validAction } from './src/ui/automation-action-editor';
 	export { collectNativeFieldValueCandidates } from './src/ui/custom-field-surfaces';
-	export { AutomationRuleModal, shouldRunSavedRule } from './src/ui/automation-rule-modal';
+	export { AutomationRuleModal, savedAutomationRunError, shouldRunSavedRule } from './src/ui/automation-rule-modal';
 	export { exportOperonSettingsBackupJsonV1 } from './src/core/settings-backup-export';
 	export { preflightOperonSettingsBackupRestoreV1 } from './src/core/settings-backup-preflight';
 	export { createOperonSettingsBackupApplyAcknowledgementV1 } from './src/core/settings-backup-apply';
-	export { mountAutomationRules } from './src/ui/settings/automation-rules';
+	export { mountAutomationRules, openAutomationEditor } from './src/ui/settings/automation-rules';
+	export { OperonCommandLinks } from './src/systems/operon-command-links';
 	export { statusDockDocument } from './scripts/test-support/status-dock-dom';
 	export { t } from './src/core/i18n';
 	export { TaskWriter } from './src/core/task-writer';
@@ -48,7 +49,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, shouldRunSavedRule, mountAutomationRules, statusDockDocument, t,
+const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, savedAutomationRunError, shouldRunSavedRule, mountAutomationRules, openAutomationEditor, OperonCommandLinks, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
@@ -132,7 +133,11 @@ async function fixture(files, opts = {}) {
 		subscribeIndexReconciliation: () => () => {}, getTask: key => tasks.get(key) };
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
-	const ports = { vault, available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
+	const ports = { vault,
+		validateSavedRule: saved => savedAutomationRunError(saved, {
+			getSettings: () => settings, getTasks: () => [...tasks.values()], getNativeSnapshot: () => f.native ?? null,
+		}),
+		available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
 		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId), includePreviewTaskIds = false) => planAutomationChanges({ includePreviewTaskIds, tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
 			conditionFields: new Map([['taskIcon', 'text'], ['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: idx.getAllDuplicateInstanceSnapshots,
@@ -172,6 +177,99 @@ async function fixture(files, opts = {}) {
 		indexedStats.set(file.path, { ...file.stat });
 	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: (id = ruleId) => runner.run(id, ports) });
 }
+
+test('opening a saved ID edits the existing rule and writes only on Save', async testContext => {
+	const opened = [];
+	testContext.mock.method(Modal.prototype, 'open', function () { opened.push(this); });
+	await withSettingsFixture({table: false}, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const rule = createAutomationRule('Inbox');
+		const original = {...readAutomationRules(undefined), rules: [rule]};
+		await storage.saveAutomationRules(undefined, original);
+		const source = {getSettings: () => storage.getSettings(), getTasks: () => []};
+		openAutomationEditor({}, storage, source, rule.id);
+		assert.equal(opened.length, 1);
+		assert.ok(opened[0] instanceof AutomationRuleModal);
+		assert.equal(opened[0].draft.id, rule.id);
+		opened[0].draft.name = 'Edited';
+		assert.deepEqual(storage.getSettings().automationRules.rules, [rule]);
+		assert.equal(await opened[0].persist(opened[0].draft), true);
+		assert.deepEqual(storage.getSettings().automationRules.rules, [{...rule, name:'Edited'}]);
+		openAutomationEditor({}, storage, source, 'ar_missing');
+		assert.equal(opened.length, 1);
+	});
+});
+
+test('a direct command run uses the saved version once in each mode and state', async () => {
+	for (const mode of ['manual', 'auto']) for (const active of [false, true]) {
+		const f = await fixture(filesFor(1), {rule: {mode, active}});
+		const result = await f.run({savedRuleId: f.rule.id});
+		assert.equal(result.applied, 1);
+		assert.equal(f.prompts.length, 1);
+		assert.match(await f.read(id(0) + '.md'), /#follow/u);
+		assert.deepEqual([f.rule.mode, f.rule.active], [mode, active]);
+	}
+});
+
+test('additional imported draft fields cannot redirect an editor Run to a saved rule', async () => {
+	const f = await fixture(filesFor(1), {policy:'none'});
+	const draft = {...f.rule, id:'draft', savedRuleId:f.rule.id, actions:[action('tags','draft-only')]};
+	assert.equal((await f.run(draft)).applied, 1);
+	const text = await f.read(id(0) + '.md');
+	assert.match(text, /#draft-only/u);
+	assert.doesNotMatch(text, /#follow/u);
+});
+
+test('direct run respects distinct task limits, zero changes and an explicit cancellation', async () => {
+	for (const [count, policy, prompts] of [[5,5,0], [6,5,1], [1,'always',1], [1,'none',0], [0,'always',0]]) {
+		const f = await fixture(filesFor(count), {policy, rule: {actions: [action('tags','follow'),{...action('tags','review'),id:'second-tag'}]}});
+		f.confirm = () => 'dismiss';
+		const result = await f.run({savedRuleId: f.rule.id});
+		assert.equal(result.status, prompts ? 'dismissed' : 'finished');
+		assert.equal(f.writes.length, prompts ? 0 : count);
+		assert.equal(f.prompts.length, prompts);
+		assert.equal(f.rule.active, true);
+	}
+});
+
+test('direct run rejects an incomplete saved rule without applying a valid sibling action', async () => {
+	for (const [reason, changes] of [
+		['action', {actions: []}],
+		['action', {actions: [action('tags','valid'), {...action('tags',''),id:'incomplete-tag'}]}],
+		['condition', {target: rootGroup('description', 'text', 'is', '')}],
+		['condition', {scope: rootGroup('missing-field', 'text', 'is', 'anything')}],
+	]) {
+		const f = await fixture(filesFor(1), {rule: {active: false, ...changes}, policy: 'none'});
+		assert.deepEqual(await f.run({savedRuleId: f.rule.id}), {status:'invalid-rule', reason});
+		assert.deepEqual(f.writes, []);
+		assert.deepEqual(f.prompts, []);
+	}
+});
+
+test('direct run replans a changed saved rule, and never follows a deleted rule to a same-name copy', async () => {
+	for (const change of ['edited','deleted','incomplete']) {
+		const f = await fixture(filesFor(1));
+		f.confirm = () => {
+			if (f.prompts.length === 1) {
+				if (change === 'deleted') f.config.rules = [{...f.rule, id: 'another'}];
+				else f.rule.actions = [action('tags', change === 'edited' ? 'revised' : '')];
+			}
+			return 'apply';
+		};
+		const result = await f.run({savedRuleId: f.rule.id});
+		if (change === 'edited') {
+			assert.equal(f.prompts.length, 2);
+			assert.equal(result.applied, 1);
+			const source = await f.read(id(0) + '.md');
+			assert.match(source, /#revised/u);
+			assert.doesNotMatch(source, /#follow/u);
+		} else {
+			assert.equal(result.status, change === 'deleted' ? 'rule-missing' : 'invalid-rule');
+			assert.deepEqual(f.writes, []);
+		}
+	}
+});
 
 test('a saved inactive rule survives storage reload and applies both tag actions to the selected tasks', async () => {
 	await withSettingsFixture({ table: false }, async disk => {
@@ -1165,6 +1263,16 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		await storage.initialize();
 		const { events, tasks, batches, settle } = eventFixture();
 		const rules = () => readAutomationRules(storage.getSettings().automationRules).rules;
+		const palette = new Map();
+		const links = new OperonCommandLinks({
+			viewSources: () => ({presets:{table:[], calendar:[], kanban:[], filter:[]}, desktop: false, fileTableIds: new Set(), defaultTableId:null}),
+			rules, register: command => { palette.set(command.id, command); return command; }, remove: id => palette.delete(id),
+		});
+		const stopLinks = storage.subscribeAutomationRules(() => links.refresh());
+		const commandLabels = () => links.entries.filter(entry => entry.target.kind === 'automation').map(entry => {
+			assert.equal(palette.get(entry.id)?.name, entry.name);
+			return entry.name;
+		});
 		const stopWatching = storage.subscribeAutomationRules(() => events.configure(rules()));
 		const { doc, emitWindow, windowListeners } = statusDockDocument();
 		const host = doc.body.createDiv();
@@ -1204,6 +1312,8 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		assert.equal(restored.status, 'success');
 		const title = () => cards()[0].querySelector('.operon-settings-list-card-title').textContent;
 		assert.equal(title(), imported.name);
+		assert.deepEqual(commandLabels(), ['Open automation › Restored queue', 'Run automation › Restored queue']);
+		assert.ok(!palette.has('automation-run-' + draft.id));
 		assert.deepEqual(rules()[0].actions, imported.actions);
 		assert.equal(status(cards()[0]), t('settings', 'automationInactive'));
 		tasks.set('a', { core: 'while restored rules are inactive' });
@@ -1214,6 +1324,8 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		const undo = await storage.undoSettingsBackupRestoreV1(receipt.recovery.undoTokenId, receipt.receiptId);
 		assert.equal(undo.status, 'success');
 		assert.equal(title(), draft.name);
+		assert.deepEqual(commandLabels(), ['Open automation › Watch queue', 'Run automation › Watch queue']);
+		assert.ok(!palette.has('automation-open-' + imported.id));
 		assert.deepEqual(rules()[0], draft);
 		assert.equal(status(cards()[0]), t('settings', 'automationActive'));
 		await settle();
@@ -1250,6 +1362,8 @@ test('rule changes reach Auto and open Settings through Restore, Undo, deactivat
 		assert.equal(windowListeners.get('pagehide').size, 0);
 		await storage.saveAutomationRules(storage.getSettings().automationRules, readAutomationRules(undefined));
 		assert.equal(cards().length, 2, 'closing the window removes the subscription even if the host skips cleanup');
+		assert.deepEqual(commandLabels(), []);
+		stopLinks();
 		closeList();
 		stopWatching();
 		events.dispose();

@@ -104,7 +104,7 @@ test('both actions are listed for each saved rule, including Manual Inactive and
 			const uri = buildOperonUri('Stratejya', target);
 			assert.equal(uri, base + '&view=automation&rule=' + rule.id + (action === 'run' ? '&run=true' : ''));
 			const { entry } = resolveOperonCommand(readTarget(uri), catalog);
-			assert.equal(entry.name, `Automation › ${rule.name} › ${action === 'run' ? 'Run' : 'Open'}`);
+			assert.equal(entry.name, `${action === 'run' ? 'Run' : 'Open'} automation › ${rule.name}`);
 			const updated = buildOperonCommandCatalog({ ...source, rules: [{ ...rule, name: 'Renamed', active: !rule.active }] });
 			assert.equal(resolveOperonCommand(target, updated).entry.id, entry.id);
 			assert.equal(resolveOperonCommand(target, buildOperonCommandCatalog({ ...source, rules: [] })).status, 'rule-not-found');

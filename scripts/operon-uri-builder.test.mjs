@@ -72,6 +72,7 @@ function fixture(overrides = {}) {
 			palette.set(command.id, command);
 			return command;
 		}, remove: id => palette.delete('operon:' + id),
+		rules: () => [],
 		viewSources: () => ({presets: {kanban: presets, filter: [], calendar: [], table: []}, defaultTableId: null, fileTableIds: new Set(), desktop: true}), vaultName: () => vault, cursor: () => null,
 		openPresetTab: async (_view, id) => { calls.push(id); }, unavailable: reason => errors.push(reason),
 		...overrides,
@@ -239,6 +240,46 @@ test('saved view shortcuts track renames, copies, deletions and Table eligibilit
 	dispose();
 });
 
+test('Finder and palette keep stable per-rule links, disambiguate copies and discard deleted targets', async () => {
+	const rule = {id: 'ar_1234567', name: 'Inbox'};
+	const rules = [rule];
+	const opened = [], ran = [];
+	const { links, palette, vault, dispatch, errors } = fixture({
+		rules: () => rules, openRule: id => opened.push(id), runRule: async id => { ran.push(id); },
+	});
+	const root = new Element();
+	const finder = renderUriBuilder({ vault: {getName: () => vault} }, root, links);
+	const output = root.children[1].controlEl.children[0];
+	const commands = [];
+	for (const action of ['open', 'run']) {
+		const entry = links.entries.find(row => row.target.action === action);
+		finder.input.suggest.selectSuggestion(entry);
+		const command = palette.get('operon:' + entry.id);
+		assert.equal(command.name, 'Operon: ' + (action === 'run' ? 'Run' : 'Open') + ' automation › Inbox');
+		commands.push({command, uri: output.textContent, action});
+	}
+	assert.deepEqual([opened,ran], [[],[]]);
+	rule.name = 'Queue';
+	rules.push({...rule, id:'ar_7654321'});
+	links.refresh();
+	assert.equal(finder.input.textContent, 'Run automation › Queue [ar_1234567]');
+	assert.equal(output.textContent, commands[1].uri);
+	for (const {command, uri, action} of commands) {
+		assert.ok(palette.has('operon:automation-' + action + '-ar_7654321'));
+		await command.callback();
+		await dispatch(uri);
+	}
+	assert.deepEqual(opened, [rule.id,rule.id]);
+	assert.deepEqual(ran, [rule.id,rule.id]);
+	rules.shift();
+	for (const {command,uri} of commands) { await command.callback(); await dispatch(uri); }
+	assert.deepEqual(errors, ['rule','rule','rule','rule']);
+	links.refresh();
+	assert.equal(output.textContent, '');
+	assert.equal(palette.has('operon:automation-run-' + rule.id), false);
+	finder.dispose();
+});
+
 test('mobile Lightbox links open only the confirmed table and recheck its ID after the prompt', async () => {
 	const sources = {presets:{table:[{id:'books',name:'Books'},{id:'other',name:'Other'}], calendar:[], filter:[], kanban:[]},
 		defaultTableId:'books', desktop:false, fileTableIds:new Set(['books','other'])};
@@ -289,13 +330,14 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 			'openRelatedViewTarget', 'openKanbanView', 'openCalendarView', 'openOperonTable', 'openFilterViewById', 'resolvePreferredFilterSetId'], {
 			Base, OperonCommandLinks, t, LIGHTBOX_PERF_ENABLED: false, registerNativeTaskWorkspace: () => () => {},
 			MarkdownView: class {}, Notice: class {}, runAsyncAction: (_label, run) => pending.push(run()),
-			Platform: {isDesktopApp: true}, getNormalFilterSets, localToday: () => '2026-11-22',
+			isAutomationRulesSettings: value => !!value?.rules, Platform: {isDesktopApp: true}, getNormalFilterSets, localToday: () => '2026-11-22',
 			normalizeCalendarSidebarTaskPoolMode: () => 'open', getActiveDocument: () => ({body: {}}),
 			openFileLightboxAsync: async (_app, _anchor, target) => calls.push(['lightbox', target.file.path]),
 			FILTER_VIEW_TYPE: 'filter', OPERON_TABLE_VIEW_TYPE: 'table', CALENDAR_VIEW_TYPE: 'calendar', KANBAN_VIEW_TYPE: 'kanban', getNativePropertyIndex: () => ({}), createKanbanPropertyAccess: () => ({}),
 			normalizeKanbanAxisLeafState: (state, settings) => ({ presetId: state?.presetId ?? settings.kanbanDefaultPresetId }),
 		});
 	const host = new Host();
+	let rulesChanged;
 	const leaf = { async setViewState(state) {
 		calls.push(state.type === 'kanban' ? state.state.presetId :
 			[state.type, state.state.presetId ?? state.state.filterSetId, !!state.state.useNamedPresetOnMobile]);
@@ -311,7 +353,7 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 			filterSets: [{id:'fs_today',name:'Today'},{id:'fs_dynamic_subtasks_filter',name:'Special'}], leftRailDefaultFilterViewId:'fs_today',
 			calendarPresets: [{id:'cp_plan',name:'Planning'}], calendarDefaultPresetId:'cp_plan' }, settingsTab: tab,
 		tablePresetRegistry: {getSource: () => source, getPath: () => source.path},
-		storage: { getSettings: () => host.settings, subscribeViewPresets: () => () => {} },
+		storage: { getSettings: () => host.settings, subscribeViewPresets: () => () => {}, subscribeAutomationRules: callback => { rulesChanged = callback; return () => {}; } },
 		indexer: { getFileTaskByPath: () => ({ operonId: 'file' }) },
 		parseInlineTaskLine: line => line === 'inline' ? { operonId: 'inline' } : null,
 		timeTracker: { isTimerRunning: () => false }, startTimerForTask: async id => { calls.push(id); return true; },
@@ -371,6 +413,25 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 	for (const command of ['open-uri-finder','open-uri-builder']) {
 		await host.commandLinks.handleProtocol({action:'operon',command});
 		assert.deepEqual(calls.splice(0), ['settings', ['operon', ['General']], 'focus']);
+	}
+	host.settings.automationRules = {rules: []};
+	tab.openAutomationRule = id => calls.push(['open', id]);
+	host.runAutomation = async request => calls.push(['run', request.savedRuleId]);
+	for (const mode of ['manual', 'auto']) for (const active of [false,true]) {
+		const rule = {id:'ar_abcdefg', name:'Review', mode, active};
+		host.settings.automationRules.rules = [rule];
+		rulesChanged();
+		for (const action of ['open','run']) {
+			const entry = host.commandLinks.entries.find(item => item.target.action === action);
+			builder.input.suggest.selectSuggestion(entry);
+			const params = new URL(root.children[1].controlEl.children[0].textContent).searchParams;
+			assert.equal(params.get('rule'), rule.id);
+			assert.equal(params.get('run'), action === 'run' ? 'true' : null);
+			assert.deepEqual(calls, []);
+			await palette.get('operon:' + entry.id).callback();
+			await host.commandLinks.handleProtocol({action:'operon', ...Object.fromEntries(params)});
+			assert.deepEqual(calls.splice(0), [[action,rule.id],[action,rule.id]]);
+		}
 	}
 	const timerData = { action: 'operon', vault: 'Dev', command: 'cursor-timer' };
 	assert.equal(palette.get('operon:toggle-timer').checkCallback(true), false);

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3926,
-  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
+  "keyCount": 3927,
+  "keyFingerprint": "30765a1df698587828a0579d6bafee2cc2489079c8858cc042fcad0ad60446b0",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -3122,6 +3122,7 @@
       "uriNoMatches": "Aucune commande correspondante.",
       "uriOpenInNewTab": "Ouvrir dans un nouvel onglet",
       "uriPresetMissing": "Préréglage introuvable.",
+      "uriRuleMissing": "Règle d’automatisation introuvable.",
       "uriSearch": "Rechercher une commande Operon…",
       "uriUnavailable": "Cette commande Operon est indisponible ici.",
       "useLastTemplateAsDefault": "Utiliser le dernier modèle utilisé par défaut",
@@ -3971,5 +3972,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "2283030768abb692ea76931c776a621b9cabe7acc1913a12fdf8643bf06993b9"
+  "sourceVersion": "aa455a2f6f8c30361f48497dc58a277d25217173a5c0a8ef68920d86369ed3c6"
 }
