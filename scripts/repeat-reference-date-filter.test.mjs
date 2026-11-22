@@ -15,6 +15,8 @@ after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
  export * from './src/ui/field-pickers/automation-date-options';
+ export * from './src/ui/field-pickers/datetime-time-grid';
+ export { formatCompactDatetimeTime, formatUiTaskDatetime } from './src/core/ui-time-format';
  export { normalizeOperonDateKey } from './src/ui/field-pickers/day-picker';
  export * from './src/ui/field-pickers/date-nlp';
  export * from './src/core/task-occurrence-date';
@@ -461,6 +463,17 @@ test('overdue plus open-state filter returns only the missed materialized task',
  assert.equal(resolver.getRawValue(candidates[3],'taskOccurrenceDate'),'2026-10-30');
 });
 
+ class PickerElement extends Element {
+  classList = { add: name => this.addClass(name), remove: name => this.removeClass(name), contains: name => this.classes.has(name), toggle: (name, enabled) => this.toggleClass(name, enabled) };
+  createEl(tag, options) { const child = new PickerElement(tag, options); this.children.push(child); return child; }
+  appendChild(child) { if (!this.children.includes(child)) this.children.push(child); }
+  ownerDocument = { defaultView: { requestAnimationFrame() {} } };
+  setSelectionRange() {}
+  querySelector() { return null; }
+  replaceChildren() { this.empty(); }
+  key(key) { for (const cb of this.events.keydown ?? []) cb({ key, preventDefault() {} }); }
+ }
+
 test('Date Action picker commits the selected meaning by mouse or keyboard and reopens the saved value', () => {
  const file = 'src/ui/field-pickers/date-picker.ts';
  let calendar, panel;
@@ -475,13 +488,6 @@ test('Date Action picker commits the selected meaning by mouse or keyboard and r
   normalizeManualDateValue: value => h.normalizeOperonDateKey(value) ?? '',
   formatDatePickerInputDisplay: value => value,
  }, '', file);
- class PickerElement extends Element {
-  classList = { add: name => this.addClass(name), remove: name => this.removeClass(name) };
-  createEl(tag, options) { const child = new PickerElement(tag, options); this.children.push(child); return child; }
-  appendChild(child) { if (!this.children.includes(child)) this.children.push(child); }
-  replaceChildren() { this.empty(); }
-  key(key) { for (const cb of this.events.keydown ?? []) cb({ key, preventDefault() {} }); }
- }
  const render = compile('renderValue', { ...h, actionType: () => 'date', isFilePropertyColumnKey: () => false,
   resolveDatePickerLanguage: () => 'en', showDatePicker }, 'AutomationActionRow');
  for (const field of ['dateScheduled', 'file.property:Milestone']) {
@@ -532,5 +538,72 @@ test('Date Action picker commits the selected meaning by mouse or keyboard and r
   reopen(); calendar.onClear();
   assert.equal(action.value, '');
   assert.equal(action.valueEncoding, undefined);
+ }
+});
+
+test('Datetime Actions keep the day expression and wall time independent through the picker and editor', () => {
+ const file = 'src/ui/field-pickers/datetime-picker.ts';
+ let panel, calendar, timeBinding;
+ const deps = { ...h,
+  resolvePickerApp() {}, getAppLocale: () => 'en-US', resolveDatePickerLanguage: () => 'en',
+  createButton: (text, cls, el) => el.createEl('button', {text, cls}),
+  formatDatePickerInputDisplay: date => date, focusFloatingInput() {}, scrollChildIntoView() {},
+  joinDatetimePickerClasses: (...names) => names.filter(Boolean).join(' '), baseDatetimePickerClass: name => name,
+  bindTimeInput: (_el, binding) => { timeBinding = binding; },
+  renderOperonDayPicker: (_el, opts) => { calendar = opts; return { setSelectedDate() {}, setFocusedDate() {} }; },
+  createFloatingPanel: (_anchor, _cls, onClose) => { panel = new PickerElement(); return {panel, close: onClose}; },
+  isDatetimePickerRejection: () => false,
+ };
+ const renderDatetimePickerContent = compile('renderDatetimePickerContent', deps, '', file);
+ const showDatetimePicker = compile('showDatetimePicker', {...deps, renderDatetimePickerContent}, '', file);
+ const render = compile('renderValue', {...deps, showDatetimePicker, actionType: () => 'datetime',
+  isFilePropertyColumnKey: () => false}, 'AutomationActionRow');
+ for (const timeFormat of ['12h', '24h']) {
+  for (const field of ['datetimeStart', 'file.property:Meeting']) {
+   const action = {field, value: '2026-11-23T14:45:00'};
+   const reopen = () => {
+    const host = new PickerElement();
+    render.call({ action, valueHost: host, ctx: { settings: () => ({...h.DEFAULT_SETTINGS, timeFormat}), changed() {} }, syncType() {} });
+    const row = host.children[0];
+    row.fire('focus');
+    const [query, time] = panel.find(el => el.tag === 'input');
+    const type = value => { query.value = value; query.fire('input'); };
+    const button = label => panel.find(el => el.tag === 'button' && el.textContent === label)[0];
+    return {row, query, time, type, button};
+   };
+   action.value = '2026-11-23T14:45:31';
+   let ui = reopen();
+   calendar.onSelect('2026-11-25'); ui.time.key('Enter');
+   assert.equal(action.value, '2026-11-25T14:45:31');
+   ui = reopen();
+   ui.type('Tom'); ui.button('Tomorrow').fire('mousedown'); ui.time.key('Enter');
+   assert.equal(action.value, 'days:1@14:45');
+   assert.equal(action.valueEncoding, 'relative-day-v1');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 2:45 PM' : 'Tomorrow · 14:45');
+   assert.equal(ui.query.value, 'Tomorrow');
+   timeBinding.onChange(timeFormat === '12h' ? '1200' : '0000', 5);
+   if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimeAm')).fire('click');
+   ui.time.key('Enter');
+   assert.equal(action.value, 'days:1@00:00');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 AM' : 'Tomorrow · 00:00');
+   timeBinding.onChange('1200', 5);
+   if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimePm')).fire('click');
+   ui.time.key('Enter');
+   assert.equal(action.value, 'days:1@12:00');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 PM' : 'Tomorrow · 12:00');
+   calendar.onSelect('2026-12-02'); ui.time.key('Enter');
+   assert.equal(action.value, '2026-12-02T12:00:00');
+   assert.equal(action.valueEncoding, undefined);
+   ui = reopen();
+   ui.type('In 1 week'); ui.query.key('Enter'); ui.time.key('Enter');
+   assert.equal(action.value, 'days:7@12:00');
+   ui = reopen(); ui.type('2026-12-24'); ui.query.key('Enter'); ui.time.key('Enter');
+   assert.equal(action.value, '2026-12-24T12:00:00');
+   assert.equal(action.valueEncoding, undefined);
+   ui = reopen(); ui.button('Clear').fire('click'); assert.equal(action.value, '');
+  }
  }
 });

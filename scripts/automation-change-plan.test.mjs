@@ -554,3 +554,18 @@ test('relative removal matches the resolved value and invalid expressions cannot
 	const datetime = {...add('datetimeStart','days:1@14:45'), valueEncoding:'relative-day-v1'};
 	assert.equal(field(plan([task('a')], [rule('r', [datetime])]), 'a', 'datetimeStart')?.after, '2026-11-21T14:45:00');
 });
+
+test('relative datetime removal matches the full local timestamp and preview names the same target as Run', () => {
+	const action = { ...del('datetimeStart', 'days:1@14:45'), valueEncoding: 'relative-day-v1' };
+	const tasks = [
+		task('match', {datetimeStart:'2027-01-01T14:45:00'}),
+		task('minute', {datetimeStart:'2027-01-01T14:46:00'}),
+		task('second', {datetimeStart:'2027-01-01T14:45:01'}),
+		task('day', {datetimeStart:'2026-12-31T14:45:00'}),
+	];
+	for (const includePreviewTaskIds of [true, false]) {
+		const result = plan(tasks, [rule('r', [action])], {asOf:'2026-12-31T23:59:59', includePreviewTaskIds});
+		assert.deepEqual(result.rules[0].directTaskIds, ['match']);
+		assert.equal(field(result, 'match', 'datetimeStart')?.after, null);
+	}
+});

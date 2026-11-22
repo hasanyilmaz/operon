@@ -2,6 +2,7 @@ import { App, setIcon } from 'obsidian';
 import { automationTypedListMapping, readAutomationListMembers, isAutomationNativeKeyWritable, managedAutomationFieldType, readActionLiteral } from '../core/automation-action-fields';
 import { createAutomationActionId, type AutomationAction } from '../core/automation-rules';
 import { t } from '../core/i18n';
+import { formatCompactDatetimeTime, formatUiTaskDatetime } from '../core/ui-time-format';
 import { parseListValue } from '../core/parser';
 import { parseTaskMediaReferenceList } from '../core/task-media-reference';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
@@ -227,7 +228,14 @@ export class AutomationActionRow {
 		input.value = type === 'date' && action.valueEncoding === 'relative-day-v1'
 			? automationDateLabel(raw, resolveDatePickerLanguage()) : raw;
 		if (type === 'number') input.step = 'any';
-		const update = (value: string) => { input.value = value; change(value); };
+		const datetimeDisplay = (value: string, relative: boolean) => {
+			if (!relative) return formatUiTaskDatetime(ctx.app, settings, value);
+			const [expression, time] = value.split('@');
+			const label = automationDateLabel(expression, resolveDatePickerLanguage());
+			return time ? label + ' · ' + formatCompactDatetimeTime(time, settings) : value;
+		};
+		if (type === 'datetime') input.value = datetimeDisplay(raw, action.valueEncoding === 'relative-day-v1');
+		const update = (value: string) => { input.value = type === 'datetime' ? datetimeDisplay(value, false) : value; change(value); };
 		input.addEventListener('input', () => change(input.value));
 		if (type === 'date' || type === 'datetime') {
 			const openPicker = () => {
@@ -248,7 +256,17 @@ export class AutomationActionRow {
 					dateDisplayFormat: settings.dateDisplayFormat,
 					manualDatePicker: { weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers },
 					canRemove: !!input.value, onRemove: () => update(''), onSelect: update, onClose });
-				else showDatetimePicker(input, { app: ctx.app, settings, value: input.value || undefined,
+				else showDatetimePicker(input, { app: ctx.app, settings, fieldKey: action.field, dateDisplayFormat: settings.dateDisplayFormat,
+					value: action.valueEncoding === 'relative-day-v1' ? undefined : String(action.value),
+					relativeDay: {
+						value: action.valueEncoding === 'relative-day-v1' ? String(action.value) : undefined,
+						onSelect: (expression, time) => {
+							action.valueEncoding = 'relative-day-v1';
+							action.value = expression + '@' + time;
+							input.value = datetimeDisplay(action.value, true);
+							ctx.changed();
+						},
+					},
 					canRemove: !!input.value, onRemove: () => update(''), onSelect: update, onClose });
 			};
 			input.addEventListener('focus', openPicker);

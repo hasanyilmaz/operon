@@ -1,4 +1,5 @@
 import { App } from 'obsidian';
+import { automationDateLabel, automationDateOptions, type AutomationDateOption } from './automation-date-options';
 import { bindTimeInput } from './time-input';
 import { t } from '../../core/i18n';
 import { localToday } from '../../core/local-time';
@@ -58,7 +59,13 @@ export interface DatetimePickerClassNames {
 	todayButton?: string;
 }
 
+interface RelativeDatetimeSelection {
+	value?: string;
+	onSelect: (expression: string, canonicalTime: string) => void;
+}
+
 export interface DatetimePickerOptions {
+	relativeDay?: RelativeDatetimeSelection;
 	app?: App;
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
 	dateDisplayFormat?: DateDisplayFormat;
@@ -82,6 +89,7 @@ export type DatetimePickerActionResult = void | {
 };
 
 export interface DatetimePickerContentOptions {
+	relativeDay?: RelativeDatetimeSelection;
 	app?: App;
 	settings: Pick<OperonSettings, 'timeFormat' | 'calendarWeekStart' | 'calendarSidebarShowWeekNumbers'>;
 	dateDisplayFormat?: DateDisplayFormat;
@@ -131,6 +139,14 @@ export function showDatetimePicker(anchor: HTMLElement | DOMRect, options: Datet
 		language: options.language,
 		value: options.value,
 		initialDate: options.initialDate,
+		relativeDay: options.relativeDay && {
+			value: options.relativeDay.value,
+			onSelect: (expression, time) => {
+				completed = true;
+				options.relativeDay?.onSelect(expression, time);
+				close();
+			},
+		},
 		classNames: options.classNames,
 		onSelect: value => {
 			completed = true;
@@ -187,7 +203,9 @@ export function renderDatetimePickerContent(
 	const language = resolveDatePickerLanguage(options.language);
 	const strings = getDatePickerLocaleStrings(language);
 	let slots = getQuarterHourSlots();
-	const initial = parseStoredDatetimeValue(options.value);
+	const relative = options.relativeDay;
+	const [initialExpression, initialTime] = relative?.value?.split('@') ?? [];
+	const initial = parseStoredDatetimeValue(initialTime ?? options.value);
 	const initialDate = !options.value?.trim() ? normalizeOperonDateKey(options.initialDate ?? '') : null;
 	if (initialDate) initial.datePart = initialDate;
 	const timeFormat = options.settings.timeFormat;
@@ -218,6 +236,7 @@ export function renderDatetimePickerContent(
 	timeInput.className = joinDatetimePickerClasses('operon-floating-input', baseDatetimePickerClass('operon-datetime-picker-time-input', useBaseClasses), options.classNames?.timeInput);
 	timeInput.placeholder = t('taskEditor', 'datetimeTimePlaceholder');
 
+	const suggestionHeading = relative ? container.createDiv('operon-floating-subtitle') : null;
 	const results = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.dateResults));
 
 	const controlsRow = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-controls-row', useBaseClasses), options.classNames?.controlsRow));
@@ -225,7 +244,7 @@ export function renderDatetimePickerContent(
 	const dateSection = controlsRow.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-control-section', useBaseClasses), options.classNames?.dateSection));
 
 	const dateLabel = dateSection.createDiv(joinDatetimePickerClasses('operon-floating-subtitle', baseDatetimePickerClass('operon-datetime-picker-control-label', useBaseClasses), options.classNames?.dateLabel));
-	dateLabel.textContent = strings.manualDate;
+	dateLabel.textContent = relative ? strings.fixedDate : strings.manualDate;
 
 	const dayPickerHost = dateSection.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-day-picker-host', useBaseClasses), options.classNames?.dayPickerHost));
 
@@ -254,16 +273,17 @@ export function renderDatetimePickerContent(
 	});
 	actions.appendChild(clearButton);
 
-	const todayButton = createButton(strings.today, joinDatetimePickerClasses(baseDatetimePickerClass('operon-day-picker-footer-button', useBaseClasses), options.classNames?.todayButton, 'is-today'), actions);
-	todayButton.addEventListener('click', () => {
-		dayPickerController?.setFocusedDate(localToday());
-	});
-	actions.appendChild(todayButton);
+	if (!relative) {
+		const todayButton = createButton(strings.today, joinDatetimePickerClasses(baseDatetimePickerClass('operon-day-picker-footer-button', useBaseClasses), options.classNames?.todayButton, 'is-today'), actions);
+		todayButton.addEventListener('click', () => {
+			dayPickerController?.setFocusedDate(localToday());
+		});
+		actions.appendChild(todayButton);
+	} else actions.classList.add('has-single-action');
 	container.appendChild(actions);
 
-	let parsedCandidates: DateParseCandidate[] = [];
-	let quickCandidates: DateParseCandidate[] = [];
-	let visibleCandidates: DateParseCandidate[] = [];
+	let visibleCandidates: (DateParseCandidate | AutomationDateOption)[] = [];
+	let selectedExpression: string | undefined = initialExpression;
 	let activeDateIndex = 0;
 	let selectedDate = initial.datePart;
 	let displayedCanonicalDate = initial.datePart;
@@ -279,13 +299,6 @@ export function renderDatetimePickerContent(
 	let preserveOffGridCommit = !!initial.timePart;
 	let useInitialDateQuickSuggestions = !!initial.datePart;
 	let dayPickerController: OperonDayPickerController | null = null;
-
-	const commit = (value: string) => {
-		if (!value) return;
-		options.onSelect(value);
-	};
-
-	const getActiveDateCandidate = (): DateParseCandidate | null => visibleCandidates[activeDateIndex] ?? null;
 
 	const formatTimeLabel = (slot: QuarterHourSlot): string => {
 		const baseDate = new Date(2026, 0, 1, slot.hour24, slot.minute, 0, 0);
@@ -308,18 +321,26 @@ export function renderDatetimePickerContent(
 
 	const formatTimeBufferValue = (): string => `${timeBuffer[0] ?? '_'}${timeBuffer[1] ?? '_'}:${timeBuffer[2] ?? '_'}${timeBuffer[3] ?? '_'}`;
 
-	const getCommitValue = (): string => {
-		if (!selectedDate) return '';
-		const specialEndOfDay = getSpecialEndOfDayCommitValue();
-		if (specialEndOfDay) {
-			return specialEndOfDay;
-		}
+	const commitSelection = () => {
 		const time = resolveTimeInput(timeBuffer, timeFormat, currentMeridiem);
-		return time ? buildCanonicalDatetime(selectedDate, time) : '';
+		if (relative && selectedExpression) {
+			if (!time) return false;
+			relative.onSelect(selectedExpression, time);
+			return true;
+		}
+		if (!selectedDate) return false;
+		let value = getSpecialEndOfDayCommitValue() || (time && buildCanonicalDatetime(selectedDate, time));
+		if (!value) return false;
+		// A fixed action can already contain seconds. A day-only edit keeps its original clock.
+		if (relative && !hasTouchedTime && initial.datePart && time === initial.timePart && options.value) {
+			value = selectedDate + options.value.slice(10);
+		}
+		options.onSelect(value);
+		return true;
 	};
 
 	const getSpecialEndOfDayCommitValue = (): string => {
-		if (options.fieldKey !== 'datetimeEnd' || timeFormat !== '24h' || !selectedDate) return '';
+		if (relative || options.fieldKey !== 'datetimeEnd' || timeFormat !== '24h' || !selectedDate) return '';
 		const digits = getMatchingDigits();
 		if (digits !== '2400' && digits !== '0000') return '';
 		return buildCanonicalDatetime(selectedDate, '24:00');
@@ -374,7 +395,7 @@ export function renderDatetimePickerContent(
 					? timeResults.children[previousVisualIndex] as HTMLElement | undefined
 					: undefined;
 				activeTimeIndex = index;
-				currentMeridiem = resolveMeridiem(slot.hour24);
+				if (!relative) currentMeridiem = resolveMeridiem(slot.hour24);
 				previousButton?.classList.remove('is-active');
 				button.classList.add('is-active');
 				refreshMeridiemUi();
@@ -388,7 +409,7 @@ export function renderDatetimePickerContent(
 				timeBuffer = getTimeDigitsFromCanonicalTime(slot.canonical, timeFormat, currentMeridiem).padEnd(4, '_').slice(0, 4);
 				syncTimeInputValue();
 				refreshTimeMatches();
-				commit(getCommitValue());
+				commitSelection();
 			});
 			timeResults.appendChild(button);
 		}
@@ -406,8 +427,14 @@ export function renderDatetimePickerContent(
 		const built = buildDatePickerCandidates(app, queryValue, context, {
 			quickQuery: useInitialDateQuickSuggestions ? '' : queryValue,
 		});
-		parsedCandidates = built.parsed;
-		quickCandidates = built.quick;
+		if (relative && suggestionHeading) {
+			const items = automationDateOptions(useInitialDateQuickSuggestions ? '' : queryValue, language, built.parsed);
+			visibleCandidates = items;
+			suggestionHeading.hidden = !items.length;
+			suggestionHeading.textContent = items[0]?.expression ? strings.relativeToRun : strings.fixedDate;
+		} else {
+			visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, getTypedCanonicalDate());
+		}
 		activeDateIndex = 0;
 		useInitialDateQuickSuggestions = false;
 		renderDateResults();
@@ -416,7 +443,6 @@ export function renderDatetimePickerContent(
 	const renderDateResults = () => {
 		results.replaceChildren();
 		const hiddenCalendarDate = getTypedCanonicalDate();
-		visibleCandidates = mergeDatePickerVisibleCandidates(parsedCandidates, quickCandidates, hiddenCalendarDate);
 
 		if (visibleCandidates.length === 0) {
 			if (hiddenCalendarDate) return;
@@ -431,7 +457,8 @@ export function renderDatetimePickerContent(
 			button.type = 'button';
 			button.className = joinDatetimePickerClasses('operon-field-menu-item', baseDatetimePickerClass('operon-date-picker-item', useBaseClasses), options.classNames?.dateItem);
 			if (index === activeDateIndex) button.classList.add('is-active');
-			appendDatePickerCandidateRow(button, candidate, language, {
+			if ('label' in candidate) button.textContent = candidate.label;
+			else appendDatePickerCandidateRow(button, candidate, language, {
 				label: useBaseClasses ? undefined : options.classNames?.dateItemLabel,
 				date: useBaseClasses ? undefined : options.classNames?.dateItemDate,
 				weekday: useBaseClasses ? undefined : options.classNames?.dateItemWeekday,
@@ -447,7 +474,7 @@ export function renderDatetimePickerContent(
 			button.addEventListener('mousedown', event => {
 				event.preventDefault();
 				activeDateIndex = index;
-				applySelectedDate(candidate.isoDate);
+				applyCandidate(candidate);
 			});
 			results.appendChild(button);
 		}
@@ -475,12 +502,26 @@ export function renderDatetimePickerContent(
 	};
 
 	const applySelectedDate = (dateValue: string) => {
+		selectedExpression = undefined;
 		selectedDate = dateValue;
 		displayedCanonicalDate = dateValue;
 		input.value = formatDatePickerInputDisplay(dateValue, options.dateDisplayFormat);
 		dayPickerController?.setSelectedDate(dateValue);
 		dayPickerController?.setFocusedDate(dateValue);
 		focusTimeInput();
+	};
+
+	const applyCandidate = (candidate: DateParseCandidate | AutomationDateOption) => {
+		if ('expression' in candidate && candidate.expression) {
+			selectedExpression = candidate.expression;
+			selectedDate = '';
+			displayedCanonicalDate = '';
+			input.value = candidate.label;
+			dayPickerController?.setSelectedDate('');
+			focusTimeInput();
+		} else {
+			applySelectedDate('isoDate' in candidate ? candidate.isoDate : candidate.label);
+		}
 	};
 
 	const renderManualDayPicker = () => {
@@ -534,11 +575,15 @@ export function renderDatetimePickerContent(
 		getBuffer: () => timeBuffer,
 		onChange: updateTimeFromDigitInput,
 		timeFormat,
-		allowEndOfDay: options.fieldKey === 'datetimeEnd' && timeFormat === '24h',
+		allowEndOfDay: !relative && options.fieldKey === 'datetimeEnd' && timeFormat === '24h',
 	});
 
 	input.addEventListener('input', () => {
 		displayedCanonicalDate = '';
+		if (relative) {
+			selectedExpression = undefined;
+			selectedDate = normalizeOperonDateKey(input.value) ?? '';
+		}
 		const typedDate = getTypedCanonicalDate();
 		if (typedDate) {
 			dayPickerController?.setFocusedDate(typedDate);
@@ -568,10 +613,10 @@ export function renderDatetimePickerContent(
 				applySelectedDate(typedDate);
 				return;
 			}
-			const active = getActiveDateCandidate();
+			const active = visibleCandidates[activeDateIndex];
 			if (!active) return;
 			event.preventDefault();
-			applySelectedDate(active.isoDate);
+			applyCandidate(active);
 		}
 	});
 
@@ -606,11 +651,7 @@ export function renderDatetimePickerContent(
 			return;
 		}
 		if (event.key === 'Enter') {
-			if (!selectedDate) return;
-			const commitValue = getCommitValue();
-			if (!commitValue) return;
-			event.preventDefault();
-			commit(commitValue);
+			if (commitSelection()) event.preventDefault();
 		}
 	});
 
@@ -636,7 +677,9 @@ export function renderDatetimePickerContent(
 		meridiemButtons.pm.classList.toggle('is-active', currentMeridiem === 'pm');
 	};
 
-	if (initial.datePart) {
+	if (selectedExpression) {
+		input.value = automationDateLabel(selectedExpression, language);
+	} else if (initial.datePart) {
 		input.value = formatDatePickerInputDisplay(initial.datePart, options.dateDisplayFormat);
 	}
 	if (initial.timePart && initial.slotIndex === null) {
