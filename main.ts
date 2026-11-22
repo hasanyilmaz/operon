@@ -15804,15 +15804,27 @@ export default class OperonPlugin extends Plugin {
 			}
 		// Obsidian restores ribbon visibility after awaiting plugin onload. Only
 		// cached labels belong in this barrier; storage/index startup stays asynchronous.
-		await this.prepareRibbonIcons();
-		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+		const ribbonReady = this.prepareRibbonIcons();
+		const commandsReady = ribbonReady.then(() => {
+			if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') return this.loadPlugin();
+		}).catch(error => {
+			this.finishAutomationStartup(false);
+			throw error;
+		});
+		this.registerObsidianProtocolHandler('operon', data => {
+			runAsyncAction('open Operon URI failed', async () => {
+				try { await commandsReady; } catch {
+					if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') new Notice(t('settings', 'uriUnavailable'));
+					return;
+				}
+				if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') await this.commandLinks.handleProtocol(data);
+			});
+		});
 			runAsyncAction('plugin load failed', async () => {
 				try {
-					await this.loadPlugin();
-					if (
-						OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED
-						&& this.agentRuntimeLifecycle.getPhase() !== 'unloading'
-					) {
+					await commandsReady;
+					if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+					if (OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED) {
 						const supervisor = new AgentRuntimePersistentReadSupervisorV1({
 							startServer: isCurrent => startAgentRuntimePersistentReadServerV1(
 								this,
@@ -15846,6 +15858,7 @@ export default class OperonPlugin extends Plugin {
 				throw error;
 			}
 		});
+		await ribbonReady;
 	}
 
 	private async initializeTablePresetRegistry(): Promise<void> {
@@ -17440,9 +17453,6 @@ export default class OperonPlugin extends Plugin {
 			);
 		this.settingsTab.setCommandLinks(this.commandLinks);
 		this.addSettingTab(this.settingsTab);
-		this.registerObsidianProtocolHandler('operon', data => {
-			runAsyncAction('open Operon URI failed', () => this.commandLinks.handleProtocol(data));
-		});
 
 		const openUpcoming = async (taskId: string, action: OperonSettings['upcomingStatusBarClickAction']): Promise<void> => {
 			if (action === 'start-timer') await this.startTimerForTask(taskId, 'status-bar');
@@ -17579,6 +17589,7 @@ export default class OperonPlugin extends Plugin {
 				this.settingsTab?.notifyAutomationIndexReady();
 				this.agentRuntimeStartupSettlementRelease?.();
 				this.agentRuntimeStartupSettlementRelease = null;
+				this.finishAutomationStartup(true);
 				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('startup-reconciled');
 				this.indexV8CleanupMaintenance?.cancel();
 				this.indexV8CleanupMaintenance = startIndexV8CleanupMaintenance({
@@ -17600,6 +17611,7 @@ export default class OperonPlugin extends Plugin {
 					});
 				}, 750);
 			} catch (error) {
+				this.finishAutomationStartup(false);
 				if (this.taskCardIndexState === 'loading') {
 					this.taskCardIndexState = 'error';
 					this.taskCardEmbeds?.refresh();
@@ -17686,6 +17698,7 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.finishAutomationStartup(false);
 		this.startupAutomationRuns.clear();
 		this.autoAutomationEvents?.dispose();
 		this.automationApproval?.close();
@@ -23548,6 +23561,8 @@ export default class OperonPlugin extends Plugin {
 	}
 
 	private readonly automationRunner = new AutomationRunner();
+	private finishAutomationStartup!: (ready: boolean) => void;
+	private readonly automationStartup = new Promise<boolean>(resolve => { this.finishAutomationStartup = resolve; });
 	private autoAutomationEvents?: AutoAutomationEvents;
 
 	private readonly startupAutomationRuns = new Map<string, AutomationRule>();
@@ -23615,6 +23630,12 @@ export default class OperonPlugin extends Plugin {
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
 			const ports: import('./src/systems/manual-automation-run').AutomationRunPorts = {
+				waitForSavedRun: async () => {
+					const ready = await this.automationStartup;
+					if (ready && this.agentRuntimeLifecycle.getPhase() !== 'unloading') await this.indexer.awaitRamSettlement();
+					if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return 'dismissed';
+					return ready ? 'ready' : 'index-unavailable';
+				},
 				validateSavedRule: rule => this.settingsTab!.validateAutomationRun(rule),
 				vault: this.app.vault,
 				settings: () => readAutomationRules(this.storage.getSettings().automationRules),

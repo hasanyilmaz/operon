@@ -134,6 +134,7 @@ async function fixture(files, opts = {}) {
 	const writer = new TaskWriter(app, idx, settings.keyMappings, { getInlinePropertyDefinitions: () => settings.inlinePropertyDefinitions });
 	const aggregates = new AggregateCoordinator({}, {});
 	const ports = { vault,
+		waitForSavedRun: () => f.waitForSavedRun?.() ?? Promise.resolve('ready'),
 		validateSavedRule: saved => savedAutomationRunError(saved, {
 			getSettings: () => settings, getTasks: () => [...tasks.values()], getNativeSnapshot: () => f.native ?? null,
 		}),
@@ -219,6 +220,79 @@ test('additional imported draft fields cannot redirect an editor Run to a saved 
 	const text = await f.read(id(0) + '.md');
 	assert.match(text, /#draft-only/u);
 	assert.doesNotMatch(text, /#follow/u);
+});
+
+test('startup Run waits before reading the saved rule or confirmation limit', async () => {
+	for (const readyState of ['ready', 'dismissed', 'index-unavailable']) {
+		const entered = Promise.withResolvers(), startup = Promise.withResolvers();
+		let reads = 0;
+		const f = await fixture(filesFor(1), { policy: 'none', readRules: () => {
+			reads++;
+			return structuredClone(f.config);
+		} });
+		f.waitForSavedRun = () => { entered.resolve(); return startup.promise; };
+		const running = f.run({ savedRuleId: f.rule.id });
+		await entered.promise;
+		assert.equal(reads, 0);
+		assert.deepEqual(f.writes, []);
+		f.config.confirmation = 'always';
+		f.rule.actions = [action('tags', 'after-startup')];
+		startup.resolve(readyState);
+		const result = await running;
+		if (readyState === 'ready') {
+			assert.equal(result.applied, 1);
+			assert.equal(f.prompts.length, 1);
+			assert.deepEqual(f.writes, [id(0) + '.md']);
+			assert.match(await f.read(id(0) + '.md'), /#after-startup/u);
+		} else {
+			assert.equal(result.status, readyState);
+			assert.equal(reads, 0);
+			assert.deepEqual(f.prompts, []);
+			assert.deepEqual(f.writes, []);
+		}
+	}
+});
+
+test('saved Run requests wait in FIFO order through approval and read the current rule and policy', async () => {
+	for (const decision of ['apply', 'dismiss']) {
+		const entered = Promise.withResolvers(), approval = Promise.withResolvers();
+		const f = await fixture(filesFor(2), { rule: { target: rootGroup('description', 'text', 'is', id(0)) } });
+		const second = { ...f.rule, id: 'second', mode: 'auto', active: false,
+			target: rootGroup('description', 'text', 'is', id(1)), actions: [action('tags', 'stale')] };
+		const removed = { ...second, id: 'removed' };
+		f.config.rules.push(removed, second);
+		f.confirm = () => { entered.resolve(); return approval.promise; };
+		const first = f.run({ savedRuleId: f.rule.id });
+		await entered.promise;
+		const deleted = f.run({ savedRuleId: removed.id });
+		const next = f.run({ savedRuleId: second.id });
+		assert.equal(f.prompts.length, 1);
+		assert.deepEqual(f.writes, []);
+		f.config.rules = [f.rule, { ...second, actions: [action('tags', 'current')] }];
+		f.config.confirmation = 'none';
+		approval.resolve(decision);
+		assert.equal((await first).status, decision === 'apply' ? 'finished' : 'dismissed');
+		assert.equal((await deleted).status, 'rule-missing');
+		assert.equal((await next).applied, 1);
+		assert.equal(f.prompts.filter(([, rules]) => rules.some(rule => rule.id === second.id)).length, 0);
+		assert.deepEqual(f.writes, (decision === 'apply' ? [id(0), id(1)] : [id(1)]).map(key => key + '.md'));
+		const source = await f.read(id(1) + '.md');
+		assert.match(source, /#current/u);
+		assert.doesNotMatch(source, /#stale/u);
+	}
+});
+
+test('a second explicit Run of the same saved rule sees the first result', async () => {
+	const f = await fixture(filesFor(1), { rule: { actions: [action('pinned', 'true')] } });
+	const entered = Promise.withResolvers(), approval = Promise.withResolvers();
+	f.confirm = () => { entered.resolve(); return approval.promise; };
+	const first = f.run({ savedRuleId: f.rule.id });
+	await entered.promise;
+	const second = f.run({ savedRuleId: f.rule.id });
+	approval.resolve('apply');
+	assert.equal((await first).applied, 1);
+	assert.equal((await second).applied, 0);
+	assert.equal(f.prompts.length, 1);
 });
 
 test('direct run respects distinct task limits, zero changes and an explicit cancellation', async () => {

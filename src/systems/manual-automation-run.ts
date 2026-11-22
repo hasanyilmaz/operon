@@ -37,6 +37,7 @@ export function isSavedAutomationRequest(request: ExplicitAutomationRequest | un
 }
 
 export interface AutomationRunPorts {
+	waitForSavedRun(): Promise<'ready' | 'index-unavailable' | 'dismissed'>;
 	validateSavedRule(rule: AutomationRule): 'condition' | 'action' | null;
 	vault: Pick<Vault, 'getAbstractFileByPath' | 'read'>;
 	settings(): AutomationRulesSettings;
@@ -54,7 +55,7 @@ export interface AutomationRunPorts {
 	available(): boolean;
 }
 export type ManualAutomationResult =
-	| { status: 'dismissed' | 'deferred' | 'busy' | 'rule-changed' | 'save-failed' }
+	| { status: 'dismissed' | 'deferred' | 'busy' | 'rule-changed' | 'save-failed' | 'index-unavailable' }
 	| { status: 'invalid-rule'; reason: 'condition' | 'action' }
 	| { status: 'rule-missing' }
 	| { status: 'deactivated'; names: string[] }
@@ -85,7 +86,7 @@ async function planWithYamlSources(vault: AutomationRunPorts['vault'], calculate
 /** All entry points hold the same queue through confirmation, apply and the index refresh. */
 export class AutomationRunner {
 	private tail = Promise.resolve();
-	private manualPending = false;
+	private readonly pendingManualIds = new Set<string>();
 
 	private enqueue<T>(operation: () => Promise<T>): Promise<T> {
 		const result = this.tail.then(operation);
@@ -94,11 +95,20 @@ export class AutomationRunner {
 	}
 
 	async run(request: ExplicitAutomationRequest, ports: AutomationRunPorts): Promise<ManualAutomationResult> {
-		if (this.manualPending) return { status: 'busy' };
+		if (isSavedAutomationRequest(request)) {
+			const { savedRuleId } = request;
+			return this.enqueue(async () => {
+				const status = await ports.waitForSavedRun();
+				if (status !== 'ready') return { status };
+				return this.runOnce({ savedRuleId }, ports);
+			});
+		}
 		const selection = typeof request === 'string' ? request : structuredClone(request);
-		this.manualPending = true;
+		const id = typeof selection === 'string' ? selection : selection.id;
+		if (this.pendingManualIds.has(id)) return { status: 'busy' };
+		this.pendingManualIds.add(id);
 		try { return await this.enqueue(() => this.runOnce(selection, ports)); }
-		finally { this.manualPending = false; }
+		finally { this.pendingManualIds.delete(id); }
 	}
 
 	runAuto(take: () => Promise<AutoRunBatch>, ports: AutomationRunPorts): Promise<ManualAutomationResult> {

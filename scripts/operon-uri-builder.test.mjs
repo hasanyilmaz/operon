@@ -313,6 +313,40 @@ function productionMethods(file, className, methods, bindings) {
 	return new Function(...Object.keys(bindings), outputText + '\nreturn Host;')(...Object.values(bindings));
 }
 
+test('saved command admission waits for startup and RAM settlement, and stops on failed startup or unload', async () => {
+	const Host = productionMethods('main.ts', 'OperonPlugin', ['runAutomation'], {
+		Base: class {}, localNow: () => '', showAutomationResult() {},
+	});
+	for (const outcome of ['ready', 'failed', 'unload-before-ready', 'unload-during-settlement']) {
+		const host = new Host();
+		const startup = Promise.withResolvers(), settling = Promise.withResolvers(), settled = Promise.withResolvers();
+		const admissions = [];
+		let unloading = false, waits = 0;
+		Object.assign(host, {
+			app: { vault: {} }, automationStartup: startup.promise,
+			agentRuntimeLifecycle: { getPhase: () => unloading ? 'unloading' : 'ready' },
+			indexer: { awaitRamSettlement() { waits++; settling.resolve(); return settled.promise; } },
+			automationRunner: { async run(_request, ports) {
+				admissions.push(await ports.waitForSavedRun());
+				return { status: 'dismissed' };
+			} },
+		});
+		const run = host.runAutomation({ savedRuleId: 'saved' });
+		assert.equal(waits, 0);
+		unloading = outcome === 'unload-before-ready';
+		startup.resolve(outcome !== 'failed' && !unloading);
+		if (outcome === 'ready' || outcome === 'unload-during-settlement') {
+			await settling.promise;
+			assert.deepEqual(admissions, []);
+			unloading = outcome === 'unload-during-settlement';
+			settled.resolve();
+		}
+		await run;
+		assert.deepEqual(admissions, [unloading ? 'dismissed' : outcome === 'failed' ? 'index-unavailable' : 'ready']);
+		assert.equal(waits, outcome === 'ready' || outcome === 'unload-during-settlement' ? 1 : 0);
+	}
+});
+
 test('production Finder, registered shortcuts and URIs open the same tab or Table file lightbox', async () => {
 	const palette = new Map(), calls = [], pending = [];
 	const t = (_ns, key) => key === 'tabGeneral' ? 'General' : key;
