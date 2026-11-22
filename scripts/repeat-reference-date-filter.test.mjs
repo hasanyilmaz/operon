@@ -19,6 +19,7 @@ await build({ stdin: { contents: `
  export { formatCompactDatetimeTime, formatUiTaskDatetime } from './src/core/ui-time-format';
  export { normalizeOperonDateKey } from './src/ui/field-pickers/day-picker';
  export * from './src/ui/field-pickers/date-nlp';
+ export { appendDatePickerCandidateRow } from './src/ui/field-pickers/date-picker-row';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
@@ -504,31 +505,32 @@ test('Date Action picker commits the selected meaning by mouse or keyboard and r
   };
   let ui = reopen();
   ui.type('Tom');
-  assert.deepEqual(ui.buttons().map(b => b.textContent), ['Tomorrow']);
+  assert.deepEqual(ui.buttons().map(b => b.children[0]?.textContent), ['Tomorrow']);
   ui.buttons()[0].fire('mousedown');
-  assert.equal(action.value, 'days:1');
+  assert.equal(action.value, 'tomorrow');
   assert.equal(action.valueEncoding, 'relative-day-v1');
   ui = reopen();
   assert.equal(ui.input.value, 'Tomorrow');
   assert.equal(ui.query.value, 'Tomorrow');
-  for (const [query, expected] of [['Next weekend','nextWeekend'], ['3 days from now','days:3'], ['In 1 week','days:7']]) {
+  for (const [query, expected] of [['Next weekend','nextWeekend'], ['3 days from now','offsetDays:3'], ['1 w','weeks:1']]) {
    ui.type(query); ui.query.key('Enter');
    assert.equal(action.value, expected);
    ui = reopen();
   }
-  ui.type('next week');
-  assert.equal(panel.children[1].textContent, 'Fixed date');
-  const fixedLabel = ui.buttons()[0].textContent;
-  assert.match(fixedLabel, /^\d{4}-\d{2}-\d{2}$/);
-  ui.buttons()[0].fire('mousedown');
-  assert.equal(action.value, fixedLabel);
-  assert.equal(action.valueEncoding, undefined);
+  ui.type('3');
+  assert.deepEqual(ui.buttons().map(b => b.children[0].textContent), [
+   '3 days from now', '3 weeks from now', '3 months from now', '3 days ago', '3 weeks ago', '3 months ago',
+  ]);
+  assert.ok(ui.buttons().every(b => b.children.length === 3));
+  ui.buttons()[2].fire('mousedown');
+  assert.equal(action.value, 'months:3');
   ui = reopen();
+  assert.equal(ui.input.value, '3 months from now');
   calendar.onSelect('2026-11-23');
   assert.equal(action.value, '2026-11-23');
   assert.equal(action.valueEncoding, undefined);
   ui = reopen();
-  assert.ok(ui.buttons().some(button => button.textContent === 'Tomorrow'));
+  assert.ok(ui.buttons().every(button => button.children[1].textContent !== action.value));
   ui.type('2026-12-04'); ui.query.key('Enter');
   assert.equal(action.value, '2026-12-04');
   assert.equal(action.valueEncoding, undefined);
@@ -568,7 +570,7 @@ test('Datetime Actions keep the day expression and wall time independent through
     row.fire('focus');
     const [query, time] = panel.find(el => el.tag === 'input');
     const type = value => { query.value = value; query.fire('input'); };
-    const button = label => panel.find(el => el.tag === 'button' && el.textContent === label)[0];
+    const button = label => panel.find(el => el.tag === 'button' && (el.textContent === label || el.children[0]?.textContent === label))[0];
     return {row, query, time, type, button};
    };
    action.value = '2026-11-23T14:45:31';
@@ -577,7 +579,7 @@ test('Datetime Actions keep the day expression and wall time independent through
    assert.equal(action.value, '2026-11-25T14:45:31');
    ui = reopen();
    ui.type('Tom'); ui.button('Tomorrow').fire('mousedown'); ui.time.key('Enter');
-   assert.equal(action.value, 'days:1@14:45');
+   assert.equal(action.value, 'tomorrow@14:45');
    assert.equal(action.valueEncoding, 'relative-day-v1');
    ui = reopen();
    assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 2:45 PM' : 'Tomorrow · 14:45');
@@ -585,21 +587,21 @@ test('Datetime Actions keep the day expression and wall time independent through
    timeBinding.onChange(timeFormat === '12h' ? '1200' : '0000', 5);
    if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimeAm')).fire('click');
    ui.time.key('Enter');
-   assert.equal(action.value, 'days:1@00:00');
+   assert.equal(action.value, 'tomorrow@00:00');
    ui = reopen();
    assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 AM' : 'Tomorrow · 00:00');
    timeBinding.onChange('1200', 5);
    if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimePm')).fire('click');
    ui.time.key('Enter');
-   assert.equal(action.value, 'days:1@12:00');
+   assert.equal(action.value, 'tomorrow@12:00');
    ui = reopen();
    assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 PM' : 'Tomorrow · 12:00');
    calendar.onSelect('2026-12-02'); ui.time.key('Enter');
    assert.equal(action.value, '2026-12-02T12:00:00');
    assert.equal(action.valueEncoding, undefined);
    ui = reopen();
-   ui.type('In 1 week'); ui.query.key('Enter'); ui.time.key('Enter');
-   assert.equal(action.value, 'days:7@12:00');
+   ui.type('3'); ui.button('3 months ago').fire('mousedown'); ui.time.key('Enter');
+   assert.equal(action.value, 'months:-3@12:00');
    ui = reopen(); ui.type('2026-12-24'); ui.query.key('Enter'); ui.time.key('Enter');
    assert.equal(action.value, '2026-12-24T12:00:00');
    assert.equal(action.valueEncoding, undefined);

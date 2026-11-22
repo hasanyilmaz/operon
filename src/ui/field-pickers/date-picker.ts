@@ -14,7 +14,7 @@ import {
 	resolveDatePickerLanguage,
 } from './date-nlp';
 
-import { automationDateLabel, automationDateOptions, type AutomationDateOption } from './automation-date-options';
+import { automationDateLabel } from './automation-date-options';
 
 export interface ManualDatePickerOptions {
 	weekStart: DayPickerWeekStart;
@@ -82,7 +82,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	input.placeholder = strings.searchPlaceholder;
 
 	const relative = options.relativeDay;
-	const suggestionHeading = relative ? panel.createDiv('operon-floating-subtitle') : null;
+
 	const results = panel.createDiv(joinDatePickerClasses(baseDatePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.results));
 
 	const manualLabel = panel.createDiv('operon-floating-subtitle');
@@ -92,7 +92,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	let dayPicker: OperonDayPickerController | null = null;
 	let manualDateValue = normalizeManualDateValue(options.value);
 	let displayedCanonicalDate = manualDateValue;
-	let visibleCandidates: (DateParseCandidate | AutomationDateOption)[] = [];
+	let visibleCandidates: DateParseCandidate[] = [];
 	let activeIndex = 0;
 	let useInitialQuickSuggestions = !!options.value?.trim();
 
@@ -103,13 +103,13 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		close();
 	};
 
-	const selectCandidate = (candidate: DateParseCandidate | AutomationDateOption) => {
-		if ('expression' in candidate && relative && candidate.expression) {
+	const selectCandidate = (candidate: DateParseCandidate) => {
+		if (relative && candidate.rule) {
 			completed = true;
-			relative.onSelect(candidate.expression, candidate.label);
+			relative.onSelect(candidate.rule, automationDateLabel(candidate.rule, language));
 			close();
 		} else {
-			commit('isoDate' in candidate ? candidate.isoDate : candidate.label);
+			commit(candidate.isoDate);
 		}
 	};
 
@@ -201,8 +201,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 			button.type = 'button';
 			button.className = joinDatePickerClasses('operon-field-menu-item', baseDatePickerClass('operon-date-picker-item', useBaseClasses), options.classNames?.item);
 			if (index === activeIndex) button.classList.add('is-active');
-			if ('label' in candidate) button.textContent = candidate.label;
-			else appendDatePickerCandidateRow(button, candidate, language, {
+			appendDatePickerCandidateRow(button, candidate, language, {
 				label: useBaseClasses ? undefined : options.classNames?.itemLabel,
 				date: useBaseClasses ? undefined : options.classNames?.itemDate,
 				weekday: useBaseClasses ? undefined : options.classNames?.itemWeekday,
@@ -229,14 +228,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		const built = buildDatePickerCandidates(app, queryValue, context, {
 			quickQuery: useInitialQuickSuggestions ? '' : queryValue,
 		});
-		if (relative && suggestionHeading) {
-			const items = automationDateOptions(useInitialQuickSuggestions ? '' : queryValue, language, built.parsed);
-			visibleCandidates = items;
-			suggestionHeading.hidden = !items.length;
-			suggestionHeading.textContent = items[0]?.expression ? strings.relativeToRun : strings.fixedDate;
-		} else {
-			visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, options.manualDatePicker ? manualDateValue : '');
-		}
+		visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, options.manualDatePicker ? manualDateValue : '');
 		activeIndex = 0;
 		useInitialQuickSuggestions = false;
 		render();

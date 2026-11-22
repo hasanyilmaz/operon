@@ -1,7 +1,6 @@
 import { DateParseCandidate, DateParseContext, DatePickerLang } from './date-nlp';
 
 interface DatePickerStrings {
-	relativeToRun: string;
 	fixedDate: string;
 	searchPlaceholder: string;
 	clear: string;
@@ -36,7 +35,6 @@ interface MonthAlias {
 
 const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 	en: {
-		relativeToRun: 'Relative to run date',
 		fixedDate: 'Fixed date',
 		searchPlaceholder: 'Type a date like next tuesday',
 		clear: 'Clear',
@@ -64,7 +62,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Last ${name}`,
 	},
 	tr: {
-		relativeToRun: 'Çalıştırma gününe göre',
 		fixedDate: 'Sabit tarih',
 		searchPlaceholder: 'Gelecek sali gibi bir tarih yazin',
 		clear: 'Temizle',
@@ -92,7 +89,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Gecen ${name.toLowerCase()}`,
 	},
 	de: {
-		relativeToRun: 'Relativ zum Ausführungstag',
 		fixedDate: 'Festes Datum',
 		searchPlaceholder: 'Ein Datum wie nächsten Dienstag eingeben',
 		clear: 'Löschen',
@@ -120,7 +116,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Letzter ${name}`,
 	},
 	fr: {
-		relativeToRun: 'Par rapport au jour d’exécution',
 		fixedDate: 'Date fixe',
 		searchPlaceholder: 'Saisir une date comme mardi prochain',
 		clear: 'Effacer',
@@ -148,7 +143,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `${name} dernier`,
 	},
 	es: {
-		relativeToRun: 'Relativa al día de ejecución',
 		fixedDate: 'Fecha fija',
 		searchPlaceholder: 'Escribir una fecha como próximo martes',
 		clear: 'Limpiar',
@@ -176,7 +170,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `${name} pasado`,
 	},
 	'zh-CN': {
-		relativeToRun: '相对于运行日期',
 		fixedDate: '固定日期',
 		searchPlaceholder: '输入日期，如 下周二',
 		clear: '清除',
@@ -204,7 +197,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `上${name}`,
 	},
 	'zh-TW': {
-		relativeToRun: '相對於執行日期',
 		fixedDate: '固定日期',
 		searchPlaceholder: '輸入日期，例如 下週二',
 		clear: '清除',
@@ -232,7 +224,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `上${name}`,
 	},
 	ja: {
-		relativeToRun: '実行日を基準にする',
 		fixedDate: '固定日',
 		searchPlaceholder: '日付を入力（例: 来週火曜日）',
 		clear: 'クリア',
@@ -260,7 +251,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `先週${name}`,
 	},
 	ru: {
-		relativeToRun: 'Относительно даты запуска',
 		fixedDate: 'Фиксированная дата',
 		searchPlaceholder: 'Введите дату, например следующий вторник',
 		clear: 'Очистить',
@@ -288,7 +278,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => `Прошлый ${name}`,
 	},
 	it: {
-		relativeToRun: 'Relativa al giorno di esecuzione',
 		fixedDate: 'Data fissa',
 		searchPlaceholder: 'Digita una data come martedì prossimo',
 		clear: 'Cancella',
@@ -317,7 +306,6 @@ const STRINGS: Record<DatePickerLang, DatePickerStrings> = {
 		lastWeekdayLabel: name => (name === 'domenica' ? `${name} scorsa` : `${name} scorso`),
 	},
 	'pt-BR': {
-		relativeToRun: 'Relativa ao dia da execução',
 		fixedDate: 'Data fixa',
 		searchPlaceholder: 'Digite uma data, como próxima terça-feira',
 		clear: 'Limpar',
@@ -818,36 +806,35 @@ export function getDatePickerStrings(language: DatePickerLang): DatePickerString
 
 export interface RelativeDatePreset extends DateParseCandidate { rule: string }
 
+const presetDays = {
+	today: cloneDate,
+	tomorrow: (date: Date) => addDays(date, 1),
+	yesterday: (date: Date) => addDays(date, -1),
+	thisWeek: startOfWeek,
+	nextWeek: (date: Date) => addDays(startOfWeek(date), 7),
+	lastWeek: (date: Date) => addDays(startOfWeek(date), -7),
+	thisWeekend: saturdayOfWeek,
+	nextWeekend: nextWeekendDate,
+	lastWeekend: (date: Date) => addDays(saturdayOfWeek(date), -7),
+};
+
+export function resolvePresetDay(rule: string, reference: Date): Date | undefined {
+	if (Object.prototype.hasOwnProperty.call(presetDays, rule)) return presetDays[rule as keyof typeof presetDays](reference);
+	const weekday = /^(nextDay|lastDay):([0-6])$/u.exec(rule);
+	if (weekday) return (weekday[1] === 'nextDay' ? nextWeekday : previousWeekday)(reference, Number(weekday[2]));
+}
+
 export function getRelativeDatePresets(context: DateParseContext): RelativeDatePreset[] {
 	const strings = STRINGS[context.language];
 	const reference = context.referenceDate ?? normalizedToday();
-	const today = { ...buildQuickCandidate(strings.today, cloneDate(reference), context), rule: 'today' };
-	const tomorrow = { ...buildQuickCandidate(strings.tomorrow, addDays(reference, 1), context), rule: 'tomorrow' };
-	const yesterday = { ...buildQuickCandidate(strings.yesterday, addDays(reference, -1), context), rule: 'yesterday' };
-	const thisWeek = { ...buildQuickCandidate(strings.thisWeek, startOfWeek(reference), context), rule: 'thisWeek' };
-	const nextWeek = { ...buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context), rule: 'nextWeek' };
-	const lastWeek = { ...buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context), rule: 'lastWeek' };
-	const thisWeekend = { ...buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context), rule: 'thisWeekend' };
-	const nextWeekend = { ...buildQuickCandidate(strings.nextWeekend, nextWeekendDate(reference), context), rule: 'nextWeekend' };
-	const lastWeekend = { ...buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context), rule: 'lastWeekend' };
-	const base: RelativeDatePreset[] = [
-		today,
-		tomorrow,
-		yesterday,
-		thisWeek,
-		nextWeek,
-		lastWeek,
-		thisWeekend,
-		nextWeekend,
-		lastWeekend,
-	];
-
-	const weekdayNames = strings.weekdayNames;
-	for (let day = 0; day <= 6; day++) {
-		base.push({ ...buildQuickCandidate(strings.nextWeekdayLabel(weekdayNames[day]), nextWeekday(reference, day), context), rule: `nextDay:${day}` });
-		base.push({ ...buildQuickCandidate(strings.lastWeekdayLabel(weekdayNames[day]), previousWeekday(reference, day), context), rule: `lastDay:${day}` });
+	const base: RelativeDatePreset[] = [];
+	for (const rule of Object.keys(presetDays) as (keyof typeof presetDays)[]) {
+		base.push({ ...buildQuickCandidate(strings[rule], presetDays[rule](reference), context), rule });
 	}
-
+	for (const [day, name] of strings.weekdayNames.entries()) {
+		base.push({ ...buildQuickCandidate(strings.nextWeekdayLabel(name), nextWeekday(reference, day), context), rule: `nextDay:${day}` });
+		base.push({ ...buildQuickCandidate(strings.lastWeekdayLabel(name), previousWeekday(reference, day), context), rule: `lastDay:${day}` });
+	}
 	return sortCandidatesByReference(base, reference);
 }
 
@@ -901,6 +888,12 @@ export function parseFallbackDateCandidates(input: string, context: DateParseCon
 		return parseBrazilianPortugueseCandidates(normalized, input.trim(), strings, context, reference);
 	}
 
+	const count = /\d{1,3}/u.exec(normalized);
+	if (count && normalized !== count[0]) {
+		const exact = parseNumericRelativeCandidates(count[0], strings, context, reference)
+			.filter(item => normalizeDatePickerSearch(item.primaryLabel) === normalized);
+		if (exact.length) return exact;
+	}
 	const numeric = parseNumericRelativeCandidates(normalized, strings, context, reference);
 	const dayMonth = parseDayMonthCandidates(normalized, strings, context, reference);
 	if (numeric.length > 0 || dayMonth.length > 0) {
@@ -994,11 +987,12 @@ function parseBrazilianPortugueseRelativeCandidates(
 		: kind === 'weeks' ? strings.weeksAgo(amount)
 		: strings.monthsAgo(amount);
 
-	if (future) return [buildRelativeCandidate(futureLabel, shift(1), context)];
-	if (pastPrefix || pastSuffix) return [buildRelativeCandidate(pastLabel, shift(-1), context)];
+	const unitKey = kind === 'days' ? 'offsetDays' : kind;
+	if (future) return [buildRelativeCandidate(futureLabel, shift(1), context, unitKey + ':' + amount)];
+	if (pastPrefix || pastSuffix) return [buildRelativeCandidate(pastLabel, shift(-1), context, unitKey + ':-' + amount)];
 	return [
-		buildRelativeCandidate(futureLabel, shift(1), context),
-		buildRelativeCandidate(pastLabel, shift(-1), context),
+		buildRelativeCandidate(futureLabel, shift(1), context, unitKey + ':' + amount),
+		buildRelativeCandidate(pastLabel, shift(-1), context, unitKey + ':-' + amount),
 	];
 }
 
@@ -1129,8 +1123,9 @@ function parseChineseCandidates(
 				: addDays(reference, sign * amount * 7);
 			const futureLabel = isMonth ? strings.monthsFromNow(amount) : isDay ? strings.daysFromNow(amount) : strings.weeksFromNow(amount);
 			const pastLabel = isMonth ? strings.monthsAgo(amount) : isDay ? strings.daysAgo(amount) : strings.weeksAgo(amount);
-			if (wantFuture) candidates.push(buildRelativeCandidate(futureLabel, shift(1), context));
-			if (wantPast) candidates.push(buildRelativeCandidate(pastLabel, shift(-1), context));
+			const unitKey = isMonth ? 'months' : isDay ? 'offsetDays' : 'weeks';
+			if (wantFuture) candidates.push(buildRelativeCandidate(futureLabel, shift(1), context, unitKey + ':' + amount));
+			if (wantPast) candidates.push(buildRelativeCandidate(pastLabel, shift(-1), context, unitKey + ':-' + amount));
 			return candidates;
 		}
 	}
@@ -1222,8 +1217,9 @@ function parseJapaneseCandidates(
 				: addDays(reference, sign * amount * 7);
 			const futureLabel = isMonth ? strings.monthsFromNow(amount) : isDay ? strings.daysFromNow(amount) : strings.weeksFromNow(amount);
 			const pastLabel = isMonth ? strings.monthsAgo(amount) : isDay ? strings.daysAgo(amount) : strings.weeksAgo(amount);
-			if (wantFuture) candidates.push(buildRelativeCandidate(futureLabel, shift(1), context));
-			if (wantPast) candidates.push(buildRelativeCandidate(pastLabel, shift(-1), context));
+			const unitKey = isMonth ? 'months' : isDay ? 'offsetDays' : 'weeks';
+			if (wantFuture) candidates.push(buildRelativeCandidate(futureLabel, shift(1), context, unitKey + ':' + amount));
+			if (wantPast) candidates.push(buildRelativeCandidate(pastLabel, shift(-1), context, unitKey + ':-' + amount));
 			return candidates;
 		}
 	}
@@ -1584,22 +1580,22 @@ function parseNumericRelativeCandidates(
 
 	const candidates: DateParseCandidate[] = [];
 	if (includeDays) {
-		candidates.push(buildRelativeCandidate(strings.daysFromNow(amount), addDays(reference, amount), context));
+		candidates.push(buildRelativeCandidate(strings.daysFromNow(amount), addDays(reference, amount), context, 'offsetDays:' + amount));
 	}
 	if (includeWeeks) {
-		candidates.push(buildRelativeCandidate(strings.weeksFromNow(amount), addDays(reference, amount * 7), context));
+		candidates.push(buildRelativeCandidate(strings.weeksFromNow(amount), addDays(reference, amount * 7), context, 'weeks:' + amount));
 	}
 	if (includeMonths) {
-		candidates.push(buildRelativeCandidate(strings.monthsFromNow(amount), addMonths(reference, amount), context));
+		candidates.push(buildRelativeCandidate(strings.monthsFromNow(amount), addMonths(reference, amount), context, 'months:' + amount));
 	}
 	if (includeDays) {
-		candidates.push(buildRelativeCandidate(strings.daysAgo(amount), addDays(reference, -amount), context));
+		candidates.push(buildRelativeCandidate(strings.daysAgo(amount), addDays(reference, -amount), context, 'offsetDays:-' + amount));
 	}
 	if (includeWeeks) {
-		candidates.push(buildRelativeCandidate(strings.weeksAgo(amount), addDays(reference, -amount * 7), context));
+		candidates.push(buildRelativeCandidate(strings.weeksAgo(amount), addDays(reference, -amount * 7), context, 'weeks:-' + amount));
 	}
 	if (includeMonths) {
-		candidates.push(buildRelativeCandidate(strings.monthsAgo(amount), addMonths(reference, -amount), context));
+		candidates.push(buildRelativeCandidate(strings.monthsAgo(amount), addMonths(reference, -amount), context, 'months:-' + amount));
 	}
 
 	return candidates;
@@ -1702,7 +1698,7 @@ function buildQuickCandidate(label: string, date: Date, context: DateParseContex
 	};
 }
 
-function buildRelativeCandidate(label: string, date: Date, context: DateParseContext): DateParseCandidate {
+function buildRelativeCandidate(label: string, date: Date, context: DateParseContext, rule: string): DateParseCandidate {
 	return {
 		isoDate: toIsoDate(date),
 		primaryLabel: label,
@@ -1710,6 +1706,7 @@ function buildRelativeCandidate(label: string, date: Date, context: DateParseCon
 		source: 'fallback',
 		confidence: 0.9,
 		kind: 'numeric-relative',
+		rule,
 	};
 }
 
@@ -1728,7 +1725,7 @@ export function addDays(date: Date, days: number): Date {
 	return next;
 }
 
-function addMonths(date: Date, months: number): Date {
+export function addMonths(date: Date, months: number): Date {
 	const next = cloneDate(date);
 	next.setMonth(next.getMonth() + months);
 	return next;

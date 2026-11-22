@@ -525,6 +525,11 @@ test('relative Actions use the local planning day for preview and execution', ()
 		['2026-12-31', 'days:0', '2026-12-31'],
 		['2026-12-31', 'days:1', '2027-01-01'],
 		['2026-03-07', 'days:3', '2026-03-10'],
+		['2026-11-22', 'months:3', '2027-02-22'],
+		['2026-11-22', 'months:-3', '2026-08-22'],
+		['2026-11-22', 'weeks:3', '2026-12-13'],
+		['2026-11-22', 'offsetDays:3', '2026-11-25'],
+		['2026-11-22', 'tomorrow', '2026-11-23'],
 		['2026-10-30', 'days:7', '2026-11-06'],
 		['2026-11-23', 'nextWeekend', '2026-12-05'],
 		['2026-11-30', 'nextWeekend', '2026-12-12'],
@@ -545,7 +550,7 @@ test('relative removal matches the resolved value and invalid expressions cannot
 	const result = plan(tasks, [rule('r', [relative])]);
 	assert.equal(result.changedTaskCount, 1);
 	assert.equal(field(result, 'matches', 'dateDue')?.after, null);
-	for (const [key, value] of [['dateDue','tomorrow'], ['dateDue','days:1@09:00'], ['datetimeStart','days:1'],
+	for (const [key, value] of [['dateDue','unknown'], ['dateDue','days:1@09:00'], ['datetimeStart','days:1'],
 		['datetimeStart','days:1@24:00'], ['dateDue', 'days:9999999999999'], ['priority','days:1']]) {
 		const invalid = plan(tasks, [rule('r', [{...add(key, value), valueEncoding:'relative-day-v1'}])]);
 		assert.equal(invalid.changes.length, 0);

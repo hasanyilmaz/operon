@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { automationDateLabel, automationDateOptions, type AutomationDateOption } from './automation-date-options';
+import { automationDateLabel } from './automation-date-options';
 import { bindTimeInput } from './time-input';
 import { t } from '../../core/i18n';
 import { localToday } from '../../core/local-time';
@@ -236,7 +236,6 @@ export function renderDatetimePickerContent(
 	timeInput.className = joinDatetimePickerClasses('operon-floating-input', baseDatetimePickerClass('operon-datetime-picker-time-input', useBaseClasses), options.classNames?.timeInput);
 	timeInput.placeholder = t('taskEditor', 'datetimeTimePlaceholder');
 
-	const suggestionHeading = relative ? container.createDiv('operon-floating-subtitle') : null;
 	const results = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.dateResults));
 
 	const controlsRow = container.createDiv(joinDatetimePickerClasses(baseDatetimePickerClass('operon-datetime-picker-controls-row', useBaseClasses), options.classNames?.controlsRow));
@@ -282,7 +281,7 @@ export function renderDatetimePickerContent(
 	} else actions.classList.add('has-single-action');
 	container.appendChild(actions);
 
-	let visibleCandidates: (DateParseCandidate | AutomationDateOption)[] = [];
+	let visibleCandidates: DateParseCandidate[] = [];
 	let selectedExpression: string | undefined = initialExpression;
 	let activeDateIndex = 0;
 	let selectedDate = initial.datePart;
@@ -427,14 +426,7 @@ export function renderDatetimePickerContent(
 		const built = buildDatePickerCandidates(app, queryValue, context, {
 			quickQuery: useInitialDateQuickSuggestions ? '' : queryValue,
 		});
-		if (relative && suggestionHeading) {
-			const items = automationDateOptions(useInitialDateQuickSuggestions ? '' : queryValue, language, built.parsed);
-			visibleCandidates = items;
-			suggestionHeading.hidden = !items.length;
-			suggestionHeading.textContent = items[0]?.expression ? strings.relativeToRun : strings.fixedDate;
-		} else {
-			visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, getTypedCanonicalDate());
-		}
+		visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, getTypedCanonicalDate());
 		activeDateIndex = 0;
 		useInitialDateQuickSuggestions = false;
 		renderDateResults();
@@ -457,8 +449,7 @@ export function renderDatetimePickerContent(
 			button.type = 'button';
 			button.className = joinDatetimePickerClasses('operon-field-menu-item', baseDatetimePickerClass('operon-date-picker-item', useBaseClasses), options.classNames?.dateItem);
 			if (index === activeDateIndex) button.classList.add('is-active');
-			if ('label' in candidate) button.textContent = candidate.label;
-			else appendDatePickerCandidateRow(button, candidate, language, {
+			appendDatePickerCandidateRow(button, candidate, language, {
 				label: useBaseClasses ? undefined : options.classNames?.dateItemLabel,
 				date: useBaseClasses ? undefined : options.classNames?.dateItemDate,
 				weekday: useBaseClasses ? undefined : options.classNames?.dateItemWeekday,
@@ -511,16 +502,16 @@ export function renderDatetimePickerContent(
 		focusTimeInput();
 	};
 
-	const applyCandidate = (candidate: DateParseCandidate | AutomationDateOption) => {
-		if ('expression' in candidate && candidate.expression) {
-			selectedExpression = candidate.expression;
+	const applyCandidate = (candidate: DateParseCandidate) => {
+		if (relative && candidate.rule) {
+			selectedExpression = candidate.rule;
 			selectedDate = '';
 			displayedCanonicalDate = '';
-			input.value = candidate.label;
+			input.value = automationDateLabel(candidate.rule, language);
 			dayPickerController?.setSelectedDate('');
 			focusTimeInput();
 		} else {
-			applySelectedDate('isoDate' in candidate ? candidate.isoDate : candidate.label);
+			applySelectedDate(candidate.isoDate);
 		}
 	};
 
