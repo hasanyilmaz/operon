@@ -23648,18 +23648,18 @@ export default class OperonPlugin extends Plugin {
 					ruleNames = new Map(rules.map(rule => [rule.id, rule.name.trim() || t('settings', 'automationUnsavedRule')]));
 					return this.planAutomationRules(rules, policy, { asOf, triggers, getFrontmatter, actionReferenceDay });
 				},
-				prepare: (plan, yamlSources) => {
+				prepare: (plan, yamlSources, seriesIds, asOf) => {
 					const tasks = this.indexer.getAllTasks();
 					const base = plan.changes.some(c => c.field.startsWith('file.property:')) ? this.getTableFilePropertySnapshot(tasks) : null;
 					return prepareAutomationWork(plan, {
-						yamlSources,
+						yamlSources, seriesIds, asOf, repeatStore: this.storage.repeatSeries, recurrence: this.recurrenceService,
 						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
 						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, plan.changes, () => JSON.stringify([
 							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
 							this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
 							this.settings.autoExpandParentTaskDateRange,
 							this.settings.keepInlineTasksWithParent, this.settings.pinnedDockAutoUnpinFinished, this.settings.fileTaskDisplayTitleEnabled,
-							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(), this.storage.repeatSeries.getRevision(),
+							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(),
 							getNativePropertyIndex(this.app).getTypes(),
 						])),
 						native: base ? projectIndexedNativeProperties(this.app, base, tasks, this.settings) : undefined,

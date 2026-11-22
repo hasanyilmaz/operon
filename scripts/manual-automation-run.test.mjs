@@ -36,6 +36,10 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { OperonCommandLinks } from './src/systems/operon-command-links';
 	export { statusDockDocument } from './scripts/test-support/status-dock-dom';
 	export { t } from './src/core/i18n';
+	export { WriteQueue } from './src/storage/write-queue';
+	export { RepeatSeriesStore } from './src/storage/repeat-series-store';
+	export { RecurrenceService } from './src/systems/recurrence-service';
+	export { buildProjectedRecurringCalendarItems } from './src/systems/recurrence-projection';
 	export { TaskWriter } from './src/core/task-writer';
 	export { PinnedCache } from './src/storage/pinned-cache';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
@@ -51,7 +55,7 @@ await build({ stdin: { resolveDir: root, contents: `
 	} }] });
 const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, savedAutomationRunError, shouldRunSavedRule, mountAutomationRules, openAutomationEditor, OperonCommandLinks, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
-	TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
+	WriteQueue, RepeatSeriesStore, RecurrenceService, buildProjectedRecurringCalendarItems, TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
 const asOf = '2026-11-20T12:45:00';
 const ruleId = 'rule-a';
@@ -146,8 +150,8 @@ async function fixture(files, opts = {}) {
 			fileRenameState: (_, dest) => records.has(dest) ? 'occupied' : 'available',
 			projectAggregates: (graph, ids) => aggregates.projectAutomationAggregateFields(graph, ids, true),
 		}, saved, policy, triggers),
-		prepare: async (plan, yamlSources) => {
-			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
+		prepare: async (plan, yamlSources, seriesIds, asOf) => {
+			const work = await prepareAutomationWork(plan, { app, writer, settings, pins, yamlSources, repeatStore, recurrence, seriesIds, asOf, native: f.native, getTask: idx.getTask, allTasks: [...tasks.values()],
 				readState: captureAutomationReadState(vault, idx, pins, [...tasks.values()], plan.changes, () => JSON.stringify(settings.projectSerialScopes)), indexed: () => !f.staleIndex,
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
@@ -168,8 +172,18 @@ async function fixture(files, opts = {}) {
 			} }, saved),
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
+	vault.adapter = { write: (name, value) => writeFile(path.join(dir, name), value) };
+	const repeatStore = new RepeatSeriesStore(app, new WriteQueue(), 'series.json');
+	const recurrence = new RecurrenceService(app, idx, writer, { repeatSeries: repeatStore }, () => settings);
 	const runner = new AutomationRunner();
-	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf, undefined, undefined, undefined, true), reindexInline: async (key, copyPath) => {
+	return Object.assign(f, { app, pins, repeatStore, reindexYaml: async key => {
+		const task = tasks.get(key);
+		const file = records.get(task.primary.filePath);
+		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
+		Object.assign(task, scan.yamlTask);
+		frontmatter.set(key, parseYaml((await vault.read(file)).split('---')[1]));
+		indexedStats.set(file.path, { ...file.stat });
+	}, preview: draft => ports.plan([draft], config.confirmation, asOf, undefined, undefined, undefined, true), reindexInline: async (key, copyPath) => {
 		const task = copyPath ? duplicates.get(key).find(copy => copy.primary.filePath === copyPath) : tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -2093,7 +2107,7 @@ test('Repeat Actions set or clear just the expression on inline and file tasks',
 	const selected = 'mode=count|freq=day|interval=2|count=3';
 	for (const format of ['inline', 'yaml']) {
 		for (const [operation, existing, hasSeries, changed] of [
-			['add', previous, true, true], ['add', '', false, true],
+			['add', previous, true, true],
 			['remove', selected, true, true], ['remove', previous, true, false],
 		]) {
 			const metadata = hasSeries ? {repeatSeriesId: 'series01', repeatOccurrenceDate: '2026-11-01', datetimeRepeatEnd: '2027-02-01T23:59:59'} : {};
@@ -2118,4 +2132,57 @@ test('Repeat Actions set or clear just the expression on inline and file tasks',
 			}
 		}
 	}
+});
+
+
+test('Repeat Actions create distinct calendar series and preserve their identity after removal and a later edit', async () => {
+	const expression = 'mode=schedule|freq=day|interval=1';
+	const files = {
+		'Inline.md': inline(id(0), ' {{dateScheduled:: 2026-11-20}}'),
+		'File.md': membersSource('dateScheduled: 2026-11-20'),
+	};
+	const start = { rule: { actions: [action('repeat', expression)] } };
+	const created = await fixture(files, start);
+	created.confirm = () => 'dismiss';
+	assert.equal((await created.run()).status, 'dismissed');
+	assert.equal(created.repeatStore.getAllEntries().length, 0);
+	assert.deepEqual(created.writes, []);
+	created.confirm = () => 'apply';
+	assert.equal((await created.run()).applied, 2);
+	const entries = created.repeatStore.getAllEntries();
+	assert.equal(new Set(entries.map(entry => entry.seriesId)).size, 2);
+	const reindex = async () => {
+		await created.reindexInline(id(0));
+		await created.reindexYaml('task001');
+	};
+	await reindex();
+	assert.equal((await created.run()).applied, 0);
+	const projected = buildProjectedRecurringCalendarItems({tasks: [...created.tasks.values()], entries,
+		rangeStart: '2026-11-21', rangeEnd: '2026-11-21', todayKey: '2026-11-20'});
+	assert.equal(projected.length, 2);
+	created.rule.actions = [action('repeat', expression, 'remove')];
+	assert.equal((await created.run()).applied, 2);
+	await reindex();
+	created.rule.actions = [action('tags', 'follow')];
+	assert.equal((await created.run()).applied, 2);
+	await reindex();
+	assert.deepEqual(created.repeatStore.getAllEntries(), entries);
+	for (const entry of entries) {
+		const task = created.tasks.get(entry.sourceTaskId);
+		assert.equal(task.fieldValues.repeatSeriesId, entry.seriesId);
+		assert.equal(task.fieldValues.repeatOccurrenceDate, '2026-11-20');
+		assert.ok(!task.fieldValues.repeat);
+		assert.ok(task.tags.includes('follow'));
+	}
+});
+
+test('a failed series creation restores the task source', async () => {
+	const before = inline(id(0), ' {{dateScheduled:: 2026-11-20}}');
+	const f = await fixture({'Task.md': before}, {rule:{actions:[action('repeat','mode=schedule|freq=day|interval=1')]}});
+	f.app.vault.adapter.write = async () => { throw Error('write failed'); };
+	const result = await f.run();
+	assert.equal(result.applied, 0);
+	assert.equal(result.uncertain, 0);
+	assert.equal(await f.read('Task.md'), before);
+	assert.equal(f.repeatStore.getAllEntries().length, 0);
 });

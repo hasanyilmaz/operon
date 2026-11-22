@@ -176,7 +176,7 @@ function cloneTemporalTemplate(template: RepeatTemporalTemplate | null): RepeatT
 	};
 }
 
-function repeatSeriesEntriesEqual(left: RepeatSeriesEntry, right: RepeatSeriesEntry): boolean {
+export function repeatSeriesEntriesEqual(left: RepeatSeriesEntry, right: RepeatSeriesEntry): boolean {
 	return stableRepeatSeriesJson(left) === stableRepeatSeriesJson(right);
 }
 

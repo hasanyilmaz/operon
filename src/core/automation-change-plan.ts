@@ -277,7 +277,7 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 					const key = rawKey === '_tags' ? 'tags' : rawKey;
 					const current = { ...task.fieldValues, ...payload };
 					const prepared = normalizeTaskFieldPatch(current, { [key]: value }, {
-						deferRepeatIdentity: true, getRepeatSkipDates: series => [...snapshot.getRepeatSkipDates(series)],
+						preserveRepeatIdentity: true, getRepeatSkipDates: series => [...snapshot.getRepeatSkipDates(series)],
 					});
 					if (Object.entries(prepared).some(([derived, v]) => derived !== key && current[derived]?.trim() && current[derived] !== v)) continue;
 					for (const [derived, v] of Object.entries(prepared)) {
@@ -332,7 +332,7 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 		const normalized = repeatAction
 			? applyFieldRules({ current: task.fieldValues, patch: payload, changedKeys: Object.keys(payload) }).patch
 			: normalizeTaskFieldPatch(task.fieldValues, payload, {
-				deferRepeatIdentity: true, getRepeatSkipDates: seriesId => [...snapshot.getRepeatSkipDates(seriesId)],
+				preserveRepeatIdentity: true, getRepeatSkipDates: seriesId => [...snapshot.getRepeatSkipDates(seriesId)],
 			});
 		const explicit = new Map(entries.map(change => [change.field, change]));
 		const allOrigins = managed.flatMap(c => c.origins);

@@ -18,7 +18,15 @@ import type { captureAutomationReadState } from './automation-read-state';
 import { renderAutomationSource } from './automation-source-render';
 import type { AutomationWork, AutomationYamlSources } from './manual-automation-run';
 
+import { generateRepeatSeriesId } from '../core/id-generator';
+import { repeatSeriesEntriesEqual, type RepeatSeriesCreationBatchTransaction, type RepeatSeriesEntry, type RepeatSeriesStore } from '../storage/repeat-series-store';
+import type { RecurrenceService } from './recurrence-service';
+
 interface WritePorts {
+	repeatStore: RepeatSeriesStore;
+	recurrence: Pick<RecurrenceService, 'planSeriesEntry'>;
+	seriesIds: Map<string, string>;
+	asOf: string;
 	app: App;
 	yamlSources: AutomationYamlSources;
 	writer: TaskWriter;
@@ -157,9 +165,9 @@ function sourceStep(s: Source, ports: WritePorts, current: () => boolean, ids: R
 		rollback: () => change(s.destination, s.path, s.after, s.before, () => true) };
 }
 
-type WriteGroup = { ids: Set<string>; sources: Source[]; pins: Map<string, Pin> };
+type WriteGroup = { ids: Set<string>; sources: Source[]; pins: Map<string, Pin>; series: RepeatSeriesEntry[] };
 
-async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnType<WritePorts['readState']['watch']>, current: () => boolean) {
+async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnType<WritePorts['readState']['watch']>, current: () => boolean, ownSeriesWrite: () => void) {
 	const paths = group.sources.map(source => source.path);
 	let entered = false;
 	return ports.withSources(paths, current, async allowed => {
@@ -174,6 +182,23 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 				return recordCommit(await step.apply());
 			} };
 		});
+		if (group.series.length) {
+			let receipt: RepeatSeriesCreationBatchTransaction | null = null;
+			const store = ports.repeatStore;
+			steps.push({
+				isBefore: async () => group.series.every(entry => !store.getEntry(entry.seriesId)),
+				isAfter: async () => !!receipt && receipt.entries.every(({ seriesId, createdEntry }) => {
+					const actual = store.getEntry(seriesId);
+					return !!actual && repeatSeriesEntriesEqual(actual, createdEntry);
+				}),
+				apply: async () => {
+					receipt = await store.beginCreationBatchTransaction(group.series.map(entry => ({ ...entry, now: entry.createdAt })));
+					if (receipt) ownSeriesWrite();
+					return !!receipt;
+				},
+				rollback: async () => !!receipt && store.rollbackCreationBatchTransaction(receipt),
+			});
+		}
 		if (group.pins.size) {
 			const stamp = new Date().toISOString();
 			const matches = (after: boolean) => ports.pins.canPersistCanonical() && [...group.pins].every(([id, pin]) => {
@@ -197,6 +222,8 @@ async function commitGroup(group: WriteGroup, ports: WritePorts, state: ReturnTy
 
 /** Shared files and changes with a common originating task must settle together. */
 export async function prepareAutomationWork(plan: AutomationChangePlan, ports: WritePorts): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null> {
+	let seriesRevision = ports.repeatStore.getRevision();
+	let usedSeries: Set<string> | undefined;
 	const tasks = new Map<string, IndexedTask>();
 	const byId = new Map<string, AutomationFieldChange[]>();
 	const parent = new Map<string, string>();
@@ -248,7 +275,7 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 	const identity: string[] = [];
 	for (const [path, members] of files) {
 		const key = root(path);
-		const group = groups.get(key) ?? { ids: new Set<string>(), sources: [], pins: new Map<string, Pin>() };
+		const group = groups.get(key) ?? { ids: new Set<string>(), sources: [], pins: new Map<string, Pin>(), series: [] };
 		groups.set(key, group);
 		const file = ports.app.vault.getAbstractFileByPath(path);
 		if (!(file instanceof TFile) || ports.writer.hasMarkdownSource(file) || !await ports.validPath(path, false)) return null;
@@ -273,6 +300,32 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 				identity.push(JSON.stringify([task.operonId, expected, pin.after]));
 			}
 		}
+		for (const task of members) {
+			const changes = byId.get(task.operonId);
+			const repeat = changes?.find(change => change.field === 'repeat' && change.after);
+			if (!changes || !repeat || task.fieldValues.repeatSeriesId?.trim()) continue;
+			if (!usedSeries) {
+				usedSeries = ports.repeatStore.getAllSeriesIds();
+				for (const indexed of ports.allTasks) if (indexed.fieldValues.repeatSeriesId) usedSeries.add(indexed.fieldValues.repeatSeriesId);
+			}
+			let seriesId = ports.seriesIds.get(task.operonId);
+			if (!seriesId || usedSeries.has(seriesId)) {
+				seriesId = generateRepeatSeriesId(usedSeries);
+				ports.seriesIds.set(task.operonId, seriesId);
+			}
+			usedSeries.add(seriesId);
+			const fields = { ...task.fieldValues };
+			for (const change of changes) fields[change.field] = String(change.after ?? '');
+			const addField = (field: string, value: string) => {
+				changes.push({ ...repeat, field, before: task.fieldValues[field] || null, after: value, indirect: true });
+				fields[field] = value;
+			};
+			addField('repeatSeriesId', seriesId);
+			if (!fields.repeatOccurrenceDate && /^\d{4}-\d{2}-\d{2}$/u.test(fields.dateScheduled ?? '')) addField('repeatOccurrenceDate', fields.dateScheduled);
+			const projected = { ...task, fieldValues: fields, description: fields.description ?? task.description,
+				primary: { ...task.primary, filePath: destination } };
+			group.series.push(ports.recurrence.planSeriesEntry(projected, seriesId, ports.asOf));
+		}
 		const after = renderAutomationSource(path, before, members, ports.writer, ports.settings,
 			(task, row) => buildUpdate(task, byId.get(task.operonId) ?? [], before, ports, row));
 		if (after === null) return ports.readState.indexCurrent() ? 'source-conflict' : 'index-pending';
@@ -282,13 +335,13 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 	if (!ports.readState.ready()) return ports.readState.indexCurrent() ? null : 'index-pending';
 	return { identity, apply: async permitted => {
 		const state = ports.readState.watch();
-		const current = () => permitted() && state.current();
+		const current = () => permitted() && state.current() && ports.repeatStore.getRevision() === seriesRevision;
 		let applied = 0, uncertain = 0;
 		const affected = new Set<string>();
 		try {
 			for (const group of groups.values()) {
 				if (!current()) break;
-				const outcome = await commitGroup(group, ports, state, current);
+				const outcome = await commitGroup(group, ports, state, current, () => { seriesRevision++; });
 				for (const source of group.sources) { affected.add(source.path); affected.add(source.destination); }
 				if (outcome !== 'committed') {
 					if (outcome === 'outcome-unknown') uncertain = group.ids.size;

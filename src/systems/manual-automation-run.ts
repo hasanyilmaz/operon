@@ -44,7 +44,7 @@ export interface AutomationRunPorts {
 	now(): string;
 	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string,
 		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter'], actionReferenceDay: string): AutomationChangePlan;
-	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null>;
+	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources, seriesIds: Map<string, string>, asOf: string): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
 	deferIndexRetry?(batch: AutoRunBatch, confirmAgain: boolean): boolean;
 	indexSettling?(): boolean;
@@ -124,6 +124,7 @@ export class AutomationRunner {
 		const triggers = batch?.rules;
 		let asOf = ports.now();
 		const actionReferenceDay = asOf.slice(0, 10);
+		const seriesIds = new Map<string, string>(); // Stable across approval and the locked recheck.
 		const read = async () => {
 			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
@@ -148,7 +149,7 @@ export class AutomationRunner {
 				indexPending = calculated.issues.some(issue => issue.reason === 'index-unavailable') && ports.indexSettling?.() === true;
 				return calculated;
 			});
-			const preparation = plan.affectedTaskCount ? await ports.prepare(plan, sources) : null;
+			const preparation = plan.affectedTaskCount ? await ports.prepare(plan, sources, seriesIds, asOf) : null;
 			const reason = typeof preparation === 'string' ? preparation
 				: indexPending ? 'index-pending' as const : undefined;
 			const work = typeof preparation === 'object' ? preparation : null;
