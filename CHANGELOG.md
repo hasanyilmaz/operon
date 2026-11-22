@@ -18,10 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
-- In **Automation Actions**, search **Blocking** and **Blocked By** by task name or ID. The action shows the selected task’s name and saves its ID.
+- In **Automation Actions**, search **Blocking** and **Blocked By** by task name or ID. Search results update as tasks are added or renamed, even while the picker is open. The action shows the selected task’s name and saves its ID.
 - **Task Type**, **Task Image**, and **Task Gallery** use the Task Creator pickers in Actions. Each Gallery action adds or removes one image and preserves the other images.
-- Custom text and number actions use the Task Creator pickers. Custom list actions suggest the most frequently used values first and keep one value per action, preserving distinctions such as the number `2` and the text `"2"`.
-- Use the **Repeat** picker to set a recurrence or clear it only when it matches. The action preserves the task’s repeat end date, series ID, and reference date.
+- Custom text and number actions use the Task Creator pickers. Custom list actions suggest frequently used values first. Press **Enter** to select the highlighted value. Each action adds or removes one member, keeping the number `2` distinct from the text `"2"` and a YAML value like `"A; B"` intact.
+- Use **+ Repeat** to set a recurrence. Each newly recurring task gets its own series. **− Repeat** clears an equivalent rule even when its parts or weekdays are listed in a different order, preserving the series ID and reference date. If the rule does not match and **Scheduled** changes, the existing recurrence still calculates its count-based end date from the applicable reference date.
 - When choosing a date in **Filters** or **Automation** conditions and actions, you can now type a phrase like `next Tuesday`, select **Tomorrow**, or pick a day from the calendar.
 
 ### Fixed
