@@ -24,6 +24,9 @@ await build({ stdin: { contents: `
  export { formatReminderDisplayItem } from './src/ui/reminder-display';
  export { getVisiblePropertyName } from './src/core/yaml-fields';
  export { appendDatePickerCandidateRow } from './src/ui/field-pickers/date-picker-row';
+ export * from './src/ui/task-data-field-picker';
+ export { createEmptyQueryRanker } from './src/ui/field-pickers/empty-query-ranking';
+ export { normalizeCustomFieldRawValue } from './src/ui/custom-field-surfaces';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
@@ -690,5 +693,39 @@ test('dependency Actions search by title or ID, replace one member and reopen wi
   assert.deepEqual(action, {field, operation, value: ['second']});
   assert.match(row(JSON.parse(JSON.stringify(action))).attrs['aria-label'], /Twin title/);
   assert.match(row({...action, value: ['missing-id']}).attrs['aria-label'], /missing-id/);
+ }
+});
+
+test('Actions route task type, image and gallery through the Creator pickers', () => {
+ const file = 'src/ui/task-field-picker-dispatch.ts';
+ let picker;
+ const capture = (_anchor, options) => { picker = options; return () => {}; };
+ const openManagedTaskDataFieldPicker = compile('openManagedTaskDataFieldPicker', {
+  ...h, showCustomTextFieldPicker: capture, showCustomListFieldPicker: capture,
+ }, '', file);
+ const openTaskFieldPicker = compile('openTaskFieldPicker', { openManagedTaskDataFieldPicker }, '', file);
+ for (const field of ['taskType', 'taskImage', 'taskGallery']) {
+  const gallery = field === 'taskGallery';
+  const type = gallery ? 'list' : 'text';
+  const action = { field, operation: 'add', value: gallery ? ['old.png'] : 'old' };
+  const candidate = field === 'taskType' ? 'Project' : 'image.png';
+  const tasks = [{...task(today), fieldValues: {[field]: candidate}}];
+  const render = compile('renderValue', {...h, actionType: () => type, openTaskFieldPicker, automationTypedListMapping: () => null}, 'AutomationActionRow');
+  const host = new PickerElement();
+  render.call({ action, valueHost: host, ctx: {settings: () => h.DEFAULT_SETTINGS, tasks: () => tasks, changed() {}}, syncType() {} });
+  host.children[0].fire('click');
+  assert.equal(picker.canonicalKey, field);
+  assert.equal(picker.mediaReference, field !== 'taskType');
+  assert.ok(picker.candidates.includes(candidate));
+  if (gallery) {
+   assert.equal(picker.singleValue, true);
+   assert.deepEqual(picker.value, ['old.png']);
+   picker.onCommitValues(field, ['album; cover.png']);
+   assert.deepEqual(action.value, ['album; cover.png']);
+  } else {
+   const newValue = field === 'taskType' ? 'New type' : '[[New cover.png]]';
+   picker.onCommit(field, newValue);
+   assert.equal(action.value, newValue);
+  }
  }
 });

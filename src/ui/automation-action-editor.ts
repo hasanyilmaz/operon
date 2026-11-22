@@ -4,7 +4,6 @@ import { createAutomationActionId, type AutomationAction } from '../core/automat
 import { t } from '../core/i18n';
 import { formatCompactDatetimeTime, formatUiTaskDatetime } from '../core/ui-time-format';
 import { parseListValue } from '../core/parser';
-import { parseTaskMediaReferenceList } from '../core/task-media-reference';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { resolveWorkflowStatus } from '../types/pipeline';
 import type { FilterFieldType, OperonSettings } from '../types/settings';
@@ -185,7 +184,7 @@ export class AutomationActionRow {
 			ctx.changed();
 		};
 		const list = type === 'list' || type === 'tags';
-		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate'].includes(action.field);
+		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate', 'taskType', 'taskImage', 'taskGallery'].includes(action.field);
 		if (list || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
 			const display = (text: string) => {
@@ -232,6 +231,7 @@ export class AutomationActionRow {
 						app: ctx.app, settings: ctx.settings(), allTasks: [...ctx.tasks()], canonicalKey: action.field,
 						anchor: trigger.button, currentFieldValues: { [action.field]: current.join('; ') },
 						currentTags: current, currentListValues: current, closeListPickerOnSelect: true,
+						singleListValue: action.field === 'taskGallery',
 						onCommitListValues: (_key, values) => commit(values.slice(-1)),
 						onCommit: payload => { commit(payload[action.field]); onClose(); }, onClose,
 					});
@@ -314,7 +314,7 @@ export class AutomationActionRow {
 		const candidates = native ? ctx.native()?.getCandidates(key) ?? []
 			: typedMapping ? collectNativeFieldValueCandidates(ctx.app, ctx.tasks(), ctx.settings().keyMappings, typedMapping.visiblePropertyName, 'list', true)
 			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping)
-			: ctx.tasks().flatMap(task => key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : parseListValue(task.fieldValues[key] ?? ''));
+			: ctx.tasks().flatMap(task => parseListValue(task.fieldValues[key] ?? ''));
 		let nativeValues: (string | number)[] | undefined;
 		if (native || typedMapping) {
 			try { nativeValues = readAutomationListMembers(action, native); }
@@ -322,7 +322,7 @@ export class AutomationActionRow {
 		}
 		return showCustomListFieldPicker(anchor, {
 			app: ctx.app, canonicalKey: key, type: 'list', label: this.field.label.textContent ?? key,
-			singleValue: true, value: current, nativeValues, candidates: [...candidates], mediaReference: key === 'taskGallery',
+			singleValue: true, value: current, nativeValues, candidates: [...candidates],
 			onCommit: (_key, value) => commit(value ? [value] : []), onCommitValues: (_key, values) => commit(values),
 			onCommitNativeValues: values => {
 				if (typedMapping) {

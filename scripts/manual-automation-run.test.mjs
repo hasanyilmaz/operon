@@ -2065,3 +2065,17 @@ test('a relative reminder changes only its matching YAML list member', async () 
 	assert.deepEqual(parseYaml(text.split('---')[1]).ReminderDatetimes, [other]);
 	assert.ok(text.endsWith('Body\n'));
 });
+
+test('gallery Actions add or remove only the selected media reference', async () => {
+	const keep = 'keep.png';
+	const selected = 'album; cover.png';
+	for (const operation of ['add', 'remove']) {
+		const before = operation === 'add' ? [keep] : [keep, selected];
+		const expected = operation === 'add' ? [keep, selected] : [keep];
+		const f = await fixture({ 'Gallery.md': membersSource('taskGallery: ' + JSON.stringify(before)) }, {
+			rule: { actions: [action('taskGallery', [selected], operation)] },
+		});
+		assert.equal((await f.run()).applied, 1);
+		assert.deepEqual(parseYaml((await f.read('Gallery.md')).split('---')[1]).taskGallery, expected);
+	}
+});
