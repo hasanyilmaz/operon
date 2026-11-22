@@ -330,7 +330,7 @@ const ENGLISH_PHRASES: Record<string, (reference: Date) => Date> = {
 	'next week': reference => addDays(startOfWeek(reference), 7),
 	'last week': reference => addDays(startOfWeek(reference), -7),
 	'this weekend': reference => saturdayOfWeek(reference),
-	'next weekend': reference => addDays(saturdayOfWeek(reference), 7),
+	'next weekend': nextWeekendDate,
 	'last weekend': reference => addDays(saturdayOfWeek(reference), -7),
 };
 
@@ -804,7 +804,7 @@ export function getRelativeDatePresets(context: DateParseContext): RelativeDateP
 	const nextWeek = { ...buildQuickCandidate(strings.nextWeek, addDays(startOfWeek(reference), 7), context), rule: 'nextWeek' };
 	const lastWeek = { ...buildQuickCandidate(strings.lastWeek, addDays(startOfWeek(reference), -7), context), rule: 'lastWeek' };
 	const thisWeekend = { ...buildQuickCandidate(strings.thisWeekend, saturdayOfWeek(reference), context), rule: 'thisWeekend' };
-	const nextWeekend = { ...buildQuickCandidate(strings.nextWeekend, addDays(saturdayOfWeek(reference), 7), context), rule: 'nextWeekend' };
+	const nextWeekend = { ...buildQuickCandidate(strings.nextWeekend, nextWeekendDate(reference), context), rule: 'nextWeekend' };
 	const lastWeekend = { ...buildQuickCandidate(strings.lastWeekend, addDays(saturdayOfWeek(reference), -7), context), rule: 'lastWeekend' };
 	const base: RelativeDatePreset[] = [
 		today,
@@ -1698,7 +1698,7 @@ function cloneDate(date: Date): Date {
 	return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
 	const next = cloneDate(date);
 	next.setDate(next.getDate() + days);
 	return next;
@@ -1719,6 +1719,10 @@ function startOfWeek(date: Date): Date {
 
 function saturdayOfWeek(date: Date): Date {
 	return addDays(startOfWeek(date), 5);
+}
+
+export function nextWeekendDate(reference: Date): Date {
+	return addDays(saturdayOfWeek(reference), 7);
 }
 
 function nextWeekday(date: Date, weekday: number): Date {

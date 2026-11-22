@@ -11,7 +11,8 @@ import { parseTaskMediaReferenceList } from './task-media-reference';
 import { normalizeTaskColorValue } from './task-color-value';
 import { normalizeTaskIconValue } from './task-icon-value';
 import { decodeVaultPropertyList, decodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
-import { canonicalizeLocalDatetime } from './local-time';
+import { addDays, nextWeekendDate } from '../ui/field-pickers/date-nlp-fallback';
+import { canonicalizeLocalDatetime, localToday, toLocalDate } from './local-time';
 import { parseRepeatRule } from './repeat-rule';
 import { parseAbsoluteReminder, parseReminderRule } from './reminder-rules';
 import type { TableFilePropertyQueryContext, TableFilePropertyField } from '../ui/table/table-file-property';
@@ -128,8 +129,23 @@ export function readAutomationListMembers(action: AutomationAction, native: bool
 	return Array.isArray(action.value) ? action.value : parseListValue(action.value);
 }
 
-export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native' | 'typedList'>): PlanValue {
+// A language-independent day offset or weekend preset, optionally followed by a local wall time.
+const RELATIVE_ACTION_DATE = /^(?:days:(0|-?[1-9]\d*)|(nextWeekend))(?:@((?:[01]\d|2[0-3]):[0-5]\d))?$/u;
+
+function resolveRelativeActionDate(value: AutomationAction['value'], type: FilterFieldType, referenceDay: string): string {
+	const match = typeof value === 'string' && RELATIVE_ACTION_DATE.exec(value);
+	if (!match || (type !== 'date' && type !== 'datetime')) throw new Error('Invalid relative date action');
+	const [, offset, weekend, time] = match;
+	if ((type === 'datetime') !== !!time) throw new Error('Unexpected relative action time');
+	const reference = new Date(referenceDay + 'T12:00:00');
+	const date = weekend ? nextWeekendDate(reference) : addDays(reference, Number(offset));
+	if (!Number.isFinite(date.getTime()) || date.getFullYear() < 1 || date.getFullYear() > 9999) throw new Error('Relative date out of range');
+	return toLocalDate(date) + (time ? 'T' + time + ':00' : '');
+}
+
+export function readActionLiteral(action: AutomationAction, field: Pick<ActionField, 'type' | 'native' | 'typedList'>, referenceDay?: string): PlanValue {
 	const { type } = field;
+	if (action.valueEncoding === 'relative-day-v1') return resolveRelativeActionDate(action.value, type, referenceDay ?? localToday());
 	if (action.valueEncoding && !field.typedList) throw new Error('Expected a typed mapped list');
 	if (type === 'list' || type === 'tags') {
 		const members = readAutomationListMembers(action, field.native);

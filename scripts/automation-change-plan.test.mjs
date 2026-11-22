@@ -519,3 +519,38 @@ test('preview distinguishes known zero from pending membership and a stale task 
 	assert.equal(groupAutomationPreviewTasks(null, lookup, []), null);
 	assert.equal(groupAutomationPreviewTasks(['known', 'removed'], lookup, []), null);
 });
+
+test('relative Actions use the local planning day for preview and execution', () => {
+	for (const [reference, expression, expected] of [
+		['2026-12-31', 'days:0', '2026-12-31'],
+		['2026-12-31', 'days:1', '2027-01-01'],
+		['2026-03-07', 'days:3', '2026-03-10'],
+		['2026-10-30', 'days:7', '2026-11-06'],
+		['2026-11-23', 'nextWeekend', '2026-12-05'],
+		['2026-11-30', 'nextWeekend', '2026-12-12'],
+	]) {
+		const relative = { ...add('dateDue', expression), valueEncoding: 'relative-day-v1' };
+		const fixed = add('dateScheduled', '2026-11-23');
+		for (const includePreviewTaskIds of [true, false]) {
+			const result = plan([task('a')], [rule('r', [relative, fixed])], { asOf: reference + 'T23:55:00', includePreviewTaskIds });
+			assert.equal(field(result, 'a', 'dateDue')?.after, expected);
+			assert.equal(field(result, 'a', 'dateScheduled')?.after, fixed.value);
+		}
+	}
+});
+
+test('relative removal matches the resolved value and invalid expressions cannot write', () => {
+	const relative = { ...del('dateDue', 'days:1'), valueEncoding: 'relative-day-v1' };
+	const tasks = [task('matches', {dateDue:'2026-11-21'}), task('other', {dateDue:'2026-11-22'})];
+	const result = plan(tasks, [rule('r', [relative])]);
+	assert.equal(result.changedTaskCount, 1);
+	assert.equal(field(result, 'matches', 'dateDue')?.after, null);
+	for (const [key, value] of [['dateDue','tomorrow'], ['dateDue','days:1@09:00'], ['datetimeStart','days:1'],
+		['datetimeStart','days:1@24:00'], ['dateDue', 'days:9999999999999'], ['priority','days:1']]) {
+		const invalid = plan(tasks, [rule('r', [{...add(key, value), valueEncoding:'relative-day-v1'}])]);
+		assert.equal(invalid.changes.length, 0);
+		assert.ok(invalid.issues.some(issue => issue.reason === 'invalid-value'));
+	}
+	const datetime = {...add('datetimeStart','days:1@14:45'), valueEncoding:'relative-day-v1'};
+	assert.equal(field(plan([task('a')], [rule('r', [datetime])]), 'a', 'datetimeStart')?.after, '2026-11-21T14:45:00');
+});

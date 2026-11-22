@@ -43,7 +43,7 @@ export interface AutomationRunPorts {
 	settings(): AutomationRulesSettings;
 	now(): string;
 	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string,
-		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter']): AutomationChangePlan;
+		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter'], actionReferenceDay: string): AutomationChangePlan;
 	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
 	deferIndexRetry?(batch: AutoRunBatch, confirmAgain: boolean): boolean;
@@ -123,6 +123,7 @@ export class AutomationRunner {
 		const draft = typeof selection === 'object' && !isSavedAutomationRequest(selection) ? selection : undefined;
 		const triggers = batch?.rules;
 		let asOf = ports.now();
+		const actionReferenceDay = asOf.slice(0, 10);
 		const read = async () => {
 			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
@@ -143,7 +144,7 @@ export class AutomationRunner {
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
 			let indexPending = false;
 			const { plan, sources } = await planWithYamlSources(ports.vault, getFrontmatter => {
-				const calculated = ports.plan(rules, settings.confirmation, asOf, triggers, getFrontmatter);
+				const calculated = ports.plan(rules, settings.confirmation, asOf, triggers, getFrontmatter, actionReferenceDay);
 				indexPending = calculated.issues.some(issue => issue.reason === 'index-unavailable') && ports.indexSettling?.() === true;
 				return calculated;
 			});

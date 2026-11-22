@@ -172,7 +172,11 @@ export class AutomationActionRow {
 		valueHost.empty();
 		const label = t('settings', 'automationValue');
 		const raw = Array.isArray(action.value) ? action.value.join('; ') : action.value;
-		const change = (value: string | string[]) => { action.value = value; ctx.changed(); };
+		const change = (value: string | string[]) => {
+			if (action.valueEncoding === 'relative-day-v1') delete action.valueEncoding;
+			action.value = value;
+			ctx.changed();
+		};
 		const list = type === 'list' || type === 'tags';
 		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate'].includes(action.field);
 		if (list || creatorField && type) {

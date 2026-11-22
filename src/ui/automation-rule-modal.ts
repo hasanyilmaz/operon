@@ -105,7 +105,7 @@ export function shouldRunSavedRule(previous: AutomationRule | undefined, saved: 
 		const members = new Set<string>();
 		for (const action of rule.actions) {
 			const type = actionType(action.field, ctx);
-			if (type) {
+			if (type && action.valueEncoding !== 'relative-day-v1') {
 				try {
 					const literal = readActionLiteral(action, { type, native: isFilePropertyColumnKey(action.field),
 						typedList: !!automationTypedListMapping(action.field, ctx.settings()) });

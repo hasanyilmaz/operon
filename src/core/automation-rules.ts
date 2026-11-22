@@ -9,7 +9,7 @@ export interface AutomationAction {
 	field: string;
 	operation: 'add' | 'remove';
 	value: string | string[];
-	valueEncoding?: 'vault-v1';
+	valueEncoding?: 'vault-v1' | 'relative-day-v1';
 }
 
 export interface AutomationRule {
@@ -82,7 +82,7 @@ function validRule(value: unknown): value is AutomationRule {
 	const ids = new Set<string>();
 	for (const action of value.actions as unknown[]) {
 		if (!record(action) || !named(action.id) || ids.has(action.id) || !named(action.field)
-			|| (action.valueEncoding !== undefined && (action.valueEncoding !== 'vault-v1' || typeof action.value !== 'string'))
+			|| (action.valueEncoding !== undefined && ((action.valueEncoding !== 'vault-v1' && action.valueEncoding !== 'relative-day-v1') || typeof action.value !== 'string'))
 			|| (action.operation !== 'add' && action.operation !== 'remove') || (typeof action.value !== 'string' && !strings(action.value))) return false;
 		ids.add(action.id);
 	}

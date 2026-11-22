@@ -21,6 +21,7 @@ export interface AutomationPlanSnapshot {
 	ready: boolean;
 	conditionFields: ReadonlyMap<string, FilterFieldType>;
 	asOf: string;
+	actionReferenceDay?: string;
 	settings: OperonSettings;
 	pins: ReadonlySet<string> | null;
 	unavailableIds: ReadonlySet<string>;
@@ -162,7 +163,7 @@ function actionBatch(ctx: PlanContext, task: IndexedTask, action: AutomationActi
 	const field = readAutomationField(task, action.field, ctx.source);
 	if (typeof field === 'string') return field;
 	let value: PlanValue;
-	try { value = readActionLiteral(action, field); } catch { return 'invalid-value'; }
+	try { value = readActionLiteral(action, field, snapshot.actionReferenceDay ?? snapshot.asOf.slice(0, 10)); } catch { return 'invalid-value'; }
 	const key = action.field;
 	const add = action.operation === 'add';
 	const intents: Intent[] = [];

@@ -139,7 +139,7 @@ async function fixture(files, opts = {}) {
 			getSettings: () => settings, getTasks: () => [...tasks.values()], getNativeSnapshot: () => f.native ?? null,
 		}),
 		available: () => true, now: () => f.now ?? asOf, settings: opts.readRules ?? (() => structuredClone(config)),
-		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId), includePreviewTaskIds = false) => planAutomationChanges({ includePreviewTaskIds, tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
+		plan: (saved, policy, clock, triggers, getFrontmatter = t => frontmatter.get(t.operonId), actionReferenceDay, includePreviewTaskIds = false) => planAutomationChanges({ actionReferenceDay, includePreviewTaskIds, tasks: [...tasks.values()], settings, asOf: clock, ready: f.planReady?.() ?? f.known,
 			conditionFields: new Map([['taskIcon', 'text'], ['description', 'text'], ['pinned', 'pinned'], ['dateDue', 'date'], ['tags', 'tags'], ['projectSerialScope', 'projectSerialScope']]), pins: new Set(pins.getPinnedIds()), activeTimerId: null,
 			unavailableIds: new Set(duplicates.keys()), getDuplicateInstances: idx.getAllDuplicateInstanceSnapshots,
 			getInlineList: (task, name) => propertyIndex.readMappedInlineList(task, name), getFrontmatter, getRepeatSkipDates: () => [], native: f.native,
@@ -169,7 +169,7 @@ async function fixture(files, opts = {}) {
 		exclusive: operation => writer.runExclusiveTaskMutation(async owned => { permit = owned; try { return await operation(); } finally { permit = undefined; } }),
 	};
 	const runner = new AutomationRunner();
-	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf, undefined, undefined, true), reindexInline: async (key, copyPath) => {
+	return Object.assign(f, { app, pins, preview: draft => ports.plan([draft], config.confirmation, asOf, undefined, undefined, undefined, true), reindexInline: async (key, copyPath) => {
 		const task = copyPath ? duplicates.get(key).find(copy => copy.primary.filePath === copyPath) : tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -1970,4 +1970,52 @@ test('one workspace clock follows local midnight, both DST transitions and popou
 	cleanup.reverse().forEach(fn=>fn()); f.events.dispose();
 	primary.document.dispatchEvent(new Event('visibilitychange')); assert.equal(wakeCount,afterClose);
 	assert.equal(timers,0); assert.equal(listeners.size,0);
+});
+
+test('relative and fixed actions round trip through saved settings and keep separate meanings', async () => {
+	await withSettingsFixture({table: false}, async disk => {
+		const storage = disk.createStorage();
+		await storage.initialize();
+		const rule = createAutomationRule('Relative dates');
+		rule.actions = [
+			{ ...action('dateDue', 'days:1'), valueEncoding: 'relative-day-v1' },
+			action('dateScheduled', '2026-12-31'),
+		];
+		const config = {...readAutomationRules(undefined), rules:[rule]};
+		await storage.saveAutomationRules(undefined, config);
+		assert.deepEqual(readAutomationRules(disk.package().automation.ruleSettings), config);
+		const restored = disk.createStorage();
+		await restored.initialize();
+		assert.deepEqual(restored.getSettings().automationRules, config);
+	});
+});
+
+test('manual and automatic approvals across midnight write the original relative day', async () => {
+	for (const mode of ['manual', 'auto']) {
+		const f = await fixture(filesFor(2), {rule: {mode, actions: [{...action('dateDue','days:1'), valueEncoding:'relative-day-v1'}]}});
+		f.now = '2026-12-31T23:59:59';
+		f.confirm = () => { f.now = '2027-01-01T00:00:01'; return 'apply'; };
+		const result = mode === 'manual' ? await f.run({savedRuleId:f.rule.id}) : await f.auto(new Map([[f.rule.id, 'all']]));
+		assert.equal(result.applied, 2);
+		for (const [plan] of f.prompts) {
+			assert.deepEqual(plan.changes.filter(change => change.field === 'dateDue').map(change => change.after), ['2027-01-01','2027-01-01']);
+		}
+		for (const name of f.writes) assert.match(await f.read(name), /2027-01-01/u);
+	}
+});
+
+test('relative Actions do not register midnight triggers and their saved identity is independent of today', async () => {
+	const relative = {...action('dateDue','days:0'), valueEncoding:'relative-day-v1'};
+	const f = await fixture(filesFor(1), {rule: {mode:'auto', actions:[relative]}});
+	f.now = asOf;
+	const watched = watchCalendar(f);
+	await watched.idle();
+	f.now = '2026-11-21T00:00:00';
+	watched.events.wake();
+	await watched.idle();
+	assert.deepEqual(f.writes, []);
+	assert.deepEqual(f.prompts, []);
+	const ctx = {settings:() => DEFAULT_SETTINGS, nativeType:() => undefined};
+	assert.equal(shouldRunSavedRule(f.rule, structuredClone(f.rule), ctx), false);
+	assert.equal(shouldRunSavedRule(f.rule, {...f.rule, actions:[action('dateDue', localToday())]}, ctx), true);
 });
