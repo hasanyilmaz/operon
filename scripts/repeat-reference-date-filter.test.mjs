@@ -649,3 +649,46 @@ test('ReminderRules action row uses the reminder picker with five selectable anc
  open(); panel.find(el => el.tag === 'button' && el.textContent === h.t('buttons', 'clear'))[0].fire('click');
  assert.deepEqual(action.value, []);
 });
+
+test('dependency Actions search by title or ID, replace one member and reopen with its title', () => {
+ const file = 'src/ui/field-pickers/dependency-task-picker.ts';
+ const scoreDependencyMatch = compile('scoreDependencyMatch', {}, '', file);
+ let panel;
+ class DependencyElement extends PickerElement {
+  style = { removeProperty() {}, setProperty() {} };
+  createEl(tag, options) { const child = new DependencyElement(tag, options); this.children.push(child); return child; }
+ }
+ const picker = compile('showDependencyTaskPicker', {
+  ...h, PAGE_SIZE: 20, buildCandidates: compile('buildCandidates', {}, '', file),
+  rankCandidates: compile('rankCandidates', { scoreDependencyMatch }, '', file),
+  splitTaskListValue: value => value ? value.split('; ') : [],
+  normalizeDependencyPair: compile('normalizeDependencyPair', {splitTaskListValue: () => []}, '', 'src/core/task-field-patch.ts'),
+  createFloatingPanel: (_anchor, _classes, close) => { panel = new DependencyElement(); return { panel, close }; },
+  createButton: (text, cls, host) => host.createEl('button', {text, cls}),
+  requestFloatingInputFocus() {}, scrollChildIntoView() {}, setAccessibleLabelWithoutTooltip() {},
+  resolveBlockedByVisualStateForId() {}, resolveBlockedByVisualStateColor() {}, setIcon() {},
+  renderCompactTaskMarkdown: (host, options) => host.setText(options.value),
+  bindPickerListItemActivation: (el, cb) => el.addEventListener('click', cb),
+ }, '', file);
+ const render = compile('renderValue', {...h, actionType: () => 'list', automationTypedListMapping: () => null,
+  showDependencyTaskPicker: picker}, 'AutomationActionRow');
+ const tasks = ['old', 'first', 'second'].map((id, i) => ({...task(today), operonId: id, description: i ? 'Twin title' : 'Original'}));
+ for (const field of ['blocking', 'blockedBy']) for (const operation of ['add', 'remove']) {
+  const action = { field, operation, value: ['old'] };
+  const row = draft => {
+   const host = new DependencyElement();
+   render.call({action: draft, valueHost: host, ctx: {tasks: () => tasks, settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
+   return host.children[0];
+  };
+  const button = row(action);
+  assert.match(button.attrs['aria-label'], /Original/);
+  button.fire('click');
+  const input = panel.find(el => el.tag === 'input')[0];
+  input.value = 'Twin'; input.fire('input');
+  assert.equal(panel.find(el => el.textContent === 'Twin title').length, 2);
+  input.value = 'second'; input.fire('input'); input.key('Enter');
+  assert.deepEqual(action, {field, operation, value: ['second']});
+  assert.match(row(JSON.parse(JSON.stringify(action))).attrs['aria-label'], /Twin title/);
+  assert.match(row({...action, value: ['missing-id']}).attrs['aria-label'], /missing-id/);
+ }
+});

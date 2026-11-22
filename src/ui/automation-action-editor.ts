@@ -19,6 +19,7 @@ import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
 import { showCustomListFieldPicker } from './field-pickers/custom/custom-list-field-picker';
+import { showDependencyTaskPicker } from './field-pickers/dependency-task-picker';
 import { showReminderRulesPicker } from './field-pickers/reminder-picker';
 import { formatReminderDisplayItem } from './reminder-display';
 import { openTaskFieldPicker } from './task-field-picker-dispatch';
@@ -188,8 +189,12 @@ export class AutomationActionRow {
 		if (list || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
 			const display = (text: string) => {
-				const displayText = text && action.field === 'reminderRules'
-					? formatReminderDisplayItem({ settings: ctx.settings(), fieldKey: 'reminderRules', rawValue: text, fieldValues: {} }).text : text;
+				let displayText = text;
+				if (text && (action.field === 'blocking' || action.field === 'blockedBy')) {
+					displayText = ctx.tasks().find(task => task.operonId === text)?.description.trim() || text;
+				} else if (text && action.field === 'reminderRules') {
+					displayText = formatReminderDisplayItem({ settings: ctx.settings(), fieldKey: 'reminderRules', rawValue: text, fieldValues: {} }).text;
+				}
 				trigger.label.setText(displayText || label);
 				trigger.button.setAttribute('aria-label', label + (displayText ? ' · ' + displayText : ''));
 			};
@@ -212,6 +217,15 @@ export class AutomationActionRow {
 					this.closePicker = showReminderRulesPicker(trigger.button, {
 						app: ctx.app, settings: ctx.settings(), actionValue: current[0] ?? '',
 						onCommit: value => commit(value ? [value] : []), onClose,
+					});
+				} else if (action.field === 'blocking' || action.field === 'blockedBy') {
+					const fieldKey = action.field;
+					const settings = ctx.settings();
+					this.closePicker = showDependencyTaskPicker(trigger.button, {
+						fieldKey, value: current[0] ?? '', oppositeValue: '', allTasks: [...ctx.tasks()],
+						pipelines: settings.pipelines, keyMappings: settings.keyMappings,
+						singleValue: true, closeOnSelect: true,
+						onSave: values => commit(values[fieldKey] ? [values[fieldKey]] : []), onClose,
 					});
 				} else if (creatorField) {
 					this.closePicker = openTaskFieldPicker({
@@ -300,8 +314,7 @@ export class AutomationActionRow {
 		const candidates = native ? ctx.native()?.getCandidates(key) ?? []
 			: typedMapping ? collectNativeFieldValueCandidates(ctx.app, ctx.tasks(), ctx.settings().keyMappings, typedMapping.visiblePropertyName, 'list', true)
 			: mapping ? collectCustomFieldValueCandidates(ctx.app, ctx.tasks(), mapping)
-			: ctx.tasks().flatMap(task => key === 'blocking' || key === 'blockedBy' ? [task.operonId]
-				: key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : parseListValue(task.fieldValues[key] ?? ''));
+			: ctx.tasks().flatMap(task => key === 'taskGallery' ? parseTaskMediaReferenceList(task.fieldValues[key]) : parseListValue(task.fieldValues[key] ?? ''));
 		let nativeValues: (string | number)[] | undefined;
 		if (native || typedMapping) {
 			try { nativeValues = readAutomationListMembers(action, native); }
