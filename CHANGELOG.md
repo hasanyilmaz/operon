@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- In **Automation Actions**, search **Blocking** and **Blocked By** by task name or ID. The action shows the selected task’s name and saves its ID.
+- **Task Type**, **Task Image**, and **Task Gallery** use the Task Creator pickers in Actions. Each Gallery action adds or removes one image and preserves the other images.
+- Custom text and number actions use the Task Creator pickers. Custom list actions suggest the most frequently used values first and keep one value per action, preserving distinctions such as the number `2` and the text `"2"`.
+- Use the **Repeat** picker to set a recurrence or clear it only when it matches. The action preserves the task’s repeat end date, series ID, and reference date.
 - When choosing a date in **Filters** or **Automation** conditions and actions, you can now type a phrase like `next Tuesday`, select **Tomorrow**, or pick a day from the calendar.
 
 ### Fixed
@@ -27,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Passed **260/260** focused automation tests and **5,317/5,317** local regression tests. Desktop checks verified task counts against actual changes to inline and file tasks, including bulk confirmation, conflicting actions, blocked tasks, and date-based rules.
+- Passed **268/268** focused automation tests and **5,317/5,317** local regression tests. Desktop checks verified task counts against actual changes to inline and file tasks, including bulk confirmation, conflicting actions, blocked tasks, and date-based rules.
 
 ## [4.8.0] - 2026-11-18
 
