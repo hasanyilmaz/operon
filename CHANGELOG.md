@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New rules start **Inactive**. Once active, a manual rule runs when you choose **Run**. An automatic rule checks all matching targets after a relevant task edit. Date-based rules also check the current day when the day changes or you reopen Obsidian.
 - **Always ask** is the default for both manual and automatic rules. The confirmation shows how many distinct tasks will change and which rules are involved. You can set a task-count threshold or cancel and deactivate the listed rules.
 
+### Improved
+
+- When choosing a date in **Filters** or **Automation** conditions and actions, you can now type a phrase like `next Tuesday`, select **Tomorrow**, or pick a day from the calendar.
+
 ### Fixed
 
 - Creating a daily or weekly note from the **Mini Calendar** now opens the selected editor without a false task identity warning while indexing finishes.
