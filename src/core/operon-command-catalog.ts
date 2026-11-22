@@ -24,7 +24,10 @@ const viewNames: Record<OperonView, string> = { table: 'Table', calendar: 'Calen
 
 function commandId(target: OperonCommandTarget): string {
 	switch (target.kind) {
-		case 'command': return target.command === 'cursor-timer' ? 'toggle-timer' : target.command;
+		case 'command':
+			if (target.command === 'cursor-timer') return 'toggle-timer';
+			if (target.command === 'open-uri-finder') return 'open-uri-builder'; // Keep existing palette hotkeys.
+			return target.command;
 		case 'automation': return `automation-${target.action}-${encodeURIComponent(target.rule)}`;
 		case 'view':
 			if (target.preset === undefined) return `open-${target.view}-view${target.paneType === 'tab' ? '' : '-lightbox'}`;
@@ -73,11 +76,11 @@ export function buildOperonCommandCatalog(source: OperonCommandSources) {
 	// The four default tabs already own their existing command IDs (including any hotkeys).
 	const catalogIds = new Set(entries.map(entry => entry.id));
 	for (const { id, name } of source.commands) {
-		if (catalogIds.has(id) || !isOperonCommandSlug(id) || id === 'cursor-timer') continue;
+		if (catalogIds.has(id) || !isOperonCommandSlug(id) || id === 'cursor-timer' || id === 'open-uri-finder') continue;
 		if (id === 'toggle-timer') {
 			add('Start/stop timer for task at cursor', { kind: 'command', command: 'cursor-timer' });
 		} else {
-			add(name, { kind: 'command', command: id });
+			add(name, { kind: 'command', command: id === 'open-uri-builder' ? 'open-uri-finder' : id });
 		}
 	}
 	return { entries, hasDefaultTable };

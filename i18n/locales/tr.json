@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "URI Builder’ı aç",
+		"openUriBuilder": "URI Finder’ı aç",
 		"openCurrentFileEditor": "Geçerli dosyanın Görev / Özellik Düzenleyicisini aç",
 		"openMiniCalendar": "Mini takvimi aç",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool’u aç",
@@ -441,11 +441,13 @@
 		"introDock": "Çakışan operonId kopyalarını burada çöz. Bu pencereyi istediğin zaman kapatıp komut paletinden veya durum dock’u uyarısından tekrar açabilirsin."
 	},
 	"settings": {
-		"uriBuilder": "URI Builder",
+		"uriBuilder": "URI Finder",
 		"uriCommand": "Komut",
 		"uriSearch": "Operon komutlarını ara…",
 		"uriCopy": "Kopyala",
 		"uriPresetMissing": "Preset bulunamadı.",
+		"uriOpenInNewTab": "Yeni sekmede aç",
+		"uriLightboxUnavailable": "Bu tablo Lightbox’ta açılamıyor. Yeni bir sekmede açılsın mı?",
 		"uriUnavailable": "Bu Operon komutu burada kullanılamıyor.",
 		"uriNoMatches": "Eşleşen komut bulunamadı.",
 		"automationsTitle": "Otomasyonlar",

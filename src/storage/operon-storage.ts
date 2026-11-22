@@ -1244,26 +1244,28 @@ export class OperonStorage {
   });
  }
 
-	private readonly kanbanPresetListeners = new Set<() => void>();
-	private kanbanCommandSignature = '';
+	private readonly viewPresetListeners = new Set<() => void>();
+	private viewCommandSignature = '';
 
-	private getKanbanCommandSignature(): string {
-		return JSON.stringify(this.settings.kanbanPresets.map(({ id, name }) => [id, name]));
+	private getViewCommandSignature(): string {
+		const names = (presets: readonly { id: string; name: string }[]) => presets.map(({ id, name }) => [id, name]);
+		const { kanbanPresets, calendarPresets, filterSets, tableDefaultPresetId } = this.settings;
+		return JSON.stringify([names(kanbanPresets), names(calendarPresets), names(filterSets), tableDefaultPresetId]);
 	}
 
-	subscribeKanbanPresets(listener: () => void): () => void {
-		if (!this.kanbanPresetListeners.size) this.kanbanCommandSignature = this.getKanbanCommandSignature();
-		this.kanbanPresetListeners.add(listener);
-		return () => { this.kanbanPresetListeners.delete(listener); };
+	subscribeViewPresets(listener: () => void): () => void {
+		if (!this.viewPresetListeners.size) this.viewCommandSignature = this.getViewCommandSignature();
+		this.viewPresetListeners.add(listener);
+		return () => { this.viewPresetListeners.delete(listener); };
 	}
 
-	private notifyKanbanPresetsChange(): void {
-		if (!this.kanbanPresetListeners.size) return;
-		const next = this.getKanbanCommandSignature();
-		if (next === this.kanbanCommandSignature) return;
-		this.kanbanCommandSignature = next;
-		for (const listener of this.kanbanPresetListeners) {
-			try { listener(); } catch (error) { console.error('Operon: Kanban commands refresh failed', error); }
+	private notifyViewPresetsChange(): void {
+		if (!this.viewPresetListeners.size) return;
+		const next = this.getViewCommandSignature();
+		if (next === this.viewCommandSignature) return;
+		this.viewCommandSignature = next;
+		for (const listener of this.viewPresetListeners) {
+			try { listener(); } catch (error) { console.error('Operon: View commands refresh failed', error); }
 		}
 	}
 
@@ -1652,7 +1654,7 @@ export class OperonStorage {
 			if (this.settings[key] === submitted[key]) Object.assign(this.settings, { [key]: normalized[key] });
 		}
 		this.hydratePackageBackedSettingStores();
-		this.notifyKanbanPresetsChange();
+		this.notifyViewPresetsChange();
 		this.notifyPropertyPoolChange();
 	}
 
@@ -1833,7 +1835,7 @@ export class OperonStorage {
 				}
 			}
 			if (!runtimeCommitFailed) {
-				this.notifyKanbanPresetsChange();
+				this.notifyViewPresetsChange();
 				this.notifyAutomationRulesChange();
 			}
 			const retainSessionUndo = input.retainSessionUndo !== false;
@@ -1995,7 +1997,7 @@ export class OperonStorage {
 				};
 			}
 			this.settingsBackupUndoEntries.delete(undoTokenId);
-			this.notifyKanbanPresetsChange();
+			this.notifyViewPresetsChange();
 			this.notifyAutomationRulesChange();
 			return { status: 'success', receiptId, blockedReason: null };
 		}, true);
@@ -2028,7 +2030,7 @@ export class OperonStorage {
 				await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, true);
 			}
 			this.notifyPropertyPoolChange();
-			this.notifyKanbanPresetsChange();
+			this.notifyViewPresetsChange();
 			this.notifyAutomationRulesChange();
 			return {
 				changed: result.changed,

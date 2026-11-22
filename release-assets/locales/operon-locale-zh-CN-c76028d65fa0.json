@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -344,7 +344,7 @@
       "openTaskFinder": "任务查找器",
       "openTimeSessionHistory": "打开时间会话历史面板",
       "openUpcomingTasks": "打开即将到来的任务",
-      "openUriBuilder": "打开 URI 构建器",
+      "openUriBuilder": "打开 URI 查找器",
       "rebuildIndex": "重建完整索引",
       "reloadSettingsFromStorage": "从存储重新加载 Operon 设置",
       "repairRecurringFileTaskIdentities": "修复重复文件任务标识",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "独立于置顶任务的卡片颜色。",
       "upcomingTimedFirst": "定时任务优先",
       "upcomingTimedGroup": "定时",
-      "uriBuilder": "URI 构建器",
+      "uriBuilder": "URI 查找器",
       "uriCommand": "命令",
       "uriCopy": "复制",
+      "uriLightboxUnavailable": "此表格无法在灯箱中打开。要在新标签页中打开吗？",
       "uriNoMatches": "没有匹配的命令。",
+      "uriOpenInNewTab": "在新标签页中打开",
       "uriPresetMissing": "未找到预设。",
       "uriSearch": "搜索 Operon 命令…",
       "uriUnavailable": "此处无法使用此 Operon 命令。",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "0858531a090f5839c4039e55130108639f354cd14d93d8fcfc67bc38ff97c8d7"
+  "sourceVersion": "407c7df73cdb27d2e01ac950bc4c62ba4661f88e7a9f4f273d395f358e1352de"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -344,7 +344,7 @@
       "openTaskFinder": "Ricerca attività",
       "openTimeSessionHistory": "Apri pannello Cronologia sessioni di tempo",
       "openUpcomingTasks": "Apri attività in arrivo",
-      "openUriBuilder": "Apri il generatore di URI",
+      "openUriBuilder": "Apri ricerca URI",
       "rebuildIndex": "Ricostruisci indice completo",
       "reloadSettingsFromStorage": "Ricarica impostazioni Operon dall'archiviazione",
       "repairRecurringFileTaskIdentities": "Ripara identità delle attività-file ricorrenti",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "Colori indipendenti dalle attività fissate.",
       "upcomingTimedFirst": "Prima le attività con orario",
       "upcomingTimedGroup": "Con orario",
-      "uriBuilder": "Generatore di URI",
+      "uriBuilder": "Ricerca URI",
       "uriCommand": "Comando",
       "uriCopy": "Copia",
+      "uriLightboxUnavailable": "Lightbox non è disponibile per questa tabella. Aprirla in una nuova scheda?",
       "uriNoMatches": "Nessun comando corrispondente.",
+      "uriOpenInNewTab": "Apri in una nuova scheda",
       "uriPresetMissing": "Preset non trovato.",
       "uriSearch": "Cerca comandi Operon…",
       "uriUnavailable": "Questo comando Operon non è disponibile qui.",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "5db8cdc495d823cf6c86e6894b7e0d9f05eaf8a8e89806d6103007027016abad"
+  "sourceVersion": "7352828fae61c4c7d41e2808ec639e2c712ce293a85e0902e057a0b5147f9333"
 }

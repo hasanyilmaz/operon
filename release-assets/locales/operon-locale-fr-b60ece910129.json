@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -344,7 +344,7 @@
       "openTaskFinder": "Recherche de tâches",
       "openTimeSessionHistory": "Ouvrir le panneau d'historique des sessions de suivi",
       "openUpcomingTasks": "Ouvrir les tâches à venir",
-      "openUriBuilder": "Ouvrir le générateur d’URI",
+      "openUriBuilder": "Ouvrir la recherche d’URI",
       "rebuildIndex": "Reconstruire l'index complet",
       "reloadSettingsFromStorage": "Recharger les paramètres Operon depuis le stockage",
       "repairRecurringFileTaskIdentities": "Réparer les identités des tâches-fichiers récurrentes",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "Couleurs indépendantes des tâches épinglées.",
       "upcomingTimedFirst": "Tâches horaires en premier",
       "upcomingTimedGroup": "Avec horaire",
-      "uriBuilder": "Générateur d’URI",
+      "uriBuilder": "Recherche d’URI",
       "uriCommand": "Commande",
       "uriCopy": "Copier",
+      "uriLightboxUnavailable": "La visionneuse est indisponible pour ce tableau. L’ouvrir dans un nouvel onglet ?",
       "uriNoMatches": "Aucune commande correspondante.",
+      "uriOpenInNewTab": "Ouvrir dans un nouvel onglet",
       "uriPresetMissing": "Préréglage introuvable.",
       "uriSearch": "Rechercher une commande Operon…",
       "uriUnavailable": "Cette commande Operon est indisponible ici.",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d727f5944f709e5b7e0e9a39e302bd0b4cb65f1ecab92dcf007535ab90c143d7"
+  "sourceVersion": "2283030768abb692ea76931c776a621b9cabe7acc1913a12fdf8643bf06993b9"
 }

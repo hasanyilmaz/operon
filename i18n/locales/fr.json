@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "Ouvrir le générateur d’URI",
+		"openUriBuilder": "Ouvrir la recherche d’URI",
 		"openCurrentFileEditor": "Ouvrir l’éditeur de tâches ou de propriétés du fichier actuel",
 		"openMiniCalendar": "Ouvrir le mini calendrier",
 		"openExcalidrawPropertyPool": "Ouvrir Excalidraw Property Pool",
@@ -441,11 +441,13 @@
 		"introDock": "Résolvez ici les conflits de doublons d'operonId. Vous pouvez fermer cette fenêtre à tout moment et la rouvrir depuis la palette de commandes ou l'alerte de la dock de statut."
 	},
 	"settings": {
-		"uriBuilder": "Générateur d’URI",
+		"uriBuilder": "Recherche d’URI",
 		"uriCommand": "Commande",
 		"uriSearch": "Rechercher une commande Operon…",
 		"uriCopy": "Copier",
 		"uriPresetMissing": "Préréglage introuvable.",
+		"uriOpenInNewTab": "Ouvrir dans un nouvel onglet",
+		"uriLightboxUnavailable": "La visionneuse est indisponible pour ce tableau. L’ouvrir dans un nouvel onglet ?",
 		"uriUnavailable": "Cette commande Operon est indisponible ici.",
 		"uriNoMatches": "Aucune commande correspondante.",
 		"automationsTitle": "Automatisations",

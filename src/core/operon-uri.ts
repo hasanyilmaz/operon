@@ -64,7 +64,8 @@ export function parseOperonUri(uri: string): { vault: string; target: OperonComm
 	const onlyKeys = (...allowed: string[]) => [...keys].every(key => key === 'vault' || allowed.includes(key));
 	const command = params.get('command');
 	if (command !== null) {
-		return onlyKeys('command') && isOperonCommandSlug(command) ? { vault, target: { kind: 'command', command } } : null;
+		if (!onlyKeys('command') || !isOperonCommandSlug(command)) return null;
+		return { vault, target: { kind: 'command', command: command === 'open-uri-builder' ? 'open-uri-finder' : command } };
 	}
 
 	const view = params.get('view');

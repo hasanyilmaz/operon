@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -344,7 +344,7 @@
       "openTaskFinder": "Поиск задач",
       "openTimeSessionHistory": "Открыть панель истории сессий времени",
       "openUpcomingTasks": "Открыть предстоящие задачи",
-      "openUriBuilder": "Открыть конструктор URI",
+      "openUriBuilder": "Открыть поиск URI",
       "rebuildIndex": "Перестроить полный индекс",
       "reloadSettingsFromStorage": "Перезагрузить настройки Operon из хранилища",
       "repairRecurringFileTaskIdentities": "Исправить идентификаторы повторяющихся файловых задач",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "Цвета независимо от закреплённых задач.",
       "upcomingTimedFirst": "Сначала задачи со временем",
       "upcomingTimedGroup": "Со временем",
-      "uriBuilder": "Конструктор URI",
+      "uriBuilder": "Поиск URI",
       "uriCommand": "Команда",
       "uriCopy": "Копировать",
+      "uriLightboxUnavailable": "Эту таблицу нельзя открыть в лайтбоксе. Открыть её в новой вкладке?",
       "uriNoMatches": "Подходящих команд нет.",
+      "uriOpenInNewTab": "Открыть в новой вкладке",
       "uriPresetMissing": "Предустановка не найдена.",
       "uriSearch": "Найти команду Operon…",
       "uriUnavailable": "Эта команда Operon здесь недоступна.",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "9bad1c8caed14614a719c5e6af80bc3031f0ef53a61667e633e676b37654d897"
+  "sourceVersion": "b5525912fd08acdba320eab644d75f44edb02dc65f83474a7771618224012bf7"
 }

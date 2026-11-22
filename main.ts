@@ -89,7 +89,7 @@ import { createCheckboxOwnershipRuntimeV1 } from './src/agent-runtime/extensions
 import { checkboxOwnershipExecutionKeyV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/decode';
 import type { CheckboxOwnershipApplyRequestV1, CheckboxOwnershipMutationResultV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/contracts';
 import { boundRuntimeTransactionIdV1 } from './src/agent-runtime/runtime/transaction-identifiers';
-import { OperonCommandLinks } from './src/systems/operon-command-links';
+import { OperonCommandLinks, type OperonViewSources } from './src/systems/operon-command-links';
 import { getIcon, type App, type Command } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
 import { parseOperonGroupRule } from './src/core/canvas-group-rule';
@@ -4246,6 +4246,7 @@ export default class OperonPlugin extends Plugin {
 		const defaultPresetId = this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
 		const shouldOpenFinishedTaskPoolMode = state?.finishedTasksOpen === true;
 		const nextState: CalendarLeafState = {
+			...(state?.useNamedPresetOnMobile ? { useNamedPresetOnMobile: true } : {}),
 			forceMobileLayout: state?.forceMobileLayout === true,
 			presetId: typeof state?.presetId === 'string' && state.presetId.trim()
 				? state.presetId
@@ -16331,6 +16332,7 @@ export default class OperonPlugin extends Plugin {
 			nextOrder,
 			next.map(preset => preset.id),
 		);
+		this.commandLinks?.refresh();
 		return previousDefaultPresetId !== this.settings.tableDefaultPresetId;
 	}
 
@@ -38526,14 +38528,46 @@ export default class OperonPlugin extends Plugin {
 		return this.commandLinks ? this.commandLinks.register(command) : super.addCommand(command);
 	}
 
+	private getCommandViewSources(): OperonViewSources {
+		const { tablePresets, tableDefaultPresetId, calendarPresets, kanbanPresets, filterSets } = this.settings;
+		const fileTableIds = new Set<string>();
+		const tables = tablePresets.filter(preset => {
+			const source = this.tablePresetRegistry.getSource(preset.id);
+			if (!source) return true;
+			if (source.kind !== 'table-file' || !source.path || !this.app.vault.getFileByPath(source.path)) return false;
+			fileTableIds.add(preset.id);
+			return true;
+		});
+		return {
+			presets: { table: tables, calendar: calendarPresets, kanban: kanbanPresets, filter: getNormalFilterSets(filterSets) },
+			desktop: Platform.isDesktopApp, fileTableIds,
+			defaultTableId: tableDefaultPresetId,
+		};
+	}
+
+	private async openCommandTableLightbox(presetId: string): Promise<void> {
+		const path = this.tablePresetRegistry.getPath(presetId);
+		const file = path && this.app.vault.getFileByPath(path);
+		if (!file) {
+			new Notice(t('settings', 'uriPresetMissing'));
+			return;
+		}
+		await openFileLightboxAsync(this.app, getActiveDocument().body, { file, subpath: '' });
+	}
+
 	private registerCommands(): void {
 		const links = this.commandLinks = new OperonCommandLinks({
 			register: command => super.addCommand(command),
 			remove: id => this.removeCommand(id),
-			kanbanPresets: () => this.storage.getSettings().kanbanPresets,
+			viewSources: () => this.getCommandViewSources(),
 			vaultName: () => this.app.vault.getName(),
 			cursor: () => this.cursorTimerContext(),
-			openKanban: presetId => this.openKanbanView({ presetId }),
+			openPresetTab: (type, presetId) => type === 'calendar'
+				? this.openCalendarView({ presetId, useNamedPresetOnMobile: true })
+				: this.openRelatedViewTarget({ type, presetId }),
+			openTableLightbox: presetId => this.openCommandTableLightbox(presetId),
+			confirmTableTab: () => this.promptConfirmAction(t('settings', 'uriOpenInNewTab'), t('settings', 'uriLightboxUnavailable'),
+				t('settings', 'uriOpenInNewTab'), t('buttons', 'cancel')),
 			unavailable: reason => {
 				new Notice(reason === 'preset' ? t('settings', 'uriPresetMissing') : t('settings', 'uriUnavailable'));
 			},
@@ -39137,7 +39171,7 @@ export default class OperonPlugin extends Plugin {
 			});
 
 		links.refresh();
-		this.register(this.storage.subscribeKanbanPresets(() => links.refresh()));
+		this.register(this.storage.subscribeViewPresets(() => links.refresh()));
 
 	}
 }

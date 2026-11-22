@@ -51,16 +51,16 @@ export class AbstractInputSuggest {
 }`;
 const root = fileURLToPath(new URL('..', import.meta.url));
 const { outputFiles } = await build({
-	stdin: { contents: "export * from './src/systems/operon-command-links'; export * from './src/ui/settings/uri-builder'; export {Element, notices} from 'obsidian';", resolveDir: root },
+	stdin: { contents: "export * from './src/systems/operon-command-links'; export * from './src/ui/settings/uri-builder'; export {getNormalFilterSets} from './src/core/dynamic-file-task-filter'; export {mergeTablePresetRegistryOrder,resolveTablePresetDefaultAfterRegistrySync} from './src/storage/table-preset-manifest'; export {Element, notices} from 'obsidian';", resolveDir: root },
 	platform: 'node', format: 'esm', write: false, bundle: true,
 	plugins: [{ name: 'host', setup(b) {
 		b.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'host' }));
 		b.onLoad({ filter: /.*/, namespace: 'host' }, () => ({ contents: mockHost }));
 	} }],
 });
-const { OperonCommandLinks, renderUriBuilder, Element, notices } = await import(
+const { OperonCommandLinks, renderUriBuilder, getNormalFilterSets, mergeTablePresetRegistryOrder, resolveTablePresetDefaultAfterRegistrySync, Element, notices } = await import(
 	'data:text/javascript;base64,' + Buffer.from(outputFiles[0].contents).toString('base64'));
-function fixture() {
+function fixture(overrides = {}) {
 	const palette = new Map();
 	const calls = [], errors = [], presets = [{ id: 'kp_123', name: 'Sprint' }];
 	const vault = 'Test & Work';
@@ -72,11 +72,12 @@ function fixture() {
 			palette.set(command.id, command);
 			return command;
 		}, remove: id => palette.delete('operon:' + id),
-		kanbanPresets: () => presets, vaultName: () => vault, cursor: () => null,
-		openKanban: async id => { calls.push(id); }, unavailable: reason => errors.push(reason),
+		viewSources: () => ({presets: {kanban: presets, filter: [], calendar: [], table: []}, defaultTableId: null, fileTableIds: new Set(), desktop: true}), vaultName: () => vault, cursor: () => null,
+		openPresetTab: async (_view, id) => { calls.push(id); }, unavailable: reason => errors.push(reason),
+		...overrides,
 	});
 	links.register({ id: 'open-kanban-view', name: 'Kanban', callback: () => calls.push('default') });
-	links.register({ id: 'open-uri-builder', name: 'Open URI Builder', callback: () => calls.push('builder') });
+	links.register({ id: 'open-uri-builder', name: 'Open URI Finder', callback: () => calls.push('builder') });
 	links.register({ id: 'toggle-global-timer', name: 'Start/stop timer', callback: () => calls.push('timer') });
 	links.register({ id: 'toggle-timer', name: 'Start/stop timer for task at cursor', callback: () => calls.push('cursor') });
 	links.register({ id: 'guarded', name: 'Editor command', checkCallback: () => false });
@@ -190,6 +191,75 @@ test('an empty Builder browses the full catalog and reopens after Escape without
 	dispose();
 });
 
+test('saved view shortcuts track renames, copies, deletions and Table eligibility while Finder stays open', async () => {
+	const sources = {presets: {table:[], calendar:[], filter:[], kanban:[]}, desktop:true, fileTableIds:new Set(), defaultTableId:null};
+	const { links, palette, vault, errors } = fixture({viewSources: () => sources});
+	const root = new Element();
+	const { input, dispose } = renderUriBuilder({ vault: { getName: () => vault } }, root, links);
+	const output = root.children[1].controlEl.children[0];
+	for (const view of ['calendar','filter','table']) {
+		const preset = {id:'original', name:'Work'};
+		sources.presets[view].push(preset);
+		links.refresh();
+		const id = 'open-' + view + '-preset-original-tab';
+		const select = () => input.suggest.selectSuggestion(links.entries.find(entry => entry.id === id));
+		select();
+		const uri = output.textContent;
+		const stale = palette.get('operon:' + id);
+		sources.presets[view].push({id:'copy', name:'Work'});
+		links.refresh();
+		assert.match(input.textContent, /Work \[original\]/u);
+		assert.ok(palette.has('operon:open-' + view + '-preset-copy-tab'));
+		preset.name = 'Renamed';
+		links.refresh();
+		assert.match(input.textContent, /Renamed/u);
+		assert.equal(output.textContent, uri);
+		if (view === 'table') {
+			sources.defaultTableId = preset.id;
+			sources.fileTableIds.add(preset.id);
+			links.refresh();
+			assert.ok(palette.has('operon:open-table-view-lightbox'));
+			input.suggest.selectSuggestion(links.entries.find(entry => entry.id === 'open-table-preset-original-lightbox'));
+			sources.defaultTableId = 'copy';
+			sources.fileTableIds.delete(preset.id);
+			links.refresh();
+			assert.equal(palette.has('operon:open-table-view-lightbox'), false);
+			assert.equal(output.textContent, '');
+			select();
+		}
+		sources.presets[view].splice(0);
+		await stale.callback(); // Even a stale command checks the live source before navigating.
+		assert.equal(errors.at(-1), 'preset');
+		links.refresh();
+		assert.ok(!palette.has('operon:' + id));
+		assert.equal(input.textContent, '');
+		assert.equal(output.textContent, '');
+		assert.ok(root.children[1].button.disabled);
+	}
+	dispose();
+});
+
+test('mobile Lightbox links open only the confirmed table and recheck its ID after the prompt', async () => {
+	const sources = {presets:{table:[{id:'books',name:'Books'},{id:'other',name:'Other'}], calendar:[], filter:[], kanban:[]},
+		defaultTableId:'books', desktop:false, fileTableIds:new Set(['books','other'])};
+	let confirm = () => false;
+	let prompts = 0;
+	const {dispatch, calls, errors, palette} = fixture({viewSources: () => sources, confirmTableTab: async () => {prompts++; return confirm();}});
+	const base = 'obsidian://operon?vault=Test%20%26%20Work&view=table&paneType=lightbox';
+	assert.ok([...palette.keys()].every(id => !id.endsWith('-lightbox')));
+	await dispatch(base + '&preset=books');
+	assert.deepEqual(calls, []);
+	confirm = () => { sources.defaultTableId = 'other'; return true; };
+	await dispatch(base);
+	assert.deepEqual(calls, ['books']);
+	confirm = () => { sources.presets.table.shift(); return true; };
+	await dispatch(base + '&preset=books');
+	await dispatch(base + '&preset=books');
+	assert.equal(prompts, 3);
+	assert.deepEqual(errors, ['preset','preset']);
+	assert.deepEqual(calls, ['books']);
+});
+
 // Exercise the actual plugin registrations and Settings navigation with an isolated host.
 function productionMethods(file, className, methods, bindings) {
 	const ast = ts.createSourceFile(file, readFileSync(new URL('../' + file, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
@@ -202,7 +272,7 @@ function productionMethods(file, className, methods, bindings) {
 	return new Function(...Object.keys(bindings), outputText + '\nreturn Host;')(...Object.values(bindings));
 }
 
-test('production shortcuts focus the Builder and open the same new Kanban tab via palette and URI', async () => {
+test('production Finder, registered shortcuts and URIs open the same tab or Table file lightbox', async () => {
 	const palette = new Map(), calls = [], pending = [];
 	const t = (_ns, key) => key === 'tabGeneral' ? 'General' : key;
 	const Settings = productionMethods('src/ui/settings-tab.ts', 'OperonSettingsTab', ['openUriBuilder'], { Base: class {}, t });
@@ -215,20 +285,33 @@ test('production shortcuts focus the Builder and open the same new Kanban tab vi
 		register() {}
 	};
 	const Host = productionMethods('main.ts', 'OperonPlugin',
-		['registerCommands', 'addCommand', 'cursorTimerContext', 'openKanbanView'], {
+		['registerCommands', 'addCommand', 'cursorTimerContext', 'getCommandViewSources', 'openCommandTableLightbox',
+			'openRelatedViewTarget', 'openKanbanView', 'openCalendarView', 'openOperonTable', 'openFilterViewById', 'resolvePreferredFilterSetId'], {
 			Base, OperonCommandLinks, t, LIGHTBOX_PERF_ENABLED: false, registerNativeTaskWorkspace: () => () => {},
 			MarkdownView: class {}, Notice: class {}, runAsyncAction: (_label, run) => pending.push(run()),
-			KANBAN_VIEW_TYPE: 'kanban', getNativePropertyIndex: () => ({}), createKanbanPropertyAccess: () => ({}),
+			Platform: {isDesktopApp: true}, getNormalFilterSets, localToday: () => '2026-11-22',
+			normalizeCalendarSidebarTaskPoolMode: () => 'open', getActiveDocument: () => ({body: {}}),
+			openFileLightboxAsync: async (_app, _anchor, target) => calls.push(['lightbox', target.file.path]),
+			FILTER_VIEW_TYPE: 'filter', OPERON_TABLE_VIEW_TYPE: 'table', CALENDAR_VIEW_TYPE: 'calendar', KANBAN_VIEW_TYPE: 'kanban', getNativePropertyIndex: () => ({}), createKanbanPropertyAccess: () => ({}),
 			normalizeKanbanAxisLeafState: (state, settings) => ({ presetId: state?.presetId ?? settings.kanbanDefaultPresetId }),
 		});
 	const host = new Host();
-	const leaf = { async setViewState(state) { calls.push(state.state.presetId); } };
+	const leaf = { async setViewState(state) {
+		calls.push(state.type === 'kanban' ? state.state.presetId :
+			[state.type, state.state.presetId ?? state.state.filterSetId, !!state.state.useNamedPresetOnMobile]);
+	} };
+	const booksFile = {path: 'Books.table'};
+	const source = {kind: 'table-file', path: booksFile.path};
 	Object.assign(host, {
-		app: { vault: { getName: () => 'Dev' }, workspace: {
+		app: { vault: { getName: () => 'Dev', getFileByPath: path => path === booksFile.path ? booksFile : null }, workspace: {
 			getActiveViewOfType: () => editor, getLeaf: type => { calls.push(type); return leaf; }, revealLeaf: async () => {},
 		} },
-		settings: { kanbanPresets: presets, kanbanDefaultPresetId: 'kp_next' }, settingsTab: tab,
-		storage: { getSettings: () => host.settings, subscribeKanbanPresets: () => () => {} },
+		settings: { kanbanPresets: presets, kanbanDefaultPresetId: 'kp_next',
+			tablePresets: [{id:'tp_books',name:'Books'}], tableDefaultPresetId:'tp_books',
+			filterSets: [{id:'fs_today',name:'Today'},{id:'fs_dynamic_subtasks_filter',name:'Special'}], leftRailDefaultFilterViewId:'fs_today',
+			calendarPresets: [{id:'cp_plan',name:'Planning'}], calendarDefaultPresetId:'cp_plan' }, settingsTab: tab,
+		tablePresetRegistry: {getSource: () => source, getPath: () => source.path},
+		storage: { getSettings: () => host.settings, subscribeViewPresets: () => () => {} },
 		indexer: { getFileTaskByPath: () => ({ operonId: 'file' }) },
 		parseInlineTaskLine: line => line === 'inline' ? { operonId: 'inline' } : null,
 		timeTracker: { isTimerRunning: () => false }, startTimerForTask: async id => { calls.push(id); return true; },
@@ -253,6 +336,42 @@ test('production shortcuts focus the Builder and open the same new Kanban tab vi
 	palette.get('operon:open-kanban-view').callback();
 	await Promise.all(pending);
 	assert.deepEqual(calls.splice(0), ['tab', 'kp_sprint', 'tab', 'kp_sprint', 'tab', 'kp_next', 'tab', 'kp_sprint']);
+	for (const [label, view, id, mode] of [
+		['Books','table','tp_books','tab'], ['Books','table','tp_books','lightbox'],
+		['Default','table',null,'tab'], ['Default','table',null,'lightbox'],
+		['Planning','calendar','cp_plan','tab'], ['Default','calendar',null,'tab'],
+		['Today','filter','fs_today','tab'], ['Default','filter',null,'tab'],
+	]) {
+		const name = 'Open ' + view[0].toUpperCase() + view.slice(1) + ' › ' + label + ' › ' + (mode === 'tab' ? 'New Tab' : 'Lightbox');
+		builder.input.textContent = name;
+		builder.input.dispatchEvent(new Event('input'));
+		assert.equal(builder.input.suggest.items.length, 1, name);
+		const entry = builder.input.suggest.items[0];
+		builder.input.suggest.selectSuggestion(entry);
+		const command = palette.get('operon:' + entry.id);
+		assert.equal(command.name, name);
+		const params = new URL(root.children[1].controlEl.children[0].textContent).searchParams;
+		assert.equal(params.get('view'), view);
+		assert.equal(params.get('preset'), id);
+		assert.equal(params.get('paneType'), mode === 'tab' ? null : 'lightbox');
+		assert.deepEqual(calls, []);
+		const expected = mode === 'lightbox' ? [['lightbox', booksFile.path]] : ['tab',
+			[view, id ?? {table:'tp_books', calendar:'cp_plan', filter:'fs_today'}[view], view === 'calendar' && !!id]];
+		await command.callback();
+		await Promise.all(pending);
+		assert.deepEqual(calls.splice(0), expected);
+		await host.commandLinks.handleProtocol({action:'operon', ...Object.fromEntries(params)});
+		await Promise.all(pending);
+		assert.deepEqual(calls.splice(0), expected);
+	}
+	assert.ok(!host.commandLinks.entries.some(entry => entry.target.preset === 'fs_dynamic_subtasks_filter'));
+	const finder = host.commandLinks.entries.find(entry => entry.id === 'open-uri-builder');
+	builder.input.suggest.selectSuggestion(finder);
+	assert.equal(new URL(root.children[1].controlEl.children[0].textContent).searchParams.get('command'), 'open-uri-finder');
+	for (const command of ['open-uri-finder','open-uri-builder']) {
+		await host.commandLinks.handleProtocol({action:'operon',command});
+		assert.deepEqual(calls.splice(0), ['settings', ['operon', ['General']], 'focus']);
+	}
 	const timerData = { action: 'operon', vault: 'Dev', command: 'cursor-timer' };
 	assert.equal(palette.get('operon:toggle-timer').checkCallback(true), false);
 	await host.commandLinks.handleProtocol(timerData);
@@ -266,4 +385,57 @@ test('production shortcuts focus the Builder and open the same new Kanban tab vi
 	await Promise.all(pending);
 	assert.deepEqual(calls, ['inline', 'file']);
 	builder.dispose();
+});
+
+test('a named Calendar tab uses the selected source on phones while ordinary tabs use the mode preference', () => {
+	const Host = productionMethods('src/ui/calendar/calendar-view.ts', 'CalendarView', ['resolveMobileCalendarSourcePreset'], {
+		Base: class {}, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE: {agenda:'agendaSource'},
+	});
+	const settings = {calendarPresets:[{id:'week'},{id:'project'}], agendaSource:'week'};
+	const view = new Host();
+	const state = {presetId:'project', mobileSourcePresetId:'week'};
+	assert.equal(view.resolveMobileCalendarSourcePreset(settings, 'agenda', state).id, 'week');
+	assert.equal(view.resolveMobileCalendarSourcePreset(settings, 'agenda', {...state, useNamedPresetOnMobile:true}).id, 'project');
+});
+
+test('Table registry updates named shortcuts and reserves a missing default until its file returns', () => {
+	const Host = productionMethods('main.ts', 'OperonPlugin', ['syncTablePresetProjectionFromRegistry', 'getCommandViewSources'], {
+		Base: class {}, getNormalFilterSets, Platform: {isDesktopApp: true}, cloneTablePreset: structuredClone,
+		mergeTablePresetRegistryOrder, resolveTablePresetDefaultAfterRegistrySync,
+	});
+	const host = new Host();
+	const entries = new Map();
+	const files = new Map();
+	function put(id, name) {
+		const path = name + '.table';
+		files.set(path, {path});
+		entries.set(id, {id, preset: {id, name}, status:'available', source:{kind:'table-file', path}});
+	}
+	put('books', 'Books');
+	put('films', 'Films');
+	host.tablePresetRegistry = {
+		getSource: id => entries.get(id)?.source, getSnapshot: () => ({entries}),
+		getPath: id => entries.get(id)?.source.path,
+	};
+	host.app = {vault: {getFileByPath: path => files.get(path)}};
+	host.settings = {tableDefaultPresetId:'books', tablePresetOrderIds:['books'], tablePresets:[],
+		filterSets:[], kanbanPresets:[], calendarPresets:[]};
+	const {links, palette} = fixture({viewSources: () => host.getCommandViewSources()});
+	host.commandLinks = links;
+	const defaultBox = 'operon:open-table-view-lightbox';
+	const booksBox = 'operon:open-table-preset-books-lightbox';
+	host.syncTablePresetProjectionFromRegistry();
+	assert.ok(palette.has(defaultBox));
+	assert.ok(palette.has(booksBox));
+	files.delete('Books.table');
+	entries.set('books', {id:'books', status:'missing', preset:null, source:{kind:'missing-bound-file',path:null}});
+	host.syncTablePresetProjectionFromRegistry();
+	assert.equal(host.settings.tableDefaultPresetId, 'books');
+	assert.ok(!palette.has(defaultBox));
+	assert.ok(!palette.has(booksBox));
+	assert.ok(palette.has('operon:open-table-preset-films-lightbox'));
+	put('books', 'Reading list');
+	host.syncTablePresetProjectionFromRegistry();
+	assert.ok(palette.has(defaultBox));
+	assert.equal(palette.get(booksBox).name, 'Operon: Open Table › Reading list › Lightbox');
 });

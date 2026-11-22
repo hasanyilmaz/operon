@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "Open URI Builder",
+		"openUriBuilder": "Open URI Finder",
 		"openCurrentFileEditor": "Open current file’s Task / Property Editor",
 		"openMiniCalendar": "Open mini calendar",
 		"openExcalidrawPropertyPool": "Open Excalidraw Property Pool",
@@ -441,11 +441,13 @@
 		"introDock": "Resolve duplicate operonId conflicts here. You can close this window anytime and reopen it from the command palette or status dock alert."
 	},
 	"settings": {
-		"uriBuilder": "URI Builder",
+		"uriBuilder": "URI Finder",
 		"uriCommand": "Command",
 		"uriSearch": "Search Operon commands…",
 		"uriCopy": "Copy",
 		"uriPresetMissing": "Preset not found.",
+		"uriOpenInNewTab": "Open in new tab",
+		"uriLightboxUnavailable": "Lightbox is unavailable for this table. Open it in a new tab?",
 		"uriUnavailable": "This Operon command is unavailable here.",
 		"uriNoMatches": "No matching commands.",
 		"automationsTitle": "Automations",

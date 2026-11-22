@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "開啟 URI 建立工具",
+		"openUriBuilder": "開啟 URI 查找器",
 		"openCurrentFileEditor": "開啟目前檔案的任務或屬性編輯器",
 		"openMiniCalendar": "開啟迷你日曆",
 		"openExcalidrawPropertyPool": "開啟 Excalidraw Property Pool",
@@ -441,11 +441,13 @@
 		"introDock": "在此解決重複的 operonId 衝突。你可以隨時關閉此視窗，並透過命令面板或狀態停靠列提醒重新開啟。"
 	},
 	"settings": {
-		"uriBuilder": "URI 建立工具",
+		"uriBuilder": "URI 查找器",
 		"uriCommand": "指令",
 		"uriSearch": "搜尋 Operon 指令…",
 		"uriCopy": "複製",
 		"uriPresetMissing": "找不到預設。",
+		"uriOpenInNewTab": "在新分頁開啟",
+		"uriLightboxUnavailable": "此表格無法在燈箱中開啟。要在新分頁開啟嗎？",
 		"uriUnavailable": "此處無法使用這個 Operon 指令。",
 		"uriNoMatches": "沒有相符的指令。",
 		"automationsTitle": "自動化",

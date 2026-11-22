@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -344,7 +344,7 @@
       "openTaskFinder": "Görev Bul",
       "openTimeSessionHistory": "Zaman Oturumları Geçmişi panelini aç",
       "openUpcomingTasks": "Yaklaşan görevleri aç",
-      "openUriBuilder": "URI Builder’ı aç",
+      "openUriBuilder": "URI Finder’ı aç",
       "rebuildIndex": "Tam indeksi yeniden oluştur",
       "reloadSettingsFromStorage": "Operon ayarlarını depolamadan yeniden yükle",
       "repairRecurringFileTaskIdentities": "Tekrarlanan File Task kimliklerini onar",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "Sabitlenmiş görevlerden bağımsız kart renkleri.",
       "upcomingTimedFirst": "Önce saatli görevler",
       "upcomingTimedGroup": "Saatli",
-      "uriBuilder": "URI Builder",
+      "uriBuilder": "URI Finder",
       "uriCommand": "Komut",
       "uriCopy": "Kopyala",
+      "uriLightboxUnavailable": "Bu tablo Lightbox’ta açılamıyor. Yeni bir sekmede açılsın mı?",
       "uriNoMatches": "Eşleşen komut bulunamadı.",
+      "uriOpenInNewTab": "Yeni sekmede aç",
       "uriPresetMissing": "Preset bulunamadı.",
       "uriSearch": "Operon komutlarını ara…",
       "uriUnavailable": "Bu Operon komutu burada kullanılamıyor.",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "51606d7de686ba891e7a261610847e836be4dc03be31e919e318d02445b47223"
+  "sourceVersion": "d46f3ef65ddaf409084c315219e06d158ea8cde1b3bd2d3002efef9bcbf59a49"
 }

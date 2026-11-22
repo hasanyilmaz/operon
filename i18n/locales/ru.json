@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "Открыть конструктор URI",
+		"openUriBuilder": "Открыть поиск URI",
 		"openCurrentFileEditor": "Открыть редактор задач или свойств текущего файла",
 		"openMiniCalendar": "Открыть мини-календарь",
 		"openExcalidrawPropertyPool": "Открыть Excalidraw Property Pool",
@@ -441,11 +441,13 @@
 		"introDock": "Здесь можно разрешить конфликты дублирующихся operonId. Это окно можно закрыть в любой момент и снова открыть из палитры команд или уведомления в доке состояния."
 	},
 	"settings": {
-		"uriBuilder": "Конструктор URI",
+		"uriBuilder": "Поиск URI",
 		"uriCommand": "Команда",
 		"uriSearch": "Найти команду Operon…",
 		"uriCopy": "Копировать",
 		"uriPresetMissing": "Предустановка не найдена.",
+		"uriOpenInNewTab": "Открыть в новой вкладке",
+		"uriLightboxUnavailable": "Эту таблицу нельзя открыть в лайтбоксе. Открыть её в новой вкладке?",
 		"uriUnavailable": "Эта команда Operon здесь недоступна.",
 		"uriNoMatches": "Подходящих команд нет.",
 		"automationsTitle": "Автоматизация",

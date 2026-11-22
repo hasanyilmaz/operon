@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "URI-Builder öffnen",
+		"openUriBuilder": "URI-Finder öffnen",
 		"openCurrentFileEditor": "Aufgaben- oder Eigenschafteneditor der aktuellen Datei öffnen",
 		"openMiniCalendar": "Mini-Kalender öffnen",
 		"openExcalidrawPropertyPool": "Excalidraw Property Pool öffnen",
@@ -441,11 +441,13 @@
 		"introDock": "Löse hier Konflikte durch doppelte operonIds. Du kannst dieses Fenster jederzeit schließen und über die Befehlspalette oder die Status-Dock-Warnung wieder öffnen."
 	},
 	"settings": {
-		"uriBuilder": "URI-Builder",
+		"uriBuilder": "URI-Finder",
 		"uriCommand": "Befehl",
 		"uriSearch": "Operon-Befehle suchen…",
 		"uriCopy": "Kopieren",
 		"uriPresetMissing": "Vorlage nicht gefunden.",
+		"uriOpenInNewTab": "In neuem Tab öffnen",
+		"uriLightboxUnavailable": "Die Lightbox ist für diese Tabelle nicht verfügbar. In einem neuen Tab öffnen?",
 		"uriUnavailable": "Dieser Operon-Befehl ist hier nicht verfügbar.",
 		"uriNoMatches": "Keine passenden Befehle.",
 		"automationsTitle": "Automatisierungen",

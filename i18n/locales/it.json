@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"openUriBuilder": "Apri il generatore di URI",
+		"openUriBuilder": "Apri ricerca URI",
 		"openCurrentFileEditor": "Apri l’editor delle attività o delle proprietà del file corrente",
 		"openMiniCalendar": "Apri mini calendario",
 		"openExcalidrawPropertyPool": "Apri Excalidraw Property Pool",
@@ -441,11 +441,13 @@
 		"introDock": "Risolvi qui i conflitti di operonId duplicati. Puoi chiudere questa finestra in qualsiasi momento e riaprirla dalla tavolozza dei comandi o dall'avviso nella dock di stato."
 	},
 	"settings": {
-		"uriBuilder": "Generatore di URI",
+		"uriBuilder": "Ricerca URI",
 		"uriCommand": "Comando",
 		"uriSearch": "Cerca comandi Operon…",
 		"uriCopy": "Copia",
 		"uriPresetMissing": "Preset non trovato.",
+		"uriOpenInNewTab": "Apri in una nuova scheda",
+		"uriLightboxUnavailable": "Lightbox non è disponibile per questa tabella. Aprirla in una nuova scheda?",
 		"uriUnavailable": "Questo comando Operon non è disponibile qui.",
 		"uriNoMatches": "Nessun comando corrispondente.",
 		"automationsTitle": "Automazioni",

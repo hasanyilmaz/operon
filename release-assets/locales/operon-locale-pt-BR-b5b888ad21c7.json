@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -344,7 +344,7 @@
       "openTaskFinder": "Localizador de tarefas",
       "openTimeSessionHistory": "Abrir painel Histórico de Sessão de Tempo",
       "openUpcomingTasks": "Abrir tarefas futuras",
-      "openUriBuilder": "Abrir gerador de URI",
+      "openUriBuilder": "Abrir localizador de URI",
       "rebuildIndex": "Reconstruir índice completo",
       "reloadSettingsFromStorage": "Recarregar configurações Operon do armazenamento",
       "repairRecurringFileTaskIdentities": "Reparar identidades de tarefas em arquivo recorrentes",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "Cores independentes das tarefas fixadas.",
       "upcomingTimedFirst": "Tarefas com horário primeiro",
       "upcomingTimedGroup": "Com horário",
-      "uriBuilder": "Gerador de URI",
+      "uriBuilder": "Localizador de URI",
       "uriCommand": "Comando",
       "uriCopy": "Copiar",
+      "uriLightboxUnavailable": "O Lightbox não está disponível para esta tabela. Abrir em uma nova aba?",
       "uriNoMatches": "Nenhum comando correspondente.",
+      "uriOpenInNewTab": "Abrir em nova aba",
       "uriPresetMissing": "Predefinição não encontrada.",
       "uriSearch": "Pesquisar comandos do Operon…",
       "uriUnavailable": "Este comando do Operon não está disponível aqui.",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "a826f66f579423644375ffe4915cf229b43e496b41a5d80f9afabf0b729ab235"
+  "sourceVersion": "a081b37b897bdc7dfee95d65c4eb5cbcf1ac0af6ac256b45eaa706943b0267e5"
 }

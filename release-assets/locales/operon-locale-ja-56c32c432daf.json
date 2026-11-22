@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3924,
-  "keyFingerprint": "56c2d3886704399b73a9672cddc4b94c64d14167e1398e0246ee0d1674cb2b68",
+  "keyCount": 3926,
+  "keyFingerprint": "6718e32fd0ec0f65c8170216d0da25e1dfaba8f63692f1b205fe061ca3a6fe11",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -344,7 +344,7 @@
       "openTaskFinder": "タスクファインダー",
       "openTimeSessionHistory": "タイムセッション履歴パネルを開く",
       "openUpcomingTasks": "今後のタスクを開く",
-      "openUriBuilder": "URI ビルダーを開く",
+      "openUriBuilder": "URI 検索を開く",
       "rebuildIndex": "インデックスを再構築",
       "reloadSettingsFromStorage": "ストレージから Operon 設定を再読み込み",
       "repairRecurringFileTaskIdentities": "繰り返しファイルタスクの識別情報を修復",
@@ -3115,10 +3115,12 @@
       "upcomingTaskColorSourceDesc": "ピン留めタスクとは別のカード色。",
       "upcomingTimedFirst": "時刻指定を先に表示",
       "upcomingTimedGroup": "時刻指定",
-      "uriBuilder": "URI ビルダー",
+      "uriBuilder": "URI 検索",
       "uriCommand": "コマンド",
       "uriCopy": "コピー",
+      "uriLightboxUnavailable": "このテーブルはライトボックスで開けません。新しいタブで開きますか？",
       "uriNoMatches": "一致するコマンドがありません。",
+      "uriOpenInNewTab": "新しいタブで開く",
       "uriPresetMissing": "プリセットが見つかりません。",
       "uriSearch": "Operon のコマンドを検索…",
       "uriUnavailable": "この Operon コマンドはここでは使えません。",
@@ -3969,5 +3971,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "fb9505781b003498428599a50700f0205c36f639c3555741a51cd4e6f11c2522"
+  "sourceVersion": "4927c305991327e7842a59e70acbc270c6e317e532f438624d4c6b33dfbeb37c"
 }

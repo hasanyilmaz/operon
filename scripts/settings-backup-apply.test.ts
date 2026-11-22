@@ -339,7 +339,7 @@ function exportLegacyArchiveJson(settings: OperonSettings): string {
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'automations' | 'kanban' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
+	selectedGroups: readonly ('general' | 'automations' | 'kanban' | 'calendar' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -529,7 +529,7 @@ test('Kanban command names follow committed saves, Restore, Undo and canonical r
 	const source = { ...storage.getSettings(), kanbanPresets: before.map(preset => ({ ...preset, name: 'Restored ' + preset.name })) };
 	const changes: string[][] = [];
 	const names = () => storage.getSettings().kanbanPresets.map(p => p.name);
-	const unsubscribe = storage.subscribeKanbanPresets(() => changes.push(names()));
+	const unsubscribe = storage.subscribeViewPresets(() => changes.push(names()));
 	const { sourceJson, plan } = await createPlan(storage, source, ['kanban']);
 	data.mode = 'fail-clean';
 	assert.equal((await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan))).status, 'failed');
@@ -547,6 +547,35 @@ test('Kanban command names follow committed saves, Restore, Undo and canonical r
 	await storage.reloadCanonicalSettingsPackage();
 	await storage.reloadCanonicalSettingsPackage();
 	assert.deepEqual(changes, [source.kanbanPresets.map(p => p.name), before.map(p => p.name), source.kanbanPresets.map(p => p.name)]);
+	unsubscribe();
+	storage.destroy();
+});
+
+test('Calendar and saved Filter commands observe successful saves, Restore and Undo', async () => {
+	const { storage } = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
+	const settings = storage.getSettings();
+	const filter = settings.filterSets.find(item => item.id !== DYNAMIC_FILE_TASK_FILTER_ID && item.id !== DYNAMIC_SUBTASKS_FILTER_ID)!;
+	const calendar = settings.calendarPresets[0]!;
+	const names = () => [settings.calendarPresets.find(item => item.id === calendar.id)?.name,
+		settings.filterSets.find(item => item.id === filter.id)?.name];
+	const changes: ReturnType<typeof names>[] = [];
+	const unsubscribe = storage.subscribeViewPresets(() => changes.push(names()));
+	await storage.filters.upsert({ ...filter, name: 'Saved filter' });
+	assert.deepEqual(changes.at(-1), [calendar.name, 'Saved filter']);
+	await storage.updateSettings({calendarPresets: settings.calendarPresets.map(item =>
+		item.id === calendar.id ? { ...item, name: 'Saved calendar' } : item)});
+	assert.deepEqual(changes.at(-1), ['Saved calendar', 'Saved filter']);
+	const source = { ...settings,
+		calendarPresets: settings.calendarPresets.map(item => item.id === calendar.id ? {...item,name:'Restored calendar'} : item),
+		filterSets: settings.filterSets.map(item => item.id === filter.id ? {...item,name:'Restored filter'} : item) };
+	const {sourceJson, plan} = await createPlan(storage, source, ['calendar','filters']);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(changes.at(-1), ['Restored calendar','Restored filter']);
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(changes.at(-1), ['Saved calendar','Saved filter']);
 	unsubscribe();
 	storage.destroy();
 });
