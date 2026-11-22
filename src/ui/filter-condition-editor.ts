@@ -13,7 +13,7 @@ import { PROJECT_SERIAL_SCOPE_FILTER_FIELD } from '../core/project-serials';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { createOwnerElement, getOwnerBody, getOwnerWindow } from '../core/dom-compat';
-import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
+import { showDatePicker } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { closeFloatingPanelsForRoot } from './field-pickers/common';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
@@ -762,22 +762,19 @@ export class FilterConditionEditor {
 
 		const settings = this.getPickerSettings();
 		inputEl.dataset.operonDayPickerState = 'open';
-		showOperonDayPickerPopover(inputEl, {
+		const update = (value: string) => {
+			inputEl.value = value;
+			inputEl.trigger('input');
+		};
+		showDatePicker(inputEl, {
 			app: this.options.app,
-			value: normalizeFilterDateInput(cond.value ?? inputEl.value) ?? undefined,
-			weekStart: settings.calendarWeekStart,
-			showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
-			canClear: !!cond.value,
-			onSelect: value => {
-				cond.value = value;
-				inputEl.value = value;
-				inputEl.trigger('input');
-			},
-			onClear: () => {
-				cond.value = undefined;
-				inputEl.value = '';
-				inputEl.trigger('input');
-			},
+			fieldKey: cond.field,
+			value: normalizeFilterDateInput(inputEl.value) ?? undefined,
+			dateDisplayFormat: settings.dateDisplayFormat,
+			manualDatePicker: { weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers },
+			canRemove: !!inputEl.value,
+			onSelect: update,
+			onRemove: () => update(''),
 			onClose: () => {
 				delete inputEl.dataset.operonDayPickerState;
 			},
@@ -1546,17 +1543,7 @@ export class FilterConditionEditor {
 		if (dateInput) {
 			input.placeholder = t('filterSets', 'datePlaceholder');
 			input.addClass('operon-filter-date-popover-input');
-			const open = () => {
-				if (input.dataset.operonDayPickerState === 'open') return;
-				input.dataset.operonDayPickerState = 'open';
-				const settings = this.getPickerSettings();
-				showOperonDayPickerPopover(input, {
-					app: this.options.app, value: normalizeFilterDateInput(input.value) ?? undefined,
-					weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
-					canClear: !!input.value, onSelect: update, onClear: () => update(''),
-					onClose: () => { delete input.dataset.operonDayPickerState; },
-				});
-			};
+			const open = () => this.openDateConditionPopover(input, cond);
 			input.addEventListener('focus', open);
 			input.addEventListener('click', open);
 		} else {

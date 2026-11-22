@@ -14,6 +14,7 @@ const temp = await mkdtemp(path.join(tmpdir(), 'operon-repeat-date-filter-'));
 after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
+ export { buildDatePickerCandidates } from './src/ui/field-pickers/date-nlp';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
@@ -37,7 +38,7 @@ await build({ stdin: { contents: `
 const h = await import(pathToFileURL(path.join(temp, 'helpers.mjs')).href);
 const editorFile = 'src/ui/filter-condition-editor.ts';
 function compile(name, deps = {}, owner = '') {
- const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : editorFile;
+ const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : owner === 'AutomationActionRow' ? 'src/ui/automation-action-editor.ts' : editorFile;
  const source = read(file), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
  const method = Boolean(owner);
  const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === owner).members : ast.statements;
@@ -179,6 +180,7 @@ class Element {
  setText(value) { this.textContent = value; } setAttribute(key, value) { this.attrs[key] = value; } removeAttribute(key) { delete this.attrs[key]; }
  empty() { this.children = []; this.textContent = ''; }
  addEventListener(name, cb) { (this.events[name] ??= []).push(cb); }
+ trigger(name) { this.fire(name); }
  fire(name) { for (const cb of this.events[name] ?? []) cb({ preventDefault() {}, stopPropagation() {} }); }
  find(predicate) { return [this, ...this.children.flatMap(child => child.find(() => true))].filter(predicate); }
 }
@@ -220,6 +222,59 @@ test('date operators render the shared date picker, numeric or no-value controls
    input.value = '2026-11-01'; input.fire('input'); assert.equal(cond.value, '2026-11-01');
   }
  }
+});
+test('fixed filter dates and automation values use the standard picker and retain its canonical selection', () => {
+ const settings = { ...h.DEFAULT_SETTINGS, calendarWeekStart: 1, calendarSidebarShowWeekNumbers: true };
+ const opened = [];
+ const pick = (_el, options) => opened.push(options);
+ const openFilterDate = compile('openDateConditionPopover', { showDatePicker: pick, normalizeFilterDateInput: v => v || null }, 'FilterConditionEditor');
+ const candidates = h.buildDatePickerCandidates(undefined, '', { fieldKey: 'dateScheduled', language: 'en', referenceDate: new Date(2026, 9, 16, 12) });
+ const tomorrow = candidates.quick.find(entry => entry.primaryLabel === 'Tomorrow').isoDate;
+ assert.equal(tomorrow, '2026-10-17');
+ assert.equal(h.buildDatePickerCandidates(undefined, 'tomorrow', {fieldKey:'dateScheduled',language:'en',referenceDate:new Date(2026,9,16,12)}).parsed[0].isoDate, tomorrow);
+ for (const field of ['dateScheduled', 'customDate', 'trackedOn', 'action']) {
+  const draft = condition('dateIs', today), root = new Element();
+  let changes = 0, input;
+  const changed = () => { changes++; };
+  const state = { options: {onChange: changed}, getPickerSettings: () => settings, getFilterOperatorLabel: () => 'date',
+   openDateConditionPopover: openFilterDate };
+  if (field === 'action') {
+   draft.field = 'dateScheduled';
+   compile('renderValue', { actionType: () => 'date', t: h.t, isFilePropertyColumnKey: () => false, showDatePicker: pick }, 'AutomationActionRow').call({
+    action: draft, valueHost: root, ctx: {settings: () => settings, changed}, syncType() {},
+   });
+   input = root.children[0];
+  } else if (field === 'trackedOn') {
+   draft.field = field;
+   compile('renderTrackedOnValue', {isValidTrackedOnCondition: () => true, DATE_OPERATORS: h.DATE_OPERATORS, t:h.t,
+    setAccessibleLabelWithoutTooltip() {}}, 'FilterConditionEditor').call(state, root, draft);
+   input = root.children[0];
+  } else {
+   draft.field = field;
+   const row = modalHarness(draft);
+   input = row.root.find(el => el.tag === 'input')[0];
+   row.state.openDateConditionPopover = openFilterDate;
+   row.state.getPickerSettings = () => settings;
+   row.state.options.onChange = () => { draft.value = row.cond.value; changed(); };
+  }
+  const count = opened.length;
+  input.fire('focus'); input.fire('click');
+  assert.equal(opened.length, count+1);
+  const options = opened.at(-1);
+  assert.equal(options.fieldKey, draft.field);
+  assert.equal(options.value, today);
+  assert.equal(options.dateDisplayFormat, settings.dateDisplayFormat);
+  assert.deepEqual(options.manualDatePicker, {weekStart:1, showWeekNumbers:true});
+  options.onClose(); assert.equal(changes, 0);
+  input.fire('click'); opened.at(-1).onSelect(tomorrow); opened.at(-1).onClose();
+  assert.equal(draft.value, tomorrow); assert.equal(changes, 1);
+  input.fire('click'); assert.equal(opened.at(-1).value, tomorrow); opened.at(-1).onRemove(); opened.at(-1).onClose();
+  assert.ok(!draft.value); assert.equal(changes, 2);
+ }
+ const nextDay = '2026-10-17', candidate = task(tomorrow);
+ assert.equal(matches(condition('dateIs', tomorrow), candidate, nextDay), true);
+ assert.equal(matches(condition('exactlyDaysAway','1'), candidate, today), true);
+ assert.equal(matches(condition('exactlyDaysAway','1'), candidate, nextDay), false);
 });
 test('choosing the new condition sets date type and exposes date operators', () => {
  const { root, cond, fieldPickers } = modalHarness({ id: 'condition', field: 'description', fieldType: 'text', operator: 'contains', value: 'old' });

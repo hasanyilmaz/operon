@@ -11,7 +11,7 @@ import type { IndexedTask } from '../types/fields';
 import { setAccessibleLabelWithoutTooltip } from './accessibility-label';
 import { bindOperonHoverTooltip } from './operon-hover-tooltip';
 import type { FilterFieldPickerOption } from './filter-condition-editor';
-import { showOperonDayPickerPopover } from './field-pickers/day-picker-popover';
+import { showDatePicker } from './field-pickers/date-picker';
 import { showDatetimePicker } from './field-pickers/datetime-picker';
 import { createFilterPickerTrigger, showFilterConditionPicker } from './field-pickers/filter-condition-picker';
 import { decodeVaultPropertyList, encodeVaultPropertyValue } from '../core/vault-property-codec';
@@ -227,9 +227,10 @@ export class AutomationActionRow {
 				if (this.popoverOpen) return;
 				this.popoverOpen = true;
 				const onClose = () => { this.popoverOpen = false; queueMicrotask(() => this.syncType()); };
-				if (type === 'date') showOperonDayPickerPopover(input, { app: ctx.app, value: input.value || undefined,
-					weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers,
-					canClear: !!input.value, onClear: () => update(''), onSelect: update, onClose });
+				if (type === 'date') showDatePicker(input, { app: ctx.app, fieldKey: action.field, value: input.value || undefined,
+					dateDisplayFormat: settings.dateDisplayFormat,
+					manualDatePicker: { weekStart: settings.calendarWeekStart, showWeekNumbers: settings.calendarSidebarShowWeekNumbers },
+					canRemove: !!input.value, onRemove: () => update(''), onSelect: update, onClose });
 				else showDatetimePicker(input, { app: ctx.app, settings, value: input.value || undefined,
 					canRemove: !!input.value, onRemove: () => update(''), onSelect: update, onClose });
 			};
