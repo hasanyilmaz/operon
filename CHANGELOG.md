@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Use **Settings → Tasks → Automations** to apply several changes to matching inline and file tasks. Define the scope with grouped filter conditions, narrow it to the tasks you want to change, then choose actions such as adding a tag or setting a priority.
 - In **Automation Actions**, choose a date suggestion such as **3 days from now** to calculate the date each time the rule runs. For datetime fields, pair it with a fixed local time in your preferred 12- or 24-hour format. Picking a calendar day or typing a full date sets a fixed date.
+- In **Automation Actions**, the **ReminderRules** picker lets you add or remove a rule such as “30 minutes before the task starts” even when the task’s date is still empty.
+- Use the **ReminderDatetimes** picker to add or remove one reminder at a time. Choose a fixed calendar date or a suggestion like **Tomorrow** with a time of day. The rule resolves **Tomorrow** each time it runs.
 - New rules start **Inactive**. Once active, a manual rule runs when you choose **Run**. An automatic rule checks all matching targets after a relevant task edit. Date-based rules also check the current day when the day changes or you reopen Obsidian.
 - **Always ask** is the default for both manual and automatic rules. The confirmation shows how many distinct tasks will change and which rules are involved. You can set a task-count threshold or cancel and deactivate the listed rules.
 
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Passed **256/256** focused automation tests and **5,317/5,317** local regression tests. Desktop checks verified task counts against actual changes to inline and file tasks, including bulk confirmation, conflicting actions, blocked tasks, and date-based rules.
+- Passed **260/260** focused automation tests and **5,317/5,317** local regression tests. Desktop checks verified task counts against actual changes to inline and file tasks, including bulk confirmation, conflicting actions, blocked tasks, and date-based rules.
 
 ## [4.8.0] - 2026-11-18
 
