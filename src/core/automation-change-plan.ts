@@ -323,13 +323,17 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 				continue;
 			}
 		}
-		if (payload.repeat && !task.fieldValues.repeatSeriesId) {
+		// A Repeat Action owns the expression alone, including when another Action changes this task.
+		const repeatAction = groups.has(JSON.stringify([id, 'repeat']));
+		if (!repeatAction && payload.repeat && !task.fieldValues.repeatSeriesId) {
 			rejectChange('dependent-effect-unavailable', 'repeat', originsByField.get('repeat')!);
 			continue;
 		}
-		const normalized = normalizeTaskFieldPatch(task.fieldValues, payload, {
-			deferRepeatIdentity: true, getRepeatSkipDates: seriesId => [...snapshot.getRepeatSkipDates(seriesId)],
-		});
+		const normalized = repeatAction
+			? applyFieldRules({ current: task.fieldValues, patch: payload, changedKeys: Object.keys(payload) }).patch
+			: normalizeTaskFieldPatch(task.fieldValues, payload, {
+				deferRepeatIdentity: true, getRepeatSkipDates: seriesId => [...snapshot.getRepeatSkipDates(seriesId)],
+			});
 		const explicit = new Map(entries.map(change => [change.field, change]));
 		const allOrigins = managed.flatMap(c => c.origins);
 		const propose = (field: string, before: PlanValue, after: PlanValue, origins: Origin[]) => {

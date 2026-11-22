@@ -3,6 +3,9 @@ import { automationTypedListMapping, readAutomationListMembers, isAutomationNati
 import { createAutomationActionId, type AutomationAction } from '../core/automation-rules';
 import { t } from '../core/i18n';
 import { formatCompactDatetimeTime, formatUiTaskDatetime } from '../core/ui-time-format';
+import { parseRepeatRule } from '../core/repeat-rule';
+import { formatRepeatRuleSummaryI18n } from '../core/repeat-rule-i18n';
+import { showRepeatPicker } from './field-pickers/repeat-picker';
 import { parseListValue } from '../core/parser';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { resolveWorkflowStatus } from '../types/pipeline';
@@ -186,12 +189,15 @@ export class AutomationActionRow {
 		const list = type === 'list' || type === 'tags';
 		const creatorField = ['tags', 'assignees', 'contexts', 'links', 'priority', 'status', 'taskIcon', 'taskColor', 'parentTask', 'location', 'estimate', 'taskType', 'taskImage', 'taskGallery'].includes(action.field)
 			|| ((type === 'text' || type === 'number') && !!getCustomFieldMapping(ctx.settings().keyMappings, action.field));
-		if (list || creatorField && type) {
+		if (list || action.field === 'repeat' || creatorField && type) {
 			const trigger = createFilterPickerTrigger(valueHost);
 			const display = (text: string) => {
 				let displayText = text;
 				if (text && (action.field === 'blocking' || action.field === 'blockedBy')) {
 					displayText = ctx.tasks().find(task => task.operonId === text)?.description.trim() || text;
+				} else if (text && action.field === 'repeat') {
+					const rule = parseRepeatRule(text);
+					if (rule) displayText = formatRepeatRuleSummaryI18n(rule);
 				} else if (text && action.field === 'reminderRules') {
 					displayText = formatReminderDisplayItem({ settings: ctx.settings(), fieldKey: 'reminderRules', rawValue: text, fieldValues: {} }).text;
 				}
@@ -213,7 +219,12 @@ export class AutomationActionRow {
 				};
 				trigger.button.setAttribute('aria-expanded', 'true');
 				const current = Array.isArray(action.value) ? action.value : action.value ? [action.value] : [];
-				if (action.field === 'reminderRules') {
+				if (action.field === 'repeat') {
+					this.closePicker = showRepeatPicker(trigger.button, {
+						ruleOnly: true, value: current[0],
+						onSave: ({ repeat }) => commit(repeat), onClear: () => commit(''), onClose,
+					});
+				} else if (action.field === 'reminderRules') {
 					this.closePicker = showReminderRulesPicker(trigger.button, {
 						app: ctx.app, settings: ctx.settings(), actionValue: current[0] ?? '',
 						onCommit: value => commit(value ? [value] : []), onClose,

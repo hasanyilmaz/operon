@@ -766,3 +766,24 @@ test('ordinary custom list suggestions count tasks once per value and break ties
  assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping, 'usage'), ['Z', 'A', 'B']);
  assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping), ['A', 'B', 'Z']);
 });
+
+test('Repeat Action picker reopens the rule and commits only its expression', () => {
+ let picker;
+ const render = compile('renderValue', {...h, actionType: () => 'text', automationTypedListMapping: () => null,
+  formatRepeatRuleSummaryI18n: rule => rule.freq, showRepeatPicker: (_anchor, options) => { picker = options; return () => {}; }}, 'AutomationActionRow');
+ const action = {field: 'repeat', operation: 'remove', value: 'mode=schedule|freq=day|interval=1'};
+ const host = new PickerElement();
+ render.call({action, valueHost: host, ctx: {settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
+ const button = host.children[0];
+ button.fire('click');
+ assert.equal(picker.ruleOnly, true);
+ assert.equal(picker.value, action.value);
+ const repeat = 'mode=done|freq=month|interval=1';
+ picker.onSave({repeat, datetimeRepeatEnd: '', repeatOccurrenceDate: today, inlineCompletionMode: 'replace-completed'});
+ assert.deepEqual(action, {field: 'repeat', operation: 'remove', value: repeat});
+ assert.match(button.attrs['aria-label'], /month/);
+ button.fire('click');
+ assert.equal(picker.value, repeat);
+ picker.onClear();
+ assert.equal(action.value, '');
+});

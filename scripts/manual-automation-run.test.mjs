@@ -2087,3 +2087,35 @@ test('custom list suggestions rank by task count with distinct typed members', a
 	const candidates = collectNativeFieldValueCandidates(f.app, [...f.tasks.values()], typedMembers.keyMappings, 'Members', 'list', true, 'usage');
 	assert.deepEqual(candidates, ['"A; B"', '"2"', '2']);
 });
+
+test('Repeat Actions set or clear just the expression on inline and file tasks', async () => {
+	const previous = 'mode=schedule|freq=day|interval=1';
+	const selected = 'mode=count|freq=day|interval=2|count=3';
+	for (const format of ['inline', 'yaml']) {
+		for (const [operation, existing, hasSeries, changed] of [
+			['add', previous, true, true], ['add', '', false, true],
+			['remove', selected, true, true], ['remove', previous, true, false],
+		]) {
+			const metadata = hasSeries ? {repeatSeriesId: 'series01', repeatOccurrenceDate: '2026-11-01', datetimeRepeatEnd: '2027-02-01T23:59:59'} : {};
+			const fields = Object.entries({...metadata, ...(existing ? {repeat: existing} : {})});
+			const before = format === 'inline' ? inline(id(0), fields.map(([k,v]) => ' {{' + k + ':: ' + v + '}}').join(''))
+				: membersSource(fields.map(([k,v]) => k + ': ' + JSON.stringify(v)).join('\n'));
+			const f = await fixture({'Repeat.md': before}, {rule:{actions:[action('repeat', selected, operation)]}});
+			assert.equal((await f.run()).applied, Number(changed), format + ' ' + operation + ' ' + existing);
+			const after = await f.read('Repeat.md');
+			if (!changed) assert.equal(after, before);
+			const expected = changed ? operation === 'add' ? selected : '' : existing;
+			if (format === 'yaml') {
+				const data = parseYaml(after.split('---')[1]);
+				assert.equal(data.repeat ?? '', expected);
+				for (const key of ['repeatSeriesId', 'repeatOccurrenceDate', 'datetimeRepeatEnd']) assert.equal(data[key], metadata[key]);
+			} else {
+				assert.equal(/\{\{repeat:: ([^}]+)\}\}/u.exec(after)?.[1] ?? '', expected);
+				for (const key of ['repeatSeriesId', 'repeatOccurrenceDate', 'datetimeRepeatEnd']) {
+					assert.equal(after.includes('{{' + key + '::'), hasSeries);
+					if (hasSeries) assert.ok(after.includes('{{' + key + ':: ' + metadata[key] + '}}'));
+				}
+			}
+		}
+	}
+});
