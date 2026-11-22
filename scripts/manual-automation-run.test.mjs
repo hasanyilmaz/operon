@@ -2186,3 +2186,47 @@ test('a failed series creation restores the task source', async () => {
 	assert.equal(await f.read('Task.md'), before);
 	assert.equal(f.repeatStore.getAllEntries().length, 0);
 });
+
+for (const format of ['inline', 'yaml']) {
+	const dailyCount = 'mode=count|freq=day|interval=1|count=3';
+	const selected = 'mode=schedule|freq=week|interval=1|days=mo,fr';
+	const repeatFixture = async (fields, actions) => {
+		const source = format === 'inline'
+			? inline(id(0), Object.entries(fields).map(([k,v]) => ' {{' + k + ':: ' + v + '}}').join(''))
+			: membersSource(Object.entries(fields).map(([k,v]) => k + ': ' + JSON.stringify(v)).join('\n'));
+		const f = await fixture({'Task.md': source}, {rule: {actions}});
+		const taskId = format === 'inline' ? id(0) : 'task001';
+		const readFields = async () => {
+			if (format === 'inline') await f.reindexInline(taskId);
+			else await f.reindexYaml(taskId);
+			return f.tasks.get(taskId).fieldValues;
+		};
+		return {f, readFields};
+	};
+
+	test(format + ': minus Repeat matches reordered tokens and weekdays', async () => {
+		const {f, readFields} = await repeatFixture({
+			repeat: 'days=fr,mo|interval=1|freq=week|mode=schedule', repeatSeriesId: 'series01',
+		}, [action('repeat', selected, 'remove')]);
+		assert.equal((await f.run()).applied, 1);
+		const fields = await readFields();
+		assert.ok(!fields.repeat);
+		assert.equal(fields.repeatSeriesId, 'series01');
+		assert.equal((await f.run()).applied, 0);
+	});
+
+	test(format + ': nonmatching minus Repeat preserves normal count end calculation and its reference date', async () => {
+		for (const reference of ['', '2026-11-01']) {
+			const {f, readFields} = await repeatFixture({
+				repeat: dailyCount, repeatSeriesId: 'series01', dateScheduled: '2026-11-01',
+				datetimeRepeatEnd: '2026-11-03T23:59:59', ...(reference ? {repeatOccurrenceDate: reference} : {}),
+			}, [action('repeat', 'mode=count|freq=day|interval=1|count=4', 'remove'), action('dateScheduled', '2026-12-01')]);
+			assert.equal((await f.run()).applied, 1);
+			const fields = await readFields();
+			assert.equal(fields.dateScheduled, '2026-12-01');
+			assert.equal(fields.repeat, dailyCount);
+			assert.equal(fields.datetimeRepeatEnd, reference ? '2026-11-03T23:59:59' : '2026-12-03T23:59:59');
+			assert.equal(fields.repeatSeriesId, 'series01');
+		}
+	});
+}

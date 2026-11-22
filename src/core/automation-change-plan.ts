@@ -6,6 +6,7 @@ import { createAutomationProjectSerialValidator, type AutomationAction, type Aut
 import { getOperatorsForField, prepareFilterGroupMatcher, type FilterEvaluationOptions } from './filter-evaluator';
 import { parseDependencyIdList, getDependencyEdgeForField, validateDependencyEdgeSet,
 	resolveActiveBlockers, resolveDependencyStatusChangeAttempt, isScheduledDependencyPlanningTransition } from './dependency-graph';
+import { parseRepeatRule, serializeRepeatRule } from './repeat-rule';
 import { applyFieldRules } from './field-rules';
 import { getOppositeDependencyFieldKey, normalizeTaskFieldPatch } from './task-field-patch';
 import { resolveParentLinkInheritance, projectParentLinkListSource } from './subtask-inheritance';
@@ -100,13 +101,20 @@ function stored(task: IndexedTask, field: string): PlanValue {
 function equal(a: PlanValue, b: PlanValue): boolean {
 	return Array.isArray(a) && Array.isArray(b) ? a.length === b.length && a.every((value, i) => value === b[i]) : a === b;
 }
+function matchesRemoval(remove: Intent, value: PlanValue): boolean {
+	if (equal(remove.value, value)) return true;
+	if (remove.field !== 'repeat' || typeof remove.value !== 'string' || typeof value !== 'string') return false;
+	const selected = parseRepeatRule(remove.value);
+	const candidate = parseRepeatRule(value);
+	return !!selected && !!candidate && serializeRepeatRule(selected) === serializeRepeatRule(candidate);
+}
 function clearValue(field: string): PlanValue {
 	if (field === 'checkbox') return 'open';
 	if (field === 'pinned') return false;
 	return null;
 }
 function nextScalar(intent: Intent): PlanValue {
-	return intent.op === 'clear-if' ? equal(intent.before, intent.value) ? clearValue(intent.field) : intent.before : intent.value;
+	return intent.op === 'clear-if' ? matchesRemoval(intent, intent.before) ? clearValue(intent.field) : intent.before : intent.value;
 }
 function originKey(origin: Origin): string {
 	return JSON.stringify([origin.taskId, origin.ruleId, origin.actionId]);
@@ -324,7 +332,7 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 			}
 		}
 		// A Repeat Action owns the expression alone, including when another Action changes this task.
-		const repeatAction = groups.has(JSON.stringify([id, 'repeat']));
+		const repeatAction = managed.some(change => change.field === 'repeat');
 		if (!repeatAction && payload.repeat && !task.fieldValues.repeatSeriesId) {
 			rejectChange('dependent-effect-unavailable', 'repeat', originsByField.get('repeat')!);
 			continue;
@@ -340,7 +348,7 @@ function deriveDomainEffects(ctx: PlanContext, guardTransitions: Map<string, Ori
 			const direct = explicit.get(field);
 			const claims = groups.get(JSON.stringify([id, field])) ?? [];
 			const opposed = claims.filter(intent => intent.op === 'set' && literalText(intent.value) !== literalText(after)
-				|| intent.op === 'clear-if' && equal(intent.value, after)
+				|| intent.op === 'clear-if' && matchesRemoval(intent, after)
 				|| intent.op === 'exclude' && Array.isArray(after) && after.includes(intent.value as Member)
 				|| intent.op === 'include' && Array.isArray(after) && !after.includes(intent.value as Member));
 			if (!opposed.length && Array.isArray(after) && direct && Array.isArray(direct.after) && direct.after.every(value => after.includes(value))) {
@@ -378,7 +386,7 @@ function resolveIntents(intents: Intent[], directByRule: Map<string, Set<string>
 	const first = intents[0];
 	const sets = intents.filter(i => i.op === 'set' || i.op === 'include');
 	const removes = intents.filter(i => i.op === 'clear-if' || i.op === 'exclude');
-	if (sets.some(set => removes.some(remove => equal(set.value, remove.value)))) return 'conflict';
+	if (sets.some(set => removes.some(remove => matchesRemoval(remove, set.value)))) return 'conflict';
 	let after: PlanValue;
 	let contributing: Intent[];
 	if (Array.isArray(first.before)) {
@@ -389,8 +397,8 @@ function resolveIntents(intents: Intent[], directByRule: Map<string, Set<string>
 		contributing = intents.filter(i => i.op === 'include' ? extra.has(i.value as Member) : before.includes(i.value as Member));
 	} else {
 		if (sets.some(i => !equal(i.value, sets[0].value))) return 'conflict';
-		after = sets.length ? sets[0].value : removes.some(i => equal(first.before, i.value)) ? clearValue(first.field) : first.before;
-		contributing = sets.length ? sets : removes.filter(i => equal(first.before, i.value));
+		after = sets.length ? sets[0].value : removes.some(i => matchesRemoval(i, first.before)) ? clearValue(first.field) : first.before;
+		contributing = sets.length ? sets : removes.filter(i => matchesRemoval(i, first.before));
 	}
 	if (equal(first.before, after)) return;
 	for (const intent of contributing) {
