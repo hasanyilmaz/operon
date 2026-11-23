@@ -37,6 +37,8 @@ export class MiniCalendarScroller {
 	private readonly windowCount: number;
 	private pitch = 42;
 	private height = 0;
+	private drawnRange = '';
+	private referenceDate = '';
 	private position: MiniCalendarScrollPosition;
 	private expectedScroll: number | null = null;
 	private frame: number | null = null;
@@ -82,7 +84,10 @@ export class MiniCalendarScroller {
 	}
 
 	update(options: MiniCalendarOptions): void {
+		const previous = this.options;
 		this.options = options;
+		if (previous.today === options.today
+			&& (previous.selectedDate ?? previous.dateKey) === (options.selectedDate ?? options.dateKey)) return;
 		for (const row of this.rows.values()) {
 			for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('[data-date-key]'))) {
 				button.classList.toggle('is-anchor', button.dataset.dateKey === (options.selectedDate ?? options.dateKey));
@@ -106,8 +111,11 @@ export class MiniCalendarScroller {
 
 	private restore(): void {
 		this.draw();
-		this.element.scrollTop = Math.max(0, this.targetTop());
-		this.expectedScroll = this.element.scrollTop;
+		const target = Math.max(0, this.targetTop());
+		if (Math.abs(this.element.scrollTop - target) >= 0.5) {
+			this.element.scrollTop = target;
+			this.expectedScroll = this.element.scrollTop;
+		}
 		this.updateReference();
 	}
 
@@ -138,7 +146,10 @@ export class MiniCalendarScroller {
 	private updateReference(): void {
 		const selected = miniCalendarDay(this.options.selectedDate ?? this.options.dateKey);
 		const offset = selected - miniCalendarWeekStart(selected, this.options.weekStart);
-		this.onReference(miniCalendarDate(Math.max(MINI_CALENDAR_MIN_DAY, Math.min(MINI_CALENDAR_MAX_DAY, this.position.week + offset))));
+		const date = miniCalendarDate(Math.max(MINI_CALENDAR_MIN_DAY, Math.min(MINI_CALENDAR_MAX_DAY, this.position.week + offset)));
+		if (date === this.referenceDate) return;
+		this.referenceDate = date;
+		this.onReference(date);
 	}
 
 	private readonly pointerDown = (): void => { this.pointerCount++; };
@@ -162,6 +173,14 @@ export class MiniCalendarScroller {
 		const center = this.index();
 		const start = Math.max(this.windowStart, center - Math.ceil(count * 1.5));
 		const end = Math.min(this.windowStart + this.windowCount, center + Math.ceil(count * 1.5) + 1);
+		const top = this.targetTop() - this.padding();
+		const firstVisible = Math.floor((top + 0.5) / this.pitch) + this.windowStart;
+		const lastVisible = Math.ceil((top + this.height - 0.5) / this.pitch) - 1 + this.windowStart;
+		const canvasHeight = `${this.windowCount * this.pitch + this.padding() * 2}px`;
+		if (this.canvas.style.height !== canvasHeight) this.canvas.style.height = canvasHeight;
+		const range = [start, end, center, firstVisible, lastVisible, this.pitch, this.windowStart].join(':');
+		if (range === this.drawnRange) return;
+		this.drawnRange = range;
 		const active = this.element.ownerDocument.activeElement;
 		for (const [index, row] of this.rows) {
 			if (index >= start && index < end) continue;
@@ -171,8 +190,6 @@ export class MiniCalendarScroller {
 			row.remove();
 			this.rows.delete(index);
 		}
-		this.canvas.style.height = `${this.windowCount * this.pitch + this.padding() * 2}px`;
-		const top = this.targetTop();
 		let before = this.canvas.firstElementChild;
 		for (let index = start; index < end; index++) {
 			let row = this.rows.get(index);
@@ -189,10 +206,15 @@ export class MiniCalendarScroller {
 				this.resizeObserver?.observe(row);
 			}
 			row.classList.toggle('is-centered-week', index === center);
-			const y = this.padding() + (index - this.windowStart) * this.pitch;
-			row.style.top = `${y}px`;
-			const visible = this.height > 0 && y + this.pitch > top + 0.5 && y < top + this.height - 0.5;
-			for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('button'))) button.tabIndex = visible && !button.disabled ? 0 : -1;
+			// The canvas midpoint includes the viewport inset, so resizing moves retained rows through layout alone.
+			const offset = (index - this.windowStart - this.windowCount / 2) * this.pitch;
+			const position = `calc(50% ${offset < 0 ? '-' : '+'} ${Math.abs(offset)}px)`;
+			if (row.style.top !== position) row.style.top = position;
+			const visible = this.height > 0 && index >= firstVisible && index <= lastVisible;
+			if (row.dataset.tabbable !== String(visible)) {
+				row.dataset.tabbable = String(visible);
+				for (const button of Array.from(row.querySelectorAll<HTMLButtonElement>('button'))) button.tabIndex = visible && !button.disabled ? 0 : -1;
+			}
 			// Keep DOM/tab order chronological when scrolling back into earlier weeks.
 			if (row !== before) this.canvas.insertBefore(row, before);
 			before = row.nextElementSibling;
