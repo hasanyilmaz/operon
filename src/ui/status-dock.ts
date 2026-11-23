@@ -92,7 +92,16 @@ export class OperonStatusDock extends Component {
   if (unsubscribePinned) this.register(unsubscribePinned);
 		const { workspace } = this.app;
 		this.register(this.upcoming.subscribe(() => this.renderWidgets()));
-		this.register(this.dependencies.timeTracker.subscribe(event => { if (event === 'history') this.historyRevision++; this.renderWidgets(); }));
+		this.register(this.dependencies.timeTracker.subscribe(event => {
+			if (this.disposed) return;
+			if (event === 'tick') {
+				const snapshot = this.snapshot();
+				for (const { widget } of this.windows.values()) widget.updateTrackerReading(snapshot);
+				return;
+			}
+			if (event === 'history') this.historyRevision++;
+			this.renderWidgets();
+		}));
 		const unsubscribeSessions = this.dependencies.timeTracker.subscribeSessionCreated?.(session => {
 			if (this.disposed || !this.visible) return;
 			for (const context of this.windows.values()) if (!context.widget.slot.hidden) { if (context.taskList) context.taskList.showSession(session); else context.sessionCard?.show(session); }

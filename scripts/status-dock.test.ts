@@ -56,6 +56,20 @@ function timeText(element: HTMLElement): string | null {
 	return modeText ? Array.from(modeText.children, child => child.textContent).join('') : element.textContent;
 }
 
+test('a tracker tick advances the clock without refreshing the dock layout', () => {
+	const f = widget();
+	let layoutRefreshes = 0;
+	f.dock.refreshSectionLayout = () => { layoutRefreshes++; };
+	const clock = f.find('operon-status-dock-time');
+	const next = f.find('operon-status-dock-next');
+	f.state.active!.elapsedSeconds = 30;
+	f.dock.updateTrackerReading(f.state);
+	assert.equal(timeText(clock), '30s');
+	assert.equal(f.find('operon-status-dock-next'), next);
+	assert.equal(layoutRefreshes, 0);
+	f.dock.destroy();
+});
+
 test('status dock displays titles when enabled and filename labels when disabled', () => {
 	const task: IndexedTask = {
 		operonId: 'n000123', description: 'old-file', checkbox: 'open', tags: [],
@@ -1432,7 +1446,7 @@ test('calendar Play replaces each leading icon without changing source clicks', 
 	const aButton = (f.dock as any).currentReadings.get('a').button, first = controls.get(aButton);
 	f.state.active = { ...f.state.active!, operonId: 'a', task: a }; f.dock.update(f.state);
 	assert.equal(first.play.hidden, true); assert.equal(first.shell.classList.contains('has-task-play'), false); first.play.click(); assert.equal(f.calls.length, 6);
-	f.state.active = null; f.state.actionPending = true; f.dock.update(f.state); assert.equal(first.play.disabled, true); assert.equal(first.shell.classList.contains('has-task-play'), false);
+	f.state.active = null; f.state.actionPending = true; f.dock.update(f.state); assert.equal(first.play.disabled, true); assert.equal(first.shell.classList.contains('has-task-play'), true);
 	first.play.click(); assert.equal(f.calls.length, 6);
 	f.state.actionPending = false; f.state.upcoming.ongoing = [b]; f.dock.update(f.state);
 	assert.equal(controls.has(aButton), false); assert.equal((f.dock as any).icons.has(first.play), false);

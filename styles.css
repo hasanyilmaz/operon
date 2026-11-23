@@ -14268,6 +14268,8 @@ button.operon-pinned-timer:focus-visible {
 	outline: none;
 }
 
+.operon-pinned-card > button.operon-pinned-timer { transition: none; }
+
 .operon-pinned-timer.is-active {
 	color: var(--text-error);
 	border-color: color-mix(in srgb, var(--text-error) 70%, var(--background-modifier-border));
@@ -37682,6 +37684,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 .operon-status-dock button:hover:not(:disabled) { background: transparent; box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover, var(--background-modifier-border)); }
 .operon-status-dock button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
 .operon-status-dock button:disabled { opacity: .45; cursor: default; }
+.operon-status-dock.is-timer-pending button:disabled { opacity: 1; transition: none; }
 .operon-status-dock button:not(:disabled):not(.operon-status-dock-grip) { cursor: pointer; }
 /* Fit task sections to their content and wrap whole sections when space runs out. */
 .operon-status-dock > :is(.operon-status-dock-task-area, .operon-status-dock-tracker):not([hidden]) {

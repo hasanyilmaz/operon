@@ -259,7 +259,6 @@ export class StatusDockWidget {
 	}
 
 	update(snapshot: StatusDockSnapshot): void {
-		this.lastSnapshot = snapshot;
 		const { settings, active, breakSnapshot, upcoming, alert } = snapshot;
 		const ongoing = upcoming.ongoing ?? [];
   const sections = settings.statusDockSections;
@@ -279,55 +278,12 @@ export class StatusDockWidget {
 		this.timerAction.classList.toggle('is-running', !!active);
 		this.root.classList.toggle('is-break', !!breakSnapshot.breakState);
 		this.root.classList.toggle('is-idle', !active && !breakSnapshot.breakState);
+		this.updateTrackerReading(snapshot);
 		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
-		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '')
-			|| (active?.isUnassigned ? t('taskEditor', creatorStartsTimer ? 'dockSelectTask' : 'dockSelectTaskOnly') : snapshot.pendingDescription ?? '');
-		const breakState = breakSnapshot.breakState;
-		const { flowTimeMode, flowTimeSessionMinutes } = snapshot.timerSettings;
-		const timer = resolveFlowTimeDialState(
-			flowTimeMode,
-			breakState ? snapshot.breakSeconds : active?.elapsedSeconds ?? 0,
-			breakState?.targetSeconds ?? getFlowTimeTargetSeconds(flowTimeSessionMinutes),
-		);
-		this.updateDial(snapshot, timer);
-		const isFlowTime = flowTimeMode === 'flowtime';
-		const modeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeFlowTime' : 'flowTimeModeTrackTime');
-		const nextModeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeTrackTime' : 'flowTimeModeFlowTime');
-		const running = !!active || !!breakState;
-		const precision = settings.statusDockShowSeconds || timer.displaySeconds < 60 ? 'seconds' : 'minutes';
-		const reading = formatStatusDockSeconds(formatDurationHuman(timer.displaySeconds, precision));
-		const duration = `${timer.overtime ? '+' : ''}${reading}`;
-		const showSeconds = running && precision === 'seconds';
-		this.trackerTimeSeconds.hidden = !showSeconds;
-		text(this.trackerTimeSeconds, showSeconds ? duration.slice(-3) : '');
-		text(this.trackerTimePrefix, showSeconds ? duration.slice(0, -3) : running ? duration : modeLabel);
-		if (running) {
-			const width = `${isFlowTime ? '+' : ''}${reading.replace(/\d+/gu, digits => '0'.repeat(Math.max(2, digits.length)))}`;
-			if (this.trackerTime.dataset.durationWidth !== width) this.trackerTime.dataset.durationWidth = width;
-		} else {
-			delete this.trackerTime.dataset.durationWidth;
-		}
-		this.trackerTime.classList.toggle('is-flowtime', isFlowTime);
-		const switchMode = t('settings', 'statusDockSwitchTimerMode', { mode: nextModeLabel });
-		const timerLabel = running ? `${modeLabel}, ${duration}. ${switchMode}` : `${modeLabel}. ${switchMode}`;
-		setAccessibleLabelWithoutTooltip(this.trackerTime, timerLabel, this.trackerTime.parentElement ?? undefined);
-		const hasTask = !!(active?.operonId || breakSnapshot.pendingTaskId);
-		this.trackerName.hidden = !description;
-		if (hasTask) this.name(this.trackerName, description, settings.language);
-		else { this.nameKeys.delete(this.trackerName); text(this.trackerName, description); }
 		const sourceLabel = sourceLabelForSettings(settings);
-		const trackerAction = active?.operonId || breakSnapshot.pendingTaskId ? sourceLabel : t('commands', 'openTaskFinder');
 		const finderHint = t('commands', 'trackDifferentTask');
-		if (hasTask) {
-			this.trackerName.setAttribute('role', 'button'); this.trackerName.tabIndex = 0;
-			this.label(this.trackerName, trackerAction, description,
-				`${trackerAction}: ${running ? duration + ', ' : ''}${description}`);
-		} else {
-			this.trackerName.removeAttribute('role'); this.trackerName.removeAttribute('tabindex');
-			cleanupOperonHoverTooltips(this.trackerName); this.tooltipKeys.delete(this.trackerName);
-			setAccessibleLabelWithoutTooltip(this.trackerName, '', this.trackerName.parentElement ?? undefined);
-		}
 		const busy = snapshot.actionPending || breakSnapshot.actionPending;
+		this.root.classList.toggle('is-timer-pending', busy);
 		const choosing = canSelectFlowTimeTask(active, breakSnapshot);
 		const primaryFinder = choosing && !breakSnapshot.breakState;
 		this.icon(this.coffee, primaryFinder ? 'scan-search' : 'coffee');
@@ -388,6 +344,58 @@ export class StatusDockWidget {
 		this.refreshSectionLayout();
 	}
 
+	updateTrackerReading(snapshot: StatusDockSnapshot): void {
+		this.lastSnapshot = snapshot;
+		const { settings, active, breakSnapshot } = snapshot;
+		const creatorStartsTimer = settings.statusDockCreatorStartsTimer !== false;
+		const description = (active?.task ? getTaskDisplayTitle(active.task, settings.fileTaskDisplayTitleEnabled) : '')
+			|| (active?.isUnassigned ? t('taskEditor', creatorStartsTimer ? 'dockSelectTask' : 'dockSelectTaskOnly') : snapshot.pendingDescription ?? '');
+		const breakState = breakSnapshot.breakState;
+		const { flowTimeMode, flowTimeSessionMinutes } = snapshot.timerSettings;
+		const timer = resolveFlowTimeDialState(
+			flowTimeMode,
+			breakState ? snapshot.breakSeconds : active?.elapsedSeconds ?? 0,
+			breakState?.targetSeconds ?? getFlowTimeTargetSeconds(flowTimeSessionMinutes),
+		);
+		this.updateDial(snapshot, timer);
+		const isFlowTime = flowTimeMode === 'flowtime';
+		const modeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeFlowTime' : 'flowTimeModeTrackTime');
+		const nextModeLabel = t('taskEditor', isFlowTime ? 'flowTimeModeTrackTime' : 'flowTimeModeFlowTime');
+		const running = !!active || !!breakState;
+		const precision = settings.statusDockShowSeconds || timer.displaySeconds < 60 ? 'seconds' : 'minutes';
+		const reading = formatStatusDockSeconds(formatDurationHuman(timer.displaySeconds, precision));
+		const duration = `${timer.overtime ? '+' : ''}${reading}`;
+		const showSeconds = running && precision === 'seconds';
+		this.trackerTimeSeconds.hidden = !showSeconds;
+		text(this.trackerTimeSeconds, showSeconds ? duration.slice(-3) : '');
+		text(this.trackerTimePrefix, showSeconds ? duration.slice(0, -3) : running ? duration : modeLabel);
+		if (running) {
+			const width = `${isFlowTime ? '+' : ''}${reading.replace(/\d+/gu, digits => '0'.repeat(Math.max(2, digits.length)))}`;
+			if (this.trackerTime.dataset.durationWidth !== width) this.trackerTime.dataset.durationWidth = width;
+		} else {
+			delete this.trackerTime.dataset.durationWidth;
+		}
+		this.trackerTime.classList.toggle('is-flowtime', isFlowTime);
+		const switchMode = t('settings', 'statusDockSwitchTimerMode', { mode: nextModeLabel });
+		const timerLabel = running ? `${modeLabel}, ${duration}. ${switchMode}` : `${modeLabel}. ${switchMode}`;
+		setAccessibleLabelWithoutTooltip(this.trackerTime, timerLabel, this.trackerTime.parentElement ?? undefined);
+		const hasTask = !!(active?.operonId || breakSnapshot.pendingTaskId);
+		this.trackerName.hidden = !description;
+		if (hasTask) this.name(this.trackerName, description, settings.language);
+		else { this.nameKeys.delete(this.trackerName); text(this.trackerName, description); }
+		const sourceLabel = sourceLabelForSettings(settings);
+		const trackerAction = active?.operonId || breakSnapshot.pendingTaskId ? sourceLabel : t('commands', 'openTaskFinder');
+		if (hasTask) {
+			this.trackerName.setAttribute('role', 'button'); this.trackerName.tabIndex = 0;
+			this.label(this.trackerName, trackerAction, description,
+				`${trackerAction}: ${running ? duration + ', ' : ''}${description}`);
+		} else {
+			this.trackerName.removeAttribute('role'); this.trackerName.removeAttribute('tabindex');
+			cleanupOperonHoverTooltips(this.trackerName); this.tooltipKeys.delete(this.trackerName);
+			setAccessibleLabelWithoutTooltip(this.trackerName, '', this.trackerName.parentElement ?? undefined);
+		}
+	}
+
  /** Keep DOM and keyboard order identical; a tick never reattaches unchanged controls. */
  refreshSectionLayout(): void {
   if (!this.lastSnapshot) return;
@@ -437,7 +445,7 @@ export class StatusDockWidget {
 		control.taskId = task?.operonId ?? null;
 		control.play.hidden = button.hidden || !task || snapshot.active?.operonId === task.operonId;
 		control.play.disabled = snapshot.actionPending || snapshot.breakSnapshot.actionPending;
-		control.shell.classList.toggle('has-task-play', !control.play.hidden && !control.play.disabled);
+		control.shell.classList.toggle('has-task-play', !control.play.hidden);
 		control.play.style.color = normalizeTaskFieldColor(task?.fieldValues.taskColor) ?? '';
 		const title = task
 			? getTaskDisplayTitle(task, snapshot.settings.fileTaskDisplayTitleEnabled)
