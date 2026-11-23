@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Switching timers in the **Pinned Tasks** sidebar keeps the hovered task and its Play/Stop button steady while the previous session is saved.
+- With **Continuous weeks** open in the **Mini Calendar**, compact sidebar tab icons expand smoothly on hover and the panel follows the pointer as you resize it.
 - In the **Mini Calendar**, **Continuous weeks** now leaves the same small gap below the last visible week as above the navigation buttons.
 - Creating a daily or weekly note from the **Mini Calendar** now opens the selected editor without a false task identity warning while indexing finishes.
 - **Filters** now match timestamped tasks against the correct local calendar day. A task modified this morning appears under **Modified is today**, and **next month** and **last month** select the adjacent month even from the 31st.
