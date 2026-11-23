@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use **+ Repeat** to set a recurrence. Each newly recurring task gets its own series. **− Repeat** clears an equivalent rule even when its parts or weekdays are listed in a different order, preserving the series ID and reference date. If the rule does not match and **Scheduled** changes, the existing recurrence still calculates its count-based end date from the applicable reference date.
 - When choosing a date in **Filters** or **Automation** conditions and actions, you can now type a phrase like `next Tuesday`, select **Tomorrow**, or pick a day from the calendar.
 
+### Changed
+
+- Moved **Week start** from Calendar settings to **Core → General → Language & Formats**, just below **Date format**.
+
 ### Fixed
 
 - Switching timers in the **Pinned Tasks** sidebar keeps the hovered task and its Play/Stop button steady while the previous session is saved.
