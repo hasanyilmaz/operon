@@ -80,27 +80,12 @@ export class PinnedTasksSidebarView extends ItemView {
 			this.settings.pinnedTaskSortMode,
 		);
 		const activeTrackerId = this.timeTracker.getActiveOperonId();
-		const colorSettingsSignature = [
-			this.settings.pinnedDockColorSource,
-			this.settings.priorities.map(priority => `${priority.label}:${priority.color}:${priority.priorityIcon ?? ''}`).join(','),
-			this.settings.pipelines.map(pipeline =>
-				`${pipeline.name}:${pipeline.statuses.map(status => `${status.label}:${status.color}:${status.pipelineStatusIcon ?? ''}`).join(',')}`
-			).join('|'),
-		].join('~');
-		const signature = [
-			String(this.indexer.getGeneration()),
-			String(this.pinnedCache.getGeneration()),
-			colorSettingsSignature,
-			this.settings.fallbackTaskIconSource,
-			this.settings.taskStatusIconColorSource, this.settings.taskIconClickAction,
-			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
-			activeTrackerId ?? '',
-			pinnedTasks.map(task =>
-				`${task.operonId}:${getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled)}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
-			).join('|'),
-		].join('§');
-
-		if (signature === this.lastRenderSignature) return;
+		const signature = JSON.stringify([this.settings.language, pinnedTasks.map(task => task.operonId)]);
+		if (signature === this.lastRenderSignature) {
+			const rows = container.querySelectorAll<HTMLElement>('.operon-pinned-sidebar-row');
+			pinnedTasks.forEach((task, index) => this.updateTaskRow(rows[index], task, activeTrackerId));
+			return;
+		}
 		this.lastRenderSignature = signature;
 
 		const previousList = container.querySelector<HTMLElement>(':scope > .operon-pinned-sidebar-list');
@@ -122,7 +107,7 @@ export class PinnedTasksSidebarView extends ItemView {
 
 		const list = container.createDiv('operon-pinned-sidebar-list');
 		for (const task of pinnedTasks) {
-			this.renderTaskRow(list, task);
+			this.renderTaskRow(list, task, activeTrackerId);
 		}
 		if (previousList) {
 			const restoreScroll = (): void => {
@@ -142,10 +127,9 @@ export class PinnedTasksSidebarView extends ItemView {
 		this.bindTaskReorder(list);
 	}
 
-	private renderTaskRow(container: HTMLElement, task: IndexedTask): void {
+	private renderTaskRow(container: HTMLElement, task: IndexedTask, activeTrackerId: string | null): void {
 		const row = container.createDiv('operon-pinned-sidebar-row');
 		row.dataset.operonPinnedTaskId = task.operonId;
-		row.draggable = this.isManualOrderEnabled();
 		row.addEventListener('click', (event) => {
 			if (isTaskSourceOpenModifierClick(event) && this.callbacks.openTaskSource) {
 				event.preventDefault();
@@ -158,17 +142,10 @@ export class PinnedTasksSidebarView extends ItemView {
 			this.callbacks.openTaskEditor(task.operonId);
 		});
 
-		this.applyTaskColor(row, task);
-
 		const statusBtn = row.createEl('button', {
 			cls: `operon-pinned-status operon-pinned-sidebar-status operon-checkbox-${task.checkbox}`,
 			attr: { type: 'button' },
 		});
-		const iconColor = resolveTaskStatusIconColorForTask(task, this.settings);
-		if (iconColor) statusBtn.style.color = iconColor;
-		else statusBtn.style.removeProperty('color');
-		setIcon(statusBtn, resolveTaskDisplayIcon(this.settings, task.fieldValues, task.checkbox));
-		setAccessibleLabelWithoutTooltip(statusBtn, getTaskIconActionLabel(this.settings, task.checkbox));
 		statusBtn.addEventListener('click', asyncHandler('pinned sidebar status cycle failed', async (event) => {
 			event.stopPropagation();
 			await this.callbacks.cycleStatus(task.operonId);
@@ -177,7 +154,7 @@ export class PinnedTasksSidebarView extends ItemView {
 			bindTaskContextualHoverMenu(statusBtn, {
 				surface: 'pinnedTask',
 				taskId: task.operonId,
-				getTask: () => task,
+				getTask: () => this.indexer.getTask(task.operonId) ?? task,
 				getSettings: () => this.settings,
 				onAction: this.callbacks.onContextualAction,
 				isPinned: () => this.pinnedCache.isPinned(task.operonId),
@@ -187,13 +164,8 @@ export class PinnedTasksSidebarView extends ItemView {
 		}
 
 		const description = row.createSpan('operon-pinned-sidebar-desc');
-		renderCompactTaskMarkdown(description, {
-			value: getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled) || t('pinnedTasks', 'untitledTask'),
-			mode: 'visual-only',
-		});
 		description.setAttribute('role', 'button');
 		description.setAttribute('tabindex', '0');
-		setAccessibleLabelWithoutTooltip(description, t('tooltips', 'openTaskEditor'));
 		description.addEventListener('keydown', (event: KeyboardEvent) => {
 			if (event.key !== 'Enter' && event.key !== ' ') return;
 			event.preventDefault();
@@ -213,30 +185,57 @@ export class PinnedTasksSidebarView extends ItemView {
 			await this.pinnedCache.unpin(task.operonId);
 		}));
 
-		const isTracking = this.timeTracker.isTimerRunning(task.operonId);
-		row.toggleClass('operon-pinned-sidebar-row--tracking', isTracking);
 		const timerBtn = actions.createEl('button', {
-			cls: `operon-pinned-sidebar-action operon-pinned-sidebar-timer${isTracking ? ' is-active' : ''}`,
+			cls: 'operon-pinned-sidebar-action operon-pinned-sidebar-timer',
 			attr: { type: 'button' },
 		});
-		setIcon(timerBtn, isTracking ? 'square' : 'play');
-		setAccessibleLabelWithoutTooltip(timerBtn, t('tooltips', isTracking ? 'stopTimer' : 'startTimer'));
+		this.updateTaskRow(row, task, activeTrackerId);
 		timerBtn.addEventListener('click', asyncHandler('pinned sidebar timer toggle failed', async (event) => {
 			event.stopPropagation();
 			await this.callbacks.toggleTimer(task.operonId);
 		}));
 	}
 
-	private applyTaskColor(row: HTMLElement, task: IndexedTask): void {
+	private updateTaskRow(row: HTMLElement, task: IndexedTask, activeTrackerId: string | null): void {
+		row.draggable = this.isManualOrderEnabled();
+		const title = getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled) || t('pinnedTasks', 'untitledTask');
+		if (row.dataset.title !== title) {
+			row.dataset.title = title;
+			const description = row.querySelector<HTMLElement>('.operon-pinned-sidebar-desc')!;
+			description.empty();
+			renderCompactTaskMarkdown(description, { value: title, mode: 'visual-only' });
+			setAccessibleLabelWithoutTooltip(description, t('tooltips', 'openTaskEditor'));
+		}
+		const icon = resolveTaskDisplayIcon(this.settings, task.fieldValues, task.checkbox);
+		const iconColor = resolveTaskStatusIconColorForTask(task, this.settings) ?? '';
+		const label = getTaskIconActionLabel(this.settings, task.checkbox);
+		const status = JSON.stringify([task.checkbox, icon, iconColor, label]);
+		if (row.dataset.status !== status) {
+			row.dataset.status = status;
+			const button = row.querySelector<HTMLButtonElement>('.operon-pinned-sidebar-status')!;
+			button.className = `operon-pinned-status operon-pinned-sidebar-status operon-checkbox-${task.checkbox}`;
+			button.style.color = iconColor;
+			button.querySelector('svg')?.remove();
+			setIcon(button, icon);
+			setAccessibleLabelWithoutTooltip(button, label);
+		}
 		const color = resolveTaskColorSourceForTask(task, this.settings.pinnedDockColorSource, this.settings);
-		if (this.settings.pinnedDockColorSource === 'noColor') {
-			row.setCssProps({ '--operon-card-color': 'var(--background-modifier-border)' });
-		} else if (color) {
-			row.setCssProps({ '--operon-card-color': color });
-			row.setCssProps({
-				'--operon-pinned-sidebar-row-bg': `color-mix(in srgb, ${color} 5%, transparent)`,
-				'--operon-pinned-sidebar-row-hover-border': color,
-			});
+		const border = this.settings.pinnedDockColorSource === 'noColor' ? 'var(--background-modifier-border)' : color ?? '';
+		if (row.dataset.border !== border) {
+			row.dataset.border = border;
+			row.style.setProperty('--operon-card-color', border);
+			row.style.setProperty('--operon-pinned-sidebar-row-bg', color ? `color-mix(in srgb, ${color} 5%, transparent)` : '');
+			row.style.setProperty('--operon-pinned-sidebar-row-hover-border', color ?? '');
+		}
+		const tracking = task.operonId === activeTrackerId;
+		if (row.dataset.tracking !== String(tracking)) {
+			row.dataset.tracking = String(tracking);
+			row.toggleClass('operon-pinned-sidebar-row--tracking', tracking);
+			const button = row.querySelector<HTMLButtonElement>('.operon-pinned-sidebar-timer')!;
+			button.toggleClass('is-active', tracking);
+			button.querySelector('svg')?.remove();
+			setIcon(button, tracking ? 'square' : 'play');
+			setAccessibleLabelWithoutTooltip(button, t('tooltips', tracking ? 'stopTimer' : 'startTimer'));
 		}
 	}
 

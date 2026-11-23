@@ -14371,7 +14371,7 @@ button.operon-pinned-unpin svg {
 	background-color: var(--operon-pinned-sidebar-row-bg, var(--background-primary));
 	box-sizing: border-box;
 	cursor: default;
-	transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+	transition: none;
 	position: relative;
 }
 
@@ -14393,7 +14393,7 @@ button.operon-pinned-sidebar-status {
 	background-color: transparent;
 	box-shadow: none;
 	box-sizing: border-box;
-	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+	transition: none;
 }
 
 button.operon-pinned-sidebar-status:hover,
@@ -14422,7 +14422,7 @@ button.operon-pinned-sidebar-status svg {
 	line-height: 1.35;
 	cursor: pointer;
 	color: var(--text-muted);
-	transition: color 0.12s ease;
+	transition: none;
 }
 
 .operon-pinned-sidebar-row:hover .operon-pinned-sidebar-desc,
@@ -14471,7 +14471,7 @@ button.operon-pinned-sidebar-action {
 	cursor: pointer;
 	box-sizing: border-box;
 	filter: none;
-	transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+	transition: none;
 }
 
 button.operon-pinned-sidebar-action:hover,
@@ -14517,10 +14517,10 @@ button.operon-pinned-sidebar-action svg {
 		z-index: 1;
 		opacity: 0;
 		pointer-events: none;
-		transform: translate(4px, -50%);
+		transform: translate(0, -50%);
 		border-radius: var(--operon-pinned-sidebar-control-radius);
 		background-color: var(--background-primary);
-		transition: opacity 120ms ease, transform 120ms ease, background-color 120ms ease;
+		transition: none;
 	}
 
 	body:not(.is-mobile) .operon-pinned-sidebar-row:is(:hover, :focus-within) > .operon-pinned-sidebar-actions,
