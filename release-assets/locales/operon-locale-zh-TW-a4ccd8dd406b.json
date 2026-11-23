@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "行內任務預設儲存路徑",
       "inlineTaskDefaultSavePathDesc": "選擇「新建 Operon 任務」預設在何處寫入行內任務。",
       "inlineTaskHeading": "行內任務標題關鍵詞",
-      "inlineTaskHeadingDesc": "日記、活動檔案和每次詢問的標題關鍵詞。第一個包含此短語的標題會接收新的行內任務。如果不存在，Operon 會建立一個 ## 標題。指定檔案模式則改用已啟用的 Daily Notes Core 日期格式，未啟用時回退為 YYYY-MM-DD。",
+      "inlineTaskHeadingDesc": "日記、活動檔案和每次詢問的標題關鍵詞。第一個包含此短語的標題會接收新的行內任務。如果不存在，Operon 會建立一個 ## 標題。",
       "inlineTaskIconsDisplayModeTitle": "切換僅圖示模式",
       "inlineTaskIconsMoveDown": "下移",
       "inlineTaskIconsMoveUp": "上移",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "日記",
       "inlineTaskSavePathSpecificFile": "指定檔案",
       "inlineTaskSavePathWeeklyNotes": "週記",
+      "inlineTaskSpecificFileHeading": "行內任務標題關鍵詞",
+      "inlineTaskSpecificFileHeadingDesc": "留空即可依日期標題將任務分組。",
       "inlineTaskSubtaskAction": "新增子任務操作",
       "inlineTaskTargetFile": "行內任務目標檔案",
-      "inlineTaskTargetFileDesc": "當預設儲存路徑為「指定檔案」時使用的 Markdown 檔案。新任務會歸組在 {{heading}} 下。",
+      "inlineTaskTargetFileDesc": "當預設儲存路徑為「指定檔案」時使用的 Markdown 檔案。",
       "inlineTaskTargetFilePlaceholder": "例如 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "當預設儲存路徑為「指定檔案」時使用的 Markdown 檔案。",
       "inlineTaskUseDailyNote": "將新行內任務儲存到今天的日記",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "8726d8040ff9941a1d47045a243b33e5b07469e84a7977598da966b4b159397f"
+  "sourceVersion": "88f091f9f4b86b78573362f233c1f7ababe32173f4262ba0275ccd423efdf442"
 }

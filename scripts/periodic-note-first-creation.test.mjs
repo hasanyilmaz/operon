@@ -12,6 +12,8 @@ const plugin = source.statements.find(node => ts.isClassDeclaration(node) && nod
 const names = ['uiPeriodicNoteRequest', 'resolveEffectivePeriodicNoteConfig', 'resolveEffectiveDailyNoteConfig', 'getPeriodicNoteService',
  'ensurePeriodicNoteContainerRegistered', 'buildPeriodicNoteTemplateRevision', 'resolvePeriodicNoteDeterministicContent', 'resolveOrCreatePeriodicNoteResult',
  'resolveTaskCreatorInlineTargetFile', 'resolvePeriodicNoteFileTaskContainer', 'resolveWeeklyNoteDailyDateHeading', 'insertTaskCreatorInlineTaskUsingDefaultTarget',
+ 'resolveSpecificFilePlacement', 'resolveInlineTaskSpecificFileHeading', 'resolveInlineTaskTargetFilePath',
+ 'resolveOrCreateInlineTaskTargetFile', 'resolveAgentRuntimeInlineCreationTarget', 'resolveAgentRuntimeInlineCreationPath',
  'insertTaskCreatorInlineTaskIntoFile', 'handleCreatePeriodicNoteCommand'];
 const methods = names.map(name => {
  const method = plugin.members.find(node => node.name?.getText(source) === name);
@@ -31,9 +33,10 @@ import { resolvePeriodicNoteConfigFromSettings, buildOperonPeriodicNoteConfig } 
 import { weeklyRowMonday, resolvePeriodicNotePathFromDateKey, formatPeriodicNoteTitleFromDateKey } from './src/core/periodic-note-path';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
 import { insertInlineTaskUnderHeading, insertInlineTaskUnderFirstHeadingKeyword, UnsafeMarkdownHeadingInsertionError } from './src/core/markdown-heading-insertion';
-import { DEFAULT_SETTINGS, normalizeInlineTaskHeadingKeyword } from './src/types/settings';
+import { formatDailyNoteTitleFromDateKey } from './src/core/daily-note-path';
+import { DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, normalizeSpecificFileHeading, normalizeInlineTaskHeadingKeyword } from './src/types/settings';
 const t=(_group,key)=>key, localToday=()=> '2026-10-13', localNow=()=> '2026-10-13T12:00:00';
-const isDailyNotesCoreAvailable=()=>true, loadDailyNotesCoreConfig=app=>app.core;
+const isDailyNotesCoreAvailable=app=>app.coreEnabled!==false, loadDailyNotesCoreConfig=app=>app.core;
 const loadTemplatesCoreConfig=async()=>({dateFormat:'YYYY-MM-DD',timeFormat:'HH:mm'});
 const resolveFileTaskAutoParentOperonId=()=>null, resolveSubtaskInitialFieldsFromParentValues=parentTask=>({parentTask});
 const isTaskCreatorFieldExplicitlyCleared=()=>false;
@@ -76,6 +79,29 @@ function setup(kind,template,core=false,asTask=false){
  return {h,files,contents,events,add};
 }
 const draft=()=>({description:'Captured',fieldValues:{priority:'A'},tags:[]});
+for (const [keyword,coreEnabled,headings,expected] of [
+ ['Minor Tasks',true,['~~~','## Minor Tasks','~~~','### My Minor Tasks','## More Minor Tasks'],'### My Minor Tasks'],
+ ['New items',true,['# Inbox'],'## New items'],
+ ['',true,['# Inbox'],'## [[2026/10/2026-10-13]]'],
+ ['',false,['# Inbox'],'## [[2026-10-13]]'],
+]) {
+ test('Specific File placement in Creator and Runtime: '+expected,async()=>{
+  const f=setup('weekly','');
+  Object.assign(f.h.settings,{inlineTaskSaveMode:'specific-file',inlineTaskTargetFile:'Inbox.md',inlineTaskHeading:'New Todo',
+   inlineTaskSpecificFileHeading:keyword,inlineTaskDailyNoteAddScheduledDate:false});
+  f.h.resolveEffectiveInlineTaskSaveMode=()=>f.h.settings.inlineTaskSaveMode;
+  f.h.app.coreEnabled=coreEnabled;
+  f.h.app.core.format='YYYY/MM/YYYY-MM-DD';
+  f.add('Inbox.md',headings.join('\\n')+'\\n');
+  const target=await f.h.resolveAgentRuntimeInlineCreationTarget(null);
+  assert.deepEqual(target,{filePath:'Inbox.md',placement:keyword?{kind:'under-heading',headingKeyword:keyword}:{kind:'under-exact-heading',heading:expected}});
+  for(let i=0;i<2;i++) assert.equal((await f.h.insertTaskCreatorInlineTaskUsingDefaultTarget(draft())).kind,'created');
+  const content=f.contents.get('Inbox.md');
+  assert.ok(content.includes(expected+'\\n- [ ] Captured'));
+  assert.equal(content.split('\\n').filter(line=>line===expected).length,1);
+  assert.equal(content.includes('## New Todo'),false);
+ });
+}
 test('Sunday UI routing shares a week across Sunday, Monday and Thursday and across ISO year boundaries',async()=>{
  const f=setup('weekly','Templates/Note');
  f.h.settings.calendarWeekStart='sunday';

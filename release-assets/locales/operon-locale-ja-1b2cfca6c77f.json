@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "インラインタスクのデフォルト保存パス",
       "inlineTaskDefaultSavePathDesc": "新しい Operon タスクがデフォルトでインラインタスクを書き込む場所を選択します。",
       "inlineTaskHeading": "インラインタスクの見出しキーワード",
-      "inlineTaskHeadingDesc": "デイリーノート、アクティブなファイル、毎回確認の見出しキーワード。このフレーズを含む最初の見出しに新しいインラインタスクが追加されます。存在しない場合、Operon は ## 見出しを作成します。「特定のファイル」モードでは、有効な Daily Notes Core の日付形式を使用し、無効な場合は YYYY-MM-DD にフォールバックします。",
+      "inlineTaskHeadingDesc": "デイリーノート、アクティブなファイル、毎回確認の見出しキーワード。このフレーズを含む最初の見出しに新しいインラインタスクが追加されます。存在しない場合、Operon は ## 見出しを作成します。",
       "inlineTaskIconsDisplayModeTitle": "チップのみモードを切り替え",
       "inlineTaskIconsMoveDown": "下へ移動",
       "inlineTaskIconsMoveUp": "上へ移動",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "デイリーノート",
       "inlineTaskSavePathSpecificFile": "特定のファイル",
       "inlineTaskSavePathWeeklyNotes": "ウィークリーノート",
+      "inlineTaskSpecificFileHeading": "インラインタスクの見出しキーワード",
+      "inlineTaskSpecificFileHeadingDesc": "空欄にすると、日付の見出しの下にタスクをまとめます。",
       "inlineTaskSubtaskAction": "サブタスク追加アクション",
       "inlineTaskTargetFile": "インラインタスクの対象ファイル",
-      "inlineTaskTargetFileDesc": "デフォルトの保存パスが「特定のファイル」のときに使用される Markdown ファイル。新しいタスクは {{heading}} の下にまとめられます。",
+      "inlineTaskTargetFileDesc": "デフォルトの保存パスが「特定のファイル」のときに使用される Markdown ファイル。",
       "inlineTaskTargetFilePlaceholder": "例: 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "デフォルトの保存パスが「特定のファイル」のときに使用される Markdown ファイル。",
       "inlineTaskUseDailyNote": "新しいインラインタスクを今日のデイリーノートに保存",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "c3022138573f46b0a04d6bb6c1b00ed1945a1744679124dd3b11202e4b9ac036"
+  "sourceVersion": "3377bfef4c869e083ef163ac6fb0d63fdf4425a94805ef8f0fd4f30977acf611"
 }

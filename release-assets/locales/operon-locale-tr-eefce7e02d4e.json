@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Satır içi görev varsayılan kayıt yolu",
       "inlineTaskDefaultSavePathDesc": "Yeni Operon Görevi akışının satır içi görevleri varsayılan olarak nereye yazacağını seç.",
       "inlineTaskHeading": "Satır içi görev başlık anahtarı",
-      "inlineTaskHeadingDesc": "Günlük Notlar, Aktif Dosya ve Her Seferinde Sor başlık anahtarı. Bu ifadeyi içeren ilk başlık yeni satır içi görevleri alır. Yoksa Operon bir ## başlığı oluşturur. Belirli Dosya modu bunun yerine Core Daily Notes etkinse onun tarih biçimini, değilse YYYY-MM-DD biçimini kullanır.",
+      "inlineTaskHeadingDesc": "Günlük Notlar, Aktif Dosya ve Her Seferinde Sor başlık anahtarı. Bu ifadeyi içeren ilk başlık yeni satır içi görevleri alır. Yoksa Operon bir ## başlığı oluşturur.",
       "inlineTaskIconsDisplayModeTitle": "Yalnızca simge modunu aç/kapat",
       "inlineTaskIconsMoveDown": "Aşağı taşı",
       "inlineTaskIconsMoveUp": "Yukarı taşı",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Günlük Notlar",
       "inlineTaskSavePathSpecificFile": "Belirli Dosya",
       "inlineTaskSavePathWeeklyNotes": "Haftalık Notlar",
+      "inlineTaskSpecificFileHeading": "Satır içi görev başlık anahtarı",
+      "inlineTaskSpecificFileHeadingDesc": "Görevleri tarih başlıkları altında gruplamak için boş bırakın.",
       "inlineTaskSubtaskAction": "Alt görev ekleme eylemi",
       "inlineTaskTargetFile": "Satır içi görev hedef dosyası",
-      "inlineTaskTargetFileDesc": "Varsayılan kayıt yolu Belirli Dosya iken kullanılacak markdown dosyası. Yeni görevler {{heading}} altında gruplanır.",
+      "inlineTaskTargetFileDesc": "Varsayılan kayıt yolu Belirli Dosya iken kullanılacak markdown dosyası.",
       "inlineTaskTargetFilePlaceholder": "ör. 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "Varsayılan kayıt yolu Belirli Dosya iken kullanılacak markdown dosyası.",
       "inlineTaskUseDailyNote": "Yeni satır içi görevleri bugünün günlük notuna kaydet",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "322260787947ed134ac2a81e8412a52e8cdf82a4302c231f27099e30e5e40cd2"
+  "sourceVersion": "5b15cb112e80f1966f4bccc4b7eac3a884f2868a0d05e0fb94e3f1509aa983e7"
 }

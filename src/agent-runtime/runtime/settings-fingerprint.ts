@@ -17,6 +17,7 @@ const CREATION_KEYS = [
 	'inlineTaskSaveMode',
 	'inlineTaskUseDailyNote',
 	'inlineTaskTargetFile',
+	'inlineTaskSpecificFileHeading',
 	'inlineTaskHeading',
 	'fileTaskParentInlineTargetMode',
 	'fileTaskParentFileTargetMode',

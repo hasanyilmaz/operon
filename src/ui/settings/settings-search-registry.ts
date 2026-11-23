@@ -104,6 +104,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('automation', 'tasksAutomations', 'ruleList', 'settings', 'automationRuleList', 'automationRuleListDesc', ['automations', 'rule', 'draft']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
+	e('automation', 'tasksTaskRouter', 'inlineTaskSpecificFileHeading', 'settings', 'inlineTaskSpecificFileHeading', 'inlineTaskSpecificFileHeadingDesc', 'text', ['inline task', 'specific file', 'heading', 'section']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskHeading', 'settings', 'inlineTaskHeading', 'inlineTaskHeadingDesc', 'text', ['new task', 'task creator', 'inline task', 'heading', 'section']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskParentInlineTargetMode', 'settings', 'inlineParentTaskTargetMode', 'inlineParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'parent', 'parent placement', 'inline parent']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskParentFileTargetMode', 'settings', 'fileParentTaskTargetMode', 'fileParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'file task', 'parent', 'parent placement']),

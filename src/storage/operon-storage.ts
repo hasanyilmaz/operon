@@ -352,6 +352,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		inlineTaskUseDailyNote: settings.inlineTaskUseDailyNote,
 		inlineTaskTargetFile: settings.inlineTaskTargetFile,
 		inlineTaskHeading: settings.inlineTaskHeading,
+		inlineTaskSpecificFileHeading: settings.inlineTaskSpecificFileHeading,
 		fileTaskParentInlineTargetMode: settings.fileTaskParentInlineTargetMode,
 		fileTaskParentFileTargetMode: settings.fileTaskParentFileTargetMode,
 		inlineToFileTaskMovePlainCheckboxes: settings.inlineToFileTaskMovePlainCheckboxes,

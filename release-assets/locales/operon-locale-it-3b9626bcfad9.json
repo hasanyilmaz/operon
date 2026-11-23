@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "it",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Aggiungi sotto-attività-file",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Percorso di salvataggio predefinito attività in linea",
       "inlineTaskDefaultSavePathDesc": "Scegli dove Nuova attività Operon scrive le attività in linea per impostazione predefinita.",
       "inlineTaskHeading": "Parola chiave intestazione attività in linea",
-      "inlineTaskHeadingDesc": "Parola chiave dell'intestazione per Note giornaliere, File attivo e Chiedi ogni volta. La prima intestazione che contiene questa frase riceve le nuove attività in linea. Se non ne esiste nessuna, Operon crea un'intestazione ##. La modalità File specifico usa invece il formato data attivo di Daily Notes Core, con YYYY-MM-DD come ripiego.",
+      "inlineTaskHeadingDesc": "Parola chiave dell'intestazione per Note giornaliere, File attivo e Chiedi ogni volta. La prima intestazione che contiene questa frase riceve le nuove attività in linea. Se non ne esiste nessuna, Operon crea un'intestazione ##.",
       "inlineTaskIconsDisplayModeTitle": "Alterna modalità solo chip",
       "inlineTaskIconsMoveDown": "Sposta in basso",
       "inlineTaskIconsMoveUp": "Sposta in alto",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Note giornaliere",
       "inlineTaskSavePathSpecificFile": "File specifico",
       "inlineTaskSavePathWeeklyNotes": "Note settimanali",
+      "inlineTaskSpecificFileHeading": "Parola chiave intestazione attività in linea",
+      "inlineTaskSpecificFileHeadingDesc": "Lascia vuoto per raggruppare le attività sotto intestazioni con la data.",
       "inlineTaskSubtaskAction": "Azione aggiungi sotto-attività",
       "inlineTaskTargetFile": "File di destinazione attività in linea",
-      "inlineTaskTargetFileDesc": "File Markdown usato quando il percorso di salvataggio predefinito è File specifico. Le nuove attività vengono raggruppate sotto {{heading}}.",
+      "inlineTaskTargetFileDesc": "File Markdown usato quando il percorso di salvataggio predefinito è File specifico.",
       "inlineTaskTargetFilePlaceholder": "es. 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "File Markdown usato quando il percorso di salvataggio predefinito è File specifico.",
       "inlineTaskUseDailyNote": "Salva le nuove attività in linea nella nota giornaliera di oggi",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "46d64519c39bf6e25189f2bc2092817555467e8be3ad97becd3cea1e25567293"
+  "sourceVersion": "de535ea497a8e33f0e27bd2fd627abfafaf28b91102e19aea2902516b869face"
 }

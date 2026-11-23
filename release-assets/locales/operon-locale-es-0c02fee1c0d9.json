@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Ruta de guardado predeterminada de tareas en línea",
       "inlineTaskDefaultSavePathDesc": "Elegir dónde escribe Nueva tarea de Operon las tareas en línea por defecto.",
       "inlineTaskHeading": "Palabra clave del encabezado de tarea en línea",
-      "inlineTaskHeadingDesc": "Palabra clave del encabezado para Daily Notes, Archivo activo y Preguntar cada vez. El primer encabezado que contenga esta frase recibe las nuevas tareas en línea. Si no existe ninguno, Operon crea un encabezado ##. El modo Archivo específico usa en su lugar el formato de fecha activo de Daily Notes Core, con YYYY-MM-DD como alternativa.",
+      "inlineTaskHeadingDesc": "Palabra clave del encabezado para Daily Notes, Archivo activo y Preguntar cada vez. El primer encabezado que contenga esta frase recibe las nuevas tareas en línea. Si no existe ninguno, Operon crea un encabezado ##.",
       "inlineTaskIconsDisplayModeTitle": "Alternar modo solo icono",
       "inlineTaskIconsMoveDown": "Mover hacia abajo",
       "inlineTaskIconsMoveUp": "Mover hacia arriba",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Daily Notes",
       "inlineTaskSavePathSpecificFile": "Archivo específico",
       "inlineTaskSavePathWeeklyNotes": "Notas semanales",
+      "inlineTaskSpecificFileHeading": "Palabra clave del encabezado de tarea en línea",
+      "inlineTaskSpecificFileHeadingDesc": "Deja este campo vacío para agrupar las tareas bajo encabezados de fecha.",
       "inlineTaskSubtaskAction": "Acción de añadir subtarea",
       "inlineTaskTargetFile": "Archivo de destino de tareas en línea",
-      "inlineTaskTargetFileDesc": "Archivo Markdown usado cuando la ruta de guardado predeterminada es Archivo específico. Las nuevas tareas se agrupan bajo {{heading}}.",
+      "inlineTaskTargetFileDesc": "Archivo Markdown usado cuando la ruta de guardado predeterminada es Archivo específico.",
       "inlineTaskTargetFilePlaceholder": "p. ej. 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "Archivo Markdown usado cuando la ruta de guardado predeterminada es Archivo específico.",
       "inlineTaskUseDailyNote": "Guardar nuevas tareas en línea en la nota diaria de hoy",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "a1110f790614b51bcfcca1591224f00459cf43c9d30240b44a0957c8ade71b2f"
+  "sourceVersion": "f8ea8942f201ba6af02839c622929ed0dc0b1257bc362df5e80b3516c0f34288"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Caminho padrão de salvamento da tarefa inline",
       "inlineTaskDefaultSavePathDesc": "Escolha onde o fluxo Nova tarefa do Operon salva tarefas inline por padrão.",
       "inlineTaskHeading": "Palavra-chave do título da tarefa inline",
-      "inlineTaskHeadingDesc": "Palavra-chave do título para Notas Diárias, Arquivo Ativo e Perguntar Sempre. O primeiro título que contiver esta frase receberá novas tarefas inline. Se não existir, o Operon criará um título ##. Já o modo Arquivo Específico usa o formato de data das Notas Diárias nativas ativas, com YYYY-MM-DD como alternativa.",
+      "inlineTaskHeadingDesc": "Palavra-chave do título para Notas Diárias, Arquivo Ativo e Perguntar Sempre. O primeiro título que contiver esta frase receberá novas tarefas inline. Se não existir, o Operon criará um título ##.",
       "inlineTaskIconsDisplayModeTitle": "Alternar modo somente com chips",
       "inlineTaskIconsMoveDown": "Mover para baixo",
       "inlineTaskIconsMoveUp": "Mover para cima",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Notas Diárias",
       "inlineTaskSavePathSpecificFile": "Arquivo Específico",
       "inlineTaskSavePathWeeklyNotes": "Notas Semanais",
+      "inlineTaskSpecificFileHeading": "Palavra-chave do título da tarefa inline",
+      "inlineTaskSpecificFileHeadingDesc": "Deixe em branco para agrupar tarefas sob títulos de data.",
       "inlineTaskSubtaskAction": "Adicionar subtarefa",
       "inlineTaskTargetFile": "Arquivo alvo da tarefa inline",
-      "inlineTaskTargetFileDesc": "O arquivo Markdown é usado quando o caminho de salvamento padrão é Arquivo Específico. As novas tarefas são agrupadas sob {{heading}}.",
+      "inlineTaskTargetFileDesc": "O arquivo Markdown é usado quando o caminho de salvamento padrão é Arquivo Específico.",
       "inlineTaskTargetFilePlaceholder": "ex: 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "O arquivo Markdown é usado quando o caminho de salvamento padrão é Arquivo Específico.",
       "inlineTaskUseDailyNote": "Salvar novas tarefas inline na nota diária de hoje",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "5287a92a8a4daf96cb3bbbc18f9e4cf8727f654daf302e3183445ad90257300c"
+  "sourceVersion": "8c34087983c59301269bd6b866de0d55b6845cd05368164baaa9b750a084b7f2"
 }

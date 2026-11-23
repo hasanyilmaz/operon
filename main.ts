@@ -931,6 +931,7 @@ import {
 	DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
 	FilterSet,
 	normalizeInlineTaskHeadingKeyword,
+	normalizeSpecificFileHeading,
 	normalizeInlineTaskParentFileHeadingKeyword,
 	normalizeStoredFileTaskTemplateId,
 	OperonSettings,
@@ -1294,6 +1295,7 @@ interface TaskCreatorInlineTargetFile {
 	fallbackParentFieldValues: Record<string, string> | null;
 	fallbackParentTags: string[] | null;
 	dailyDateHeading?: string | null;
+	headingKeyword?: string;
 	autoParentEnabled?: boolean;
 }
 
@@ -12314,7 +12316,8 @@ export default class OperonPlugin extends Plugin {
 		filePath: string;
 		placement:
 			| { kind: 'after-line'; lineNumber: number }
-			| { kind: 'under-heading'; headingKeyword: string };
+			| { kind: 'under-heading'; headingKeyword: string }
+			| { kind: 'under-exact-heading'; heading: string };
 		defaultFields?: Readonly<Record<string, string>>;
 	}> {
 		if (
@@ -12361,16 +12364,12 @@ export default class OperonPlugin extends Plugin {
 				...(scheduledWorkflow ? { status: scheduledWorkflow.value } : {}),
 			}
 			: {};
-		const specificFileHeading = saveMode === 'specific-file'
-			? await this.resolveInlineTaskSpecificFileHeading(today)
-			: '';
+		const placement = saveMode === 'specific-file'
+			? await this.resolveSpecificFilePlacement(today)
+			: { kind: 'under-heading' as const, headingKeyword: normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading) };
 		return {
 			filePath,
-			placement: {
-				kind: 'under-heading',
-				headingKeyword: specificFileHeading
-					|| normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
-			},
+			placement,
 			...(Object.keys(defaultFields).length > 0 ? { defaultFields } : {}),
 		};
 	}
@@ -32373,13 +32372,14 @@ export default class OperonPlugin extends Plugin {
 			new Notice(t('notifications', 'inlineTaskTargetInvalid'));
 			return { kind: 'failed' };
 		}
+		const placement = await this.resolveSpecificFilePlacement(targetDateKey);
 		return {
 			kind: 'target',
 			file: targetFile,
 			fallbackParentTaskId: null,
 			fallbackParentFieldValues: null,
 			fallbackParentTags: null,
-			dailyDateHeading: await this.resolveInlineTaskSpecificFileHeading(targetDateKey),
+			...(placement.kind === 'under-heading' ? { headingKeyword: placement.headingKeyword } : { dailyDateHeading: placement.heading }),
 		};
 	}
 
@@ -32456,6 +32456,13 @@ export default class OperonPlugin extends Plugin {
 		await this.app.vault.create(targetPath, '');
 		const created = this.app.vault.getAbstractFileByPath(targetPath);
 		return created instanceof TFile && created.extension === 'md' ? created : null;
+	}
+
+	private async resolveSpecificFilePlacement(dateKey: string) {
+		const headingKeyword = normalizeSpecificFileHeading(this.settings.inlineTaskSpecificFileHeading);
+		return headingKeyword
+			? { kind: 'under-heading' as const, headingKeyword }
+			: { kind: 'under-exact-heading' as const, heading: await this.resolveInlineTaskSpecificFileHeading(dateKey) };
 	}
 
 	private async resolveInlineTaskSpecificFileHeading(dateKey: string): Promise<string> {
@@ -32547,6 +32554,7 @@ export default class OperonPlugin extends Plugin {
 			fallbackParentTags?: string[] | null;
 			inlineHeading?: string;
 			dailyDateHeading?: string | null;
+			headingKeyword?: string;
 			autoParentEnabled?: boolean;
 		} = {},
 	): Promise<{ operonId: string; lineNumber: number } | null> {
@@ -32555,7 +32563,7 @@ export default class OperonPlugin extends Plugin {
         const content = source ? await source.read() : await this.app.vault.cachedRead(file);
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const explicitInlineHeading = options.inlineHeading;
-		const inlineHeadingKeyword = normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
+		const inlineHeadingKeyword = options.headingKeyword ?? normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
 		const insertTaskLine = (sourceContent: string, taskLine: string) => {
 			if (source) return insertExcalidrawInlineTask(sourceContent, dailyDateHeading || explicitInlineHeading || inlineHeadingKeyword, taskLine);
             if (dailyDateHeading) {
@@ -32690,6 +32698,7 @@ export default class OperonPlugin extends Plugin {
 					? scheduledPeriodicParent.parentTags
 					: target.fallbackParentTags,
 				dailyDateHeading: target.dailyDateHeading,
+				headingKeyword: target.headingKeyword,
 				autoParentEnabled: parentTaskExplicitlyCleared || useScheduledPeriodicParent
 					? false
 					: target.autoParentEnabled,

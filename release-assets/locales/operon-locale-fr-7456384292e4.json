@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Chemin d'enregistrement par défaut des tâches en ligne",
       "inlineTaskDefaultSavePathDesc": "Choisissez où la commande Nouvelle tâche Operon écrit les tâches en ligne par défaut.",
       "inlineTaskHeading": "Mot-clé du titre des tâches en ligne",
-      "inlineTaskHeadingDesc": "Mot-clé de titre pour Notes quotidiennes, Fichier actif et Demander à chaque fois. Le premier titre contenant cette phrase reçoit les nouvelles tâches en ligne. Si aucun n'existe, Operon crée un titre ##. Le mode Fichier spécifique utilise plutôt le format de date actif de Daily Notes Core, avec YYYY-MM-DD comme solution de repli.",
+      "inlineTaskHeadingDesc": "Mot-clé de titre pour Notes quotidiennes, Fichier actif et Demander à chaque fois. Le premier titre contenant cette phrase reçoit les nouvelles tâches en ligne. Si aucun n'existe, Operon crée un titre ##.",
       "inlineTaskIconsDisplayModeTitle": "Basculer le mode puce uniquement",
       "inlineTaskIconsMoveDown": "Déplacer vers le bas",
       "inlineTaskIconsMoveUp": "Déplacer vers le haut",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Notes quotidiennes",
       "inlineTaskSavePathSpecificFile": "Fichier spécifique",
       "inlineTaskSavePathWeeklyNotes": "Notes hebdomadaires",
+      "inlineTaskSpecificFileHeading": "Mot-clé du titre des tâches en ligne",
+      "inlineTaskSpecificFileHeadingDesc": "Laissez ce champ vide pour regrouper les tâches sous des titres de date.",
       "inlineTaskSubtaskAction": "Action d'ajout de sous-tâche",
       "inlineTaskTargetFile": "Fichier cible des tâches en ligne",
-      "inlineTaskTargetFileDesc": "Fichier Markdown utilisé lorsque le chemin d'enregistrement par défaut est Fichier spécifique. Les nouvelles tâches sont regroupées sous {{heading}}.",
+      "inlineTaskTargetFileDesc": "Fichier Markdown utilisé lorsque le chemin d'enregistrement par défaut est Fichier spécifique.",
       "inlineTaskTargetFilePlaceholder": "p. ex. 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "Fichier Markdown utilisé lorsque le chemin d'enregistrement par défaut est Fichier spécifique.",
       "inlineTaskUseDailyNote": "Enregistrer les nouvelles tâches en ligne dans la note quotidienne du jour",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "7238721e27a9e3bffc331b01d67954833bcd2886bcc1b7fc1940b0cee5018da6"
+  "sourceVersion": "b15f2916a88fab41586242cc68d9c50be43efcbd6b44b24a2def8fc75bb1717e"
 }

@@ -107,7 +107,16 @@ test('Plugin apply uses approved journal, registers definitions first and replay
  assert.equal((await f.run()).status,'already-applied');assert.equal(f.writes(),1);
 });
 test('Plugin rejects changed settings or source before definition and task writes',async()=>{
- for(const change of ['settings','source','template','types'] as const){const f=await executionHost();if(change==='settings')f.settings.inlineTaskHeading='Changed';else if(change==='source')f.files.set('Tasks.md','# Other\n');else if(change==='template')f.setTemplate('---\nscore: 8\n---\n');else f.propertyTypes.score='text';const result=await f.run();assert.equal(result.status,'failed');assert.equal(f.writes(),0);assert.equal(f.definitions(),undefined);assert.equal(f.journal(),null);}
+ for(const change of ['settings','specific-heading','source','template','types'] as const){
+  const f=await executionHost();
+  if(change==='settings') f.settings.inlineTaskHeading='Changed';
+  else if(change==='specific-heading') f.settings.inlineTaskSpecificFileHeading='Inbox';
+  else if(change==='source') f.files.set('Tasks.md','# Other\n');
+  else if(change==='template') f.setTemplate('---\nscore: 8\n---\n');
+  else f.propertyTypes.score='text';
+  const result=await f.run();
+  assert.equal(result.status,'failed');assert.equal(f.writes(),0);assert.equal(f.definitions(),undefined);assert.equal(f.journal(),null);
+ }
 });
 test('Plugin partial native registration recovers the same journal while retaining its definitions',async()=>{
  const f=await executionHost();f.setFailure(true);assert.equal((await f.run()).status,'outcome-unknown');assert.ok(f.journal());assert.equal(f.writes(),0);assert.ok(f.definitions());

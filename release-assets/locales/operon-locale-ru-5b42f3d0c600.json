@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "Путь сохранения встроенных задач по умолчанию",
       "inlineTaskDefaultSavePathDesc": "Выберите, куда «Новая задача Operon» записывает встроенные задачи по умолчанию.",
       "inlineTaskHeading": "Ключевое слово заголовка встроенной задачи",
-      "inlineTaskHeadingDesc": "Ключевое слово заголовка для режимов «Ежедневные заметки», «Активный файл» и «Спрашивать каждый раз». Новые встроенные задачи получает первый заголовок, содержащий эту фразу. Если такого нет, Operon создаёт заголовок ##. Режим «Определённый файл» использует активный формат даты Core Daily Notes, а при его недоступности — YYYY-MM-DD.",
+      "inlineTaskHeadingDesc": "Ключевое слово заголовка для режимов «Ежедневные заметки», «Активный файл» и «Спрашивать каждый раз». Новые встроенные задачи получает первый заголовок, содержащий эту фразу. Если такого нет, Operon создаёт заголовок ##.",
       "inlineTaskIconsDisplayModeTitle": "Переключить режим «только значок»",
       "inlineTaskIconsMoveDown": "Переместить вниз",
       "inlineTaskIconsMoveUp": "Переместить вверх",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "Ежедневные заметки",
       "inlineTaskSavePathSpecificFile": "Определённый файл",
       "inlineTaskSavePathWeeklyNotes": "Еженедельные заметки",
+      "inlineTaskSpecificFileHeading": "Ключевое слово заголовка встроенной задачи",
+      "inlineTaskSpecificFileHeadingDesc": "Оставьте поле пустым, чтобы группировать задачи под заголовками с датой.",
       "inlineTaskSubtaskAction": "Действие добавления подзадачи",
       "inlineTaskTargetFile": "Целевой файл встроенных задач",
-      "inlineTaskTargetFileDesc": "Файл Markdown, используемый, когда путь сохранения по умолчанию — «Определённый файл». Новые задачи группируются под {{heading}}.",
+      "inlineTaskTargetFileDesc": "Файл Markdown, используемый, когда путь сохранения по умолчанию — «Определённый файл».",
       "inlineTaskTargetFilePlaceholder": "напр. 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "Файл Markdown, используемый, когда путь сохранения по умолчанию — «Определённый файл».",
       "inlineTaskUseDailyNote": "Сохранять новые встроенные задачи в сегодняшнюю ежедневную заметку",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "ec6630bffb05cd707363667c1213eb1dfe5ea453c8b3dab649d4d4d1b20068a0"
+  "sourceVersion": "178aa490287e722a2e1b8ce33f6ed2189a960db0f4af0f50d45178a2a69d5a84"
 }

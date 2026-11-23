@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3934,
-  "keyFingerprint": "4f4c073beb5d48e0c75cfe8b739c3e1e65520f89b4380e3fb518647e68c8720d",
+  "keyCount": 3936,
+  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -1846,7 +1846,7 @@
       "inlineTaskDefaultSavePath": "인라인 작업 기본 저장 경로",
       "inlineTaskDefaultSavePathDesc": "새 Operon 작업이 인라인 작업을 기본으로 저장할 위치를 선택합니다.",
       "inlineTaskHeading": "인라인 작업 제목 키워드",
-      "inlineTaskHeadingDesc": "일일 노트, 활성 파일, 매번 묻기 모드의 제목 키워드입니다. 이 문구가 포함된 첫 제목 아래에 새 작업을 추가합니다. 없으면 ## 제목을 만듭니다. 특정 파일 모드에서는 활성 코어 일일 노트 날짜 형식을 사용하며, 없으면 YYYY-MM-DD를 사용합니다.",
+      "inlineTaskHeadingDesc": "일일 노트, 활성 파일, 매번 묻기 모드의 제목 키워드입니다. 이 문구가 포함된 첫 제목 아래에 새 작업을 추가합니다. 없으면 ## 제목을 만듭니다.",
       "inlineTaskIconsDisplayModeTitle": "칩 전용 모드 전환",
       "inlineTaskIconsMoveDown": "아래로 이동",
       "inlineTaskIconsMoveUp": "위로 이동",
@@ -1862,9 +1862,11 @@
       "inlineTaskSavePathDailyNotes": "일일 노트",
       "inlineTaskSavePathSpecificFile": "특정 파일",
       "inlineTaskSavePathWeeklyNotes": "주간 노트",
+      "inlineTaskSpecificFileHeading": "인라인 작업 제목 키워드",
+      "inlineTaskSpecificFileHeadingDesc": "비워 두면 작업을 날짜별 제목 아래에 모읍니다.",
       "inlineTaskSubtaskAction": "하위 작업 추가 동작",
       "inlineTaskTargetFile": "인라인 작업 대상 파일",
-      "inlineTaskTargetFileDesc": "기본 저장 경로가 특정 파일일 때 사용할 마크다운 파일입니다. 새 작업은 {{heading}} 아래에 모입니다.",
+      "inlineTaskTargetFileDesc": "기본 저장 경로가 특정 파일일 때 사용할 마크다운 파일입니다.",
       "inlineTaskTargetFilePlaceholder": "예: 00 Inbox/Tasks.md",
       "inlineTaskTargetFileSearchDesc": "기본 저장 경로가 특정 파일일 때 사용할 마크다운 파일입니다.",
       "inlineTaskUseDailyNote": "새 인라인 작업을 오늘의 일일 노트에 저장",
@@ -3979,5 +3981,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "3f9c93c8c4f4da88b1b1dc47b8910240286e4848618eac1129db4915279a6c4e"
+  "sourceVersion": "bbe2d2dab73bb8d76c9e8a03963e000e98793fdae34b7362334a3c27166f3e7b"
 }

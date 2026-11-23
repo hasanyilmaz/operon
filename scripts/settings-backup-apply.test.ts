@@ -1696,3 +1696,23 @@ test('General backups distinguish an absent legacy vault icon field from an expl
 	assert.deepEqual(candidateIcons(currentExport), {});
 	harness.storage.destroy();
 });
+
+test('General backup restores and undoes a Specific File heading independently of the general inline heading', async () => {
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), inlineTaskHeading: 'New Todo' }));
+	try {
+		const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+		const { sourceJson, plan } = await createPlan(harness.storage, { ...current, inlineTaskSpecificFileHeading: 'Minor Tasks' }, ['general']);
+		const applied = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+		assert.equal(applied.status, 'success');
+		assert.equal(harness.storage.getSettings().inlineTaskSpecificFileHeading, 'Minor Tasks');
+		const receipt = applied.receipt;
+		assert.ok(receipt?.recovery.undoTokenId);
+		const undone = await harness.storage.undoSettingsBackupRestoreV1(receipt.recovery.undoTokenId, receipt.receiptId);
+		assert.equal(undone.status, 'success');
+		const restored = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+		assert.equal(restored.inlineTaskSpecificFileHeading, '');
+		assert.equal(restored.inlineTaskHeading, 'New Todo');
+	} finally {
+		harness.storage.destroy();
+	}
+});

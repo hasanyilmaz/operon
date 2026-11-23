@@ -43,7 +43,7 @@ import { CANVAS_POOL_WIDTHS, CANVAS_POOL_ROWS, isTaskCardSetting, normalizeTaskC
 import * as Obsidian from 'obsidian';
 import { AbstractInputSuggest, App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, TFolder, ToggleComponent, getIcon, SettingPage, setIcon, setTooltip } from 'obsidian';
 import type { SettingGroup, ButtonComponent, DropdownComponent, ExtraButtonComponent, SettingControl, SettingDefinition, SettingDefinitionGroup, SettingDefinitionItem, SettingDefinitionPage, TextComponent } from 'obsidian';
-import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, normalizeTaskFinderResultBehavior, normalizeTaskAfterCreateAction, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, setNumericSetting, isSupportedLanguage, normalizeDateDisplayFormat, type CalendarDayTitleAction, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
+import { OperonSettings, DEFAULT_SETTINGS, DEFAULT_INLINE_TASK_TARGET_FILE, DEFAULT_INLINE_TASK_HEADING_KEYWORD, DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD, KeyMapping, FilterSet, CALENDAR_TIME_GRID_SCALE_OPTIONS, CALENDAR_AUTO_SCROLL_POSITION_OPTIONS, CALENDAR_SIDEBAR_WIDTH_MIN, CALENDAR_SIDEBAR_WIDTH_MAX, CALENDAR_MOBILE_SLOT_MINUTES_OPTIONS, CALENDAR_MOBILE_AGENDA_PAST_DAYS_OPTIONS, CALENDAR_MOBILE_AGENDA_FUTURE_DAYS_OPTIONS, CALENDAR_MOBILE_ALL_DAY_VISIBLE_TASK_LIMIT_OPTIONS, DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS, DYNAMIC_FILE_TASK_FILTER_SUBTASK_AUTO_EXPAND_LIMIT_OPTIONS, REMINDER_CATCH_UP_WINDOW_MINUTE_OPTIONS, CHILD_TASK_INHERITANCE_TAGS_KEY, CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE, CALENDAR_MOBILE_VIEW_MODE_ENABLED_SETTING_BY_VIEW_MODE, createExternalCalendarSourceId, ExternalCalendarSource, TaskCreatorToolbarItem, TASK_CREATOR_TOOLBAR_FIELD_ORDER, TASK_CREATOR_FALLBACK_FIELD_ICONS, TASK_EDITOR_WORKFLOW_PICKER_ORDER, TASK_EDITOR_MOBILE_CORE_TOOL_ORDER, TASK_EDITOR_MOBILE_CORE_FALLBACK_ICONS, TaskEditorMobileCoreToolItem, TaskEditorWorkflowPickerItem, INLINE_TASK_COMPACT_CHIP_ORDER, INLINE_TASK_COMPACT_FALLBACK_ICONS, TASK_FINDER_DEFAULT_SCOPE_ORDER, TaskFinderDefaultScopeKey, normalizeTaskEditorMobileCoreTools, normalizeTaskFinderShortcutValue, normalizeTaskFinderResultBehavior, normalizeTaskAfterCreateAction, FLOW_TIME_PAUSE_MINUTE_OPTIONS, FLOW_TIME_DEFAULT_SESSION_MINUTE_OPTIONS, cloneFilterSet, getNumericConstraint, isChildTaskInheritanceEligibleFieldKey, isNumericSettingKey, normalizeCalendarSidebarDefaultExpansionState, normalizeChildTaskInheritanceFields, normalizeChildTaskInheritanceStatusPipelineSource, normalizeFallbackTaskIconSource, normalizeTaskStatusIconColorSource, normalizeInlineTaskHeadingKeyword, normalizeSpecificFileHeading, normalizeInlineTaskParentFileHeadingKeyword, normalizeStoredFileTaskTemplateId, setNumericSetting, isSupportedLanguage, normalizeDateDisplayFormat, type CalendarDayTitleAction, type CalendarMobileAllDayVisibleTaskLimit, type CalendarMobileSourcePresetSettingKey, type CalendarMobileViewModeEnabledSettingKey, type CalendarSidebarDefaultStateKey, type ChildTaskInheritanceStatusPipelineSource, type FallbackTaskIconSource, type FileTaskPipelineLocationRule, type OperonLanguage, type WorkspaceTweaksPropertiesScope } from '../types/settings';
 import type { ProjectSerialScope } from '../types/settings';
 import {
 	isNonEnglishSupportedLanguage,
@@ -129,7 +129,6 @@ import {
 	type PeriodicNoteKind,
 } from '../core/periodic-note-path';
 import { isSafeVaultRelativePath } from '../core/vault-path-safety';
-import { loadDailyNotesCoreConfig } from '../core/daily-notes-core-config';
 import { localToday } from '../core/local-time';
 import {
 	cloneDefaultColorPalette,
@@ -1769,10 +1768,10 @@ export class OperonSettingsTab extends PluginSettingTab {
 	}
 
 	private isTaskSettingsEntryVisible(key: string): boolean {
-		if (key === 'inlineTaskTargetFile' || key === 'inlineTaskHeading') {
+		if (key === 'inlineTaskTargetFile' || key === 'inlineTaskSpecificFileHeading' || key === 'inlineTaskHeading') {
 			const available = isPeriodicNoteKindAvailable('daily', this.settings, isDailyNotesCoreAvailable(this.app));
 			const mode = resolveEffectiveInlineTaskSaveMode(this.settings, available);
-			return key === 'inlineTaskTargetFile'
+			return key !== 'inlineTaskHeading'
 				? mode === 'specific-file'
 				: mode === 'daily-notes' || mode === 'active-file' || mode === 'ask-every-time';
 		}
@@ -1786,7 +1785,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 
 	private buildTaskRouterSettingsItems(entries: OperonSettingsSearchEntry[]): SettingDefinitionItem[] {
 		const sections: Array<[string, string[], (containerEl: HTMLElement, key: string) => void, string?]> = [
-			['inlineTasksSection', ['inlineTaskSaveMode', 'inlineTaskTargetFile', 'inlineTaskHeading'], (el, key) => this.renderInlineTaskRoutingSettings(el, key), 'DOCS-137 Daily and Weekly Notes'],
+			['inlineTasksSection', ['inlineTaskSaveMode', 'inlineTaskTargetFile', 'inlineTaskSpecificFileHeading', 'inlineTaskHeading'], (el, key) => this.renderInlineTaskRoutingSettings(el, key), 'DOCS-137 Daily and Weekly Notes'],
 			['periodicNotes', ['manageDailyNotesWithOperon', 'dailyNoteFormat', 'dailyNoteTemplate', 'dailyNoteFolder', 'manageWeeklyNotesWithOperon', 'weeklyNoteFormat', 'weeklyNoteTemplate', 'weeklyNoteFolder'], (el, key) => this.renderPeriodicRoutingSettings(el, key), 'DOCS-137 Daily and Weekly Notes'],
 			['parentAwareInlineSaveLocation', ['inlineTaskParentInlineTargetMode', 'inlineTaskParentFileTargetMode', 'inlineTaskParentFileHeadingKeyword', 'keepInlineTasksWithParent'], (el, key) => this.renderInlineTaskParentRoutingSettings(el, key), 'DOCS-094 How to create a task with Task Creator'],
 			['fileTasksSection', ['fileTasksFolder', 'fileTaskPipelineLocations', 'moveConvertedNotesToPipelineLocation'], (el, key) => this.renderFileTaskRoutingSettings(el, key), 'DOCS-013 File tasks'],
@@ -3466,6 +3465,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 		if (SETTINGS_SEARCH_FOLDER_KEYS.has(key)) {
 			return normalizeSettingsFolderPath(text);
 		}
+		if (key === 'inlineTaskSpecificFileHeading') return normalizeSpecificFileHeading(text);
 		if (key === 'inlineTaskHeading') {
 			return normalizeInlineTaskHeadingKeyword(text);
 		}
@@ -6380,7 +6380,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		}
 
 		if ((!selectedKey || selectedKey === 'inlineTaskTargetFile') && effectiveInlineTaskSaveMode === 'specific-file') {
-			const targetFileSetting = this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskTargetFile'), this.getInlineTaskTargetFileDescription(DEFAULT_DAILY_NOTE_FORMAT), 'inlineTaskTargetFile', {
+			this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskTargetFile'), t('settings', 'inlineTaskTargetFileDesc'), 'inlineTaskTargetFile', {
 				placeholder: DEFAULT_INLINE_TASK_TARGET_FILE,
 				settingClass: 'operon-settings-long-text-setting',
 				controlClass: 'operon-settings-input-long',
@@ -6391,7 +6391,15 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 					}));
 				},
 			});
-			this.refreshInlineTaskTargetFileDescription(targetFileSetting);
+		}
+
+		if ((!selectedKey || selectedKey === 'inlineTaskSpecificFileHeading') && effectiveInlineTaskSaveMode === 'specific-file') {
+			this.renderBoundTextSetting(defaultLocationSection, t('settings', 'inlineTaskSpecificFileHeading'),
+				t('settings', 'inlineTaskSpecificFileHeadingDesc'), 'inlineTaskSpecificFileHeading', {
+					normalize: normalizeSpecificFileHeading,
+					settingClass: 'operon-settings-long-text-setting',
+					controlClass: 'operon-settings-input-long',
+				});
 		}
 
 		const inlineHeadingActive = effectiveInlineTaskSaveMode === 'daily-notes'
@@ -6516,20 +6524,6 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 			this.renderBoundToggleSetting(containerEl, t('settings', 'openCreatorBeforeConversion'), t('settings', 'openCreatorBeforeConversionDesc'), 'inlineTaskOpenCreatorBeforeConversion');
 		}
 
-	}
-
-	private getInlineTaskTargetFileDescription(dateFormat: string): string {
-		return t('settings', 'inlineTaskTargetFileDesc', {
-			heading: `## [[${dateFormat || DEFAULT_DAILY_NOTE_FORMAT}]]`,
-		});
-	}
-
-	private refreshInlineTaskTargetFileDescription(setting: Setting): void {
-		if (!isDailyNotesCoreAvailable(this.app)) return;
-		void loadDailyNotesCoreConfig(this.app).then(config => {
-			if (!setting.settingEl.isConnected) return;
-			setting.setDesc(this.getInlineTaskTargetFileDescription(config.format));
-		});
 	}
 
 	private renderTaskIconSetting(containerEl: HTMLElement, key: string): void {
