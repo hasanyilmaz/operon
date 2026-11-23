@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Moved **Week start** from Calendar settings to **Core → General → Language & Formats**, just below **Date format**.
+- Moved **Week start** from Calendar settings to **Core → General → Language & Formats**, just below **Date format**. Weekly notes opened or created from the Operon UI now follow this setting. With **Sunday** selected, Sunday starts the new week, and tasks routed into a weekly note still appear under their own day.
 
 ### Fixed
 
