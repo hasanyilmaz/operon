@@ -38,6 +38,7 @@ export class MiniCalendarScroller {
 	private pitch = 42;
 	private height = 0;
 	private drawnRange = '';
+	private highlightedDay: HTMLButtonElement | null = null;
 	private referenceDate = '';
 	private hoverDate = '';
 	private hoverRow: HTMLElement | null = null;
@@ -153,7 +154,19 @@ export class MiniCalendarScroller {
 		const date = miniCalendarDate(Math.max(MINI_CALENDAR_MIN_DAY, Math.min(MINI_CALENDAR_MAX_DAY, this.position.week + offset)));
 		if (date === this.referenceDate) return;
 		this.referenceDate = date;
-		this.onReference(date, this.hoverDate || date);
+		this.updateDisplayedDay();
+	}
+
+	private updateDisplayedDay(): void {
+		const date = this.hoverDate || this.referenceDate;
+		const row = this.hoverRow ?? this.rows.get(this.index());
+		const button = row?.querySelector<HTMLButtonElement>(`button[data-date-key="${date}"]`) ?? null;
+		if (button !== this.highlightedDay) {
+			this.highlightedDay?.classList.remove('is-displayed-day');
+			button?.classList.add('is-displayed-day');
+			this.highlightedDay = button;
+		}
+		this.onReference(this.referenceDate, date);
 	}
 
 	private setHover(button: HTMLButtonElement | null): void {
@@ -168,7 +181,7 @@ export class MiniCalendarScroller {
 			previous?.classList.remove('is-centered-week');
 			next?.classList.add('is-centered-week');
 		}
-		this.onReference(this.referenceDate, date || this.referenceDate);
+		this.updateDisplayedDay();
 	}
 
 	private readonly pointerOver = (event: PointerEvent): void => {

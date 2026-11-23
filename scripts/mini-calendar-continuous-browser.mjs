@@ -118,18 +118,29 @@ try {
    await assertTone('2027-07-20', muted(normal));
    await assertTone('2027-07-24', muted(weekend));
    await assertTone('2027-07-01', accent);
+   const assertDisplayedDay = async date => {
+    const displayed = page.locator('.operon-mini-calendar-week .is-displayed-day');
+    assert.equal(await displayed.count(), 1);
+    assert.equal(await displayed.getAttribute('data-date-key'), date);
+    assert.equal(await displayed.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(64, 160, 255)');
+   };
+   await assertDisplayedDay('2027-07-13');
    if (!touch) {
     const header = page.locator('.operon-calendar-date-button');
     const original = await header.textContent();
     await page.locator('[data-date-key="2027-07-20"]').hover();
     assert.match(await header.textContent(), /20/);
+    await assertDisplayedDay('2027-07-20');
+    assert.equal(await page.locator('[data-date-key="2027-07-13"]').evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(85, 85, 85)');
     await assertTone('2027-07-20', normal);
     await assertTone('2027-07-13', muted(normal));
     await page.locator('[data-date-key="2027-07-21"]').hover();
     assert.match(await header.textContent(), /21/);
+    await assertDisplayedDay('2027-07-21');
     assert.equal((await state(page)).selected, '2027-07-13');
     await header.hover();
     assert.equal(await header.textContent(), original);
+    await assertDisplayedDay('2027-07-13');
     await assertTone('2027-07-13', normal);
     await assertTone('2027-07-20', muted(normal));
    }
@@ -139,6 +150,7 @@ try {
    const scrolled = await state(page);
    assert.equal(scrolled.center, '2027-07-19');
    assert.equal(scrolled.reference, '2027-07-20');
+   await assertDisplayedDay(scrolled.reference);
    assert.equal(scrolled.selected, '2027-07-13');
    await assertTone('2027-07-13', muted(normal));
    await assertTone('2027-07-17', muted(weekend));

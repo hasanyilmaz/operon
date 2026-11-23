@@ -18926,6 +18926,7 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	color: var(--operon-calendar-weekend-day-color);
 }
 
+.operon-mini-calendar-view.is-continuous .operon-calendar-sidebar-month-day.is-displayed-day,
 .operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum:hover,
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day:hover,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day:hover,
@@ -18952,7 +18953,7 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	border-color: color-mix(in srgb, var(--interactive-accent) 40%, var(--background-modifier-border));
 }
 
-.operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-anchor,
+.operon-mini-calendar-view:where(:not(.is-continuous)) .operon-calendar-sidebar-month-day.is-anchor,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-anchor {
 	background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	border-color: var(--interactive-accent);
