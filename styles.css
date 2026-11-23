@@ -37906,6 +37906,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 }
 .operon-mini-calendar-view button.operon-calendar-sidebar-month-weeknum {
 	color: var(--text-faint);
+	text-decoration: underline;
 }
 .operon-mini-calendar-view .operon-calendar-sidebar-month-weeknum-header {
 	font-size: 11px;
@@ -37970,6 +37971,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	line-height: 16px;
 }
 .operon-mini-day-number { display: block; }
+.operon-mini-calendar-view .is-displayed-day > .operon-mini-day-number { font-size: 115%; }
 .operon-mini-month-label {
 	display: block;
 	max-width: 100%;

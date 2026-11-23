@@ -122,6 +122,12 @@ try {
     const displayed = page.locator('.operon-mini-calendar-week .is-displayed-day');
     assert.equal(await displayed.count(), 1);
     assert.equal(await displayed.getAttribute('data-date-key'), date);
+    const sizesMatch = await page.locator('.operon-mini-day-number').evaluateAll(labels => labels.every(label => {
+     const cell = label.parentElement;
+     const scale = cell.classList.contains('is-displayed-day') ? 1.15 : 1;
+     return Math.abs(parseFloat(getComputedStyle(label).fontSize) - parseFloat(getComputedStyle(cell).fontSize) * scale) < 0.01;
+    }));
+    assert.ok(sizesMatch, date);
     assert.equal(await displayed.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(64, 160, 255)');
    };
    await assertDisplayedDay('2027-07-13');
