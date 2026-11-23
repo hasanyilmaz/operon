@@ -39,6 +39,8 @@ export class MiniCalendarScroller {
 	private height = 0;
 	private drawnRange = '';
 	private referenceDate = '';
+	private hoverDate = '';
+	private hoverRow: HTMLElement | null = null;
 	private position: MiniCalendarScrollPosition;
 	private expectedScroll: number | null = null;
 	private frame: number | null = null;
@@ -47,7 +49,7 @@ export class MiniCalendarScroller {
 	private disposed = false;
 
 	constructor(container: HTMLElement, private options: MiniCalendarOptions,
-		private readonly onReference: (date: string) => void,
+		private readonly onReference: (date: string, displayDate: string) => void,
 		private readonly onUserScroll: () => void, position?: MiniCalendarScrollPosition) {
 		this.win = container.ownerDocument.defaultView!;
 		this.firstWeek = miniCalendarWeekStart(MINI_CALENDAR_MIN_DAY, options.weekStart);
@@ -62,6 +64,8 @@ export class MiniCalendarScroller {
 		this.resizeObserver.observe(this.element);
 		const row = this.rows.values().next().value as HTMLElement | undefined;
 		if (row) this.resizeObserver.observe(row);
+		this.element.addEventListener('pointerover', this.pointerOver);
+		this.element.addEventListener('pointerleave', this.clearHover);
 		this.element.addEventListener('scroll', this.onScroll, { passive: true });
 		this.element.addEventListener('pointerdown', this.pointerDown, { passive: true });
 		this.win.addEventListener('pointerup', this.pointerUp);
@@ -149,12 +153,32 @@ export class MiniCalendarScroller {
 		const date = miniCalendarDate(Math.max(MINI_CALENDAR_MIN_DAY, Math.min(MINI_CALENDAR_MAX_DAY, this.position.week + offset)));
 		if (date === this.referenceDate) return;
 		this.referenceDate = date;
-		this.onReference(date);
+		this.onReference(date, this.hoverDate || date);
 	}
 
+	private setHover(button: HTMLButtonElement | null): void {
+		const date = button?.dataset.dateKey ?? '';
+		if (this.hoverDate === date) return;
+		const center = this.rows.get(this.index());
+		const previous = this.hoverRow ?? center;
+		this.hoverDate = date;
+		this.hoverRow = button?.closest('.operon-mini-calendar-week') ?? null;
+		const next = this.hoverRow ?? center;
+		if (previous !== next) {
+			previous?.classList.remove('is-centered-week');
+			next?.classList.add('is-centered-week');
+		}
+		this.onReference(this.referenceDate, date || this.referenceDate);
+	}
+
+	private readonly pointerOver = (event: PointerEvent): void => {
+		const target = event.target as Element | null;
+		this.setHover(event.pointerType === 'mouse' ? target?.closest('button[data-date-key]:enabled') ?? null : null);
+	};
+	private readonly clearHover = (): void => this.setHover(null);
 	private readonly pointerDown = (): void => { this.pointerCount++; };
 	private readonly pointerUp = (): void => { this.pointerCount = Math.max(0, this.pointerCount - 1); this.scheduleSettle(); };
-	private readonly pointerReset = (): void => { this.pointerCount = 0; this.scheduleSettle(); };
+	private readonly pointerReset = (): void => { this.pointerCount = 0; this.clearHover(); this.scheduleSettle(); };
 	private scheduleSettle(): void {
 		if (this.settleTimer !== null) this.win.clearTimeout(this.settleTimer);
 		this.settleTimer = this.win.setTimeout(() => {
@@ -187,6 +211,7 @@ export class MiniCalendarScroller {
 			if (row.contains(active)) this.element.focus({ preventScroll: true });
 			cleanupOperonHoverTooltips(row);
 			this.resizeObserver?.unobserve(row);
+			if (row === this.hoverRow) this.clearHover();
 			row.remove();
 			this.rows.delete(index);
 		}
@@ -205,7 +230,7 @@ export class MiniCalendarScroller {
 				this.rows.set(index, row);
 				this.resizeObserver?.observe(row);
 			}
-			row.classList.toggle('is-centered-week', index === center);
+			row.classList.toggle('is-centered-week', this.hoverRow ? row === this.hoverRow : index === center);
 			// The canvas midpoint includes the viewport inset, so resizing moves retained rows through layout alone.
 			const offset = (index - this.windowStart - this.windowCount / 2) * this.pitch;
 			const position = `calc(50% ${offset < 0 ? '-' : '+'} ${Math.abs(offset)}px)`;
@@ -226,6 +251,8 @@ export class MiniCalendarScroller {
 		this.resizeObserver.disconnect();
 		if (this.frame !== null) this.win.cancelAnimationFrame(this.frame);
 		if (this.settleTimer !== null) this.win.clearTimeout(this.settleTimer);
+		this.element.removeEventListener('pointerover', this.pointerOver);
+		this.element.removeEventListener('pointerleave', this.clearHover);
 		this.element.removeEventListener('scroll', this.onScroll);
 		this.element.removeEventListener('pointerdown', this.pointerDown);
 		this.win.removeEventListener('pointerup', this.pointerUp);

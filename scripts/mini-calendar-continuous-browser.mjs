@@ -118,6 +118,21 @@ try {
    await assertTone('2027-07-20', muted(normal));
    await assertTone('2027-07-24', muted(weekend));
    await assertTone('2027-07-01', accent);
+   if (!touch) {
+    const header = page.locator('.operon-calendar-date-button');
+    const original = await header.textContent();
+    await page.locator('[data-date-key="2027-07-20"]').hover();
+    assert.match(await header.textContent(), /20/);
+    await assertTone('2027-07-20', normal);
+    await assertTone('2027-07-13', muted(normal));
+    await page.locator('[data-date-key="2027-07-21"]').hover();
+    assert.match(await header.textContent(), /21/);
+    assert.equal((await state(page)).selected, '2027-07-13');
+    await header.hover();
+    assert.equal(await header.textContent(), original);
+    await assertTone('2027-07-13', normal);
+    await assertTone('2027-07-20', muted(normal));
+   }
    const weekHeight = (await state(page)).pitch;
    await page.locator('.operon-mini-calendar-scroll').evaluate((el, delta) => { el.scrollTop += delta; }, weekHeight);
    await settle(page);

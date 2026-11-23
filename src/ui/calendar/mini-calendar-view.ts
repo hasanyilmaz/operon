@@ -130,9 +130,9 @@ export class MiniCalendarView extends ItemView {
 		if (continuous) {
 			this.dateNavigation = renderMiniCalendarHeader(root, options);
 			const position = oldPosition ? { ...oldPosition, week: miniCalendarWeekStart(miniCalendarDay(this.navigationDate), settings.calendarWeekStart) } : undefined;
-			this.scroller = new MiniCalendarScroller(root, options, date => {
+			this.scroller = new MiniCalendarScroller(root, options, (date, displayDate) => {
 				this.navigationDate = date;
-				this.dateNavigation?.update(date);
+				this.dateNavigation?.update(displayDate);
 			}, () => this.input?.scrolled(), position);
 		} else {
 			this.dateNavigation = null;
