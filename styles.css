@@ -37919,6 +37919,7 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 
 /* Standalone Mini Calendar: fixed header above a bounded week viewport. */
 .operon-mini-calendar-view.is-continuous {
+	--operon-mini-calendar-edge-gap: 5px;
 	display: flex;
 	flex-direction: column;
 	gap: 5px;
@@ -37928,10 +37929,13 @@ body .operon-task-editor.operon-task-editor-phone-desktop:not(.operon-task-edito
 	box-sizing: border-box;
 	overflow: hidden;
 }
+.view-content.operon-mini-calendar-view.is-continuous {
+	padding-bottom: var(--operon-mini-calendar-edge-gap);
+}
 .operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-nav,
 .operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-weekdays { flex: 0 0 auto; }
 .operon-mini-calendar-view.is-continuous > .operon-calendar-sidebar-month-nav {
-	padding-top: 5px;
+	padding-top: var(--operon-mini-calendar-edge-gap);
 	margin-bottom: 5px;
 }
 .operon-mini-calendar-scroll {
