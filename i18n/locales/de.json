@@ -2781,7 +2781,7 @@
 		"defaultPreset": "Kalender-Standard-Voreinstellung",
 		"defaultPresetDesc": "Neue Kalender-Tabs starten mit dieser Voreinstellung, sofern der Tab nicht bereits einen eigenen gespeicherten Zustand hat.",
 		"weekStart": "Wochenbeginn",
-		"weekStartDesc": "Steuert Wochenbezeichnungen und zukünftige Standardwerte der Kalendernavigation.",
+		"weekStartDesc": "Wähle den ersten Wochentag für Kalender und Datumsauswahl.",
 		"monday": "Montag",
 		"sunday": "Sonntag",
 		"showWeekLabelOnFirstDay": "Wochenbezeichnung am ersten Tag anzeigen",

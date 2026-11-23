@@ -1803,7 +1803,7 @@ export class OperonSettingsTab extends PluginSettingTab {
 			else this.renderCalendarSetting(containerEl, key);
 		};
 		return this.buildTaskSettingsGroups([
-			['calendarGeneralSettings', ['calendarWeekStart', 'calendarShowWeekLabelOnFirstDay', 'calendarDayTitleAction'], render],
+			['calendarGeneralSettings', ['calendarShowWeekLabelOnFirstDay', 'calendarDayTitleAction'], render],
 			['timeGridSettings', ['calendarTimeGridScale', 'calendarInitialScrollMode', 'calendarAutoScrollPastRatio', 'calendarDefaultScrollHour'], render, ['DOCS-029 Calendar presets and time grid']],
 			['calendarLanesSettings', ['calendarShowAllDayLane', 'calendarShowDueMarkers', 'calendarShowHoverAddButton'], render],
 			['touchControls', ['calendarTouchDragLongPressMs', 'calendarTouchDragCancelDistancePx', 'calendarTouchTimeGridTaskMoveEnabled'], render, ['DOCS-060 Calendar layout toolbar and sidebar']],
@@ -8144,16 +8144,6 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 					}
 				},
 				normalize: value => value ? value : (this.settings.calendarPresets[0]?.id ?? null),
-			});
-		}
-		if (key === 'calendarWeekStart') {
-			this.renderBoundDropdownSetting(containerEl, t('calendar', 'weekStart'), t('calendar', 'weekStartDesc'), 'calendarWeekStart', {
-				value: this.settings.calendarWeekStart,
-				dropdownOptions: [
-					{ value: 'monday', label: t('calendar', 'monday') },
-					{ value: 'sunday', label: t('calendar', 'sunday') },
-				],
-				normalize: value => value === 'sunday' ? 'sunday' : 'monday',
 			});
 		}
 		if (key === 'calendarShowWeekLabelOnFirstDay') {

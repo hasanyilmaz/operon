@@ -298,7 +298,7 @@
       "weekCount": "週數",
       "weekCountDesc": "選擇此預設顯示多少個連續的周。",
       "weekStart": "每週起始",
-      "weekStartDesc": "控制周標籤和未來日曆導航的預設設定。"
+      "weekStartDesc": "選擇日曆和日期選擇器中每週的第一天。"
     },
     "commands": {
       "addExistingTaskToExcalidraw": "將現有任務加入 Excalidraw",
@@ -3979,5 +3979,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "6831d86d5d467b5a66b0d4d60878848aa02add82abc8a3013f8cc45d314973ba"
+  "sourceVersion": "8726d8040ff9941a1d47045a243b33e5b07469e84a7977598da966b4b159397f"
 }

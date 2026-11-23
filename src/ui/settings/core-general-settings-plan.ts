@@ -5,7 +5,7 @@ export type CoreGeneralSettingsPlanItem =
 	| { type: 'group'; groupId: CoreGeneralSettingsGroupId; entryIds: string[] };
 
 const CORE_GENERAL_SETTINGS_GROUPS: ReadonlyArray<{ groupId: CoreGeneralSettingsGroupId; entryIds: readonly string[] }> = [
-	{ groupId: 'languageFormats', entryIds: ['settings.language', 'settings.timeFormat', 'settings.dateDisplayFormat'] },
+	{ groupId: 'languageFormats', entryIds: ['settings.language', 'settings.timeFormat', 'settings.dateDisplayFormat', 'settings.calendarWeekStart'] },
 	{ groupId: 'updates', entryIds: ['settings.checkForUpdatesOnStartup', 'settings.releaseNotesShowOnUpdate'] },
 	{ groupId: 'demoWorkspace', entryIds: ['settings.demoWorkspace'] },
 	{ groupId: 'operonDocs', entryIds: ['settings.operonDocsFolder', 'settings.operonDocsAutoUpdateEnabled', 'settings.operonDocs'] },

@@ -2781,7 +2781,7 @@
 		"defaultPreset": "Préréglage de calendrier par défaut",
 		"defaultPresetDesc": "Les nouveaux volets de calendrier démarrent avec ce préréglage, sauf si le volet possède déjà son propre état enregistré.",
 		"weekStart": "Début de semaine",
-		"weekStartDesc": "Contrôle les libellés de semaine et les valeurs par défaut de la navigation future du calendrier.",
+		"weekStartDesc": "Choisissez le premier jour de la semaine dans les calendriers et les sélecteurs de date.",
 		"monday": "Lundi",
 		"sunday": "Dimanche",
 		"showWeekLabelOnFirstDay": "Afficher le libellé de semaine le premier jour",

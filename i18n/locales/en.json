@@ -2781,7 +2781,7 @@
 		"defaultPreset": "Calendar default preset",
 		"defaultPresetDesc": "New calendar leaves start with this preset unless the leaf already has its own saved state.",
 		"weekStart": "Week start",
-		"weekStartDesc": "Controls week labels and future calendar navigation defaults.",
+		"weekStartDesc": "Choose the first day of the week in calendars and date pickers.",
 		"monday": "Monday",
 		"sunday": "Sunday",
 		"showWeekLabelOnFirstDay": "Show week label on first day",

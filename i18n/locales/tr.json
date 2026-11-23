@@ -2781,7 +2781,7 @@
 		"defaultPreset": "Takvim varsayılan ön ayarı",
 		"defaultPresetDesc": "Yeni takvim sekmeleri, sekmenin kendi kayıtlı durumu yoksa bu ön ayar ile başlar.",
 		"weekStart": "Hafta başlangıcı",
-		"weekStartDesc": "Hafta etiketlerini ve gelecekteki takvim navigasyon varsayılanlarını kontrol eder.",
+		"weekStartDesc": "Takvimlerde ve tarih seçicilerinde haftanın ilk gününü seçin.",
 		"monday": "Pazartesi",
 		"sunday": "Pazar",
 		"showWeekLabelOnFirstDay": "İlk günde hafta etiketini göster",

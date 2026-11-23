@@ -2781,7 +2781,7 @@
 		"defaultPreset": "Preajuste predeterminado del calendario",
 		"defaultPresetDesc": "Las nuevas hojas de calendario empiezan con este preajuste a menos que la hoja ya tenga su propio estado guardado.",
 		"weekStart": "Inicio de la semana",
-		"weekStartDesc": "Controla las etiquetas de semana y los valores predeterminados de navegación futura del calendario.",
+		"weekStartDesc": "Elige el primer día de la semana en los calendarios y selectores de fecha.",
 		"monday": "Lunes",
 		"sunday": "Domingo",
 		"showWeekLabelOnFirstDay": "Mostrar etiqueta de semana en el primer día",

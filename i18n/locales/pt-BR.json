@@ -2781,7 +2781,7 @@
 		"defaultPreset": "predefinição padrão do calendário",
 		"defaultPresetDesc": "Novas abas do Calendário começam com esta predefinição, a menos que a aba já tenha seu próprio estado salvo.",
 		"weekStart": "Início da semana",
-		"weekStartDesc": "Controla os rótulos da semana e os padrões futuros de navegação do calendário.",
+		"weekStartDesc": "Escolha o primeiro dia da semana nos calendários e seletores de data.",
 		"monday": "Segunda-feira",
 		"sunday": "Domingo",
 		"showWeekLabelOnFirstDay": "Mostrar rótulo da semana no primeiro dia",

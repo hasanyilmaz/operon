@@ -83,6 +83,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('settings', 'coreGeneral', 'language', 'settings', 'language', 'languageDesc', 'render', ['locale', 'translation', 'language setting']),
 	e('settings', 'coreGeneral', 'timeFormat', 'settings', 'timeFormat', 'timeFormatDesc', 'dropdown', ['clock', '12 hour', '24 hour', 'time display']),
 	e('settings', 'coreGeneral', 'dateDisplayFormat', 'settings', 'dateDisplayFormat', 'dateDisplayFormatDesc', 'dropdown', ['date', 'date format', 'date display', 'YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY']),
+	e('settings', 'coreGeneral', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),
 	e('settings', 'coreGeneral', 'releaseNotesShowOnUpdate', 'settings', 'releaseNotesShowOnUpdate', 'releaseNotesShowOnUpdateDesc', 'toggle', ['release notes', 'what is new', 'updates', 'changelog', 'popup']),
 	section('settings', 'coreGeneral', 'demoWorkspace', 'settings', 'demoWorkspace', 'demoWorkspaceDesc', ['demo', 'sample workspace', 'basics workspace', 'example tasks']),
 	section('settings', 'coreGeneral', 'operonDocs', 'settings', 'operonDocsDownloadNow', 'operonDocsDownloadNowDesc', ['docs', 'documentation', 'wiki', 'official docs', 'download docs']),
@@ -208,7 +209,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsTaskCards', 'taskCardShowCheckboxProgress', 'settings', 'taskCardCheckboxProgress', 'taskCardVisibilityDesc', 'toggle', ['task cards', 'visibility']),
 
 	e('views', 'viewsCalendar', 'calendarDefaultPresetId', 'calendar', 'defaultPreset', 'defaultPresetDesc', 'dropdown', ['calendar', 'calendar default preset', 'calendar preset', 'preset']),
-	e('views', 'viewsCalendar', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),
 	e('views', 'viewsCalendar', 'calendarShowWeekLabelOnFirstDay', 'calendar', 'showWeekLabelOnFirstDay', 'showWeekLabelOnFirstDayDesc', 'toggle', ['calendar', 'week label']),
 	e('views', 'viewsCalendar', 'calendarShowHoverAddButton', 'calendar', 'showHoverAddButton', 'showHoverAddButtonDesc', 'toggle', ['calendar', 'quick add', 'hover add', 'add button', 'plus button']),
 	e('views', 'viewsCalendar', 'calendarDayTitleAction', 'calendar', 'dayTitleAction', 'dayTitleActionDesc', 'dropdown', ['calendar', 'day title action', 'daily note', 'calendar day title', 'date header']),

@@ -298,7 +298,7 @@
       "weekCount": "週数",
       "weekCountDesc": "このプリセットが連続して表示する週数を選択します。",
       "weekStart": "週の開始",
-      "weekStartDesc": "週ラベルと今後のカレンダーナビゲーションのデフォルトを制御します。"
+      "weekStartDesc": "カレンダーと日付選択で表示する週の開始曜日を選択します。"
     },
     "commands": {
       "addExistingTaskToExcalidraw": "既存のタスクをExcalidrawに追加",
@@ -3979,5 +3979,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "af389ecd3f05466b77a3dd34b219bd312ddaa676ba7e4c447a10d39266976c30"
+  "sourceVersion": "c3022138573f46b0a04d6bb6c1b00ed1945a1744679124dd3b11202e4b9ac036"
 }

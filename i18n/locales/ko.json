@@ -2781,7 +2781,7 @@
 		"defaultPreset": "캘린더 기본 프리셋",
 		"defaultPresetDesc": "저장된 상태가 없는 새 캘린더 창은 이 프리셋으로 시작합니다.",
 		"weekStart": "한 주의 시작",
-		"weekStartDesc": "주 레이블과 향후 캘린더 탐색 기본값을 제어합니다.",
+		"weekStartDesc": "캘린더와 날짜 선택기에서 한 주의 첫날을 선택하세요.",
 		"monday": "월요일",
 		"sunday": "일요일",
 		"showWeekLabelOnFirstDay": "첫날에 주 레이블 표시",

@@ -298,7 +298,7 @@
       "weekCount": "Contagem de semanas",
       "weekCountDesc": "Escolha quantas semanas consecutivas esta predefinição exibirá.",
       "weekStart": "Início da semana",
-      "weekStartDesc": "Controla os rótulos da semana e os padrões futuros de navegação do calendário."
+      "weekStartDesc": "Escolha o primeiro dia da semana nos calendários e seletores de data."
     },
     "commands": {
       "addExistingTaskToExcalidraw": "Adicionar tarefa existente ao Excalidraw",
@@ -3979,5 +3979,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "e207793bedaf922b1d5191554aefac94eab1cbc16926280c1d1dfab0e08ce409"
+  "sourceVersion": "5287a92a8a4daf96cb3bbbc18f9e4cf8727f654daf302e3183445ad90257300c"
 }

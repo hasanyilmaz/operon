@@ -4273,7 +4273,7 @@
       "Week count",
       "Choose how many consecutive weeks this preset displays.",
       "Week start",
-      "Controls week labels and future calendar navigation defaults.",
+      "Choose the first day of the week in calendars and date pickers.",
       "Add existing task to Excalidraw",
       "Add Operon Group",
       "Add Operon task",

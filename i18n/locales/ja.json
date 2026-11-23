@@ -2781,7 +2781,7 @@
 		"defaultPreset": "カレンダーのデフォルトプリセット",
 		"defaultPresetDesc": "新しいカレンダーは、すでに独自の保存状態がない限り、このプリセットで開始します。",
 		"weekStart": "週の開始",
-		"weekStartDesc": "週ラベルと今後のカレンダーナビゲーションのデフォルトを制御します。",
+		"weekStartDesc": "カレンダーと日付選択で表示する週の開始曜日を選択します。",
 		"monday": "月曜日",
 		"sunday": "日曜日",
 		"showWeekLabelOnFirstDay": "週の最初の日に週ラベルを表示",

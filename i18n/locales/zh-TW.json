@@ -2781,7 +2781,7 @@
 		"defaultPreset": "日曆預設預設",
 		"defaultPresetDesc": "新的日曆視窗將以此預設開始，除非該視窗已有自己儲存的狀態。",
 		"weekStart": "每週起始",
-		"weekStartDesc": "控制周標籤和未來日曆導航的預設設定。",
+		"weekStartDesc": "選擇日曆和日期選擇器中每週的第一天。",
 		"monday": "週一",
 		"sunday": "週日",
 		"showWeekLabelOnFirstDay": "在每週第一天顯示周標籤",
