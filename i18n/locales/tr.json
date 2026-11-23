@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "Satır içi görev başlık anahtarı",
 		"inlineTaskHeadingDesc": "Günlük Notlar, Aktif Dosya ve Her Seferinde Sor başlık anahtarı. Bu ifadeyi içeren ilk başlık yeni satır içi görevleri alır. Yoksa Operon bir ## başlığı oluşturur.",
 		"inlineTaskSpecificFileHeading": "Satır içi görev başlık anahtarı",
-		"inlineTaskSpecificFileHeadingDesc": "Görevleri tarih başlıkları altında gruplamak için boş bırakın.",
+		"inlineTaskSpecificFileHeadingDesc": "Başlık için “Logs” gibi bir anahtar kelimeyi # işareti kullanmadan girin. Operon görevleri bu kelimeyi içeren ilk başlığın altına ekler. Eşleşme yoksa “## Logs” başlığını oluşturur. Görevleri tarih başlıkları altında gruplamak için boş bırakın.",
 		"parentAwareInlineSaveLocation": "Üst Göreve Duyarlı Satır İçi Görev Yerleşimi",
 		"inlineParentTaskTargetMode": "Üst satır içi ise satır içi görev konumu",
 		"inlineParentTaskTargetModeDesc": "Seçilen üst görev satır içi görev olduğunda Yeni Operon Görevi'nin satır içi görevi nereye yazacağını seç.",

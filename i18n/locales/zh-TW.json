@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "行內任務標題關鍵詞",
 		"inlineTaskHeadingDesc": "日記、活動檔案和每次詢問的標題關鍵詞。第一個包含此短語的標題會接收新的行內任務。如果不存在，Operon 會建立一個 ## 標題。",
 		"inlineTaskSpecificFileHeading": "行內任務標題關鍵詞",
-		"inlineTaskSpecificFileHeadingDesc": "留空即可依日期標題將任務分組。",
+		"inlineTaskSpecificFileHeadingDesc": "輸入標題關鍵字，例如「Logs」，不必加上 # 符號。Operon 會將任務新增至第一個包含該關鍵字的標題下方。如果沒有符合的標題，就會建立「## Logs」。留空即可依日期標題將任務分組。",
 		"parentAwareInlineSaveLocation": "感知父任務的行內任務放置",
 		"inlineParentTaskTargetMode": "父任務為行內任務時的行內任務放置",
 		"inlineParentTaskTargetModeDesc": "選擇當所選父任務為行內任務時，「新建 Operon 任務」在何處寫入行內任務。",

@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "Inline task heading keyword",
 		"inlineTaskHeadingDesc": "Daily Notes, Active File, and Ask Every Time heading keyword. First heading containing this phrase receives new inline tasks. If none exists, Operon creates a ## heading.",
 		"inlineTaskSpecificFileHeading": "Inline task heading keyword",
-		"inlineTaskSpecificFileHeadingDesc": "Leave empty to group tasks under date-based headings.",
+		"inlineTaskSpecificFileHeadingDesc": "Enter a heading keyword such as “Logs” without the # symbols. Operon adds tasks under the first heading containing that keyword, or creates “## Logs” if none matches. Leave empty to group tasks under date-based headings.",
 		"parentAwareInlineSaveLocation": "Parent-Aware Inline Task Placement",
 		"inlineParentTaskTargetMode": "Inline task placement when parent is inline",
 		"inlineParentTaskTargetModeDesc": "Choose where New Operon Task writes inline tasks when the selected parent is an inline task.",

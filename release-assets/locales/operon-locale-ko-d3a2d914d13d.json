@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "특정 파일",
       "inlineTaskSavePathWeeklyNotes": "주간 노트",
       "inlineTaskSpecificFileHeading": "인라인 작업 제목 키워드",
-      "inlineTaskSpecificFileHeadingDesc": "비워 두면 작업을 날짜별 제목 아래에 모읍니다.",
+      "inlineTaskSpecificFileHeadingDesc": "# 기호 없이 “Logs”와 같은 제목 키워드를 입력하세요. Operon은 해당 키워드가 포함된 첫 번째 제목 아래에 작업을 추가합니다. 일치하는 제목이 없으면 “## Logs”를 만듭니다. 비워 두면 작업을 날짜별 제목 아래에 모읍니다.",
       "inlineTaskSubtaskAction": "하위 작업 추가 동작",
       "inlineTaskTargetFile": "인라인 작업 대상 파일",
       "inlineTaskTargetFileDesc": "기본 저장 경로가 특정 파일일 때 사용할 마크다운 파일입니다.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "bbe2d2dab73bb8d76c9e8a03963e000e98793fdae34b7362334a3c27166f3e7b"
+  "sourceVersion": "e94c9d474526fb7e881e2d60db5adb353ab39b5afdfd29fe3b2e5e3b3fa286b1"
 }

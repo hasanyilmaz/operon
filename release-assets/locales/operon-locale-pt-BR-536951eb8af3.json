@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Arquivo Específico",
       "inlineTaskSavePathWeeklyNotes": "Notas Semanais",
       "inlineTaskSpecificFileHeading": "Palavra-chave do título da tarefa inline",
-      "inlineTaskSpecificFileHeadingDesc": "Deixe em branco para agrupar tarefas sob títulos de data.",
+      "inlineTaskSpecificFileHeadingDesc": "Digite uma palavra-chave como “Logs” sem os sinais de #. O Operon adiciona as tarefas sob o primeiro título que contém essa palavra ou cria “## Logs” se nenhum título corresponder. Deixe em branco para agrupar tarefas sob títulos de data.",
       "inlineTaskSubtaskAction": "Adicionar subtarefa",
       "inlineTaskTargetFile": "Arquivo alvo da tarefa inline",
       "inlineTaskTargetFileDesc": "O arquivo Markdown é usado quando o caminho de salvamento padrão é Arquivo Específico.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "8c34087983c59301269bd6b866de0d55b6845cd05368164baaa9b750a084b7f2"
+  "sourceVersion": "c079fce9cd6575245a7a26de93d38cfd4f7df42bc376769541cb6fe4ac41e6bb"
 }

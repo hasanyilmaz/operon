@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "インラインタスクの見出しキーワード",
 		"inlineTaskHeadingDesc": "デイリーノート、アクティブなファイル、毎回確認の見出しキーワード。このフレーズを含む最初の見出しに新しいインラインタスクが追加されます。存在しない場合、Operon は ## 見出しを作成します。",
 		"inlineTaskSpecificFileHeading": "インラインタスクの見出しキーワード",
-		"inlineTaskSpecificFileHeadingDesc": "空欄にすると、日付の見出しの下にタスクをまとめます。",
+		"inlineTaskSpecificFileHeadingDesc": "「Logs」のような見出しのキーワードを、# を付けずに入力します。Operon はそのキーワードを含む最初の見出しの下にタスクを追加します。該当する見出しがなければ「## Logs」を作成します。空欄にすると、日付の見出しの下にタスクをまとめます。",
 		"parentAwareInlineSaveLocation": "親を考慮したインラインタスクの配置",
 		"inlineParentTaskTargetMode": "親がインラインの場合のインラインタスクの配置",
 		"inlineParentTaskTargetModeDesc": "選択した親がインラインタスクの場合に、新しい Operon タスクがインラインタスクを書き込む場所を選択します。",

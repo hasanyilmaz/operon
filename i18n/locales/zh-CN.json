@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "行内任务标题关键词",
 		"inlineTaskHeadingDesc": "日记、活动文件和每次询问的标题关键词。第一个包含此短语的标题会接收新的行内任务。如果不存在，Operon 会创建一个 ## 标题。",
 		"inlineTaskSpecificFileHeading": "行内任务标题关键词",
-		"inlineTaskSpecificFileHeadingDesc": "留空可按日期标题对任务进行分组。",
+		"inlineTaskSpecificFileHeadingDesc": "输入标题关键词，例如“Logs”，无需添加 # 号。Operon 会将任务添加到第一个包含该关键词的标题下。如果没有匹配的标题，则创建“## Logs”。留空可按日期标题对任务进行分组。",
 		"parentAwareInlineSaveLocation": "感知父任务的行内任务放置",
 		"inlineParentTaskTargetMode": "父任务为行内任务时的行内任务放置",
 		"inlineParentTaskTargetModeDesc": "选择当所选父任务为行内任务时，“新建 Operon 任务”在何处写入行内任务。",

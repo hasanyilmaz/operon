@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "指定檔案",
       "inlineTaskSavePathWeeklyNotes": "週記",
       "inlineTaskSpecificFileHeading": "行內任務標題關鍵詞",
-      "inlineTaskSpecificFileHeadingDesc": "留空即可依日期標題將任務分組。",
+      "inlineTaskSpecificFileHeadingDesc": "輸入標題關鍵字，例如「Logs」，不必加上 # 符號。Operon 會將任務新增至第一個包含該關鍵字的標題下方。如果沒有符合的標題，就會建立「## Logs」。留空即可依日期標題將任務分組。",
       "inlineTaskSubtaskAction": "新增子任務操作",
       "inlineTaskTargetFile": "行內任務目標檔案",
       "inlineTaskTargetFileDesc": "當預設儲存路徑為「指定檔案」時使用的 Markdown 檔案。",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "88f091f9f4b86b78573362f233c1f7ababe32173f4262ba0275ccd423efdf442"
+  "sourceVersion": "b065cda407ed460bd03f0b1a97478bc64c73590b68f68a8a0bb2fce9e77c654a"
 }

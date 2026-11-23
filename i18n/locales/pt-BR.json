@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "Palavra-chave do título da tarefa inline",
 		"inlineTaskHeadingDesc": "Palavra-chave do título para Notas Diárias, Arquivo Ativo e Perguntar Sempre. O primeiro título que contiver esta frase receberá novas tarefas inline. Se não existir, o Operon criará um título ##.",
 		"inlineTaskSpecificFileHeading": "Palavra-chave do título da tarefa inline",
-		"inlineTaskSpecificFileHeadingDesc": "Deixe em branco para agrupar tarefas sob títulos de data.",
+		"inlineTaskSpecificFileHeadingDesc": "Digite uma palavra-chave como “Logs” sem os sinais de #. O Operon adiciona as tarefas sob o primeiro título que contém essa palavra ou cria “## Logs” se nenhum título corresponder. Deixe em branco para agrupar tarefas sob títulos de data.",
 		"parentAwareInlineSaveLocation": "Posicionamento de tarefa inline com reconhecimento de tarefa pai",
 		"inlineParentTaskTargetMode": "Posicionamento de tarefa inline quando a tarefa pai é uma tarefa inline",
 		"inlineParentTaskTargetModeDesc": "Escolha onde o fluxo Nova tarefa do Operon gravará tarefas inline quando a tarefa pai selecionada for uma tarefa inline.",

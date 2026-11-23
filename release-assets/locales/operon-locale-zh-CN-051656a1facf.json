@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "指定文件",
       "inlineTaskSavePathWeeklyNotes": "周记",
       "inlineTaskSpecificFileHeading": "行内任务标题关键词",
-      "inlineTaskSpecificFileHeadingDesc": "留空可按日期标题对任务进行分组。",
+      "inlineTaskSpecificFileHeadingDesc": "输入标题关键词，例如“Logs”，无需添加 # 号。Operon 会将任务添加到第一个包含该关键词的标题下。如果没有匹配的标题，则创建“## Logs”。留空可按日期标题对任务进行分组。",
       "inlineTaskSubtaskAction": "添加子任务操作",
       "inlineTaskTargetFile": "行内任务目标文件",
       "inlineTaskTargetFileDesc": "当默认保存路径为“指定文件”时使用的 Markdown 文件。",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "157988b564bc0049becda50aafd70757741ee5302a57ad9885c7f376321d1b29"
+  "sourceVersion": "1506491703a1a17a818c52a6bcc42706f27ea3ac9abf80585e033b17e6592650"
 }

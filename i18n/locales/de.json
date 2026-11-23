@@ -863,7 +863,7 @@
 		"inlineTaskHeading": "Schlüsselwort für Inline-Aufgaben-Überschrift",
 		"inlineTaskHeadingDesc": "Überschriften-Schlüsselwort für Tagesnotizen, Aktive Datei und Jedes Mal fragen. Die erste Überschrift, die diesen Ausdruck enthält, erhält neue Inline-Aufgaben. Existiert keine, erstellt Operon eine ##-Überschrift.",
 		"inlineTaskSpecificFileHeading": "Schlüsselwort für Inline-Aufgaben-Überschrift",
-		"inlineTaskSpecificFileHeadingDesc": "Leer lassen, um Aufgaben unter Datumsüberschriften zu gruppieren.",
+		"inlineTaskSpecificFileHeadingDesc": "Gib ein Stichwort wie „Logs“ ohne die Zeichen # ein. Operon fügt Aufgaben unter der ersten Überschrift ein, die das Stichwort enthält. Gibt es keinen Treffer, erstellt Operon „## Logs“. Leer lassen, um Aufgaben unter Datumsüberschriften zu gruppieren.",
 		"parentAwareInlineSaveLocation": "Inline-Aufgaben-Platzierung mit Berücksichtigung der übergeordneten Aufgabe",
 		"inlineParentTaskTargetMode": "Inline-Aufgaben-Platzierung, wenn die übergeordnete Aufgabe inline ist",
 		"inlineParentTaskTargetModeDesc": "Wähle, wohin „Neue Operon-Aufgabe“ Inline-Aufgaben schreibt, wenn die ausgewählte übergeordnete Aufgabe eine Inline-Aufgabe ist.",

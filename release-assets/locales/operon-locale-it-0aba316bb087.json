@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "File specifico",
       "inlineTaskSavePathWeeklyNotes": "Note settimanali",
       "inlineTaskSpecificFileHeading": "Parola chiave intestazione attività in linea",
-      "inlineTaskSpecificFileHeadingDesc": "Lascia vuoto per raggruppare le attività sotto intestazioni con la data.",
+      "inlineTaskSpecificFileHeadingDesc": "Inserisci una parola chiave come “Logs” senza i simboli #. Operon aggiunge le attività sotto la prima intestazione che contiene la parola chiave. Se non ne trova nessuna, crea “## Logs”. Lascia vuoto per raggruppare le attività sotto intestazioni con la data.",
       "inlineTaskSubtaskAction": "Azione aggiungi sotto-attività",
       "inlineTaskTargetFile": "File di destinazione attività in linea",
       "inlineTaskTargetFileDesc": "File Markdown usato quando il percorso di salvataggio predefinito è File specifico.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Alterna anteprima discendenti"
     }
   },
-  "sourceVersion": "de535ea497a8e33f0e27bd2fd627abfafaf28b91102e19aea2902516b869face"
+  "sourceVersion": "79c1492da99da3d45b8c56c0a5ee49b5b6a2dcddecff93ebc7b92e39583d4398"
 }

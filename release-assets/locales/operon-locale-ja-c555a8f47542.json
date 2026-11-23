@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "特定のファイル",
       "inlineTaskSavePathWeeklyNotes": "ウィークリーノート",
       "inlineTaskSpecificFileHeading": "インラインタスクの見出しキーワード",
-      "inlineTaskSpecificFileHeadingDesc": "空欄にすると、日付の見出しの下にタスクをまとめます。",
+      "inlineTaskSpecificFileHeadingDesc": "「Logs」のような見出しのキーワードを、# を付けずに入力します。Operon はそのキーワードを含む最初の見出しの下にタスクを追加します。該当する見出しがなければ「## Logs」を作成します。空欄にすると、日付の見出しの下にタスクをまとめます。",
       "inlineTaskSubtaskAction": "サブタスク追加アクション",
       "inlineTaskTargetFile": "インラインタスクの対象ファイル",
       "inlineTaskTargetFileDesc": "デフォルトの保存パスが「特定のファイル」のときに使用される Markdown ファイル。",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "3377bfef4c869e083ef163ac6fb0d63fdf4425a94805ef8f0fd4f30977acf611"
+  "sourceVersion": "414d63e41549731b3755517b1fd26693f1f75acec5bac57139095d8950a8b8b5"
 }

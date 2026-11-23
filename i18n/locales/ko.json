@@ -879,7 +879,7 @@
 		"inlineTaskHeading": "인라인 작업 제목 키워드",
 		"inlineTaskHeadingDesc": "일일 노트, 활성 파일, 매번 묻기 모드의 제목 키워드입니다. 이 문구가 포함된 첫 제목 아래에 새 작업을 추가합니다. 없으면 ## 제목을 만듭니다.",
 		"inlineTaskSpecificFileHeading": "인라인 작업 제목 키워드",
-		"inlineTaskSpecificFileHeadingDesc": "비워 두면 작업을 날짜별 제목 아래에 모읍니다.",
+		"inlineTaskSpecificFileHeadingDesc": "# 기호 없이 “Logs”와 같은 제목 키워드를 입력하세요. Operon은 해당 키워드가 포함된 첫 번째 제목 아래에 작업을 추가합니다. 일치하는 제목이 없으면 “## Logs”를 만듭니다. 비워 두면 작업을 날짜별 제목 아래에 모읍니다.",
 		"parentAwareInlineSaveLocation": "상위 작업 기반 인라인 작업 배치",
 		"inlineParentTaskTargetMode": "상위가 인라인 작업일 때의 인라인 작업 배치",
 		"inlineParentTaskTargetModeDesc": "선택한 상위가 인라인 작업일 때 새 Operon 작업이 인라인 작업을 기록할 위치를 선택합니다.",

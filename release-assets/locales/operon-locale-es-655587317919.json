@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Archivo específico",
       "inlineTaskSavePathWeeklyNotes": "Notas semanales",
       "inlineTaskSpecificFileHeading": "Palabra clave del encabezado de tarea en línea",
-      "inlineTaskSpecificFileHeadingDesc": "Deja este campo vacío para agrupar las tareas bajo encabezados de fecha.",
+      "inlineTaskSpecificFileHeadingDesc": "Escribe una palabra clave como «Logs» sin los signos #. Operon añade las tareas bajo el primer encabezado que contiene esa palabra o crea «## Logs» si no encuentra ninguno. Deja este campo vacío para agrupar las tareas bajo encabezados de fecha.",
       "inlineTaskSubtaskAction": "Acción de añadir subtarea",
       "inlineTaskTargetFile": "Archivo de destino de tareas en línea",
       "inlineTaskTargetFileDesc": "Archivo Markdown usado cuando la ruta de guardado predeterminada es Archivo específico.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "f8ea8942f201ba6af02839c622929ed0dc0b1257bc362df5e80b3516c0f34288"
+  "sourceVersion": "40bcecde147a66164b9b54377dcc766afea35a5c043cdf404b8b11558925cbd9"
 }

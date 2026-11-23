@@ -865,7 +865,7 @@
 		"inlineTaskHeading": "Parola chiave intestazione attività in linea",
 		"inlineTaskHeadingDesc": "Parola chiave dell'intestazione per Note giornaliere, File attivo e Chiedi ogni volta. La prima intestazione che contiene questa frase riceve le nuove attività in linea. Se non ne esiste nessuna, Operon crea un'intestazione ##.",
 		"inlineTaskSpecificFileHeading": "Parola chiave intestazione attività in linea",
-		"inlineTaskSpecificFileHeadingDesc": "Lascia vuoto per raggruppare le attività sotto intestazioni con la data.",
+		"inlineTaskSpecificFileHeadingDesc": "Inserisci una parola chiave come “Logs” senza i simboli #. Operon aggiunge le attività sotto la prima intestazione che contiene la parola chiave. Se non ne trova nessuna, crea “## Logs”. Lascia vuoto per raggruppare le attività sotto intestazioni con la data.",
 		"parentAwareInlineSaveLocation": "Posizionamento attività in linea sensibile al genitore",
 		"inlineParentTaskTargetMode": "Posizionamento attività in linea quando il genitore è in linea",
 		"inlineParentTaskTargetModeDesc": "Scegli dove Nuova attività Operon scrive le attività in linea quando l'attività principale selezionata è un'attività in linea.",

@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Bestimmte Datei",
       "inlineTaskSavePathWeeklyNotes": "Wochennotizen",
       "inlineTaskSpecificFileHeading": "Schlüsselwort für Inline-Aufgaben-Überschrift",
-      "inlineTaskSpecificFileHeadingDesc": "Leer lassen, um Aufgaben unter Datumsüberschriften zu gruppieren.",
+      "inlineTaskSpecificFileHeadingDesc": "Gib ein Stichwort wie „Logs“ ohne die Zeichen # ein. Operon fügt Aufgaben unter der ersten Überschrift ein, die das Stichwort enthält. Gibt es keinen Treffer, erstellt Operon „## Logs“. Leer lassen, um Aufgaben unter Datumsüberschriften zu gruppieren.",
       "inlineTaskSubtaskAction": "Unteraufgabe-hinzufügen-Aktion",
       "inlineTaskTargetFile": "Zieldatei für Inline-Aufgaben",
       "inlineTaskTargetFileDesc": "Markdown-Datei, die verwendet wird, wenn der Standard-Speicherpfad „Bestimmte Datei“ ist.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "3c1f0a0cd4ca7b179f5313d8e9ee6e0fd8d7974c1d950d37ff38ca2a9ee2e419"
+  "sourceVersion": "d07db08b3f9286d04b41a5d57f7ef814de28e70b01e37b77add171ae4f8b5761"
 }

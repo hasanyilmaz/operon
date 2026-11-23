@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Belirli Dosya",
       "inlineTaskSavePathWeeklyNotes": "Haftalık Notlar",
       "inlineTaskSpecificFileHeading": "Satır içi görev başlık anahtarı",
-      "inlineTaskSpecificFileHeadingDesc": "Görevleri tarih başlıkları altında gruplamak için boş bırakın.",
+      "inlineTaskSpecificFileHeadingDesc": "Başlık için “Logs” gibi bir anahtar kelimeyi # işareti kullanmadan girin. Operon görevleri bu kelimeyi içeren ilk başlığın altına ekler. Eşleşme yoksa “## Logs” başlığını oluşturur. Görevleri tarih başlıkları altında gruplamak için boş bırakın.",
       "inlineTaskSubtaskAction": "Alt görev ekleme eylemi",
       "inlineTaskTargetFile": "Satır içi görev hedef dosyası",
       "inlineTaskTargetFileDesc": "Varsayılan kayıt yolu Belirli Dosya iken kullanılacak markdown dosyası.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "5b15cb112e80f1966f4bccc4b7eac3a884f2868a0d05e0fb94e3f1509aa983e7"
+  "sourceVersion": "fa598551991942ce80c0ded091d3852e37d5dcd14cc11ad2c691f04dbb6f8ec7"
 }

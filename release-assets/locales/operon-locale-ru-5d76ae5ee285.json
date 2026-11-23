@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Определённый файл",
       "inlineTaskSavePathWeeklyNotes": "Еженедельные заметки",
       "inlineTaskSpecificFileHeading": "Ключевое слово заголовка встроенной задачи",
-      "inlineTaskSpecificFileHeadingDesc": "Оставьте поле пустым, чтобы группировать задачи под заголовками с датой.",
+      "inlineTaskSpecificFileHeadingDesc": "Введите ключевое слово для заголовка, например «Logs», без символов #. Operon добавит задачи под первый заголовок, содержащий это слово. Если совпадений нет, Operon создаст заголовок «## Logs». Оставьте поле пустым, чтобы группировать задачи под заголовками с датой.",
       "inlineTaskSubtaskAction": "Действие добавления подзадачи",
       "inlineTaskTargetFile": "Целевой файл встроенных задач",
       "inlineTaskTargetFileDesc": "Файл Markdown, используемый, когда путь сохранения по умолчанию — «Определённый файл».",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "178aa490287e722a2e1b8ce33f6ed2189a960db0f4af0f50d45178a2a69d5a84"
+  "sourceVersion": "f660bc050646902a4af9128507685de73bbc4133aaae690fe7f811632658ab2b"
 }

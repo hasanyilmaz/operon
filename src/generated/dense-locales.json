@@ -5810,7 +5810,7 @@
       "Specific File",
       "Weekly Notes",
       "Inline task heading keyword",
-      "Leave empty to group tasks under date-based headings.",
+      "Enter a heading keyword such as “Logs” without the # symbols. Operon adds tasks under the first heading containing that keyword, or creates “## Logs” if none matches. Leave empty to group tasks under date-based headings.",
       "Add subtask action",
       "Inline task target file",
       "Markdown file used when the default save path is Specific File.",

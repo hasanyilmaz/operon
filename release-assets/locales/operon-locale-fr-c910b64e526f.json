@@ -1863,7 +1863,7 @@
       "inlineTaskSavePathSpecificFile": "Fichier spécifique",
       "inlineTaskSavePathWeeklyNotes": "Notes hebdomadaires",
       "inlineTaskSpecificFileHeading": "Mot-clé du titre des tâches en ligne",
-      "inlineTaskSpecificFileHeadingDesc": "Laissez ce champ vide pour regrouper les tâches sous des titres de date.",
+      "inlineTaskSpecificFileHeadingDesc": "Saisissez un mot-clé comme « Logs » sans les signes #. Operon ajoute les tâches sous le premier titre contenant ce mot-clé ou crée « ## Logs » si aucun titre ne correspond. Laissez ce champ vide pour regrouper les tâches sous des titres de date.",
       "inlineTaskSubtaskAction": "Action d'ajout de sous-tâche",
       "inlineTaskTargetFile": "Fichier cible des tâches en ligne",
       "inlineTaskTargetFileDesc": "Fichier Markdown utilisé lorsque le chemin d'enregistrement par défaut est Fichier spécifique.",
@@ -3981,5 +3981,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "b15f2916a88fab41586242cc68d9c50be43efcbd6b44b24a2def8fc75bb1717e"
+  "sourceVersion": "d7beb60245a3f5551b07003a944b7987b15e6d9572747903f52df8247b792417"
 }
