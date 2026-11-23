@@ -81,6 +81,14 @@ try {
   });
   await settle(page);
   await assertMiniCalendarGeometry(page, true);
+  if (!touch && width === 320 && height === 480) {
+   const theme = await page.addStyleTag({ content: 'button:not(.clickable-icon){box-shadow:0 2px 3px #aaa,0 1px 2px #bbb}' });
+   for (const selector of ['.operon-calendar-sidebar-month-day', '.operon-calendar-sidebar-month-weeknum']) {
+    assert.equal(await page.locator('.operon-mini-calendar-week ' + selector).first().evaluate(el => getComputedStyle(el).boxShadow), 'none');
+   }
+   await theme.evaluate(el => el.remove());
+  }
+
   if (width === 320 && height === 480) {
    // Today's month and the week at the viewport center use normal day colors.
    const assertTone = (date, expectedColor) => page.locator(`[data-date-key="${date}"]`).evaluate((button, expected) => {

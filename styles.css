@@ -18913,6 +18913,12 @@ body .operon-calendar-month-picker button.operon-calendar-toolbar-button[aria-pr
 	cursor: pointer;
 }
 
+/* Keep resizing the continuous week grid inexpensive with themes that stack button shadows. */
+.operon-mini-calendar-view.is-continuous .operon-mini-calendar-week :where(button) {
+	box-shadow: none;
+	border-color: var(--background-modifier-border);
+}
+
 .operon-mini-calendar-view .operon-calendar-sidebar-month-day.is-weekend,
 .operon-calendar-root.is-sidebar-mode .operon-calendar-sidebar .operon-calendar-sidebar-month-day.is-weekend {
 	--operon-calendar-weekend-day-color: color-mix(in srgb, var(--text-normal) 82%, var(--interactive-accent));
