@@ -35,14 +35,15 @@ export class OperonCommandLinks {
 		this.catalog = this.buildCatalog();
 	}
 
-	register(command: Command): Command {
+	register(command: Command, visibility: 'palette' | 'uri-only' = 'palette'): Command {
 		const { id } = command;
 		const viewEntry = this.catalog.entries.find(entry => entry.target.kind === 'view' && entry.id === id);
 		const name = viewEntry?.name ?? command.name;
 		const callback = command.callback;
-		const registered = this.ports.register(viewEntry && callback
+		const definition = viewEntry && callback
 			? { ...command, name, callback: () => this.withFeedback(callback) }
-			: { ...command, name });
+			: { ...command, name };
+		const registered = visibility === 'palette' ? this.ports.register(definition) : definition;
 		this.commands.set(id, { id, name, registered, sourceName: command.name });
 		return registered;
 	}

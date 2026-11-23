@@ -38607,11 +38607,11 @@ export default class OperonPlugin extends Plugin {
 				new Notice(t('settings', reason === 'rule' ? 'uriRuleMissing' : reason === 'preset' ? 'uriPresetMissing' : 'uriUnavailable'));
 			},
 		});
-		this.addCommand({
+		links.register({
 			id: 'open-uri-builder',
 			name: t('commands', 'openUriBuilder'),
 			callback: () => this.settingsTab?.openUriBuilder(),
-		});
+		}, 'uri-only');
   if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
   this.register(registerNativeTaskWorkspace(this.app, {
    position: () => this.settings.taskEditorPosition,

@@ -100,7 +100,7 @@ function fixture(overrides = {}) {
 		...overrides,
 	});
 	links.register({ id: 'open-kanban-view', name: 'Kanban', callback: () => calls.push('default') });
-	links.register({ id: 'open-uri-builder', name: 'Open URI Finder', callback: () => calls.push('builder') });
+	links.register({ id: 'open-uri-builder', name: 'Open URI Finder', callback: () => calls.push('builder') }, 'uri-only');
 	links.register({ id: 'toggle-global-timer', name: 'Start/stop timer', callback: () => calls.push('timer') });
 	links.register({ id: 'toggle-timer', name: 'Start/stop timer for task at cursor', callback: () => calls.push('cursor') });
 	links.register({ id: 'guarded', name: 'Editor command', checkCallback: () => false });
@@ -216,7 +216,7 @@ test('Builder selects without executing, copies a routable vault URI, and clears
 	Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value; } } });
 	try {
 		assert.equal(input.textContent, ''); assert.equal(output.textContent, ''); assert.ok(copy.disabled);
-		palette.get('operon:open-uri-builder').callback();
+		assert.equal(palette.has('operon:open-uri-builder'), false);
 		edit('kanban'); key('Escape'); assert.equal(input.suggest.isOpen, false);
 		edit('kanban'); key('ArrowDown'); key('Enter');
 		assert.equal(input.textContent, 'Open Kanban › Sprint › New Tab');
@@ -224,8 +224,8 @@ test('Builder selects without executing, copies a routable vault URI, and clears
 		key('Enter'); assert.equal(input.suggest.isOpen, false); assert.equal(copy.disabled, false);
 		await copy.click();
 		assert.equal(copied, 'obsidian://operon?vault=Test%20%26%20Work&view=kanban&preset=kp_123');
-		assert.deepEqual(calls, ['builder']); assert.equal(notices.at(-1), 'Link copied to clipboard');
-		await dispatch(copied); assert.deepEqual(calls, ['builder', 'kp_123']);
+		assert.deepEqual(calls, []); assert.equal(notices.at(-1), 'Link copied to clipboard');
+		await dispatch(copied); assert.deepEqual(calls, ['kp_123']);
 		presets[0].name = 'Next sprint'; links.refresh();
 		assert.match(input.textContent, /Next sprint/u); assert.equal(output.textContent, copied);
 		presets.splice(0); links.refresh();
@@ -235,7 +235,7 @@ test('Builder selects without executing, copies a routable vault URI, and clears
 		assert.equal(output.textContent, 'obsidian://operon?vault=Test%20%26%20Work&command=toggle-global-timer');
 		navigator.clipboard.writeText = () => Promise.reject(new Error('Clipboard unavailable'));
 		await copy.click(); assert.equal(notices.at(-1), 'Clipboard write failed'); assert.ok(output.selected);
-		assert.deepEqual(calls, ['builder', 'kp_123']);
+		assert.deepEqual(calls, ['kp_123']);
 	} finally {
 		dispose();
 		if (clip) Object.defineProperty(navigator, 'clipboard', clip); else delete navigator.clipboard;
@@ -528,8 +528,8 @@ test('production Finder, registered shortcuts and URIs open the same tab or Tabl
 	Object.assign(tab, { app: { setting }, containerEl: { ownerDocument: { defaultView: { requestAnimationFrame: fn => fn() } } },
 		uriBuilderInput: { scrollIntoView() {}, focus() { calls.push('focus'); } } });
 	host.registerCommands();
-	palette.get('operon:open-uri-builder').callback();
-	assert.deepEqual(calls.splice(0), ['settings', ['operon', ['General']], 'focus']);
+	assert.equal(palette.has('operon:open-uri-builder'), false);
+	assert.deepEqual(calls, []);
 	const root = new Element();
 	const builder = renderUriBuilder(host.app, root, host.commandLinks);
 	builder.input.textContent = 'sprint'; builder.input.dispatchEvent(new Event('input'));
