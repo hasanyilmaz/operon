@@ -9,8 +9,8 @@ import ts from 'typescript';
 // Exercise the actual Plugin bridge and service with in-memory vault/index boundaries.
 const source = ts.createSourceFile('main.ts', await readFile('main.ts', 'utf8'), ts.ScriptTarget.Latest, true);
 const plugin = source.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'OperonPlugin');
-const names = ['resolveEffectivePeriodicNoteConfig', 'resolveEffectiveDailyNoteConfig', 'getPeriodicNoteService',
- 'buildPeriodicNoteTemplateRevision', 'resolvePeriodicNoteDeterministicContent', 'resolveOrCreatePeriodicNoteResult',
+const names = ['uiPeriodicNoteRequest', 'resolveEffectivePeriodicNoteConfig', 'resolveEffectiveDailyNoteConfig', 'getPeriodicNoteService',
+ 'ensurePeriodicNoteContainerRegistered', 'buildPeriodicNoteTemplateRevision', 'resolvePeriodicNoteDeterministicContent', 'resolveOrCreatePeriodicNoteResult',
  'resolveTaskCreatorInlineTargetFile', 'resolvePeriodicNoteFileTaskContainer', 'resolveWeeklyNoteDailyDateHeading', 'insertTaskCreatorInlineTaskUsingDefaultTarget',
  'insertTaskCreatorInlineTaskIntoFile', 'handleCreatePeriodicNoteCommand'];
 const methods = names.map(name => {
@@ -23,11 +23,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import moment from 'moment';
 import 'moment/locale/de';
+import { isValidOperonId } from './src/core/id-generator';
 import { PeriodicNoteService } from './src/core/periodic-note-service';
 import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-container';
 import { createPeriodicNoteCreatedFileSnapshot, resolvePeriodicNoteContainerRegistrationDisposition, rollbackPeriodicNoteCreatedFileSnapshot } from './src/core/periodic-note-container-registration';
 import { resolvePeriodicNoteConfigFromSettings, buildOperonPeriodicNoteConfig } from './src/core/periodic-note-settings';
-import { resolvePeriodicNotePathFromDateKey, formatPeriodicNoteTitleFromDateKey } from './src/core/periodic-note-path';
+import { weeklyRowMonday, resolvePeriodicNotePathFromDateKey, formatPeriodicNoteTitleFromDateKey } from './src/core/periodic-note-path';
 import { resolveCoreTemplateVariables } from './src/core/core-template-variables';
 import { insertInlineTaskUnderHeading, insertInlineTaskUnderFirstHeadingKeyword, UnsafeMarkdownHeadingInsertionError } from './src/core/markdown-heading-insertion';
 import { DEFAULT_SETTINGS, normalizeInlineTaskHeadingKeyword } from './src/types/settings';
@@ -60,7 +61,7 @@ function setup(kind,template,core=false,asTask=false){
  h.hasTemplatedFileTaskIdentity=()=>false;h.buildOperonTemplatePlaceholderContext=()=>({});h.resolveOperonTemplatePlaceholdersInContent=c=>c;
  h.resolveTemplatedFileTaskContent=content=>content.replace('---\\n','---\\noperonId: par0001\\n');
  h.loadParsedFrontmatterDocument=async file=>({managedFieldValues:{operonId:contents.get(file.path)?.match(/operonId: (\\w+)/)?.[1]||''},tags:[]});
- h.ensurePeriodicNoteContainerRegistered=async()=>({status:'committed'});
+ h.storage={periodicNoteContainers:{register:async entry=>{events.push(['register',entry]);return {status:'committed'};}}};
  h.indexer={scheduleReindex:p=>events.push(['index',p]),getAllTasks:()=>[]};
  h.indexer.getFileTaskByPath=p=>contents.get(p)?.includes('operonId: par0001')?{operonId:'par0001',primary:{filePath:p},fieldValues:{operonId:'par0001'},tags:[]}:null;
  h.indexer.hasDuplicateOperonIdConflict=()=>false;h.indexer.reindexFilePath=async()=>{};
@@ -75,6 +76,70 @@ function setup(kind,template,core=false,asTask=false){
  return {h,files,contents,events,add};
 }
 const draft=()=>({description:'Captured',fieldValues:{priority:'A'},tags:[]});
+test('Sunday UI routing shares a week across Sunday, Monday and Thursday and across ISO year boundaries',async()=>{
+ const f=setup('weekly','Templates/Note');
+ f.h.settings.calendarWeekStart='sunday';
+ for(const [date,path,anchor] of [
+  ['2026-11-22','2026-W48','2026-11-22'],['2026-11-23','2026-W48','2026-11-22'],
+  ['2026-11-26','2026-W48','2026-11-22'],['2027-01-02','2026-W53','2026-12-27'],
+  ['2027-01-03','2027-W01','2027-01-03']]){
+  const result=await f.h.resolveOrCreatePeriodicNoteResult('weekly',date);
+  assert.equal(result.file.path,'Weekly/'+path+'.md');
+  assert.equal(result.dateKey,anchor);assert.ok(f.contents.get(result.file.path).includes(anchor));
+ }
+ assert.equal(f.events.filter(e=>e[0]==='create').length,3);
+ for(const format of ['GGGGG-[W]WW-W-Wo-GG','ggggg-[w]ww-w-wo-gg']){
+  assert.equal(formatPeriodicNoteTitleFromDateKey('weekly','2026-11-22',format,'sunday'),moment('2026-11-23').format(format));
+ }
+ assert.equal(formatPeriodicNoteTitleFromDateKey('weekly','2027-01-03','YYYY-MM-DD [W]WW GGGG','sunday'),'2027-01-03 W01 2027');
+ f.h.settings.weeklyNoteFormat='gggg-[W]ww';
+ const local=await f.h.resolveOrCreatePeriodicNoteResult('weekly','2026-12-27');
+ assert.equal(local.file.path,'Weekly/'+moment('2026-12-28').format('gggg-[W]ww')+'.md');
+});
+test('Thursday capture retains its own linked heading and Sunday file-task parent; service callers default to ISO Monday',async()=>{
+ const f=setup('weekly','Templates/Note',false,true);
+ f.h.settings.calendarWeekStart='sunday';
+ f.h.settings.dailyNoteFormat='YYYY-MM-DD';
+ const result=await f.h.insertTaskCreatorInlineTaskUsingDefaultTarget(draft(),{targetDateKey:'2026-11-26'});
+ assert.equal(result.kind,'created');
+ assert.equal(result.result.filePath,'Weekly/2026-W48.md');
+ assert.ok(f.contents.get(result.result.filePath).includes('## [[2026-11-26]]\\n- [ ] Captured'));
+ assert.equal(f.h.inherited.parentTask,'par0001');
+ const resolution=await f.h.resolveEffectivePeriodicNoteConfig('weekly');
+ const runtime=await f.h.getPeriodicNoteService().getOrCreate({kind:'weekly',dateKey:'2026-11-22',config:resolution.config});
+ assert.equal(runtime.path,'Weekly/2026-W47.md');
+ assert.equal(runtime.dateKey,'2026-11-16');
+});
+test('Sunday File Tasks created by a template retain a stable registry identity with automatic parenting off',async()=>{
+ const f=setup('weekly','Templates/Note');
+ f.h.settings.weeklyNoteFormat='YYYY-MM-DD';
+ f.h.settings.calendarWeekStart='sunday';
+ f.h.hasTemplatedFileTaskIdentity=()=>true;
+ const result=await f.h.resolveOrCreatePeriodicNoteResult('weekly','2026-11-22');
+ assert.equal(result.file.path,'Weekly/2026-11-22.md');
+ const [,entry]=f.events.find(event=>event[0]==='register');
+ assert.equal(entry.anchorDateKey,'2026-11-23');
+ assert.equal(entry.lastKnownPath,result.file.path);
+ assert.equal(await f.h.resolvePeriodicNoteFileTaskContainer(result),null);
+});
+test('date-named UI weeks prefer Sunday and reuse an existing Monday note without rewriting it',async()=>{
+ const f=setup('weekly','');f.h.settings.calendarWeekStart='sunday';f.h.settings.weeklyNoteFormat='YYYY-MM-DD';
+ const open=date=>f.h.resolveOrCreatePeriodicNoteResult('weekly',date);
+ f.add('Weekly/2026-11-23.md','old');
+ assert.equal((await open('2026-11-22')).file.path,'Weekly/2026-11-23.md');
+ const vanished=await f.h.resolveOrCreatePeriodicNoteResult('weekly','2026-11-22',undefined,()=>{
+  f.files.delete('Weekly/2026-11-23.md');return true;
+ });
+ assert.equal(vanished.file,null);
+ assert.equal(f.events.filter(e=>e[0]==='create').length,0);
+ f.add('Weekly/2026-11-23.md','old');
+ f.add('Weekly/2026-11-22.md','new');
+ assert.equal((await open('2026-11-26')).file.path,'Weekly/2026-11-22.md');
+ assert.equal(f.contents.get('Weekly/2026-11-23.md'),'old');
+ const [sun,mon]=await Promise.all([open('2026-11-29'),open('2026-11-30')]);
+ assert.equal(sun.file.path,'Weekly/2026-11-29.md');assert.equal(mon.file.path,sun.file.path);
+ assert.equal(f.events.filter(e=>e[0]==='create').length,1);
+});
 for(const kind of ['daily','weekly'])for(const template of ['','Templates/Note','Templates/Note.md','Note'])for(const core of kind==='daily'?[false,true]:[false]){
  test(kind+' first and next inline creation: '+(template||'no template')+(core?' Core':''),async()=>{
   moment.locale('de');const f=setup(kind,template,core);

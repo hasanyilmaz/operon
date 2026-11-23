@@ -826,9 +826,11 @@ import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-conta
 import {
 	formatPeriodicNoteTitleFromDateKey,
 	isPeriodicNoteDateKey,
+	weeklyRowMonday,
 	resolvePeriodicNoteAnchorDateKey,
 	resolvePeriodicNotePathFromDateKey,
 	type PeriodicNoteKind,
+	type PeriodicNotePathConfig,
 } from './src/core/periodic-note-path';
 import {
 	PeriodicNoteService,
@@ -17894,7 +17896,9 @@ export default class OperonPlugin extends Plugin {
 		this.registerView(MINI_CALENDAR_VIEW_TYPE, leaf => new MiniCalendarView(leaf, () => this.settings, undefined, request => this.openMiniCalendarNote(request), error => {
 			console.error('Operon: Mini Calendar note opening failed', error);
 			new Notice(t('notifications', 'miniCalendarOpenFailed'));
-		}));
+		}, monday => this.uiPeriodicNoteRequest('weekly', monday, {
+			folder: this.settings.weeklyNoteFolder, format: this.settings.weeklyNoteFormat,
+		}).config.weekStart ?? 'monday'));
 		const openEditorForId = (operonId: string) => this.openEditorForId(operonId);
 		const openTaskSourceInNewTab = (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); };
 		const replaceActiveManualOrder = async (orderedTaskIds: string[]): Promise<void> => {
@@ -21906,6 +21910,24 @@ export default class OperonPlugin extends Plugin {
 		return await this.resolveOrCreatePeriodicNoteResult('daily', dateKey);
 	}
 
+	private uiPeriodicNoteRequest<T extends PeriodicNotePathConfig>(
+		kind: PeriodicNoteKind, dateKey: string, config: T,
+	): { kind: PeriodicNoteKind; dateKey: string; config: T & PeriodicNotePathConfig; existingOnly?: true } {
+		if (kind === 'weekly' && this.settings.calendarWeekStart === 'sunday') {
+			const sundayConfig = { ...config, weekStart: 'sunday' as const };
+			const path = resolvePeriodicNotePathFromDateKey(kind, dateKey, sundayConfig);
+			const monday = weeklyRowMonday(dateKey, 'sunday');
+			if (path && monday && !this.app.vault.getAbstractFileByPath(path)) {
+				const legacy = resolvePeriodicNotePathFromDateKey(kind, monday, config);
+				if (legacy && legacy !== path && this.app.vault.getAbstractFileByPath(legacy) instanceof TFile) {
+					return { kind, dateKey: monday, config, existingOnly: true };
+				}
+			}
+			return { kind, dateKey, config: sundayConfig };
+		}
+		return { kind, dateKey, config };
+	}
+
 	/** The only note-creation adapter used by Daily and Weekly Task Router targets. */
 	private async resolveOrCreatePeriodicNoteResult(
 		kind: PeriodicNoteKind,
@@ -21944,22 +21966,27 @@ export default class OperonPlugin extends Plugin {
 				) || resolvedConfig.reason === 'invalid-config',
 			};
 		}
-		const filePath = resolvePeriodicNotePathFromDateKey(kind, dateKey, resolvedConfig.config);
+		const request = this.uiPeriodicNoteRequest(kind, dateKey, resolvedConfig.config);
+		const filePath = resolvePeriodicNotePathFromDateKey(kind, request.dateKey, request.config);
 		if (!filePath) return unavailable;
 		const existingFile = this.app.vault.getAbstractFileByPath(filePath);
 		if (existingFile instanceof TFile && acceptFile?.(existingFile) === false) return { ...unavailable, file: existingFile };
 		if (canCommit && !(await canCommit())) return unavailable;
-		if (prepared && JSON.stringify(prepared.config) !== JSON.stringify(resolvedConfig.config)) return unavailable;
+		if (prepared && (prepared.path !== filePath || JSON.stringify(prepared.config) !== JSON.stringify(request.config))) return unavailable;
+		if (request.existingOnly) {
+			if (!(existingFile instanceof TFile) || this.app.vault.getAbstractFileByPath(filePath) !== existingFile) return unavailable;
+			return { ...unavailable, file: existingFile, dateKey: request.dateKey, config: request.config };
+		}
 
 		let shouldFinalizeCreatedPath = false;
 		this.workflowNormalizationInProgress.add(filePath);
 		try {
 			const service = this.getPeriodicNoteService();
-			const guardedPlan = !prepared && canCommit ? await service.prepare({ kind, dateKey, config: resolvedConfig.config }) : null;
+			const guardedPlan = !prepared && canCommit ? await service.prepare(request) : null;
 			const result = prepared
 				? await this.getPeriodicNoteService().commit(prepared, canCommit)
 				: guardedPlan ? (guardedPlan.status === 'prepared' ? await service.commit(guardedPlan.plan, canCommit) : guardedPlan.result)
-				: await this.getPeriodicNoteService().getOrCreate({ kind, dateKey, config: resolvedConfig.config });
+				: await this.getPeriodicNoteService().getOrCreate(request);
 			shouldFinalizeCreatedPath = result.ok
 				? result.status === 'created'
 				: result.error.recoveryRequired;
@@ -21977,7 +22004,7 @@ export default class OperonPlugin extends Plugin {
 					...unavailable,
 					file,
 					dateKey: result.dateKey,
-					config: resolvedConfig.config,
+					config: request.config,
 				};
 			}
 			const initializedDocument = await this.loadParsedFrontmatterDocument(file);
@@ -21991,13 +22018,17 @@ export default class OperonPlugin extends Plugin {
 					? { ...initializedDocument.managedFieldValues }
 					: null,
 				operonParentTags: operonParentTaskId ? [...initializedDocument.tags] : null,
-				config: resolvedConfig.config,
+				config: request.config,
 				noticeShown: false,
 			};
-			const createdSnapshot = resolved.config?.createAsOperonTask
+			// A template can create a File Task even when automatic parenting is off.
+			// Date-named Sunday containers need a durable identity for pipeline protection.
+			const registerContainer = request.config.createAsOperonTask
+				|| (request.config.weekStart === 'sunday' && isValidOperonId(operonParentTaskId ?? ''));
+			const createdSnapshot = registerContainer
 				? createPeriodicNoteCreatedFileSnapshot(result.path, result.operationOwnedContent)
 				: null;
-			const registration = resolved.config?.createAsOperonTask
+			const registration = registerContainer
 				? await this.ensurePeriodicNoteContainerRegistered(resolved)
 				: { status: 'committed', acknowledgement: 'direct' } as const;
 			const registrationDisposition = resolvePeriodicNoteContainerRegistrationDisposition(
@@ -22132,7 +22163,7 @@ export default class OperonPlugin extends Plugin {
 		const config = periodicNote.config;
 		const file = periodicNote.file;
 		const dateKey = periodicNote.dateKey;
-		if (!config?.createAsOperonTask || !(file instanceof TFile) || !dateKey) {
+		if (!config || !(file instanceof TFile) || !dateKey) {
 			return { status: 'committed', acknowledgement: 'direct' };
 		}
 		try {
@@ -22152,11 +22183,14 @@ export default class OperonPlugin extends Plugin {
 			) {
 				throw new Error('Periodic File Task indexing did not establish one exact container identity.');
 			}
+			// Registry identities use the ISO Monday even when the UI creates the note on Sunday.
+			const anchorDateKey = config.weekStart === 'sunday' ? weeklyRowMonday(dateKey, 'sunday') : dateKey;
+			if (!anchorDateKey) throw new Error('Invalid periodic note container date.');
 			const entry: PeriodicNoteContainerRegistryEntryV1 = {
 				operonId: indexed.operonId,
 				kind: config.kind,
 				lastKnownPath: indexed.primary.filePath,
-				anchorDateKey: dateKey,
+				anchorDateKey,
 				source: config.source,
 			};
 			const persistence = await this.storage.periodicNoteContainers.register(entry);
@@ -36603,7 +36637,7 @@ export default class OperonPlugin extends Plugin {
         }
         const resolution = await this.resolveEffectivePeriodicNoteConfig(decision.periodicKind);
         if (!resolution.available || !resolution.config.createAsOperonTask) return { ...plan, reason: 'unavailable' };
-        const prepared = await this.getPeriodicNoteService().prepare({ kind: decision.periodicKind, dateKey: decision.targetDateKey, config: resolution.config });
+        const prepared = await this.getPeriodicNoteService().prepare(this.uiPeriodicNoteRequest(decision.periodicKind, decision.targetDateKey, resolution.config));
         if (prepared.status === 'error') return { ...plan, reason: 'unavailable' };
         const path = prepared.status === 'existing' ? prepared.result.path : prepared.plan.path;
         const target = this.indexer.getFileTaskByPath(path);

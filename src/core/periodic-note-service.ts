@@ -431,7 +431,7 @@ export class PeriodicNoteService {
 				result: this.error('invalid-target', 'The periodic note request and configuration kinds do not match.'),
 			};
 		}
-		const dateKey = resolvePeriodicNoteAnchorDateKey(request.kind, request.dateKey);
+		const dateKey = resolvePeriodicNoteAnchorDateKey(request.kind, request.dateKey, request.config.weekStart);
 		if (!dateKey) return { ok: false, result: this.error('invalid-target', 'The periodic note date is invalid.') };
 		const path = resolvePeriodicNotePathFromDateKey(request.kind, dateKey, request.config);
 		if (!path) return { ok: false, result: this.error('invalid-target', 'The periodic note target path is invalid.') };

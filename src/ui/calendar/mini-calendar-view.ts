@@ -56,7 +56,8 @@ export class MiniCalendarView extends ItemView {
 	constructor(leaf: WorkspaceLeaf, private readonly getSettings: () => OperonSettings,
 		private readonly clock: () => Date = () => new Date(),
 		openNote: (request: MiniCalendarNoteRequest) => Promise<void> = async () => {},
-		onNoteError: (error: unknown) => void = error => { console.error('Operon: Mini Calendar opening failed', error); }) {
+		onNoteError: (error: unknown) => void = error => { console.error('Operon: Mini Calendar opening failed', error); },
+		private readonly resolveWeekStart?: (monday: string) => 'monday' | 'sunday') {
 		super(leaf);
 		this.noteOpener = new MiniCalendarNoteOpener(openNote, onNoteError);
 	}
@@ -97,7 +98,7 @@ export class MiniCalendarView extends ItemView {
 		const locale = getAppLocale(this.app);
 		const continuous = settings.miniCalendarViewMode !== 'month';
 		const signature = JSON.stringify([continuous ? null : this.navigationDate, continuous ? null : this.anchorDate, continuous ? null : today, locale, settings.language,
-			settings.dateDisplayFormat, settings.calendarWeekStart, settings.calendarSidebarShowWeekNumbers, settings.weeklyNoteFormat, continuous, this.getDisplayText()]);
+			settings.dateDisplayFormat, settings.calendarWeekStart, settings.calendarSidebarShowWeekNumbers, settings.weeklyNoteFormat, settings.weeklyNoteFolder, continuous, this.getDisplayText()]);
 		const options: MiniCalendarOptions = {
 			boundedDates: true, dateKey: this.navigationDate, selectedDate: this.anchorDate, today, locale,
 			dateDisplayFormat: settings.dateDisplayFormat, weekStart: settings.calendarWeekStart,
@@ -108,7 +109,7 @@ export class MiniCalendarView extends ItemView {
 				if (target.length === 10 && target >= '0001-01-01' && target <= '9999-12-31') this.navigate(target);
 			},
 			onSelectDate: date => { this.selectDate(date); this.noteOpener.request('daily', date, this.contentEl); },
-			weekNote: { describe: monday => miniCalendarWeek(monday, this.getSettings().weeklyNoteFormat),
+			weekNote: { describe: monday => miniCalendarWeek(monday, this.getSettings().weeklyNoteFormat, settings.calendarWeekStart, this.resolveWeekStart),
 				select: monday => this.noteOpener.request('weekly', monday, this.contentEl) },
 			onChooseMonth: anchor => this.openMonthPicker(anchor),
 		};

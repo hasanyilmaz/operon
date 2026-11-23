@@ -162,7 +162,7 @@ test('Task Router owns note management while File Tasks owns task initialization
 	assert.doesNotMatch(sharedMethod, /redisplayPreservingScroll/);
 	assert.match(sharedMethod, /new FileSuggest[\s\S]*?file\.extension === 'md'/);
 	assert.match(sharedMethod, /new FolderSuggest/);
-	assert.match(formatMethod, /formatPeriodicNoteTitleFromDateKey\(kind, localToday\(\), value\)/);
+	assert.match(formatMethod, /formatPeriodicNoteTitleFromDateKey\(kind, localToday\(\), value, this\.settings\.calendarWeekStart\)/);
 	assert.match(formatMethod, /https:\/\/momentjs\.com\/docs\/#\/displaying\/format\//);
 	assert.match(formatMethod, /rel: 'noopener noreferrer'/);
 	assert.match(formatMethod, /periodicNoteSyntaxInvalid/);

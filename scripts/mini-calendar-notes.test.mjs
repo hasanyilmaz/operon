@@ -148,6 +148,9 @@ test('ISO, local and custom formats label the exact Monday, including week-year 
  assert.equal(miniCalendarWeek('2026-12-28', 'GGGG-[W]WW').label, '53');
  assert.equal(miniCalendarWeek('2026-12-28', 'gggg-[W]ww').label, moment('2026-12-28').format('w'));
  assert.match(miniCalendarWeek('2026-12-28', 'YYYY-MM-DD').description, /2026-12-28/);
+ assert.match(miniCalendarWeek('2026-11-23', 'YYYY-MM-DD', 'sunday').description, /2026-11-22/);
+ assert.match(miniCalendarWeek('2026-11-23', 'YYYY-MM-DD', 'sunday', () => 'monday').description, /2026-11-23/);
+ assert.equal(miniCalendarWeek('2026-11-23', 'GGGG-[W]WW', 'sunday').label, '48');
  assert.equal(miniCalendarWeek('2026-12-28', '[ww] YYYY-MM-DD').label, '53');
 });
 test('optional setting round trips, preserves other data, reloads absence and survives failed saves', async () => {

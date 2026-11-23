@@ -13829,7 +13829,7 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		let previewEl: HTMLElement | null = null;
 		const updatePreview = (value: string): void => {
 			if (!previewEl) return;
-			const preview = formatPeriodicNoteTitleFromDateKey(kind, localToday(), value);
+			const preview = formatPeriodicNoteTitleFromDateKey(kind, localToday(), value, this.settings.calendarWeekStart);
 			previewEl.toggleClass('is-invalid', !preview);
 			previewEl.setText(preview
 				? t('settings', 'periodicNoteSyntaxPreview', { example: preview })
