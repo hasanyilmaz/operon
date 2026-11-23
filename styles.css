@@ -14335,7 +14335,7 @@ button.operon-pinned-unpin svg {
    Pinned Tasks Sidebar
    ======================================== */
 
-.operon-pinned-sidebar-view {
+.view-content.operon-pinned-sidebar-view {
 	--operon-pinned-sidebar-control-radius: 8px;
 	--operon-pinned-sidebar-control-border: color-mix(in srgb, var(--text-muted) 26%, var(--background-modifier-border));
 	--operon-pinned-sidebar-control-hover-border: color-mix(in srgb, var(--operon-card-color, var(--interactive-accent)) 38%, var(--background-modifier-border));
@@ -14344,7 +14344,7 @@ button.operon-pinned-unpin svg {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	padding: 10px;
+	padding: 0 10px;
 	box-sizing: border-box;
 	overflow: hidden;
 }
@@ -14355,7 +14355,7 @@ button.operon-pinned-unpin svg {
 	gap: 8px;
 	min-height: 0;
 	overflow-y: auto;
-	padding: 4px 2px 2px 2px;
+	padding: 5px 2px;
 }
 
 .operon-pinned-sidebar-row {
@@ -14505,7 +14505,7 @@ button.operon-pinned-sidebar-action svg {
 
 .operon-pinned-sidebar-empty {
 	color: var(--text-muted);
-	padding: 8px;
+	padding: 5px 8px;
 	font-size: 12px;
 }
 
@@ -14532,10 +14532,6 @@ button.operon-pinned-sidebar-action svg {
 }
 
 @media (max-width: 720px), (hover: none), (pointer: coarse) {
-	.operon-pinned-sidebar-view {
-		padding: 10px;
-	}
-
 	.operon-pinned-sidebar-list {
 		gap: 8px;
 	}
@@ -16968,7 +16964,7 @@ body .modal.operon-filter-set-modal-shell .operon-automation-rule-editor .operon
 
 /* --- FlowTime focused sidebar view --- */
 
-.operon-flow-time-view {
+.view-content.operon-flow-time-view {
 	--operon-flow-time-accent: var(--interactive-accent);
 	--operon-flow-time-control-radius: 8px;
 	--operon-flow-time-control-border: color-mix(in srgb, var(--text-muted) 28%, var(--background-modifier-border));
@@ -16981,7 +16977,7 @@ body .modal.operon-filter-set-modal-shell .operon-automation-rule-editor .operon
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	padding: 12px 6px 18px;
+	padding: 5px 6px;
 	min-height: 100%;
 	background: var(--background-primary);
 }
@@ -17006,7 +17002,6 @@ body .modal.operon-filter-set-modal-shell .operon-automation-rule-editor .operon
 	grid-template-columns: minmax(0, 1fr) minmax(40px, max-content) minmax(0, 1fr);
 	align-items: center;
 	gap: 6px;
-	padding-top: 6px;
 }
 
 .operon-flow-time-mode-button {
