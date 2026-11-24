@@ -1,10 +1,11 @@
 import { readActionLiteral } from '../core/automation-action-fields';
+import type { AutomationChangePlan, AutoTriggers } from '../core/automation-change-plan';
 import type { AutomationRule } from '../core/automation-rules';
 import { prepareLocalAutomationCondition } from '../core/filter-evaluator';
 import { isLosslessInlineTag } from '../core/parser';
 import type { IndexReconciliationEvent } from '../indexer/indexer';
 import type { IndexedTask } from '../types/fields';
-import type { FilterNode } from '../types/settings';
+import type { FilterFieldType, FilterNode, KeyMapping } from '../types/settings';
 import { MAX_BOTTOM_UP_AGGREGATE_DEPTH } from './aggregate-coordinator';
 
 interface Ports {
@@ -13,12 +14,14 @@ interface Ports {
 	all(): Iterable<IndexedTask>;
 	task(id: string): IndexedTask | undefined;
 	unavailable(id: string): boolean;
+	unavailableIds(): Iterable<string>;
 	generation(): number;
 	verified(): boolean;
 }
 
 interface Condition {
 	field: string;
+	fieldType: FilterFieldType;
 	test(task: IndexedTask): boolean;
 	hits: Set<string>;
 }
@@ -61,12 +64,16 @@ function compileNode(node: FilterNode, pool: Map<string, Condition>, used: Set<C
 	if (!condition) {
 		const test = prepareLocalAutomationCondition(node);
 		if (!test) return undefined;
-		condition = { field: node.field, test, hits: new Set() };
+		condition = { field: node.field, fieldType: node.fieldType, test, hits: new Set() };
 		pool.set(key, condition);
 	}
 	used.add(condition);
 	const { hits } = condition;
 	return id => hits.has(id);
+}
+
+function membershipVersion(rule: AutomationRule): string {
+	return JSON.stringify([rule.scope, rule.target, rule.actions]);
 }
 
 function compile(rule: AutomationRule, version: string, pool: Map<string, Condition>): Membership | undefined {
@@ -106,14 +113,16 @@ function updateRule(rule: Membership, task: IndexedTask): void {
 }
 
 function intersects<T>(left: ReadonlySet<T>, right: ReadonlySet<T>): boolean {
-	for (const item of left) if (right.has(item)) return true;
+	const [small, large] = left.size <= right.size ? [left, right] : [right, left];
+	for (const item of small) if (large.has(item)) return true;
 	return false;
 }
 
-/** Shadow membership only. The automation planner owns confirmation and all writes. */
+/** Settled membership can prove an empty Auto run. The planner owns all changes and confirmation. */
 export class AutomationRuleMembership {
 	private pool = new Map<string, Condition>();
 	private rules = new Map<string, Membership>();
+	private readonly conditionTypes = new Map<string, FilterFieldType>();
 	private generation = -1;
 	private waitingForIndex = false;
 	private paddedParents = new Map<string, string>();
@@ -127,7 +136,7 @@ export class AutomationRuleMembership {
 		const pool = new Map(this.pool);
 		for (const rule of saved) {
 			if (!rule.active || rule.mode !== 'auto') continue;
-			const version = JSON.stringify([rule.scope, rule.target, rule.actions]);
+			const version = membershipVersion(rule);
 			let state = this.rules.get(rule.id);
 			if (state?.version !== version) {
 				state = compile(rule, version, pool);
@@ -152,6 +161,8 @@ export class AutomationRuleMembership {
 				}
 			}
 		}
+		this.conditionTypes.clear();
+		for (const condition of used) this.conditionTypes.set(condition.field, condition.fieldType);
 		this.pool = pool;
 		this.rules = next;
 		if (!next.size) { this.generation = -1; this.paddedParents.clear(); return; }
@@ -237,6 +248,34 @@ export class AutomationRuleMembership {
 		for (const rule of this.rules.values()) {
 			if (!before || intersects(flipped, rule.conditions) || (fields.has('tags') && rule.targeted.has(id))) updateRule(rule, after);
 		}
+	}
+
+	/** A trigger admits a whole rule. Work may be pending on a different target in its scope. */
+	planIfNoChanges(rules: readonly AutomationRule[], triggers: AutoTriggers, mappings: readonly KeyMapping[]): AutomationChangePlan | null {
+		if (!this.ports.verified() || this.generation < 0 || this.generation !== this.ports.generation()) return null;
+		// Imported or edited mappings can override a built-in condition's catalog type.
+		for (const mapping of mappings) {
+			const expected = this.conditionTypes.get(mapping.canonicalKey);
+			if (expected && mapping.type !== expected) return null;
+		}
+		const counts: AutomationChangePlan['rules'] = [];
+		const targets: ReadonlySet<string>[] = [];
+		for (const rule of rules) {
+			const state = this.rules.get(rule.id);
+			if (!rule.active || rule.mode !== 'auto' || !state || state.version !== membershipVersion(rule)) return null;
+			const trigger = triggers.get(rule.id);
+			if (trigger !== 'all' && (!trigger || !intersects(trigger, state.scoped))) continue;
+			if (state.pending.size || (state.targeted.size && !state.inlineSafe)) return null;
+			counts.push({ ruleId: rule.id, scope: state.scoped.size, target: state.targeted.size, changed: 0, directTaskIds: [] });
+			if (state.targeted.size) targets.push(state.targeted);
+		}
+		// Source transitions can begin without a generation change. Check just the exceptional IDs.
+		if (targets.length) {
+			for (const id of this.ports.unavailableIds()) {
+				if (targets.some(set => set.has(id))) return null;
+			}
+		}
+		return { rules: counts, changes: [], issues: [], changedTaskCount: 0, affectedTaskCount: 0, needsConfirmation: false };
 	}
 
 	/** A missing result requires the full planner. Read only against a settled, current index. */

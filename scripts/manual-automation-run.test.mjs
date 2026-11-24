@@ -15,6 +15,7 @@ await build({ stdin: { resolveDir: root, contents: `
 	export { countNoteScans } from './scripts/test-support/automation-markdown-scan-probe.mjs';
 	export { withSettingsFixture } from './scripts/test-support/settings-preservation-harness';
 	export { createAutomationRule, readAutomationRules } from './src/core/automation-rules';
+	export { AutomationRuleMembership } from './src/systems/automation-rule-membership';
 	export { deactivateAutomationRules, AutomationRunner } from './src/systems/manual-automation-run';
 	export { filterUsesLocalDay } from './src/core/filter-evaluator';
 	export { localToday } from './src/core/local-time';
@@ -53,7 +54,7 @@ await build({ stdin: { resolveDir: root, contents: `
 		builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ resolveDir: root,
 			contents: "export * from './scripts/test-support/obsidian'; export { parse as parseYaml, stringify as stringifyYaml } from 'yaml';" }));
 	} }] });
-const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, savedAutomationRunError, shouldRunSavedRule, mountAutomationRules, openAutomationEditor, OperonCommandLinks, statusDockDocument, t,
+const { Modal, TFile, Notice, parseYaml, countNoteScans, withSettingsFixture, createAutomationRule, readAutomationRules, deactivateAutomationRules, AutomationRunner, AutomationRuleMembership, captureAutomationReadState, prepareAutomationWork, automationApprovalModal, showAutomationResult, AutomationRuleModal, savedAutomationRunError, shouldRunSavedRule, mountAutomationRules, openAutomationEditor, OperonCommandLinks, statusDockDocument, t,
 	exportOperonSettingsBackupJsonV1, preflightOperonSettingsBackupRestoreV1, createOperonSettingsBackupApplyAcknowledgementV1, expandListAction, validAction, collectNativeFieldValueCandidates,
 	WriteQueue, RepeatSeriesStore, RecurrenceService, buildProjectedRecurringCalendarItems, TaskWriter, PinnedCache, planAutomationChanges, AggregateCoordinator, DEFAULT_SETTINGS, scanFileWithMappings,
 	AutoAutomationEvents, automationTaskImage, NativePropertyIndex, getNativePropertyIndex, projectIndexedNativeProperties, OperonIndexer, filterUsesLocalDay, registerWorkspaceDayRefresh, localToday } = await import(pathToFileURL(out).href);
@@ -180,7 +181,7 @@ async function fixture(files, opts = {}) {
 	const repeatStore = new RepeatSeriesStore(app, new WriteQueue(), 'series.json');
 	const recurrence = new RecurrenceService(app, idx, writer, { repeatSeries: repeatStore }, () => settings);
 	const runner = new AutomationRunner();
-	return Object.assign(f, { app, pins, repeatStore, reindexYaml: async key => {
+	return Object.assign(f, { app, ports, pins, repeatStore, reindexYaml: async key => {
 		const task = tasks.get(key);
 		const file = records.get(task.primary.filePath);
 		const scan = await scanFileWithMappings(app, file, settings.keyMappings);
@@ -196,6 +197,53 @@ async function fixture(files, opts = {}) {
 		indexedStats.set(file.path, { ...file.stat });
 	}, auto: ids => runner.runAuto(async () => ({rules:ids, confirmAgain:false}), ports), runBatch: take => runner.runAuto(take, ports), read: name => readFile(path.join(dir, name), 'utf8'), run: (id = ruleId) => runner.run(id, ports) });
 }
+
+
+test('Auto proves empty work after refreshing the queue, bypassing full planning, sources and the writer', async t => {
+	const f = await fixture({ 'tasks.md': inline(id(0), ' #follow') }, {rule: {mode:'auto'}});
+	const tracker = new AutomationRuleMembership({
+		all: () => f.tasks.values(), verified: () => true, generation: () => 1, unavailableIds: () => [],
+	});
+	tracker.configure(f.config.rules);
+	const triggers = new Map([[ruleId, new Set(['outside'])]]);
+	f.ports.refreshBatch = batch => { batch.rules.set(ruleId, new Set([id(0)])); };
+	f.ports.planAutoIfNoChanges = (rules, current) => tracker.planIfNoChanges(rules, current, DEFAULT_SETTINGS.keyMappings);
+	const expected = f.ports.plan([f.rule], 'always', asOf, new Map([[ruleId,'all']]));
+	const full = t.mock.method(f.ports, 'plan'), reads = t.mock.method(f.app.vault, 'read');
+	const prepare = t.mock.method(f.ports, 'prepare'), exclusive = t.mock.method(f.ports, 'exclusive');
+	const proof = t.mock.method(f.ports, 'planAutoIfNoChanges');
+	const out = await f.auto(triggers);
+	assert.deepEqual(out, {status: 'finished', plan: expected, applied: 0, uncertain: 0});
+	assert.equal(out.plan.rules.length, 1);
+	assert.deepEqual([proof, full, reads, prepare, exclusive].map(fn => fn.mock.callCount()), [1, 0, 0, 0, 0]);
+	assert.deepEqual([f.writes.length, f.prompts.length, f.refreshes], [0, 0, 0]);
+	for (const extra of [{confirmAgain: true}, {retryUntil: Date.now() + 1000}]) {
+		assert.equal((await f.runBatch(async () => ({rules: triggers, confirmAgain: false, ...extra}))).status, 'finished');
+	}
+	f.rule.mode = 'manual';
+	for (const entry of [ruleId, {savedRuleId: ruleId}, f.rule]) assert.equal((await f.run(entry)).status, 'finished');
+	assert.equal(proof.mock.callCount(), 1);
+	assert.equal(full.mock.callCount(), 5);
+});
+
+test('one pending Auto target restores full planning for all rules, including approval and the locked recheck', async t => {
+	const f = await fixture({ 'tasks.md': inline(id(0), ' #follow') + inline(id(1)) }, {rule: {mode:'auto'}});
+	const noop = {...f.rule, id: 'noop', actions: [action('tags', 'old', 'remove')]};
+	f.config.rules.push(noop);
+	const tracker = new AutomationRuleMembership({all: () => f.tasks.values(), verified: () => true, generation: () => 1, unavailableIds: () => []});
+	tracker.configure(f.config.rules);
+	f.ports.planAutoIfNoChanges = (rules, triggers) => tracker.planIfNoChanges(rules, triggers, DEFAULT_SETTINGS.keyMappings);
+	const proof = t.mock.method(f.ports, 'planAutoIfNoChanges'), full = t.mock.method(f.ports, 'plan');
+	const exclusive = t.mock.method(f.ports, 'exclusive');
+	const triggers = new Map(f.config.rules.map(rule => [rule.id, new Set([id(0)])]));
+	const out = await f.auto(triggers);
+	assert.equal(out.status,'finished');
+	assert.deepEqual(out.plan.rules.map(row=>row.directTaskIds), [[id(1)], []]);
+	assert.deepEqual([proof.mock.callCount(), full.mock.callCount(), exclusive.mock.callCount()], [1, 2, 1]);
+	for (const call of full.mock.calls) assert.deepEqual(call.arguments[0].map(rule => rule.id), [ruleId, 'noop']);
+	assert.equal(f.prompts[0][0].changedTaskCount, 1);
+	assert.deepEqual([f.prompts.length, f.writes.length, f.refreshes], [1, 1, 1]);
+});
 
 test('opening a saved ID edits the existing rule and writes only on Save', async testContext => {
 	const opened = [];
@@ -625,6 +673,21 @@ test('one refresh covers all changed Markdown files and a no-op run skips refres
 	assert.equal((await f.run()).applied, 0);
 	assert.equal(f.refreshes, 1);
 	assert.equal(f.writes.length, 2);
+});
+test('Auto checks unresolved duplicate IDs and active source transitions without scanning healthy tasks', async () => {
+	const f = await fixture({ 'Mixed.md': inline(id(0)) + inline(id(1)), 'Copy.md': inline(id(0)) });
+	const index = new OperonIndexer(f.app, { getSettings: () => DEFAULT_SETTINGS });
+	try {
+		await index.reindexCommittedMutationSources(['Mixed.md', 'Copy.md']);
+		assert.equal(index.hasDuplicateOperonIdConflict(id(0)), true);
+		assert.deepEqual([...index.getUnavailableTaskIds()], [id(0)]);
+		const release = index.beginExpectedDuplicateOperonIdTransition(id(1), [index.getTask(id(1)).primary]);
+		try {
+			assert.equal(index.isTaskSourceTransitionActive(id(1)), true);
+			assert.deepEqual([...new Set(index.getUnavailableTaskIds())].sort(), [id(0), id(1)]);
+		} finally { release(); }
+		assert.deepEqual([...index.getUnavailableTaskIds()], [id(0)]);
+	} finally { index.destroy(); }
 });
 test('a source disappearing after commit reports refresh pending and still publishes the remaining source', async () => {
 	const f = await fixture(filesFor(2));

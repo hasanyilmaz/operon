@@ -581,7 +581,7 @@ function observedMembership(initial) {
 	const health = { verified: true, generation: 1, unavailable: new Set(), scans: 0 };
 	const tracker = new AutomationRuleMembership({
 		all: () => { health.scans++; return tasks.values(); },
-		task: id => tasks.get(id), unavailable: id => health.unavailable.has(id),
+		task: id => tasks.get(id), unavailable: id => health.unavailable.has(id), unavailableIds: () => health.unavailable,
 		generation: () => health.generation, verified: () => health.verified, settle: () => Promise.resolve(),
 		children: id => [...tasks.values()].filter(t => t.fieldValues.parentTask === id).map(t => t.operonId),
 	});
@@ -596,6 +596,90 @@ function observedMembership(initial) {
 }
 
 const autoRule = (...args) => ({ ...rule(...args), active: true, mode: 'auto' });
+
+
+test('empty Auto plans match full planner counts across trigger scope, nested filters, both task formats and tag operations', () => {
+	const inLab = group('all', cond('folders', 'folders', 'isInFolderTree', 'Lab'));
+	const target = group('all', group('any', cond('description', 'text', 'is', 'file'), cond('priority', 'text', 'is', 'A')),
+		group('none', cond('tags', 'tags', 'anyContains', 'skip')));
+	const make = (id, folder, format, tags) => task(id, { priority: 'A' }, { tags, primary: { filePath: folder + '/' + id + '.md', format, lineNumber: 1 } });
+	const f = observedMembership([make('file', 'Lab', 'yaml', ['ready']), make('inline', 'Lab', 'inline', ['ready']),
+		make('skip', 'Lab', 'inline', ['skip']), make('outside', 'Other', 'inline', [])]);
+	const rules = [autoRule('r', [add('tags', '#ready'), del('tags', 'old')], target, inLab),
+		autoRule('none', [del('tags', 'old')], select('absent'), inLab)];
+	f.tracker.configure(rules);
+	const check = (trigger, expected) => {
+		const triggers = new Map(rules.map(rule => [rule.id, trigger]));
+		const result = f.tracker.planIfNoChanges(rules, triggers, DEFAULT_SETTINGS.keyMappings);
+		const full = planAutomationChanges(snapshot([...f.tasks.values()]), rules, 'always', triggers);
+		if (expected === null) { assert.equal(result, null); assert.equal(full.changedTaskCount, 1); }
+		else { assert.deepEqual(result, full); assert.deepEqual(result.rules.map(row => row.target), expected); }
+	};
+	check('all', [2, 0]);
+	check(new Set(['skip']), [2, 0]);
+	check(new Set(['outside']), []);
+	f.edit('inline', { ...f.tasks.get('inline'), tags: ['old'] });
+	check(new Set(['outside']), []);
+	check(new Set(['file']), null);
+	check('all', null);
+	f.edit('inline', { ...f.tasks.get('inline'), tags: ['ready'] });
+	check(new Set(['file']), [2, 0]);
+});
+
+test('empty Auto proof falls back for the entire batch on uncertain inputs or conflicting work', () => {
+	const f = observedMembership([task('a', { priority: 'A' }, { tags: ['ready'] })]);
+	const r = autoRule('r', [add('tags', 'ready')], group('all', cond('priority', 'text', 'is', 'A')));
+	const unsupported = autoRule('other', [add('note', 'text')]);
+	const run = (rules = [r], mappings = DEFAULT_SETTINGS.keyMappings) =>
+		f.tracker.planIfNoChanges(rules, new Map(rules.map(rule => [rule.id, 'all'])), mappings);
+	f.tracker.configure([r, unsupported]);
+	assert.equal(run().changedTaskCount, 0);
+	assert.equal(run([r, unsupported]), null);
+	assert.equal(run([{ ...r, actions: [del('tags', 'ready')] }]), null);
+	assert.equal(run([{ ...r, active: false }]), null);
+	assert.equal(run([{ ...r, mode: 'manual' }]), null);
+	assert.equal(run([r], [{ canonicalKey: 'priority', type: 'number' }]), null);
+	f.health.unavailable.add('outside');
+	assert.equal(run().changedTaskCount, 0);
+	f.health.unavailable.add('a');
+	assert.equal(run(), null);
+	f.health.unavailable.delete('a');
+	f.health.verified = false;
+	assert.equal(run(), null);
+	f.health.verified = true;
+	f.health.generation++;
+	assert.equal(run(), null);
+	assert.equal(f.health.scans, 1);
+	const opposite = autoRule('opposite', [del('tags', 'ready')]);
+	const unsafe = autoRule('unsafe', [del('tags', 'two words')]);
+	f.tracker.configure([r, opposite, unsafe]);
+	for (const pair of [[r, opposite], [opposite, r]]) {
+		assert.equal(run(pair), null);
+		assert.ok(plan([...f.tasks.values()], pair).issues.some(issue => issue.reason === 'conflict'));
+	}
+	assert.equal(run([unsafe]), null);
+	assert.ok(plan([...f.tasks.values()], [unsafe]).issues.some(issue => issue.reason === 'invalid-value'));
+});
+
+test('broad no-op Auto targets need no task reads, target iteration or scope scan after enrollment', () => {
+	const f = observedMembership(Array.from({length: 5000}, (_, i) => task(String(i), {}, {tags: ['done']})));
+	const rules = Array.from({length: 20}, (_, i) => autoRule('r' + i, [add('tags', 'done')]));
+	f.tracker.configure(rules);
+	const forbidden = () => assert.fail('traversed indexed tasks for a proven empty run');
+	for (const state of f.tracker.rules.values()) {
+		state.scoped[Symbol.iterator] = forbidden;
+		state.targeted[Symbol.iterator] = forbidden;
+		state.pending[Symbol.iterator] = forbidden;
+	}
+	f.tracker.ports.task = f.tracker.ports.children = f.tracker.ports.all = forbidden;
+	f.health.unavailable.add('unrelated');
+	for (const trigger of ['all', new Set(['239']), new Set(['gone'])]) {
+		const p = f.tracker.planIfNoChanges(rules, new Map(rules.map(rule => [rule.id, trigger])), DEFAULT_SETTINGS.keyMappings);
+		assert.equal(p.affectedTaskCount, 0);
+		assert.equal(p.rules.length, trigger instanceof Set && trigger.has('gone') ? 0 : 20);
+		for (const row of p.rules) assert.deepEqual([row.scope, row.target, row.changed], [5000, 5000, 0]);
+	}
+});
 
 test('Auto RAM membership shares predicates across active rules and maintains all tag work across task edits', () => {
 	const mix = group('all', cond('priority', 'text', 'is', 'A'), group('none', cond('tags', 'tags', 'anyContains', 'skip')));

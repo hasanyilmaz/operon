@@ -2792,6 +2792,11 @@ export class OperonIndexer {
 		return this.duplicateConflicts.has(operonId);
 	}
 
+	*getUnavailableTaskIds(): IterableIterator<string> {
+		yield* this.duplicateConflicts.keys();
+		yield* this.expectedDuplicateTransitionInstances.keys();
+	}
+
 	isTaskSourceTransitionActive(operonId: string): boolean {
 		return this.expectedDuplicateTransitionInstances.has(operonId);
 	}

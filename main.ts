@@ -23629,6 +23629,7 @@ export default class OperonPlugin extends Plugin {
 		const membership = this.autoRuleMembership = new AutomationRuleMembership({
 			all: () => this.indexer.getAllTasks(), task: id => this.indexer.getTask(id),
 			settle: () => this.indexer.awaitRamSettlement(), children: id => this.indexer.secondary.getChildIds(id),
+			unavailableIds: () => this.indexer.getUnavailableTaskIds(),
 			unavailable: id => this.indexer.hasDuplicateOperonIdConflict(id) || this.indexer.isTaskSourceTransitionActive(id),
 			generation: () => this.indexer.getGeneration(), verified: () => this.indexer.getLiveReadAuthoritySnapshot().state === 'verified',
 		});
@@ -23692,6 +23693,8 @@ export default class OperonPlugin extends Plugin {
 				settings: () => readAutomationRules(this.storage.getSettings().automationRules),
 				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
 				now: localNow,
+				planAutoIfNoChanges: (rules, triggers) => this.taskCardIndexState === 'ready'
+					? this.autoRuleMembership?.planIfNoChanges(rules, triggers, this.settings.keyMappings) ?? null : null,
 				plan: (rules, policy, asOf, triggers, getFrontmatter, actionReferenceDay) => {
 					ruleNames = new Map(rules.map(rule => [rule.id, rule.name.trim() || t('settings', 'automationUnsavedRule')]));
 					return this.planAutomationRules(rules, policy, { asOf, triggers, getFrontmatter, actionReferenceDay });

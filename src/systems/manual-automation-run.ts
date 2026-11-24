@@ -44,6 +44,7 @@ export interface AutomationRunPorts {
 	now(): string;
 	plan(rules: AutomationRule[], confirmation: AutomationRulesSettings['confirmation'], asOf: string,
 		triggers: AutoTriggers | undefined, getFrontmatter: AutomationPlanSnapshot['getFrontmatter'], actionReferenceDay: string): AutomationChangePlan;
+	planAutoIfNoChanges?(rules: readonly AutomationRule[], triggers: AutoTriggers): AutomationChangePlan | null;
 	prepare(plan: AutomationChangePlan, sources: AutomationYamlSources, seriesIds: Map<string, string>, asOf: string): Promise<AutomationWork | 'index-pending' | 'source-conflict' | null>;
 	confirm(plan: AutomationChangePlan, rules: AutomationRule[], batch?: AutoRunBatch): Promise<AutomationDecision>;
 	deferIndexRetry?(batch: AutoRunBatch, confirmAgain: boolean): boolean;
@@ -125,7 +126,7 @@ export class AutomationRunner {
 		let asOf = ports.now();
 		const actionReferenceDay = asOf.slice(0, 10);
 		const seriesIds = new Map<string, string>(); // Stable across approval and the locked recheck.
-		const read = async () => {
+		const read = async (allowEmptyProof = false) => {
 			if (batch) ports.refreshBatch?.(batch);
 			const settings = ports.settings();
 			if (!ports.available()) return null;
@@ -141,6 +142,10 @@ export class AutomationRunner {
 					? item.mode === 'auto' && triggers.has(item.id) : item.mode === 'manual' && item.id === selection));
 			}
 			if (!rules.length) return null;
+			if (allowEmptyProof && batch && !batch.confirmAgain && batch.retryUntil === undefined) {
+				const plan = ports.planAutoIfNoChanges?.(rules, batch.rules);
+				if (plan) return { stop: { status: 'finished', plan, applied: 0, uncertain: 0 } as const };
+			}
 			const now = ports.now();
 			if (now.slice(0, 10) !== asOf.slice(0, 10)) asOf = now;
 			let indexPending = false;
@@ -155,7 +160,7 @@ export class AutomationRunner {
 			const work = typeof preparation === 'object' ? preparation : null;
 			return { rules, plan, work, reason, policy: settings.confirmation, key: JSON.stringify([rules, plan, settings.confirmation]) };
 		};
-		let snapshot = await read();
+		let snapshot = await read(true);
 		let askAgain = batch?.confirmAgain ?? false;
 		for (;;) {
 			if (batch && !batch.rules.size) return { status: 'dismissed' };
