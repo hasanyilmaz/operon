@@ -555,7 +555,7 @@ test('Calendar and saved Filter commands observe successful saves, Restore and U
 	const { storage } = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
 	const settings = storage.getSettings();
 	const filter = settings.filterSets.find(item => item.id !== DYNAMIC_FILE_TASK_FILTER_ID && item.id !== DYNAMIC_SUBTASKS_FILTER_ID)!;
-	const calendar = settings.calendarPresets[0]!;
+	const calendar = settings.calendarPresets[0];
 	const names = () => [settings.calendarPresets.find(item => item.id === calendar.id)?.name,
 		settings.filterSets.find(item => item.id === filter.id)?.name];
 	const changes: ReturnType<typeof names>[] = [];

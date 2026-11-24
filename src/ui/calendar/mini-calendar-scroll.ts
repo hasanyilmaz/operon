@@ -63,7 +63,7 @@ export class MiniCalendarScroller {
 		this.draw();
 		this.resizeObserver = new (this.win as Window & { ResizeObserver: typeof ResizeObserver }).ResizeObserver(() => this.measure());
 		this.resizeObserver.observe(this.element);
-		const row = this.rows.values().next().value as HTMLElement | undefined;
+		const [row] = this.rows.values();
 		if (row) this.resizeObserver.observe(row);
 		this.element.addEventListener('pointerover', this.pointerOver);
 		this.element.addEventListener('pointerleave', this.clearHover);
@@ -105,7 +105,7 @@ export class MiniCalendarScroller {
 
 	private measure(): void {
 		if (this.disposed || this.element.clientHeight <= 0 || this.element.clientWidth <= 0) return;
-		const row = this.rows.values().next().value as HTMLElement | undefined;
+		const [row] = this.rows.values();
 		const pitch = row?.getBoundingClientRect().height || this.pitch;
 		const height = this.element.clientHeight;
 		if (Math.abs(pitch - this.pitch) < 0.1 && height === this.height) return;
