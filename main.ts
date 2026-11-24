@@ -63,6 +63,7 @@ import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type Prep
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
 import { planAutomationChanges, type AutomationPlanSnapshot, type AutoTriggers } from './src/core/automation-change-plan';
 import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
+import { AutomationRuleMembership } from './src/systems/automation-rule-membership';
 import { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
 import { deactivateAutomationRules, isSavedAutomationRequest, AutomationRunner, type AutoRunBatch, type ExplicitAutomationRequest } from './src/systems/manual-automation-run';
 import { captureAutomationReadState } from './src/systems/automation-read-state';
@@ -17705,6 +17706,8 @@ export default class OperonPlugin extends Plugin {
 		this.finishAutomationStartup(false);
 		this.startupAutomationRuns.clear();
 		this.autoAutomationEvents?.dispose();
+		this.autoRuleMembership?.configure([]);
+		this.autoRuleMembership = undefined;
 		this.automationApproval?.close();
 		this.ribbonActionsReady = false;
 		this.timeTracker?.cancelExternalRefresh();
@@ -23600,6 +23603,7 @@ export default class OperonPlugin extends Plugin {
 	private finishAutomationStartup!: (ready: boolean) => void;
 	private readonly automationStartup = new Promise<boolean>(resolve => { this.finishAutomationStartup = resolve; });
 	private autoAutomationEvents?: AutoAutomationEvents;
+	private autoRuleMembership?: AutomationRuleMembership;
 
 	private readonly startupAutomationRuns = new Map<string, AutomationRule>();
 
@@ -23610,6 +23614,7 @@ export default class OperonPlugin extends Plugin {
 			if (JSON.stringify(rules.find(rule => rule.id === id)) !== JSON.stringify(expected)) this.startupAutomationRuns.delete(id);
 		}
 		this.autoAutomationEvents?.configure(rules);
+		this.autoRuleMembership?.configure(rules);
 	}
 
 	requestSavedAutomationRun(rule: AutomationRule): void {
@@ -23621,6 +23626,12 @@ export default class OperonPlugin extends Plugin {
 		const native = getNativePropertyIndex(this.app);
 		const pins = this.storage.pinned;
 		const foreground = () => getFocusedVisibleWorkspaceWindow(this.app) !== null;
+		const membership = this.autoRuleMembership = new AutomationRuleMembership({
+			all: () => this.indexer.getAllTasks(), task: id => this.indexer.getTask(id),
+			settle: () => this.indexer.awaitRamSettlement(), children: id => this.indexer.secondary.getChildIds(id),
+			unavailable: id => this.indexer.hasDuplicateOperonIdConflict(id) || this.indexer.isTaskSourceTransitionActive(id),
+			generation: () => this.indexer.getGeneration(), verified: () => this.indexer.getLiveReadAuthoritySnapshot().state === 'verified',
+		});
 		const events = this.autoAutomationEvents = new AutoAutomationEvents({
 			taskIds: () => this.indexer.getAllTasks().map(task => task.operonId),
 			image: id => {
@@ -23638,7 +23649,11 @@ export default class OperonPlugin extends Plugin {
 		this.syncAutoAutomationRules();
 		for (const rule of this.startupAutomationRuns.values()) events.requestSavedRule(rule);
 		this.startupAutomationRuns.clear();
-		this.register(this.indexer.subscribeIndexReconciliation(event => event.kind === 'full' ? events.rebase() : events.reconcile(event.affectedOperonIds)));
+		this.register(this.indexer.subscribeIndexReconciliation(event => {
+			if (event.kind === 'full') events.rebase();
+			else events.reconcile(event.affectedOperonIds);
+			membership.reconcile(event);
+		}));
 		this.register(pins.subscribe(() => events.pinsChanged()));
 		const changed = (file: TAbstractFile) => events.fileChanged(file.path);
 		this.registerEvent(this.app.vault.on('create', changed));

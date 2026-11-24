@@ -19,7 +19,7 @@ import {
 } from '../core/parent-task-date-range';
 
 type AggregateRefreshMode = 'full' | 'duration' | 'date-range';
-const MAX_BOTTOM_UP_AGGREGATE_DEPTH = 100;
+export const MAX_BOTTOM_UP_AGGREGATE_DEPTH = 100;
 
 interface AggregateRefreshOptions {
 	modifiedTimestamp?: string;

@@ -1014,6 +1014,21 @@ function evaluateProjectTreeCondition(op: string, task: IndexedTask, target: str
 	}
 }
 
+/** Compile a condition whose result depends only on this indexed task. */
+export function prepareLocalAutomationCondition(condition: FilterSetCondition): ((task: IndexedTask) => boolean) | null {
+	const { field, fieldType, operator, value = '' } = condition;
+	if (!getOperatorsForField(field, fieldType, true).some(option => option.id === operator)) return null;
+	if (field === 'folders' && fieldType === 'folders') {
+		const query = normalizeFolderQuery(value);
+		return task => !!query && isFolderTreeMatch(getFolderPath(task.primary.filePath), query);
+	}
+	if (field === 'tags' && fieldType === 'tags') return task => evaluateListCondition(operator, task.tags, value);
+	if (field === 'description' && fieldType === 'text') return task => evaluateTextCondition(operator, task.description, value, true);
+	if (field === 'priority' && fieldType === 'text') return task => evaluateTextCondition(operator, task.fieldValues.priority, value,
+		Object.prototype.hasOwnProperty.call(task.fieldValues, field) === true);
+	return null;
+}
+
 function evaluateFolderCondition(op: string, task: IndexedTask, target: string, context: EvalContext): boolean {
 	switch (op) {
 		case 'isInFolderTree':

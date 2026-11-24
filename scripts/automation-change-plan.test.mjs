@@ -28,6 +28,7 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	export { createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver } from './src/ui/table/table-file-property';
 	export { projectIndexedNativeProperties } from './src/ui/table/table-native-property';
 	export { getNativePropertyIndex } from './src/indexer/native-property-index';
+	export { AutomationRuleMembership } from './src/systems/automation-rule-membership';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
 	export { filterTasksOnly } from './src/core/filter-evaluator';
 	export { AggregateCoordinator } from './src/systems/aggregate-coordinator';
@@ -37,7 +38,7 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	export { DEFAULT_SETTINGS } from './src/types/settings';
 ` }, bundle: true, format: 'esm', platform: 'node', outfile,
 	alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
-const { SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
+const { AutomationRuleMembership, SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
 	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog, groupAutomationPreviewTasks } = await import(pathToFileURL(outfile).href);
 const sharedFields = new Map(new FilterFieldCatalog({ keyMappings: DEFAULT_SETTINGS.keyMappings, getRootGroup: () => undefined })
 	.getFieldOptions(true).map(option => [option.field, option.type]));
@@ -573,4 +574,142 @@ test('relative datetime removal matches the full local timestamp and preview nam
 		assert.deepEqual(result.rules[0].directTaskIds, ['match']);
 		assert.equal(field(result, 'match', 'datetimeStart')?.after, null);
 	}
+});
+
+function observedMembership(initial) {
+	const tasks = new Map(initial.map(t => [t.operonId, t]));
+	const health = { verified: true, generation: 1, unavailable: new Set(), scans: 0 };
+	const tracker = new AutomationRuleMembership({
+		all: () => { health.scans++; return tasks.values(); },
+		task: id => tasks.get(id), unavailable: id => health.unavailable.has(id),
+		generation: () => health.generation, verified: () => health.verified, settle: () => Promise.resolve(),
+		children: id => [...tasks.values()].filter(t => t.fieldValues.parentTask === id).map(t => t.operonId),
+	});
+	function edit(id, after, delta = true) {
+		const before = tasks.get(id) ?? null;
+		if (after) tasks.set(id, after);
+		else tasks.delete(id);
+		tracker.reconcile({ kind: 'incremental', generation: ++health.generation, affectedOperonIds: [id],
+			changes: delta ? [{ before, after }] : undefined });
+	}
+	return { tasks, health, tracker, edit, read: (id, others) => tracker.read([...new Set([id, ...others])])?.get(id) ?? null };
+}
+
+const autoRule = (...args) => ({ ...rule(...args), active: true, mode: 'auto' });
+
+test('Auto RAM membership shares predicates across active rules and maintains all tag work across task edits', () => {
+	const mix = group('all', cond('priority', 'text', 'is', 'A'), group('none', cond('tags', 'tags', 'anyContains', 'skip')));
+	const make = (id, format, tags = []) => task(id, { priority: 'A' }, { tags,
+		primary: { format, filePath: 'Work/Inbox/' + id + '.md', lineNumber: 1 } });
+	const f = observedMembership([make('file', 'yaml'), make('inline', 'inline', ['review']), make('skip', 'inline', ['skip'])]);
+	const rules = Array.from({ length: 20 }, (_, i) => autoRule('r' + i, [add('tags', ['review', 'shared']), del('tags', 'old')],
+		group('any', mix), group('all', { ...cond('folders', 'folders', 'isInFolderTree', 'inbox'), id: 'different-' + i })));
+	f.tracker.configure([...rules, { ...rules[0], id: 'manual', mode: 'manual' }, { ...rules[0], id: 'off', active: false }]);
+	assert.equal(f.health.scans, 1);
+	const names = rules.map(r => r.id);
+	const check = () => {
+		const result = plan([...f.tasks.values()], rules, { includePreviewTaskIds: true });
+		for (const r of result.rules) {
+			const seen = f.read(r.ruleId, names);
+			for (const [field, key] of [['scope', 'scope'], ['target', 'target'], ['pending', 'changed']]) {
+				assert.deepEqual([...seen[field]].sort(), [...r.taskIds[key]].sort());
+			}
+		}
+	};
+	check();
+	const evaluations = [];
+	for (const leaf of f.tracker.pool.values()) {
+		const original = leaf.test;
+		leaf.test = t => { evaluations.push(leaf.field); return original(t); };
+	}
+	const update = (id, patch) => { f.edit(id, { ...f.tasks.get(id), ...patch }); check(); };
+	update('file', { fieldValues: { priority: 'A', note: 'unrelated' } });
+	assert.deepEqual(evaluations, []);
+	update('inline', { tags: ['review', 'shared'] });
+	assert.deepEqual(evaluations.splice(0), ['tags']);
+	update('file', { primary: { ...f.tasks.get('file').primary, filePath: 'Outside/File.md' } });
+	assert.deepEqual(evaluations.splice(0), ['folders']);
+	update('inline', { tags: ['old'] });
+	update('skip', { tags: ['review', 'shared'] });
+	update('skip', { fieldValues: { priority: 'Low' } });
+	f.edit('created', make('created', 'inline')); check();
+	f.edit('inline', null); check();
+	f.tracker.reconcile({ kind: 'full', generation: ++f.health.generation }); check();
+	assert.equal(f.read('manual', []), null);
+	assert.equal(f.read('off', []), null);
+});
+
+test('Auto shadow invalidation, missing deltas, unsupported inputs and opposing tag intents stay conservative', () => {
+	const f = observedMembership([task('a', {}, { tags: ['review'] }), task('b')]);
+	const plus = autoRule('plus', [add('tags', 'review')]), minus = autoRule('minus', [del('tags', 'review')]);
+	const third = autoRule('third', [add('tags', 'other')]);
+	f.tracker.configure([plus, minus, third]);
+	assert.equal(f.read('third', ['plus', 'minus', 'third']), null);
+	assert.deepEqual(plan([...f.tasks.values()], [plus, minus, third]).rules[2].directTaskIds, []);
+	assert.deepEqual([...f.read('plus', ['plus']).pending], ['b']);
+	assert.equal(f.read('plus', ['plus', 'minus']), null);
+	f.edit('a', task('a'), false);
+	assert.deepEqual([...f.read('plus', ['plus']).pending].sort(), ['a', 'b']);
+	f.health.verified = false; assert.equal(f.read('plus', ['plus']), null);
+	f.health.verified = true; f.health.unavailable.add('a'); assert.equal(f.read('minus', ['minus']), null);
+	f.health.unavailable.clear();
+	f.edit('a', task('a', { parentTask: 'missing' })); assert.equal(f.read('plus', ['plus']), null);
+	f.edit('a', task('a')); f.health.generation++;
+	assert.equal(f.read('plus', ['plus']), null);
+	f.tracker.reconcile({ kind: 'full', generation: ++f.health.generation });
+	assert.deepEqual([...f.read('plus', ['plus']).pending].sort(), ['a', 'b']);
+	f.tracker.configure([{ ...plus, target: select('b') }, autoRule('native', [add('note', 'X')]),
+		autoRule('date', plus.actions, group('all', cond('dateScheduled', 'date', 'isToday')))]);
+	assert.deepEqual([...f.read('plus', ['plus']).pending], ['b']);
+	assert.equal(f.read('plus', ['plus', 'native']), null);
+	assert.equal(f.read('date', ['date']), null);
+	f.tracker.configure([]); assert.equal(f.tracker.pool.size, 0);
+	const scans = f.health.scans; f.tracker.reconcile({ kind: 'full', generation: ++f.health.generation });
+	assert.equal(f.health.scans, scans);
+});
+
+test('Auto enrollment while a move is unsettled seeds the final graph', async () => {
+	const before = task('a');
+	const f = observedMembership([before]);
+	f.health.verified = false;
+	f.tasks.clear();
+	f.tracker.configure([autoRule('r', [add('tags', 'new')])]);
+	assert.equal(f.health.scans, 0);
+	const after = { ...before, primary: { ...before.primary, filePath: 'moved.md' } };
+	f.tasks.set('a', after);
+	f.tracker.reconcile({ kind: 'incremental', generation: ++f.health.generation, affectedOperonIds: ['a'], changes: [{ before, after }] });
+	f.health.verified = true;
+	await Promise.resolve();
+	assert.deepEqual([...f.read('r', []).pending], ['a']);
+	assert.equal(f.health.scans, 1);
+	f.health.verified = false;
+	f.tracker.configure([autoRule('r', [add('tags', 'edited')])]);
+	f.tracker.configure([]);
+	f.health.verified = true;
+	await Promise.resolve();
+	assert.equal(f.health.scans, 1);
+});
+
+test('a hierarchy beyond the aggregate depth limit defers all participating rules to the planner', () => {
+	const tasks = Array.from({ length: 101 }, (_, i) => task('node' + i, i ? { parentTask: 'node' + (i - 1) } : {}));
+	const rules = [autoRule('root', [add('tags', 'new')], select('node0')), autoRule('other', [add('tags', 'other')], select('absent'))];
+	const f = observedMembership(tasks);
+	f.tracker.configure(rules);
+	assert.equal(f.tracker.read(rules.map(r => r.id)), null);
+	assert.equal(plan(tasks, rules).rules[0].changed, null);
+	f.edit('node100', null);
+	assert.deepEqual([...f.read('root', ['other']).pending], ['node0']);
+});
+
+test('padded parent IDs defer ambiguous work without invalidating unrelated trees', () => {
+	const tasks = [task('parent'), task('child', { parentTask: ' parent ' }), task('other')];
+	const rules = tasks.map(t => autoRule(t.operonId, [add('tags', 'new')], select(t.operonId)));
+	const f = observedMembership(tasks);
+	f.tracker.configure(rules);
+	assert.equal(plan(tasks, [rules[1]]).rules[0].changed, null);
+	assert.equal(f.read('child', []), null);
+	assert.equal(f.read('parent', []), null);
+	assert.deepEqual([...f.read('other', []).pending], ['other']);
+	f.edit('child', task('child', { parentTask: 'parent' }));
+	assert.deepEqual([...f.read('parent', []).pending], ['parent']);
 });
