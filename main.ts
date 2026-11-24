@@ -23679,6 +23679,7 @@ export default class OperonPlugin extends Plugin {
 
 	private async runAutomation(request: ExplicitAutomationRequest | (() => Promise<AutoRunBatch>)): Promise<boolean> {
 		let ruleNames = new Map<string, string>();
+		let releaseAutoPersist: (() => void) | undefined;
 		let permit: TaskWriterExclusiveMutationPermit | undefined;
 		try {
 			const ports: import('./src/systems/manual-automation-run').AutomationRunPorts = {
@@ -23700,6 +23701,13 @@ export default class OperonPlugin extends Plugin {
 					return this.planAutomationRules(rules, policy, { asOf, triggers, getFrontmatter, actionReferenceDay });
 				},
 				prepare: (plan, yamlSources, seriesIds, asOf) => {
+					if (typeof request === 'function' && !releaseAutoPersist) {
+						releaseAutoPersist = this.indexer.deferPendingPersistForAuto(isPending => plan.changes.some(change => {
+							if (change.field === 'pinned') return false;
+							const task = this.indexer.getTask(change.taskId);
+							return !!task && isPending(task.primary.filePath);
+						}));
+					}
 					const tasks = this.indexer.getAllTasks();
 					const base = plan.changes.some(c => c.field.startsWith('file.property:')) ? this.getTableFilePropertySnapshot(tasks) : null;
 					return prepareAutomationWork(plan, {
@@ -23782,6 +23790,8 @@ export default class OperonPlugin extends Plugin {
 			console.error('Operon: task automation did not settle', error);
 			new Notice(t('settings', 'automationRetry'));
 			return false;
+		} finally {
+			releaseAutoPersist?.();
 		}
 	}
 

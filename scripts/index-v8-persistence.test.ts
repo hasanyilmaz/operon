@@ -69,7 +69,7 @@ class ManualPersistenceScheduler implements IndexV8PersistenceScheduler {
 
 	now(): number { return this.currentMs; }
 
-	setTimeout(callback: () => void, delayMs: number): unknown {
+	setTimeout(callback: () => void, delayMs: number): number {
 		const id = this.nextId++;
 		this.timers.set(id, { dueMs: this.currentMs + Math.max(0, delayMs), callback });
 		return id;
@@ -282,6 +282,68 @@ async function testParityAndPrivacy(): Promise<void> {
 	}
 }
 
+async function testAutoPersistWindow(
+	indexer: OperonIndexer,
+	queue: (path: string) => Promise<void>,
+	batches: ReadonlyArray<{ dirtySourcePaths: ReadonlySet<string> }>,
+): Promise<void> {
+	const scheduler = new ManualPersistenceScheduler();
+	const original = { setTimeout: activeWindow.setTimeout, clearTimeout: activeWindow.clearTimeout };
+	const begin = () => indexer.deferPendingPersistForAuto(isPending => isPending('Café.md'.normalize('NFD')));
+	const initial = batches.length;
+	Object.assign(activeWindow, {
+		setTimeout: scheduler.setTimeout.bind(scheduler),
+		clearTimeout: scheduler.clearTimeout.bind(scheduler),
+	});
+	try {
+		await queue('Other.md');
+		equal(begin(), undefined, 'unrelated sources keep the normal debounce');
+		await scheduler.advanceBy(350);
+		equal(batches.length, initial + 1);
+
+		await queue('Café.md');
+		const release = begin();
+		check(release);
+		await scheduler.advanceBy(350);
+		equal(batches.length, initial + 1, 'the input is still pending while Auto is writing');
+		await queue('Auto.md');
+		release();
+		await scheduler.advanceBy(0);
+		deepEqual([...batches.at(-1)!.dirtySourcePaths], ['Café.md', 'Auto.md']);
+		equal(batches.length, initial + 2);
+
+		await queue('Café.md');
+		const late = begin();
+		check(late);
+		await scheduler.advanceBy(1_350);
+		equal(batches.length, initial + 3, 'a long confirmation cannot hold the input past the deadline');
+
+		await queue('Café.md');
+		const early = begin();
+		check(early);
+		late();
+		await scheduler.advanceBy(200);
+		early();
+		await scheduler.advanceBy(149);
+		equal(batches.length, initial + 3, 'an early release preserves the original debounce');
+		await scheduler.advanceBy(1);
+		equal(batches.length, initial + 4);
+
+		await queue('Café.md');
+		const explicit = begin();
+		check(explicit);
+		await scheduler.advanceBy(350);
+		await indexer.flushPendingPersist();
+		equal(batches.length, initial + 5, 'explicit flush bypasses the hold');
+		explicit();
+		await scheduler.advanceBy(1_350);
+		equal(batches.length, initial + 5);
+		equal(scheduler.pendingTimerCount, 0);
+	} finally {
+		Object.assign(activeWindow, original);
+	}
+}
+
 async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 	const data = createSyntheticIndexData(2);
 	const order: string[] = [];
@@ -451,6 +513,8 @@ async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 	await mutable.persistIndex({ immediate: true, dirtySourcePaths: ['Fresh.md'], affectedOperonIds: ['new'] });
 	deepEqual([...dirtyBatches.at(-1)!.dirtySourcePaths].sort(), ['Fresh.md', 'Retry.md']);
 	deepEqual([...dirtyBatches.at(-1)!.affectedOperonIds].sort(), ['new', 'old']);
+
+	await testAutoPersistWindow(indexer, path => mutable.persistIndex({ dirtySourcePaths: [path] }), dirtyBatches);
 
 	const copiesBeforeInvalidation = copies;
 	await mutable.persistIndex({ dirtySourcePaths: ['Before-settings.md'] });

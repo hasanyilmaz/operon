@@ -400,6 +400,8 @@ export class OperonIndexer {
 	private persistTimer: WindowTimeoutHandle | null = null;
 	private persistRetryScheduled = false;
 	private readonly persistDebounceMs = 350;
+	private readonly autoWriteGraceMs = 1_000;
+	private autoWriteWindow?: { flushDue: boolean };
 	private indexOperationTail: Promise<void> = Promise.resolve();
 	private coherentWorkflowStatusSemanticsSignature: string | null = null;
 	private coherentIndexV8SemanticsSignature: string | null = null;
@@ -1925,9 +1927,35 @@ export class OperonIndexer {
 		if (this.persistTimer) clearWindowTimeout(this.persistTimer);
 		this.persistRetryScheduled = false;
 		this.persistTimer = setWindowTimeout(() => {
-			this.persistTimer = null;
-			void this.flushPendingPersist();
+			if (this.autoWriteWindow) {
+				this.autoWriteWindow.flushDue = true;
+				this.persistTimer = setWindowTimeout(() => this.flushScheduledPersist(), this.autoWriteGraceMs);
+			} else {
+				this.flushScheduledPersist();
+			}
 		}, this.persistDebounceMs);
+	}
+
+	/** Share an already scheduled incremental commit with a planned Auto write to the same source. */
+	deferPendingPersistForAuto(overlaps: (isPending: (path: string) => boolean) => boolean): (() => void) | undefined {
+		const pending = this.pendingPersistData;
+		if (!pending || !this.persistTimer || this.persistRetryScheduled || this.autoWriteWindow
+			|| pending.forceFull || pending.retry || this.shuttingDown || this.getIndexV8RuntimePhase() !== 'idle'
+			|| !overlaps(path => pending.dirtySourcePaths.has(normalizeIndexV8SourcePath(path)))) return;
+		const hold = { flushDue: false };
+		this.autoWriteWindow = hold;
+		return () => {
+			if (this.autoWriteWindow !== hold) return;
+			this.autoWriteWindow = undefined;
+			if (hold.flushDue) this.flushScheduledPersist();
+		};
+	}
+
+	private flushScheduledPersist(): void {
+		clearWindowTimeout(this.persistTimer);
+		this.persistTimer = null;
+		this.autoWriteWindow = undefined;
+		void this.flushPendingPersist();
 	}
 
 	private queuePersistChanges(changes: PendingIndexChanges): void {
@@ -1971,6 +1999,7 @@ export class OperonIndexer {
 	}
 
 	private discardPendingPersist(): void {
+		this.autoWriteWindow = undefined;
 		if (this.persistTimer) {
 			clearWindowTimeout(this.persistTimer);
 			this.persistTimer = null;
@@ -2925,6 +2954,7 @@ export class OperonIndexer {
 
 	destroy(): void {
 		this.shuttingDown = true;
+		this.autoWriteWindow = undefined;
   getNativePropertyIndex(this.app).dispose();
 		if (this.reindexTimer) {
 			clearWindowTimeout(this.reindexTimer);
