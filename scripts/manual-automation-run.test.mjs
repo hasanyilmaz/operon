@@ -156,7 +156,11 @@ async function fixture(files, opts = {}) {
 				validPath: async () => true, buffersMatch: name => name !== f.dirty, sync: () => { if (f.syncThrows) throw Error('lost editor acknowledgement'); return true; }, permit: () => permit,
 				withSources: (_, allowed, operation) => operation(allowed),
 				observeSource: f.observeSource, observePin: f.observePin,
-				refresh: async () => { f.refreshes++; if (f.refreshFails) throw Error('refresh failed'); } });
+				refresh: async (paths, renamedFrom) => {
+					f.refreshes++;
+					if (f.refreshFails) throw Error('refresh failed');
+					await f.refresh?.(paths, renamedFrom);
+				} });
 			await f.onPrepare?.();
 			return work;
 		},
@@ -609,6 +613,84 @@ test('physical Markdown cannot reinterpret a description as an extra tag', async
 test('refresh failure preserves committed counts', async () => {
 	const f = await fixture(filesFor(1)); f.refreshFails = true;
 	const result = await f.run(); assert.equal(result.applied, 1); assert.equal(result.refreshPending, true);
+});
+test('one refresh covers all changed Markdown files and a no-op run skips refresh', async () => {
+	const f = await fixture({ 'Mixed.md': inline(id(0)) + inline(id(1)), 'Other.md': inline(id(2)) });
+	const refreshes = [];
+	f.refresh = (paths, renamedFrom) => refreshes.push({ paths: [...paths].sort(), renames: [...renamedFrom] });
+	assert.equal((await f.run()).applied, 3);
+	assert.deepEqual(refreshes, [{ paths: ['Mixed.md', 'Other.md'], renames: [] }]);
+	assert.deepEqual(f.writes.toSorted(), ['Mixed.md', 'Other.md']);
+	for (const key of f.tasks.keys()) await f.reindexInline(key);
+	assert.equal((await f.run()).applied, 0);
+	assert.equal(f.refreshes, 1);
+	assert.equal(f.writes.length, 2);
+});
+test('a source disappearing after commit reports refresh pending and still publishes the remaining source', async () => {
+	const f = await fixture(filesFor(2));
+	const vault = f.app.vault;
+	const index = new OperonIndexer(f.app, { getSettings: () => DEFAULT_SETTINGS });
+	try {
+		await index.reindexCommittedMutationSources([id(0) + '.md', id(1) + '.md']);
+		f.refresh = async paths => {
+			const lookup = vault.getAbstractFileByPath;
+			vault.getAbstractFileByPath = path => path === id(0) + '.md' ? null : lookup(path);
+			try { await index.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true }); }
+			finally { vault.getAbstractFileByPath = lookup; }
+		};
+		const result = await f.run();
+		assert.deepEqual([result.applied, result.uncertain, result.refreshPending], [2, 0, true]);
+		assert.equal(f.refreshes, 1);
+		assert.equal(index.getTask(id(0)), undefined);
+		assert.ok(index.getTask(id(1)).tags.includes('follow'));
+		assert.deepEqual(f.writes.toSorted(), [id(0) + '.md', id(1) + '.md']);
+	} finally { index.destroy(); }
+});
+test('a partial refresh after a rename publishes readable siblings and retains the task until its destination is readable', async () => {
+	const f = await fixture({ 'Before.md': '---\noperonId: task001\n---\nBody\n', 'Other.md': inline(id(2)) },
+		{ rule: { actions: [action('description', 'Renamed'), action('tags', 'follow')] } });
+	const vault = f.app.vault;
+	const index = new OperonIndexer(f.app, { getSettings: () => DEFAULT_SETTINGS });
+	try {
+		await index.reindexCommittedMutationSources(['Before.md', 'Other.md']);
+		const events = [];
+		index.subscribeIndexReconciliation(event => events.push(event));
+		const read = vault.read;
+		let reads = [];
+		let refresh;
+		f.refresh = async (paths, renamedFrom) => {
+			assert.deepEqual([...paths].sort(), ['Before.md', 'Other.md', 'Renamed.md']);
+			assert.deepEqual([...renamedFrom], [['Renamed.md', 'Before.md']]);
+			refresh = () => index.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true, renamedFrom });
+			vault.read = file => {
+				reads.push(file.path);
+				if (file.path === 'Renamed.md') throw Error('simulated read failure');
+				return read(file);
+			};
+			try { await refresh(); } finally { vault.read = read; }
+		};
+		const result = await f.run();
+		assert.deepEqual([result.applied, result.uncertain, result.refreshPending], [2, 0, true]);
+		assert.equal(f.refreshes, 1);
+		assert.deepEqual(f.writes.toSorted(), ['Other.md', 'Renamed.md']);
+		assert.deepEqual(reads.sort(), ['Other.md', 'Renamed.md']);
+		assert.deepEqual(events.map(event => event.affectedOperonIds), [[id(2)]]);
+		assert.ok(index.getTask(id(2)).tags.includes('follow'));
+		assert.equal(index.getTask(id(1)).primary.filePath, 'Before.md');
+
+		reads = [];
+		vault.read = file => { reads.push(file.path); return read(file); };
+		await refresh();
+		assert.deepEqual(reads.sort(), ['Other.md', 'Renamed.md']);
+		assert.equal(events.length, 2);
+		const moved = events[1].changes.find(delta => delta.after?.operonId === id(1));
+		assert.equal(moved.before.primary.filePath, 'Before.md');
+		assert.equal(moved.after.primary.filePath, 'Renamed.md');
+		assert.ok(index.getTask(id(1)).tags.includes('follow'));
+		assert.equal(index.secondary.getTasksInFile('Before.md').size, 0);
+		assert.deepEqual([...index.secondary.getTasksInFile('Renamed.md')], [id(1)]);
+		assert.equal(f.writes.length, 2);
+	} finally { index.destroy(); }
 });
 test('native inline and YAML values, multiline YAML comments, and user-owned content survive', async () => {
 	const key = 'file.property:Team';

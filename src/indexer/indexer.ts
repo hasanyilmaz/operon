@@ -192,6 +192,12 @@ export interface ReindexOptions {
 	perfContext?: IndexPerfContext;
 }
 
+interface CommittedMutationReindexOptions extends ReindexOptions {
+	requireAllSources?: boolean;
+	/** Destination to previous path for confirmed moves, including rolled-back moves. */
+	renamedFrom?: ReadonlyMap<string, string>;
+}
+
 export type CachedIndexLoadResult =
 	| {
 		status: 'loaded';
@@ -1107,17 +1113,20 @@ export class OperonIndexer {
 	 */
 	async reindexCommittedMutationSources(
 		filePaths: readonly string[],
-		options: ReindexOptions = {},
+		options: CommittedMutationReindexOptions = {},
 	): Promise<void> {
 		const paths = Array.from(new Set(filePaths.map(path => path.trim()).filter(Boolean))).sort();
-		if (paths.length === 0 || this.shuttingDown) return;
-		while (true) {
+		if (!paths.length) return;
+		while (!this.shuttingDown) {
 			const existingFlights = paths
 				.filter(filePath => this.inFlightReindexPaths.has(filePath))
 				.map(filePath => this.awaitTrackedReindexPath(filePath));
 			if (existingFlights.length === 0) break;
 			await Promise.all(existingFlights);
-			if (this.shuttingDown) return;
+		}
+		if (this.shuttingDown) {
+			if (options.requireAllSources) throw new Error('Index shut down before committed sources were refreshed');
+			return;
 		}
 		for (const filePath of paths) this.pendingFiles.delete(filePath);
 		if (this.pendingFiles.size === 0 && this.reindexTimer) {
@@ -1321,8 +1330,11 @@ export class OperonIndexer {
 		}
 	}
 
-	private async doReindexFilesBatch(filePaths: string[], options: ReindexOptions = {}, requireAllSources = false): Promise<void> {
-  const failedPaths: string[] = [];
+	private async doReindexFilesBatch(
+		filePaths: string[], options: CommittedMutationReindexOptions = {}, requireAllSources = options.requireAllSources,
+	): Promise<void> {
+		const { renamedFrom } = options;
+		const failedPaths: string[] = [];
 		const startedAt = enginePerfNow();
 		const scanAndHydrationStartedAt = enginePerfNow();
 		const pipelines = this.storage.getSettings({ committedMappings: true }).pipelines;
@@ -1332,28 +1344,33 @@ export class OperonIndexer {
 		const beforeById = new Map<string, IndexedTask | undefined>();
 		const scannedIds = new Set<string>();
 		let mutated = false;
+		const renameSources = new Set(renamedFrom?.values());
+		const forgetPath = (path: string, existing = this.snapshotCanonicalTasksByInstanceFile(path)) => {
+			for (const [id, task] of existing) {
+				if (!beforeById.has(id)) beforeById.set(id, task);
+			}
+			removedTasks.push(...this.removeTasksByFile(path));
+			this.fileMtimes.delete(path);
+			this.fileSizes.delete(path);
+			mutated = true;
+		};
+		const retireRenameSource = (destination: string) => {
+			const previous = renamedFrom?.get(destination);
+			if (previous && !this.app.vault.getAbstractFileByPath(previous)) forgetPath(previous);
+		};
 		for (const fp of filePaths) {
+			const file = this.app.vault.getAbstractFileByPath(fp);
+			// Retire a moved task's old identity only when its destination has been read.
+			if (renameSources.has(fp) && !file) continue;
 			if (isOperonExcludedPath(fp, this.storage.getSettings({ committedMappings: true }))) {
-				for (const [operonId, task] of this.snapshotCanonicalTasksByInstanceFile(fp)) {
-					if (!beforeById.has(operonId)) beforeById.set(operonId, task);
-				}
-				removedTasks.push(...this.removeTasksByFile(fp));
-				this.fileMtimes.delete(fp);
-				this.fileSizes.delete(fp);
-				mutated = true;
+				forgetPath(fp);
+				retireRenameSource(fp);
 				continue;
 			}
-			const file = this.app.vault.getAbstractFileByPath(fp);
 			if (!(file instanceof TFile) || file.extension !== 'md') {
+				if (options.requireAllSources) failedPaths.push(fp);
 				const existing = this.snapshotCanonicalTasksByInstanceFile(fp);
-				if (existing.size === 0) continue;
-				for (const [operonId, task] of existing) {
-					if (!beforeById.has(operonId)) beforeById.set(operonId, task);
-				}
-				removedTasks.push(...this.removeTasksByFile(fp));
-				this.fileMtimes.delete(fp);
-				this.fileSizes.delete(fp);
-				mutated = true;
+				if (existing.size) forgetPath(fp, existing);
 				continue;
 			}
 			const staged = this.createEmptyIndexState();
@@ -1362,10 +1379,11 @@ export class OperonIndexer {
 				fileScannedIds = await this.indexFile(file, staged, pipelines, workflowStatusIdentityIndex);
 			} catch (error) {
 				getNativePropertyIndex(this.app).fail(fp);
-    console.warn(`Operon: failed to reindex ${fp}; keeping previous index state`, error);
-    failedPaths.push(fp);
+				console.warn(`Operon: failed to reindex ${fp}; keeping previous index state`, error);
+				failedPaths.push(fp);
 				continue;
 			}
+			retireRenameSource(fp);
 			for (const [operonId, task] of this.snapshotCanonicalTasksByInstanceFile(fp)) {
 				if (!beforeById.has(operonId)) beforeById.set(operonId, task);
 			}
@@ -1377,8 +1395,11 @@ export class OperonIndexer {
 			}
 			mutated = true;
 		}
+		const failure = requireAllSources && failedPaths.length
+			? new Error(options.requireAllSources ? 'Committed source reconciliation failed' : 'Startup source reconciliation failed')
+			: null;
 		if (!mutated) {
-   if (requireAllSources && failedPaths.length) throw new Error('Startup source reconciliation failed');
+			if (failure) throw failure;
 			enginePerfLog('index.reindex.incremental', `files=${filePaths.length}`, 'mutated=false', `totalMs=${Math.round(enginePerfNow() - startedAt)}`);
 			return;
 		}
@@ -1412,7 +1433,7 @@ export class OperonIndexer {
 			`persistScheduleMs=${Math.round(persistScheduleMs)}`,
 			`totalMs=${Math.round(enginePerfNow() - startedAt)}`,
 		);
-  if (requireAllSources && failedPaths.length) throw new Error('Startup source reconciliation failed');
+		if (failure) throw failure;
 	}
 
 	/**

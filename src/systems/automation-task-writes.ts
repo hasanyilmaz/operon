@@ -43,7 +43,7 @@ interface WritePorts {
 	buffersMatch(path: string, content: string): boolean;
 	sync(path: string, before: string, after: string): boolean;
 	permit(): TaskWriterExclusiveMutationPermit | undefined;
-	refresh(paths: Set<string>): Promise<void>;
+	refresh(paths: Set<string>, renamedFrom: ReadonlyMap<string, string>): Promise<void>;
 	/** Capture only writes this instance attempts, including conditional rollback. */
 	observeSource?(ids: ReadonlySet<string>, file: TFile, path: string, expected: string): Promise<() => void>;
 	observePin?(id: string, pinned: boolean, stamp: string): void;
@@ -347,11 +347,19 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		const current = () => permitted() && state.current() && ports.repeatStore.getRevision() === seriesRevision;
 		let applied = 0, uncertain = 0;
 		const affected = new Set<string>();
+		const renamedFrom = new Map<string, string>();
 		try {
 			for (const group of groups.values()) {
 				if (!current()) break;
 				const outcome = await commitGroup(group, ports, state, current, () => { seriesRevision++; });
-				for (const source of group.sources) { affected.add(source.path); affected.add(source.destination); }
+				for (const source of group.sources) {
+					affected.add(source.path);
+					affected.add(source.destination);
+					if (source.destination !== source.path) {
+						if (source.file.path === source.destination) renamedFrom.set(source.destination, source.path);
+						else if (source.file.path === source.path) renamedFrom.set(source.path, source.destination);
+					}
+				}
 				if (outcome !== 'committed') {
 					if (outcome === 'outcome-unknown') uncertain = group.ids.size;
 					break;
@@ -360,7 +368,9 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 				state.settled();
 			}
 		} finally { state.close(); }
-		try { await ports.refresh(affected); } catch { return { applied, uncertain, refreshPending: true }; }
+		if (affected.size) {
+			try { await ports.refresh(affected, renamedFrom); } catch { return { applied, uncertain, refreshPending: true }; }
+		}
 		return { applied, uncertain };
 	} };
 }

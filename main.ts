@@ -23712,8 +23712,8 @@ export default class OperonPlugin extends Plugin {
 							projected.native.dispose();
 							return () => { for (const [taskId, image] of expected) events.ownSource(taskId, image, since); };
 						},
-						refresh: async paths => {
-							for (const path of paths) await this.indexer.forceReindexFilePathAfterMutation(path, { notify: false });
+						refresh: async (paths, renamedFrom) => {
+							await this.indexer.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true, renamedFrom });
 							this.refreshViews();
 						},
 					});
