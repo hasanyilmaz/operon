@@ -30,7 +30,7 @@ import {
 import { CheckboxState, TASK_STATS_CANONICAL_KEYS } from '../types/keys';
 import type { KeyMapping, OperonSettings } from '../types/settings';
 import { OperonStorage, type IndexV8RecoveryMarkerStatus } from '../storage/operon-storage';
-import { scanFileWithMappings, inlineLocation, yamlLocation } from './file-scanner';
+import { type FileScanResult, scanFileWithMappings, inlineLocation, yamlLocation } from './file-scanner';
 import { SecondaryIndexes } from './secondary-indexes';
 import { clonePipeline, Pipeline, resolveWorkflowStatus } from '../types/pipeline';
 import { resolveYamlTaskEffectiveTimestamps } from '../core/yaml-task-file-stat-sync';
@@ -193,6 +193,7 @@ export interface ReindexOptions {
 }
 
 interface CommittedMutationReindexOptions extends ReindexOptions {
+	onCommittedScan?: (file: TFile, scan: FileScanResult) => void;
 	requireAllSources?: boolean;
 	/** Destination to previous path for confirmed moves, including rolled-back moves. */
 	renamedFrom?: ReadonlyMap<string, string>;
@@ -1349,6 +1350,7 @@ export class OperonIndexer {
 		const scannedIds = new Set<string>();
 		let mutated = false;
 		const renameSources = new Set(renamedFrom?.values());
+		const scans = options.onCommittedScan ? new Map<TFile, FileScanResult>() : undefined;
 		const forgetPath = (path: string, existing = this.snapshotCanonicalTasksByInstanceFile(path)) => {
 			for (const [id, task] of existing) {
 				if (!beforeById.has(id)) beforeById.set(id, task);
@@ -1380,7 +1382,7 @@ export class OperonIndexer {
 			const staged = this.createEmptyIndexState();
 			let fileScannedIds: Set<string>;
 			try {
-				fileScannedIds = await this.indexFile(file, staged, pipelines, workflowStatusIdentityIndex);
+				fileScannedIds = await this.indexFile(file, staged, pipelines, workflowStatusIdentityIndex, undefined, undefined, undefined, scans);
 			} catch (error) {
 				getNativePropertyIndex(this.app).fail(fp);
 				console.warn(`Operon: failed to reindex ${fp}; keeping previous index state`, error);
@@ -1438,6 +1440,10 @@ export class OperonIndexer {
 			`totalMs=${Math.round(enginePerfNow() - startedAt)}`,
 		);
 		if (failure) throw failure;
+		if (scans && options.onCommittedScan) {
+			for (const [file, scan] of scans) options.onCommittedScan(file, scan);
+			if (scans.size && options.notify === false) this.notifyIndexUpdated();
+		}
 	}
 
 	/**
@@ -1596,6 +1602,7 @@ export class OperonIndexer {
 		keyMappings: KeyMapping[] = this.storage.getSettings({ committedMappings: true }).keyMappings,
 		exclusionSettings: OperonSettings = this.storage.getSettings({ committedMappings: true }),
 		knownContent?: string,
+		scans?: Map<TFile, FileScanResult>,
 	): Promise<Set<string>> {
   state.nativeSettings ??= structuredClone({ keyMappings, inlinePropertyDefinitions: exclusionSettings.inlinePropertyDefinitions });
 		const scannedIds = new Set<string>();
@@ -1606,6 +1613,7 @@ export class OperonIndexer {
 		}
 
 		const result = await scanFileWithMappings(this.app, file, keyMappings, knownContent);
+		scans?.set(file, result);
 		state.fileMtimes.set(file.path, result.mtime);
   if (result.inlineTasks.length || result.yamlTask) state.nativeSources.set(file.path, result.nativeProperties);
 		state.fileSizes.set(file.path, result.sizeBytes);

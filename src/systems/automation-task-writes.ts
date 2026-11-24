@@ -43,7 +43,7 @@ interface WritePorts {
 	buffersMatch(path: string, content: string): boolean;
 	sync(path: string, before: string, after: string): boolean;
 	permit(): TaskWriterExclusiveMutationPermit | undefined;
-	refresh(paths: Set<string>, renamedFrom: ReadonlyMap<string, string>): Promise<void>;
+	refresh(paths: Set<string>, renamedFrom: ReadonlyMap<string, string>, committed: ReadonlyMap<TFile, string>): Promise<void>;
 	/** Capture only writes this instance attempts, including conditional rollback. */
 	observeSource?(ids: ReadonlySet<string>, file: TFile, path: string, expected: string): Promise<() => void>;
 	observePin?(id: string, pinned: boolean, stamp: string): void;
@@ -347,6 +347,7 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 		const current = () => permitted() && state.current() && ports.repeatStore.getRevision() === seriesRevision;
 		let applied = 0, uncertain = 0;
 		const affected = new Set<string>();
+		const committed = new Map<TFile, string>();
 		const renamedFrom = new Map<string, string>();
 		try {
 			for (const group of groups.values()) {
@@ -364,12 +365,15 @@ export async function prepareAutomationWork(plan: AutomationChangePlan, ports: W
 					if (outcome === 'outcome-unknown') uncertain = group.ids.size;
 					break;
 				}
+				for (const source of group.sources) {
+					if (source.path === source.destination && source.before !== source.after) committed.set(source.file, source.after);
+				}
 				applied += group.ids.size;
 				state.settled();
 			}
 		} finally { state.close(); }
 		if (affected.size) {
-			try { await ports.refresh(affected, renamedFrom); } catch { return { applied, uncertain, refreshPending: true }; }
+			try { await ports.refresh(affected, renamedFrom, committed); } catch { return { applied, uncertain, refreshPending: true }; }
 		}
 		return { applied, uncertain };
 	} };

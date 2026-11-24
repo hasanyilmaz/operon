@@ -198,7 +198,7 @@ import {
 	type IndexV8MaintenanceHandle,
 } from './src/indexer/persistence/index-v8-maintenance-scheduler';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
-import { scanFileWithMappings } from './src/indexer/file-scanner';
+import { type FileScanResult, scanFileWithMappings } from './src/indexer/file-scanner';
 import {
 	TaskWriter,
 	type GuardedTaskSourceFieldUpdate,
@@ -236,6 +236,7 @@ import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/
 import {
 	TaskSourceModifyReconciler,
 	type TaskSourceModifyReconciliationMode,
+	type MatchIndexedSource,
 } from './src/systems/task-source-modify-reconciliation';
 import { normalizeTaskAfterCreateAction } from './src/types/settings';
 import { StartupFileEvents } from './src/systems/startup-file-events';
@@ -16949,7 +16950,7 @@ export default class OperonPlugin extends Plugin {
 			now: () => Date.now(),
 			setTimer: (callback, delayMs) => setWindowTimeout(callback, delayMs),
 			clearTimer: timer => clearWindowTimeout(timer),
-			reconcile: (filePath, mode) => this.reconcileTaskSourceModify(filePath, mode),
+			reconcile: (filePath, mode, match) => this.reconcileTaskSourceModify(filePath, mode, undefined, match),
 			onError: (filePath, error) => {
 				console.warn(`Operon: task source reconciliation failed for ${filePath}.`, error);
 			},
@@ -23738,8 +23739,12 @@ export default class OperonPlugin extends Plugin {
 							projected.native.dispose();
 							return () => { for (const [taskId, image] of expected) events.ownSource(taskId, image, since); };
 						},
-						refresh: async (paths, renamedFrom) => {
-							await this.indexer.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true, renamedFrom });
+						refresh: async (paths, renamedFrom, committed) => {
+							const onCommittedScan = typeof request === 'function' && committed.size
+								? (file: TFile, scan: FileScanResult) => {
+									if (committed.get(file) === scan.content) this.rememberAutoSourceScan(file, scan);
+								} : undefined;
+							await this.indexer.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true, renamedFrom, onCommittedScan });
 							this.refreshViews();
 						},
 					});
@@ -28977,10 +28982,21 @@ export default class OperonPlugin extends Plugin {
 		this.taskSourceModifyReconciler?.markInternalWrite(filePath);
 	}
 
+	private rememberAutoSourceScan(file: TFile, scan: FileScanResult): void {
+		const generation = this.indexer.getGeneration();
+		const mappings = JSON.stringify(scan.keyMappings);
+		this.taskSourceModifyReconciler?.rememberIndexedSource(scan.filePath, (current, content) =>
+			current === file && file.path === scan.filePath && file.stat.mtime === scan.mtime && file.stat.size === scan.sizeBytes
+			&& content === scan.content && this.indexer.getGeneration() === generation && this.indexer.isIndexedSourceCurrent(file)
+			&& this.indexer.getLiveReadAuthoritySnapshot().state === 'verified' && JSON.stringify(this.settings.keyMappings) === mappings
+				? scan : undefined);
+	}
+
 	private async reconcileTaskSourceModify(
 		filePath: string,
 		mode: TaskSourceModifyReconciliationMode,
   canContinue?: () => boolean,
+		matchIndexedSource?: MatchIndexedSource,
 	): Promise<void> {
 		if (canContinue && !canContinue()) return;
 		const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -28997,12 +29013,20 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 		this.tasksConversionSettledSources.delete(filePath);
-		await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue);
+		const covered = mode === 'deferred' && matchIndexedSource?.(file, source) ? matchIndexedSource : undefined;
+		await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue, covered);
 		if (mode === 'deferred') {
 			const settledFile = this.app.vault.getAbstractFileByPath(filePath);
 			if (!(settledFile instanceof TFile) || settledFile.extension !== 'md') {
 				await this.indexer.handleFileDelete(filePath);
 				return;
+			}
+			if (covered) {
+				try {
+					if (covered(settledFile, await this.app.vault.read(settledFile))) return;
+				} catch {
+					// A failed proof read leaves the normal reconciliation responsible for this source.
+				}
 			}
 			await this.indexer.forceReindexFilePathAfterMutation(filePath);
 		}
@@ -29063,7 +29087,7 @@ export default class OperonPlugin extends Plugin {
 		return true;
 	}
 
-	private async normalizeWorkflowStateAfterRawEdit(filePath: string, canContinue?: () => boolean): Promise<void> {
+	private async normalizeWorkflowStateAfterRawEdit(filePath: string, canContinue?: () => boolean, covered?: MatchIndexedSource): Promise<void> {
 		if (canContinue && !canContinue()) return;
 		const owned = this.tasksConversionOwnedSources.get(filePath);
 		if (owned?.written) {
@@ -29089,15 +29113,18 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		this.workflowNormalizationInProgress.add(filePath);
+		let normalized = false;
 		try {
 			do {
 				this.workflowNormalizationPending.delete(filePath);
-				await this.normalizeWorkflowStateAfterRawEditPass(filePath, canContinue);
+				await this.normalizeWorkflowStateAfterRawEditPass(filePath, canContinue, covered);
 			} while ((!canContinue || canContinue()) && this.workflowNormalizationPending.delete(filePath));
+			normalized = true;
 		} finally {
 			const renamedFilePath = this.workflowNormalizationRenameTargets.get(filePath);
 			this.workflowNormalizationRenameTargets.delete(filePath);
-			if (!canContinue || canContinue()) this.indexer.scheduleReindex(renamedFilePath ?? filePath);
+			// The deferred caller checks the final bytes and forces a fresh scan if normalization wrote.
+			if ((!covered || !normalized || renamedFilePath) && (!canContinue || canContinue())) this.indexer.scheduleReindex(renamedFilePath ?? filePath);
 			this.workflowNormalizationInProgress.delete(filePath);
 			let followupScheduled = false;
 			if ((!canContinue || canContinue()) && renamedFilePath) {
@@ -29115,7 +29142,7 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async normalizeWorkflowStateAfterRawEditPass(filePath: string, canContinue?: () => boolean): Promise<void> {
+	private async normalizeWorkflowStateAfterRawEditPass(filePath: string, canContinue?: () => boolean, covered?: MatchIndexedSource): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile) || file.extension !== 'md') return;
 		if (isOperonExcludedPath(file.path, this.settings)) {
@@ -29153,7 +29180,7 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		const scan = await scanFileWithMappings(this.app, file, this.settings.keyMappings, canContinue ? resolvedContent : undefined);
+		const scan = covered?.(file, resolvedContent) ?? await scanFileWithMappings(this.app, file, this.settings.keyMappings, canContinue ? resolvedContent : undefined);
   if (canContinue && !canContinue()) return;
 		const currentById = new Map<string, Record<string, string>>();
 		for (const inlineTask of scan.inlineTasks) {
