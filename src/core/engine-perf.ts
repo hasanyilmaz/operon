@@ -20,7 +20,6 @@ export interface EnginePerfTraceMetadata {
 export interface IndexPerfContext {
 	source: string;
 	trace?: EnginePerfTraceMetadata | null;
-	snapshotBuildMs?: number;
 }
 
 export interface WriteJsonMetrics {
