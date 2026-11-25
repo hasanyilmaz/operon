@@ -1,6 +1,7 @@
+import { isWeekNumberOperator } from '../core/calendar-row-week';
 import { App, Modal, Notice, setIcon } from 'obsidian';
 import type { AutomationChangePlan, AutomationPlanIssue, AutomationPreviewTaskIds } from '../core/automation-change-plan';
-import { createAutomationActionId, createAutomationProjectSerialValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
+import { createAutomationActionId, createAutomationConditionValidator, createAutomationRule, readAutomationRules, type AutomationAction, type AutomationRule } from '../core/automation-rules';
 import { automationTypedListMapping, readActionLiteral } from '../core/automation-action-fields';
 import { isFilePropertyColumnKey } from '../core/raw-yaml-property';
 import { getOwnerWindow } from '../core/dom-compat';
@@ -32,7 +33,7 @@ export interface AutomationEditorSource {
 	plan(rule: AutomationRule): AutomationChangePlan | undefined;
 }
 
-function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, FilterFieldPickerOption>, invalidProjectGroup: ReturnType<typeof createAutomationProjectSerialValidator>): boolean {
+function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, FilterFieldPickerOption>, invalidCondition: ReturnType<typeof createAutomationConditionValidator>): boolean {
 	return flattenConditions(group).every(condition => {
 		const { field, fieldType, operator, value = '' } = condition;
 		const option = fields.get(field);
@@ -40,7 +41,7 @@ function completeConditions(group: FilterGroup, fields: ReadonlyMap<string, Filt
 		if (field === 'trackedOn') return isValidTrackedOnCondition(condition, DATE_OPERATORS.map(op => op.id));
 		if (NO_VALUE_OPERATORS.has(operator)) return true;
 		if (field === TASK_DATA_TYPE_FIELD_KEY) return isTaskDataType(value);
-		if (operator === 'isAnyOf' || operator === 'isNoneOf') return !invalidProjectGroup(condition);
+		if (operator === 'isAnyOf' || operator === 'isNoneOf' || isWeekNumberOperator(operator)) return !invalidCondition(condition);
 		if (!value.trim()) return false;
 		if (NUMERIC_INPUT_DATE_OPERATORS.has(operator) || operator.startsWith('count')) {
 			const number = Number(value);
@@ -76,7 +77,7 @@ export function savedAutomationRunError(rule: AutomationRule, source: Automation
 	const native = needsNative ? source.getNativeSnapshot() : null;
 	const fields = automationFieldCatalog(rule, source, () => native).getFieldOptions(true, false, false, true);
 	const options = new Map(fields.map(option => [option.field, option]));
-	const invalidGroup = createAutomationProjectSerialValidator(source.getSettings().projectSerialScopes);
+	const invalidGroup = createAutomationConditionValidator(source.getSettings().projectSerialScopes);
 	if (!completeConditions(rule.scope, options, invalidGroup) || !completeConditions(rule.target, options, invalidGroup)) return 'condition';
 	const types = writableNativeTypes(native);
 	const context = { settings: source.getSettings, nativeType: (key: string) => types.get(key) ?? null };
@@ -327,12 +328,12 @@ export class AutomationRuleModal extends Modal {
 	private chosen(): AutomationAction[] { return this.draft.actions.filter(action => action.field); }
 	private conditionValidity(): boolean[] {
 		const options = new Map(this.options.map(option => [option.field, option]));
-		const invalidProjectGroup = createAutomationProjectSerialValidator(this.source.getSettings().projectSerialScopes);
+		const invalidCondition = createAutomationConditionValidator(this.source.getSettings().projectSerialScopes);
 		return (['scope', 'target'] as const).map((key, index) => !this.editors[index].validationError
-			&& completeConditions(this.draft[key], options, invalidProjectGroup));
+			&& completeConditions(this.draft[key], options, invalidCondition));
 	}
 	private canSave(): boolean {
-		if (!this.draft.name.trim() || this.editors.some(e => e.hasInvalidRawValues)) return false;
+		if (!this.draft.name.trim() || this.editors.some(e => e.hasInvalidRawValues || e.validationError === 'weekNumberInvalid')) return false;
 		if (!this.draft.active) return true;
 		const actions = this.chosen();
 		return this.conditionValidity().every(Boolean) && actions.length > 0 && actions.every(action => validAction(action, this.actionContext));

@@ -1,3 +1,4 @@
+import type { WeekNumbering } from '../core/calendar-row-week';
 import { filterTasksForDisplay as filterTasksForCalendar } from '../core/filter-display';
 import type { PinnedCache } from '../storage/pinned-cache';
 import type { IndexedTask } from '../types/fields';
@@ -116,6 +117,7 @@ export function queryTableRows(options: {
 	tasks: IndexedTask[];
 	priorities: { label: string; color?: string }[];
 	pinnedCache?: PinnedCache | null;
+	weekNumbering?: WeekNumbering;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	filePropertyContext?: TableFilePropertyQueryContext;
 	getRepeatSkipDates?: (seriesId: string) => readonly string[];
@@ -141,6 +143,7 @@ export function queryTableRows(options: {
 	const scopedTasks = options.precomputedScopedTasks
 		? [...options.precomputedScopedTasks]
 		: filterTasksForCalendar(filterSet, tasks, priorities, pinnedCache ?? null, {
+			weekNumbering: options.weekNumbering,
 			weekStart: options.settings?.calendarWeekStart,
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: tasks,

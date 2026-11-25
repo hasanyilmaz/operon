@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "pt-BR",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Adicionar subtarefa em arquivo",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "esta semana",
       "operator_underDaysAgo": "há menos de X dias",
       "operator_underDaysAway": "faltam menos de X dias",
+      "operator_weekIs": "a semana é",
+      "operator_weekNot": "a semana não é",
       "pasteGroup": "Colar grupo",
       "pasteGroupLimitExceeded": "Não é possível colar o grupo porque o limite de grupos de filtros seria excedido.",
       "pasteGroupMissingField": "Não é possível colar o grupo porque o campo \"{{field}}\" não está disponível.",
@@ -639,7 +641,8 @@
       "usedByTable": "Tabela",
       "usedByTitle": "Este filtro é usado por",
       "userFiltersDesc": "Crie e ordene filtros salvos para a Visualização de Filtro e blocos de filtro incorporados. Cada filtro pode combinar condições, lógica de correspondência, classificação e regras de consulta reutilizáveis.",
-      "userFiltersTitle": "Filtros salvos"
+      "userFiltersTitle": "Filtros salvos",
+      "weekNumberInvalid": "Insira um único número inteiro de semana de 1 a 53."
     },
     "filters": {
       "dueToday": "Vencimento hoje",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Alternar visualização descendente"
     }
   },
-  "sourceVersion": "c079fce9cd6575245a7a26de93d38cfd4f7df42bc376769541cb6fe4ac41e6bb"
+  "sourceVersion": "cd0bbb52ece69a85c3b892ec416d8108847038d556877b7664fc7a833c836ffd"
 }

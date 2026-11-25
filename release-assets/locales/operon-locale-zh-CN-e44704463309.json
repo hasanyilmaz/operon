@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-CN",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "添加文件子任务",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "本周",
       "operator_underDaysAgo": "不到 X 天前",
       "operator_underDaysAway": "不到 X 天后",
+      "operator_weekIs": "周数为",
+      "operator_weekNot": "周数不为",
       "pasteGroup": "粘贴分组",
       "pasteGroupLimitExceeded": "无法粘贴分组，因为这会超出筛选分组限制。",
       "pasteGroupMissingField": "字段“{{field}}”不可用，无法粘贴该分组。",
@@ -639,7 +641,8 @@
       "usedByTable": "表格",
       "usedByTitle": "此筛选器被以下使用",
       "userFiltersDesc": "为筛选视图和嵌入式筛选块创建并排序已保存的筛选器。每个筛选器可以组合条件、匹配逻辑、排序和可复用的查询规则。",
-      "userFiltersTitle": "已保存的筛选器"
+      "userFiltersTitle": "已保存的筛选器",
+      "weekNumberInvalid": "请输入一个 1 到 53 之间的整数周数。"
     },
     "filters": {
       "dueToday": "今天到期",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "切换子任务预览"
     }
   },
-  "sourceVersion": "1506491703a1a17a818c52a6bcc42706f27ea3ac9abf80585e033b17e6592650"
+  "sourceVersion": "46a9fdf2258f128de08bb30dc9e28b92f5074dfa860ecf1b1326e56975539058"
 }

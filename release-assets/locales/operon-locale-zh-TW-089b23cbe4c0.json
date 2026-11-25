@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "zh-TW",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "新增檔案子任務",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "本週",
       "operator_underDaysAgo": "不到 X 天前",
       "operator_underDaysAway": "不到 X 天後",
+      "operator_weekIs": "週次為",
+      "operator_weekNot": "週次不為",
       "pasteGroup": "貼上分組",
       "pasteGroupLimitExceeded": "無法貼上分組，因為這會超出篩選群組限制。",
       "pasteGroupMissingField": "欄位「{{field}}」無法使用，因此無法貼上分組。",
@@ -639,7 +641,8 @@
       "usedByTable": "表格",
       "usedByTitle": "此篩選器被以下使用",
       "userFiltersDesc": "為篩選檢視和嵌入式篩選塊建立並排序已儲存的篩選器。每個篩選器可以組合條件、匹配邏輯、排序和可複用的查詢規則。",
-      "userFiltersTitle": "已儲存的篩選器"
+      "userFiltersTitle": "已儲存的篩選器",
+      "weekNumberInvalid": "請輸入一個 1 至 53 之間的整數週次。"
     },
     "filters": {
       "dueToday": "今天到期",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "切換子任務預覽"
     }
   },
-  "sourceVersion": "b065cda407ed460bd03f0b1a97478bc64c73590b68f68a8a0bb2fce9e77c654a"
+  "sourceVersion": "a820880f71f0a3d597bda6846174a67d5a0e283ff3f1d333b4210c0a604e8c0d"
 }

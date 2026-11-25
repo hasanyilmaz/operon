@@ -1,3 +1,4 @@
+import { hasInvalidWeekNumber, isValidWeekNumber, isWeekNumberOperator } from '../core/calendar-row-week';
 import { PLAIN_CHECKBOXES_FILTER_FIELD_KEY } from '../core/plain-checkbox-filter';
 import { bindFilterGroupInteractionState } from './surface-interaction-state';
 import { isSettingsScope } from './settings/settings-scope';
@@ -512,7 +513,8 @@ export class FilterConditionEditor {
 
 	get hasInvalidRawValues(): boolean { return this.invalidRawValues.size > 0; }
 
-	get validationError(): 'trackedOnInvalid' | 'filePropertyInvalidConditionValue' | null {
+	get validationError(): 'trackedOnInvalid' | 'weekNumberInvalid' | 'filePropertyInvalidConditionValue' | null {
+		if (hasInvalidWeekNumber(this.options.rootGroup)) return 'weekNumberInvalid';
 		if (this.hasInvalidTrackedOnCondition()) return 'trackedOnInvalid';
 		return this.hasInvalidRawValues ? 'filePropertyInvalidConditionValue' : null;
 	}
@@ -1402,6 +1404,12 @@ export class FilterConditionEditor {
 					inp.placeholder = t('filterSets', 'dayOfWeekPlaceholder');
 					inp.min = '0';
 					inp.max = '6';
+				} else if (isWeekNumberOperator(cond.operator)) {
+					inp.placeholder = '1–53';
+					inp.min = '1';
+					inp.max = '53';
+					inp.step = '1';
+					inp.setAttribute('aria-invalid', String(!isValidWeekNumber(cond.value)));
 				} else if (cond.operator === 'monthIs' || cond.operator === 'monthNot') {
 					inp.placeholder = t('filterSets', 'monthPlaceholder');
 					inp.min = '1';
@@ -1448,6 +1456,7 @@ export class FilterConditionEditor {
 			} else {
 				inp.addEventListener('input', () => {
 					cond.value = inp.value || undefined;
+					if (isWeekNumberOperator(cond.operator)) inp.setAttribute('aria-invalid', String(!isValidWeekNumber(cond.value)));
 					this.options.onChange();
 				});
 			}
@@ -1548,7 +1557,11 @@ export class FilterConditionEditor {
 			input.addEventListener('click', open);
 		} else {
 			input.step = '1';
-			input.min = cond.operator === 'inLastDays' || cond.operator.startsWith('month') ? '1' : '0';
+			if (isWeekNumberOperator(cond.operator)) {
+				input.placeholder = '1–53';
+				input.max = '53';
+			}
+			input.min = isWeekNumberOperator(cond.operator) || cond.operator === 'inLastDays' || cond.operator.startsWith('month') ? '1' : '0';
 		}
 		validate();
 	}

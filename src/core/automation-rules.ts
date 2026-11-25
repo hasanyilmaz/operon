@@ -1,3 +1,4 @@
+import { isWeekNumberOperator, isValidWeekNumber } from './calendar-row-week';
 import { FILTER_FIELD_TYPES, type FilterGroup, type FilterFieldType, type FilterNode, type ProjectSerialScope } from '../types/settings';
 import { normalizeProjectSerialScopes, PROJECT_SERIAL_SCOPE_FILTER_FIELD } from './project-serials';
 
@@ -28,8 +29,8 @@ export interface AutomationRulesSettings {
 	rules: AutomationRule[];
 }
 
-/** Validate saved group IDs independently of task matches and boolean short-circuiting. */
-export function createAutomationProjectSerialValidator(scopes: readonly ProjectSerialScope[]) {
+/** Validate operands independently of task matches and boolean short-circuiting. */
+export function createAutomationConditionValidator(scopes: readonly ProjectSerialScope[]) {
 	let available: Set<string> | undefined;
 	return function findInvalidSelection(node: FilterNode): { conditionId: string; projectSerialGroupId?: string } | undefined {
 		if ('children' in node) {
@@ -37,6 +38,8 @@ export function createAutomationProjectSerialValidator(scopes: readonly ProjectS
 				const issue = findInvalidSelection(child);
 				if (issue) return issue;
 			}
+		} else if (isWeekNumberOperator(node.operator) && !isValidWeekNumber(node.value)) {
+			return { conditionId: node.id };
 		} else if (node.field === PROJECT_SERIAL_SCOPE_FILTER_FIELD && (node.operator === 'isAnyOf' || node.operator === 'isNoneOf')) {
 			if (!node.values?.length) return { conditionId: node.id };
 			const ids = available ??= new Set(normalizeProjectSerialScopes(scopes).map(scope => scope.id));

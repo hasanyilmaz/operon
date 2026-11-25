@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "fr",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Ajouter une sous-tâche-fichier",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "cette semaine",
       "operator_underDaysAgo": "il y a moins de X jours",
       "operator_underDaysAway": "dans moins de X jours",
+      "operator_weekIs": "la semaine est",
+      "operator_weekNot": "la semaine n’est pas",
       "pasteGroup": "Coller le groupe",
       "pasteGroupLimitExceeded": "Impossible de coller le groupe, car la limite des groupes de filtre serait dépassée.",
       "pasteGroupMissingField": "Impossible de coller le groupe, car le champ \"{{field}}\" n’est pas disponible.",
@@ -639,7 +641,8 @@
       "usedByTable": "Tableau",
       "usedByTitle": "Ce filtre est utilisé par",
       "userFiltersDesc": "Créez et ordonnez des filtres enregistrés pour la vue de filtre et les blocs de filtre intégrés. Chaque filtre peut combiner des conditions, une logique de correspondance, un tri et des règles de requête réutilisables.",
-      "userFiltersTitle": "Filtres enregistrés"
+      "userFiltersTitle": "Filtres enregistrés",
+      "weekNumberInvalid": "Saisissez un seul numéro de semaine entier entre 1 et 53."
     },
     "filters": {
       "dueToday": "À échéance aujourd'hui",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Basculer l'aperçu des descendants"
     }
   },
-  "sourceVersion": "d7beb60245a3f5551b07003a944b7987b15e6d9572747903f52df8247b792417"
+  "sourceVersion": "2b7b389e77f69d8dd3f5080988634091bc0a4e1b962ed57d27993bda853cd9a5"
 }

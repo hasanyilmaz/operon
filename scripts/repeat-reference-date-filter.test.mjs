@@ -32,6 +32,9 @@ await build({ stdin: { contents: `
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
  export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
  export { buildInlineTaskCompactChipEntries } from './src/ui/compact-task-layout';
+ export { FilterConditionEditor } from './src/ui/filter-condition-editor';
+ export { Notice } from 'obsidian';
+ export { isValidWeekNumber, isWeekNumberOperator } from './src/core/calendar-row-week';
  export { localToday } from './src/core/local-time';
  export { resolveTaskDateTone } from './src/core/task-date-tone';
  export { formatUiDate } from './src/core/ui-date-format';
@@ -108,6 +111,7 @@ const cases = [
  ['thisWeek', '', '2026-10-12', '2026-10-19'], ['lastWeek', '', '2026-10-11', '2026-10-12'], ['nextWeek', '', '2026-10-19', '2026-10-18'],
  ['thisMonth', '', '2026-10-01', '2026-11-01'], ['lastMonth', '', '2026-09-30', '2026-10-01'], ['nextMonth', '', '2026-11-01', '2026-10-31'],
  ['dayOfWeekIs', '5', today, '2026-10-17'], ['dayOfWeekNot', '5', '2026-10-17', today],
+ ['weekIs', '42', today, '2026-10-19'], ['weekNot', '42', '2026-10-19', today],
  ['monthIs', '10', today, '2026-11-01'], ['monthNot', '10', '2026-11-01', today],
  ['hasAnyValue', '', today, ''], ['hasNoValue', '', '', today],
 ];
@@ -208,7 +212,12 @@ function modalHarness(cond = condition()) {
   syncMirroredFilterFields: compile('syncMirroredFilterFields', { flattenConditions: compile('flattenConditions', { isFilterGroupNode: node => Array.isArray(node.children) }) }, 'FilterSetModal'),
   hasInvalidTrackedOnCondition: () => false, close() { this.closed = true; }, onSave: value => saved.push(structuredClone(value)),
  };
+ state.conditionEditor = Object.assign(Object.create(h.FilterConditionEditor.prototype), {
+  options: { rootGroup: draft.rootGroup }, invalidRawValues: state.invalidRawValues,
+ });
  const deps = {
+  Notice: h.Notice,
+  isValidWeekNumber: h.isValidWeekNumber, isWeekNumberOperator: h.isWeekNumberOperator,
   createFilterPickerTrigger: h.createFilterPickerTrigger,
   getPickerFieldOptions: compile('getPickerFieldOptions'), t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
   setAccessibleLabelWithoutTooltip: (el, value) => el.setAttribute('aria-label', value),
@@ -234,6 +243,17 @@ test('date operators render the shared date picker, numeric or no-value controls
    input.fire('click'); assert.equal(popovers[0].condition, cond);
    input.value = '2026-11-01'; input.fire('input'); assert.equal(cond.value, '2026-11-01');
   }
+ }
+});
+test('week number operands block saving until an integer in range is selected', () => {
+ for (const value of ['', '0', '54', '1.5', '1,2']) {
+  const { root, state, saved } = modalHarness(condition('weekNot', value));
+  const input = root.find(el => el.tag === 'input')[0];
+  const save = root.find(el => el.tag === 'button' && el.textContent === h.t('buttons', 'save'))[0];
+  assert.deepEqual([input.min, input.max, input.step], ['1', '53', '1']);
+  save.fire('click'); assert.equal(saved.length, 0); assert.ok(!state.closed);
+  input.value = '53'; input.fire('input'); save.fire('click');
+  assert.equal(h.normalizeFilterSet(saved[0]).rootGroup.children[0].value, '53');
  }
 });
 test('fixed filter dates and automation values use the standard picker and retain its canonical selection', () => {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ru",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Добавить файловую подзадачу",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "на этой неделе",
       "operator_underDaysAgo": "менее X дней назад",
       "operator_underDaysAway": "менее чем через X дней",
+      "operator_weekIs": "неделя равна",
+      "operator_weekNot": "неделя не равна",
       "pasteGroup": "Вставить группу",
       "pasteGroupLimitExceeded": "Невозможно вставить группу: будет превышен лимит групп фильтра.",
       "pasteGroupMissingField": "Невозможно вставить группу: поле «{{field}}» недоступно.",
@@ -639,7 +641,8 @@
       "usedByTable": "Таблица",
       "usedByTitle": "Этот фильтр используется в",
       "userFiltersDesc": "Создавайте и упорядочивайте сохранённые фильтры для представления фильтра и встроенных блоков фильтра. Каждый фильтр может сочетать условия, логику сопоставления, сортировку и переиспользуемые правила запроса.",
-      "userFiltersTitle": "Сохранённые фильтры"
+      "userFiltersTitle": "Сохранённые фильтры",
+      "weekNumberInvalid": "Введите один целый номер недели от 1 до 53."
     },
     "filters": {
       "dueToday": "Срок сегодня",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Переключить предпросмотр потомков"
     }
   },
-  "sourceVersion": "f660bc050646902a4af9128507685de73bbc4133aaae690fe7f811632658ab2b"
+  "sourceVersion": "9b83c7781e75c0a5dfe4b54a3b90aa6662855fe1e9c5be4ebaf9090f17f1afa8"
 }

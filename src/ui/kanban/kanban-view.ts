@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../../core/periodic-note-path';
 import { SurfacePropertyValueDrop } from '../surface-property-value-drop';
 import type { PropertyPoolPanelState } from '../surface-property-value-pool';
 import { startKanbanPoolDrag, type KanbanPoolTarget } from './kanban-pool-drag';
@@ -1038,6 +1039,7 @@ export class KanbanView extends ItemView {
 			priorities: settings.priorities,
 			keyMappings: settings.keyMappings,
 			weekStart: settings.calendarWeekStart,
+			weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 			projectSerialScopes: settings.projectSerialScopes,
 			filePropertySignature: this.getFilePropertyContext(settings).signature,
 			language: getCurrentLang(),
@@ -1210,7 +1212,7 @@ export class KanbanView extends ItemView {
 		}
 		const board = queryKanbanAxisBoard({ preset, settings, tasks, propertyAccess: access,
 			revision: { tasks: this.indexer.getGeneration(), settings: signature }, filterSet,
-			filterEvaluationOptions: { getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes },
+			filterEvaluationOptions: { weekNumbering: localWeekNumbering(settings.weeklyNoteFormat), getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes },
 			pinnedCache: this.getPinnedCache(), searchQuery: activeSearchQuery, taskIdFilter,
 			manualOrder: this.callbacks.getManualOrder?.(preset.id), overlays: [...this.optimisticMoves.values()],
 			getProjectSerialDisplay: this.callbacks.getProjectSerialDisplay });
@@ -1526,6 +1528,7 @@ export class KanbanView extends ItemView {
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					weekStart: this.getSettings().calendarWeekStart,
+					weekNumbering: localWeekNumbering(this.getSettings().weeklyNoteFormat),
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -6124,7 +6127,7 @@ export class KanbanView extends ItemView {
 		const native = getNativePropertyIndex(this.app);
 		const board = queryKanbanAxisBoard({ preset, settings, tasks: this.indexer.getAllTasks(),
 			propertyAccess: createKanbanPropertyAccess(settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
-			filterSet, pinnedCache: this.getPinnedCache(), filterEvaluationOptions: { getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes } });
+			filterSet, pinnedCache: this.getPinnedCache(), filterEvaluationOptions: { weekNumbering: localWeekNumbering(settings.weeklyNoteFormat), getRepeatSkipDates: this.callbacks.getRepeatSkipDates, filePropertyContext: this.getFilePropertyContext(settings), projectSerialScopes: settings.projectSerialScopes } });
 		return 'state' in board ? [] : board.relevantTasks;
 	}
 

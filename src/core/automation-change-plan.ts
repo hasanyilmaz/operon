@@ -1,8 +1,9 @@
+import type { WeekNumbering } from './calendar-row-week';
 import { canonicalizeLocalDatetime } from './local-time';
 import type { IndexedTask } from '../types/fields';
 import type { FilterGroup, FilterFieldType, FilterSetCondition, OperonSettings } from '../types/settings';
 import { resolveAutomationWorkflowStatus, resolveReverseWorkflowFromTerminalDate, resolveWorkflowStatus, shouldTriggerOneShotAutomation } from '../types/pipeline';
-import { createAutomationProjectSerialValidator, type AutomationAction, type AutomationConfirmation, type AutomationRule } from './automation-rules';
+import { createAutomationConditionValidator, type AutomationAction, type AutomationConfirmation, type AutomationRule } from './automation-rules';
 import { getOperatorsForField, prepareFilterGroupMatcher, type FilterEvaluationOptions } from './filter-evaluator';
 import { parseDependencyIdList, getDependencyEdgeForField, validateDependencyEdgeSet,
 	resolveActiveBlockers, resolveDependencyStatusChangeAttempt, isScheduledDependencyPlanningTransition } from './dependency-graph';
@@ -18,6 +19,7 @@ import { readAutomationField, readActionLiteral, type ActionIssue, type Automati
 import type { TableFilePropertyQueryContext } from '../ui/table/table-file-property';
 
 export interface AutomationPlanSnapshot {
+	weekNumbering?: WeekNumbering;
 	includePreviewTaskIds?: boolean;
 	tasks: IndexedTask[];
 	ready: boolean;
@@ -632,9 +634,10 @@ export function planAutomationChanges(
 	if (!snapshot.ready || tasks.size !== snapshot.tasks.length) issues.push({ reason: 'index-unavailable' });
 	const options: FilterEvaluationOptions = { today: snapshot.asOf.slice(0, 10), pipelines: snapshot.settings.pipelines,
 		weekStart: snapshot.settings.calendarWeekStart,
+		weekNumbering: snapshot.weekNumbering,
 		projectSerialScopes: snapshot.settings.projectSerialScopes, filePropertyContext: snapshot.native, getRepeatSkipDates: snapshot.getRepeatSkipDates };
 	const pins = snapshot.pins;
-	const invalidProjectGroup = createAutomationProjectSerialValidator(snapshot.settings.projectSerialScopes);
+	const invalidCondition = createAutomationConditionValidator(snapshot.settings.projectSerialScopes);
 	const readableConditions = new WeakMap<FilterSetCondition, boolean>();
 	const matcher = (root: FilterGroup) => prepareFilterGroupMatcher(root, snapshot.tasks, pins && { isPinned: id => pins.has(id) }, options, (condition, task) => {
 		if (condition.field === 'pinned') return pins !== null;
@@ -643,7 +646,7 @@ export function planAutomationChanges(
 			if (readable === undefined) {
 				const type = snapshot.conditionFields.get(condition.field) ?? getManagedTaskFieldType(condition.field, snapshot.settings.keyMappings);
 				readable = condition.fieldType === type && getOperatorsForField(condition.field, condition.fieldType, true).some(op => op.id === condition.operator)
-					&& !invalidProjectGroup(condition);
+					&& !invalidCondition(condition);
 				readableConditions.set(condition, readable);
 			}
 			return readable;
@@ -660,8 +663,8 @@ export function planAutomationChanges(
 			const task = tasks.get(id);
 			return task && scope(task) !== 'false';
 		})) continue;
-		const invalidScope = invalidProjectGroup(rule.scope);
-		const invalidTarget = invalidProjectGroup(rule.target);
+		const invalidScope = invalidCondition(rule.scope);
+		const invalidTarget = invalidCondition(rule.target);
 		const count: RuleCount = { ruleId: rule.id, scope: 0, target: 0, changed: 0 };
 		if (snapshot.includePreviewTaskIds) count.matches = { scope: [], target: [] };
 		counts.push(count);

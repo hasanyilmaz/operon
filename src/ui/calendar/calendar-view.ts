@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../../core/periodic-note-path';
 import { renderMiniCalendar, renderCalendarDateNavigation, shiftCalendarMonth, calendarWeekNumber, createToolbarIconButton } from './mini-calendar';
 import { taskDescriptionOpening } from '../task-text-link-opening';
 import { showCalendarMonthPicker } from './calendar-month-picker';
@@ -1255,6 +1256,7 @@ export class CalendarView extends ItemView {
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				weekStart: context.settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(context.settings.weeklyNoteFormat),
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -1643,6 +1645,7 @@ export class CalendarView extends ItemView {
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					weekStart: settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -1746,6 +1749,7 @@ export class CalendarView extends ItemView {
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					weekStart: settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -2094,6 +2098,7 @@ export class CalendarView extends ItemView {
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				weekStart: settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -2210,7 +2215,7 @@ export class CalendarView extends ItemView {
 			state.navigationMode, state.showAllDayLane, state.showDueMarkers, state.showInDayLane, state.showFinishedLane,
 			state.calendarsOpen, state.taskPoolOpen, this.expandedHiddenTimeKey, localToday(),
 			preset.slotMinutes, preset.hiddenTimeStart, preset.hiddenTimeEnd,
-			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.calendarShowWeekLabelOnFirstDay,
+			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.weeklyNoteFormat, settings.calendarShowWeekLabelOnFirstDay,
 			settings.timeFormat, settings.dateDisplayFormat, settings.language, getCurrentLang(), getAppLocale(this.app),
 			settings.calendarDayTitleAction, settings.calendarShowHoverAddButton,
 			this.isTimeGridCompatibleSurface(preset) && (!useMobileCalendar || mobileViewMode !== 'agenda')
@@ -2493,6 +2498,7 @@ export class CalendarView extends ItemView {
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				weekStart: settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),

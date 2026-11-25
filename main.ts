@@ -828,6 +828,7 @@ import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-conta
 import {
 	formatPeriodicNoteTitleFromDateKey,
 	isPeriodicNoteDateKey,
+	localWeekNumbering,
 	weeklyRowMonday,
 	resolvePeriodicNoteAnchorDateKey,
 	resolvePeriodicNotePathFromDateKey,
@@ -4690,6 +4691,7 @@ export default class OperonPlugin extends Plugin {
 					|| task.primary.filePath.startsWith(`${request.scope?.path}/`)
 				));
 		}
+		const weekNumbering = localWeekNumbering(this.settings.weeklyNoteFormat);
 		const evaluated = evaluateFilterSet(
 			filterSet,
 			tasks,
@@ -4698,6 +4700,7 @@ export default class OperonPlugin extends Plugin {
 			this.settings.pipelines,
 			{
 				weekStart: this.settings.calendarWeekStart,
+				weekNumbering,
 				projectSerialScopes: this.settings.projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
@@ -4706,7 +4709,7 @@ export default class OperonPlugin extends Plugin {
 				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 			},
 		);
-		const digest = savedFilterQueryDigestV1(filterSet, request.scope, this.settings.calendarWeekStart);
+		const digest = savedFilterQueryDigestV1(filterSet, request.scope, this.settings.calendarWeekStart, weekNumbering);
 		return {
 			ok: true as const,
 			tasks: evaluated,
@@ -20589,7 +20592,7 @@ export default class OperonPlugin extends Plugin {
 			propertyAccess: createKanbanPropertyAccess(this.settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
 			filterSet, pinnedCache: this.pinnedCache, manualOrder,
 			getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
-			filterEvaluationOptions: { getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
+			filterEvaluationOptions: { weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat), getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
 		return 'state' in board ? null : board;
 	}
 
@@ -21354,6 +21357,7 @@ export default class OperonPlugin extends Plugin {
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				dependencyTasks,
 				weekStart: this.settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
@@ -21385,6 +21389,7 @@ export default class OperonPlugin extends Plugin {
 				this.pinnedCache,
 				{
 					weekStart: this.settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 					projectSerialScopes: this.settings.projectSerialScopes,
 					projectSerialScopeTasks: allTasks,
 					dependencyTasks: allTasks,
@@ -21429,6 +21434,7 @@ export default class OperonPlugin extends Plugin {
 		const scope = collectKanbanScope({
 			tasks, settings: this.settings, filterSet, pinnedCache: this.pinnedCache,
 			filterEvaluationOptions: {
+				weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot(tasks) ?? undefined,
 				projectSerialScopes: this.settings.projectSerialScopes,
@@ -23720,7 +23726,7 @@ export default class OperonPlugin extends Plugin {
 						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
 						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, plan.changes, () => JSON.stringify([
 							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
-							this.settings.calendarWeekStart, this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
+							this.settings.calendarWeekStart, this.settings.weeklyNoteFormat, this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
 							this.settings.autoExpandParentTaskDateRange,
 							this.settings.keepInlineTasksWithParent, this.settings.pinnedDockAutoUnpinFinished, this.settings.fileTaskDisplayTitleEnabled,
 							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(),
@@ -23817,6 +23823,7 @@ export default class OperonPlugin extends Plugin {
 		const base = rules.some(rule => needsNative(rule.scope) || needsNative(rule.target)
 			|| rule.actions.some(action => action.field.startsWith('file.property:'))) ? this.getTableFilePropertySnapshot(tasks) : null;
 		return planAutomationChanges({
+			weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 			tasks, asOf, actionReferenceDay, includePreviewTaskIds, conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
 			ready: this.startupReady && this.taskCardIndexState === 'ready' && indexState.settled
 				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',

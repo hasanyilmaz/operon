@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../core/periodic-note-path';
 import { localToday } from '../core/local-time';
 import { getTimeScopeSignature } from '../core/time-scope-values';
 import { registerFilterDayRefresh } from '../core/filter-day-refresh';
@@ -361,7 +362,7 @@ export function renderFilterSurface(
 		deps.indexer.getGeneration(),
 		{ keyMappings: deps.getSettings().keyMappings },
 	);
-	const renderSignature = [localToday(), deps.getSettings().calendarWeekStart,
+	const renderSignature = [localToday(), deps.getSettings().calendarWeekStart, deps.getSettings().weeklyNoteFormat,
         getCurrentLang(),
         deps.getSettings().timeFormat,
         deps.getSettings().assigneeImageProperty,
@@ -447,6 +448,7 @@ export function renderFilterSurface(
     const filterEvaluationOptions = {
 		getRepeatSkipDates: deps.getRepeatSkipDates,
 		weekStart: deps.getSettings().calendarWeekStart,
+		weekNumbering: localWeekNumbering(deps.getSettings().weeklyNoteFormat),
 		projectSerialScopes: deps.getSettings().projectSerialScopes,
 		projectSerialScopeTasks: allTasks,
 		dependencyTasks: allTasks,

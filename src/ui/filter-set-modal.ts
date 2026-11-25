@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../core/periodic-note-path';
 import { isSettingsScope, scopeSettingsModal } from './settings/settings-scope';
 /**
  * FilterSetModal — create/edit a named filter set.
@@ -823,6 +824,7 @@ export class FilterSetModal extends Modal {
 							{
 								getRepeatSkipDates: deps.getRepeatSkipDates,
 								weekStart: deps.getSettings().calendarWeekStart,
+								weekNumbering: localWeekNumbering(deps.getSettings().weeklyNoteFormat),
 								projectSerialScopes: deps.getSettings().projectSerialScopes,
 								projectSerialScopeTasks: deps.indexer.getAllTasks(),
 								dependencyTasks: deps.indexer.getAllTasks(),
@@ -1082,6 +1084,7 @@ export class FilterPreviewModal extends Modal {
 			this.deps.getSettings().dynamicSubtasksFilterShowOnlyOpenSubtasks ? '1' : '0',
 			this.deps.getSettings().dateDisplayFormat,
 			this.deps.getSettings().calendarWeekStart,
+			this.deps.getSettings().weeklyNoteFormat,
 			JSON.stringify(this.deps.getSettings().filterTaskCompactChips),
 			JSON.stringify([
 				this.deps.getSettings().filterTaskShowPlayAction,
@@ -1124,6 +1127,7 @@ export class FilterPreviewModal extends Modal {
 		const filterEvaluationOptions = {
 			getRepeatSkipDates: this.deps.getRepeatSkipDates,
 			weekStart: settings.calendarWeekStart,
+			weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 			projectSerialScopes: settings.projectSerialScopes,
 			projectSerialScopeTasks: allTasks,
 			dependencyTasks: allTasks,

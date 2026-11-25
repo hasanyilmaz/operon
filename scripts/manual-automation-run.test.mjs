@@ -2029,7 +2029,7 @@ test('local-day eligibility comes from filter operators on nested scope or targe
 		['file.property:Trip','date','nextWeek',true],['happensOn','date','lastMonth',true],
 		['trackedOn','date','inLastDays',true],['trackedOn','date','between',false],
 		['dateDue','date','dateIs',false],['dateDue','date','dayOfWeekIs',false],
-		['dateDue','date','monthIs',false],['file.property:Trip','date','propPresent',false],
+		['dateDue','date','weekIs',false],['dateDue','date','weekNot',false],['dateDue','date','monthIs',false],['file.property:Trip','date','propPresent',false],
 		['description','text','isToday',false],['custom','date','inLastDays',false],
 	]) assert.equal(filterUsesLocalDay({...all, logic:'none', children:[{...all,logic:'any',children:[rootGroup(field,type,operator,'3')]}]}),wanted,operator);
 });

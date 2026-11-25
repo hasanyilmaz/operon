@@ -1,3 +1,4 @@
+import { calendarRowWeekNumber, hasInvalidWeekNumber, isWeekNumberOperator, type WeekNumbering } from './calendar-row-week';
 import { getTaskOccurrenceDate, type RepeatSkipDateResolver } from './task-occurrence-date';
 import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from './time-scope-values';
 /**
@@ -81,10 +82,12 @@ interface EvalContext {
 	canReadCondition?: (condition: FilterSetCondition, task: IndexedTask) => boolean;
 	getRepeatSkipDates?: RepeatSkipDateResolver;
 	occurrenceDates: WeakMap<IndexedTask, string>;
+	hasInvalidWeekNumber?: boolean;
 	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
 	timeScopeTasks: readonly IndexedTask[];
 	today: string;
 	weekStart: OperonSettings['calendarWeekStart'];
+	weekNumbering?: WeekNumbering;
 	priorityRankMap: Record<string, number> | null;
 	workflowStatusOrder: WorkflowStatusOrderIndex;
 	pinnedCache: Pick<PinnedCache, 'isPinned'> | null;
@@ -109,6 +112,7 @@ export interface FilterEvaluationOptions {
 	/** One local calendar-day snapshot for deterministic date evaluation. */
 	today?: string;
 	weekStart?: OperonSettings['calendarWeekStart'];
+	weekNumbering?: WeekNumbering;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
 	dependencyTasks?: readonly IndexedTask[];
@@ -186,6 +190,8 @@ export const DATE_OPERATORS = [
 	{ id: 'nextMonth', relativeToToday: true, label: 'next month' },
 	{ id: 'dayOfWeekIs', label: 'day of week is' },
 	{ id: 'dayOfWeekNot', label: 'day of week is not' },
+	{ id: 'weekIs', label: 'week is' },
+	{ id: 'weekNot', label: 'week is not' },
 	{ id: 'monthIs', label: 'month is' },
 	{ id: 'monthNot', label: 'month is not' },
 	{ id: 'hasAnyValue', label: 'has any value' },
@@ -282,7 +288,7 @@ export const NUMERIC_INPUT_DATE_OPERATORS = new Set([
 	'underDaysAgo', 'underDaysAway',
 	'overDaysAgo', 'overDaysAway',
 	'dayOfWeekIs', 'dayOfWeekNot',
-	'monthIs', 'monthNot',
+	'weekIs', 'weekNot', 'monthIs', 'monthNot',
 ]);
 
 interface FilterOperator { id: string; label: string; relativeToToday?: boolean }
@@ -655,6 +661,8 @@ export function prepareFilterGroupMatcher(
 }
 
 function matchRootGroup(rootGroup: FilterGroup, task: IndexedTask, context: EvalContext): FilterTruth {
+	context.hasInvalidWeekNumber ??= hasInvalidWeekNumber(rootGroup);
+	if (context.hasInvalidWeekNumber) return 'unknown';
 	if (context.trackedOnEvaluation === undefined) {
 		context.trackedOnEvaluation = usesTrackedOn(rootGroup)
 			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id),
@@ -1209,7 +1217,7 @@ function evaluateNumberCondition(op: string, rawValue: string | undefined, targe
 	}
 }
 
-function evaluateDateCondition(op: string, rawValue: string, target: string, { today, weekStart }: Pick<EvalContext, 'today' | 'weekStart'>, type: 'date' | 'datetime' = 'date'): boolean {
+function evaluateDateCondition(op: string, rawValue: string, target: string, { today, weekStart, weekNumbering }: Pick<EvalContext, 'today' | 'weekStart' | 'weekNumbering'>, type: 'date' | 'datetime' = 'date'): boolean {
 	const hasValue = rawValue.trim() !== '';
 
 	switch (op) {
@@ -1299,6 +1307,12 @@ function evaluateDateCondition(op: string, rawValue: string, target: string, { t
 			const d = new Date(value + 'T00:00:00');
 			return d.getDay() !== parseInt(target, 10);
 		}
+		case 'weekIs':
+		case 'weekNot': {
+			if (getVaultPropertyDateError(value, false)) return false;
+			const matches = calendarRowWeekNumber(value, weekStart, weekNumbering) === Number(target);
+			return op === 'weekIs' ? matches : !matches;
+		}
 		case 'monthIs': {
 			const d = new Date(value + 'T00:00:00');
 			return (d.getMonth() + 1) === parseInt(target, 10);
@@ -1312,6 +1326,11 @@ function evaluateDateCondition(op: string, rawValue: string, target: string, { t
 }
 
 function evaluateDateSetCondition(op: string, values: string[], target: string, context: EvalContext): boolean {
+	if (isWeekNumberOperator(op)) {
+		const dates = values.map(value => value.trim()).filter(value => value && !getVaultPropertyDateError(value, false));
+		const matches = dates.some(date => calendarRowWeekNumber(date, context.weekStart, context.weekNumbering) === Number(target));
+		return dates.length > 0 && (op === 'weekIs' ? matches : !matches);
+	}
 	const normalizedValues = values
 		.map(value => value.trim())
 		.filter(Boolean);
@@ -1729,6 +1748,7 @@ function createEvalContext(
 		occurrenceDates: new WeakMap(),
 		today: options?.today ?? localToday(),
 		weekStart: options?.weekStart ?? 'monday',
+		weekNumbering: options?.weekNumbering,
 		trackedOnEvaluation: undefined,
 		timeScopeTasks: options?.timeScopeTasks ?? options?.projectSerialScopeTasks ?? options?.dependencyTasks ?? tasks,
 		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,

@@ -1,3 +1,4 @@
+import type { WeekNumbering } from './calendar-row-week';
 import { moment } from 'obsidian';
 import { isSafeVaultRelativeMarkdownPath, isSafeVaultRelativePath } from './vault-path-safety';
 
@@ -21,6 +22,15 @@ export interface PeriodicNotePathConfig {
 	weekStart?: PeriodicWeekStart;
 	folder: string;
 	format?: string | null;
+}
+
+export function localWeekNumbering(format: string | undefined): WeekNumbering | undefined {
+	const tokens = normalizePeriodicNoteFormat('weekly', format).replace(/\[[^\]]*\]/gu, '');
+	if (!tokens.includes('gggg') || !tokens.includes('ww') || tokens.includes('GGGG') || tokens.includes('WW')) return undefined;
+	const locale = moment.localeData();
+	const firstDay = locale.firstDayOfWeek();
+	// Moment defines its first week by dow/doy. Convert doy to the January date inside week one.
+	return { firstDay, januaryAnchor: 7 + firstDay - locale.firstDayOfYear() };
 }
 
 type MomentDate = {

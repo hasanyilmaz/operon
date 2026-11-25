@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "tr",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Dosya Tipi Alt Görev Ekle",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "bu hafta",
       "operator_underDaysAgo": "X günden az önce",
       "operator_underDaysAway": "X günden az sonra",
+      "operator_weekIs": "hafta eşittir",
+      "operator_weekNot": "hafta eşit değildir",
       "pasteGroup": "Grubu yapıştır",
       "pasteGroupLimitExceeded": "Filtre grubu sınırı aşılacağı için grup yapıştırılamıyor.",
       "pasteGroupMissingField": "\"{{field}}\" alanı kullanılamadığı için grup yapıştırılamıyor.",
@@ -639,7 +641,8 @@
       "usedByTable": "Tablo",
       "usedByTitle": "Bu filtre şunlar tarafından kullanılıyor",
       "userFiltersDesc": "Filtre Görünümü ve gömülü filtre blokları için kayıtlı filtreler oluştur ve sırala. Her filtre koşulları, eşleşme mantığını, sıralamayı ve yeniden kullanılabilir sorgu kurallarını birleştirebilir.",
-      "userFiltersTitle": "Kayıtlı Filtreler"
+      "userFiltersTitle": "Kayıtlı Filtreler",
+      "weekNumberInvalid": "1 ile 53 arasında tek bir tam hafta numarası girin."
     },
     "filters": {
       "dueToday": "Bugün Bitiş",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Alt görev önizlemesini aç/kapat"
     }
   },
-  "sourceVersion": "fa598551991942ce80c0ded091d3852e37d5dcd14cc11ad2c691f04dbb6f8ec7"
+  "sourceVersion": "6ecdeed86dd3d5c3250996d68c649b60c040bf6f7361d45bc94238109d398761"
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ko",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "파일 하위 작업 추가",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "이번 주",
       "operator_underDaysAgo": "X일 이내 과거",
       "operator_underDaysAway": "X일 이내 미래",
+      "operator_weekIs": "주 번호가 같음",
+      "operator_weekNot": "주 번호가 다름",
       "pasteGroup": "그룹 붙여넣기",
       "pasteGroupLimitExceeded": "필터 그룹 한도를 초과하므로 그룹을 붙여 넣을 수 없습니다.",
       "pasteGroupMissingField": "\"{{field}}\" 필드를 사용할 수 없어 그룹을 붙여 넣을 수 없습니다.",
@@ -639,7 +641,8 @@
       "usedByTable": "테이블",
       "usedByTitle": "이 필터의 사용 위치",
       "userFiltersDesc": "필터 보기 및 임베드 필터 블록용 필터를 만들고 정렬합니다. 각 필터는 조건, 일치 논리, 정렬 및 재사용 쿼리 규칙을 결합할 수 있습니다.",
-      "userFiltersTitle": "저장된 필터"
+      "userFiltersTitle": "저장된 필터",
+      "weekNumberInvalid": "1에서 53 사이의 정수로 주 번호 하나를 입력하세요."
     },
     "filters": {
       "dueToday": "오늘 마감",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "하위 작업 미리보기 전환"
     }
   },
-  "sourceVersion": "e94c9d474526fb7e881e2d60db5adb353ab39b5afdfd29fe3b2e5e3b3fa286b1"
+  "sourceVersion": "d8c4b9df865bb6e2aa9db542597c4f94ffd27ab718bfcafaad4b59ecae80e36e"
 }

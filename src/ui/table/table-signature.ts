@@ -10,6 +10,7 @@ type TableRelevantSettings = Pick<
 	| 'pipelines'
 	| 'priorities'
 	| 'calendarWeekStart'
+	| 'weeklyNoteFormat'
 	| 'timeFormat'
 	| 'tableShowLineNumbers'
 	| 'tableEmbedVisibleRows'
@@ -29,6 +30,7 @@ export function buildTableRelevantSettingsSignature(settings: TableRelevantSetti
 	return JSON.stringify({
 		day: localToday(),
 		weekStart: settings.calendarWeekStart,
+		weeklyNoteFormat: settings.weeklyNoteFormat,
 		filterSets: settings.filterSets,
 		keyMappings: settings.keyMappings,
 		pipelines: settings.pipelines,

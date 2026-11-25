@@ -1,14 +1,14 @@
+import { calendarRowWeekNumber } from '../../core/calendar-row-week';
 import { moment } from 'obsidian';
 import { t } from '../../core/i18n';
-import { formatPeriodicNoteTitleFromDateKey, normalizePeriodicNoteFormat, type PeriodicNoteKind } from '../../core/periodic-note-path';
+import { localWeekNumbering, formatPeriodicNoteTitleFromDateKey, normalizePeriodicNoteFormat, type PeriodicNoteKind } from '../../core/periodic-note-path';
 
 export function miniCalendarWeek(monday: string, format: string, weekStart: 'monday' | 'sunday' = 'monday', resolveWeekStart?: (monday: string) => 'monday' | 'sunday'): { label: string; description: string } {
 	const normalized = normalizePeriodicNoteFormat('weekly', format);
-	const tokens = normalized.replace(/\[[^\]]*\]/gu, '');
-	const local = tokens.includes('gggg') && tokens.includes('ww') && !tokens.includes('GGGG') && !tokens.includes('WW');
+	const local = localWeekNumbering(normalized);
 	const parse = moment as unknown as (value: string, format: string, strict: boolean) => { format: (pattern: string) => string };
 	const date = parse(monday, 'YYYY-MM-DD', true);
-	const label = date.format(local ? 'w' : 'W');
+	const label = moment.localeData().postformat(String(calendarRowWeekNumber(monday, 'monday', local)));
 	const mondayTitle = formatPeriodicNoteTitleFromDateKey('weekly', monday, normalized) ?? monday;
 	let title = mondayTitle;
 	if (weekStart === 'sunday') {

@@ -1,3 +1,4 @@
+import type { WeekNumbering } from '../../core/calendar-row-week';
 import { setIcon } from 'obsidian';
 import { filterTasksForDisplay as filterTasksForCalendar } from '../../core/filter-display';
 import {
@@ -135,6 +136,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 	priorities: { label: string; color?: string }[];
 	pinnedCache: PinnedCache | null;
 	weekStart?: OperonSettings['calendarWeekStart'];
+	weekNumbering?: WeekNumbering;
 	projectSerialScopes?: OperonSettings['projectSerialScopes'];
 	pipelines?: OperonSettings['pipelines'];
 	filePropertyContext?: TableFilePropertyQueryContext;
@@ -146,6 +148,7 @@ export function resolveTableSearchBaseScopeTasks(options: {
 		options.priorities,
 		options.pinnedCache,
 		{
+			weekNumbering: options.weekNumbering,
 			weekStart: options.weekStart,
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: options.tasks,

@@ -1,3 +1,4 @@
+import type { WeekNumbering } from '../../core/calendar-row-week';
 import {
 	canonicalJsonV1,
 	sha256HexV1,
@@ -131,11 +132,13 @@ export function savedFilterQueryDigestV1(
 	filterSet: FilterSet,
 	scope: { kind: 'exact-file' | 'folder-tree'; path: string } | undefined,
 	weekStart: OperonSettings['calendarWeekStart'] = 'monday',
+	weekNumbering?: WeekNumbering,
 ): string {
 	return sha256HexV1(canonicalJsonV1(toJsonValueV1(compactJson({
 		filterSet,
 		scope: scope ?? null,
 		weekStart: weekStart === 'sunday' ? weekStart : undefined,
+		weekNumbering,
 	}))));
 }
 

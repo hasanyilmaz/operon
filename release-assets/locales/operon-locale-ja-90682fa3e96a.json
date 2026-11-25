@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "ja",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "ファイルサブタスクを追加",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "今週",
       "operator_underDaysAgo": "X 日以内前",
       "operator_underDaysAway": "X 日以内後",
+      "operator_weekIs": "週番号が等しい",
+      "operator_weekNot": "週番号が等しくない",
       "pasteGroup": "グループを貼り付け",
       "pasteGroupLimitExceeded": "フィルターグループの上限を超えるため、グループを貼り付けられません。",
       "pasteGroupMissingField": "フィールド「{{field}}」が利用できないため、グループを貼り付けられません。",
@@ -639,7 +641,8 @@
       "usedByTable": "テーブル",
       "usedByTitle": "このフィルターの使用先",
       "userFiltersDesc": "フィルタービューと埋め込みフィルターブロック用の保存済みフィルターを作成・並べ替えします。各フィルターは条件、一致ロジック、並べ替え、再利用可能なクエリルールを組み合わせられます。",
-      "userFiltersTitle": "保存済みフィルター"
+      "userFiltersTitle": "保存済みフィルター",
+      "weekNumberInvalid": "1 から 53 までの整数で週番号を 1 つ入力してください。"
     },
     "filters": {
       "dueToday": "今日が期限",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "子孫プレビューを切り替え"
     }
   },
-  "sourceVersion": "414d63e41549731b3755517b1fd26693f1f75acec5bac57139095d8950a8b8b5"
+  "sourceVersion": "6ed828075aa93a376b039e84696c9d99a95e8350175e6a3bd955b66db03f2c2f"
 }

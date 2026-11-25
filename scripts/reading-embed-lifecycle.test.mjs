@@ -14,6 +14,7 @@ try {
   'renderFilterSurface','renderHeader','attachEmbedLazyLoadSentinel','renderGroupedFilterTaskRows','getEmbedTreeScope','formatFilterTaskCount','copyFilterSetEmbedCode'];
  const declarations=names.map(name=>{const n=ast.statements.find(n=>n.name?.text===name);assert.ok(n,name);return n.getText(ast);});
  const prelude=`
+ import {localWeekNumbering} from './src/core/periodic-note-path';
  import {applyEmbedDateOverrides,getEmbedDateField,parseEmbedDate} from './src/ui/embed-filter-dates';
  import {parseEmbedWidthPercent} from './src/ui/embed-percent-width';
  import {evaluateFilterSet as evaluateFlat,evaluateFilterSetGrouped as evaluateGrouped,getFilterSortSpecs,sortFilterTasks} from './src/core/filter-display';

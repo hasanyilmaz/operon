@@ -21,10 +21,11 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	import { TFile, TFolder } from 'obsidian';
 	import { structuredErrorV1 } from './src/agent-runtime/contracts/v1/primitives';
 	import { evaluateFilterSet } from './src/core/filter-evaluator';
+	import { localWeekNumbering } from './src/core/periodic-note-path';
 	import { savedFilterQueryDigestV1 } from './src/agent-runtime/runtime/settings-fingerprint';
 	import { sha256HexV1 } from './src/agent-runtime/contracts/v1/canonical';
 	export class SavedFilterHost { ${savedFilterMethods} }
-	export { TFile };
+	export { TFile, localWeekNumbering };
 	export { createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver } from './src/ui/table/table-file-property';
 	export { projectIndexedNativeProperties } from './src/ui/table/table-native-property';
 	export { getNativePropertyIndex } from './src/indexer/native-property-index';
@@ -38,7 +39,7 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	export { DEFAULT_SETTINGS } from './src/types/settings';
 ` }, bundle: true, format: 'esm', platform: 'node', outfile,
 	alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
-const { AutomationRuleMembership, SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
+const { localWeekNumbering, AutomationRuleMembership, SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
 	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog, groupAutomationPreviewTasks } = await import(pathToFileURL(outfile).href);
 const sharedFields = new Map(new FilterFieldCatalog({ keyMappings: DEFAULT_SETTINGS.keyMappings, getRootGroup: () => undefined })
 	.getFieldOptions(true).map(option => [option.field, option.type]));
@@ -377,6 +378,40 @@ test('relative week boundaries use the configured first day across dates, Happen
 	}
 });
 
+test('numbered weeks follow the sidebar across New Year for dates, tracked sessions and automation previews', () => {
+	const days = ['2027-01-02', '2027-01-03', '2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07',
+		'2027-01-08', '2027-01-09', '2027-01-10'];
+	const tasks = days.map(day => task(day, { dateScheduled: day, trackers: day + 'T10:00:00/' + day + 'T10:15:00' }));
+	for (const [weeklyNoteFormat, number] of [['GGGG-[W]WW', '1'], ['gggg-[W]ww', '2'], ['YYYY-MM-DD', '1']]) {
+		const settings = { ...DEFAULT_SETTINGS, calendarWeekStart: 'sunday', weeklyNoteFormat };
+		const weekNumbering = localWeekNumbering(weeklyNoteFormat);
+		for (const key of ['dateScheduled', 'happensOn', 'trackedOn']) {
+			const tree = group('all', cond(key, 'date', 'weekIs', number));
+			const visible = filterTasksOnly(filter(tree), tasks, undefined, null, { weekStart: 'sunday', weekNumbering });
+			assert.deepEqual(visible.map(t => t.operonId), days.slice(1, 8));
+			const result = plan(tasks, [rule('r', [add('tags', 'w')], tree)], { settings, weekNumbering, includePreviewTaskIds: true });
+			assert.deepEqual(result.rules[0].taskIds.changed, days.slice(1, 8));
+		}
+	}
+});
+
+test('week exclusions require a valid date and exclude any matching Happens on date', () => {
+	const tasks = [task('mixed', { dateScheduled: '2027-01-03', dateDue: '2027-01-04' }),
+		task('last', { dateDue: '2027-01-03' }), task('empty'), task('invalid', { dateDue: '2027-02-30' }),
+		task('next', { dateDue: '2027-01-11' })];
+	const byWeek = (op, number) => cond('happensOn', 'date', op, number);
+	const ids = root => filterTasksOnly(filter(root), tasks).map(t => t.operonId);
+	assert.deepEqual(ids(group('any', byWeek('weekIs', '53'), byWeek('weekIs', '2'))), ['mixed', 'last', 'next']);
+	assert.deepEqual(ids(group('all', byWeek('weekNot', '1'), byWeek('weekNot', '2'))), ['last']);
+	for (const bad of ['', '0', '54', '1.5', '3,4']) {
+		const tree = group('any', byWeek('weekIs', '53'), byWeek('weekNot', bad));
+		assert.deepEqual(ids(tree), []);
+		const preview = plan(tasks, [rule('r', [add('tags', 'w')], tree)]);
+		assert.equal(preview.changedTaskCount, null);
+		assert.deepEqual(preview.changes, []);
+	}
+});
+
 test('unavailable conditions return unknown counters, including in inactive drafts', () => {
 	const condition = group('all', cond('file.property:missing', 'number', 'eq', '1'));
 	const p = plan([task('a')], [rule('r', [], condition)]);
@@ -498,10 +533,14 @@ test('Filters, Runtime saved queries and automation scope and target select iden
 	}
 	const native = projectIndexedNativeProperties(app, base, tasks, settings);
 	const clock = '2027-01-31T12:00:00';
+	const invalidNative = filter(group('none', cond(nativeKey, 'datetime', 'weekIs', '54')));
+	assert.deepEqual(filterTasksOnly(invalidNative, tasks, undefined, null, { filePropertyContext: base }), []);
 	for (const key of fields) {
 		for (const [operator, value, expected, weekStart = 'monday'] of [
 			['isToday', '', ['task0']], ['thisWeek', '', ['task0']], ['nextWeek', '', ['task1']],
 			['thisWeek', '', ['task0', 'task1'], 'sunday'], ['nextWeek', '', [], 'sunday'],
+			['weekIs', '4', ['task0']], ['weekNot', '4', ['task1', 'task2']],
+			['weekIs', '5', ['task0', 'task1'], 'sunday'],
 			['thisMonth', '', ['task0']], ['nextMonth', '', ['task1', 'task2']], ['monthIs', '2', ['task1', 'task2']],
 		]) {
 			const tree = group('all', cond(key, 'datetime', operator, value));

@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../../core/periodic-note-path';
 import { cleanupTaskMediaChipPreviews } from '../compact-chip-link-preview';
 import { bindTableTaskOpening, bindTablePropertyOpening, bindTableMarkdownOpening, readTablePropertyLinkValue, type TableOpeningContext } from './table-link-opening';
 import { isDesktopOpeningChip } from '../links-chip-action';
@@ -1078,6 +1079,7 @@ export class OperonTableView extends FileView {
 			this.deferSummariesForSearch = false;
 		}
 		const result = cachedNoSearchResult?.result ?? queryTableRows({
+			weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 			sortCacheOwner: this,
 			preset,
 			filterSet,
@@ -1844,6 +1846,7 @@ export class OperonTableView extends FileView {
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 					weekStart: this.getSettings().calendarWeekStart,
+					weekNumbering: localWeekNumbering(this.getSettings().weeklyNoteFormat),
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -4510,6 +4513,7 @@ export class OperonTableView extends FileView {
 				pinnedCache: this.getPinnedCache(),
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
 				weekStart: settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 				projectSerialScopes: settings.projectSerialScopes,
 				pipelines: settings.pipelines,
 				filePropertyContext,
@@ -4582,6 +4586,7 @@ export class OperonTableView extends FileView {
 			summaries: [],
 		};
 		const result = queryTableRows({
+			weekNumbering: localWeekNumbering(input.settings.weeklyNoteFormat),
 			sortCacheOwner: this,
 			preset: sortedPreset,
 			filterSet: input.filterSet,

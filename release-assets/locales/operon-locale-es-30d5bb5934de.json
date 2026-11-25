@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "es",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Añadir subtarea de archivo",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "esta semana",
       "operator_underDaysAgo": "hace menos de X días",
       "operator_underDaysAway": "dentro de menos de X días",
+      "operator_weekIs": "la semana es",
+      "operator_weekNot": "la semana no es",
       "pasteGroup": "Pegar grupo",
       "pasteGroupLimitExceeded": "No se puede pegar el grupo porque se superaría el límite de grupos de filtro.",
       "pasteGroupMissingField": "No se puede pegar el grupo porque el campo \"{{field}}\" no está disponible.",
@@ -639,7 +641,8 @@
       "usedByTable": "Tabla",
       "usedByTitle": "Este filtro lo usa",
       "userFiltersDesc": "Crear y ordenar filtros guardados para la Vista de filtros y los bloques de filtro incrustados. Cada filtro puede combinar condiciones, lógica de coincidencia, orden y reglas de consulta reutilizables.",
-      "userFiltersTitle": "Filtros guardados"
+      "userFiltersTitle": "Filtros guardados",
+      "weekNumberInvalid": "Introduce un único número de semana entero del 1 al 53."
     },
     "filters": {
       "dueToday": "Vencen hoy",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Alternar vista previa de descendientes"
     }
   },
-  "sourceVersion": "40bcecde147a66164b9b54377dcc766afea35a5c043cdf404b8b11558925cbd9"
+  "sourceVersion": "1ccd40633df3c81748089c2723ab8678b51c712c670f73f1fbb3c462e81dc6dd"
 }

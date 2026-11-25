@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "locale": "de",
-  "keyCount": 3936,
-  "keyFingerprint": "eaff2f28fb24fe3fb10aeb6792d3d9ad84765543725456fda5b8fd95455c6495",
+  "keyCount": 3939,
+  "keyFingerprint": "81bc7aaec04b693f224809315375619c558092ede675fc3f17e6498e065b8a00",
   "translations": {
     "buttons": {
       "addFileSubtask": "Datei-Unteraufgabe hinzufügen",
@@ -594,6 +594,8 @@
       "operator_thisWeek": "diese Woche",
       "operator_underDaysAgo": "weniger als X Tage her",
       "operator_underDaysAway": "weniger als X Tage entfernt",
+      "operator_weekIs": "Woche ist",
+      "operator_weekNot": "Woche ist nicht",
       "pasteGroup": "Gruppe einfügen",
       "pasteGroupLimitExceeded": "Die Gruppe kann nicht eingefügt werden, weil das Filtergruppenlimit überschritten würde.",
       "pasteGroupMissingField": "Die Gruppe kann nicht eingefügt werden, da das Feld \"{{field}}\" nicht verfügbar ist.",
@@ -639,7 +641,8 @@
       "usedByTable": "Tabelle",
       "usedByTitle": "Dieser Filter wird verwendet von",
       "userFiltersDesc": "Erstelle und ordne gespeicherte Filter für die Filteransicht und eingebettete Filterblöcke. Jeder Filter kann Bedingungen, Abgleichlogik, Sortierung und wiederverwendbare Abfrageregeln kombinieren.",
-      "userFiltersTitle": "Gespeicherte Filter"
+      "userFiltersTitle": "Gespeicherte Filter",
+      "weekNumberInvalid": "Gib eine einzelne ganze Wochennummer von 1 bis 53 ein."
     },
     "filters": {
       "dueToday": "Heute fällig",
@@ -3981,5 +3984,5 @@
       "toggleDescendantPreview": "Vorschau untergeordneter Aufgaben umschalten"
     }
   },
-  "sourceVersion": "d07db08b3f9286d04b41a5d57f7ef814de28e70b01e37b77add171ae4f8b5761"
+  "sourceVersion": "5252add461179dcf79bb9930cc41ac96eff875819b1d67dac09cf9585b49db3c"
 }
