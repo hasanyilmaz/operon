@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 
+- **Automations** now track which tasks match active Auto rules as you edit and batch index updates across files, reducing repeat scans and disk writes during bulk changes.
 - In **Task Router → Specific File**, enter a keyword such as `Logs` to add inline tasks under the first matching heading. Operon creates `## Logs` if no heading matches. Leave the keyword empty to keep grouping tasks by date.
 - In **Automation Actions**, search **Blocking** and **Blocked By** by task name or ID. Search results update as tasks are added or renamed, even while the picker is open. The action shows the selected task’s name and saves its ID.
 - **Task Type**, **Task Image**, and **Task Gallery** use the Task Creator pickers in Actions. Each Gallery action adds or removes one image and preserves the other images.
