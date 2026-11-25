@@ -1879,6 +1879,7 @@ function openEmbedTableFilterPopover(
 			deps.getPinnedCache(),
 				{
 					getRepeatSkipDates: deps.getRepeatSkipDates,
+					weekStart: deps.getSettings().calendarWeekStart,
 					projectSerialScopes: deps.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: deps.indexer.getAllTasks(),
 					dependencyTasks: deps.indexer.getAllTasks(),
@@ -3283,6 +3284,7 @@ function resolveEmbedTableSearchContext(
 		priorities: settings.priorities,
 			pinnedCache: deps.getPinnedCache(),
 			getRepeatSkipDates: deps.getRepeatSkipDates,
+			weekStart: settings.calendarWeekStart,
 			projectSerialScopes: settings.projectSerialScopes,
 			pipelines: settings.pipelines,
 			filePropertyContext,

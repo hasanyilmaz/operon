@@ -361,7 +361,7 @@ export function renderFilterSurface(
 		deps.indexer.getGeneration(),
 		{ keyMappings: deps.getSettings().keyMappings },
 	);
-	const renderSignature = [localToday(),
+	const renderSignature = [localToday(), deps.getSettings().calendarWeekStart,
         getCurrentLang(),
         deps.getSettings().timeFormat,
         deps.getSettings().assigneeImageProperty,
@@ -446,6 +446,7 @@ export function renderFilterSurface(
     const evaluationFilter = applyEmbedDateOverrides(filterSet, options.dateOverrides);
     const filterEvaluationOptions = {
 		getRepeatSkipDates: deps.getRepeatSkipDates,
+		weekStart: deps.getSettings().calendarWeekStart,
 		projectSerialScopes: deps.getSettings().projectSerialScopes,
 		projectSerialScopeTasks: allTasks,
 		dependencyTasks: allTasks,

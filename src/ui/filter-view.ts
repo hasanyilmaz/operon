@@ -518,6 +518,7 @@ export class FilterView extends ItemView {
 		try {
 			const filterEvaluationOptions = {
 				getRepeatSkipDates: this.getRepeatSkipDates,
+				weekStart: this.getSettings().calendarWeekStart,
 				projectSerialScopes: this.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
@@ -1176,6 +1177,7 @@ export class FilterView extends ItemView {
 		);
 		return [
 			localToday(),
+			this.getSettings().calendarWeekStart,
 			this.indexer.getGeneration(),
 			this.pinnedCache?.getGeneration() ?? 0,
 			this.getTrackingSignature?.() ?? '',

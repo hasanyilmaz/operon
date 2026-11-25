@@ -822,6 +822,7 @@ export class FilterSetModal extends Modal {
 							deps.getPipelines(),
 							{
 								getRepeatSkipDates: deps.getRepeatSkipDates,
+								weekStart: deps.getSettings().calendarWeekStart,
 								projectSerialScopes: deps.getSettings().projectSerialScopes,
 								projectSerialScopeTasks: deps.indexer.getAllTasks(),
 								dependencyTasks: deps.indexer.getAllTasks(),
@@ -1080,6 +1081,7 @@ export class FilterPreviewModal extends Modal {
 			String(this.deps.getSettings().dynamicSubtasksFilterSubtaskAutoExpandLimit),
 			this.deps.getSettings().dynamicSubtasksFilterShowOnlyOpenSubtasks ? '1' : '0',
 			this.deps.getSettings().dateDisplayFormat,
+			this.deps.getSettings().calendarWeekStart,
 			JSON.stringify(this.deps.getSettings().filterTaskCompactChips),
 			JSON.stringify([
 				this.deps.getSettings().filterTaskShowPlayAction,
@@ -1121,6 +1123,7 @@ export class FilterPreviewModal extends Modal {
 		}
 		const filterEvaluationOptions = {
 			getRepeatSkipDates: this.deps.getRepeatSkipDates,
+			weekStart: settings.calendarWeekStart,
 			projectSerialScopes: settings.projectSerialScopes,
 			projectSerialScopeTasks: allTasks,
 			dependencyTasks: allTasks,

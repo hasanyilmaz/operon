@@ -351,6 +351,32 @@ test('tracked time and pinned scopes agree with Filters on the same complete sna
 	assert.equal(matches.length, 1);
 	assert.equal(plan(tasks, [rule('r', [], target)], { pins }).rules[0].target, matches.length);
 });
+test('relative week boundaries use the configured first day across dates, Happens on and tracked sessions', t => {
+	const previousTZ = process.env.TZ;
+	process.env.TZ = 'America/New_York';
+	t.after(() => { if (previousTZ === undefined) delete process.env.TZ; else process.env.TZ = previousTZ; });
+	for (const [today, weekStart, start] of [
+		['2026-11-22', 'sunday', '2026-11-22'], ['2026-11-22', 'monday', '2026-11-16'],
+		['2027-01-01', 'sunday', '2026-12-27'], ['2027-01-01', 'monday', '2026-12-28'],
+		['2026-03-08', 'sunday', '2026-03-08'], ['2026-11-01', 'monday', '2026-10-26'],
+	]) {
+		for (const [operator, offset] of [['lastWeek', -7], ['thisWeek', 0], ['nextWeek', 7]]) {
+			const tasks = Array.from({ length: 9 }, (_, i) => {
+				const day = new Date(start + 'T00:00:00Z');
+				day.setUTCDate(day.getUTCDate() + offset + i - 1);
+				const date = day.toISOString().slice(0, 10);
+				return task(date, { dateScheduled: date, trackers: date + 'T10:00:00/' + date + 'T10:30:00' });
+			});
+			for (const key of ['dateScheduled', 'happensOn', 'trackedOn']) {
+				const tree = group('all', cond(key, 'date', operator));
+				const matched = filterTasksOnly(filter(tree), tasks, undefined, null, { today, weekStart });
+				assert.deepEqual(matched.map(t => t.operonId), tasks.slice(1, 8).map(t => t.operonId),
+					[today, weekStart, operator, key].join(' '));
+			}
+		}
+	}
+});
+
 test('unavailable conditions return unknown counters, including in inactive drafts', () => {
 	const condition = group('all', cond('file.property:missing', 'number', 'eq', '1'));
 	const p = plan([task('a')], [rule('r', [], condition)]);
@@ -473,14 +499,16 @@ test('Filters, Runtime saved queries and automation scope and target select iden
 	const native = projectIndexedNativeProperties(app, base, tasks, settings);
 	const clock = '2027-01-31T12:00:00';
 	for (const key of fields) {
-		for (const [operator, value, expected] of [
+		for (const [operator, value, expected, weekStart = 'monday'] of [
 			['isToday', '', ['task0']], ['thisWeek', '', ['task0']], ['nextWeek', '', ['task1']],
+			['thisWeek', '', ['task0', 'task1'], 'sunday'], ['nextWeek', '', [], 'sunday'],
 			['thisMonth', '', ['task0']], ['nextMonth', '', ['task1', 'task2']], ['monthIs', '2', ['task1', 'task2']],
 		]) {
 			const tree = group('all', cond(key, 'datetime', operator, value));
 			const saved = filter(tree);
-			const context = [key, operator].join(' ');
-			const visible = filterTasksOnly(saved, tasks, undefined, undefined, { today: clock.slice(0, 10), filePropertyContext: base });
+			settings.calendarWeekStart = weekStart;
+			const context = [key, operator, weekStart].join(' ');
+			const visible = filterTasksOnly(saved, tasks, undefined, undefined, { today: clock.slice(0, 10), weekStart, filePropertyContext: base });
 			assert.deepEqual(visible.map(item => item.operonId), expected, context);
 			host.settings.filterSets = [saved];
 			for (const contiguous of [false, true]) {

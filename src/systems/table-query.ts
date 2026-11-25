@@ -40,7 +40,7 @@ import { enginePerfLog, enginePerfNow, isOperonEnginePerfDebugEnabled } from '..
 const tableSortCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 const tableRowSortCaches = new WeakMap<object, { signature: string; order: number[] }>();
 
-type TableQuerySettings = Pick<OperonSettings, 'keyMappings' | 'pipelines'>;
+type TableQuerySettings = Pick<OperonSettings, 'keyMappings' | 'pipelines'> & Partial<Pick<OperonSettings, 'calendarWeekStart'>>;
 
 interface TableQueryBucket {
 	key: string;
@@ -141,6 +141,7 @@ export function queryTableRows(options: {
 	const scopedTasks = options.precomputedScopedTasks
 		? [...options.precomputedScopedTasks]
 		: filterTasksForCalendar(filterSet, tasks, priorities, pinnedCache ?? null, {
+			weekStart: options.settings?.calendarWeekStart,
 			projectSerialScopes: options.projectSerialScopes,
 			projectSerialScopeTasks: tasks,
 			dependencyTasks: tasks,

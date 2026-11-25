@@ -1037,6 +1037,7 @@ export class KanbanView extends ItemView {
 			filterSet,
 			priorities: settings.priorities,
 			keyMappings: settings.keyMappings,
+			weekStart: settings.calendarWeekStart,
 			projectSerialScopes: settings.projectSerialScopes,
 			filePropertySignature: this.getFilePropertyContext(settings).signature,
 			language: getCurrentLang(),
@@ -1524,6 +1525,7 @@ export class KanbanView extends ItemView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: this.getSettings().calendarWeekStart,
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),

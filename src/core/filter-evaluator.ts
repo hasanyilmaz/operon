@@ -23,7 +23,7 @@ import {
 	PROJECT_SERIAL_SCOPE_FILTER_FIELD,
 	type ProjectSerialScopeFilterResolver,
 } from './project-serials';
-import type { ProjectSerialScope } from '../types/settings';
+import type { OperonSettings, ProjectSerialScope } from '../types/settings';
 import {
 	classifyFilePropertyCell,
 	isFilePropertyColumnKey,
@@ -84,6 +84,7 @@ interface EvalContext {
 	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
 	timeScopeTasks: readonly IndexedTask[];
 	today: string;
+	weekStart: OperonSettings['calendarWeekStart'];
 	priorityRankMap: Record<string, number> | null;
 	workflowStatusOrder: WorkflowStatusOrderIndex;
 	pinnedCache: Pick<PinnedCache, 'isPinned'> | null;
@@ -107,6 +108,7 @@ export interface FilterEvaluationOptions {
 	timeScopeTasks?: readonly IndexedTask[];
 	/** One local calendar-day snapshot for deterministic date evaluation. */
 	today?: string;
+	weekStart?: OperonSettings['calendarWeekStart'];
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
 	dependencyTasks?: readonly IndexedTask[];
@@ -655,7 +657,8 @@ export function prepareFilterGroupMatcher(
 function matchRootGroup(rootGroup: FilterGroup, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (context.trackedOnEvaluation === undefined) {
 		context.trackedOnEvaluation = usesTrackedOn(rootGroup)
-			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id), evaluateDateCondition,
+			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id),
+				(op, date, value) => evaluateDateCondition(op, date, value, context),
 				(node, candidate) => matchesFilterNode(node, candidate, context))
 			: null;
 	}
@@ -789,14 +792,14 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 					cond.operator,
 					getHappensOnDateValues(task),
 					cond.value ?? '',
-					context.today,
+					context,
 				));
 			}
 			return toFilterTruth(evaluateDateCondition(
 				cond.operator,
 				rawFieldValue ?? '',
 				cond.value ?? '',
-				context.today,
+				context,
 				cond.fieldType,
 			));
 
@@ -949,7 +952,7 @@ function evaluateFilePropertyCondition(
 		case 'date':
 		case 'datetime':
 			if (typeof state.value !== 'string') return 'unknown';
-			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context.today, field.type));
+			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context, field.type));
 		case 'list':
 		case 'tags':
 			if (!Array.isArray(state.value)) return 'unknown';
@@ -1206,7 +1209,7 @@ function evaluateNumberCondition(op: string, rawValue: string | undefined, targe
 	}
 }
 
-function evaluateDateCondition(op: string, rawValue: string, target: string, today: string, type: 'date' | 'datetime' = 'date'): boolean {
+function evaluateDateCondition(op: string, rawValue: string, target: string, { today, weekStart }: Pick<EvalContext, 'today' | 'weekStart'>, type: 'date' | 'datetime' = 'date'): boolean {
 	const hasValue = rawValue.trim() !== '';
 
 	switch (op) {
@@ -1268,18 +1271,11 @@ function evaluateDateCondition(op: string, rawValue: string, target: string, tod
 			if (isNaN(n)) return false;
 			return value > offsetDate(today, n);
 		}
+		case 'lastWeek':
+		case 'nextWeek':
 		case 'thisWeek': {
-			const { start, end } = getWeekRange(today, 0);
-			const dateOnly = value.slice(0, 10); // handle datetime values
-			return dateOnly >= start && dateOnly <= end;
-		}
-		case 'lastWeek': {
-			const { start, end } = getWeekRange(today, -1);
-			const dateOnly = value.slice(0, 10);
-			return dateOnly >= start && dateOnly <= end;
-		}
-		case 'nextWeek': {
-			const { start, end } = getWeekRange(today, 1);
+			const offset = op === 'lastWeek' ? -1 : op === 'nextWeek' ? 1 : 0;
+			const { start, end } = getWeekRange(today, weekStart, offset);
 			const dateOnly = value.slice(0, 10);
 			return dateOnly >= start && dateOnly <= end;
 		}
@@ -1315,7 +1311,7 @@ function evaluateDateCondition(op: string, rawValue: string, target: string, tod
 	}
 }
 
-function evaluateDateSetCondition(op: string, values: string[], target: string, today: string): boolean {
+function evaluateDateSetCondition(op: string, values: string[], target: string, context: EvalContext): boolean {
 	const normalizedValues = values
 		.map(value => value.trim())
 		.filter(Boolean);
@@ -1328,10 +1324,10 @@ function evaluateDateSetCondition(op: string, values: string[], target: string, 
 		case 'dayOfWeekNot':
 		case 'monthNot':
 			return hasAnyValue && normalizedValues.every(value =>
-				!evaluateDateCondition(getPositiveDateOperatorForNegative(op), value, target, today),
+				!evaluateDateCondition(getPositiveDateOperatorForNegative(op), value, target, context),
 			);
 		default:
-			return normalizedValues.some(value => evaluateDateCondition(op, value, target, today));
+			return normalizedValues.some(value => evaluateDateCondition(op, value, target, context));
 	}
 }
 
@@ -1660,16 +1656,11 @@ function offsetDate(dateStr: string, days: number): string {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Get Monday–Sunday range for a week offset from today (0 = this week, -1 = last, +1 = next) */
-function getWeekRange(today: string, weekOffset: number): { start: string; end: string } {
-	const d = new Date(today + 'T00:00:00');
-	// Monday-based week: getDay() returns 0 for Sunday, adjust to 1-based Monday start
-	const dayOfWeek = d.getDay();
-	const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-	d.setDate(d.getDate() + mondayOffset + (weekOffset * 7));
-	const start = offsetDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, 0);
-	const end = offsetDate(start, 6);
-	return { start, end };
+function getWeekRange(today: string, weekStart: OperonSettings['calendarWeekStart'], weekOffset: number): { start: string; end: string } {
+	const weekday = new Date(today + 'T00:00:00').getDay();
+	const daysSinceStart = (weekday + (weekStart === 'sunday' ? 0 : 6)) % 7;
+	const start = offsetDate(today, weekOffset * 7 - daysSinceStart);
+	return { start, end: offsetDate(start, 6) };
 }
 
 /** Get YYYY-MM string for a month offset from today (0 = this month, -1 = last, +1 = next) */
@@ -1737,6 +1728,7 @@ function createEvalContext(
 		getRepeatSkipDates: options?.getRepeatSkipDates,
 		occurrenceDates: new WeakMap(),
 		today: options?.today ?? localToday(),
+		weekStart: options?.weekStart ?? 'monday',
 		trackedOnEvaluation: undefined,
 		timeScopeTasks: options?.timeScopeTasks ?? options?.projectSerialScopeTasks ?? options?.dependencyTasks ?? tasks,
 		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,

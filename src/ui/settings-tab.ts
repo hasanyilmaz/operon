@@ -4428,6 +4428,10 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		if (key === 'dateDisplayFormat') {
 			this.applyPendingSettingsChange();
 		}
+		if (key === 'calendarWeekStart') {
+			this.applyPendingSettingsChange();
+			this.notifyAutomationEditorSourcesChanged();
+		}
 		if (key === 'tableDefaultPresetId' || key === 'tableEmbedVisibleRows' || key === 'tableEmbedDefaultWidthPercent' || key === 'tableShowLineNumbers' || key === 'tableShowTaskIcon' || key === 'tableShowTaskDataTypeIcon' || key.startsWith('tableGantt')) {
 			this.applyPendingSettingsChange();
 		}
@@ -4541,10 +4545,10 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 		];
 	}
 
-	private readonly automationIndexReadyListeners = new Set<() => void>();
+	private readonly automationEditorSourceListeners = new Set<() => void>();
 
-	notifyAutomationIndexReady(): void {
-		for (const listener of this.automationIndexReadyListeners) listener();
+	notifyAutomationEditorSourcesChanged(): void {
+		for (const listener of this.automationEditorSourceListeners) listener();
 	}
 
 	private renderAutomationList(containerEl: HTMLElement): () => void {
@@ -4581,11 +4585,11 @@ private statusDockSectionLabel(id: StatusDockSectionId): string {
 				const offUpdates = index?.subscribeIndexUpdates(update);
 				const offNative = getNativePropertyIndex(this.app).subscribe(update);
 				const offPins = this.pinnedCache?.subscribe(update);
-				this.automationIndexReadyListeners.add(update);
+				this.automationEditorSourceListeners.add(update);
 				return () => {
 					open = false;
 					offUpdates?.(); offNative(); offPins?.();
-					this.automationIndexReadyListeners.delete(update);
+					this.automationEditorSourceListeners.delete(update);
 				};
 			},
 			plan: this.planAutomationRule,

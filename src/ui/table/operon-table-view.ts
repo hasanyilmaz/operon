@@ -1843,6 +1843,7 @@ export class OperonTableView extends FileView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: this.getSettings().calendarWeekStart,
 					projectSerialScopes: this.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -4508,6 +4509,7 @@ export class OperonTableView extends FileView {
 			priorities: settings.priorities,
 				pinnedCache: this.getPinnedCache(),
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: settings.calendarWeekStart,
 				projectSerialScopes: settings.projectSerialScopes,
 				pipelines: settings.pipelines,
 				filePropertyContext,

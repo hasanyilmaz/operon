@@ -4697,6 +4697,7 @@ export default class OperonPlugin extends Plugin {
 			this.pinnedCache,
 			this.settings.pipelines,
 			{
+				weekStart: this.settings.calendarWeekStart,
 				projectSerialScopes: this.settings.projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
@@ -4705,10 +4706,11 @@ export default class OperonPlugin extends Plugin {
 				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 			},
 		);
+		const digest = savedFilterQueryDigestV1(filterSet, request.scope, this.settings.calendarWeekStart);
 		return {
 			ok: true as const,
 			tasks: evaluated,
-			queryDigest: contiguous ? sha256HexV1('checkbox-ownership-v1\0' + savedFilterQueryDigestV1(filterSet, request.scope)) : savedFilterQueryDigestV1(filterSet, request.scope),
+			queryDigest: contiguous ? sha256HexV1('checkbox-ownership-v1\0' + digest) : digest,
 		};
 	}
 
@@ -17592,7 +17594,7 @@ export default class OperonPlugin extends Plugin {
 				this.agentRuntimeLifecycle.markReady();
 				this.taskCardIndexState = 'ready';
 				this.startAutoAutomationEvents();
-				this.settingsTab?.notifyAutomationIndexReady();
+				this.settingsTab?.notifyAutomationEditorSourcesChanged();
 				this.agentRuntimeStartupSettlementRelease?.();
 				this.agentRuntimeStartupSettlementRelease = null;
 				this.finishAutomationStartup(true);
@@ -21351,6 +21353,7 @@ export default class OperonPlugin extends Plugin {
 				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				dependencyTasks,
+				weekStart: this.settings.calendarWeekStart,
 				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
@@ -21381,6 +21384,7 @@ export default class OperonPlugin extends Plugin {
 				this.settings.priorities,
 				this.pinnedCache,
 				{
+					weekStart: this.settings.calendarWeekStart,
 					projectSerialScopes: this.settings.projectSerialScopes,
 					projectSerialScopeTasks: allTasks,
 					dependencyTasks: allTasks,
@@ -23716,7 +23720,7 @@ export default class OperonPlugin extends Plugin {
 						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
 						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, plan.changes, () => JSON.stringify([
 							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
-							this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
+							this.settings.calendarWeekStart, this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
 							this.settings.autoExpandParentTaskDateRange,
 							this.settings.keepInlineTasksWithParent, this.settings.pinnedDockAutoUnpinFinished, this.settings.fileTaskDisplayTitleEnabled,
 							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(),

@@ -631,6 +631,7 @@ export function planAutomationChanges(
 	const ctx: PlanContext = { snapshot, tasks, source: { settings: snapshot.settings, native: snapshot.native, getInlineList: snapshot.getInlineList, getFrontmatter: snapshot.getFrontmatter, nativeFields, pins: snapshot.pins } };
 	if (!snapshot.ready || tasks.size !== snapshot.tasks.length) issues.push({ reason: 'index-unavailable' });
 	const options: FilterEvaluationOptions = { today: snapshot.asOf.slice(0, 10), pipelines: snapshot.settings.pipelines,
+		weekStart: snapshot.settings.calendarWeekStart,
 		projectSerialScopes: snapshot.settings.projectSerialScopes, filePropertyContext: snapshot.native, getRepeatSkipDates: snapshot.getRepeatSkipDates };
 	const pins = snapshot.pins;
 	const invalidProjectGroup = createAutomationProjectSerialValidator(snapshot.settings.projectSerialScopes);

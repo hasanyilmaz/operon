@@ -12,7 +12,7 @@ import type { PinnedCache } from '../storage/pinned-cache';
 import type { ProjectSerialDisplay } from '../core/project-serials';
 
 type PropertyAccess = Pick<ReturnType<typeof createKanbanPropertyAccess>, 'resolve' | 'read' | 'revision' | 'getCurrentRevision'>;
-type Settings = Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'> & Partial<Pick<OperonSettings, 'fileTaskDisplayTitleEnabled'>>;
+type Settings = Pick<OperonSettings, 'keyMappings' | 'priorities' | 'pipelines'> & Partial<Pick<OperonSettings, 'fileTaskDisplayTitleEnabled' | 'calendarWeekStart'>>;
 export interface KanbanGroupHeader {
 	readonly key: string;
 	readonly value: Readonly<KanbanAxisValue> | null;
@@ -159,7 +159,7 @@ export function collectKanbanScope(options: Pick<KanbanGroupingOptions, 'tasks' 
 	}
 	const tasks = [...unique.values()];
 	const scoped = filterTasksForDisplay(options.filterSet ?? null, tasks, options.settings.priorities, options.pinnedCache, {
-		...options.filterEvaluationOptions, pipelines: options.settings.pipelines,
+		weekStart: options.settings.calendarWeekStart, ...options.filterEvaluationOptions, pipelines: options.settings.pipelines,
 		dependencyTasks: tasks, projectSerialScopeTasks: tasks,
 	});
 	const scope = { scopedTotal: new Set(scoped.map(task => task.operonId)).size, scopeComplete: conflicts.size === 0 };

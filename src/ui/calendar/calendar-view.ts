@@ -1254,6 +1254,7 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: context.settings.calendarWeekStart,
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -1641,6 +1642,7 @@ export class CalendarView extends ItemView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: settings.calendarWeekStart,
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -1743,6 +1745,7 @@ export class CalendarView extends ItemView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: settings.calendarWeekStart,
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -2090,6 +2093,7 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: settings.calendarWeekStart,
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -2488,6 +2492,7 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: settings.calendarWeekStart,
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
