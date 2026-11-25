@@ -1452,6 +1452,61 @@ function mountCounterFixtures(editor) {
 	return controls;
 }
 
+test('rule edits keep the last counts and Run state until the next result, including immediate clicks', async () => {
+	const f = await fixture(filesFor(2));
+	const ui = statusDockDocument();
+	let plans = 0;
+	const editor = new AutomationRuleModal({}, {
+		getSettings: () => DEFAULT_SETTINGS, getTasks: () => [...f.tasks.values()], getNativeSnapshot: () => null,
+		plan: rule => { plans++; return f.preview(rule); }, runDraft: () => assert.fail('ran a stale plan'),
+	}, f.rule, async () => assert.fail('unexpected save'));
+	editor.contentEl = ui.doc.body;
+	editor.run = ui.doc.createElement('button');
+	editor.loadFields();
+	editor.editors.push({}, {});
+	editor.previewDeps = {};
+	for (const section of ['scope', 'target', 'changed']) editor.createCounter(section);
+	const labels = () => [...editor.counters.values()].map(({ label }) => label.textContent);
+	const previewUpdates = [];
+	editor.preview = { refresh: () => previewUpdates.push(editor.previewTaskIds) };
+	editor.updateCounts();
+	const initial = labels();
+	assert.equal(editor.run.disabled, false);
+
+	editor.draft.actions[0].operation = 'remove';
+	editor.changed();
+	editor.changed();
+	assert.deepEqual(labels(), initial);
+	assert.equal(editor.run.disabled, false);
+	assert.ok([...editor.counters.values()].every(({ button }) => !button.disabled));
+	assert.equal(previewUpdates.length, 1);
+	assert.equal(ui.timers.size, 1);
+	ui.flush();
+	assert.equal(plans, 2);
+	assert.deepEqual(labels().slice(0, 2), initial.slice(0, 2));
+	assert.notEqual(labels()[2], initial[2]);
+	assert.deepEqual(previewUpdates.at(-1).changed, []);
+	assert.equal(editor.run.disabled, true);
+
+	editor.draft.actions[0].operation = 'add';
+	editor.changed();
+	ui.flush();
+	assert.equal(editor.run.disabled, false);
+	editor.draft.actions[0].operation = 'remove';
+	editor.changed();
+	await editor.submit(true);
+	assert.equal(editor.run.disabled, true);
+	assert.equal(ui.timers.size, 0);
+
+	editor.draft.target = rootGroup('description', 'text', 'is', '');
+	editor.changed();
+	editor.counters.get('target').button.click();
+	assert.equal(editor.previewTaskIds.target, null);
+	assert.equal(editor.counters.get('target').button.disabled, true);
+	assert.equal(editor.counters.get('scope').button.disabled, false);
+	assert.equal(ui.timers.size, 0);
+});
+
 test('an unfinished target keeps only the scope preview available in the rule editor', async () => {
 	const f = await fixture(filesFor(2), { rule: { target: rootGroup('description', 'text', 'is', '') } });
 	const editor = new AutomationRuleModal({}, { getSettings: () => DEFAULT_SETTINGS, getTasks: () => [...f.tasks.values()],

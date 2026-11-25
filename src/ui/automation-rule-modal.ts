@@ -251,7 +251,9 @@ export class AutomationRuleModal extends Modal {
 		setIcon(button.createSpan({ cls: 'operon-count-badge-icon', attr: { 'aria-hidden': 'true' } }), 'list');
 		this.counters.set(section, { button, label: button.createSpan() });
 		button.addEventListener('click', () => {
-			if (this.closed || this.pending || !this.previewDeps || !this.previewTaskIds?.[section]) return;
+			if (this.closed || this.pending || !this.previewDeps) return;
+			if (this.timer !== undefined) this.refresh();
+			if (!this.previewTaskIds?.[section]) return;
 			this.preview?.close();
 			this.preview = scopeSettingsModal(new FilterPreviewModal(this.app, () => ({
 				name: this.draft.name, section, taskIds: this.previewTaskIds?.[section],
@@ -261,17 +263,17 @@ export class AutomationRuleModal extends Modal {
 		return button;
 	}
 
-	private renderCounters(diagnostic?: string, calculating = false): void {
+	private renderCounters(diagnostic?: string): void {
 		for (const [section, { button, label }] of this.counters) {
 			const count = this.previewTaskIds?.[section]?.length;
-			button.disabled = count === undefined || !this.previewDeps;
+			const disabled = count === undefined || !this.previewDeps;
+			if (button.disabled !== disabled) button.disabled = disabled;
 			let text: string;
-			if (calculating) text = '…';
-			else if (section === 'changed' && diagnostic) text = diagnostic;
+			if (section === 'changed' && diagnostic) text = diagnostic;
 			else if (count === undefined) text = t('settings', 'automationUnknown');
 			else if (section === 'changed') text = t('settings', count === 1 ? 'automationChangedOne' : 'automationChangedMany', { count: String(count) });
 			else text = t('filterSets', count === 1 ? 'taskCountWithLeadingSpaceOne' : 'taskCountWithLeadingSpaceMany', { count: String(count) }).trim();
-			label.setText(text);
+			if (label.textContent !== text) label.setText(text);
 		}
 		this.preview?.refresh();
 	}
@@ -292,6 +294,10 @@ export class AutomationRuleModal extends Modal {
 		return row;
 	}
 	private refresh(): void {
+		if (this.timer !== undefined) {
+			getOwnerWindow(this.contentEl).clearTimeout(this.timer);
+			this.timer = undefined;
+		}
 		if (this.fieldsDirty) {
 			this.fieldsDirty = false;
 			this.loadFields();
@@ -310,9 +316,6 @@ export class AutomationRuleModal extends Modal {
 		this.updateCounts();
 	}
 	private schedule(): void {
-		this.previewTaskIds = undefined;
-		this.renderCounters(undefined, true);
-		this.run.disabled = true;
 		const win = getOwnerWindow(this.contentEl);
 		win.clearTimeout(this.timer);
 		this.timer = win.setTimeout(() => { if (!this.closed) this.refresh(); }, 140);
@@ -375,7 +378,7 @@ export class AutomationRuleModal extends Modal {
 	private async submit(runDraft = false): Promise<void> {
 		if (this.pending) return;
 		if (runDraft && this.run.disabled) return;
-		if (this.fieldsDirty || runDraft) this.refresh();
+		if (this.timer !== undefined || this.fieldsDirty || runDraft) this.refresh();
 		if (runDraft ? this.run.disabled : !this.canSave()) return;
 		this.pending = true;
 		this.contentEl.inert = true;

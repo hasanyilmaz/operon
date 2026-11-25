@@ -147,8 +147,9 @@ export class AutomationActionRow {
 	refreshFields(): void {
 		const option = this.ctx.options().find(item => item.field === this.action.field);
 		const label = option?.label || this.action.field || t('settings', 'automationField');
-		this.field.label.setText(label);
-		this.field.secondary.setText(option?.secondaryLabel ?? '');
+		if (this.field.label.textContent !== label) this.field.label.setText(label);
+		const secondary = option?.secondaryLabel ?? '';
+		if (this.field.secondary.textContent !== secondary) this.field.secondary.setText(secondary);
 		this.field.secondary.toggleClass('is-hidden', !option?.secondaryLabel);
 		this.field.button.dataset.value = this.action.field;
 		this.field.button.setAttribute('aria-label', t('settings', 'automationField') + ' · ' + label);
@@ -348,6 +349,8 @@ export class AutomationActionRow {
 	}
 
 	focusField(): void { this.field.button.focus(); }
-	setMessage(message: string): void { this.message.setText(message); }
+	setMessage(message: string): void {
+		if (this.message.textContent !== message) this.message.setText(message);
+	}
 	dispose(): void { this.closePicker?.(); this.element.remove(); }
 }
