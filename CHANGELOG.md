@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Use **week is** and **week is not** to include or exclude dates and datetimes by the week number shown in the Mini Calendar (1–53).
 - Use **Settings → Tasks → Automations** to apply several changes to matching inline and file tasks. Define the scope with grouped filter conditions, narrow it to the tasks you want to change, then choose actions such as adding a tag or setting a priority.
 - In **Automation Actions**, choose a date suggestion such as **3 days from now** to calculate the date each time the rule runs. For datetime fields, pair it with a fixed local time in your preferred 12- or 24-hour format. Picking a calendar day or typing a full date sets a fixed date.
 - In **Automation Actions**, the **ReminderRules** picker lets you add or remove a rule such as “30 minutes before the task starts” even when the task’s date is still empty.
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The **this week**, **last week**, and **next week** filter conditions now use the first day of the week selected in **Core → General → Language & Formats**.
 - Moved **Week start** from Calendar settings to **Core → General → Language & Formats**, just below **Date format**. Weekly notes opened or created from the Operon UI now follow this setting. With **Sunday** selected, Sunday starts the new week, and tasks routed into a weekly note still appear under their own day.
 
 ### Fixed
