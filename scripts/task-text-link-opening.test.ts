@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { Platform, TFile } from 'obsidian';
@@ -31,7 +34,37 @@ test('mobile keeps the native renderer binding and shared resolver never enables
  assert.equal(resolveTaskTextLink({} as any,{type:'markdown-link',destination:'javascript:alert(1)',external:true,label:'bad'},{value:'',sourcePath:''},false).kind,'missing');
 });
 const source=(path:string)=>readFileSync(`src/ui/${path}.ts`,'utf8');
-for(const path of ['reading-task-row','reading-task-wikilink-overlay','live-preview-task-wikilink-overlay','task-card-embed','calendar/calendar-view','kanban/kanban-view'])test(`${path} explicitly binds current description and retains its surface boundary`,()=>{
+for (const staticPreview of [false, true]) {
+ test(`reading row links in ${staticPreview ? 'static approval preview' : 'normal reading view'}`, () => {
+  const implementation = source('reading-task-row').match(/^function renderTaskDescription\([\s\S]*?^}/m);
+  assert.ok(implementation);
+  const boundLink = () => {};
+  const indexed = { operonId: 'task', primary: { filePath: 'Inbox.md' } };
+  const rendered: { bindLink?: typeof boundLink, mode: string, sourcePath: string }[] = [];
+  let overlays = 0;
+  const ts: typeof import('typescript') = createRequire(resolve('package.json'))('typescript');
+  const compiled = ts.transpile(implementation[0], { target: ts.ScriptTarget.ES2022 });
+  const render = runInNewContext(compiled + '\nrenderTaskDescription', {
+   getTaskDisplayTitle: () => 'See [[Notes]]',
+   taskDescriptionOpening: (_app: unknown, resolve: () => unknown) => {
+    assert.equal(resolve(), indexed);
+    return boundLink;
+   },
+   renderCompactTaskMarkdown: (_el: unknown, options: typeof rendered[number]) => {
+    rendered.push(options);
+    return { hasLinks: true };
+   },
+   enhanceTaskDescriptionWikilinkOverlays: () => { overlays++; },
+  });
+  render({}, indexed, { app: {}, getSettings: () => ({}), getAllTasks: () => [indexed] }, staticPreview);
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].sourcePath, 'Inbox.md');
+  assert.equal(rendered[0].bindLink, staticPreview ? undefined : boundLink);
+  assert.equal(rendered[0].mode, staticPreview ? 'visual-only' : 'interactive');
+  assert.equal(overlays, staticPreview ? 0 : 1);
+ });
+}
+for(const path of ['reading-task-wikilink-overlay','live-preview-task-wikilink-overlay','task-card-embed','calendar/calendar-view','kanban/kanban-view'])test(`${path} explicitly binds current description and retains its surface boundary`,()=>{
  assert.match(source(path),/bindLink: taskDescriptionOpening\(/);
 });
 test('popover link opt-in is restricted to Note and Description, not generic text or Creator/Editor',()=>{
