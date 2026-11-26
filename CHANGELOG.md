@@ -9,35 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New
 
+- Build **automation rules** in **Settings → Tasks → Automations**. Use Scope and Triggers to choose the tasks, then select the Actions to apply. Rules start inactive. Choose **Run** for a one-time run, even on an inactive rule, or set a rule to **Auto** and **Active** to run it after relevant changes.
+- Combine **automation actions** to set dates, manage reminders, update dependencies, or change recurrence in a single run. Choose **Tomorrow** with a time to schedule a task relative to each run, or enter a full date or pick a calendar day to keep the date fixed.
+- **Automation previews and confirmations** show which tasks the actions will actually change. Confirmation defaults to **Always ask**, or you can set a threshold based on the number of distinct tasks. In the confirmation window, select a rule’s count or the overall total to preview those tasks in read-only mode.
+- Open saved **Table, Calendar, Kanban, and Filter** presets from the Command Palette, or open and run saved automation rules. In **Core → General → URI Finder**, select a command and copy its vault-specific link to use in a note or an external launcher.
 - Use **week is** and **week is not** to include or exclude dates and datetimes by the week number shown in the Mini Calendar (1–53).
-- Use **Settings → Tasks → Automations** to apply several changes to matching inline and file tasks. Define the scope with grouped filter conditions, narrow it to the tasks you want to change, then choose actions such as adding a tag or setting a priority.
-- In **Automation Actions**, choose a date suggestion such as **3 days from now** to calculate the date each time the rule runs. For datetime fields, pair it with a fixed local time in your preferred 12- or 24-hour format. Picking a calendar day or typing a full date sets a fixed date.
-- In **Automation Actions**, the **ReminderRules** picker lets you add or remove a rule such as “30 minutes before the task starts” even when the task’s date is still empty.
-- Use the **ReminderDatetimes** picker to add or remove one reminder at a time. Choose a fixed calendar date or a suggestion like **Tomorrow** with a time of day. The rule resolves **Tomorrow** each time it runs.
-- New rules start **Inactive**. Once active, a manual rule runs when you choose **Run**. An automatic rule checks all matching targets after a relevant task edit. Date-based rules also check the current day when the day changes or you reopen Obsidian.
-- **Always ask** is the default for both manual and automatic rules. The confirmation shows how many distinct tasks will change and which rules are involved. You can set a task-count threshold or cancel and deactivate the listed rules.
 
 ### Improved
 
-- **Automations** now track which tasks match active Auto rules as you edit and batch index updates across files, reducing repeat scans and disk writes during bulk changes.
+- **Kanban columns and swimlanes** support grouping and moving cards with all six **Auto** property types (Text, List, Number, Checkbox, Date, and Datetime).
 - In **Task Router → Specific File**, enter a keyword such as `Logs` to add inline tasks under the first matching heading. Operon creates `## Logs` if no heading matches. Leave the keyword empty to keep grouping tasks by date.
-- In **Automation Actions**, search **Blocking** and **Blocked By** by task name or ID. Search results update as tasks are added or renamed, even while the picker is open. The action shows the selected task’s name and saves its ID.
-- **Task Type**, **Task Image**, and **Task Gallery** use the Task Creator pickers in Actions. Each Gallery action adds or removes one image and preserves the other images.
-- Custom text and number actions use the Task Creator pickers. Custom list actions suggest frequently used values first. Press **Enter** to select the highlighted value. Each action adds or removes one member, keeping the number `2` distinct from the text `"2"` and a YAML value like `"A; B"` intact.
-- Use **+ Repeat** to set a recurrence. Each newly recurring task gets its own series. **− Repeat** clears an equivalent rule even when its parts or weekdays are listed in a different order, preserving the series ID and reference date. If the rule does not match and **Scheduled** changes, the existing recurrence still calculates its count-based end date from the applicable reference date.
-- When choosing a date in **Filters** or **Automation** conditions and actions, you can now type a phrase like `next Tuesday`, select **Tomorrow**, or pick a day from the calendar.
+- In **Filters**, enter a phrase such as `next Tuesday`, choose **Tomorrow**, or pick a calendar day to set a date condition.
+- In the **Mini Calendar’s Continuous weeks** view, hover over a day to see its date in the header and highlight its week. When the pointer leaves, the calendar highlights the focused day again.
 
 ### Changed
 
-- The **this week**, **last week**, and **next week** filter conditions now use the first day of the week selected in **Core → General → Language & Formats**.
-- Moved **Week start** from Calendar settings to **Core → General → Language & Formats**, just below **Date format**. Weekly notes opened or created from the Operon UI now follow this setting. With **Sunday** selected, Sunday starts the new week, and tasks routed into a weekly note still appear under their own day.
+- **Week start** is now in **Core → General → Language & Formats**. Weekly notes and the **this week**, **last week**, and **next week** filters follow this setting. With a Sunday start, Sunday opens the new week’s note, and tasks routed to that note still appear under their own day.
 
 ### Fixed
 
-- **Kanban columns and swimlanes** now support grouping and moving cards with all six **Auto** property types (Text, List, Number, Checkbox, Date, and Datetime). The swimlane picker respects custom field visibility. When a custom field conflicts with its Obsidian property type, Kanban shows both types.
-- Switching timers in the **Pinned Tasks** sidebar keeps the hovered task and its Play/Stop button steady while the previous session is saved.
-- With **Continuous weeks** open in the **Mini Calendar**, compact sidebar tab icons expand smoothly on hover and the panel follows the pointer as you resize it.
-- In the **Mini Calendar**, **Continuous weeks** now leaves the same small gap below the last visible week as above the navigation buttons.
+- Custom fields enabled for **Kanban swimlanes** appear in the picker again. If a custom field’s type conflicts with its assigned Obsidian property type, Kanban shows both types.
+- Timer controls in **Pinned Tasks** and the **Status Dock** stay steady while a session is saved, including when switching from one task timer to another.
+- In the **Mini Calendar’s Continuous weeks** view, compact sidebar tab icons respond smoothly to hovering, the calendar follows the pointer as you resize its panel, and the gaps above and below the calendar match.
 - Creating a daily or weekly note from the **Mini Calendar** now opens the selected editor without a false task identity warning while indexing finishes.
 - **Filters** now match timestamped tasks against the correct local calendar day. A task modified this morning appears under **Modified is today**, and **next month** and **last month** select the adjacent month even from the 31st.
 
