@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New
 
 - Build **automation rules** in **Settings → Tasks → Automations**. Use Scope and Triggers to choose the tasks, then select the Actions to apply. Rules start inactive. Choose **Run** for a one-time run, even on an inactive rule, or set a rule to **Auto** and **Active** to run it after relevant changes.
-- Combine **automation actions** to set dates, manage reminders, update dependencies, or change recurrence in a single run. Choose **Tomorrow** with a time to schedule a task relative to each run, or enter a full date or pick a calendar day to keep the date fixed.
+- Combine **automation actions** to set dates, manage reminders, update dependencies, or change recurrence in a single run. In **Date** and **Datetime** actions, relative suggestions such as **Tomorrow** resolve when the rule runs. For Datetime, the selected local time stays fixed. Picking a calendar day or typing a full date fixes the date for every run.
 - **Automation previews and confirmations** show which tasks the actions will actually change. Confirmation defaults to **Always ask**, or you can set a threshold based on the number of distinct tasks. In the confirmation window, select a rule’s count or the overall total to preview those tasks in read-only mode.
 - Open saved **Table, Calendar, Kanban, and Filter** presets from the Command Palette, or open and run saved automation rules. In **Core → General → URI Finder**, select a command and copy its vault-specific link to use in a note or an external launcher.
 - Use **week is** and **week is not** to include or exclude dates and datetimes by the week number shown in the Mini Calendar (1–53).
