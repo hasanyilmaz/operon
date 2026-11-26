@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Validation
+
+## [4.9.0] - 2026-11-26
+
 ### New
 
 - Build **automation rules** in **Settings → Tasks → Automations**. Use Scope and Triggers to choose the tasks, then select the Actions to apply. Rules start inactive. Choose **Run** for a one-time run, even on an inactive rule, or set a rule to **Auto** and **Active** to run it after relevant changes.

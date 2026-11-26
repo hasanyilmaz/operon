@@ -13,7 +13,7 @@ const liveSource = readFileSync(path.join(root, 'src/ui/live-preview-conceal.ts'
 const binder = liveSource.match(/function bindLivePreviewChipHoverState\(element: HTMLElement\): void \{[\s\S]*?\n\}/)?.[0];
 assert.ok(binder);
 assert.match(liveSource, /if \(Platform.isDesktopApp\) bindDescendantFocusVisible\(tailWrap\)/);
-assert.match(readFileSync(path.join(root, 'src/ui/reading-task-row.ts'), 'utf8'), /if \(Platform.isDesktopApp\) bindDescendantFocusVisible\(row\)/);
+assert.match(readFileSync(path.join(root, 'src/ui/reading-task-row.ts'), 'utf8'), /if \(!options\?.staticPreview && Platform.isDesktopApp\) bindDescendantFocusVisible\(row\)/);
 const bundle = await build({stdin:{contents:`export * from './src/ui/descendant-focus-visible'; const LIVE_PREVIEW_CHIP_HOVER_CLASS='is-operon-chip-hovered'; ${binder}; export {bindLivePreviewChipHoverState};`,resolveDir:root,loader:'ts'},bundle:true,write:false,format:'iife',globalName:'Subject',platform:'browser',logLevel:'silent'});
 const css = readFileSync(process.env.OPERON_TEST_CSS || path.join(root, 'styles.css'), 'utf8');
 const browser = await chromium.launch({headless:true,...(process.env.OPERON_TEST_BROWSER ? {executablePath:process.env.OPERON_TEST_BROWSER} : {})});
