@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Kanban swimlanes** now respect custom field visibility and support grouping and moving cards by **Auto (Text)** and **Auto (List)** properties. When a custom field conflicts with its Obsidian property type, Kanban shows both types.
 - Switching timers in the **Pinned Tasks** sidebar keeps the hovered task and its Play/Stop button steady while the previous session is saved.
 - With **Continuous weeks** open in the **Mini Calendar**, compact sidebar tab icons expand smoothly on hover and the panel follows the pointer as you resize it.
 - In the **Mini Calendar**, **Continuous weeks** now leaves the same small gap below the last visible week as above the navigation buttons.
