@@ -7,13 +7,15 @@ import { getManagedCustomFieldMappings } from './managed-task-fields';
 import { resolveInlinePropertyDefinition } from './inline-property-definitions';
 import { nativeEditorPropertyTypes } from './task-editor-native-properties';
 import { decodeVaultPropertyValue, encodeVaultPropertyValue, type VaultPropertyValue } from './vault-property-codec';
+import { isWritableRawYamlPropertyName } from './raw-yaml-property';
 import { parseListValue } from './parser';
 import { normalizePriorityValue } from './priority-rank';
 import { buildWorkflowStatusIdentityIndex, resolveConfiguredStatusIdentity } from './workflow-status-identity';
 import { kanbanAxisValueKey, type KanbanAxisValue, type KanbanPropertyReference } from './kanban-axis-model';
 
 type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions' | 'priorities' | 'pipelines'>;
-type NativeIndex = Pick<NativePropertyIndex, 'getTypes' | 'getTask' | 'isReady' | 'getRevision'>;
+type NativeIndex = Pick<NativePropertyIndex, 'getTypes' | 'getTask' | 'isReady' | 'getRevision'>
+	& Partial<Pick<NativePropertyIndex, 'getAutomaticTextListTypes' | 'typesAvailable'>>;
 export interface KanbanPropertyDescriptor {
 	identity: string;
 	reference: KanbanPropertyReference;
@@ -41,7 +43,8 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 	const byAlias = new Map<string, KanbanPropertyDescriptor[]>();
 	const mappings = settings.keyMappings;
 	const declarations = native.getTypes();
-	const nativeTypes = nativeEditorPropertyTypes(declarations, mappings, settings.inlinePropertyDefinitions);
+	const declaredNames = new Set(Object.keys(declarations).map(identity));
+	const nativeTypes = nativeEditorPropertyTypes({ ...native.getAutomaticTextListTypes?.(), ...declarations }, mappings, settings.inlinePropertyDefinitions);
 	const add = (field: KanbanPropertyDescriptor) => {
 		fields.push(field);
 		for (const alias of new Set(field.aliases.map(identity))) byAlias.set(alias, [...(byAlias.get(alias) ?? []), field]);
@@ -66,7 +69,7 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 	for (const [key, type] of Object.entries(nativeTypes)) {
 		// Ownership stays with the managed identity even when native encoding is used.
 		if (mappings.some(mapping => [mapping.canonicalKey, mapping.visiblePropertyName].some(alias => identity(alias) === identity(key)))
-			|| byAlias.has(identity(key))) continue;
+			|| byAlias.has(identity(key)) || !isWritableRawYamlPropertyName(key, mappings, 'case-insensitive')) continue;
 		add({ identity: `native:${identity(key)}`, reference: { source: 'native', key, type }, label: key, aliases: [key], encoding: 'vault-v1' });
 	}
 	const statusIndex = buildWorkflowStatusIdentityIndex(settings.pipelines);
@@ -76,7 +79,19 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 			? fields.filter(field => field.reference.source === 'managed' && field.reference.key === reference.key)
 			: byAlias.get(identity(reference.key)) ?? [];
 		if (owners.length > 1 || candidates.length > 1) return { ok: false, reason: 'type-conflict' };
-		const field = candidates[0];
+		let saved: KanbanPropertyDescriptor | undefined;
+		// A saved axis supplies its type even when its last value was cleared or the
+		// vault has mixed samples. Each card must still pass the source checks below.
+		if (!candidates.length && !owners.length && reference.source === 'native' && (reference.type === 'text' || reference.type === 'list')
+			&& native.typesAvailable?.() && !declaredNames.has(identity(reference.key))
+			&& isWritableRawYamlPropertyName(reference.key, mappings, 'case-insensitive')) {
+			try {
+				const definition = resolveInlinePropertyDefinition(reference.key, reference.type, mappings, settings.inlinePropertyDefinitions);
+				if (definition.encoding === 'vault-v1') saved = { identity: `native:${identity(reference.key)}`,
+					reference, label: reference.key, aliases: [reference.key], encoding: definition.encoding };
+			} catch { return { ok: false, reason: 'type-conflict' }; }
+		}
+		const field = candidates[0] ?? saved;
 		if (!field) return { ok: false, reason: owners.length ? 'unsupported' : 'missing-property' };
 		if (reference.source === 'managed' && field.reference.source !== 'managed') return { ok: false, reason: 'missing-property' };
 		if (reference.type !== field.reference.type) return { ok: false, reason: 'type-conflict' };
@@ -102,10 +117,16 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 				const properties = [...new Set(field.aliases.flatMap(alias => { const property = row.properties.get(identity(alias)); return property ? [property] : []; }))];
 				if (properties.length > 1) return { state: 'unavailable', reason: 'type-conflict' };
 				const property = properties[0];
-				if (property?.reason || property?.type && property.type !== reference.type) return { state: 'unavailable', reason: property?.reason ?? 'type-conflict' };
+				// Without a declaration the shared inline index tries Text first. A retained
+				// List definition can reject that projection while its single raw token is valid.
+				const autoInlineList = property?.inline?.state === 'unsupported' && property.inline.rawValue !== undefined
+					&& !property.type && reference.type === 'list' && field.aliases.every(alias => !declaredNames.has(identity(alias)));
+				const automatic = autoInlineList || (property?.reason === 'automatic' && (reference.type === 'text' || reference.type === 'list'));
+				if ((property?.reason && !automatic) || (property?.type && property.type !== reference.type)) return { state: 'unavailable', reason: property?.reason ?? 'type-conflict' };
 				value = property?.value as VaultPropertyValue | undefined;
 				present = property?.present ?? false;
 				rawValue = property?.inline?.rawValue;
+				if (automatic && rawValue !== undefined) value = decodeVaultPropertyValue(rawValue, reference.type);
 				sourceName = property?.sourceName ?? sourceName;
 				revision = row.revision;
 			} else {

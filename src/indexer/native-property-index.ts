@@ -137,6 +137,44 @@ export class NativePropertyIndex {
   this.usageRevision = this.revision; this.usageNames = names;
   return names;
  }
+ private automaticRevision = -1;
+ private automaticTypes: Readonly<Record<string, 'text' | 'multitext'>> = {};
+ /** Infer Kanban candidates from the in-memory task sources, once per index revision. */
+ getAutomaticTextListTypes(): Readonly<Record<string, 'text' | 'multitext'>> {
+  if (this.registryState !== 'ready') return {};
+  if (this.automaticRevision === this.revision) return this.automaticTypes;
+  const declared = new Set(Object.keys(this.declarations).map(name => name.toLowerCase()));
+  const candidates = new Map<string, { name: string; type: 'text' | 'multitext' | null }>();
+  const observe = (name: string, type: 'text' | 'multitext' | null) => {
+   const key = name.toLowerCase();
+   if (declared.has(key)) return;
+   const prior = candidates.get(key);
+   if (!prior) candidates.set(key, { name, type });
+   else if (prior.type !== type) prior.type = null;
+  };
+  for (const entry of this.settings.inlinePropertyDefinitions?.entries ?? []) {
+   if (entry.encoding === 'vault-v1' && (entry.type === 'text' || entry.type === 'list')) {
+    observe(entry.sourceName, entry.type === 'list' ? 'multitext' : 'text');
+   }
+  }
+  const inlineNames = new Set<string>();
+  for (const source of this.sources.values()) {
+   if (source.error || !source.raw) continue;
+   for (const row of source.raw.inline) for (const field of row.fields) inlineNames.add(field.sourceKey);
+   if (!source.raw.frontmatter) continue;
+   for (const name of source.raw.order) {
+    const value = source.raw.frontmatter[name];
+    if (value == null) continue;
+    observe(name, typeof value === 'string' ? 'text'
+     : Array.isArray(value) && !nativePropertyValueReadOnlyReason(value) ? 'multitext' : null);
+   }
+  }
+  // Inline values use Text until a YAML value or stored definition establishes a type.
+  for (const name of inlineNames) if (!candidates.has(name.toLowerCase())) observe(name, 'text');
+  this.automaticTypes = Object.fromEntries([...candidates.values()].flatMap(({ name, type }) => type ? [[name, type]] : []));
+  this.automaticRevision = this.revision;
+  return this.automaticTypes;
+ }
  typesAvailable(): boolean { return this.registryState === 'ready'; }
  private reinterpret(): void {
   this.interpretationRevision++;

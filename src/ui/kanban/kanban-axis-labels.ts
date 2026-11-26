@@ -4,7 +4,7 @@ import type { KanbanCellPlanResult } from '../../systems/kanban-cell-actions';
 import { t } from '../../core/i18n';
 import { resolveKanbanAxes } from '../../core/kanban-axis-model';
 import type { KanbanPreset } from '../../types/kanban';
-import type { OperonSettings } from '../../types/settings';
+import type { KeyMapping, OperonSettings } from '../../types/settings';
 
 export function kanbanAxisReason(reason: string): string {
 	if (reason === 'pipeline-not-selected') return t('settings', 'kanbanNoPipeline');
@@ -16,6 +16,20 @@ export function kanbanAxisReason(reason: string): string {
 	if (reason === 'type-conflict') return t('notifications', 'kanbanAxisTypeConflict');
 	if (reason === 'domain-target-conflict') return t('notifications', 'kanbanAxisDomainConflict');
 	return t('notifications', 'kanbanAxesUnavailable');
+}
+
+/** Explain the actual mapping and vault declaration when a saved custom axis conflicts. */
+export function kanbanCustomPropertyConflict(mapping: KeyMapping, mappings: readonly KeyMapping[], declarations: Readonly<Record<string, string>>): string {
+	const label = mapping.visiblePropertyName || mapping.canonicalKey;
+	const aliases = new Set([label, mapping.canonicalKey].map(key => key.trim().toLowerCase()));
+	const assigned = Object.entries(declarations).filter(([key]) => aliases.has(key.trim().toLowerCase()));
+	const duplicate = new Set(assigned.map(([key]) => key.toLowerCase())).size < assigned.length
+		|| mappings.some(other => other !== mapping && [other.canonicalKey, other.visiblePropertyName]
+			.some(key => aliases.has(key.trim().toLowerCase())));
+	const reason = duplicate ? t('settings', 'keyMappingsCustomFieldPropertyDuplicate')
+		: t('taskEditor', 'filePropertyTypeConflict', { name: label });
+	const types = assigned.map(([key, type]) => `${key} [${type}]`).join(', ');
+	return types ? `${reason} Operon: ${mapping.type} · Obsidian: ${types}` : reason;
 }
 
 export function kanbanAxisSummary(preset: KanbanPreset, side: 'columns' | 'swimlanes', settings: OperonSettings): string {

@@ -8,6 +8,7 @@ export interface SearchableFieldPickerOption {
 	field: string;
 	label: string;
 	secondaryLabel?: string;
+	disabled?: boolean;
 	trailingText?: string;
 	type?: string;
 	icon?: string | null;
@@ -57,6 +58,7 @@ export function showSearchableFieldPicker<TField extends SearchableFieldPickerOp
 		value: fieldOption.field,
 		label: fieldOption.label || fieldOption.field,
 		description: fieldOption.secondaryLabel,
+		disabled: fieldOption.disabled,
 		trailingText: fieldOption.trailingText,
 		icon: fieldOption.icon,
 		resolveIcon: fieldOption.resolveIcon,

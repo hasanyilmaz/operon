@@ -3093,6 +3093,16 @@ body .operon-kanban-value-picker-panel button.operon-kanban-value-picker-item {
 	text-align: left;
 }
 
+body .operon-kanban-value-picker-panel button.operon-kanban-value-picker-item:disabled {
+	height: auto;
+	cursor: default;
+}
+
+.operon-kanban-value-picker-item:disabled .operon-searchable-option-picker-item-description {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
 .operon-kanban-value-picker-item .operon-searchable-option-picker-item-label {
 	flex: 1;
 	min-width: 0;
