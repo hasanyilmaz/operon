@@ -1137,16 +1137,20 @@ function resolveFolderTreeMatches(query: string, context: EvalContext): Set<stri
 	return matches;
 }
 
+function stripOuterSlashes(path: string): string {
+	let start = 0;
+	let end = path.length;
+	while (start < end && path[start] === '/') start++;
+	while (end > start && path[end - 1] === '/') end--;
+	return path.slice(start, end);
+}
+
 function normalizeFolderQuery(query: string): string {
-	return query
-		.replace(/\\/g, '/')
-		.trim()
-		.replace(/^\/+|\/+$/g, '')
-		.toLowerCase();
+	return stripOuterSlashes(query.replace(/\\/g, '/').trim()).toLowerCase();
 }
 
 function getFolderPath(filePath: string): string {
-	const normalizedPath = filePath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+	const normalizedPath = stripOuterSlashes(filePath.replace(/\\/g, '/'));
 	const lastSlashIndex = normalizedPath.lastIndexOf('/');
 	if (lastSlashIndex === -1) return '';
 	return normalizedPath.slice(0, lastSlashIndex).toLowerCase();

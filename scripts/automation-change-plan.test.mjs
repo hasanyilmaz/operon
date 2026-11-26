@@ -31,7 +31,7 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 	export { getNativePropertyIndex } from './src/indexer/native-property-index';
 	export { AutomationRuleMembership } from './src/systems/automation-rule-membership';
 	export { planAutomationChanges } from './src/core/automation-change-plan';
-	export { filterTasksOnly } from './src/core/filter-evaluator';
+	export { filterTasksOnly, prepareLocalAutomationCondition } from './src/core/filter-evaluator';
 	export { AggregateCoordinator } from './src/systems/aggregate-coordinator';
 	export { groupAutomationPreviewTasks } from './src/ui/automation-task-preview';
 	export { FilterFieldCatalog } from './src/ui/filter-condition-editor';
@@ -40,7 +40,7 @@ await build({ stdin: { resolveDir: root, loader: 'ts', contents: `
 ` }, bundle: true, format: 'esm', platform: 'node', outfile,
 	alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const { localWeekNumbering, AutomationRuleMembership, SavedFilterHost, TFile, createTableFilePropertyIndex, createCachedTableFilePropertyTypeResolver, projectIndexedNativeProperties, getNativePropertyIndex,
-	planAutomationChanges, filterTasksOnly, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog, groupAutomationPreviewTasks } = await import(pathToFileURL(outfile).href);
+	planAutomationChanges, filterTasksOnly, prepareLocalAutomationCondition, AggregateCoordinator, DEFAULT_SETTINGS, parseTaskLine, FilterFieldCatalog, groupAutomationPreviewTasks } = await import(pathToFileURL(outfile).href);
 const sharedFields = new Map(new FilterFieldCatalog({ keyMappings: DEFAULT_SETTINGS.keyMappings, getRootGroup: () => undefined })
 	.getFieldOptions(true).map(option => [option.field, option.type]));
 const asOf = '2026-11-20T10:20:30';
@@ -68,6 +68,31 @@ test('inactive drafts, empty Scope/Target and zero-action limits', () => {
 	assert.equal(p.changedTaskCount, 0);
 	assert.equal(p.needsConfirmation, false);
 });
+test('saved filters and local automation match the same folder boundaries', () => {
+	const located = (id, filePath) => task(id, {}, { primary: { filePath, format: 'inline', lineNumber: 1 } });
+	const tasks = [
+		located('nested', '/Area/Projects/Books/Notes/a.md///'),
+		located('windows', 'Area\\Projects\\Books\\b.md'),
+		located('sibling', 'Projects/Bookshelf/c.md'),
+		located('root', 'Books.md'),
+	];
+	const cases = [
+		['  //PROJECTS\\Books///  ', ['nested', 'windows']],
+		['books', ['nested', 'windows']],
+		['projects', ['nested', 'windows', 'sibling']],
+		['Projects//Books', []],
+		['/'.repeat(16_384) + 'Books' + '/'.repeat(16_384), ['nested', 'windows']],
+		['', []],
+		['///', []],
+	];
+	for (const [query, expected] of cases) {
+		const condition = cond('folders', 'folders', 'isInFolderTree', query);
+		const local = prepareLocalAutomationCondition(condition);
+		assert.deepEqual(tasks.filter(local).map(t => t.operonId), expected);
+		assert.deepEqual(filterTasksOnly(filter(group('all', condition)), tasks).map(t => t.operonId), expected);
+	}
+});
+
 test('editor preview returns exact scope, target and changed task IDs from one plan', () => {
 	const tasks = Array.from({ length: 281 }, (_, index) => task(String(index), {}, {
 		tags: [...(index < 280 ? ['daily'] : []), ...(index < 7 || index === 280 ? ['queue'] : [])],
