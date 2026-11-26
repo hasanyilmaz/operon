@@ -15,7 +15,7 @@ import { kanbanAxisValueKey, type KanbanAxisValue, type KanbanPropertyReference 
 
 type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions' | 'priorities' | 'pipelines'>;
 type NativeIndex = Pick<NativePropertyIndex, 'getTypes' | 'getTask' | 'isReady' | 'getRevision'>
-	& Partial<Pick<NativePropertyIndex, 'getAutomaticTextListTypes' | 'typesAvailable'>>;
+	& Partial<Pick<NativePropertyIndex, 'getAutomaticKanbanTypes' | 'isAutomaticKanbanTextCompatible' | 'typesAvailable'>>;
 export interface KanbanPropertyDescriptor {
 	identity: string;
 	reference: KanbanPropertyReference;
@@ -44,7 +44,7 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 	const mappings = settings.keyMappings;
 	const declarations = native.getTypes();
 	const declaredNames = new Set(Object.keys(declarations).map(identity));
-	const nativeTypes = nativeEditorPropertyTypes({ ...native.getAutomaticTextListTypes?.(), ...declarations }, mappings, settings.inlinePropertyDefinitions);
+	const nativeTypes = nativeEditorPropertyTypes({ ...native.getAutomaticKanbanTypes?.(), ...declarations }, mappings, settings.inlinePropertyDefinitions);
 	const add = (field: KanbanPropertyDescriptor) => {
 		fields.push(field);
 		for (const alias of new Set(field.aliases.map(identity))) byAlias.set(alias, [...(byAlias.get(alias) ?? []), field]);
@@ -82,7 +82,8 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 		let saved: KanbanPropertyDescriptor | undefined;
 		// A saved axis supplies its type even when its last value was cleared or the
 		// vault has mixed samples. Each card must still pass the source checks below.
-		if (!candidates.length && !owners.length && reference.source === 'native' && (reference.type === 'text' || reference.type === 'list')
+		if ((!candidates.length || reference.type === 'text' && candidates[0].reference.type !== 'text' && native.isAutomaticKanbanTextCompatible?.(reference.key))
+			&& !owners.length && reference.source === 'native'
 			&& native.typesAvailable?.() && !declaredNames.has(identity(reference.key))
 			&& isWritableRawYamlPropertyName(reference.key, mappings, 'case-insensitive')) {
 			try {
@@ -91,7 +92,7 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 					reference, label: reference.key, aliases: [reference.key], encoding: definition.encoding };
 			} catch { return { ok: false, reason: 'type-conflict' }; }
 		}
-		const field = candidates[0] ?? saved;
+		const field = saved ?? candidates[0];
 		if (!field) return { ok: false, reason: owners.length ? 'unsupported' : 'missing-property' };
 		if (reference.source === 'managed' && field.reference.source !== 'managed') return { ok: false, reason: 'missing-property' };
 		if (reference.type !== field.reference.type) return { ok: false, reason: 'type-conflict' };
@@ -117,11 +118,11 @@ export function createKanbanPropertyAccess(settings: Settings, native: NativeInd
 				const properties = [...new Set(field.aliases.flatMap(alias => { const property = row.properties.get(identity(alias)); return property ? [property] : []; }))];
 				if (properties.length > 1) return { state: 'unavailable', reason: 'type-conflict' };
 				const property = properties[0];
-				// Without a declaration the shared inline index tries Text first. A retained
-				// List definition can reject that projection while its single raw token is valid.
-				const autoInlineList = property?.inline?.state === 'unsupported' && property.inline.rawValue !== undefined
-					&& !property.type && reference.type === 'list' && field.aliases.every(alias => !declaredNames.has(identity(alias)));
-				const automatic = autoInlineList || (property?.reason === 'automatic' && (reference.type === 'text' || reference.type === 'list'));
+				// A retained inline type can reject the shared index's default Text projection.
+				// Decode the original single token with the axis codec in that case.
+				const autoInline = property?.inline?.state === 'unsupported' && property.inline.rawValue !== undefined
+					&& !property.type && field.aliases.every(alias => !declaredNames.has(identity(alias)));
+				const automatic = autoInline || property?.reason === 'automatic';
 				if ((property?.reason && !automatic) || (property?.type && property.type !== reference.type)) return { state: 'unavailable', reason: property?.reason ?? 'type-conflict' };
 				value = property?.value as VaultPropertyValue | undefined;
 				present = property?.present ?? false;

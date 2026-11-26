@@ -148,6 +148,86 @@ for (const format of ['yaml', 'inline'] as const) for (const type of ['text', 'l
   f.native.dispose();
  });
 }
+const scalarMoves = [
+ ['number', -1.5, 0], ['checkbox', true, false],
+ ['date', '2026-11-26', '2028-02-29'], ['datetime', '2026-11-26T10:15', '2026-10-27T14:30:22+02:00'],
+] as const;
+for (const [type, before, after] of scalarMoves) for (const format of ['yaml', 'inline'] as const) {
+ for (const side of ['columns', 'swimlanes'] as const) test(`Auto and assigned ${type} group and move identically for ${format} ${side}`, async () => {
+  for (const auto of [false, true]) {
+   const f = await fixture(format, type);
+   if (auto) f.native.setTypes({});
+   f.put(format === 'yaml'
+    ? f.content().replace('Unrelated: keep', `Value: ${JSON.stringify(before)}\nUnrelated: keep`)
+    : f.content().replace('Value: host', 'Host: unrelated').replace('Value:: neighbor', 'Other:: neighbor')
+      .replace('}}\n- [ ] Neighbor', `}} {{Value:: ${before}}}\n- [ ] Neighbor`));
+   await f.refresh();
+   const preset = cloneDefaultKanbanPresets()[0];
+   const field = axis('Value', type, 'native');
+   const axes = { version: 1 as const, columns: side === 'columns' ? field : axis('note'),
+    swimlanes: side === 'swimlanes' ? field : null };
+   preset.axes = axes;
+   const groups = () => {
+    const access = createKanbanPropertyAccess(f.s, f.native);
+    assert.ok(access.fields.some(field => field.reference.key === 'Value' && field.reference.type === type));
+    const snapshot = buildKanbanGroupingSnapshot({ tasks: [f.current()], preset, settings: f.s,
+     propertyAccess: access, revision: { tasks: 1, settings: 1 } });
+    if (snapshot.state !== 'ready') throw Error(snapshot.state);
+    return (side === 'columns' ? snapshot.columns : snapshot.rows).map(header => header.value);
+   };
+   assert.deepEqual(groups(), [value(before)]);
+   const plan = planned(buildKanbanCellPlan({ axes, target: { columns: side === 'columns' ? value(after) : empty, swimlanes: side === 'swimlanes' ? value(after) : null },
+    task: f.current(), access: createKanbanPropertyAccess(f.s, f.native), settings: f.s }));
+   assert.equal(await f.writer.writeTaskFields(f.current().operonId, plan.payload, {
+    mode: 'merge', reindex: 'none', touchAncestors: false, expectedFieldValues: plan.expectedFieldValues,
+    ...(format === 'yaml' ? { filePropertyDraft: plan.filePropertyDraft } : { inlinePropertyDraft: plan.inlinePropertyDraft }),
+   }), true);
+   assert.equal(f.writes(), 1);
+   if (format === 'yaml') assert.equal(readFileTaskPropertyDocument(f.content())?.frontmatter.Value, after);
+   else assert.ok(f.content().includes(`{{Value:: ${after}}}`));
+   f.native.configure(f.s);
+   await f.refresh();
+   assert.deepEqual(groups(), [value(after)]);
+   if (auto) assert.deepEqual(f.native.getTypes(), {});
+   f.native.dispose();
+  }
+ });
+}
+test('Auto inference preserves textual fields, retained types and explicit type assignments', async () => {
+ const f = await fixture('yaml', 'text');
+ f.native.setTypes({ Declared: 'text' });
+ f.s.inlinePropertyDefinitions = retainInlinePropertyDefinition(undefined, { sourceName: 'Retained', type: 'text', encoding: 'vault-v1' });
+ f.native.configure(f.s);
+ const samples = [
+  { Mixed: '2026-11-26', Code: '007', Flag: 'false', Invalid: '2026-02-30', Declared: true, Retained: '2026-11-26' },
+  { Mixed: 'Alpha', Code: '008', Flag: 'true', Invalid: 'yesterday', Declared: false, Retained: '2026-11-27' },
+ ];
+ for (const [index, frontmatter] of samples.entries()) {
+  const token = index ? 'Alpha' : '2';
+  f.native.accept(`Sample${index}.md`, { frontmatter, order: Object.keys(frontmatter),
+   inline: [{ operonId: 'def1234', lineNumber: 1, fields: [{ sourceKey: 'Label', key: 'Label', rawValue: token, value: token }] }] }, false, 'sample');
+ }
+ const types = createKanbanPropertyAccess(f.s, f.native).fields;
+ for (const key of ['Mixed', 'Code', 'Flag', 'Invalid', 'Declared', 'Retained', 'Label']) {
+  assert.equal(types.find(field => field.reference.key === key)?.reference.type, 'text', key);
+ }
+ f.native.dispose();
+});
+test('a saved Text axis keeps string-backed dates but cannot write text to a new card on a numeric axis', async () => {
+ const f = await fixture('yaml', 'text');
+ f.native.setTypes({});
+ const frontmatter = { Score: 42, When: '2026-11-26', Flag: false, Items: ['a'] };
+ f.native.accept('Samples.md', { frontmatter, order: Object.keys(frontmatter), inline: [] }, false, 'sample');
+ const access = createKanbanPropertyAccess(f.s, f.native);
+ for (const key of ['Score', 'Flag', 'Items']) {
+  const result = buildKanbanCellPlan({ axes: { version: 1, columns: axis('note'), swimlanes: axis(key, 'text', 'native') },
+   target: { columns: empty, swimlanes: value('High') }, task: f.current(), access, settings: f.s });
+  assert.equal(result.state, 'blocked', key);
+ }
+ assert.equal(access.resolve({ key: 'When', type: 'text', source: 'native' }).ok, true);
+ assert.equal(f.writes(), 0);
+ f.native.dispose();
+});
 test('a saved Auto swimlane groups compatible YAML and rejects incompatible card writes with mixed samples', async () => {
  const f = await fixture('yaml', 'list');
  f.native.setTypes({});

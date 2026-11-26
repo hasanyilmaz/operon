@@ -6,6 +6,7 @@ import { readParsedInlinePropertyProjection, createInlinePropertyReadPlan, type 
 import { nativeEditorPropertyTypes, nativePropertyReadOnlyReason, nativePropertyValueReadOnlyReason, type NativePropertyReadOnlyReason } from '../core/task-editor-native-properties';
 import { isWritableRawYamlPropertyName } from '../core/raw-yaml-property';
 import { resolveInlinePropertyDefinition, type InlinePropertyType } from '../core/inline-property-definitions';
+import { decodeVaultPropertyValue, getVaultPropertyDateError } from '../core/vault-property-codec';
 import { loadPropertyTypeRegistry, type ObsidianPropertyTypeId } from '../core/property-type-registry';
 import { scanFileWithMappings } from './file-scanner';
 import { getManagedYamlAliases, readYamlFields } from '../core/yaml-fields';
@@ -17,6 +18,24 @@ type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions'
 export function captureNativePropertySource(content: string, inline: readonly ParsedTask[], fileTask = true): NativePropertySource {
  const document = fileTask ? readFileTaskPropertyDocument(content) : null;
  return { frontmatter: document?.frontmatter ?? null, order: document?.order ?? [], inline: inline.map(compactNativeInline) };
+}
+function automaticKanbanType(value: unknown, inline: boolean): InlinePropertyType | null {
+ if (typeof value === 'number') return Number.isFinite(value) ? 'number' : null;
+ if (typeof value === 'boolean') return 'checkbox';
+ if (typeof value !== 'string') return Array.isArray(value) && !nativePropertyValueReadOnlyReason(value) ? 'list' : null;
+ if (value.length >= 10 && value[4] === '-' && value[7] === '-') {
+  const datetime = value[10] === 'T';
+  if (!getVaultPropertyDateError(value, datetime)) return datetime ? 'datetime' : 'date';
+ }
+ if (inline) {
+  if (value === 'true' || value === 'false') return 'checkbox';
+  // Preserve zero-padded identifiers while accepting the same decimals and exponents as a typed field.
+  if (Number.isFinite(Number(value)) && !/^[+-]?0\d/u.test(value)) {
+   try { decodeVaultPropertyValue(value, 'number'); return 'number'; }
+   catch { return 'text'; }
+  }
+ }
+ return 'text';
 }
 export interface NativePropertyRecord {
  sourceName: string;
@@ -138,39 +157,57 @@ export class NativePropertyIndex {
   return names;
  }
  private automaticRevision = -1;
- private automaticTypes: Readonly<Record<string, 'text' | 'multitext'>> = {};
+ private automaticTextCompatible = new Set<string>();
+ /** A legacy Auto Text axis may keep reading date-shaped strings and inline tokens. */
+ isAutomaticKanbanTextCompatible(name: string): boolean {
+  this.getAutomaticKanbanTypes();
+  return this.registryState === 'ready' && this.automaticTextCompatible.has(name.toLowerCase());
+ }
+ private automaticTypes: Readonly<Record<string, InlinePropertyType>> = {};
  /** Infer Kanban candidates from the in-memory task sources, once per index revision. */
- getAutomaticTextListTypes(): Readonly<Record<string, 'text' | 'multitext'>> {
+ getAutomaticKanbanTypes(): Readonly<Record<string, InlinePropertyType>> {
   if (this.registryState !== 'ready') return {};
   if (this.automaticRevision === this.revision) return this.automaticTypes;
-  const declared = new Set(Object.keys(this.declarations).map(name => name.toLowerCase()));
-  const candidates = new Map<string, { name: string; type: 'text' | 'multitext' | null }>();
-  const observe = (name: string, type: 'text' | 'multitext' | null) => {
+  const authoritative = new Set(Object.keys(this.declarations).map(name => name.toLowerCase()));
+  const candidates = new Map<string, { name: string; type: InlinePropertyType | null; stringsOnly: boolean }>();
+  const observe = (name: string, type: InlinePropertyType | null, stringSample = false) => {
    const key = name.toLowerCase();
-   if (declared.has(key)) return;
+   if (authoritative.has(key)) return;
    const prior = candidates.get(key);
-   if (!prior) candidates.set(key, { name, type });
-   else if (prior.type !== type) prior.type = null;
+   if (!prior) candidates.set(key, { name, type, stringsOnly: stringSample });
+   else {
+    prior.stringsOnly &&= stringSample;
+    if (prior.type !== type) prior.type = prior.stringsOnly ? 'text' : null;
+   }
   };
   for (const entry of this.settings.inlinePropertyDefinitions?.entries ?? []) {
-   if (entry.encoding === 'vault-v1' && (entry.type === 'text' || entry.type === 'list')) {
-    observe(entry.sourceName, entry.type === 'list' ? 'multitext' : 'text');
+   if (entry.encoding === 'vault-v1') {
+    observe(entry.sourceName, entry.type);
+    authoritative.add(entry.sourceName.toLowerCase());
    }
   }
-  const inlineNames = new Set<string>();
+  const emptyNames = new Set<string>();
   for (const source of this.sources.values()) {
-   if (source.error || !source.raw) continue;
-   for (const row of source.raw.inline) for (const field of row.fields) inlineNames.add(field.sourceKey);
-   if (!source.raw.frontmatter) continue;
+   if (source.error || !source.raw?.frontmatter) continue;
    for (const name of source.raw.order) {
     const value = source.raw.frontmatter[name];
     if (value == null) continue;
-    observe(name, typeof value === 'string' ? 'text'
-     : Array.isArray(value) && !nativePropertyValueReadOnlyReason(value) ? 'multitext' : null);
+    if (value === '') emptyNames.add(name);
+    else observe(name, automaticKanbanType(value, false), typeof value === 'string');
    }
   }
-  // Inline values use Text until a YAML value or stored definition establishes a type.
-  for (const name of inlineNames) if (!candidates.has(name.toLowerCase())) observe(name, 'text');
+  // Typed YAML is stronger evidence than inline tokens, which are always strings.
+  for (const key of candidates.keys()) authoritative.add(key);
+  for (const source of this.sources.values()) {
+   if (source.error || !source.raw) continue;
+   for (const row of source.raw.inline) for (const field of row.fields) {
+    if (authoritative.has(field.sourceKey.toLowerCase())) continue;
+    if (!field.rawValue.trim()) emptyNames.add(field.sourceKey);
+    else observe(field.sourceKey, automaticKanbanType(field.rawValue.trim(), true), true);
+   }
+  }
+  for (const name of emptyNames) if (!candidates.has(name.toLowerCase())) observe(name, 'text');
+  this.automaticTextCompatible = new Set([...candidates].filter(([, candidate]) => candidate.stringsOnly).map(([key]) => key));
   this.automaticTypes = Object.fromEntries([...candidates.values()].flatMap(({ name, type }) => type ? [[name, type]] : []));
   this.automaticRevision = this.revision;
   return this.automaticTypes;
