@@ -2,7 +2,7 @@
 Notes: What exists in Operon and when to use each part
 Icon: map
 Color: "#16a34a"
-Updated: 2026-11-05T01:12:23+01:00
+Updated: 2026-11-25T17:22:16+03:00
 ---
 
 # Operon system map
@@ -20,11 +20,11 @@ Not sure which kind of task to use? See [[DOCS-014 Inline vs file tasks|Inline v
 
 ## Ways to see tasks
 
-- **Filter View**: filtered, saved lists of tasks from across your vault. Your everyday "what should I work on" surface. Run **Operon Filter View**. See [[DOCS-025 Filter View|Filter View]].
+- **Filter View**: filtered, saved lists of tasks from across your vault. Your everyday "what should I work on" surface. Run **Open Filter › Default › New Tab**. See [[DOCS-025 Filter View|Filter View]].
 - **Task Finder**: fast search to jump to a single task when you remember it but not where it is. Run **Task Finder**. See [[DOCS-027 Task Finder|Task Finder]].
-- **Calendar**: tasks placed on dates and times, including due markers and recurring tasks. Use it to plan *when*. Timed presets can show rolling days or a fixed calendar week on desktop and tablet. Run **Operon Calendar**. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
-- **Kanban**: tasks as cards grouped by a column property and an optional row property. Use Status for workflow stages, or other properties for dates, people, and other planning dimensions. Run **Operon Kanban**. See [[DOCS-030 Kanban overview|Kanban overview]].
-- **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Operon Table**. See [[DOCS-105 Table overview|Table overview]].
+- **Calendar**: tasks placed on dates and times, including due markers and recurring tasks. Use it to plan *when*. Timed presets can show rolling days or a fixed calendar week on desktop and tablet. Run **Open Calendar › Default › New Tab**. See [[DOCS-028 Calendar overview|Calendar overview]] and [[DOCS-029 Calendar presets and time grid|Calendar presets and time grid]].
+- **Kanban**: tasks as cards grouped by a column property and an optional row property. Use Status for workflow stages, or other properties for dates, people, and other planning dimensions. Run **Open Kanban › Default › New Tab**. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Table**: tasks as rows and columns, like a spreadsheet, for comparing fields, sorting, grouping, and summarizing them. Add the **Task Tree** column to open parent and subtask context in the rows, or open [[DOCS-139 Gantt view|Gantt]] beside the Table to plan those rows across time and dependencies. Use it to plan *by comparison and sequence*. Run **Open Table › Default › New Tab**. See [[DOCS-105 Table overview|Table overview]].
 - **Canvas Task Cards**: arrange tasks as a project map, gather existing work from the Canvas Task Pool, and set parent–child or blocking relationships on connections. Run **Add task to Canvas** from an editable Canvas. See [[DOCS-141 Canvas Task Cards|Canvas Task Cards]].
 - **Excalidraw Task Cards**: arrange tasks beside sketches, convert drawing text into tasks, and edit relationships on arrows. See [[DOCS-147 Excalidraw Task Cards|Excalidraw Task Cards]].
 - **Task Pool**: find existing tasks by search or mode. Add their cards to Canvas or Excalidraw, or place them in a Kanban cell. See [[DOCS-148 Canvas and Excalidraw Task Pool|Task Pool]].
@@ -39,10 +39,11 @@ Planning a day or week by date? Use the Calendar. Planning by workflow stage or 
 
 ## Ways to control and automate
 
+- **Automations** apply actions to matching inline and file tasks. For example, tag project tasks scheduled for today and inspect which ones will change before running the rule. See [[DOCS-156 Automations|Automations]].
 - **Property Value Pool**: find and favorite reusable values to apply to task cards on Canvas, Excalidraw, or Kanban. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Property Value Pool]].
 - **Pipelines and statuses**: the workflow stages a task moves through (for example, the columns you see in Kanban). Set these up once to match how you work. See [[DOCS-037 Pipelines and statuses|Pipelines and statuses]].
 - **Recurring tasks**: tasks that repeat on a schedule, such as every Monday. See [[DOCS-033 Recurring tasks|Recurring tasks]].
-- **Time tracking**: start and stop a timer on a task with **Start/stop time tracker**, then review sessions in the **Time Session History** panel. For focused work sessions, open the **FlowTime** panel. See [[DOCS-034 Time tracking|Time tracking]].
+- **Time tracking**: start and stop a timer on a task with **Start/stop timer for task at cursor**, then review sessions in the **Time Session History** panel. For focused work sessions, open the **FlowTime** panel. See [[DOCS-034 Time tracking|Time tracking]].
 - **Command palette**: almost everything above has a command, and many commands are **context-aware**. The same command does different things depending on whether you are on selected text, an empty line, a task, or a view. See [[DOCS-022 Command palette reference|Command palette reference]].
 
 ## When you are starting out

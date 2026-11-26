@@ -15,7 +15,7 @@ Updated: 2026-10-29T18:22:34+01:00
 
 ## Columns and lanes
 
-Choose the two properties independently in [[DOCS-153 Kanban presets|Kanban presets]]. Either direction can use Status, a suitable built-in property, or a supported custom or vault property. Text, Number, Date, Datetime, Checkbox, and List are supported; automatic or internal fields are not ordinary editable axes.
+Choose the two properties independently in [[DOCS-153 Kanban presets|Kanban presets]]. Either direction can use Status, a suitable built-in property, or a supported custom or vault property. Kanban can group cards by Text, List, Number, Checkbox, Date, and Datetime, whether the vault property has an explicitly assigned type or uses **Auto**. Internal and calculated fields are excluded from the pickers.
 
 The same property and even the same value can be selected on both axes. For a single-valued property such as priority, only matching intersections can hold tasks: Priority A × Priority B stays empty. For a list property, a task can match several intersections.
 
@@ -41,7 +41,7 @@ For properties other than Status, **Add value** selects the headings you want. L
 
 ## List-valued axes and card moves
 
-Tags, Contexts, Assignees, and custom or vault List fields can hold multiple members. One task can appear in every matching cell without becoming several tasks.
+Tags, Contexts, Assignees, and custom or vault List fields can hold multiple members. One task can appear in every matching cell without becoming several tasks. For **Auto (List)**, moving a card from `Alpha` to `Beta` adds `Beta` and keeps `Alpha`. For the five single-valued Auto types, the destination value replaces the previous one. For example, moving a card to the unchecked row sets its Checkbox value to `false`.
 
 | Move | Effect |
 |---|---|

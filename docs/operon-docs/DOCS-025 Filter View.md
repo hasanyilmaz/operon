@@ -2,14 +2,14 @@
 Notes: Query tasks with saved, condition-based views
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-10-29T18:31:47+01:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Filter View
 
 The Filter View is your everyday surface for answering "what should I work on?" A filter is a saved query over your task fields, and the Filter View shows the tasks that match it, drawn from across the whole vault. [[DOCS-011 Inline tasks|Inline tasks]] and [[DOCS-013 File tasks|file tasks]] appear together in the same list, because a filter matches on fields, not on a task's shape. It never creates a second copy of a task; it reveals the ones that fit.
 
-Open it with **Operon Filter View** from the command palette.
+Run **Open Filter › Default › New Tab** from the command palette. To go straight to a saved filter, search for its name and choose **Open Filter › [filter name] › New Tab**.
 
 > **MEDIA-DOCS-025-1:** The Filter View showing a filtered list of tasks.
 

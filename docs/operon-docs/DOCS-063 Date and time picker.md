@@ -2,7 +2,7 @@
 Notes: Set dates and times by typing them in words or picking from a calendar
 Icon: calendar-days
 Color: "#db2777"
-Updated: 2026-11-05T01:14:43+01:00
+Updated: 2026-11-25T15:54:08+03:00
 ---
 
 # Date and time picker
@@ -44,6 +44,12 @@ The suggestions are intentionally broad while you are still typing, so a short q
 
 The placeholder itself reminds you of the idea: "Type a date like next tuesday." Pick a suggestion to set the field.
 
+## Dates in filters and Automation Actions
+
+In a filter, choosing **Tomorrow** for **date is** saves a specific date. For example, if you choose it on November 22, 2026, the condition will continue to match November 23. **Scope** and **Triggers** in an automation use the same filter behavior.
+
+In **Automation Actions**, choosing **Tomorrow** saves a relative day. A rule that runs on November 22 sets November 23. Running it on November 23 sets November 24. For a Date & time action, **Tomorrow · 14:45** (or **Tomorrow · 2:45 PM** in 12-hour format) keeps that local time on the calculated day. To set the same date on every run, pick a calendar day or type a full date such as `2026-11-23`.
+
 ## Brazilian Portuguese dates
 
 When the interface language is **Brazilian Portuguese** (`pt-BR`), the picker uses its own Portuguese grammar. Verified examples include `Hoje`, `Amanhã`, `terça-feira`, `daqui a 3 dias`, `15 agosto`, and `15/08/2026`. Accents and letter case in supported Portuguese words are accepted, and `15 de agosto` is also valid.
@@ -54,7 +60,7 @@ This grammar fails closed. An unrecognized English phrase such as `next Tuesday`
 
 If you would rather see the month, the picker also shows a calendar grid. Move by month or year, click a day, and use **Today** to jump to the current day or **Clear** to empty the field. Typing and clicking are two ways into the same control; use whichever is faster for the date you want.
 
-For a supported Vault Property of type **Date**, the calendar appears inside the picker in [[DOCS-154 Property Editor|Property Editor]], [[DOCS-021 Task Editor#Additional properties|Task Editor Additional]], and [[DOCS-115 File task property columns|Operon Table]]. The grid follows **Week start** and **Calendar sidebar week numbers** under **Settings → Operon → Views → Calendar**. Selecting a day applies the value immediately and uses that surface’s normal save behavior.
+For a supported Vault Property of type **Date**, the calendar appears inside the picker in [[DOCS-154 Property Editor|Property Editor]], [[DOCS-021 Task Editor#Additional properties|Task Editor Additional]], and [[DOCS-115 File task property columns|Operon Table]]. Set the grid’s first day under **Settings → Operon → Core → General → Language & Formats → Week start**. Week numbers follow **Calendar sidebar week numbers** under **Settings → Operon → Views → Calendar → Calendar Sidebar Settings**. Selecting a day applies the value immediately and uses that surface’s normal save behavior.
 
 > **MEDIA-DOCS-063-2:** The calendar grid in the date picker, with Today and Clear actions.
 

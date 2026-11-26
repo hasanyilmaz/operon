@@ -2,14 +2,14 @@
 Notes: Plan tasks by date on the Operon Calendar
 Icon: calendar-days
 Color: "#0284c7"
-Updated: 2026-11-18T16:29:19+03:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Calendar overview
 
 The Calendar shows your tasks in time. It is the best surface for scheduled work, deadlines, and time blocks, and for planning by day or week. [[DOCS-011 Inline tasks|Inline tasks]] and [[DOCS-013 File tasks|file tasks]] land on the same Calendar as soon as they carry a date, so a quick line in a note and a full task note are planned side by side. Many tasks only become real once they are placed on a date, and the Calendar is where that happens.
 
-Open it with **Operon Calendar** from the command palette.
+Run **Open Calendar › Default › New Tab** from the command palette. To open a particular calendar layout, choose **Open Calendar › [preset name] › New Tab**.
 
 Use **Open mini calendar** for a separate date sidebar with quick access to daily and weekly notes. See [[DOCS-155 Mini Calendar|Mini Calendar]].
 
@@ -68,7 +68,7 @@ The Calendar can be tuned with presets that control its time grid and how it dis
 
 You can also switch the Calendar's own layout between a top toolbar and a side panel with a working [[DOCS-095 Calendar Task Pool|Task Pool]] you drag tasks from to schedule them. See [[DOCS-060 Calendar layout toolbar and sidebar|Calendar layout: toolbar and sidebar]].
 
-Time Grid and Time Tracker Grid offer **Rolling days** or **Calendar week** under **Range & Layout → Date range**. Calendar week follows your **Week start** setting and keeps a complete week boundary while you navigate. This works on desktop and tablets using the normal grid.
+Time Grid and Time Tracker Grid offer **Rolling days** or **Calendar week** under **Range & Layout → Date range**. Calendar week follows **Week start** in **Settings → Operon → Core → General → Language & Formats** and keeps a complete week boundary while you navigate. This works on desktop and tablets using the normal grid.
 
 ## On mobile
 

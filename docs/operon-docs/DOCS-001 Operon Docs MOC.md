@@ -2,7 +2,7 @@
 Notes: Root index and reading path for the Operon documentation
 Icon: book-open
 Color: "#334155"
-Updated: 2026-11-18T16:38:41+03:00
+Updated: 2026-11-25T17:22:16+03:00
 ---
 
 # Operon Docs
@@ -86,6 +86,7 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 
 ### Command palette
 - [[DOCS-022 Command palette reference|Command palette reference]]
+- [[DOCS-157 URI Finder|URI Finder]]
 - [[DOCS-084 Create New Operon Task|Create New Operon Task]]
 - [[DOCS-085 Create or edit inline task|Create or edit inline task]]
 - [[DOCS-086 Create file task|Create file task]]
@@ -151,6 +152,8 @@ Follow these in order. They are enough to go from "what is this?" to doing real 
 - [[DOCS-140 Upcoming Tasks|Upcoming Tasks]]
 
 ### Automation
+
+- [[DOCS-156 Automations|Automations]]
 - [[DOCS-033 Recurring tasks|Recurring tasks]]
 - [[DOCS-071 Recurrence rules and modes|Recurrence rules and modes]]
 - [[DOCS-116 Reminders|Reminders]]

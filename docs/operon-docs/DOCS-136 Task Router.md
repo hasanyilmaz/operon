@@ -2,7 +2,7 @@
 Notes: Route new and existing inline and file tasks to the right working and archive locations
 Icon: route
 Color: "#2563eb"
-Updated: 2026-10-14T11:47:37+02:00
+Updated: 2026-11-25T15:54:08+03:00
 ---
 
 # Task Router
@@ -38,7 +38,12 @@ The default inline destination can be:
 
 Daily Notes is available when Operon manages Daily Notes or Obsidian's Core Daily Notes plugin is available. Weekly Notes requires Operon's Weekly Notes management to be enabled.
 
-For Daily Notes, Active File, and Ask Every Time, **Inline task heading** is a heading keyword rather than a whole Markdown heading. Operon inserts under the first Markdown heading in the note body whose text contains that phrase (case-insensitively), ignoring heading-like text in YAML frontmatter and fenced code blocks; if none exists, it creates a level-two heading where safe. Weekly Notes uses the routed daily-date heading described in [[DOCS-137 Daily and Weekly Notes|Daily and Weekly Notes]]. Specific File mode uses a linked date heading based on the active Core Daily Notes format, with `YYYY-MM-DD` as fallback.
+For **Daily Notes**, **Active File**, and **Ask Every Time**, enter a phrase in **Inline task heading keyword**. Operon adds the task under the first heading whose text contains that phrase, ignoring case. It skips YAML frontmatter and fenced code blocks and creates a level-two heading if it finds no match. **Weekly Notes** use the task's routed date for the heading. See [[DOCS-137 Daily and Weekly Notes#Where the inline task is placed|Where the inline task is placed]].
+
+**Specific File** has its own **Inline task heading keyword**. Choose your target file, then pick how to group new tasks:
+
+- **Under one heading:** Enter `Logs` without the `#` symbols. A heading such as `### Project Logs` already matches. If no heading contains `Logs`, Operon creates `## Logs`.
+- **By date:** Leave the keyword empty. Operon uses a linked date heading in the active Core Daily Notes format, with `YYYY-MM-DD` as the fallback.
 
 If frontmatter is unclosed, or a missing heading would have to be appended inside an unclosed code block, Operon stops the insertion instead of writing the task into metadata or code. Fix the note structure before retrying.
 

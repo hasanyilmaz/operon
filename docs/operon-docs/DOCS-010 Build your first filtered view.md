@@ -2,7 +2,7 @@
 Notes: Build your first Filter View
 Icon: list-filter
 Color: "#16a34a"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Build your first filtered view
@@ -15,7 +15,7 @@ Creating tasks is only half of Operon. The other half is seeing the right ones t
 
 ## Open the Filter View
 
-From the command palette, run **Operon Filter View**. This opens the surface that lists tasks across your whole vault. At first it shows a broad set; the point of a filter is to narrow it to what you care about right now.
+From the command palette, run **Open Filter › Default › New Tab**. The Filter View opens in a new tab, where you can narrow the task list to the work you want to see.
 
 ## Build one useful filter
 

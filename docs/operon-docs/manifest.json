@@ -9,8 +9,8 @@
   "files": [
     {
       "path": "DOCS-001 Operon Docs MOC.md",
-      "sha256": "c69e2f82dbf5cb7c5daa97287d8eb506a8946e7390110ca244fb1e9801c3c1a8",
-      "bytes": 12837
+      "sha256": "3864b38581be597e95958151e5b3db8d6aeb5782d742c7d54114f6b4b597200a",
+      "bytes": 12914
     },
     {
       "path": "DOCS-002 How to use these docs.md",
@@ -24,8 +24,8 @@
     },
     {
       "path": "DOCS-004 Operon system map.md",
-      "sha256": "905293d2f8daf81b56eed0d18426c10220ee60afb5acb8d17ac7ae5a88ce2980",
-      "bytes": 6553
+      "sha256": "822cfb75eb649559e8688718c37281f8f19d763c6c4805db7b29a9a301212a70",
+      "bytes": 6868
     },
     {
       "path": "DOCS-005 Operon core concepts.md",
@@ -54,8 +54,8 @@
     },
     {
       "path": "DOCS-010 Build your first filtered view.md",
-      "sha256": "77b11ced0942c4024eaec410f3cdd9b1adccf1397635a19d45bb322fb536a238",
-      "bytes": 3121
+      "sha256": "86d2c20d2d3ca3d479153801ea871a1d9dfe629e20862132462812eca62a7f82",
+      "bytes": 3076
     },
     {
       "path": "DOCS-011 Inline tasks.md",
@@ -114,8 +114,8 @@
     },
     {
       "path": "DOCS-022 Command palette reference.md",
-      "sha256": "f7ecd432abc1de447da89800e37cccbb3afad7674a2ff2713a44bbabbfee7aac",
-      "bytes": 9165
+      "sha256": "b0afbe2a07c94b536fae0ca6c97cb90dbefdddd286dd0b6d4bd6b5fdcddc017c",
+      "bytes": 10071
     },
     {
       "path": "DOCS-023 Create tasks from selected text.md",
@@ -129,8 +129,8 @@
     },
     {
       "path": "DOCS-025 Filter View.md",
-      "sha256": "056de055555fdd65922c9c008e9a273efa072f2ef914bc59d422c266e9004438",
-      "bytes": 8567
+      "sha256": "c306abd913cbb4752a441d2716659215d5cfde54e2c2dff08eb2c94f97bb03ae",
+      "bytes": 8687
     },
     {
       "path": "DOCS-026 Dynamic file task filter.md",
@@ -144,8 +144,8 @@
     },
     {
       "path": "DOCS-028 Calendar overview.md",
-      "sha256": "6ecc505a3a93b7570bf82cfb4e6386de25553afb7189ab69b9e9b5acad7870f5",
-      "bytes": 7855
+      "sha256": "392d11eff31eb78d974a8c6ca00216c92c462727693fd108c2e56a693a845ce8",
+      "bytes": 8020
     },
     {
       "path": "DOCS-029 Calendar presets and time grid.md",
@@ -154,8 +154,8 @@
     },
     {
       "path": "DOCS-030 Kanban overview.md",
-      "sha256": "d028455fa3129dc1c927d43ccafa40c0b6a8907a08459df408ecc694cfe65b35",
-      "bytes": 14151
+      "sha256": "ff7841e71deead01547c31b15e5c6f3da528e894c0bdda395ac4ae50ee622ee1",
+      "bytes": 14295
     },
     {
       "path": "DOCS-031 Kanban manual order.md",
@@ -174,8 +174,8 @@
     },
     {
       "path": "DOCS-034 Time tracking.md",
-      "sha256": "e8a8e81aec0c3ca4f6d8d6aaf165f7cd8805586f8811b942b342e6cb4cef027d",
-      "bytes": 9957
+      "sha256": "058d86b240ff2a6cd4dfe07e7b4af9048d75a6f3f98969bd6993445392f3b961",
+      "bytes": 10184
     },
     {
       "path": "DOCS-035 FlowTime focus sessions.md",
@@ -204,8 +204,8 @@
     },
     {
       "path": "DOCS-040 Custom keys.md",
-      "sha256": "8eb239eb7c14ea0e3c707d5fab07bbee5ee447cb944d29d7ca3fd8b211f964ad",
-      "bytes": 14266
+      "sha256": "79910fa5e35c811c79c3fc7ebf6fc6cd5d459267dd697819f02028fbcd545c28",
+      "bytes": 14459
     },
     {
       "path": "DOCS-041 Task chips display and behavior.md",
@@ -264,8 +264,8 @@
     },
     {
       "path": "DOCS-052 Completed task review.md",
-      "sha256": "27e153cc518fe171f8ef3c302b69f33429a6db4677ff57b9a152b24b541710dc",
-      "bytes": 3744
+      "sha256": "a016167a2aa5765029018850d8597ad996ac6627295f21dcf9669a66f3522224",
+      "bytes": 3848
     },
     {
       "path": "DOCS-053 Time session history.md",
@@ -284,8 +284,8 @@
     },
     {
       "path": "DOCS-056 Calendar or Kanban rendering issues.md",
-      "sha256": "0d958c9107d257ff711610ed5967c8f42bd2d480af368548d5ecb57c8509d989",
-      "bytes": 8205
+      "sha256": "2a301f871cce0f11fc8444309cfa499f7e212e53688d5d23ccc090cb99f845eb",
+      "bytes": 8813
     },
     {
       "path": "DOCS-057 Operon FAQ.md",
@@ -319,8 +319,8 @@
     },
     {
       "path": "DOCS-063 Date and time picker.md",
-      "sha256": "723982ce2d33b7d5d38967bcb602e64fb9ca06fae8e2a631498512c436f0e9e3",
-      "bytes": 9525
+      "sha256": "d184334cab7973213136fe33ac91843c92c11501ad0abb91b491482094bd4b50",
+      "bytes": 10354
     },
     {
       "path": "DOCS-064 Recurrence picker.md",
@@ -369,13 +369,13 @@
     },
     {
       "path": "DOCS-073 Filter conditions and operators.md",
-      "sha256": "1b59fe47f5438d59bceb62aad0e935b9e42a2f2d2564351868147fb0e4d39245",
-      "bytes": 14823
+      "sha256": "fca2a7d6b354e34dcf13768a3a0bdef6f9c86c60686f8d353e7497655311459a",
+      "bytes": 16481
     },
     {
       "path": "DOCS-074 Kanban swimlanes.md",
-      "sha256": "bfd6af415896d41942e2a7e17c244e30c84ea6889696cb2dd5314ef6d3bd3313",
-      "bytes": 5550
+      "sha256": "b395869d7444dffa5cc6e4f6c44ea2a030aa48ec785c105132491cc77efcda28",
+      "bytes": 5901
     },
     {
       "path": "DOCS-075 Welcome - choose your starting point.md",
@@ -529,8 +529,8 @@
     },
     {
       "path": "DOCS-105 Table overview.md",
-      "sha256": "53300a9f6e9b5ea4de997deee9d3dceb931977c1f6c2b68ca6530876756400f8",
-      "bytes": 14035
+      "sha256": "5db5f3e6f70cbcdab8087325ed88647cbfe45dbbd1c075111b6bbd9fc3fe34b1",
+      "bytes": 14228
     },
     {
       "path": "DOCS-106 Table columns.md",
@@ -579,8 +579,8 @@
     },
     {
       "path": "DOCS-115 File task property columns.md",
-      "sha256": "97d3607f8c003b49315c4161ec7be147d63b29c7a1b89833c216e0bc24c83e9c",
-      "bytes": 11558
+      "sha256": "20874abd9bad7f71d5a8c798d0871b90e283428c0b0bfdf8edb2acc9be6814c4",
+      "bytes": 11648
     },
     {
       "path": "DOCS-116 Reminders.md",
@@ -589,8 +589,8 @@
     },
     {
       "path": "DOCS-117 Reminder rules.md",
-      "sha256": "66881fb228c164d95e1891d822ab5eab056aa9d9f949d89170e9a7caca484b0e",
-      "bytes": 13977
+      "sha256": "fc7eea913e0b27bb4c81abda41deba39893da7099e6515a3e35298b10c961fd0",
+      "bytes": 14269
     },
     {
       "path": "DOCS-118 Operon Agent Runtime overview.md",
@@ -684,13 +684,13 @@
     },
     {
       "path": "DOCS-136 Task Router.md",
-      "sha256": "3edaee691e5336704cb7b891ed7f6b1e8911a89daf3d6515f436f0026a36eb2d",
-      "bytes": 13250
+      "sha256": "4c25e7f8ef98ec8569f3e65c502f3413d3d4961befcdcf279b00bb00ae180394",
+      "bytes": 13546
     },
     {
       "path": "DOCS-137 Daily and Weekly Notes.md",
-      "sha256": "4d70e89323ee689ca295f9491ab11feafce47d75cc680e4fa9da6010109b8c71",
-      "bytes": 14025
+      "sha256": "c71b45c2e0da250a299c8c45acc4e8d0d66b8dd09323815071c4cb2d0b6c542f",
+      "bytes": 14779
     },
     {
       "path": "DOCS-138 Task images and galleries.md",
@@ -759,8 +759,8 @@
     },
     {
       "path": "DOCS-151 Lightbox.md",
-      "sha256": "194613cf107069b2cc96859135e7d82e733a8d38b47637a38204cfa824d94850",
-      "bytes": 21406
+      "sha256": "ebdd4f1f7cfb06a1680317146dde571e29590d4e84752f8e598e2060539412b5",
+      "bytes": 21664
     },
     {
       "path": "DOCS-152 Status Dock.md",
@@ -769,8 +769,8 @@
     },
     {
       "path": "DOCS-153 Kanban presets.md",
-      "sha256": "e3ddd664c53f593906ee8e9d944ab0b11970a123fb34e6c40d2256e2516640f3",
-      "bytes": 9839
+      "sha256": "811806acb5432eafedd7d1d5be9300b12f55794af026c65b8191a8507e8106cb",
+      "bytes": 10330
     },
     {
       "path": "DOCS-154 Property Editor.md",
@@ -779,9 +779,19 @@
     },
     {
       "path": "DOCS-155 Mini Calendar.md",
-      "sha256": "5e9d54fcf3fbc1e22f01a89631e3833bb31a64934b72a7223433c5031bedc981",
-      "bytes": 3949
+      "sha256": "bff85d95f4dc86bb23bf507aa3081d4b5a1e8f8245035f4030212d6eef2a8e22",
+      "bytes": 4516
+    },
+    {
+      "path": "DOCS-156 Automations.md",
+      "sha256": "1ba24df78dc81110f2668cacf2655ebbe13e9cab51c1f4e771030b0fd5ea5934",
+      "bytes": 13702
+    },
+    {
+      "path": "DOCS-157 URI Finder.md",
+      "sha256": "411385a8a7f6cd1fb3f77819d82f9c39e93cd9bfdb62570209e851ff8fbc9c0c",
+      "bytes": 4059
     }
   ],
-  "generatedAt": "2026-11-18T14:43:23.089Z"
+  "generatedAt": "2026-11-26T12:49:06.772Z"
 }

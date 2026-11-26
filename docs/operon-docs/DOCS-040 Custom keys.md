@@ -62,7 +62,7 @@ A custom key is not forced into every surface. You choose where it appears with 
 - **Show in editor**: as a control in the [[DOCS-021 Task Editor|Task Editor]] and the Live Preview field menus.
 - **Show in creator**: as a field in the [[DOCS-020 Task Creator|Task Creator]].
 - **Show in chips**: as a compact chip on the task. See [[DOCS-041 Task chips display and behavior|Task chips]].
-- **Show in Kanban swimlanes** remains a legacy surface preference. The current Kanban Property pickers offer technically eligible custom fields for either axis independently of this toggle. See [[DOCS-153 Kanban presets|Kanban presets]].
+- **Show in Kanban swimlanes** makes the field available for new swimlane selections. Turning it off hides the field from the swimlane picker. Saved boards that already group by the field keep their rows, and the field remains available for column selection. For vault properties set to **Auto**, Kanban can group and move cards using Text, List, Number, Checkbox, Date, or Datetime. See [[DOCS-153 Kanban presets|Kanban presets]].
 
 The general Custom Key surface selector does not offer Checkbox fields as ordinary custom picker controls. This is separate from native Checkbox editing in Additional, prepared template fields, and Tables. Existing Checkbox value chips in Task Editor use checked/unchecked icons where that rendering path is already available; this does not add new chip surfaces. See [[DOCS-070 Custom field pickers|Custom field pickers]] and [[DOCS-115 File task property columns|Vault Properties]].
 
