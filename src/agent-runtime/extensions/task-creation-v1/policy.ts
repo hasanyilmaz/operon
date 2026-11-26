@@ -2,7 +2,7 @@ import { resolveEffectiveInlineTaskSaveMode } from '../../../core/inline-task-sa
 import type { OperonSettings } from '../../../types/settings';
 import type { FileTaskTemplateOption } from '../../../core/file-task-templates';
 import type { PeriodicNoteConfigResolution } from '../../../core/periodic-note-config';
-import { DEFAULT_INLINE_TASK_TARGET_FILE, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword } from '../../../types/settings';
+import { DEFAULT_INLINE_TASK_TARGET_FILE, normalizeSpecificFileHeading, normalizeInlineTaskHeadingKeyword, normalizeInlineTaskParentFileHeadingKeyword } from '../../../types/settings';
 import type { PeriodicCreationPolicyV1, TaskCreationPolicyV1 } from './contracts';
 
 export function projectPeriodicCreationPolicyV1(kind: 'daily' | 'weekly', resolution: PeriodicNoteConfigResolution): PeriodicCreationPolicyV1 {
@@ -19,7 +19,8 @@ export function buildTaskCreationPolicyV1(settings: Readonly<OperonSettings>, te
   inline: {
    configuredSaveMode, saveMode, requiresExplicitTarget: saveMode === 'active-file' || saveMode === 'ask-every-time',
    targetFile: settings.inlineTaskTargetFile.trim() || DEFAULT_INLINE_TASK_TARGET_FILE,
-   heading: normalizeInlineTaskHeadingKeyword(settings.inlineTaskHeading),
+   heading: (saveMode === 'specific-file' && normalizeSpecificFileHeading(settings.inlineTaskSpecificFileHeading))
+    || normalizeInlineTaskHeadingKeyword(settings.inlineTaskHeading),
    parentInline: settings.inlineTaskParentInlineTargetMode, parentFile: settings.inlineTaskParentFileTargetMode,
    parentFileHeading: normalizeInlineTaskParentFileHeadingKeyword(settings.inlineTaskParentFileHeadingKeyword),
    dailyAddsStartDate: settings.inlineTaskDailyNoteAddStartDate, dailyAddsScheduledDate: settings.inlineTaskDailyNoteAddScheduledDate,

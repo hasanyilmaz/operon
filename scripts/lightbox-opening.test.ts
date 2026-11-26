@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { Platform, TFile, WorkspaceTabs } from 'obsidian';
+import { Notice, Platform, TFile, WorkspaceTabs } from 'obsidian';
 import { lightboxFixture } from './test-support/lightbox-dom';
 import { activateResolvedOpening, resolveChipOpening } from '../src/ui/links-chip-action';
 import { DEFAULT_SETTINGS } from '../src/types/settings';
 import { openLightbox } from '../src/ui/lightbox';
 import { openLightboxTarget, openTaskFileLinkWithModifier, resolveLightboxFile } from '../src/ui/lightbox-opening';
-import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
+import { disposeWebLightboxes, flushLightboxMarkdown, lightboxFileState, openFileLightboxAsync, openWebLightbox, prepareLightboxTab } from '../src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from '../src/ui/native-lightbox-lifecycle';
 import { bindTaskMediaChipPreview, cleanupTaskMediaChipPreviews } from '../src/ui/compact-chip-link-preview';
 
@@ -207,6 +207,37 @@ for(const extension of ['base','table']) test(`native ${extension} uses owned vi
   assert.equal(f.opens[1].eState.subpath,'#My view');
  }finally{f.cleanup();await tick();}
 });
+for (const loadedId of ['tp_requested', 'tp_replacement', null]) {
+ test(`a command Table lightbox checks the loaded file identity before showing ${loadedId}`, async () => {
+  const f = fixture('table');
+  const messages: string[] = [];
+  const notice = Notice as typeof Notice & { onNotice: ((text: string) => void) | null };
+  const previous = notice.onNotice;
+  notice.onNotice = message => messages.push(message);
+  let finishLoad!: () => void;
+  f.leaf.loadIfDeferred = () => new Promise<void>(resolve => { finishLoad = resolve; });
+  f.view.getState = () => ({ presetId: loadedId });
+  try {
+   const opened = openFileLightboxAsync(f.app, f.anchor, { file: f.file, subpath: '', expectedTablePresetId: 'tp_requested' });
+   await tick();
+   const host = f.doc.body.querySelectorAll().find((node: any) => node.classes.has('operon-native-lightbox-host'));
+   assert.equal(host?.hidden, true);
+   finishLoad();
+   await opened;
+   await tick();
+   if (loadedId === 'tp_requested') {
+    assert.equal(host.hidden, false);
+    assert.equal(f.stats().detached, 0);
+    assert.deepEqual(messages, []);
+   } else {
+    assert.equal(host.hidden, true);
+    assert.equal(f.stats().detached, 1);
+    assert.deepEqual(messages, ['Preset not found.']);
+   }
+  } finally { notice.onNotice = previous; f.cleanup(); await tick(); }
+ });
+}
+
 test('unavailable native Base view does not keep a raw text fallback or alter user tabs',async()=>{
  const f=fixture('base');try{
   f.view.getViewType=()=> 'markdown';
@@ -693,5 +724,46 @@ test('missing task-file modifier target does not create a file or open a fallbac
   await openTaskFileLinkWithModifier(f.app, f.anchor, 'missing', 'Host.md', mouse({metaKey:true}));
   assert.equal(f.stats().created, 0);
   assert.equal(f.opens.length, 0);
+ } finally { f.cleanup(); }
+});
+
+for (const mode of ['lightbox', 'tab'] as const) test(`Open Source from a tabless Settings preview opens the task in the vault window (${mode})`, async () => {
+ const f = fixture();
+ const settings = lightboxFixture();
+ const preview = settings.doc.body.createDiv();
+ preview.appendChild(settings.anchor);
+ settings.anchor.closest = (selector: string) => selector === '.operon-filter-preview-modal-shell' ? preview : null;
+ f.app.workspace.iterateAllLeaves = (visit: (leaf: unknown) => void) => visit(f.app.workspace.getMostRecentLeaf());
+ let focused = 0;
+ f.doc.defaultView.focus = () => focused++;
+ try {
+  const result = await openLightboxTarget(f.app, settings.anchor, {
+   kind: 'local', linktext: f.file.path, sourcePath: f.file.path, operonId: 'abcdefg', line: 3, caretCh: 7,
+  }, mode);
+  await tick();
+  assert.equal(result, 'opened');
+  assert.equal(f.opens.length, 1);
+  assert.deepEqual(f.opens[0].eState.cursor.from, {line: 3, ch: 7});
+  assert.equal(f.root.ownerDocument, f.doc);
+  assert.equal(focused, 1);
+  assert.equal(preview.isConnected, true);
+  assert.equal(f.stats().saves, 0);
+ } finally { f.cleanup(); }
+});
+
+test('Open Source keeps a preview in its own window when that window has workspace tabs', async () => {
+ const f = fixture();
+ const main = lightboxFixture();
+ f.app.workspace.containerEl = main.doc.body;
+ const preview = f.doc.body.createDiv();
+ f.anchor.closest = (selector: string) => selector === '.operon-filter-preview-modal-shell' ? preview : null;
+ let focusedMain = false;
+ main.doc.defaultView.focus = () => { focusedMain = true; };
+ try {
+  await openLightboxTarget(f.app, f.anchor, {kind: 'local', linktext: f.file.path, sourcePath: f.file.path, operonId: 'abcdefg'});
+  await tick();
+  assert.equal(f.opens.length, 1);
+  assert.equal(f.root.ownerDocument, f.doc);
+  assert.equal(focusedMain, false);
  } finally { f.cleanup(); }
 });

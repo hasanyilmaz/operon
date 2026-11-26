@@ -640,6 +640,19 @@ async function assertLegacyArchiveReloadMigrationLane(): Promise<void> {
 }
 
 async function run(): Promise<void> {
+	const older = buildOperonDataPackageFromSettings({ ...DEFAULT_SETTINGS, inlineTaskHeading: 'New Todo' });
+	assert.equal('inlineTaskSpecificFileHeading' in older.ui.taskCreationProfile, false);
+	assert.equal(composeOperonSettingsFromDataPackage(older, DEFAULT_SETTINGS).inlineTaskSpecificFileHeading, '');
+	const withHeading = buildOperonDataPackageFromSettings(migrateSettings({
+		...DEFAULT_SETTINGS, inlineTaskSaveMode: 'specific-file', inlineTaskHeading: 'New Todo', inlineTaskSpecificFileHeading: '  Minor Tasks  ',
+	}));
+	const restored = composeOperonSettingsFromDataPackage(withHeading, DEFAULT_SETTINGS);
+	assert.equal(restored.inlineTaskSpecificFileHeading, 'Minor Tasks');
+	assert.equal(restored.inlineTaskHeading, 'New Todo');
+	assert.equal(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.inlineTaskSpecificFileHeading.support, 'portable');
+	const cleared = mergeTaskCreationProfilePreservingUnknownV1(withHeading.ui.taskCreationProfile, older.ui.taskCreationProfile);
+	assert.equal('inlineTaskSpecificFileHeading' in cleared, false);
+
 	assert.equal(CURRENT_SETTINGS_VERSION, 116);
 	assert.deepEqual({
 		fileTaskPipelineLocations: DEFAULT_SETTINGS.fileTaskPipelineLocations,

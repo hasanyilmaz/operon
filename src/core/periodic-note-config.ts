@@ -3,6 +3,7 @@ import {
 	normalizePeriodicNoteFolder,
 	normalizePeriodicNoteFormat,
 	type PeriodicNoteKind,
+	type PeriodicWeekStart,
 } from './periodic-note-path';
 
 export type PeriodicNoteConfigSource = 'operon' | 'core-daily-notes';
@@ -16,6 +17,7 @@ export interface PeriodicNoteManagedConfig {
 }
 
 export interface PeriodicNoteEffectiveConfig {
+	weekStart?: PeriodicWeekStart;
 	kind: PeriodicNoteKind;
 	source: PeriodicNoteConfigSource;
 	format: string;

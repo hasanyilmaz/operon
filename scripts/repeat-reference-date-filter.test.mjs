@@ -14,9 +14,27 @@ const temp = await mkdtemp(path.join(tmpdir(), 'operon-repeat-date-filter-'));
 after(() => rm(temp, { recursive: true, force: true }));
 await build({ stdin: { contents: `
  export * from './src/core/filter-evaluator';
+ export { decodeVaultPropertyList, encodeVaultPropertyValue } from './src/core/vault-property-codec';
+ export * from './src/ui/field-pickers/automation-date-options';
+ export * from './src/ui/field-pickers/datetime-time-grid';
+ export { formatCompactDatetimeTime, formatUiTaskDatetime } from './src/core/ui-time-format';
+ export { normalizeOperonDateKey } from './src/ui/field-pickers/day-picker';
+ export * from './src/ui/field-pickers/date-nlp';
+ export { buildReminderRuleCandidates } from './src/ui/field-pickers/reminder-picker-model';
+ export { REMINDER_RULE_QUICK_OFFSETS, parseReminderRule, parseReminderOffsetInput } from './src/core/reminder-rules';
+ export { formatReminderDisplayItem } from './src/ui/reminder-display';
+ export { getVisiblePropertyName } from './src/core/yaml-fields';
+ export { appendDatePickerCandidateRow } from './src/ui/field-pickers/date-picker-row';
+ export * from './src/ui/task-data-field-picker';
+ export { createEmptyQueryRanker } from './src/ui/field-pickers/empty-query-ranking';
+ export { getCustomFieldMapping, getCustomFieldLabel, isProjectedCustomFieldType, collectCustomFieldValueCandidates, normalizeCustomFieldRawValue } from './src/ui/custom-field-surfaces';
  export * from './src/core/task-occurrence-date';
  export { parseRepeatRule, calculateNextRepeatDate } from './src/core/repeat-rule';
+ export { createFilterPickerTrigger } from './src/ui/field-pickers/filter-condition-picker';
  export { buildInlineTaskCompactChipEntries } from './src/ui/compact-task-layout';
+ export { FilterConditionEditor } from './src/ui/filter-condition-editor';
+ export { Notice } from 'obsidian';
+ export { isValidWeekNumber, isWeekNumberOperator } from './src/core/calendar-row-week';
  export { localToday } from './src/core/local-time';
  export { resolveTaskDateTone } from './src/core/task-date-tone';
  export { formatUiDate } from './src/core/ui-date-format';
@@ -34,10 +52,12 @@ await build({ stdin: { contents: `
  export { getTableTaskField, isEditableTableTaskFieldKey } from './src/ui/table/table-field-catalog';
 `, resolveDir: root }, outfile: path.join(temp, 'helpers.mjs'), bundle: true, format: 'esm', platform: 'node', logLevel: 'silent', alias: { obsidian: path.join(root, 'scripts/test-support/obsidian.ts') } });
 const h = await import(pathToFileURL(path.join(temp, 'helpers.mjs')).href);
-const modalFile = 'src/ui/filter-set-modal.ts';
-function compile(name, deps = {}, method = false) {
- const source = read(modalFile), ast = ts.createSourceFile(modalFile, source, ts.ScriptTarget.Latest, true);
- const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === 'FilterSetModal').members : ast.statements;
+const editorFile = 'src/ui/filter-condition-editor.ts';
+function compile(name, deps = {}, owner = '', sourceFile = editorFile) {
+ const file = owner === 'FilterSetModal' ? 'src/ui/filter-set-modal.ts' : owner === 'AutomationActionRow' ? 'src/ui/automation-action-editor.ts' : sourceFile;
+ const source = read(file), ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+ const method = Boolean(owner);
+ const nodes = method ? ast.statements.find(node => ts.isClassDeclaration(node) && node.name.text === owner).members : ast.statements;
  const node = nodes.find(node => node.name?.getText(ast) === name); assert.ok(node, name);
  const declaration = method ? `class Subject { ${node.getText(ast)} }` : node.getText(ast).replace(/^export\s+/u, '');
  const js = ts.transpileModule(declaration, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
@@ -51,7 +71,7 @@ const getFieldOptions = compile('getFieldOptions', {
  getFilterSetFieldPickerMappingCandidates: compile('getFilterSetFieldPickerMappingCandidates', { getManagedCustomFieldOptions: h.getManagedCustomFieldOptions }),
  resolveFilterFieldGroupForMapping: () => 'task', getConfiguredKeyMappingIcon: h.getConfiguredKeyMappingIcon,
  getFilterFieldTypeIcon: compile('getFilterFieldTypeIcon'), compareFilterFieldPickerOptions: compile('compareFilterFieldPickerOptions'),
-}, true);
+}, 'FilterFieldCatalog');
 const subject = { getPropertyIconSettings: () => h.DEFAULT_SETTINGS, keyMappings: h.DEFAULT_SETTINGS.keyMappings, getFilePropertyFieldOptions: () => [], getFieldOptions, getProjectSerialScopeOptions: () => [] };
 const condition = (operator = 'dateIs', value = today) => ({ id: 'condition', field: key, fieldType: 'date', operator, value });
 const filter = cond => ({ id: 'reference-filter', name: 'Reference date', rootGroup: { id: 'root', logic: 'all', children: [cond] }, sorts: [], matchLogic: 'all', conditions: [cond] });
@@ -66,7 +86,7 @@ test('reference date shares the Table label/icon/type in conditions and sorting 
  assert.equal(h.DEFAULT_SETTINGS.keyMappings.find(mapping => mapping.canonicalKey === key).isInternal, true);
  for (const happensOn of [false, true]) assert.equal(getFieldOptions.call(subject, false, happensOn).some(field => field.field === key), false);
  assert.deepEqual(getFieldOptions.call(subject, false, true, true).filter(field => field.field === key), options);
- assert.match(read(modalFile), /const sortFieldOptions = this\.getFieldOptions\(false, true, true\)/);
+ assert.match(read('src/ui/filter-set-modal.ts'), /const sortFieldOptions = this\.fields\.getFieldOptions\(false, true, true\)/);
  assert.equal(fields.some(field => field.field === 'repeatSeriesId'), false);
 });
 test('reference date sorts file and inline tasks in both directions and survives settings normalization', () => {
@@ -91,6 +111,7 @@ const cases = [
  ['thisWeek', '', '2026-10-12', '2026-10-19'], ['lastWeek', '', '2026-10-11', '2026-10-12'], ['nextWeek', '', '2026-10-19', '2026-10-18'],
  ['thisMonth', '', '2026-10-01', '2026-11-01'], ['lastMonth', '', '2026-09-30', '2026-10-01'], ['nextMonth', '', '2026-11-01', '2026-10-31'],
  ['dayOfWeekIs', '5', today, '2026-10-17'], ['dayOfWeekNot', '5', '2026-10-17', today],
+ ['weekIs', '42', today, '2026-10-19'], ['weekNot', '42', '2026-10-19', today],
  ['monthIs', '10', today, '2026-11-01'], ['monthNot', '10', '2026-11-01', today],
  ['hasAnyValue', '', today, ''], ['hasNoValue', '', '', today],
 ];
@@ -114,6 +135,22 @@ test('relative date comparisons preserve leap day, year and local DST boundaries
  for (const [now, stored] of [['2024-03-01', '2024-02-29'], ['2026-01-01', '2025-12-31'], ['2026-03-30', '2026-03-29'], ['2026-10-26', '2026-10-25']]) {
   assert.equal(matches(condition('exactlyDaysAgo', '1'), task(stored), now), true);
  }
+ for (const [now, op, expected, outside] of [
+  ['2027-01-31', 'nextMonth', '2027-02-28', '2027-03-01'],
+  ['2027-03-31', 'lastMonth', '2027-02-01', '2027-03-01'],
+  ['2028-01-31', 'nextMonth', '2028-02-29', '2028-03-01'],
+  ['2028-03-31', 'lastMonth', '2028-02-29', '2028-03-01'],
+  ['2026-12-31', 'nextMonth', '2027-01-01', '2026-12-31'],
+  ['2027-01-01', 'lastMonth', '2026-12-31', '2027-01-01'],
+ ]) {
+  for (const [day, wanted] of [[expected, true], [outside, false]]) {
+   assert.equal(matches(condition(op), task(day), now), wanted, [now, op, day].join(' '));
+   const timestamp = { ...condition(op), field: 'datetimeCreated', fieldType: 'datetime' };
+   const candidate = task(day);
+   candidate.fieldValues.datetimeCreated = day + 'T23:59:00';
+   assert.equal(matches(timestamp, candidate, now), wanted, [now, op, candidate.fieldValues.datetimeCreated].join(' '));
+  }
+ }
 });
 test('condition normalization and clone/reopen preserve key, type, operator and value', () => {
  for (const [operator, value] of cases) {
@@ -133,8 +170,8 @@ test('group clipboard round-trip is compatible with the actual destination field
  assert.equal(decoded.ok, true);
  assert.notEqual(decoded.group.id, original.id);
  assert.equal(decoded.group.children[0].field, key); assert.equal(decoded.group.children[0].value, today);
- const compatibility = compile('getFilterGroupPasteCompatibilityIssue', { findFilterGroupPasteCompatibilityIssue: h.findFilterGroupPasteCompatibilityIssue, isFilePropertyColumnKey: () => false }, true);
- assert.equal(compatibility.call(subject, decoded.group), null);
+ const compatibility = compile('getFilterGroupPasteCompatibilityIssue', { findFilterGroupPasteCompatibilityIssue: h.findFilterGroupPasteCompatibilityIssue, isFilePropertyColumnKey: () => false }, 'FilterConditionEditor');
+ assert.equal(compatibility.call({ options: { fields: subject } }, decoded.group), null);
 });
 test('settings backup serialization, parsing and validation preserve the date condition', () => {
  const body = JSON.parse(read('scripts/settings-backup-fixtures/representative-body.json'));
@@ -160,31 +197,37 @@ class Element {
  setText(value) { this.textContent = value; } setAttribute(key, value) { this.attrs[key] = value; } removeAttribute(key) { delete this.attrs[key]; }
  empty() { this.children = []; this.textContent = ''; }
  addEventListener(name, cb) { (this.events[name] ??= []).push(cb); }
+ trigger(name) { this.fire(name); }
  fire(name) { for (const cb of this.events[name] ?? []) cb({ preventDefault() {}, stopPropagation() {} }); }
  find(predicate) { return [this, ...this.children.flatMap(child => child.find(() => true))].filter(predicate); }
 }
 function modalHarness(cond = condition()) {
  const root = new Element(), draft = h.cloneFilterSet(filter(cond)), saved = [], popovers = [], fieldPickers = [];
- const state = { ...subject, filterSet: draft, options: {}, invalidRawConditionIds: new Set(),
+ const state = { ...subject, filterSet: draft, options: { fields: subject, onChange: () => state.syncMirroredFilterFields() }, invalidRawValues: new Map(),
   addClasses: (el, ...names) => el.addClass(...names), renderNodeMoveButtons() {}, renderQuickActions() {},
   measureControlContentWidth: () => 180, measureSelectContentWidth: () => 180,
   getFilterOperatorLabel: option => option.label, getPickerFieldOptions: fields => fields,
   openDateConditionPopover: (input, condition) => popovers.push({ input, condition }),
   createModalSelect: (parent, options, value, onChange) => { const select = parent.createDiv().createEl('select', { value }); select.onChange = onChange; return select; },
-  flattenConditions: compile('flattenConditions', { isFilterGroupNode: node => Array.isArray(node.children) }, true),
-  syncMirroredFilterFields: compile('syncMirroredFilterFields', {}, true),
+  syncMirroredFilterFields: compile('syncMirroredFilterFields', { flattenConditions: compile('flattenConditions', { isFilterGroupNode: node => Array.isArray(node.children) }) }, 'FilterSetModal'),
   hasInvalidTrackedOnCondition: () => false, close() { this.closed = true; }, onSave: value => saved.push(structuredClone(value)),
  };
+ state.conditionEditor = Object.assign(Object.create(h.FilterConditionEditor.prototype), {
+  options: { rootGroup: draft.rootGroup }, invalidRawValues: state.invalidRawValues,
+ });
  const deps = {
-  t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
+  Notice: h.Notice,
+  isValidWeekNumber: h.isValidWeekNumber, isWeekNumberOperator: h.isWeekNumberOperator,
+  createFilterPickerTrigger: h.createFilterPickerTrigger,
+  getPickerFieldOptions: compile('getPickerFieldOptions'), t: h.t, setIcon: (el, icon) => { el.icon = icon; }, bindOperonHoverTooltip() {},
   setAccessibleLabelWithoutTooltip: (el, value) => el.setAttribute('aria-label', value),
   getOperatorsForField: h.getOperatorsForField, NO_VALUE_OPERATORS: h.NO_VALUE_OPERATORS, NUMERIC_INPUT_DATE_OPERATORS: h.NUMERIC_INPUT_DATE_OPERATORS,
   TASK_DATA_TYPE_FIELD_KEY: '__taskDataType', isFilePropertyColumnKey: () => false,
   normalizeFilterDateInput: compile('normalizeFilterDateInput', { CANONICAL_FILTER_DATE_PATTERN: /^(\d{4})-(\d{2})-(\d{2})$/u }),
   showFilterConditionPicker: (el, options) => fieldPickers.push(options),
  };
- compile('renderConditionRow', deps, true).call(state, root, draft.rootGroup, draft.rootGroup.children[0], 0);
- compile('renderButtons', deps, true).call(state, root);
+ compile('renderConditionRow', deps, 'FilterConditionEditor').call(state, root, draft.rootGroup, draft.rootGroup.children[0], 0);
+ compile('renderButtons', deps, 'FilterSetModal').call(state, root);
  return { root, state, saved, popovers, fieldPickers, cond: draft.rootGroup.children[0] };
 }
 test('date operators render the shared date picker, numeric or no-value controls', () => {
@@ -201,6 +244,70 @@ test('date operators render the shared date picker, numeric or no-value controls
    input.value = '2026-11-01'; input.fire('input'); assert.equal(cond.value, '2026-11-01');
   }
  }
+});
+test('week number operands block saving until an integer in range is selected', () => {
+ for (const value of ['', '0', '54', '1.5', '1,2']) {
+  const { root, state, saved } = modalHarness(condition('weekNot', value));
+  const input = root.find(el => el.tag === 'input')[0];
+  const save = root.find(el => el.tag === 'button' && el.textContent === h.t('buttons', 'save'))[0];
+  assert.deepEqual([input.min, input.max, input.step], ['1', '53', '1']);
+  save.fire('click'); assert.equal(saved.length, 0); assert.ok(!state.closed);
+  input.value = '53'; input.fire('input'); save.fire('click');
+  assert.equal(h.normalizeFilterSet(saved[0]).rootGroup.children[0].value, '53');
+ }
+});
+test('fixed filter dates and automation values use the standard picker and retain its canonical selection', () => {
+ const settings = { ...h.DEFAULT_SETTINGS, calendarWeekStart: 1, calendarSidebarShowWeekNumbers: true };
+ const opened = [];
+ const pick = (_el, options) => opened.push(options);
+ const openFilterDate = compile('openDateConditionPopover', { showDatePicker: pick, normalizeFilterDateInput: v => v || null }, 'FilterConditionEditor');
+ const candidates = h.buildDatePickerCandidates(undefined, '', { fieldKey: 'dateScheduled', language: 'en', referenceDate: new Date(2026, 9, 16, 12) });
+ const tomorrow = candidates.quick.find(entry => entry.primaryLabel === 'Tomorrow').isoDate;
+ assert.equal(tomorrow, '2026-10-17');
+ assert.equal(h.buildDatePickerCandidates(undefined, 'tomorrow', {fieldKey:'dateScheduled',language:'en',referenceDate:new Date(2026,9,16,12)}).parsed[0].isoDate, tomorrow);
+ for (const field of ['dateScheduled', 'customDate', 'trackedOn', 'action']) {
+  const draft = condition('dateIs', today), root = new Element();
+  let changes = 0, input;
+  const changed = () => { changes++; };
+  const state = { options: {onChange: changed}, getPickerSettings: () => settings, getFilterOperatorLabel: () => 'date',
+   openDateConditionPopover: openFilterDate };
+  if (field === 'action') {
+   draft.field = 'dateScheduled';
+   compile('renderValue', { actionType: () => 'date', t: h.t, isFilePropertyColumnKey: () => false, showDatePicker: pick }, 'AutomationActionRow').call({
+    action: draft, valueHost: root, ctx: {settings: () => settings, changed}, syncType() {},
+   });
+   input = root.children[0];
+  } else if (field === 'trackedOn') {
+   draft.field = field;
+   compile('renderTrackedOnValue', {isValidTrackedOnCondition: () => true, DATE_OPERATORS: h.DATE_OPERATORS, t:h.t,
+    setAccessibleLabelWithoutTooltip() {}}, 'FilterConditionEditor').call(state, root, draft);
+   input = root.children[0];
+  } else {
+   draft.field = field;
+   const row = modalHarness(draft);
+   input = row.root.find(el => el.tag === 'input')[0];
+   row.state.openDateConditionPopover = openFilterDate;
+   row.state.getPickerSettings = () => settings;
+   row.state.options.onChange = () => { draft.value = row.cond.value; changed(); };
+  }
+  const count = opened.length;
+  input.fire('focus'); input.fire('click');
+  assert.equal(opened.length, count+1);
+  const options = opened.at(-1);
+  assert.equal(options.fieldKey, draft.field);
+  assert.equal(options.value, today);
+  assert.equal(options.dateDisplayFormat, settings.dateDisplayFormat);
+  assert.deepEqual(options.manualDatePicker, {weekStart:1, showWeekNumbers:true});
+  options.onClose(); assert.equal(changes, 0);
+  input.fire('click'); opened.at(-1).onSelect(tomorrow); opened.at(-1).onClose();
+  assert.equal(draft.value, tomorrow); assert.equal(changes, 1);
+  input.fire('click'); assert.equal(opened.at(-1).value, tomorrow); opened.at(-1).onRemove(); opened.at(-1).onClose();
+  assert.ok(!draft.value); assert.equal(changes, 2);
+ }
+ const nextDay = '2026-10-17', candidate = task(tomorrow);
+ assert.equal(matches(condition('dateIs', tomorrow), candidate, nextDay), true);
+ assert.equal(matches(condition('exactlyDaysAway','1'), candidate, today), true);
+ assert.equal(matches(condition('exactlyDaysAway','1'), candidate, nextDay), false);
 });
 test('choosing the new condition sets date type and exposes date operators', () => {
  const { root, cond, fieldPickers } = modalHarness({ id: 'condition', field: 'description', fieldType: 'text', operator: 'contains', value: 'old' });
@@ -383,4 +490,359 @@ test('overdue plus open-state filter returns only the missed materialized task',
  const resolver=h.createTableValueResolver(candidates,h.DEFAULT_SETTINGS);
  assert.equal(resolver.getRawValue(candidates[0],'taskOccurrenceDate'),'2026-10-09');
  assert.equal(resolver.getRawValue(candidates[3],'taskOccurrenceDate'),'2026-10-30');
+});
+
+ class PickerElement extends Element {
+  classList = { add: name => this.addClass(name), remove: name => this.removeClass(name), contains: name => this.classes.has(name), toggle: (name, enabled) => this.toggleClass(name, enabled) };
+  createEl(tag, options) { const child = new PickerElement(tag, options); this.children.push(child); return child; }
+  appendChild(child) { if (!this.children.includes(child)) this.children.push(child); }
+  ownerDocument = { defaultView: { requestAnimationFrame() {} } };
+  setSelectionRange() {}
+  querySelector() { return null; }
+  replaceChildren() { this.empty(); }
+  key(key) { for (const cb of this.events.keydown ?? []) cb({ key, preventDefault() {} }); }
+ }
+
+test('Date Action picker commits the selected meaning by mouse or keyboard and reopens the saved value', () => {
+ const file = 'src/ui/field-pickers/date-picker.ts';
+ let calendar, panel;
+ const showDatePicker = compile('showDatePicker', {
+  ...h, window: { requestAnimationFrame() {} }, resolvePickerApp() {}, getAppLocale: () => 'en',
+  joinDatePickerClasses: (...names) => names.filter(Boolean).join(' '), baseDatePickerClass: name => name,
+  createFloatingPanel: (_anchor, _classes, onClose) => {
+   panel = new PickerElement();
+   return { panel, close: onClose };
+  },
+  renderOperonDayPicker: (_host, options) => { calendar = options; return { setFocusedDate() {} }; },
+  normalizeManualDateValue: value => h.normalizeOperonDateKey(value) ?? '',
+  formatDatePickerInputDisplay: value => value,
+ }, '', file);
+ const render = compile('renderValue', { ...h, actionType: () => 'date', isFilePropertyColumnKey: () => false,
+  resolveDatePickerLanguage: () => 'en', showDatePicker }, 'AutomationActionRow');
+ for (const field of ['dateScheduled', 'file.property:Milestone']) {
+  const action = { field, value: '' };
+  const reopen = () => {
+   const host = new PickerElement();
+   render.call({ action, valueHost: host, ctx: { settings: () => h.DEFAULT_SETTINGS, changed() {} }, syncType() {} });
+   const input = host.children[0];
+   input.fire('focus');
+   const query = panel.children[0];
+   const type = value => { query.value = value; query.fire('input'); };
+   assert.equal(calendar.showToday, false);
+   return {input, query, type, buttons: () => panel.find(el => el.tag === 'button')};
+  };
+  let ui = reopen();
+  ui.type('Tom');
+  assert.deepEqual(ui.buttons().map(b => b.children[0]?.textContent), ['Tomorrow']);
+  ui.buttons()[0].fire('mousedown');
+  assert.equal(action.value, 'tomorrow');
+  assert.equal(action.valueEncoding, 'relative-day-v1');
+  ui = reopen();
+  assert.equal(ui.input.value, 'Tomorrow');
+  assert.equal(ui.query.value, 'Tomorrow');
+  for (const [query, expected] of [['Next weekend','nextWeekend'], ['3 days from now','offsetDays:3'], ['1 w','weeks:1']]) {
+   ui.type(query); ui.query.key('Enter');
+   assert.equal(action.value, expected);
+   ui = reopen();
+  }
+  ui.type('3');
+  assert.deepEqual(ui.buttons().map(b => b.children[0].textContent), [
+   '3 days from now', '3 weeks from now', '3 months from now', '3 days ago', '3 weeks ago', '3 months ago',
+  ]);
+  assert.ok(ui.buttons().every(b => b.children.length === 3));
+  ui.buttons()[2].fire('mousedown');
+  assert.equal(action.value, 'months:3');
+  ui = reopen();
+  assert.equal(ui.input.value, '3 months from now');
+  calendar.onSelect('2026-11-23');
+  assert.equal(action.value, '2026-11-23');
+  assert.equal(action.valueEncoding, undefined);
+  ui = reopen();
+  assert.ok(ui.buttons().every(button => button.children[1].textContent !== action.value));
+  ui.type('2026-12-04'); ui.query.key('Enter');
+  assert.equal(action.value, '2026-12-04');
+  assert.equal(action.valueEncoding, undefined);
+  ui = reopen();
+  ui.type('Tom'); ui.query.key('Enter');
+  assert.equal(action.valueEncoding, 'relative-day-v1');
+  reopen(); calendar.onClear();
+  assert.equal(action.value, '');
+  assert.equal(action.valueEncoding, undefined);
+ }
+});
+
+test('Datetime Actions keep the day expression and wall time independent through the picker and editor', () => {
+ const file = 'src/ui/field-pickers/datetime-picker.ts';
+ let panel, calendar, timeBinding;
+ const deps = { ...h,
+  resolvePickerApp() {}, getAppLocale: () => 'en-US', resolveDatePickerLanguage: () => 'en',
+  createButton: (text, cls, el) => el.createEl('button', {text, cls}),
+  formatDatePickerInputDisplay: date => date, focusFloatingInput() {}, scrollChildIntoView() {},
+  joinDatetimePickerClasses: (...names) => names.filter(Boolean).join(' '), baseDatetimePickerClass: name => name,
+  bindTimeInput: (_el, binding) => { timeBinding = binding; },
+  renderOperonDayPicker: (_el, opts) => { calendar = opts; return { setSelectedDate() {}, setFocusedDate() {} }; },
+  createFloatingPanel: (_anchor, _cls, onClose) => { panel = new PickerElement(); return {panel, close: onClose}; },
+  isDatetimePickerRejection: () => false,
+ };
+ const renderDatetimePickerContent = compile('renderDatetimePickerContent', deps, '', file);
+ const showDatetimePicker = compile('showDatetimePicker', {...deps, renderDatetimePickerContent}, '', file);
+ const render = compile('renderValue', {...deps, showDatetimePicker, actionType: field => field === 'reminderDatetimes' ? 'list' : 'datetime',
+  isFilePropertyColumnKey: () => false}, 'AutomationActionRow');
+ for (const timeFormat of ['12h', '24h']) {
+  for (const field of ['datetimeStart', 'file.property:Meeting', 'reminderDatetimes']) {
+   const fixed = value => field === 'reminderDatetimes' ? [value] : value;
+   const action = {field, value: '2026-11-23T14:45:00'};
+   const reopen = () => {
+    const host = new PickerElement();
+    render.call({ action, valueHost: host, ctx: { settings: () => ({...h.DEFAULT_SETTINGS, timeFormat}), changed() {} }, syncType() {} });
+    const row = host.children[0];
+    row.fire('focus');
+    const [query, time] = panel.find(el => el.tag === 'input');
+    const type = value => { query.value = value; query.fire('input'); };
+    const button = label => panel.find(el => el.tag === 'button' && (el.textContent === label || el.children[0]?.textContent === label))[0];
+    return {row, query, time, type, button};
+   };
+   action.value = '2026-11-23T14:45:31';
+   let ui = reopen();
+   calendar.onSelect('2026-11-25'); ui.time.key('Enter');
+   assert.deepEqual(action.value, fixed('2026-11-25T14:45:31'));
+   ui = reopen();
+   ui.type('Tom'); ui.button('Tomorrow').fire('mousedown'); ui.time.key('Enter');
+   assert.equal(action.value, 'tomorrow@14:45');
+   assert.equal(action.valueEncoding, 'relative-day-v1');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 2:45 PM' : 'Tomorrow · 14:45');
+   assert.equal(ui.query.value, 'Tomorrow');
+   timeBinding.onChange(timeFormat === '12h' ? '1200' : '0000', 5);
+   if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimeAm')).fire('click');
+   ui.time.key('Enter');
+   assert.equal(action.value, 'tomorrow@00:00');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 AM' : 'Tomorrow · 00:00');
+   timeBinding.onChange('1200', 5);
+   if (timeFormat === '12h') ui.button(h.t('taskEditor','datetimePm')).fire('click');
+   ui.time.key('Enter');
+   assert.equal(action.value, 'tomorrow@12:00');
+   ui = reopen();
+   assert.equal(ui.row.value, timeFormat === '12h' ? 'Tomorrow · 12:00 PM' : 'Tomorrow · 12:00');
+   calendar.onSelect('2026-12-02'); ui.time.key('Enter');
+   assert.deepEqual(action.value, fixed('2026-12-02T12:00:00'));
+   assert.equal(action.valueEncoding, undefined);
+   ui = reopen();
+   ui.type('3'); ui.button('3 months ago').fire('mousedown'); ui.time.key('Enter');
+   assert.equal(action.value, 'months:-3@12:00');
+   ui = reopen(); ui.type('2026-12-24'); ui.query.key('Enter'); ui.time.key('Enter');
+   assert.deepEqual(action.value, fixed('2026-12-24T12:00:00'));
+   assert.equal(action.valueEncoding, undefined);
+   ui = reopen(); ui.button('Clear').fire('click'); assert.equal(action.value, '');
+  }
+ }
+});
+
+
+test('ReminderRules action row uses the reminder picker with five selectable anchors independently of task dates', () => {
+ const file = 'src/ui/field-pickers/reminder-picker.ts';
+ let panel;
+ const deps = { ...h, createButton: (text, cls, host) => host.createEl('button', {text, cls}), nextReminderRulesPickerId: () => 1, requestFloatingInputFocus() {}, scrollChildIntoView() {},
+  bindPickerListItemActivation: (button, cb) => button.addEventListener('click', cb),
+  createFloatingPanel: (_anchor, _classes, onClose) => { panel = new PickerElement(); return { panel, close: onClose }; },
+  setRuleDiagnostic: compile('setRuleDiagnostic', {}, '', file),
+  getAnchorLabel: compile('getAnchorLabel', h, '', file),
+ };
+ deps.formatRuleCandidateLabel = compile('formatRuleCandidateLabel', deps, '', file);
+ const picker = compile('showReminderRulesPicker', deps, '', file);
+ const render = compile('renderValue', {...h, showReminderRulesPicker: picker, actionType: () => 'list', automationTypedListMapping: () => null}, 'AutomationActionRow');
+ const host = new PickerElement(), action = { field: 'reminderRules', operation: 'remove', value: '' };
+ render.call({ action, valueHost: host, ctx: { settings: () => h.DEFAULT_SETTINGS, changed() {} }, syncType() {} });
+ const open = () => host.children[0].fire('click');
+ const options = () => panel.find(el => el.attrs.role === 'option');
+ open();
+ assert.equal(options().length, 5);
+ assert.ok(options().every(el => !el.disabled && el.children.length === 1));
+ panel.find(el => el.attrs['data-offset'] === '30m')[0].fire('click');
+ options()[4].fire('click');
+ assert.deepEqual(action.value, ['dateDue.30m']);
+ open();
+ const input = panel.find(el => el.tag === 'input')[0];
+ assert.equal(input.value, '30m');
+ assert.equal(options()[4].attrs['aria-selected'], 'true');
+ input.value = 'invalid'; input.fire('input');
+ assert.equal(options().length, 0);
+ input.value = '1h 15m'; input.fire('input'); input.key('Enter');
+ assert.deepEqual(action.value, ['dateDue.1h15m']);
+ open(); panel.find(el => el.tag === 'button' && el.textContent === h.t('buttons', 'clear'))[0].fire('click');
+ assert.deepEqual(action.value, []);
+});
+
+test('dependency Actions search by title or ID, replace one member and reopen with its title', () => {
+ const file = 'src/ui/field-pickers/dependency-task-picker.ts';
+ const scoreDependencyMatch = compile('scoreDependencyMatch', {}, '', file);
+ let panel;
+ class DependencyElement extends PickerElement {
+  style = { removeProperty() {}, setProperty() {} };
+  createEl(tag, options) { const child = new DependencyElement(tag, options); this.children.push(child); return child; }
+ }
+ const picker = compile('showDependencyTaskPicker', {
+  ...h, PAGE_SIZE: 20, buildCandidates: compile('buildCandidates', {}, '', file),
+  rankCandidates: compile('rankCandidates', { scoreDependencyMatch }, '', file),
+  splitTaskListValue: value => value ? value.split('; ') : [],
+  normalizeDependencyPair: compile('normalizeDependencyPair', {splitTaskListValue: () => []}, '', 'src/core/task-field-patch.ts'),
+  createFloatingPanel: (_anchor, _classes, close) => { panel = new DependencyElement(); return { panel, close }; },
+  createButton: (text, cls, host) => host.createEl('button', {text, cls}),
+  requestFloatingInputFocus() {}, scrollChildIntoView() {}, setAccessibleLabelWithoutTooltip() {},
+  resolveBlockedByVisualStateForId() {}, resolveBlockedByVisualStateColor() {}, setIcon() {},
+  renderCompactTaskMarkdown: (host, options) => host.setText(options.value),
+  bindPickerListItemActivation: (el, cb) => el.addEventListener('click', cb),
+ }, '', file);
+ const render = compile('renderValue', {...h, actionType: () => 'list', automationTypedListMapping: () => null,
+  showDependencyTaskPicker: picker}, 'AutomationActionRow');
+ const initialTasks = ['old', 'first', 'second'].map((id, i) => ({...task(today), operonId: id, description: i ? 'Twin title' : 'Original'}));
+ for (const field of ['blocking', 'blockedBy']) for (const operation of ['add', 'remove']) {
+  let tasks = initialTasks;
+  const listeners = new Set();
+  const subscribeIndexUpdates = listener => { listeners.add(listener); return () => listeners.delete(listener); };
+  const action = { field, operation, value: ['old'] };
+  const row = draft => {
+   const host = new DependencyElement();
+   render.call({action: draft, valueHost: host, ctx: {tasks: () => tasks, subscribeIndexUpdates, settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
+   return host.children[0];
+  };
+  const button = row(action);
+  assert.match(button.attrs['aria-label'], /Original/);
+  button.fire('click');
+  const input = panel.find(el => el.tag === 'input')[0];
+  input.value = 'Twin'; input.fire('input');
+  assert.equal(panel.find(el => el.textContent === 'Twin title').length, 2);
+  tasks = [
+   ...tasks.map(task => task.operonId === 'second' ? {...task, description: 'Renamed task'} : task),
+   {...tasks[0], operonId: 'new-id', description: 'New task'},
+  ];
+  for (const listener of listeners) listener();
+  assert.equal(panel.find(el => el.textContent === 'Twin title').length, 1);
+  for (const [query, title] of [['New task', 'New task'], ['new-id', 'New task'], ['Renamed task', 'Renamed task'], ['second', 'Renamed task']]) {
+   input.value = query; input.fire('input');
+   assert.equal(panel.find(el => el.textContent === title).length, 1);
+  }
+  input.key('Enter');
+  assert.equal(listeners.size, 0);
+  assert.deepEqual(action, {field, operation, value: ['second']});
+  assert.match(row(JSON.parse(JSON.stringify(action))).attrs['aria-label'], /Renamed task/);
+  assert.match(row({...action, value: ['missing-id']}).attrs['aria-label'], /missing-id/);
+ }
+});
+
+test('Actions route task type, image and gallery through the Creator pickers', () => {
+ const file = 'src/ui/task-field-picker-dispatch.ts';
+ let picker;
+ const capture = (_anchor, options) => { picker = options; return () => {}; };
+ const openManagedTaskDataFieldPicker = compile('openManagedTaskDataFieldPicker', {
+  ...h, showCustomTextFieldPicker: capture, showCustomListFieldPicker: capture,
+ }, '', file);
+ const openTaskFieldPicker = compile('openTaskFieldPicker', { openManagedTaskDataFieldPicker }, '', file);
+ for (const field of ['taskType', 'taskImage', 'taskGallery']) {
+  const gallery = field === 'taskGallery';
+  const type = gallery ? 'list' : 'text';
+  const action = { field, operation: 'add', value: gallery ? ['old.png'] : 'old' };
+  const candidate = field === 'taskType' ? 'Project' : 'image.png';
+  const tasks = [{...task(today), fieldValues: {[field]: candidate}}];
+  const render = compile('renderValue', {...h, actionType: () => type, openTaskFieldPicker, automationTypedListMapping: () => null}, 'AutomationActionRow');
+  const host = new PickerElement();
+  render.call({ action, valueHost: host, ctx: {settings: () => h.DEFAULT_SETTINGS, tasks: () => tasks, changed() {}}, syncType() {} });
+  host.children[0].fire('click');
+  assert.equal(picker.canonicalKey, field);
+  assert.equal(picker.mediaReference, field !== 'taskType');
+  assert.ok(picker.candidates.includes(candidate));
+  if (gallery) {
+   assert.equal(picker.singleValue, true);
+   assert.deepEqual(picker.value, ['old.png']);
+   picker.onCommitValues(field, ['album; cover.png']);
+   assert.deepEqual(action.value, ['album; cover.png']);
+  } else {
+   const newValue = field === 'taskType' ? 'New type' : '[[New cover.png]]';
+   picker.onCommit(field, newValue);
+   assert.equal(action.value, newValue);
+  }
+ }
+});
+
+test('custom text and number Actions open Creator pickers with the saved value', () => {
+ const source = 'src/ui/task-field-picker-dispatch.ts';
+ let picker;
+ const capture = (_anchor, options) => { picker = options; return () => {}; };
+ const openCustomTaskFieldPicker = compile('openCustomTaskFieldPicker', {
+  ...h, showCustomTextFieldPicker: capture, showCustomNumberFieldPicker: capture,
+ }, '', source);
+ const openTaskFieldPicker = compile('openTaskFieldPicker', { openCustomTaskFieldPicker }, '', source);
+ for (const type of ['text', 'number']) {
+  const field = 'custom-' + type;
+  const mapping = { canonicalKey: field, visiblePropertyName: 'Custom ' + type, type, isSystem: false };
+  const action = { field, operation: 'add', value: type === 'text' ? 'Previous' : '0' };
+  const render = compile('renderValue', {...h, actionType: () => type, openTaskFieldPicker, automationTypedListMapping: () => null}, 'AutomationActionRow');
+  const ctx = {settings: () => ({...h.DEFAULT_SETTINGS, keyMappings: [mapping]}), tasks: () => [{...task(today), fieldValues: {[field]: 'Existing'}}], changed() {}};
+  const host = new PickerElement();
+  render.call({ action, valueHost: host, ctx, syncType() {} });
+  host.children[0].fire('click');
+  assert.equal(picker.type, type);
+  assert.equal(picker.value, action.value);
+  if (type === 'text') assert.deepEqual(picker.candidates, ['Existing']);
+  const value = type === 'text' ? 'New text' : '-2.5';
+  picker.onCommit(field, value);
+  assert.equal(action.value, value);
+  host.children[0].fire('click');
+  assert.equal(picker.value, value);
+  picker.onRemove(field);
+  assert.equal(action.value, '');
+ }
+});
+
+test('ordinary custom list suggestions count tasks once per value and break ties alphabetically', () => {
+ const mapping = {canonicalKey: 'topics', visiblePropertyName: 'Topics', type: 'list'};
+ const tasks = ['B; B; B; A; Z', 'Z', 'Z'].map((topics, i) => ({...task(today), operonId: String(i), fieldValues: {topics}}));
+ assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping, 'usage'), ['Z', 'A', 'B']);
+ assert.deepEqual(h.collectCustomFieldValueCandidates(null, tasks, mapping), ['A', 'B', 'Z']);
+});
+
+test('Repeat Action picker reopens the rule and commits only its expression', () => {
+ let picker;
+ const render = compile('renderValue', {...h, actionType: () => 'text', automationTypedListMapping: () => null,
+  formatRepeatRuleSummaryI18n: rule => rule.freq, showRepeatPicker: (_anchor, options) => { picker = options; return () => {}; }}, 'AutomationActionRow');
+ const action = {field: 'repeat', operation: 'remove', value: 'mode=schedule|freq=day|interval=1'};
+ const host = new PickerElement();
+ render.call({action, valueHost: host, ctx: {settings: () => h.DEFAULT_SETTINGS, changed() {}}, syncType() {}});
+ const button = host.children[0];
+ button.fire('click');
+ assert.equal(picker.ruleOnly, true);
+ assert.equal(picker.value, action.value);
+ const repeat = 'mode=done|freq=month|interval=1';
+ picker.onSave({repeat, datetimeRepeatEnd: '', repeatOccurrenceDate: today, inlineCompletionMode: 'replace-completed'});
+ assert.deepEqual(action, {field: 'repeat', operation: 'remove', value: repeat});
+ assert.match(button.attrs['aria-label'], /month/);
+ button.fire('click');
+ assert.equal(picker.value, repeat);
+ picker.onClear();
+ assert.equal(action.value, '');
+});
+
+test('single-value list Actions commit the highlighted typed suggestion with Enter', () => {
+ const file = 'src/ui/field-pickers/custom/custom-list-field-picker.ts';
+ let panel;
+ const show = compile('showCustomListFieldPicker', {
+  ...h, CUSTOM_LIST_PAGE_SIZE: 20,
+  normalizeCustomListValue: value => value.trim(), formatCustomListDisplayValue: value => value,
+  buildCustomListSearchText: value => value.toLowerCase(), bindCustomListWikilinkPreview() {},
+  bindPickerListItemActivation() {}, requestFloatingInputFocus() {}, scrollChildIntoView() {},
+  createButton: (_label, _cls, parent) => parent.createEl('button'),
+  createCustomFieldPanel: (_anchor, _options, close) => { panel = new PickerElement(); return {panel, close}; },
+ }, '', file);
+ for (const [query, move, expected] of [['2', 0, 2], ['2', 1, '2'], ['A;', 0, 'A; B'], ['', 1, '2'], ['New', 0, 'New']]) {
+  let committed;
+  show(new PickerElement(), {value: [], nativeValues: [], singleValue: true, candidates: ['2', '"2"', '"A; B"'],
+   onCommitNativeValues: values => { committed = values; }});
+  const input = panel.children[1];
+  panel.children[2].style.removeProperty = () => {};
+  input.value = query; input.fire('input');
+  if (move) input.key('ArrowDown');
+  input.key('Enter');
+  assert.deepEqual(committed, [expected]);
+ }
 });

@@ -1,3 +1,4 @@
+import { isAutomationRulesSettings, migrateAutomationRuleIds } from './automation-rules';
 import { mergeImportedInlinePropertyDefinitions } from './inline-property-definitions';
 import { sha256HexV1 } from '../agent-runtime/contracts/v1/canonical';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
@@ -298,6 +299,11 @@ function preflightWithMigrations(
 		}
 
 		const invalidSelectedGroups = new Set<SettingsBackupProfileGroupId>();
+		if (selectedGroups.has('automations') && targetSettings.automationRules !== undefined && !isAutomationRulesSettings(targetSettings.automationRules)) {
+			invalidSelectedGroups.add('automations');
+			issues.push({ id: 'unreadable-automation-target', kind: 'group-invalid', severity: 'error', group: 'automations',
+				path: '$.automation.ruleSettings', message: 'Existing automation rules could not be read. Omit this group to preserve them.', resolved: false, resolution: null });
+		}
 		const dependencyBlockedGroups = new Set<SettingsBackupProfileGroupId>();
 		for (const diagnostic of validation.diagnostics) {
 			const group = groupFromPath(diagnostic.path);
@@ -412,8 +418,9 @@ function preflightWithMigrations(
 			});
 		}
 
+		// Unselected automation data is opaque to a partial restore, including newer versions.
 		const candidateValidation = exportOperonSettingsBackupJsonV1({
-			settings: candidate,
+			settings: selectedGroups.has('automations') ? candidate : { ...candidate, automationRules: undefined },
 			source: {
 				pluginVersion: backup.body.source.pluginVersion,
 				obsidianVersion: backup.body.source.obsidianVersion,
@@ -713,6 +720,11 @@ function composeSelectedGroups(
 		candidate.kanbanPresets = cloneJson(payloads.kanban.kanbanPresets);
 		candidate.kanbanDefaultPresetId = payloads.kanban.kanbanDefaultPresetId;
 	}
+	if (selected.has('automations') && payloads.automations) {
+		const restored = migrateAutomationRuleIds(cloneJson(payloads.automations));
+		for (const rule of restored.rules) rule.active = false;
+		if (target.automationRules !== undefined || restored.confirmation !== 'always' || restored.rules.length) candidate.automationRules = restored;
+	}
 	if (selected.has('preset-favorites') && payloads['preset-favorites']) {
 		candidate.presetFavorites = {
 			...cloneJson(payloads['preset-favorites'].presetFavorites),
@@ -845,6 +857,13 @@ function groupItems(settings: OperonSettings, group: SettingsBackupProfileGroupI
 		settings.kanbanPresets.forEach(item => add(item.id, item));
 		add('$default', settings.kanbanDefaultPresetId);
 		add('$order', settings.kanbanPresets.map(item => item.id));
+	} else if (group === 'automations') {
+		const rules = settings.automationRules;
+		if (isAutomationRulesSettings(rules)) {
+			add('$confirmation', rules.confirmation);
+			add('$order', rules.rules.map(rule => rule.id));
+			for (const rule of rules.rules) add('rule:' + rule.id, rule);
+		} else if (rules !== undefined) add('$settings', rules);
 	} else if (group === 'preset-favorites') {
 		for (const surface of ['table', 'calendar', 'kanban', 'filter'] as const) {
 			settings.presetFavorites[surface].forEach(id => add(`${surface}:${id}`, true));

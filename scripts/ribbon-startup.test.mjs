@@ -63,7 +63,7 @@ function ribbon() {
  };
 }
 function fixture({ raw = { schemaVersion: 2, settings: { language: 'ru' } }, locale = 'en', cached = true, read, cacheGate, sharedRibbon = ribbon() } = {}) {
- const calls = [], warnings = [], background = deferred();
+ const calls = [], warnings = [], background = deferred(), protocols = new Map();
  let phase = 'starting';
  const Startup = createStartupClass({
   console: { warn: (...args) => warnings.push(args) },
@@ -85,6 +85,7 @@ function fixture({ raw = { schemaVersion: 2, settings: { language: 'ru' } }, loc
   agentRuntimeLifecycle: { getPhase: () => phase, recordError: error => calls.push(error) },
   initializeAgentRuntime() { calls.push('runtime'); },
   registerAgentRuntimeCliTransport() { calls.push('transport'); },
+  registerObsidianProtocolHandler(action, callback) { protocols.set(action, callback); },
   async loadData() { calls.push('read-settings'); return read ? read() : raw; },
   async loadPlugin() { calls.push('background'); await background.promise; },
   addRibbonIcon: (...args) => sharedRibbon.add(...args),
@@ -93,7 +94,7 @@ function fixture({ raw = { schemaVersion: 2, settings: { language: 'ru' } }, loc
   async openCalendarView() { calls.push('calendar'); }, async openKanbanView() { calls.push('kanban'); },
   async openOperonTable() { calls.push('table'); }, async openPinnedTasksSurface() { calls.push('pinned'); },
  });
- return { host, calls, warnings, ribbon: sharedRibbon, background, unload() { phase = 'unloading'; host.ribbonActionsReady = false; } };
+ return { host, calls, warnings, ribbon: sharedRibbon, background, protocols, unload() { phase = 'unloading'; host.ribbonActionsReady = false; } };
 }
 function hiddenExceptKanban(strings) {
  return Object.fromEntries(actions.map(([, key]) => [`operon:${strings.commands[key]}`, key !== 'openKanban']));
@@ -141,6 +142,26 @@ test('early clicks cannot invoke uninitialized services; all seven existing acti
  const after = [...f.calls];
  for (const item of f.ribbon.items.values()) item.callback();
  assert.deepEqual(f.calls, after);
+});
+test('cold-start Run URIs are received before onload returns and forwarded in order once commands exist', async () => {
+ for (const unloading of [false, true]) {
+  const cache = deferred(), f = fixture({ cacheGate: cache });
+  const received = [];
+  const loading = f.host.onload();
+  const dispatch = f.protocols.get('operon');
+  assert.equal(typeof dispatch, 'function');
+  const link = rule => ({ action: 'operon', view: 'automation', rule, run: 'true' });
+  dispatch(link('first'));
+  cache.resolve(); await loading;
+  dispatch(link('second'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(received, []);
+  f.host.commandLinks = { handleProtocol: data => received.push(data.rule) };
+  if (unloading) f.unload();
+  f.background.resolve();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(received, unloading ? [] : ['first', 'second']);
+ }
 });
 test('same-session plugin reload preserves existing hidden IDs without duplicating buttons', async () => {
  const sharedRibbon = ribbon(), saved = hiddenExceptKanban(russian);

@@ -101,10 +101,7 @@ export class PinnedTasksDock extends Component {
 
 		// Subscribe to timer state changes so play/stop icon updates in real time
 		this.unsubscribeTimer = this.timeTracker.subscribe((event) => {
-			if (event === 'state') {
-				this.markDirty();
-				this.render();
-			}
+			if (event === 'state') this.render();
 		});
 
 		// Restore visibility
@@ -176,19 +173,31 @@ export class PinnedTasksDock extends Component {
 			).join('|'),
 		].join('~');
 		const signature = [
-			String(this.indexer.getGeneration()),
-			String(this.pinnedCache.getGeneration()),
+			this.settings.language,
+			this.settings.pinnedDockLayout, this.settings.pinnedDockGridCols,
+			this.settings.pinnedTaskItemWidth, this.settings.pinnedTaskSortMode,
 			colorSettingsSignature,
 			this.settings.fallbackTaskIconSource,
 			this.settings.taskStatusIconColorSource, this.settings.taskIconClickAction,
 			`${this.settings.fallbackStateIcons.open}:${this.settings.fallbackStateIcons.done}:${this.settings.fallbackStateIcons.cancelled}`,
-			activeTrackerId ?? '',
 			pinnedTasks.map(task =>
 				`${task.operonId}:${getTaskDisplayTitle(task, this.settings.fileTaskDisplayTitleEnabled)}:${task.fieldValues['taskIcon'] ?? ''}:${task.fieldValues['taskColor'] ?? ''}:${task.fieldValues['status'] ?? ''}:${task.fieldValues['priority'] ?? ''}:${task.checkbox}`
 			).join('|'),
 		].join('§');
 
-		if (signature === this.lastRenderSignature) return;
+		if (signature === this.lastRenderSignature) {
+			for (const card of Array.from(this.bodyEl.querySelectorAll<HTMLElement>('.operon-pinned-card'))) {
+				const tracking = card.dataset.operonPinnedTaskId === activeTrackerId;
+				if (card.classList.contains('operon-pinned-card--tracking') === tracking) continue;
+				const button = card.querySelector<HTMLButtonElement>('button.operon-pinned-timer')!;
+				card.toggleClass('operon-pinned-card--tracking', tracking);
+				button.toggleClass('is-active', tracking);
+				button.querySelector('svg')?.remove();
+				setIcon(button, tracking ? 'square' : 'play');
+				setAccessibleLabelWithoutTooltip(button, t('tooltips', tracking ? 'stopTimer' : 'startTimer'));
+			}
+			return;
+		}
 		this.lastRenderSignature = signature;
 
 		const layout = this.settings.pinnedDockLayout ?? 'horizontal';
@@ -264,7 +273,7 @@ export class PinnedTasksDock extends Component {
 				bindTaskContextualHoverMenu(statusBtn, {
 					surface: 'pinnedTask',
 					taskId: task.operonId,
-					getTask: () => task,
+					getTask: () => this.indexer.getTask(task.operonId) ?? task,
 					getSettings: () => this.settings,
 					onAction: this.callbacks.onContextualAction,
 					isPinned: () => this.pinnedCache.isPinned(task.operonId),
@@ -293,7 +302,7 @@ export class PinnedTasksDock extends Component {
 			}));
 
 			// Play/Stop button (rightmost) — visible on hover
-			const isTracking = this.timeTracker.isTimerRunning(task.operonId);
+			const isTracking = activeTrackerId === task.operonId;
 			card.toggleClass('operon-pinned-card--tracking', isTracking);
 			const timerBtn = card.createEl('button', {
 				cls: `operon-pinned-timer${isTracking ? ' is-active' : ''}`,

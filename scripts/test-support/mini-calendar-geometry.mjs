@@ -22,7 +22,7 @@ export async function assertMiniCalendarGeometry(page, continuous = false) {
    dayHeight: rect(days[0]).height, weekHeight: rect(week).height,
    dayRadius: dayStyle.borderRadius, weekRadius: weekStyle.borderRadius,
    dayBorder: dayStyle.borderWidth, weekBorder: weekStyle.borderWidth,
-   dayFont: dayStyle.fontSize, weekFont: weekStyle.fontSize,
+   dayFont: dayStyle.fontSize, weekFont: weekStyle.fontSize, weekDecoration: weekStyle.textDecorationLine,
    headerWidths: [...root.querySelector('.operon-calendar-sidebar-month-weekdays').children].map(el=>rect(el).width),
    tooltipBound: Boolean(week._operonHoverCleanup),
    weekName: document.getElementById(week.getAttribute('aria-labelledby'))?.textContent,
@@ -32,6 +32,7 @@ export async function assertMiniCalendarGeometry(page, continuous = false) {
  }, continuous);
  assert.ok(geometry.centers.every(p=>Math.abs(p.x)<=1 && Math.abs(p.y)<=1), JSON.stringify(geometry.centers));
  assert.ok(Math.abs(geometry.dayWidth-geometry.weekWidth)<1, JSON.stringify(geometry));
+ assert.equal(geometry.weekDecoration, 'underline');
  assert.equal(geometry.dayHeight,geometry.weekHeight); assert.equal(geometry.dayRadius,geometry.weekRadius);
  assert.equal(geometry.dayBorder,geometry.weekBorder); assert.equal(geometry.dayFont,geometry.weekFont);
  assert.ok(geometry.headerWidths.every(width=>Math.abs(width-geometry.dayWidth)<1));

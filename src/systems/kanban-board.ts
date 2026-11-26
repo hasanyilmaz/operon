@@ -87,7 +87,7 @@ function overlayAccess(access: Access, overlays: ReadonlyMap<string, KanbanBoard
 
 export function queryKanbanAxisBoard(options: Omit<KanbanGroupingOptions, 'settings' | 'propertyAccess'> & {
 	settings: Settings; propertyAccess: Access; manualOrder?: Record<string, string[]>; overlays?: readonly KanbanBoardOverlay[];
-}): KanbanBoardData | { state: 'unavailable'; reason: string } {
+}): KanbanBoardData | { state: 'unavailable'; reason: string; axis?: 'rows' | 'columns' | 'both' } {
 	const decoded = resolveKanbanAxes(options.preset, options.settings.keyMappings);
 	if (!decoded.ok) return { state: 'unavailable', reason: decoded.reason };
 	const overlays = new Map((options.overlays ?? []).map(overlay => [overlay.taskId, overlay]));

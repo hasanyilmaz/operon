@@ -22,7 +22,7 @@ type Row={name:string;description?:string;controls:Control[]};
 const rows:Row[]=[];
 const proto=Setting.prototype as unknown as Record<string,Function>;
 proto.setName=function(name:string){this.row={name,controls:[]};rows.push(this.row);return this;};
-proto.setDesc=function(description:string){this.row.description=description;return this;};
+proto.setDesc=function(description:string){if(!this.row){this.row={name:'',controls:[]};rows.push(this.row);}this.row.description=description;return this;};
 for(const method of ['addText','addButton','addDropdown','addExtraButton','addToggle']) proto[method]=function(build:Function){
 	const c:Control={label:'',icon:'',disabled:false,click(){},change(){},items:{}};
 	const component={buttonEl:{isConnected:true,textContent:""},setClass(){return component;},setValue(){return component;},setPlaceholder(){return component;},setTooltip(){return component;},setButtonText(v:string){c.label=v;component.buttonEl.textContent=v;return component;},setIcon(v:string){c.icon=v;return component;},setDisabled(v:boolean){c.disabled=v;return component;},onClick(fn:()=>void){c.click=fn;return component;},onChange(fn:(v:string|boolean)=>void){c.change=fn;return component;},addOption(k:string,v:string){c.items[k]=v;return component;}};
@@ -39,6 +39,75 @@ function ui(){const settings=migrateSettings(structuredClone(DEFAULT_SETTINGS)),
 	const current=()=>{const r=resolveKanbanAxes(preset,settings.keyMappings);assert.ok(r.ok);return r.axes;};
 	render();return {app,tasks,settings,preset,original,render,choose,current,setPropertyOpen(fn:()=>void){onPropertyPickerOpen=fn;render();},setPrepare(fn:typeof preparePicker){preparePicker=fn;render();},setSide(value:typeof side){side=value;render();},add(raw:string){rows.find(r=>r.name==='Add value')!.controls[0].click();const option=axisPicker!.options.find(o=>String(o.typed.value)===raw);assert.ok(option);axisPicker!.onSelect(option);}};
 }
+test('swimlane visibility controls new choices while saved Project grouping and column choices survive', () => {
+	const f = ui();
+	const mapping = { ...f.settings.keyMappings[0], canonicalKey: 'Project', visiblePropertyName: 'Project', type: 'list' as const,
+		isSystem: false, isInternal: false, showInKanbanSwimlane: true };
+	f.settings.keyMappings.push(mapping);
+	f.setSide('swimlanes');
+	f.choose('Project');
+	const saved = structuredClone(f.preset);
+	mapping.showInKanbanSwimlane = false;
+	f.render();
+	assert.equal(rows[0].controls[0].label, 'Project');
+	rows[0].controls[0].click();
+	assert.ok(!axisPicker!.fields!.some(option => option.label === 'Project'));
+	const task = { ...f.tasks[0], fieldValues: { Project: 'Blue' } };
+	const result = buildKanbanGroupingSnapshot({ tasks: [task], preset: f.preset, settings: f.settings,
+		revision: { tasks: 0, settings: 0 }, propertyAccess: createKanbanPropertyAccess(f.settings, getNativePropertyIndex(f.app)) });
+	assert.notEqual(result.state, 'unavailable');
+	if (result.state !== 'unavailable') assert.ok(result.rows.some(lane => lane.label === 'Blue'));
+	f.setSide('columns');
+	rows[0].controls[0].click();
+	assert.ok(axisPicker!.fields!.some(option => option.label === 'Project'));
+	assert.deepEqual(f.preset, saved);
+});
+
+test('visible conflicting swimlanes stay discoverable and cannot clear the current selection', () => {
+	const f = ui();
+	f.settings.keyMappings.push({ ...f.settings.keyMappings[0], canonicalKey: 'Project', visiblePropertyName: 'Project', type: 'list',
+		isSystem: false, isInternal: false, showInKanbanSwimlane: true });
+	f.setSide('swimlanes');
+	f.choose('tags');
+	const saved = structuredClone(f.preset);
+	const native = getNativePropertyIndex(f.app);
+	for (const [types, message] of [
+		[{ project: 'text' }, /Operon: list.*project \[text\]/],
+		[{ project: 'multitext', Project: 'multitext' }, /name is already in use/],
+	] as const) {
+		native.setTypes({ ...types });
+		f.render();
+		rows[0].controls[0].click();
+		const option = axisPicker!.fields!.find(item => item.label === 'Project');
+		assert.equal(option?.disabled, true);
+		assert.match(option.secondaryLabel, message);
+		axisPicker!.onSelect(option);
+		assert.deepEqual(f.preset, saved);
+	}
+});
+
+test('saved legacy Project swimlane identifies the conflicting Obsidian assignment and recovers in place', () => {
+	const f = ui();
+	f.settings.keyMappings.push({ ...f.settings.keyMappings[0], canonicalKey: 'Project', visiblePropertyName: 'Project',
+		type: 'list', isSystem: false, isInternal: false, showInKanbanSwimlane: true });
+	delete f.preset.axes;
+	f.preset.swimlaneBy = 'Project';
+	const saved = structuredClone(f.preset);
+	const native = getNativePropertyIndex(f.app);
+	native.setTypes({ project: 'text' });
+	f.setSide('swimlanes');
+	assert.ok(rows.some(row => row.description?.includes('Operon: list · Obsidian: project [text]')));
+	const compatibleTypes: Array<Record<string, 'multitext'>> = [{}, { project: 'multitext' }];
+	for (const declarations of compatibleTypes) {
+		native.setTypes(declarations);
+		f.render();
+		assert.equal(rows[0].controls[0].label, 'Project');
+		rows[0].controls[0].click();
+		const option = axisPicker!.fields!.find(item => item.label === 'Project');
+		assert.equal(option?.descriptor?.reference.type, 'list');
+		assert.deepEqual(f.preset, saved);
+	}
+});
 test('Status reveals pipeline on both axes; changing one property leaves the other intact',()=>{
 	const f=ui();assert.ok(rows.some(r=>r.controls.some(c=>Object.keys(c.items).length>0)));f.choose('estimate');f.add('1');
 	const before=f.current().columns;f.setSide('swimlanes');f.choose('status');assert.deepEqual(f.current().columns,before);

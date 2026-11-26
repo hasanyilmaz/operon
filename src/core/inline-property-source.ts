@@ -154,26 +154,35 @@ export function mergeInlineEditorSource(
  try { return changes.length ? patchInlineProperties(serializeTask(submitted, mappings), '', submitted.operonId!, changes, mappings, definitions) : serializeTask(submitted, mappings); }
  catch { return null; }
 }
-/** Internal bridge for already authorized mapped fields; public List inputs remain string[]. */
-export function prepareMappedInlineProperties(
- content: string, filePath: string, operonId: string,
- changes: readonly { field: string; value?: VaultPropertyValue }[], mappings: KeyMapping[], definitions?: InlinePropertyDefinitions,
-): { changes: InlinePropertyChange[]; fieldValues: Record<string, string> } {
+/** Prepare typed changes from the row whose task identity the caller has checked. */
+export function draftMappedInlineProperties(
+ parsed: ParsedTask, changes: readonly { field: string; value?: VaultPropertyValue }[],
+ mappings: KeyMapping[], definitions?: InlinePropertyDefinitions,
+): InlinePropertyChange[] {
  const draft: InlinePropertyChange[] = [];
- const candidate = findInlinePropertyTask(content, filePath, operonId, mappings);
- if (!candidate?.parsed) throw new Error('Inline task identity conflict');
  for (const change of changes) {
   const mapping = mappings.find(item => item.isSystem === false && item.canonicalKey === change.field);
   if (!mapping || resolveInlinePropertyDefinition(mapping.visiblePropertyName, mapping.type, mappings, definitions).encoding !== 'vault-v1') continue;
-  const aliases = candidate.parsed.fields.filter(field => field.key === mapping.canonicalKey);
+  const aliases = parsed.fields.filter(field => field.key === mapping.canonicalKey);
   if (aliases.length > 1) throw new Error('Property alias conflict');
   const source = aliases[0];
-    draft.push({
+  draft.push({
    sourceName: source?.sourceKey ?? mapping.visiblePropertyName, type: mapping.type,
    expected: source ? { present: true, rawValue: source.rawValue } : { present: false },
    mutation: change.value === undefined ? { kind: 'remove' } : { kind: 'set', value: change.value },
   });
  }
+ return draft;
+}
+
+/** Internal bridge for already authorized mapped fields; public List inputs remain string[]. */
+export function prepareMappedInlineProperties(
+ content: string, filePath: string, operonId: string,
+ changes: readonly { field: string; value?: VaultPropertyValue }[], mappings: KeyMapping[], definitions?: InlinePropertyDefinitions,
+): { changes: InlinePropertyChange[]; fieldValues: Record<string, string> } {
+ const candidate = findInlinePropertyTask(content, filePath, operonId, mappings);
+ if (!candidate?.parsed) throw new Error('Inline task identity conflict');
+ const draft = draftMappedInlineProperties(candidate.parsed, changes, mappings, definitions);
  const patched = draft.length ? patchInlineProperties(content, filePath, operonId, draft, mappings, definitions) : content;
  const result = findInlinePropertyTask(patched, filePath, operonId, mappings)!.parsed!;
  const fieldValues: Record<string, string> = {};

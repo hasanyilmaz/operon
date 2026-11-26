@@ -83,6 +83,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('settings', 'coreGeneral', 'language', 'settings', 'language', 'languageDesc', 'render', ['locale', 'translation', 'language setting']),
 	e('settings', 'coreGeneral', 'timeFormat', 'settings', 'timeFormat', 'timeFormatDesc', 'dropdown', ['clock', '12 hour', '24 hour', 'time display']),
 	e('settings', 'coreGeneral', 'dateDisplayFormat', 'settings', 'dateDisplayFormat', 'dateDisplayFormatDesc', 'dropdown', ['date', 'date format', 'date display', 'YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY']),
+	e('settings', 'coreGeneral', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),
 	e('settings', 'coreGeneral', 'releaseNotesShowOnUpdate', 'settings', 'releaseNotesShowOnUpdate', 'releaseNotesShowOnUpdateDesc', 'toggle', ['release notes', 'what is new', 'updates', 'changelog', 'popup']),
 	section('settings', 'coreGeneral', 'demoWorkspace', 'settings', 'demoWorkspace', 'demoWorkspaceDesc', ['demo', 'sample workspace', 'basics workspace', 'example tasks']),
 	section('settings', 'coreGeneral', 'operonDocs', 'settings', 'operonDocsDownloadNow', 'operonDocsDownloadNowDesc', ['docs', 'documentation', 'wiki', 'official docs', 'download docs']),
@@ -99,8 +100,11 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	section('taxonomy', 'coreKeymapping', 'keyMappings', 'settings', 'keyMappings', 'keyMappingsIntro', ['key mapping', 'property mapping', 'properties', 'fields', 'frontmatter', 'yaml', 'inline metadata', 'canonical key', 'visible property', 'task field']),
 	section('taxonomy', 'coreCustomKeys', 'customKeys', 'settings', 'tabCustomKeys', 'customKeysDesc', ['custom keys', 'custom fields', 'custom field', 'custom key', 'canonical custom key', 'add field', 'add custom field', 'show in editor', 'show in creator', 'show in chips', 'surface visibility', 'used in', 'usage', 'reorder custom field']),
 
+	e('automation', 'tasksAutomations', 'automationRules', 'settings', 'automationConfirmation', 'automationConfirmationDesc', 'dropdown', ['automations', 'task limit', 'confirmation']),
+	section('automation', 'tasksAutomations', 'ruleList', 'settings', 'automationRuleList', 'automationRuleListDesc', ['automations', 'rule', 'draft']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
+	e('automation', 'tasksTaskRouter', 'inlineTaskSpecificFileHeading', 'settings', 'inlineTaskSpecificFileHeading', 'inlineTaskSpecificFileHeadingDesc', 'text', ['inline task', 'specific file', 'heading', 'section']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskHeading', 'settings', 'inlineTaskHeading', 'inlineTaskHeadingDesc', 'text', ['new task', 'task creator', 'inline task', 'heading', 'section']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskParentInlineTargetMode', 'settings', 'inlineParentTaskTargetMode', 'inlineParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'parent', 'parent placement', 'inline parent']),
 	e('automation', 'tasksTaskRouter', 'inlineTaskParentFileTargetMode', 'settings', 'fileParentTaskTargetMode', 'fileParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'file task', 'parent', 'parent placement']),
@@ -206,7 +210,6 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsTaskCards', 'taskCardShowCheckboxProgress', 'settings', 'taskCardCheckboxProgress', 'taskCardVisibilityDesc', 'toggle', ['task cards', 'visibility']),
 
 	e('views', 'viewsCalendar', 'calendarDefaultPresetId', 'calendar', 'defaultPreset', 'defaultPresetDesc', 'dropdown', ['calendar', 'calendar default preset', 'calendar preset', 'preset']),
-	e('views', 'viewsCalendar', 'calendarWeekStart', 'calendar', 'weekStart', 'weekStartDesc', 'dropdown', ['calendar', 'week start']),
 	e('views', 'viewsCalendar', 'calendarShowWeekLabelOnFirstDay', 'calendar', 'showWeekLabelOnFirstDay', 'showWeekLabelOnFirstDayDesc', 'toggle', ['calendar', 'week label']),
 	e('views', 'viewsCalendar', 'calendarShowHoverAddButton', 'calendar', 'showHoverAddButton', 'showHoverAddButtonDesc', 'toggle', ['calendar', 'quick add', 'hover add', 'add button', 'plus button']),
 	e('views', 'viewsCalendar', 'calendarDayTitleAction', 'calendar', 'dayTitleAction', 'dayTitleActionDesc', 'dropdown', ['calendar', 'day title action', 'daily note', 'calendar day title', 'date header']),
@@ -227,6 +230,7 @@ export const OPERON_SETTINGS_SEARCH_REGISTRY: readonly OperonSettingsSearchEntry
 	e('views', 'viewsCalendar', 'calendarSidebarCalendarsDefaultExpanded', 'settings', 'calendarSidebarCalendarsDefaultState', 'calendarSidebarCalendarsDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'calendars section']),
 	e('views', 'viewsCalendar', 'calendarSidebarTaskPoolDefaultExpanded', 'settings', 'calendarSidebarTaskPoolDefaultState', 'calendarSidebarTaskPoolDefaultStateDesc', 'dropdown', ['calendar', 'sidebar', 'task pool section']),
 	section('integrations', 'viewsCalendar', 'externalCalendars', 'settings', 'externalCalendarsTitle', 'externalCalendarsDesc', ['calendar', 'ics', 'external calendar', 'external calendars', 'refresh', 'sync', 'vault', 'file']),
+	section('settings', 'coreGeneral', 'uriBuilder', 'settings', 'uriBuilder', 'uriSearch', ['URI Finder', 'URI Builder', 'command links', 'deep links', 'Table', 'Calendar', 'Filter', 'Kanban']),
 	section('integrations', 'coreGeneral', 'developerApi', 'settings', 'developerApiIntegrationsTitle', 'developerApiIntegrationsDesc', ['developer API', 'plugins', 'permissions', 'grants', 'audit', 'integration']),
 
 	e('views', 'viewsKanban', 'kanbanDefaultPresetId', 'settings', 'kanbanDefaultPreset', 'kanbanDefaultPresetDesc', 'dropdown', ['kanban', 'kanban default preset', 'kanban preset', 'board preset']),

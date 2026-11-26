@@ -2,6 +2,7 @@ import { decodeKanbanAxes, kanbanManagedReferenceType } from './kanban-axis-mode
 import { isVaultCalendarPath } from './external-calendar-source';
 import { mergeImportedInlinePropertyDefinitions, validateInlinePropertyDefinitions, type InlinePropertyDefinitions } from './inline-property-definitions';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
+import { isAutomationRulesSettings, type AutomationRulesSettings } from './automation-rules';
 import type { PresetFavorites } from './preset-favorites';
 import {
 	applyDynamicFilterTemplatePreferences,
@@ -128,6 +129,7 @@ export interface OperonSettingsBackupGroupPayloadsV1 {
 	filters: OperonSettingsBackupFiltersGroupV1;
 	calendar: OperonSettingsBackupCalendarGroupV1;
 	kanban: OperonSettingsBackupKanbanGroupV1;
+	automations: AutomationRulesSettings;
 	'preset-favorites': OperonSettingsBackupPresetFavoritesGroupV1;
 	'table-global': OperonSettingsBackupTableGlobalGroupV1;
 	'external-calendars': OperonSettingsBackupExternalCalendarsGroupV1;
@@ -200,6 +202,11 @@ export const SETTINGS_BACKUP_GROUP_CODECS_V1: Readonly<{
 	filters: codec('filters', decodeFilters),
 	calendar: codec('calendar', decodeCalendar),
 	kanban: codec('kanban', decodeKanban),
+	automations: codec('automations', (data, path, diagnostics) => {
+		if (isAutomationRulesSettings(data)) return { ...data };
+		diagnostics.push(error(path, 'value', 'Invalid automation confirmation or rule definition.'));
+		return null;
+	}),
 	'preset-favorites': codec('preset-favorites', decodeFavorites),
 	'table-global': codec('table-global', decodeTableGlobal),
 	'external-calendars': codec('external-calendars', decodeExternalCalendars),

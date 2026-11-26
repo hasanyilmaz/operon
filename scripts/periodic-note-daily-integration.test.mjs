@@ -24,7 +24,7 @@ test('the existing Daily Note compatibility wrapper delegates to the shared peri
 		'async resolvePeriodicParentConfigs',
 	);
 	assert.match(method, /await this\.resolveEffectivePeriodicNoteConfig\(kind\)/);
-	assert.match(method, /this\.getPeriodicNoteService\(\)\.getOrCreate\(\{[\s\S]*?dateKey/);
+	assert.match(method, /this\.getPeriodicNoteService\(\)\.getOrCreate\(request\)/);
 	assert.match(method, /result\.status === 'existing'/);
 	assert.match(method, /shouldFinalizeCreatedPath = result\.ok[\s\S]*?result\.status === 'created'/);
 	assert.match(method, /if \(shouldFinalizeCreatedPath\) \{[\s\S]*?scheduleReindex\(filePath\)/);

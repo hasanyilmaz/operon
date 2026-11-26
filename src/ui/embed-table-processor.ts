@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../core/periodic-note-path';
 import { cleanupTaskMediaChipPreviews } from './compact-chip-link-preview';
 import { bindTableTaskOpening, bindTablePropertyOpening, bindTableMarkdownOpening, readTablePropertyLinkValue, type TableOpeningContext } from './table/table-link-opening';
 import { isDesktopOpeningChip } from './links-chip-action';
@@ -1097,6 +1098,7 @@ function renderEmbedTableContents(instance: EmbedTableInstance, deps: EmbedTable
 		instance.deferSummariesForSearch = false;
 	}
 	const result = cachedNoSearchResult?.result ?? queryTableRows({
+		weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 		sortCacheOwner: instance,
 		preset,
 		filterSet,
@@ -1879,6 +1881,8 @@ function openEmbedTableFilterPopover(
 			deps.getPinnedCache(),
 				{
 					getRepeatSkipDates: deps.getRepeatSkipDates,
+					weekStart: deps.getSettings().calendarWeekStart,
+					weekNumbering: localWeekNumbering(deps.getSettings().weeklyNoteFormat),
 					projectSerialScopes: deps.getSettings().projectSerialScopes,
 					projectSerialScopeTasks: deps.indexer.getAllTasks(),
 					dependencyTasks: deps.indexer.getAllTasks(),
@@ -3283,6 +3287,8 @@ function resolveEmbedTableSearchContext(
 		priorities: settings.priorities,
 			pinnedCache: deps.getPinnedCache(),
 			getRepeatSkipDates: deps.getRepeatSkipDates,
+			weekStart: settings.calendarWeekStart,
+			weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 			projectSerialScopes: settings.projectSerialScopes,
 			pipelines: settings.pipelines,
 			filePropertyContext,
@@ -3361,6 +3367,7 @@ function resolveEmbedTableSortedSearchBaseRows(
 		summaries: [],
 	};
 	const result = queryTableRows({
+		weekNumbering: localWeekNumbering(input.settings.weeklyNoteFormat),
 		sortCacheOwner: instance,
 		preset: sortedPreset,
 		filterSet: input.filterSet,

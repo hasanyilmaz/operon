@@ -105,7 +105,7 @@ export async function flushLightboxMarkdown(app: App, leaf: WorkspaceLeaf): Prom
 
 
 /** getLeaf('tab') can reuse an existing empty tab. Create in the owner's group instead. */
-export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
+export function findLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf | null {
  let origin = app.workspace.getMostRecentLeaf();
  const previousOwner = origin && layoutGuards.get(app)?.leaves.get(origin);
  if (previousOwner) origin = app.workspace.getLeafById((previousOwner as WorkspaceLeaf & {id: string}).id) === previousOwner ? previousOwner : null;
@@ -115,7 +115,12 @@ export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
    if (!origin && candidate.view.containerEl.ownerDocument === doc) origin = candidate;
   });
  }
- if (!origin?.parent) throw new Error('No tab group in this window');
+ return origin?.parent ? origin : null;
+}
+
+export function getLightboxOwnerLeaf(app: App, doc: Document): WorkspaceLeaf {
+ const origin = findLightboxOwnerLeaf(app, doc);
+ if (!origin) throw new Error('No tab group in this window');
  return origin;
 }
 
@@ -303,6 +308,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
  const openingTrace = initial?.openingTrace ?? (LIGHTBOX_PERF_ENABLED && 'file' in target && target.file.file.extension === 'md' ? beginLightboxOpeningTrace(doc, 'source') : undefined);
  if ('file' in target) openingTrace?.resource(target.file.file);
  const isFile = 'file' in target;
+ const expectedTablePresetId = isFile ? target.file.expectedTablePresetId : undefined;
  let origin: WorkspaceLeaf;
  let closed = false;
  let ready = false;
@@ -387,6 +393,7 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
     // The resolved target supplies its frame before native loading can yield a paint.
     surface = new NativeLightboxSurface(lightbox, isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer');
     host = surface.content;
+    if (expectedTablePresetId !== undefined) host.hidden = true;
     const provider = getNativeTaskWorkspaceProvider(app);
     if (provider && isFile && target.file.file.extension === 'md') {
      companion = new NativeTaskWorkspace(lightbox, host, provider, close, initial,
@@ -516,6 +523,15 @@ function openNativeLightbox(app: App, anchor: HTMLElement, target: { url: string
       endLoad?.();
       if (cancelled()) return;
       assertLightboxLeafMounted(owned, ownedTabs, doc);
+      if (expectedTablePresetId !== undefined) {
+       // File-mode Table state is normalized against the preset parsed by this load.
+       if (owned.view.getViewType() !== OPERON_TABLE_FILE_VIEW_TYPE || owned.view.getState().presetId !== expectedTablePresetId) {
+        close();
+        new Notice(t('settings', 'uriPresetMissing'));
+        return;
+       }
+       host.hidden = false;
+      }
       if (owned.view.getViewType() !== (isFile ? nativeLightboxViewType(target.file.file.extension) : 'webviewer')) throw new Error('Unavailable native view');
       // Keep the complete native view tree inside the isolated tab group.
       initialMode = owned.getViewState().state?.mode;

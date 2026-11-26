@@ -1,6 +1,7 @@
 import { App, Notice, Setting, type ButtonComponent } from 'obsidian';
 import { t } from '../../core/i18n';
 import { createKanbanPropertyAccess, type KanbanPropertyDescriptor } from '../../core/kanban-axis-properties';
+import { getManagedCustomFieldMappings } from '../../core/managed-task-fields';
 import { CANONICAL_KEY_MAP } from '../../types/keys';
 import { resolveKanbanAxes, setKanbanPresetAxes, normalizeKanbanAxisValue, kanbanAxisValueKey, type KanbanAxis, type KanbanAxisValue } from '../../core/kanban-axis-model';
 import { getNativePropertyIndex } from '../../indexer/native-property-index';
@@ -11,7 +12,7 @@ import type { IndexedTask } from '../../types/fields';
 import type { FilterEvaluationOptions } from '../../core/filter-display';
 import { showSearchableFieldPicker } from '../field-pickers/searchable-field-picker';
 import { showSearchableOptionPicker } from '../field-pickers/searchable-option-picker';
-import { kanbanAxisReason } from './kanban-axis-labels';
+import { kanbanAxisReason, kanbanCustomPropertyConflict } from './kanban-axis-labels';
 import { collectKanbanAxisValueChoices } from './kanban-axis-values';
 import type { KanbanPickerData } from './kanban-picker-session';
 
@@ -19,6 +20,38 @@ function propertyLabel(field: KanbanPropertyDescriptor): string {
 	const key = field.reference.key;
 	return field.reference.source === 'managed' && CANONICAL_KEY_MAP.has(key)
 		&& field.label.toLowerCase() !== key.toLowerCase() ? `${field.label} - ${key}` : field.label;
+}
+
+interface AxisPickerField {
+	field: string;
+	label: string;
+	descriptor: KanbanPropertyDescriptor | null;
+	secondaryLabel?: string;
+	disabled?: boolean;
+}
+
+function axisPickerFields(
+	side: 'columns' | 'swimlanes', available: readonly KanbanPropertyDescriptor[], settings: OperonSettings,
+	declarations: Readonly<Record<string, string>>,
+): AxisPickerField[] {
+	const choices = available.map(descriptor => ({ field: descriptor.identity, label: propertyLabel(descriptor), descriptor }));
+	if (side === 'columns') return choices;
+
+	const custom = getManagedCustomFieldMappings(settings.keyMappings, { includeCheckbox: true });
+	const hidden = new Set(custom.filter(mapping => !mapping.showInKanbanSwimlane).map(mapping => mapping.canonicalKey));
+	const fields: AxisPickerField[] = choices.filter(({ descriptor }) =>
+		descriptor.reference.source !== 'managed' || !hidden.has(descriptor.reference.key));
+	const listed = new Set(fields.map(field => field.field));
+	for (const mapping of custom) {
+		const field = `managed:${mapping.canonicalKey}`;
+		if (hidden.has(mapping.canonicalKey) || listed.has(field)) continue;
+		const label = mapping.visiblePropertyName || mapping.canonicalKey;
+		fields.push({ field, label, descriptor: null, disabled: true,
+			secondaryLabel: kanbanCustomPropertyConflict(mapping, settings.keyMappings, declarations) });
+		listed.add(field);
+	}
+	fields.unshift({ field: 'no-swimlanes', label: t('settings', 'kanbanNoSwimlanes'), descriptor: null });
+	return fields;
 }
 
 export function kanbanTaskCountLabels(result: KanbanGroupingResult): { scoped: string; board: string } {
@@ -84,8 +117,7 @@ export function renderKanbanAxisSettings(options: {
 	new Setting(container).setName(t('settings', 'kanbanAxisProperty')).addButton(button => button.setClass('dropdown').setButtonText(label).onClick(() => {
 		options.onPropertyPickerOpen?.();
 		// Property selection needs only the catalog, never task values or scope counts.
-		const fields: { field: string; label: string; descriptor: KanbanPropertyDescriptor | null }[] = access.fields.map(field => ({ field: field.identity, label: propertyLabel(field), descriptor: field }));
-		if (side === 'swimlanes') fields.unshift({ field: 'no-swimlanes', label: t('settings', 'kanbanNoSwimlanes'), descriptor: null });
+		const fields = axisPickerFields(side, access.fields, settings, native.getTypes());
 		retainPicker(showSearchableFieldPicker(button.buttonEl, {
 			value: selected?.ok ? selected.field.identity : side === 'swimlanes' && !axis ? 'no-swimlanes' : null, fields,
 			placeholder: t('settings', 'kanbanAxisProperty'), ariaLabel: t('settings', 'kanbanAxisProperty'), noMatchesText: t('settings', 'kanbanAxisNoMatches'),
@@ -93,6 +125,7 @@ export function renderKanbanAxisSettings(options: {
 			variantClassName: 'operon-kanban-value-picker', getSearchText: item => item.label,
 			onClose: options.onPickerClose,
 			onSelect: item => {
+				if (item.disabled) return;
 				if (!item.descriptor) {
 					if (side === 'swimlanes' && axis) {
 						setKanbanPresetAxes(preset, { ...decoded.axes, swimlanes: null, inactiveSwimlanes: axis }, settings.keyMappings);
@@ -117,7 +150,11 @@ export function renderKanbanAxisSettings(options: {
 		}));
 	}));
 	if (!axis) return;
-	if (selected && !selected.ok) new Setting(container).setDesc(kanbanAxisReason(selected.reason));
+	if (selected && !selected.ok) {
+		const mapping = selected.reason === 'type-conflict' && axis.kind === 'property'
+			? settings.keyMappings.find(item => item.isSystem === false && item.canonicalKey === axis.property.key) : undefined;
+		new Setting(container).setDesc(mapping ? kanbanCustomPropertyConflict(mapping, settings.keyMappings, native.getTypes()) : kanbanAxisReason(selected.reason));
+	}
 	if (axis.kind === 'status') {
 		new Setting(container).setName(t('settings', 'kanbanPipeline')).addDropdown(dropdown => {
 			dropdown.addOption('', t('settings', 'kanbanNoPipeline'));

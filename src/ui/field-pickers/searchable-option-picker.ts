@@ -14,6 +14,7 @@ export interface SearchableOptionPickerItem {
 	value: string;
 	label: string;
 	description?: string;
+	disabled?: boolean;
 	trailingText?: string;
 	icon?: string | null;
 	resolveIcon?: () => string;
@@ -118,6 +119,7 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 	const getCurrentValue = (): string | null | undefined => options.getValue?.() ?? options.value;
 
 	const selectOption = (option: TOption): void => {
+		if (option.disabled) return;
 		options.onSelect(option);
 		close();
 	};
@@ -160,6 +162,10 @@ export function showSearchableOptionPicker<TOption extends SearchableOptionPicke
 		item.id = `${optionIdPrefix}-${index}`;
 		item.setAttribute('role', 'option');
 		item.tabIndex = -1;
+		if (match.disabled) {
+			item.disabled = true;
+			item.setAttribute('aria-disabled', 'true');
+		}
 		if (options.pageSize) {
 			item.setAttribute('aria-setsize', String(matches.length));
 			item.setAttribute('aria-posinset', String(index + 1));

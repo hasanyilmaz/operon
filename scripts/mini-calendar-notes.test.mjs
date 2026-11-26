@@ -54,7 +54,7 @@ function fixture(kind, task, mode, mobile = false) {
  subject.resolveOrCreatePeriodicNoteResult = async (requestedKind, date, prepared, canCommit) => {
   events.push(['resolve', requestedKind, date, canCommit()]); return { file, wasCreated: true, noticeShown: false };
  };
- subject.indexer = { reindexFilePath: async () => { events.push(['indexed']); } };
+ subject.indexer = { getLiveReadAuthoritySnapshot: () => ({ state: 'verified' }), reindexFilePath: async () => { events.push(['indexed']); } };
  subject.getMarkdownViewsForPath = () => [];
  subject.getQuickSwitcherFileTaskId = () => task ? 'file-id' : null;
  subject.isExcalidrawTaskSource = () => false;
@@ -75,6 +75,25 @@ for (const kind of ['daily', 'weekly']) for (const task of [false, true]) for (c
  test(`${kind} ${task ? 'task' : 'note'} ${mode} opens native on mobile`, async () => {
   const f = fixture(kind, task, mode, true); await f.subject.openMiniCalendarNote(f.request);
   assert.equal(f.events.at(-1)[0], 'native'); assert.equal(f.events.some(e => e[0] === 'indexed'), false);
+ });
+}
+for (const kind of ['daily', 'weekly']) for (const task of [false, true]) {
+ test(`new ${kind} ${task ? 'File Task' : 'note'} opens its editor without a notice while creation indexing settles`, async () => {
+  const f = fixture(kind, task, 'source-and-editor'), gate = deferred(), notices = [];
+  let settling = true;
+  f.subject.indexer.getLiveReadAuthoritySnapshot = () => ({ state: settling ? 'settling' : 'verified' });
+  f.subject.indexer.awaitRamSettlement = async () => { await gate.promise; settling = false; };
+  f.subject.getQuickSwitcherFileTaskId = () => settling ? undefined : task ? 'file-id' : null;
+  Notice.onNotice = message => notices.push(message);
+  try {
+   const opening = f.subject.openMiniCalendarNote(f.request);
+   await tick();
+   assert.deepEqual(f.events.map(event => event[0]), ['resolve', 'indexed']);
+   gate.resolve();
+   await opening;
+   assert.deepEqual(f.events.at(-1), task ? ['task', 'file-id', true] : ['properties', true]);
+   assert.deepEqual(notices, []);
+  } finally { gate.resolve(); Notice.onNotice = null; }
  });
 }
 test('new task waits for indexing; source identity prevents stale or excluded tasks becoming Properties', async () => {
@@ -129,6 +148,9 @@ test('ISO, local and custom formats label the exact Monday, including week-year 
  assert.equal(miniCalendarWeek('2026-12-28', 'GGGG-[W]WW').label, '53');
  assert.equal(miniCalendarWeek('2026-12-28', 'gggg-[W]ww').label, moment('2026-12-28').format('w'));
  assert.match(miniCalendarWeek('2026-12-28', 'YYYY-MM-DD').description, /2026-12-28/);
+ assert.match(miniCalendarWeek('2026-11-23', 'YYYY-MM-DD', 'sunday').description, /2026-11-22/);
+ assert.match(miniCalendarWeek('2026-11-23', 'YYYY-MM-DD', 'sunday', () => 'monday').description, /2026-11-23/);
+ assert.equal(miniCalendarWeek('2026-11-23', 'GGGG-[W]WW', 'sunday').label, '48');
  assert.equal(miniCalendarWeek('2026-12-28', '[ww] YYYY-MM-DD').label, '53');
 });
 test('optional setting round trips, preserves other data, reloads absence and survives failed saves', async () => {

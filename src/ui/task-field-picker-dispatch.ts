@@ -76,6 +76,7 @@ export interface TaskFieldPickerDispatchOptions {
 	excludedTaskIds?: string[];
 	sourcePath?: string;
 	closeListPickerOnSelect?: boolean;
+	singleListValue?: boolean;
 	retainInputFocus?: boolean;
 	manualDatePicker?: ManualDatePickerOptions;
 	taskFormat?: 'inline' | 'yaml';
@@ -390,6 +391,7 @@ function openManagedTaskDataFieldPicker(options: TaskFieldPickerDispatchOptions)
 		canonicalKey: field.canonicalKey,
 		type: 'list',
 		label: field.label,
+		singleValue: options.singleListValue,
 		value: options.currentListValues ? [...options.currentListValues] : parseTaskMediaReferenceList(value),
 		candidates,
 		placeholder: field.label,

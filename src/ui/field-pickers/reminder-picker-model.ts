@@ -1,4 +1,5 @@
 import {
+	REMINDER_RULE_ANCHORS,
 	getAvailableReminderRuleAnchors,
 	parseAbsoluteReminder,
 	parseReminderOffsetInput,
@@ -21,8 +22,8 @@ export interface ReminderRuleCandidate {
 	anchor: ReminderRuleAnchor;
 	canonicalRule: string;
 	offset: string;
-	epochMs: number;
-	localDatetime: string;
+	epochMs?: number;
+	localDatetime?: string;
 	isPast: boolean;
 }
 
@@ -54,9 +55,9 @@ export type AbsoluteReminderSelectionEvaluation =
 
 export function buildReminderRuleCandidates(
 	offsetInput: string,
-	input: ReminderPickerModelInput,
+	input: ReminderPickerModelInput | 'automation',
 ): ReminderRuleCandidateEvaluation {
-	const availableAnchors = getAvailableReminderRuleAnchors(input.fieldValues);
+	const availableAnchors = input === 'automation' ? [...REMINDER_RULE_ANCHORS] : getAvailableReminderRuleAnchors(input.fieldValues);
 	if (availableAnchors.length === 0) {
 		return { status: 'no-anchors', availableAnchors, candidates: [] };
 	}
@@ -67,6 +68,13 @@ export function buildReminderRuleCandidates(
 	const parsedOffset = parseReminderOffsetInput(offsetInput);
 	if (!parsedOffset.ok) {
 		return { status: 'invalid-input', availableAnchors, candidates: [] };
+	}
+
+	if (input === 'automation') {
+		const offset = parsedOffset.value.canonical;
+		return { status: 'ready', availableAnchors, candidates: availableAnchors.map(anchor => ({
+			anchor, offset, canonicalRule: anchor + '.' + offset, isPast: false,
+		})) };
 	}
 
 	const existingCanonicalRules = collectExistingCanonicalRules(input);

@@ -81,6 +81,14 @@ try {
   });
   await settle(page);
   await assertMiniCalendarGeometry(page, true);
+  if (!touch && width === 320 && height === 480) {
+   const theme = await page.addStyleTag({ content: 'button:not(.clickable-icon){box-shadow:0 2px 3px #aaa,0 1px 2px #bbb}' });
+   for (const selector of ['.operon-calendar-sidebar-month-day', '.operon-calendar-sidebar-month-weeknum']) {
+    assert.equal(await page.locator('.operon-mini-calendar-week ' + selector).first().evaluate(el => getComputedStyle(el).boxShadow), 'none');
+   }
+   await theme.evaluate(el => el.remove());
+  }
+
   if (width === 320 && height === 480) {
    // Today's month and the week at the viewport center use normal day colors.
    const assertTone = (date, expectedColor) => page.locator(`[data-date-key="${date}"]`).evaluate((button, expected) => {
@@ -110,12 +118,45 @@ try {
    await assertTone('2027-07-20', muted(normal));
    await assertTone('2027-07-24', muted(weekend));
    await assertTone('2027-07-01', accent);
+   const assertDisplayedDay = async date => {
+    const displayed = page.locator('.operon-mini-calendar-week .is-displayed-day');
+    assert.equal(await displayed.count(), 1);
+    assert.equal(await displayed.getAttribute('data-date-key'), date);
+    const sizesMatch = await page.locator('.operon-mini-day-number').evaluateAll(labels => labels.every(label => {
+     const cell = label.parentElement;
+     const scale = cell.classList.contains('is-displayed-day') ? 1.15 : 1;
+     return Math.abs(parseFloat(getComputedStyle(label).fontSize) - parseFloat(getComputedStyle(cell).fontSize) * scale) < 0.01;
+    }));
+    assert.ok(sizesMatch, date);
+    assert.equal(await displayed.evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(64, 160, 255)');
+   };
+   await assertDisplayedDay('2027-07-13');
+   if (!touch) {
+    const header = page.locator('.operon-calendar-date-button');
+    const original = await header.textContent();
+    await page.locator('[data-date-key="2027-07-20"]').hover();
+    assert.match(await header.textContent(), /20/);
+    await assertDisplayedDay('2027-07-20');
+    assert.equal(await page.locator('[data-date-key="2027-07-13"]').evaluate(el => getComputedStyle(el).borderTopColor), 'rgb(85, 85, 85)');
+    await assertTone('2027-07-20', normal);
+    await assertTone('2027-07-13', muted(normal));
+    await page.locator('[data-date-key="2027-07-21"]').hover();
+    assert.match(await header.textContent(), /21/);
+    await assertDisplayedDay('2027-07-21');
+    assert.equal((await state(page)).selected, '2027-07-13');
+    await header.hover();
+    assert.equal(await header.textContent(), original);
+    await assertDisplayedDay('2027-07-13');
+    await assertTone('2027-07-13', normal);
+    await assertTone('2027-07-20', muted(normal));
+   }
    const weekHeight = (await state(page)).pitch;
    await page.locator('.operon-mini-calendar-scroll').evaluate((el, delta) => { el.scrollTop += delta; }, weekHeight);
    await settle(page);
    const scrolled = await state(page);
    assert.equal(scrolled.center, '2027-07-19');
    assert.equal(scrolled.reference, '2027-07-20');
+   await assertDisplayedDay(scrolled.reference);
    assert.equal(scrolled.selected, '2027-07-13');
    await assertTone('2027-07-13', muted(normal));
    await assertTone('2027-07-17', muted(weekend));
@@ -147,6 +188,53 @@ try {
   assert.equal(current.selected, '2027-01-13'); assert.equal(current.reference, '2027-01-13');
   assert.ok(current.overflow <= 1); assert.equal(current.tabOutside, false);
   if (touch) assert.ok(await page.locator('[data-date-key="2027-01-13"]').evaluate(el => el.getBoundingClientRect().height >= 44));
+  if (!touch && width === 320 && height === 480) {
+   await page.addStyleTag({ content: '.workspace-tab-header-container { height: 40px; }' });
+   const header = await page.evaluateHandle(() => {
+    document.body.classList.add('operon-tweak-compact-sidebar-tab-icons');
+    const dock = document.body.createDiv('mod-sidedock');
+    const tabs = dock.createDiv('workspace-tabs');
+    Object.assign(tabs.style, { display: 'flex', flexDirection: 'column', height: '530px' });
+    const bar = tabs.createDiv('workspace-tab-header-container');
+    Object.assign(bar.style, { flexShrink: '0', width: '320px' });
+    bar.createDiv('workspace-tab-header-container-inner').createDiv('workspace-tab-header').textContent = 'Mini Calendar';
+    const panel = document.getElementById('panel');
+    tabs.append(panel); panel.style.flex = '1 1 0';
+    return bar;
+   });
+   await settle(page);
+   const writes = await page.evaluateHandle(() => {
+    const result = { count: 0 };
+    const observer = new MutationObserver(records => { result.count += records.length; });
+    observer.observe(document.querySelector('.operon-calendar-sidebar-month-nav'), { subtree: true, childList: true });
+    result.stop = () => observer.disconnect();
+    return result;
+   });
+   const collapsedHeight = await header.evaluate(el => el.clientHeight);
+   await header.asElement().hover(); await page.waitForTimeout(180);
+   assert.ok(await header.evaluate(el => el.clientHeight) > collapsedHeight, 'compact tab header expands');
+   await page.mouse.move(750, 600); await page.waitForTimeout(180);
+   assert.equal(await header.evaluate(el => el.clientHeight), collapsedHeight);
+   await page.evaluate(async () => {
+    const tabs = document.querySelector('.workspace-tabs');
+    for (let h = 530; h <= 570; h += 2) {
+     tabs.style.height = h + 'px';
+     await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+   });
+   await settle(page);
+   assert.equal(await writes.evaluate(result => { result.stop(); return result.count; }), 0, 'resizing must not rebuild the date header');
+   const resized = await state(page);
+   assert.equal(resized.center, current.center);
+   assert.equal(resized.tabOutside, false);
+   await page.evaluate(() => {
+    const panel = document.getElementById('panel');
+    document.body.prepend(panel); panel.style.removeProperty('flex');
+    document.querySelector('.mod-sidedock').remove();
+    document.body.classList.remove('operon-tweak-compact-sidebar-tab-icons');
+   });
+   await settle(page);
+  }
   const scroll = page.locator('.operon-mini-calendar-scroll');
   await scroll.hover(); await page.mouse.wheel(0, current.pitch * 4 + 9); await page.waitForTimeout(250);
   current = await state(page);

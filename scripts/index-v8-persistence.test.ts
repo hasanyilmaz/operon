@@ -69,7 +69,7 @@ class ManualPersistenceScheduler implements IndexV8PersistenceScheduler {
 
 	now(): number { return this.currentMs; }
 
-	setTimeout(callback: () => void, delayMs: number): unknown {
+	setTimeout(callback: () => void, delayMs: number): number {
 		const id = this.nextId++;
 		this.timers.set(id, { dueMs: this.currentMs + Math.max(0, delayMs), callback });
 		return id;
@@ -282,6 +282,68 @@ async function testParityAndPrivacy(): Promise<void> {
 	}
 }
 
+async function testAutoPersistWindow(
+	indexer: OperonIndexer,
+	queue: (path: string) => Promise<void>,
+	batches: ReadonlyArray<{ dirtySourcePaths: ReadonlySet<string> }>,
+): Promise<void> {
+	const scheduler = new ManualPersistenceScheduler();
+	const original = { setTimeout: activeWindow.setTimeout, clearTimeout: activeWindow.clearTimeout };
+	const begin = () => indexer.deferPendingPersistForAuto(isPending => isPending('Café.md'.normalize('NFD')));
+	const initial = batches.length;
+	Object.assign(activeWindow, {
+		setTimeout: scheduler.setTimeout.bind(scheduler),
+		clearTimeout: scheduler.clearTimeout.bind(scheduler),
+	});
+	try {
+		await queue('Other.md');
+		equal(begin(), undefined, 'unrelated sources keep the normal debounce');
+		await scheduler.advanceBy(350);
+		equal(batches.length, initial + 1);
+
+		await queue('Café.md');
+		const release = begin();
+		check(release);
+		await scheduler.advanceBy(350);
+		equal(batches.length, initial + 1, 'the input is still pending while Auto is writing');
+		await queue('Auto.md');
+		release();
+		await scheduler.advanceBy(0);
+		deepEqual([...batches.at(-1)!.dirtySourcePaths], ['Café.md', 'Auto.md']);
+		equal(batches.length, initial + 2);
+
+		await queue('Café.md');
+		const late = begin();
+		check(late);
+		await scheduler.advanceBy(1_350);
+		equal(batches.length, initial + 3, 'a long confirmation cannot hold the input past the deadline');
+
+		await queue('Café.md');
+		const early = begin();
+		check(early);
+		late();
+		await scheduler.advanceBy(200);
+		early();
+		await scheduler.advanceBy(149);
+		equal(batches.length, initial + 3, 'an early release preserves the original debounce');
+		await scheduler.advanceBy(1);
+		equal(batches.length, initial + 4);
+
+		await queue('Café.md');
+		const explicit = begin();
+		check(explicit);
+		await scheduler.advanceBy(350);
+		await indexer.flushPendingPersist();
+		equal(batches.length, initial + 5, 'explicit flush bypasses the hold');
+		explicit();
+		await scheduler.advanceBy(1_350);
+		equal(batches.length, initial + 5);
+		equal(scheduler.pendingTimerCount, 0);
+	} finally {
+		Object.assign(activeWindow, original);
+	}
+}
+
 async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 	const data = createSyntheticIndexData(2);
 	const order: string[] = [];
@@ -293,6 +355,8 @@ async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 		forceFull: boolean;
 	}> = [];
 	let failPrimary = false;
+	let failOnce = false;
+	let pauseWrite: (() => Promise<void>) | undefined;
 	let primaryStatus: 'committed' | 'unchanged' = 'committed';
 	let recoveryMarkerCount = 0;
 	const storage = {
@@ -302,6 +366,11 @@ async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 	const persistence = {
 		persistPrimary: async (input: IndexV8PersistenceInput, dirty: typeof dirtyBatches[number]) => {
 			order.push('v8-primary');
+			if (pauseWrite) await pauseWrite();
+			if (failOnce) {
+				failOnce = false;
+				throw new Error('transient write failure');
+			}
 			if (failPrimary) throw new IndexV8StorageError('INVALID_SNAPSHOT', 'fixture primary failure');
 			persistenceInputs.push(input);
 			dirtyBatches.push({
@@ -383,22 +452,81 @@ async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 
 	order.length = 0;
 	const primaryBeforeBurst = persistenceInputs.length;
+	const capture = indexer as unknown as {
+		buildPersistenceInput(sequence: number, signature: string, indexedAtMs: number): IndexV8PersistenceInput;
+	};
+	const buildInput = capture.buildPersistenceInput.bind(indexer);
+	let copies = 0;
+	capture.buildPersistenceInput = (...args) => {
+		copies++;
+		return buildInput(...args);
+	};
 	for (let index = 0; index < 1_000; index++) {
 		await mutable.persistIndex({
 			dirtySourcePaths: [`Burst-${index}.md`],
 			affectedOperonIds: [`burst-${index}`],
 		});
 	}
+	equal(copies, 0, 'collecting dirty paths must not copy live RAM');
 	equal(persistenceInputs.length, primaryBeforeBurst, 'pending burst must not start more than one persistence job');
 	await mutable.flushPendingPersist();
+	equal(copies, 1, 'a burst must build exactly one snapshot at flush');
 	equal(persistenceInputs.length, primaryBeforeBurst + 1);
 	equal(dirtyBatches.at(-1)?.dirtySourcePaths.size, 1_000);
 	equal(dirtyBatches.at(-1)?.affectedOperonIds.size, 1_000);
 
+	const started = deferred<void>();
+	const finish = deferred<void>();
+	pauseWrite = () => {
+		started.resolve();
+		return finish.promise;
+	};
+	const indexedAtMs = Date.now();
+	const originalNow = Date.now;
+	try {
+		Date.now = () => indexedAtMs - 5_000;
+		await mutable.persistIndex({ dirtySourcePaths: ['First.md'] });
+	} finally {
+		Date.now = originalNow;
+	}
+	const liveInstance = Object.values(data.taskInstances ?? {})[0];
+	liveInstance.description = 'ready before first capture';
+	const firstFlush = mutable.flushPendingPersist();
+	await started.promise;
+	liveInstance.description = 'updated during first write';
+	await mutable.persistIndex({ dirtySourcePaths: ['Later.md'] });
+	const secondFlush = mutable.flushPendingPersist();
+	equal(copies, 2, 'new requests wait while the first sealed snapshot is writing');
+	pauseWrite = undefined;
+	finish.resolve();
+	await Promise.all([firstFlush, secondFlush]);
+	equal(copies, 3);
+	equal(persistenceInputs.at(-2)?.indexData.taskInstances?.[liveInstance.instanceKey].description, 'ready before first capture');
+	equal(persistenceInputs.at(-1)?.indexData.taskInstances?.[liveInstance.instanceKey].description, 'updated during first write');
+	equal(persistenceInputs.at(-2)?.committedAt, new Date(indexedAtMs - 5_000).toISOString(),
+		'startup watermark must retain the last indexed edit time across debounce');
+	deepEqual([...dirtyBatches.at(-2)!.dirtySourcePaths], ['First.md']);
+	deepEqual([...dirtyBatches.at(-1)!.dirtySourcePaths], ['Later.md']);
+
+	failOnce = true;
+	await mutable.persistIndex({ immediate: true, dirtySourcePaths: ['Retry.md'], affectedOperonIds: ['old'] });
+	await mutable.persistIndex({ immediate: true, dirtySourcePaths: ['Fresh.md'], affectedOperonIds: ['new'] });
+	deepEqual([...dirtyBatches.at(-1)!.dirtySourcePaths].sort(), ['Fresh.md', 'Retry.md']);
+	deepEqual([...dirtyBatches.at(-1)!.affectedOperonIds].sort(), ['new', 'old']);
+
+	await testAutoPersistWindow(indexer, path => mutable.persistIndex({ dirtySourcePaths: [path] }), dirtyBatches);
+
+	const copiesBeforeInvalidation = copies;
+	await mutable.persistIndex({ dirtySourcePaths: ['Before-settings.md'] });
+	indexer.invalidateV8Coherence();
+	await mutable.flushPendingPersist();
+	equal(copies, copiesBeforeInvalidation, 'unverified live state cannot be captured');
+	mutable.coherenceBasis = 'verified-full-scan';
 	order.length = 0;
 	await mutable.persistIndex({ immediate: true, forceFull: true });
 	deepEqual(order, ['v8-primary']);
 	equal(dirtyBatches.at(-1)?.forceFull, true);
+	deepEqual([...dirtyBatches.at(-1)!.dirtySourcePaths], ['Before-settings.md']);
 
 	order.length = 0;
 	primaryStatus = 'unchanged';
@@ -425,6 +553,17 @@ async function testIndexerV8PrimaryOrderingAndSealedSnapshot(): Promise<void> {
 	equal(recoveryMarkerCount, 1, 'non-retryable V8 failure must create one durable recovery marker');
 	const recoveryRevision = indexer.getIndexRevisionSource();
 	deepEqual(recoveryRevision.durable, { status: 'recovery-required' });
+
+	const closing = new OperonIndexer(app, storage as never, persistence as unknown as IndexV8PersistenceCoordinator);
+	const closingState = closing as unknown as typeof mutable;
+	closingState.coherentWorkflowStatusSemanticsSignature = data.workflowStatusSemanticsSignature;
+	closingState.coherenceBasis = 'verified-full-scan';
+	await closingState.persistIndex({ dirtySourcePaths: ['Edited.md'] });
+	closing.invalidateV8Coherence();
+	const beforeClose = order.length;
+	await closing.prepareForUnload();
+	equal(order.length, beforeClose, 'shutdown must preserve the prior manifest when live data is unverified');
+	equal(recoveryMarkerCount, 1, 'a pending settings reindex must not force manual repair');
 }
 
 async function testIndexerRamSettlementSeam(): Promise<void> {

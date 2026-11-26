@@ -154,10 +154,11 @@ export function hasFileTaskDisplayTitleMapping(keyMappings: readonly KeyMapping[
 export function isWritableRawYamlPropertyName(
 	propertyName: string,
 	keyMappings: readonly KeyMapping[],
-	canonicalKey?: 'fileTaskDisplayTitle',
+	mode?: 'fileTaskDisplayTitle' | 'case-insensitive',
 ): boolean {
 	if (!propertyName || !propertyName.trim() || propertyName.startsWith('_')) return false;
-	if (canonicalKey === 'fileTaskDisplayTitle') {
+	if (mode === 'fileTaskDisplayTitle') {
+		const canonicalKey = mode;
 		const mapping = keyMappings.find(item => item.canonicalKey === canonicalKey && item.isSystem !== false);
 		const comparable = propertyName.toLowerCase();
 		return mapping?.visiblePropertyName === propertyName
@@ -169,17 +170,11 @@ export function isWritableRawYamlPropertyName(
 				&& (item.visiblePropertyName.toLowerCase() === comparable || item.canonicalKey.toLowerCase() === comparable))
 			&& (comparable === 'title' || !RESERVED_RAW_PROPERTY_NAMES.has(comparable));
 	}
-	if (RESERVED_RAW_PROPERTY_NAMES.has(propertyName)) return false;
-	const managedNames = new Set<string>();
-	for (const canonical of CANONICAL_KEYS) {
-		managedNames.add(canonical.name);
-		for (const alias of LEGACY_CANONICAL_KEY_ALIASES[canonical.name] ?? []) managedNames.add(alias);
-	}
-	for (const mapping of keyMappings) {
-		managedNames.add(mapping.canonicalKey);
-		if (mapping.visiblePropertyName) managedNames.add(mapping.visiblePropertyName);
-	}
-	return !managedNames.has(propertyName);
+	const name = mode === 'case-insensitive' ? propertyName.toLowerCase() : propertyName;
+	const matches = (alias: string) => (mode === 'case-insensitive' ? alias.toLowerCase() : alias) === name;
+	return !RESERVED_RAW_PROPERTY_NAMES.has(name)
+		&& !CANONICAL_KEYS.some(key => matches(key.name) || LEGACY_CANONICAL_KEY_ALIASES[key.name]?.some(matches))
+		&& !keyMappings.some(mapping => matches(mapping.canonicalKey) || mapping.visiblePropertyName && matches(mapping.visiblePropertyName));
 }
 
 export function readRawYamlPropertyExpectation(

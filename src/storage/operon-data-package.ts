@@ -80,6 +80,7 @@ export type OperonDataPackageOwnedSettingsKey =
 	| 'statusDockClickAction'
 	| 'statusDockMode'
 	| 'statusDockAlignment'
+	| 'automationRules'
 	| 'propertyValuePool'
 	| 'presetFavorites'
 	| keyof TaskAutomationPolicyStoreSettings;
@@ -117,6 +118,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'statusDockClickAction',
 	'statusDockMode',
 	'statusDockAlignment',
+	'automationRules',
 	'propertyValuePool',
 	'presetFavorites',
 	'contextualMenuActionAllowlist',
@@ -191,6 +193,7 @@ export const OPERON_DATA_PACKAGE_OWNED_SETTINGS_KEYS = [
 	'inlineTaskSaveMode',
 	'inlineTaskUseDailyNote',
 	'inlineTaskTargetFile',
+	'inlineTaskSpecificFileHeading',
 	'inlineTaskHeading',
 	'fileTaskParentInlineTargetMode',
 	'fileTaskParentFileTargetMode',
@@ -374,7 +377,7 @@ export interface OperonUiPackageV1 {
 	propertyValuePool?: unknown;
 	contextualMenu: VersionedStoreSlice<ContextualMenuStoreSettings>;
 	taskUiPreferences: VersionedStoreSlice<TaskUiPreferencePackageSettings>;
-	taskCreationProfile: VersionedStoreSlice<Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault' | 'fileTaskAfterCreate' | 'inlineTaskAfterCreate'>> & { inlineTaskAfterCreate?: OperonSettings['inlineTaskAfterCreate']; fileTaskAfterCreate?: OperonSettings['fileTaskAfterCreate']; defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean };
+	taskCreationProfile: VersionedStoreSlice<Omit<TaskCreationProfileStoreSettings, 'inlineTaskSpecificFileHeading' | 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault' | 'fileTaskAfterCreate' | 'inlineTaskAfterCreate'>> & { inlineTaskSpecificFileHeading?: string; inlineTaskAfterCreate?: OperonSettings['inlineTaskAfterCreate']; fileTaskAfterCreate?: OperonSettings['fileTaskAfterCreate']; defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean };
 	workspaceTweaks: VersionedStoreSlice<WorkspaceTweaksPackageSettings>;
 	presetFavorites?: VersionedStoreSlice<PresetFavorites>;
 }
@@ -392,6 +395,7 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 		...cloneUnknown<OperonUiPackageV1['taskCreationProfile']>(known),
 	};
 	// None is absent on disk: avoid startup churn and retire a previous selection on reset.
+	if (!Object.prototype.hasOwnProperty.call(known, 'inlineTaskSpecificFileHeading')) delete merged.inlineTaskSpecificFileHeading;
 	if (!Object.prototype.hasOwnProperty.call(known, 'defaultInlineTaskTemplateId')) delete merged.defaultInlineTaskTemplateId;
 	if (!Object.prototype.hasOwnProperty.call(known, 'inlineTaskUseLastTemplateAsDefault')) delete merged.inlineTaskUseLastTemplateAsDefault;
 	if (!Object.prototype.hasOwnProperty.call(known, 'fileTaskUseLastTemplateAsDefault')) delete merged.fileTaskUseLastTemplateAsDefault;
@@ -401,6 +405,7 @@ export function mergeTaskCreationProfilePreservingUnknownV1(
 }
 
 export interface OperonAutomationPackageV1 {
+	ruleSettings?: unknown;
 	taskAutomationPolicy: VersionedStoreSlice<
 		Omit<TaskAutomationPolicyStoreSettings, 'trackerStopOnObsidianQuit'> & {
 			trackerStopOnObsidianQuit?: boolean;
@@ -592,6 +597,7 @@ export function composeOperonSettingsFromDataPackage(
 			? cloneUnknown(dataPackage.ui.presetFavorites)
 			: undefined,
 		...cloneUnknown<Partial<OperonSettings>>(dataPackage.automation.taskAutomationPolicy),
+		automationRules: dataPackage.automation.ruleSettings,
 		externalCalendars: readArray(dataPackage.integrations.externalCalendarSources.sources, defaults.externalCalendars),
 	});
 }
@@ -736,6 +742,7 @@ export function buildOperonDataPackageFromSettings(
 				inlineTaskUseDailyNote: normalized.inlineTaskUseDailyNote,
 				inlineTaskTargetFile: normalized.inlineTaskTargetFile,
 				inlineTaskHeading: normalized.inlineTaskHeading,
+				...(normalized.inlineTaskSpecificFileHeading ? { inlineTaskSpecificFileHeading: normalized.inlineTaskSpecificFileHeading } : {}),
 				fileTaskParentInlineTargetMode: normalized.fileTaskParentInlineTargetMode,
 				fileTaskParentFileTargetMode: normalized.fileTaskParentFileTargetMode,
 				inlineToFileTaskMovePlainCheckboxes: normalized.inlineToFileTaskMovePlainCheckboxes,
@@ -791,6 +798,7 @@ export function buildOperonDataPackageFromSettings(
 			},
 		},
 		automation: {
+			...(normalized.automationRules === undefined ? {} : { ruleSettings: cloneUnknown(normalized.automationRules) }),
 			taskAutomationPolicy: {
 				version: 1,
 				keepInlineTasksWithParent: normalized.keepInlineTasksWithParent,

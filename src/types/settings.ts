@@ -1688,6 +1688,7 @@ export interface OperonSettings extends TaskCardSettings {
 	/** Internal source interpretation metadata; not a user-facing preference. */
 	inlinePropertyDefinitions?: import('../core/inline-property-definitions').InlinePropertyDefinitions;
 	/** Raw optional UI preferences; preserve unknown/future content without repair. */
+	automationRules?: unknown;
 	propertyValuePool?: unknown;
 	settingsVersion: number;
 
@@ -1781,6 +1782,7 @@ export interface OperonSettings extends TaskCardSettings {
 	inlineTaskUseDailyNote: boolean;
 	/** Optional fixed markdown file target used when inlineTaskUseDailyNote is false. */
 	inlineTaskTargetFile: string;
+	inlineTaskSpecificFileHeading: string;
 	/** Markdown heading used as the insertion target for inline tasks created by New Operon Task. */
 	inlineTaskHeading: string;
 	/** Where New Operon Task writes inline tasks when the selected parent is an inline task. */
@@ -2233,6 +2235,10 @@ export function normalizeCalendarSidebarDefaultExpansionState(
 export const DEFAULT_INLINE_TASK_TARGET_FILE = 'Operon/Tasks/Operon Inbox.md';
 export const DEFAULT_INLINE_TASK_HEADING_KEYWORD = 'New Todo';
 export const DEFAULT_INLINE_TASK_PARENT_FILE_HEADING_KEYWORD = 'Backlog';
+export function normalizeSpecificFileHeading(raw: unknown): string {
+	return normalizeMarkdownHeadingKeyword((typeof raw === 'string' ? raw : '').replace(/[\r\n]+/gu, ' '), '');
+}
+
 export function normalizeInlineTaskHeadingKeyword(raw: string): string {
 	return normalizeMarkdownHeadingKeyword(raw, DEFAULT_INLINE_TASK_HEADING_KEYWORD);
 }
@@ -2402,6 +2408,7 @@ export const DEFAULT_SETTINGS: OperonSettings = {
 	inlineTaskSaveMode: 'daily-notes',
 	inlineTaskUseDailyNote: true,
 	inlineTaskTargetFile: DEFAULT_INLINE_TASK_TARGET_FILE,
+	inlineTaskSpecificFileHeading: '',
 	inlineTaskHeading: '',
 	inlineTaskParentInlineTargetMode: 'below-parent',
 	inlineTaskParentFileTargetMode: 'inside-parent-file',
@@ -2772,7 +2779,7 @@ export function setNumericSetting(settings: OperonSettings, key: NumericSettingK
 	(settings as OperonSettings & NumericSettings)[key] = value;
 }
 
-const FILTER_FIELD_TYPES = new Set<FilterFieldType>([
+export const FILTER_FIELD_TYPES = new Set<FilterFieldType>([
 	'text',
 	'number',
 	'date',
@@ -4202,6 +4209,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		validateInlinePropertyDefinitions(src.inlinePropertyDefinitions);
 		out.inlinePropertyDefinitions = cloneInlinePropertyDefinitions(src.inlinePropertyDefinitions);
 	}
+	if (src.automationRules !== undefined) out.automationRules = structuredClone(src.automationRules);
 	if (src.propertyValuePool !== undefined) out.propertyValuePool = JSON.parse(JSON.stringify(src.propertyValuePool)) as unknown;
 	const tablePresetsSource = sourceSettingsVersion < TASK_DATA_TYPE_SETTINGS_VERSION
 		? migrateLegacyTablePresetDataTypeReferences(src.tablePresets)
@@ -4505,6 +4513,7 @@ export function migrateSettings(raw: unknown): OperonSettings {
 		: DEFAULT_SETTINGS.inlineTaskSaveMode;
 	out.inlineTaskSaveMode = normalizeInlineTaskSaveMode(src.inlineTaskSaveMode, legacyInlineTaskSaveMode);
 	out.inlineTaskUseDailyNote = out.inlineTaskSaveMode === 'daily-notes';
+	out.inlineTaskSpecificFileHeading = normalizeSpecificFileHeading(src.inlineTaskSpecificFileHeading);
 	out.inlineTaskHeading = sourceInlineTaskHeading
 		? normalizeInlineTaskHeadingKeyword(sourceInlineTaskHeading)
 		: DEFAULT_SETTINGS.inlineTaskHeading;

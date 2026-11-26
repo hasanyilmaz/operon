@@ -16,6 +16,7 @@ const names = ['maybeOpenKanbanEditorForFilterMismatch', 'doesCalendarDraftMatch
 const body = names.map(name => declaration.members.find(n => n.name?.getText(source) === name)!.getText(source)).join('\n');
 const notices: string[] = [];
 const dependencies = {
+ localWeekNumbering: () => undefined,
  collectKanbanScope, filterTasksForCalendar, kanbanPoolSourceSignature, classifyKanbanDropSettlement,
  buildKanbanDropBoardSignature: (preset: any) => JSON.stringify(preset),
  getNativePropertyIndex: () => ({ getTypes: () => ({}) }),

@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../../core/periodic-note-path';
 import { renderMiniCalendar, renderCalendarDateNavigation, shiftCalendarMonth, calendarWeekNumber, createToolbarIconButton } from './mini-calendar';
 import { taskDescriptionOpening } from '../task-text-link-opening';
 import { showCalendarMonthPicker } from './calendar-month-picker';
@@ -1254,6 +1255,8 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: context.settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(context.settings.weeklyNoteFormat),
 				projectSerialScopes: context.settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -1641,6 +1644,8 @@ export class CalendarView extends ItemView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -1743,6 +1748,8 @@ export class CalendarView extends ItemView {
 				this.getPinnedCache(),
 				{
 					getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+					weekStart: settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 					projectSerialScopes: settings.projectSerialScopes,
 					projectSerialScopeTasks: this.indexer.getAllTasks(),
 					dependencyTasks: this.indexer.getAllTasks(),
@@ -2090,6 +2097,8 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -2206,7 +2215,7 @@ export class CalendarView extends ItemView {
 			state.navigationMode, state.showAllDayLane, state.showDueMarkers, state.showInDayLane, state.showFinishedLane,
 			state.calendarsOpen, state.taskPoolOpen, this.expandedHiddenTimeKey, localToday(),
 			preset.slotMinutes, preset.hiddenTimeStart, preset.hiddenTimeEnd,
-			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.calendarShowWeekLabelOnFirstDay,
+			settings.calendarTimeGridScale, settings.calendarWeekStart, settings.weeklyNoteFormat, settings.calendarShowWeekLabelOnFirstDay,
 			settings.timeFormat, settings.dateDisplayFormat, settings.language, getCurrentLang(), getAppLocale(this.app),
 			settings.calendarDayTitleAction, settings.calendarShowHoverAddButton,
 			this.isTimeGridCompatibleSurface(preset) && (!useMobileCalendar || mobileViewMode !== 'agenda')
@@ -2488,6 +2497,8 @@ export class CalendarView extends ItemView {
 			this.getPinnedCache(),
 			{
 				getRepeatSkipDates: this.callbacks.getRepeatSkipDates,
+				weekStart: settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(settings.weeklyNoteFormat),
 				projectSerialScopes: settings.projectSerialScopes,
 				projectSerialScopeTasks: this.indexer.getAllTasks(),
 				dependencyTasks: this.indexer.getAllTasks(),
@@ -2528,6 +2539,7 @@ export class CalendarView extends ItemView {
 	): CalendarRenderPreset | null {
 		const sourcePresetSettingKey = CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE[viewMode];
 		const candidatePresetIds = [
+			state?.useNamedPresetOnMobile ? state.presetId : null,
 			settings[sourcePresetSettingKey],
 			state?.mobileSourcePresetId,
 			settings.calendarMobileDefaultSourcePresetId,
@@ -2970,6 +2982,10 @@ export class CalendarView extends ItemView {
 		}
 		setAccessibleLabelWithoutTooltip(presetSelect, t('calendar', 'mobileSourcePreset'));
 		presetSelect.addEventListener('change', () => {
+			if (this.state?.useNamedPresetOnMobile && this.callbacks.onMobileCalendarSettingsChange) {
+				delete this.state.useNamedPresetOnMobile;
+				this.app.workspace.requestSaveLayout();
+			}
 			const sourcePresetSettingKey = CALENDAR_MOBILE_SOURCE_PRESET_SETTING_BY_VIEW_MODE[viewMode];
 			void this.callbacks.onMobileCalendarSettingsChange?.({
 				[sourcePresetSettingKey]: presetSelect.value,
@@ -13583,7 +13599,8 @@ export class CalendarView extends ItemView {
 
 	private areLeafStatesEqual(left: CalendarLeafState | null, right: CalendarLeafState | null): boolean {
 		if (!left || !right) return left === right;
-		return left.forceMobileLayout === right.forceMobileLayout
+		return left.useNamedPresetOnMobile === right.useNamedPresetOnMobile
+			&& left.forceMobileLayout === right.forceMobileLayout
 			&& left.presetId === right.presetId
 			&& left.anchorDate === right.anchorDate
 			&& left.scrollMinutes === right.scrollMinutes
