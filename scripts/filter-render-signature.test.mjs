@@ -26,7 +26,7 @@ try {
  const settings=structuredClone(DEFAULT_SETTINGS),instance={el:{cloneNode:()=>({}),querySelector:()=>null},searchQuery:''};
  let generation=1;const deps={settings,getSettings:()=>settings,getPipelines:()=>settings.pipelines,indexer:{getAllTasks:()=>[],getGeneration:()=>generation}};
  const read=()=>signature(instance,{id:'filter'},deps);assert.equal(read(),read());
- const changes=[()=>settings.timeFormat='12h',()=>settings.assigneeImageProperty='Avatar',()=>setLanguage('tr'),()=>settings.keyMappings[0].type='number',()=>settings.priorities[0].color='#123456',()=>generation++];
+ const changes=[()=>settings.calendarWeekStart='sunday',()=>settings.weeklyNoteFormat='gggg-[W]ww',()=>settings.timeFormat='12h',()=>settings.assigneeImageProperty='Avatar',()=>setLanguage('tr'),()=>settings.keyMappings[0].type='number',()=>settings.priorities[0].color='#123456',()=>generation++];
  for(const change of changes){const before=read();change();assert.notEqual(read(),before);}
- console.log('Filter render signature: unchanged + 6 freshness changes passed');
+ console.log('Filter render signature: unchanged + 8 freshness changes passed');
 } finally {fs.rmSync(dir,{recursive:true,force:true});}

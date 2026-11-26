@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../../core/periodic-note-path';
 import { KANBAN_COLUMN_WIDTH_OPTIONS, KANBAN_CELL_HEIGHT_OPTIONS, resolveKanbanPresetLayout } from '../../types/settings';
 import { renderKanbanAxisSettings, renderKanbanTaskCounts } from './kanban-axis-settings';
 import { createKanbanPropertyAccess } from '../../core/kanban-axis-properties';
@@ -76,7 +77,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 			const settings = this.options.getSettings(), tasks = this.options.getTasks?.() ?? [];
 			const deps = this.options.getFilterModalEvalDeps?.();
 			return { settings, tasks, filterSet: settings.filterSets.find(f => f.id === this.getPreset()?.filterSetId), pinnedCache: deps?.pinnedCache,
-				filterEvaluationOptions: { getRepeatSkipDates: deps?.getRepeatSkipDates, filePropertyContext: deps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes } };
+				filterEvaluationOptions: { weekNumbering: localWeekNumbering(settings.weeklyNoteFormat), getRepeatSkipDates: deps?.getRepeatSkipDates, filePropertyContext: deps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes } };
 		}, () => `${this.options.getTaskRevision?.() ?? 0}:${this.options.getFilterModalEvalDeps?.()?.getRepeatSkipSignature?.() ?? ''}`, () => new Promise(resolve => this.contentEl.ownerDocument.defaultView!.setTimeout(resolve, 0)));
 		const invalidate = () => this.pickerSession?.invalidate();
 		const metadata = this.app.metadataCache.on('changed', invalidate);
@@ -182,7 +183,7 @@ export class KanbanPresetQuickSettingsModal extends Modal {
 
 		const tasks = this.options.getTasks?.() ?? [];
 		const filterDeps = this.options.getFilterModalEvalDeps?.();
-		const filterEvaluationOptions = { getRepeatSkipDates: filterDeps?.getRepeatSkipDates, filePropertyContext: filterDeps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes };
+		const filterEvaluationOptions = { weekNumbering: localWeekNumbering(settings.weeklyNoteFormat), getRepeatSkipDates: filterDeps?.getRepeatSkipDates, filePropertyContext: filterDeps?.getFilePropertySnapshot?.(tasks) ?? undefined, projectSerialScopes: settings.projectSerialScopes };
 		const native = getNativePropertyIndex(this.app);
 		native.configure(settings);
 		renderKanbanTaskCounts(presetCard, buildKanbanGroupingSnapshot({ preset, settings, tasks,

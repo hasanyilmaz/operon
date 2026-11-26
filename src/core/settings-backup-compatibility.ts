@@ -19,6 +19,7 @@ export type SettingsBackupProfileGroupId =
 	| 'filters'
 	| 'calendar'
 	| 'kanban'
+	| 'automations'
 	| 'preset-favorites'
 	| 'table-global'
 	| 'external-calendars';
@@ -108,6 +109,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'inlineTaskSaveMode',
 	'inlineTaskUseDailyNote',
 	'inlineTaskTargetFile',
+	'inlineTaskSpecificFileHeading',
 	'inlineTaskHeading',
 	'inlineTaskParentInlineTargetMode',
 	'inlineTaskParentFileTargetMode',
@@ -309,6 +311,7 @@ export const ALL_OPERON_SETTINGS_BACKUP_KEYS = [
 	'taskCardShowTaskProgress',
 	'taskCardShowChips',
 	'taskCardShowCheckboxProgress',
+	'automationRules',
 	'propertyValuePool',
 	'canvasPropertyPoolWidth',
 	'canvasPropertyPoolRows',
@@ -527,6 +530,7 @@ const STRUCTURED_GROUP_KEYS = new Set<keyof OperonSettings>([
 	...FILTER_KEYS,
 	...CALENDAR_KEYS,
 	...KANBAN_KEYS,
+	'automationRules',
 	...FAVORITE_KEYS,
 	...TABLE_GLOBAL_KEYS,
 	...EXTERNAL_CALENDAR_KEYS,
@@ -574,6 +578,7 @@ export const SETTINGS_BACKUP_GROUPS = [
 	defineGroup('filters', FILTER_KEYS, ['system-key-mappings', 'custom-keys'], 'replace'),
 	defineGroup('calendar', CALENDAR_KEYS, ['filters'], 'replace'),
 	defineGroup('kanban', KANBAN_KEYS, ['pipelines', 'filters', 'system-key-mappings', 'custom-keys'], 'replace'),
+	defineGroup('automations', ['automationRules'], [], 'replace'),
 	defineGroup('preset-favorites', FAVORITE_KEYS, ['filters', 'calendar', 'kanban'], 'replace'),
 	defineGroup('table-global', TABLE_GLOBAL_KEYS, [], 'replace'),
 	defineGroup('external-calendars', EXTERNAL_CALENDAR_KEYS, [], 'replace'),
@@ -631,7 +636,7 @@ export function assertSettingsBackupCompatibilityRegistryExhaustive(settings: Op
 		if (declared.has(key)) throw new Error(`Duplicate settings backup compatibility key: ${key}`);
 		declared.add(key);
 		// Optional UI preferences are deliberately absent until the first explicit edit.
-		if (key !== 'vaultPropertyIcons' && key !== 'miniCalendarViewMode' && key !== 'miniCalendarClickAction' && key !== 'workspaceTweaksCoreQuickSwitcherOpenBehavior' && key !== 'statusDockCreatorStartsTimer' && key !== 'statusDockShowSeconds' && key !== 'statusDockShowTimerDial' && key !== 'statusDockTimerDialSize' && key !== 'statusDockVisible' && key !== 'statusDockSections' && key !== 'statusDockClickAction' && key !== 'statusDockMode' && key !== 'statusDockAlignment' && key !== 'inlinePropertyDefinitions' && key !== 'propertyValuePool' && key !== 'contextualMenuActionOrder' && !(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
+		if (key !== 'vaultPropertyIcons' && key !== 'miniCalendarViewMode' && key !== 'miniCalendarClickAction' && key !== 'workspaceTweaksCoreQuickSwitcherOpenBehavior' && key !== 'statusDockCreatorStartsTimer' && key !== 'statusDockShowSeconds' && key !== 'statusDockShowTimerDial' && key !== 'statusDockTimerDialSize' && key !== 'statusDockVisible' && key !== 'statusDockSections' && key !== 'statusDockClickAction' && key !== 'statusDockMode' && key !== 'statusDockAlignment' && key !== 'inlinePropertyDefinitions' && key !== 'propertyValuePool' && key !== 'automationRules' && key !== 'contextualMenuActionOrder' && !(key in settings)) throw new Error(`Runtime settings are missing compatibility key: ${key}`);
 		const compatibility = SETTINGS_BACKUP_COMPATIBILITY_BY_KEY[key];
 		if (!compatibility || compatibility.groups.length === 0) {
 			throw new Error(`Unclassified settings backup compatibility key: ${key}`);

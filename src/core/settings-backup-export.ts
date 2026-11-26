@@ -1,3 +1,4 @@
+import { readAutomationRules } from './automation-rules';
 import type { JsonValue } from '../agent-runtime/contracts/v1/primitives';
 import type { OperonSettings } from '../types/settings';
 import {
@@ -191,6 +192,7 @@ function buildGroups(settings: Readonly<OperonSettings>): OperonSettingsBackupGr
 			calendarMobileThreeDaySourcePresetId: settings.calendarMobileThreeDaySourcePresetId,
 		}),
 		kanban: versioned({ kanbanPresets: settings.kanbanPresets, kanbanDefaultPresetId: settings.kanbanDefaultPresetId }),
+		automations: versioned(settings.automationRules === undefined ? readAutomationRules(undefined) : settings.automationRules),
 		'preset-favorites': versioned({
 			presetFavorites: {
 				...settings.presetFavorites,

@@ -229,6 +229,32 @@ export class PinnedCache {
 		return await run;
 	}
 
+	/** All pins belonging to one automation effect share one conditional package write. */
+	async applyAutomationPins(changes: ReadonlyMap<string, { expected: PinnedCacheEntrySnapshot; pinned: boolean }>,
+		updatedAt: string, current: () => boolean): Promise<void> {
+		const persist = this.packagePersistence;
+		if (!persist?.canPersist()) throw new Error('Pin storage unavailable');
+		const run = this.mutationQueue.then(async () => {
+			try {
+				const saved = await persist.updatePackage(pkg => {
+					if (!current()) throw new Error('Automation changed');
+					const itemsById = { ...pkg.itemsById };
+					for (const [id, change] of changes) {
+						if (!this.entriesEqual(itemsById[id] ?? null, change.expected)) throw new Error('Pin changed');
+						itemsById[id] = { pinned: change.pinned, updatedAt };
+					}
+					return { ...pkg, itemsById };
+				}, current);
+				this.applyPackage(saved);
+			} catch (error) {
+				this.applyPackage(persist.getPackage());
+				throw error;
+			}
+		});
+		this.mutationQueue = run.catch(() => undefined);
+		await run;
+	}
+
 	/** Toggle pin state for a task. */
 	async toggle(operonId: string): Promise<void> {
 		const normalized = operonId.trim();

@@ -1,4 +1,5 @@
 import { App, Modal } from 'obsidian';
+import { bindOperonSurfaceTooltips } from './operon-surface-tooltips';
 
 export interface ConfirmActionComparisonRow {
 	label: string;
@@ -29,7 +30,11 @@ export interface ConfirmActionModalOptions {
 	dismissText?: string;
 	readOnly?: boolean;
 	danger?: boolean;
+	/** Called only by the explicit secondary button, before the result callback. */
+	onCancelButton?: () => void;
+	operonTooltips?: boolean;
 	initialFocus?: 'confirm' | 'cancel';
+	renderDetails?: (content: HTMLElement, title: HTMLElement) => void;
 	detailsTable?: Array<{ label: string; before: string; after: string }>;
 	comparisonTable?: ConfirmActionComparisonTable;
 }
@@ -38,6 +43,7 @@ export class ConfirmActionModal extends Modal {
 	private readonly options: ConfirmActionModalOptions;
 	private readonly onCloseResult: (confirmed: boolean) => void;
 	private resolved = false;
+	private unbindTooltips?: () => void;
 
 	constructor(app: App, options: ConfirmActionModalOptions, onCloseResult: (confirmed: boolean) => void) {
 		super(app);
@@ -47,12 +53,14 @@ export class ConfirmActionModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
+		if (this.options.operonTooltips) this.unbindTooltips = bindOperonSurfaceTooltips(this.modalEl);
 		this.modalEl.addClass('operon-confirm-action-modal');
 		if (this.options.comparisonTable) {
 			this.modalEl.addClass('operon-confirm-action-modal-wide');
 		}
 		contentEl.empty();
 		this.titleEl.setText(this.options.title);
+		this.options.renderDetails?.(contentEl, this.titleEl);
 		if (this.options.comparisonTable) {
 			this.renderComparisonTable(contentEl, this.options.comparisonTable);
 		} else if (this.options.detailsTable?.length) {
@@ -68,7 +76,7 @@ export class ConfirmActionModal extends Modal {
 					}
 				}
 			}
-			contentEl.createEl('p', { text: this.options.message });
+			if (this.options.message) contentEl.createEl('p', { text: this.options.message });
 
 			const actions = contentEl.createDiv('operon-confirm-action-buttons');
 
@@ -84,6 +92,8 @@ export class ConfirmActionModal extends Modal {
 
 		const cancelButton = actions.createEl('button', { text: this.options.cancelText ?? 'Cancel' });
 		cancelButton.addEventListener('click', () => {
+			if (this.resolved) return;
+			this.options.onCancelButton?.();
 			this.finish(false);
 		});
 
@@ -97,13 +107,16 @@ export class ConfirmActionModal extends Modal {
 	}
 
 	onClose(): void {
+		this.unbindTooltips?.();
 		this.contentEl.empty();
 		if (!this.resolved) {
+			this.resolved = true;
 			this.onCloseResult(false);
 		}
 	}
 
 	private finish(confirmed: boolean): void {
+		if (this.resolved) return;
 		this.resolved = true;
 		this.close();
 		this.onCloseResult(confirmed);

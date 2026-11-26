@@ -1,3 +1,4 @@
+import { PinnedTasksSidebarView } from '../src/ui/pinned-tasks-sidebar-view';
 import { normalizeStatusDockSections } from '../src/types/status-dock-sections';
 import { StatusDockTaskList } from '../src/ui/status-dock-task-list';
 import { buildStatusDockTaskScopes } from '../src/ui/status-dock-task-scope';
@@ -55,6 +56,49 @@ function timeText(element: HTMLElement): string | null {
 	const modeText = element.querySelector('.operon-status-dock-mode-text');
 	return modeText ? Array.from(modeText.children, child => child.textContent).join('') : element.textContent;
 }
+
+test('pinned sidebar retains both rows and the hovered play button while switching trackers', () => {
+	const { doc } = statusDockDocument();
+	const tasks = ['first', 'second'].map(id => ({ ...task(id, ''), description: id }));
+	let active: string | null = 'first';
+	let generation = 1;
+	const sidebar = new PinnedTasksSidebarView(new WorkspaceLeaf(), {
+		getAllTasks: () => tasks, getGeneration: () => generation,
+	} as never, { ...DEFAULT_SETTINGS, pinnedTaskSortMode: 'manual' }, {
+		getActiveOperonId: () => active, isTimerRunning: (id: string) => id === active,
+	} as never, { openTaskEditor() {}, cycleStatus() {}, toggleTimer: async () => true }, {
+		isPinned: () => true, getManualOrderIds: () => tasks.map(entry => entry.operonId), getGeneration: () => 1,
+	} as never);
+	Object.assign(sidebar, { contentEl: doc.body });
+	sidebar.render();
+	const rows = Array.from(sidebar.contentEl.querySelectorAll<HTMLElement>('.operon-pinned-sidebar-row'));
+	const button = rows[1].querySelector('.operon-pinned-sidebar-timer')!;
+	for (const next of [null, 'second']) {
+		active = next;
+		generation++;
+		tasks[1].fieldValues.status = next ? 'Tracking' : 'Open';
+		sidebar.render();
+		const current = sidebar.contentEl.querySelectorAll('.operon-pinned-sidebar-row');
+		assert.equal(current[0], rows[0]);
+		assert.equal(current[1], rows[1]);
+		assert.equal(current[1].querySelector('.operon-pinned-sidebar-timer'), button);
+		assert.equal(button.classList.contains('is-active'), next === 'second');
+	}
+});
+
+test('a tracker tick advances the clock without refreshing the dock layout', () => {
+	const f = widget();
+	let layoutRefreshes = 0;
+	f.dock.refreshSectionLayout = () => { layoutRefreshes++; };
+	const clock = f.find('operon-status-dock-time');
+	const next = f.find('operon-status-dock-next');
+	f.state.active!.elapsedSeconds = 30;
+	f.dock.updateTrackerReading(f.state);
+	assert.equal(timeText(clock), '30s');
+	assert.equal(f.find('operon-status-dock-next'), next);
+	assert.equal(layoutRefreshes, 0);
+	f.dock.destroy();
+});
 
 test('status dock displays titles when enabled and filename labels when disabled', () => {
 	const task: IndexedTask = {
@@ -1432,7 +1476,7 @@ test('calendar Play replaces each leading icon without changing source clicks', 
 	const aButton = (f.dock as any).currentReadings.get('a').button, first = controls.get(aButton);
 	f.state.active = { ...f.state.active!, operonId: 'a', task: a }; f.dock.update(f.state);
 	assert.equal(first.play.hidden, true); assert.equal(first.shell.classList.contains('has-task-play'), false); first.play.click(); assert.equal(f.calls.length, 6);
-	f.state.active = null; f.state.actionPending = true; f.dock.update(f.state); assert.equal(first.play.disabled, true); assert.equal(first.shell.classList.contains('has-task-play'), false);
+	f.state.active = null; f.state.actionPending = true; f.dock.update(f.state); assert.equal(first.play.disabled, true); assert.equal(first.shell.classList.contains('has-task-play'), true);
 	first.play.click(); assert.equal(f.calls.length, 6);
 	f.state.actionPending = false; f.state.upcoming.ongoing = [b]; f.dock.update(f.state);
 	assert.equal(controls.has(aButton), false); assert.equal((f.dock as any).icons.has(first.play), false);

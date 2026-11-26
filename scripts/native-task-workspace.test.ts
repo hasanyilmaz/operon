@@ -12,6 +12,7 @@ import { buildOperonDataPackageFromSettings, composeOperonSettingsFromDataPackag
 import { WriteQueue } from '../src/storage/write-queue';
 import { TaskUiPreferenceStore } from '../src/storage/task-ui-preference-store';
 import { assertSettingsBackupCompatibilityRegistryExhaustive, getSettingsBackupCompatibilityForKey } from '../src/core/settings-backup-compatibility';
+import { findLightboxOwnerLeaf } from '../src/ui/web-lightbox';
 import { resolveNativeLightboxLayout } from '../src/ui/native-lightbox-layout';
 import { resolveFileLightboxOpening } from '../src/ui/file-lightbox-opening';
 import { readPropertyEditorDocument } from '../src/core/property-editor-document';
@@ -32,7 +33,7 @@ function openingFixture(options: {desktop?:boolean;fileTask?:boolean;excalidraw?
  const document={body:{closest:(): {isConnected:boolean}|null=>null}}; const content={destroyed:0,destroy(){this.destroyed++;}};
  const indexed={operonId:'task001',primary:{filePath:'A.md',format:options.fileTask?'yaml':'inline'}};
  let opened:any=null,modal=0;
- const Host=methods('main.ts',['openTaskEditorFor'],{LIGHTBOX_PERF_ENABLED:false,getActiveDocument:()=>document,asHTMLElement:()=>null,getActiveLightboxShell:()=>null,
+ const Host=methods('main.ts',['openTaskEditorFor'],{LIGHTBOX_PERF_ENABLED:false,findLightboxOwnerLeaf,getActiveDocument:()=>document,asHTMLElement:()=>null,getActiveLightboxShell:()=>null,
   Platform:{isDesktopApp:options.desktop!==false},TFile,resolveInlineTaskDescriptionCursorCh:()=>7,
   readTaskEditorMarkdown:async()=>host.buffer ?? 'same',
   openTaskWorkspace:async(...args:any[])=>{await host.beforeWorkspace?.();opened=args;return {content,modalEl:{}};},
@@ -54,6 +55,32 @@ for(const fileTask of [true,false])test(`desktop existing ${fileTask?'file':'inl
 for(const options of [{desktop:false},{desktop:false,fileTask:true},{excalidraw:true},{newTask:true},{instance:true},{standalone:true,fileTask:true}])test(`excluded entry keeps existing modal: ${JSON.stringify(options)}`,async()=>{
  const f=openingFixture(options);await f.host.openTaskEditorFor(f.task,()=>{}, {},f.instance,undefined,options.standalone);assert.equal(f.stats().modal,1);assert.equal(f.stats().opened,null);
 });
+for (const fileTask of [false, true]) test(`tabless Settings preview opens the verified ${fileTask ? 'file' : 'inline'} task in the standalone editor`, async () => {
+ const f = openingFixture({fileTask});
+ const preview = {ownerDocument: f.document, closest: () => null, matches: (selector: string) => selector === '.operon-filter-preview-modal-shell'};
+ const otherDocument = {body: {}};
+ const otherTab = {parent: {}, view: {containerEl: {ownerDocument: otherDocument}}};
+ f.host.app.workspace = {getMostRecentLeaf: () => otherTab, iterateAllLeaves: (visit: (tab: typeof otherTab) => void) => visit(otherTab)};
+ let reads = 0;
+ const read = f.host.readTaskEditorSource;
+ f.host.readTaskEditorSource = async () => { reads++; return read(); };
+ await f.host.openTaskEditorFor(f.task, () => {}, {}, undefined, undefined, false, undefined, preview);
+ assert.equal(reads, 1);
+ assert.equal(f.stats().modal, 1);
+ assert.equal(f.stats().opened, null);
+});
+
+test('preview in a workspace window keeps its editor and Markdown source together', async () => {
+ const f = openingFixture({fileTask: true});
+ const preview = {ownerDocument: f.document, closest: () => null, matches: () => true};
+ const tab = {parent: {}, view: {containerEl: {ownerDocument: f.document}}};
+ f.host.app.workspace = {getMostRecentLeaf: () => null, iterateAllLeaves: (visit: (leaf: typeof tab) => void) => visit(tab)};
+ await f.host.openTaskEditorFor(f.task, () => {}, {}, undefined, undefined, false, undefined, preview);
+ assert.equal(f.stats().modal, 0);
+ assert.equal(f.stats().opened[1], preview);
+ assert.equal(f.stats().opened[3].markdown, true);
+});
+
 test('a late editor preparation cannot replace a newer opening',async()=>{
  const f=openingFixture(),wait=deferred<any>();f.host.createTaskEditorContentFor=()=>wait.promise;
  const first=f.host.openTaskEditorFor(f.task,()=>{}); await Promise.resolve(); f.host.createTaskEditorContentFor=async()=>({destroy(){}});

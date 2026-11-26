@@ -225,10 +225,21 @@ export async function loadParentLinkListSource(
  settings: OperonSettings,
  readFrontmatter: (path: string) => Promise<unknown>,
 ): Promise<Pick<IndexedTask, 'fieldValues' | 'tags'>> {
- const keys = normalizeChildTaskInheritanceFields(settings.childTaskInheritanceFields, settings.keyMappings)
+ const keys = parentLinkListKeys(parent, settings);
+ if (!keys.length) return parent;
+ return projectParentLinkListSource(parent, settings, await readFrontmatter(parent.primary.filePath), keys);
+}
+
+function parentLinkListKeys(parent: Pick<IndexedTask, 'primary'>, settings: OperonSettings): string[] {
+ return parent.primary.format !== 'yaml' ? [] : normalizeChildTaskInheritanceFields(settings.childTaskInheritanceFields, settings.keyMappings)
   .filter(key => key !== 'tags' && key !== 'taskGallery' && getManagedTaskFieldType(key, settings.keyMappings) === 'list');
- if (parent.primary.format !== 'yaml' || keys.length === 0) return parent;
- const raw = await readFrontmatter(parent.primary.filePath);
+}
+
+export function projectParentLinkListSource(
+ parent: Pick<IndexedTask, 'operonId' | 'primary' | 'fieldValues' | 'tags'>, settings: OperonSettings,
+ raw: unknown, keys = parentLinkListKeys(parent, settings),
+): Pick<IndexedTask, 'fieldValues' | 'tags'> {
+ if (!keys.length) return parent;
  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Parent YAML source is unavailable.');
  const frontmatter = raw as Record<string, unknown>;
  const fields = readYamlFields(frontmatter, settings.keyMappings);

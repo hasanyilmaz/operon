@@ -20,6 +20,7 @@ const routerLocales = await Promise.all(ROUTER_LOCALE_CODES.map(async code => ({
 const ROUTER_SETTING_IDS = [
 	'inlineTaskSaveMode',
 	'inlineTaskTargetFile',
+	'inlineTaskSpecificFileHeading',
 	'inlineTaskHeading',
 	'inlineTaskParentInlineTargetMode',
 	'inlineTaskParentFileTargetMode',
@@ -40,6 +41,7 @@ e('automation', '<tab>', 'inlineTaskParentFileHeadingKeyword', 'settings', 'pare
 e('automation', '<tab>', 'inlineTaskParentFileTargetMode', 'settings', 'fileParentTaskTargetMode', 'fileParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'file task', 'parent', 'parent placement']),
 e('automation', '<tab>', 'inlineTaskParentInlineTargetMode', 'settings', 'inlineParentTaskTargetMode', 'inlineParentTaskTargetModeDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'parent', 'parent placement', 'inline parent']),
 e('automation', '<tab>', 'inlineTaskSaveMode', 'settings', 'inlineTaskDefaultSavePath', 'inlineTaskDefaultSavePathDesc', 'dropdown', ['new task', 'task creator', 'inline task', 'inline save path', 'active file']),
+e('automation', '<tab>', 'inlineTaskSpecificFileHeading', 'settings', 'inlineTaskSpecificFileHeading', 'inlineTaskSpecificFileHeadingDesc', 'text', ['inline task', 'specific file', 'heading', 'section']),
 e('automation', '<tab>', 'inlineTaskTargetFile', 'settings', 'inlineTaskTargetFile', 'inlineTaskTargetFileSearchDesc', 'file', ['new task', 'task creator', 'inline task', 'specific file']),
 section('automation', '<tab>', 'fileTaskArchivePipelineLocations', 'settings', 'fileTaskArchivePipelineLocations', 'fileTaskArchivePipelineLocationsDesc', ['file task', 'archive', 'archive folder', 'archive pipeline', 'finished task', 'cancelled task']),`;
 
@@ -93,7 +95,7 @@ test('Task Router is the third Tasks page and has native Settings Search wiring'
 	assert.match(settingsTabSource, /tab.id === 'tasksTaskRouter'[\s\S]*?items: this\.buildTaskRouterSettingsItems\(entries\)/);
 });
 
-test('exactly the 11 routing settings belong to Task Router search', () => {
+test('the routing settings belong to Task Router search', () => {
 	const routerEntries = [...registrySource.matchAll(/(?:e|section)\('[^']+', 'tasksTaskRouter', '([^']+)'/g)]
 		.map(match => match[1])
 		.filter(id => ROUTER_SETTING_IDS.includes(id));
@@ -162,7 +164,7 @@ test('Task Router owns note management while File Tasks owns task initialization
 	assert.doesNotMatch(sharedMethod, /redisplayPreservingScroll/);
 	assert.match(sharedMethod, /new FileSuggest[\s\S]*?file\.extension === 'md'/);
 	assert.match(sharedMethod, /new FolderSuggest/);
-	assert.match(formatMethod, /formatPeriodicNoteTitleFromDateKey\(kind, localToday\(\), value\)/);
+	assert.match(formatMethod, /formatPeriodicNoteTitleFromDateKey\(kind, localToday\(\), value, this\.settings\.calendarWeekStart\)/);
 	assert.match(formatMethod, /https:\/\/momentjs\.com\/docs\/#\/displaying\/format\//);
 	assert.match(formatMethod, /rel: 'noopener noreferrer'/);
 	assert.match(formatMethod, /periodicNoteSyntaxInvalid/);

@@ -14,6 +14,8 @@ const method = name => {
 const compiled = await transform(`const t = (_ns, key) => key;
 export default class Harness {
 ${method('buildSettingsSearchTabPage')}
+${method('compactSettingsSearchItems')}
+${method('buildSettingsSearchSettingDefinitionFromEntry')}
 ${method('buildTaskCaptureSearchSections')}
 ${method('buildTaskCaptureSearchSection')}
 ${method('buildTaskRouterSettingsItems')}
@@ -52,6 +54,37 @@ for (const [tabId, count] of [['tasksFileTasks',7],['tasksInlineTasks',4],['task
   }
  });
 }
+
+test('Automation Rules renders below its heading in a full-width settings section', () => {
+ const harness = new Harness();
+ const entries = entriesFor('tasksAutomations');
+ const confirmation = entries.find(item => item.id === 'automation.automationRules');
+ confirmation.key = 'automationRules';
+ harness.buildSettingsSearchControl = entry => ({ key: entry.key });
+ const entry = entries.find(item => item.id === 'automation.ruleList');
+ const page = harness.buildSettingsSearchTabPage({ id: 'tasksAutomations' }, entries);
+ assert.equal(page.items.length, 2);
+ const [setting, group] = page.items;
+ assert.equal(setting.control.key, confirmation.key);
+ assert.equal(group.type, 'group');
+ assert.equal(group.heading, entry.name.key);
+ assert.equal(group.items.length, 1);
+ const [ruleList] = group.items;
+ assert.deepEqual(ruleList.aliases, entry.aliases);
+ const classes = new Set(['setting-item']);
+ const host = {
+  empty() {},
+  addClass(...names) { for (const name of names) classes.add(name); },
+  removeClass(name) { classes.delete(name); },
+ };
+ let rendered;
+ const dispose = () => {};
+ harness.renderAutomationList = element => { rendered = element; return dispose; };
+ assert.equal(ruleList.render({ settingEl: host }), dispose);
+ assert.equal(rendered, host);
+ assert.ok(!classes.has('setting-item'));
+ assert.ok(classes.has('operon-settings-tab-root'));
+});
 
 test('daily and weekly searches resolve separate existing renderers', () => {
  const harness = new Harness();

@@ -908,7 +908,7 @@ export class RecurrenceService {
 			};
 		}
 		const storedSeries = this.storage.repeatSeries.getEntry(input.seriesId)
-			?? this.buildReadOnlySeriesEntry(completedTask, input.seriesId, input.effectiveAt);
+			?? this.planSeriesEntry(completedTask, input.seriesId, input.effectiveAt);
 		const completionTemplate = deriveDoneModeCompletionTemporalTemplate(
 			rule,
 			completedTask,
@@ -1591,7 +1591,7 @@ export class RecurrenceService {
 		}).content;
 	}
 
-	private buildReadOnlySeriesEntry(
+	planSeriesEntry(
 		task: IndexedTask,
 		seriesId: string,
 		effectiveAt: string,

@@ -20,7 +20,7 @@ type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions'
 const rowCells = new WeakMap<NativeTaskProperties, Map<string, TableFilePropertyCellValue>>();
 const empty = (): TableFilePropertyCellValue => ({ present: false, rawValue: undefined, normalizedValue: '' });
 /** Adapt the shared sparse index; no view-owned source cache or source reads. */
-function projectSnapshot(app: App, base: TableFilePropertySnapshot, tasks: readonly IndexedTask[], settings: Settings): TableFilePropertySnapshot {
+export function projectIndexedNativeProperties(app: App, base: TableFilePropertySnapshot, tasks: readonly IndexedTask[], settings: Settings): TableFilePropertySnapshot {
  const index = getNativePropertyIndex(app);
  const declarations = index.getTypes();
  const types = index.getNativeTypes();
@@ -93,7 +93,7 @@ export async function loadTableNativePropertySnapshot(
 ): Promise<TableFilePropertySnapshot> {
  const index = getNativePropertyIndex(app); index.configure(settings);
  await index.ensure(readValues ? tasks : []);
- return projectSnapshot(app, base, readValues ? tasks : [], settings);
+ return projectIndexedNativeProperties(app, base, readValues ? tasks : [], settings);
 }
 interface SnapshotScope {
  index: ReturnType<typeof getNativePropertyIndex>;
@@ -144,7 +144,7 @@ export function getTableNativePropertySnapshot(
  if (index.isReady(tasks)) {
   state.pending = undefined;
   if (state.completed && sameScope(state.completed.scope, index, base, tasks, generation)) return state.completed.value;
-  const value = projectSnapshot(app, base, tasks, settings);
+  const value = projectIndexedNativeProperties(app, base, tasks, settings);
   state.completed = { scope: captureScope(index, base, tasks, generation), value };
   return value;
  }

@@ -1,3 +1,4 @@
+import { localWeekNumbering } from '../core/periodic-note-path';
 import { getTimeScopeSignature } from '../core/time-scope-values';
 import { localToday } from '../core/local-time';
 import { registerFilterDayRefresh } from '../core/filter-day-refresh';
@@ -518,6 +519,8 @@ export class FilterView extends ItemView {
 		try {
 			const filterEvaluationOptions = {
 				getRepeatSkipDates: this.getRepeatSkipDates,
+				weekStart: this.getSettings().calendarWeekStart,
+				weekNumbering: localWeekNumbering(this.getSettings().weeklyNoteFormat),
 				projectSerialScopes: this.getSettings().projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
@@ -1176,6 +1179,8 @@ export class FilterView extends ItemView {
 		);
 		return [
 			localToday(),
+			this.getSettings().calendarWeekStart,
+			this.getSettings().weeklyNoteFormat,
 			this.indexer.getGeneration(),
 			this.pinnedCache?.getGeneration() ?? 0,
 			this.getTrackingSignature?.() ?? '',

@@ -1,3 +1,7 @@
+import type { TFile } from 'obsidian';
+import type { FileScanResult } from '../indexer/file-scanner';
+
+export type MatchIndexedSource = (file: TFile, content: string) => FileScanResult | undefined;
 export type TaskSourceModifyReconciliationMode = 'immediate' | 'deferred';
 
 export interface TaskSourceModifyReconcilerOptions<TTimer> {
@@ -9,6 +13,7 @@ export interface TaskSourceModifyReconcilerOptions<TTimer> {
 	readonly reconcile: (
 		filePath: string,
 		mode: TaskSourceModifyReconciliationMode,
+		matchIndexedSource?: MatchIndexedSource,
 	) => Promise<void>;
 	readonly onError?: (filePath: string, error: unknown) => void;
 }
@@ -16,6 +21,7 @@ export interface TaskSourceModifyReconcilerOptions<TTimer> {
 interface PendingTaskSourceReconciliation<TTimer> {
 	readonly timer: TTimer;
 	readonly dueAt: number;
+	matchIndexedSource?: MatchIndexedSource;
 }
 
 /**
@@ -39,7 +45,17 @@ export class TaskSourceModifyReconciler<TTimer> {
 			filePath,
 			Math.max(this.suppressUntilByPath.get(filePath) ?? 0, until),
 		);
-		if (this.pendingByPath.has(filePath)) this.scheduleDeferred(filePath);
+		const pending = this.pendingByPath.get(filePath);
+		if (pending) {
+			pending.matchIndexedSource = undefined;
+			this.scheduleDeferred(filePath);
+		}
+	}
+
+	/** Attach evidence only to a delayed notification that still needs reconciliation. */
+	rememberIndexedSource(filePath: string, match: MatchIndexedSource): void {
+		const pending = this.pendingByPath.get(filePath);
+		if (pending) pending.matchIndexedSource = match;
 	}
 
 	handleModify(filePath: string): TaskSourceModifyReconciliationMode | null {
@@ -113,6 +129,7 @@ export class TaskSourceModifyReconciler<TTimer> {
 		if (current?.dueAt === dueAt) return;
 		if (current) this.options.clearTimer(current.timer);
 		const timer = this.options.setTimer(() => {
+			const pending = this.pendingByPath.get(filePath);
 			this.pendingByPath.delete(filePath);
 			if (this.destroyed) return;
 			if (this.getSuppressionRemainingMs(filePath) > 0) {
@@ -120,7 +137,7 @@ export class TaskSourceModifyReconciler<TTimer> {
 				return;
 			}
 			this.suppressUntilByPath.delete(filePath);
-			void this.runReconciliation(filePath, 'deferred');
+			void this.runReconciliation(filePath, 'deferred', pending?.matchIndexedSource);
 		}, Math.max(0, dueAt - this.options.now()));
 		this.pendingByPath.set(filePath, { timer, dueAt });
 	}
@@ -135,10 +152,11 @@ export class TaskSourceModifyReconciler<TTimer> {
 	private async runReconciliation(
 		filePath: string,
 		mode: TaskSourceModifyReconciliationMode,
+		matchIndexedSource?: MatchIndexedSource,
 	): Promise<void> {
 		this.runningByPath.set(filePath, (this.runningByPath.get(filePath) ?? 0) + 1);
 		try {
-			await this.options.reconcile(filePath, mode);
+			await this.options.reconcile(filePath, mode, matchIndexedSource);
 		} catch (error) {
 			this.options.onError?.(filePath, error);
 		} finally {

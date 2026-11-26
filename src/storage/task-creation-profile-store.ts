@@ -2,13 +2,14 @@ import { App } from 'obsidian';
 import {
 	normalizeChildTaskInheritanceStatusPipelineSource,
  normalizeTaskAfterCreateAction,
+	normalizeSpecificFileHeading,
 	normalizeInlineTaskParentFileHeadingKeyword,
 	type OperonSettings,
 } from '../types/settings';
 import { WriteQueue } from './write-queue';
 import { preserveInvalidJsonFile, shouldSkipStoreWrite, writeJsonSafely, type RecoveredStoreWriteOptions } from './storage-file-ops';
 import { buildOperonPluginStoragePath } from './operon-storage-paths';
-import { OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION } from './operon-data-package';
+import { OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION, type OperonUiPackageV1 } from './operon-data-package';
 
 const TASK_CREATION_PROFILE_FILE_NAME = 'task-creation-profile.json';
 const TASK_CREATION_PROFILE_STORE_VERSION = OPERON_TASK_CREATION_PROFILE_PACKAGE_VERSION;
@@ -23,6 +24,7 @@ export type TaskCreationProfileStoreSettings = Pick<
 	| 'inlineTaskSaveMode'
 	| 'inlineTaskUseDailyNote'
 	| 'inlineTaskTargetFile'
+	| 'inlineTaskSpecificFileHeading'
 	| 'inlineTaskHeading'
 	| 'fileTaskParentInlineTargetMode'
 	| 'fileTaskParentFileTargetMode'
@@ -174,6 +176,7 @@ function readStoreData(
 		inlineTaskSaveMode,
 		inlineTaskUseDailyNote: inlineTaskSaveMode === 'daily-notes',
 		inlineTaskTargetFile: readString(raw.inlineTaskTargetFile, fallback.inlineTaskTargetFile),
+		inlineTaskSpecificFileHeading: readString(raw.inlineTaskSpecificFileHeading, fallback.inlineTaskSpecificFileHeading),
 		inlineTaskHeading: readString(raw.inlineTaskHeading, fallback.inlineTaskHeading),
 		fileTaskParentInlineTargetMode: readFileTaskParentTargetMode(
 			raw.fileTaskParentInlineTargetMode,
@@ -286,8 +289,16 @@ export class TaskCreationProfileStore {
 		this.packagePersist = persist;
 	}
 
-	loadFromPackage(settings: Omit<TaskCreationProfileStoreSettings, 'defaultInlineTaskTemplateId' | 'inlineTaskUseLastTemplateAsDefault' | 'fileTaskUseLastTemplateAsDefault' | 'fileTaskAfterCreate' | 'inlineTaskAfterCreate'> & { inlineTaskAfterCreate?: OperonSettings['inlineTaskAfterCreate']; fileTaskAfterCreate?: OperonSettings['fileTaskAfterCreate']; defaultInlineTaskTemplateId?: string | null; inlineTaskUseLastTemplateAsDefault?: boolean; fileTaskUseLastTemplateAsDefault?: boolean }): void {
-		this.settings = cloneSettings({ ...settings, inlineTaskAfterCreate: normalizeTaskAfterCreateAction(settings.inlineTaskAfterCreate), fileTaskAfterCreate: normalizeTaskAfterCreateAction(settings.fileTaskAfterCreate), inlineTaskUseLastTemplateAsDefault: settings.inlineTaskUseLastTemplateAsDefault === true, fileTaskUseLastTemplateAsDefault: settings.fileTaskUseLastTemplateAsDefault === true, defaultInlineTaskTemplateId: settings.defaultInlineTaskTemplateId ?? null });
+	loadFromPackage(settings: Omit<OperonUiPackageV1['taskCreationProfile'], 'version'>): void {
+		this.settings = cloneSettings({
+			...settings,
+			inlineTaskSpecificFileHeading: normalizeSpecificFileHeading(settings.inlineTaskSpecificFileHeading),
+			inlineTaskAfterCreate: normalizeTaskAfterCreateAction(settings.inlineTaskAfterCreate),
+			fileTaskAfterCreate: normalizeTaskAfterCreateAction(settings.fileTaskAfterCreate),
+			inlineTaskUseLastTemplateAsDefault: settings.inlineTaskUseLastTemplateAsDefault === true,
+			fileTaskUseLastTemplateAsDefault: settings.fileTaskUseLastTemplateAsDefault === true,
+			defaultInlineTaskTemplateId: settings.defaultInlineTaskTemplateId ?? null,
+		});
 		this.serializedSettings = JSON.stringify(this.settings);
 		this.recoveredFromMalformed = false;
 	}

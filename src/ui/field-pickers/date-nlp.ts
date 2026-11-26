@@ -15,6 +15,7 @@ export interface DateParseContext {
 export interface DateParseCandidate {
 	isoDate: string;
 	primaryLabel: string;
+	rule?: string;
 	secondaryLabel?: string;
 	source: 'nldates' | 'fallback' | 'quick';
 	confidence: number;
@@ -89,9 +90,15 @@ export function buildDatePickerCandidates(
 		parsed.push(...fallback);
 	}
 
+	const quick = getQuickDateCandidates(context, quickQuery);
+	// A parsed phrase can take precedence over its quick preset in the visible list.
+	for (const candidate of parsed) {
+		const preset = quick.find(item => item.isoDate === candidate.isoDate && item.primaryLabel.toLocaleLowerCase() === trimmed.toLocaleLowerCase());
+		if (preset && !candidate.rule) candidate.rule = preset.rule;
+	}
 	return {
 		parsed: dedupeCandidates(parsed),
-		quick: dedupeCandidates(getQuickDateCandidates(context, quickQuery)),
+		quick: dedupeCandidates(quick),
 	};
 }
 

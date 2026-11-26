@@ -1,3 +1,4 @@
+import { isValidWeekNumber, isWeekNumberOperator } from './calendar-row-week';
 import type { IndexedTask } from '../types/fields';
 import type { FilterGroup, FilterNode, FilterSetCondition } from '../types/settings';
 import { parseTrackerRange } from '../systems/tracker-utils';
@@ -79,6 +80,7 @@ export function isValidTrackedOnCondition(condition: FilterSetCondition, dateOpe
 		return /^\d+$/u.test(value) && Number.isSafeInteger(Number(value));
 	}
 	if (operator === 'dayOfWeekIs' || operator === 'dayOfWeekNot') return /^[0-6]$/u.test(value);
+	if (isWeekNumberOperator(operator)) return isValidWeekNumber(value);
 	if (operator === 'monthIs' || operator === 'monthNot') return /^(?:[1-9]|1[0-2])$/u.test(value);
 	return true;
 }

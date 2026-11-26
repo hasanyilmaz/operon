@@ -1,3 +1,5 @@
+import { FilterFieldCatalog } from './src/ui/filter-condition-editor';
+import type { FilterGroup } from './src/types/settings';
 import { isEmptyFilePropertyValue } from './src/core/raw-yaml-property';
 import { editorMappedProperties } from './src/core/file-task-property-draft';
 import type { MiniCalendarNoteRequest } from './src/ui/calendar/mini-calendar-notes';
@@ -59,7 +61,15 @@ import { prepareCreationCommit, type PreparedCreationContent } from './src/core/
 import { creationDraftParentFields, CreationDraftProperties, type CreationDraftPropertyContext, type CreationDraftFieldInput } from './src/core/task-creation-draft-properties';
 import { PreparedTaskCreatorDraft, type PreparedTaskCreatorSubmission, type PreparedCreatorResult } from './src/ui/task-creator-prepared-draft';
 import { getNativePropertyIndex } from './src/indexer/native-property-index';
-import { writeTableNativeProperty } from './src/ui/table/table-native-property';
+import { planAutomationChanges, type AutomationPlanSnapshot, type AutoTriggers } from './src/core/automation-change-plan';
+import { isAutomationRulesSettings, readAutomationRules, type AutomationRule, type AutomationConfirmation } from './src/core/automation-rules';
+import { AutomationRuleMembership } from './src/systems/automation-rule-membership';
+import { AutoAutomationEvents, automationTaskImage } from './src/systems/auto-automation-events';
+import { deactivateAutomationRules, isSavedAutomationRequest, AutomationRunner, type AutoRunBatch, type ExplicitAutomationRequest } from './src/systems/manual-automation-run';
+import { captureAutomationReadState } from './src/systems/automation-read-state';
+import { prepareAutomationWork } from './src/systems/automation-task-writes';
+import { automationApprovalModal, showAutomationResult } from './src/ui/manual-automation-feedback';
+import { projectIndexedNativeProperties, writeTableNativeProperty } from './src/ui/table/table-native-property';
 import type { TableFilePropertyUpdateRequest } from './src/ui/table/table-file-property-editor';
 import { nativeEditorPropertyTypes } from './src/core/task-editor-native-properties';
 import { decodeVaultPropertyValue, encodeVaultPropertyValue, type VaultPropertyValue } from './src/core/vault-property-codec';
@@ -80,7 +90,8 @@ import { createCheckboxOwnershipRuntimeV1 } from './src/agent-runtime/extensions
 import { checkboxOwnershipExecutionKeyV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/decode';
 import type { CheckboxOwnershipApplyRequestV1, CheckboxOwnershipMutationResultV1 } from './src/agent-runtime/extensions/checkbox-ownership-v1/contracts';
 import { boundRuntimeTransactionIdV1 } from './src/agent-runtime/runtime/transaction-identifiers';
-import { getIcon, type App } from 'obsidian';
+import { OperonCommandLinks, type OperonViewSources } from './src/systems/operon-command-links';
+import { getIcon, type App, type Command } from 'obsidian';
 import { resolveTaskMediaReference } from './src/core/task-media-reference';
 import { parseOperonGroupRule } from './src/core/canvas-group-rule';
 import { canWriteGroupCanvas } from './src/systems/canvas-group-background';
@@ -91,7 +102,7 @@ import type { PropertyPoolFavorite } from './src/core/property-value-pool';
 import { indentNewInlineSubtask } from './src/core/task-creator-target-resolver';
 import { nativeLightboxBodyExtension } from './src/ui/native-lightbox-body';
 import { CoreQuickSwitcherIntegration, resolveCoreQuickSwitcherFileOpening } from './src/ui/core-quick-switcher';
-import { disposeWebLightboxes, openTaskWorkspace, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, openPreparedPropertyWorkspace, lightboxFileState } from './src/ui/web-lightbox';
+import { disposeWebLightboxes, openTaskWorkspace, findLightboxOwnerLeaf, getLightboxOwnerLeaf, prepareLightboxTab, openFileLightbox, openFileLightboxAsync, openPreparedPropertyWorkspace, lightboxFileState } from './src/ui/web-lightbox';
 import { getNativeLightboxLeaves } from './src/ui/native-lightbox-lifecycle';
 import { refreshAssigneeChipImages, disposeAssigneeChipImages } from './src/ui/assignee-chip-image';
 import { normalizeTaskColorValue } from './src/core/task-color-value';
@@ -187,7 +198,7 @@ import {
 	type IndexV8MaintenanceHandle,
 } from './src/indexer/persistence/index-v8-maintenance-scheduler';
 import type { ProjectSerialDisplay } from './src/core/project-serials';
-import { scanFileWithMappings } from './src/indexer/file-scanner';
+import { type FileScanResult, scanFileWithMappings } from './src/indexer/file-scanner';
 import {
 	TaskWriter,
 	type GuardedTaskSourceFieldUpdate,
@@ -225,6 +236,7 @@ import { TimeTracker, type ExternalTaskMutationStopResult } from './src/systems/
 import {
 	TaskSourceModifyReconciler,
 	type TaskSourceModifyReconciliationMode,
+	type MatchIndexedSource,
 } from './src/systems/task-source-modify-reconciliation';
 import { normalizeTaskAfterCreateAction } from './src/types/settings';
 import { StartupFileEvents } from './src/systems/startup-file-events';
@@ -371,8 +383,10 @@ import {
 	getActiveWindow,
 	getOwnerWindow,
 	getWorkspaceWindows,
+	getFocusedVisibleWorkspaceWindow,
 	setWindowTimeout,
 } from './src/core/dom-compat';
+import { registerWorkspaceDayRefresh } from './src/core/filter-day-refresh';
 import { CoalescedAsyncScheduler } from './src/core/coalesced-async-scheduler';
 import { ReminderScheduler } from './src/core/reminder-scheduler';
 import { evaluateFilterSet } from './src/core/filter-evaluator';
@@ -814,9 +828,12 @@ import { resolvePeriodicNoteContainerTask } from './src/core/periodic-note-conta
 import {
 	formatPeriodicNoteTitleFromDateKey,
 	isPeriodicNoteDateKey,
+	localWeekNumbering,
+	weeklyRowMonday,
 	resolvePeriodicNoteAnchorDateKey,
 	resolvePeriodicNotePathFromDateKey,
 	type PeriodicNoteKind,
+	type PeriodicNotePathConfig,
 } from './src/core/periodic-note-path';
 import {
 	PeriodicNoteService,
@@ -917,6 +934,7 @@ import {
 	DUPLICATE_ALERT_DELAY_SECONDS_OPTIONS,
 	FilterSet,
 	normalizeInlineTaskHeadingKeyword,
+	normalizeSpecificFileHeading,
 	normalizeInlineTaskParentFileHeadingKeyword,
 	normalizeStoredFileTaskTemplateId,
 	OperonSettings,
@@ -1280,6 +1298,7 @@ interface TaskCreatorInlineTargetFile {
 	fallbackParentFieldValues: Record<string, string> | null;
 	fallbackParentTags: string[] | null;
 	dailyDateHeading?: string | null;
+	headingKeyword?: string;
 	autoParentEnabled?: boolean;
 }
 
@@ -1790,6 +1809,7 @@ export default class OperonPlugin extends Plugin {
 	private tablePresetRegistry!: TablePresetRegistry<TFile>;
 	private tablePresetFileConflictResolver!: TablePresetFileConflictResolver<TFile>;
 	private readonly tablePresetRegistrySubscriptions = new Map<string, () => void>();
+	private commandLinks!: OperonCommandLinks;
 	private settingsTab: OperonSettingsTab | null = null;
 	private tablePresetRegistryRefreshTimer: WindowTimeoutHandle | null = null;
 	private readonly expectedTableFileModifyHashes = new Map<string, string>();
@@ -3371,7 +3391,9 @@ export default class OperonPlugin extends Plugin {
 			'mobile notifications snapshot settings reconciliation failed',
 			this.mobileNotificationsExporter?.handleSettingsChanged() ?? Promise.resolve(),
 		);
+		const previousLanguage = getCurrentLang();
 		initI18n(undefined, this.settings.language);
+		if (previousLanguage !== getCurrentLang()) this.commandLinks?.refresh();
 		if (
 			previousProjectSerialScopeSignature
 			&& previousProjectSerialScopeSignature !== this.projectSerialScopeSettingsSignature
@@ -3458,6 +3480,7 @@ export default class OperonPlugin extends Plugin {
 				installI18nLocale(language, pack.translations);
 				if (!shouldActivateReconciledLocale(language, this.settings.language)) continue;
 				if (!activateI18nLocale(language)) continue;
+				this.commandLinks?.refresh();
 				this.settingsTab?.refreshLanguageState();
 				this.statusDock?.refresh();
 				this.trackerStatusBar?.render();
@@ -4233,6 +4256,7 @@ export default class OperonPlugin extends Plugin {
 		const defaultPresetId = this.settings.calendarDefaultPresetId ?? this.settings.calendarPresets[0]?.id ?? null;
 		const shouldOpenFinishedTaskPoolMode = state?.finishedTasksOpen === true;
 		const nextState: CalendarLeafState = {
+			...(state?.useNamedPresetOnMobile ? { useNamedPresetOnMobile: true } : {}),
 			forceMobileLayout: state?.forceMobileLayout === true,
 			presetId: typeof state?.presetId === 'string' && state.presetId.trim()
 				? state.presetId
@@ -4667,6 +4691,7 @@ export default class OperonPlugin extends Plugin {
 					|| task.primary.filePath.startsWith(`${request.scope?.path}/`)
 				));
 		}
+		const weekNumbering = localWeekNumbering(this.settings.weeklyNoteFormat);
 		const evaluated = evaluateFilterSet(
 			filterSet,
 			tasks,
@@ -4674,6 +4699,8 @@ export default class OperonPlugin extends Plugin {
 			this.pinnedCache,
 			this.settings.pipelines,
 			{
+				weekStart: this.settings.calendarWeekStart,
+				weekNumbering,
 				projectSerialScopes: this.settings.projectSerialScopes,
 				projectSerialScopeTasks: allTasks,
 				dependencyTasks: allTasks,
@@ -4682,10 +4709,11 @@ export default class OperonPlugin extends Plugin {
 				filePropertyContext: this.getTableFilePropertySnapshot(allTasks) ?? undefined,
 			},
 		);
+		const digest = savedFilterQueryDigestV1(filterSet, request.scope, this.settings.calendarWeekStart, weekNumbering);
 		return {
 			ok: true as const,
 			tasks: evaluated,
-			queryDigest: contiguous ? sha256HexV1('checkbox-ownership-v1\0' + savedFilterQueryDigestV1(filterSet, request.scope)) : savedFilterQueryDigestV1(filterSet, request.scope),
+			queryDigest: contiguous ? sha256HexV1('checkbox-ownership-v1\0' + digest) : digest,
 		};
 	}
 
@@ -12295,7 +12323,8 @@ export default class OperonPlugin extends Plugin {
 		filePath: string;
 		placement:
 			| { kind: 'after-line'; lineNumber: number }
-			| { kind: 'under-heading'; headingKeyword: string };
+			| { kind: 'under-heading'; headingKeyword: string }
+			| { kind: 'under-exact-heading'; heading: string };
 		defaultFields?: Readonly<Record<string, string>>;
 	}> {
 		if (
@@ -12342,16 +12371,12 @@ export default class OperonPlugin extends Plugin {
 				...(scheduledWorkflow ? { status: scheduledWorkflow.value } : {}),
 			}
 			: {};
-		const specificFileHeading = saveMode === 'specific-file'
-			? await this.resolveInlineTaskSpecificFileHeading(today)
-			: '';
+		const placement = saveMode === 'specific-file'
+			? await this.resolveSpecificFilePlacement(today)
+			: { kind: 'under-heading' as const, headingKeyword: normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading) };
 		return {
 			filePath,
-			placement: {
-				kind: 'under-heading',
-				headingKeyword: specificFileHeading
-					|| normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading),
-			},
+			placement,
 			...(Object.keys(defaultFields).length > 0 ? { defaultFields } : {}),
 		};
 	}
@@ -15790,15 +15815,27 @@ export default class OperonPlugin extends Plugin {
 			}
 		// Obsidian restores ribbon visibility after awaiting plugin onload. Only
 		// cached labels belong in this barrier; storage/index startup stays asynchronous.
-		await this.prepareRibbonIcons();
-		if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+		const ribbonReady = this.prepareRibbonIcons();
+		const commandsReady = ribbonReady.then(() => {
+			if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') return this.loadPlugin();
+		}).catch(error => {
+			this.finishAutomationStartup(false);
+			throw error;
+		});
+		this.registerObsidianProtocolHandler('operon', data => {
+			runAsyncAction('open Operon URI failed', async () => {
+				try { await commandsReady; } catch {
+					if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') new Notice(t('settings', 'uriUnavailable'));
+					return;
+				}
+				if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') await this.commandLinks.handleProtocol(data);
+			});
+		});
 			runAsyncAction('plugin load failed', async () => {
 				try {
-					await this.loadPlugin();
-					if (
-						OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED
-						&& this.agentRuntimeLifecycle.getPhase() !== 'unloading'
-					) {
+					await commandsReady;
+					if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return;
+					if (OPERON_AGENT_RUNTIME_PERSISTENT_READ_ENABLED) {
 						const supervisor = new AgentRuntimePersistentReadSupervisorV1({
 							startServer: isCurrent => startAgentRuntimePersistentReadServerV1(
 								this,
@@ -15832,6 +15869,7 @@ export default class OperonPlugin extends Plugin {
 				throw error;
 			}
 		});
+		await ribbonReady;
 	}
 
 	private async initializeTablePresetRegistry(): Promise<void> {
@@ -16318,6 +16356,7 @@ export default class OperonPlugin extends Plugin {
 			nextOrder,
 			next.map(preset => preset.id),
 		);
+		this.commandLinks?.refresh();
 		return previousDefaultPresetId !== this.settings.tableDefaultPresetId;
 	}
 
@@ -16916,7 +16955,7 @@ export default class OperonPlugin extends Plugin {
 			now: () => Date.now(),
 			setTimer: (callback, delayMs) => setWindowTimeout(callback, delayMs),
 			clearTimer: timer => clearWindowTimeout(timer),
-			reconcile: (filePath, mode) => this.reconcileTaskSourceModify(filePath, mode),
+			reconcile: (filePath, mode, match) => this.reconcileTaskSourceModify(filePath, mode, undefined, match),
 			onError: (filePath, error) => {
 				console.warn(`Operon: task source reconciliation failed for ${filePath}.`, error);
 			},
@@ -17364,6 +17403,9 @@ export default class OperonPlugin extends Plugin {
 			this.taskCardLayout?.refresh();
 		}));
 
+		// Observe saved rule versions even while the startup index is being prepared.
+		this.register(this.storage.subscribeAutomationRules(() => this.syncAutoAutomationRules()));
+
 		// Register settings tab
 		this.settingsTab = new OperonSettingsTab(
 			this.app,
@@ -17383,7 +17425,7 @@ export default class OperonPlugin extends Plugin {
 			(filterSetId) => this.openFilterViewById(filterSetId),
 			() => this.pinnedDock?.refreshLayout(),
 			this.storage.pinned,
-			(operonId) => this.openEditorForId(operonId),
+			this.openFilterPreviewEditor,
 				(operonId) => { void this.handleTaskIconClick(operonId); },
 				(task) => { this.navigateToTask(task); },
 				(operonId, key, value) => { void this.updateTaskFieldAndRefresh(operonId, key, value); },
@@ -17420,6 +17462,7 @@ export default class OperonPlugin extends Plugin {
 			() => this.statusDock?.refresh(),
 			(task, event, anchor) => this.activateFilterTaskDescription(task, event, anchor),
 			);
+		this.settingsTab.setCommandLinks(this.commandLinks);
 		this.addSettingTab(this.settingsTab);
 
 		const openUpcoming = async (taskId: string, action: OperonSettings['upcomingStatusBarClickAction']): Promise<void> => {
@@ -17553,8 +17596,11 @@ export default class OperonPlugin extends Plugin {
 				this.initializeActiveTrackerMonitor();
 				this.agentRuntimeLifecycle.markReady();
 				this.taskCardIndexState = 'ready';
+				this.startAutoAutomationEvents();
+				this.settingsTab?.notifyAutomationEditorSourcesChanged();
 				this.agentRuntimeStartupSettlementRelease?.();
 				this.agentRuntimeStartupSettlementRelease = null;
+				this.finishAutomationStartup(true);
 				if (OPERON_AGENT_RUNTIME_PROBE_ENABLED) setTransportProbePhase('startup-reconciled');
 				this.indexV8CleanupMaintenance?.cancel();
 				this.indexV8CleanupMaintenance = startIndexV8CleanupMaintenance({
@@ -17576,6 +17622,7 @@ export default class OperonPlugin extends Plugin {
 					});
 				}, 750);
 			} catch (error) {
+				this.finishAutomationStartup(false);
 				if (this.taskCardIndexState === 'loading') {
 					this.taskCardIndexState = 'error';
 					this.taskCardEmbeds?.refresh();
@@ -17662,6 +17709,12 @@ export default class OperonPlugin extends Plugin {
 
 	onunload(): void {
 		this.agentRuntimeLifecycle.beginUnloading();
+		this.finishAutomationStartup(false);
+		this.startupAutomationRuns.clear();
+		this.autoAutomationEvents?.dispose();
+		this.autoRuleMembership?.configure([]);
+		this.autoRuleMembership = undefined;
+		this.automationApproval?.close();
 		this.ribbonActionsReady = false;
 		this.timeTracker?.cancelExternalRefresh();
 		this.tasksConversionController?.dispose();
@@ -17851,7 +17904,9 @@ export default class OperonPlugin extends Plugin {
 		this.registerView(MINI_CALENDAR_VIEW_TYPE, leaf => new MiniCalendarView(leaf, () => this.settings, undefined, request => this.openMiniCalendarNote(request), error => {
 			console.error('Operon: Mini Calendar note opening failed', error);
 			new Notice(t('notifications', 'miniCalendarOpenFailed'));
-		}));
+		}, monday => this.uiPeriodicNoteRequest('weekly', monday, {
+			folder: this.settings.weeklyNoteFolder, format: this.settings.weeklyNoteFormat,
+		}).config.weekStart ?? 'monday'));
 		const openEditorForId = (operonId: string) => this.openEditorForId(operonId);
 		const openTaskSourceInNewTab = (operonId: string): void => { void this.openMaterializedTaskSourceInNewTab(operonId); };
 		const replaceActiveManualOrder = async (orderedTaskIds: string[]): Promise<void> => {
@@ -20537,7 +20592,7 @@ export default class OperonPlugin extends Plugin {
 			propertyAccess: createKanbanPropertyAccess(this.settings, native), revision: { tasks: this.indexer.getGeneration(), settings: 0 },
 			filterSet, pinnedCache: this.pinnedCache, manualOrder,
 			getProjectSerialDisplay: id => this.getProjectSerialDisplayForTask(id),
-			filterEvaluationOptions: { getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
+			filterEvaluationOptions: { weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat), getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id), filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined } });
 		return 'state' in board ? null : board;
 	}
 
@@ -21301,6 +21356,8 @@ export default class OperonPlugin extends Plugin {
 				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot() ?? undefined,
 				dependencyTasks,
+				weekStart: this.settings.calendarWeekStart,
+				weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 				pipelines: this.settings.pipelines,
 			},
 		).length > 0;
@@ -21331,6 +21388,8 @@ export default class OperonPlugin extends Plugin {
 				this.settings.priorities,
 				this.pinnedCache,
 				{
+					weekStart: this.settings.calendarWeekStart,
+					weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 					projectSerialScopes: this.settings.projectSerialScopes,
 					projectSerialScopeTasks: allTasks,
 					dependencyTasks: allTasks,
@@ -21375,6 +21434,7 @@ export default class OperonPlugin extends Plugin {
 		const scope = collectKanbanScope({
 			tasks, settings: this.settings, filterSet, pinnedCache: this.pinnedCache,
 			filterEvaluationOptions: {
+				weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
 				getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
 				filePropertyContext: this.getTableFilePropertySnapshot(tasks) ?? undefined,
 				projectSerialScopes: this.settings.projectSerialScopes,
@@ -21731,11 +21791,20 @@ export default class OperonPlugin extends Plugin {
 			await this.indexer.reindexFilePath(path, { notify: false });
 			if (!canOpen()) return;
 			try {
-				const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
-				const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
-				const indexedId = this.getQuickSwitcherFileTaskId(file);
-				identity = scanned.yamlTask ? (indexedId === scanned.yamlTask.operonId ? indexedId : undefined)
-					: indexedId === null ? null : undefined;
+				const readIdentity = async () => {
+					const source = await readTaskEditorMarkdown(this.app, file, this.getMarkdownViewsForPath(path));
+					const scanned = await scanFileWithMappings(this.app, file, this.settings.keyMappings, source);
+					const indexedId = this.getQuickSwitcherFileTaskId(file);
+					return scanned.yamlTask ? (indexedId === scanned.yamlTask.operonId ? indexedId : undefined)
+						: indexedId === null ? null : undefined;
+				};
+				identity = await readIdentity();
+				// Creation can leave a vault event queued after the explicit file reindex.
+				if (identity === undefined && this.indexer.getLiveReadAuthoritySnapshot().state === 'settling') {
+					await this.indexer.awaitRamSettlement();
+					if (!canOpen()) return;
+					identity = await readIdentity();
+				}
 			} catch { identity = undefined; }
 		}
 		if (!canOpen()) return;
@@ -21854,6 +21923,24 @@ export default class OperonPlugin extends Plugin {
 		return await this.resolveOrCreatePeriodicNoteResult('daily', dateKey);
 	}
 
+	private uiPeriodicNoteRequest<T extends PeriodicNotePathConfig>(
+		kind: PeriodicNoteKind, dateKey: string, config: T,
+	): { kind: PeriodicNoteKind; dateKey: string; config: T & PeriodicNotePathConfig; existingOnly?: true } {
+		if (kind === 'weekly' && this.settings.calendarWeekStart === 'sunday') {
+			const sundayConfig = { ...config, weekStart: 'sunday' as const };
+			const path = resolvePeriodicNotePathFromDateKey(kind, dateKey, sundayConfig);
+			const monday = weeklyRowMonday(dateKey, 'sunday');
+			if (path && monday && !this.app.vault.getAbstractFileByPath(path)) {
+				const legacy = resolvePeriodicNotePathFromDateKey(kind, monday, config);
+				if (legacy && legacy !== path && this.app.vault.getAbstractFileByPath(legacy) instanceof TFile) {
+					return { kind, dateKey: monday, config, existingOnly: true };
+				}
+			}
+			return { kind, dateKey, config: sundayConfig };
+		}
+		return { kind, dateKey, config };
+	}
+
 	/** The only note-creation adapter used by Daily and Weekly Task Router targets. */
 	private async resolveOrCreatePeriodicNoteResult(
 		kind: PeriodicNoteKind,
@@ -21892,22 +21979,27 @@ export default class OperonPlugin extends Plugin {
 				) || resolvedConfig.reason === 'invalid-config',
 			};
 		}
-		const filePath = resolvePeriodicNotePathFromDateKey(kind, dateKey, resolvedConfig.config);
+		const request = this.uiPeriodicNoteRequest(kind, dateKey, resolvedConfig.config);
+		const filePath = resolvePeriodicNotePathFromDateKey(kind, request.dateKey, request.config);
 		if (!filePath) return unavailable;
 		const existingFile = this.app.vault.getAbstractFileByPath(filePath);
 		if (existingFile instanceof TFile && acceptFile?.(existingFile) === false) return { ...unavailable, file: existingFile };
 		if (canCommit && !(await canCommit())) return unavailable;
-		if (prepared && JSON.stringify(prepared.config) !== JSON.stringify(resolvedConfig.config)) return unavailable;
+		if (prepared && (prepared.path !== filePath || JSON.stringify(prepared.config) !== JSON.stringify(request.config))) return unavailable;
+		if (request.existingOnly) {
+			if (!(existingFile instanceof TFile) || this.app.vault.getAbstractFileByPath(filePath) !== existingFile) return unavailable;
+			return { ...unavailable, file: existingFile, dateKey: request.dateKey, config: request.config };
+		}
 
 		let shouldFinalizeCreatedPath = false;
 		this.workflowNormalizationInProgress.add(filePath);
 		try {
 			const service = this.getPeriodicNoteService();
-			const guardedPlan = !prepared && canCommit ? await service.prepare({ kind, dateKey, config: resolvedConfig.config }) : null;
+			const guardedPlan = !prepared && canCommit ? await service.prepare(request) : null;
 			const result = prepared
 				? await this.getPeriodicNoteService().commit(prepared, canCommit)
 				: guardedPlan ? (guardedPlan.status === 'prepared' ? await service.commit(guardedPlan.plan, canCommit) : guardedPlan.result)
-				: await this.getPeriodicNoteService().getOrCreate({ kind, dateKey, config: resolvedConfig.config });
+				: await this.getPeriodicNoteService().getOrCreate(request);
 			shouldFinalizeCreatedPath = result.ok
 				? result.status === 'created'
 				: result.error.recoveryRequired;
@@ -21925,7 +22017,7 @@ export default class OperonPlugin extends Plugin {
 					...unavailable,
 					file,
 					dateKey: result.dateKey,
-					config: resolvedConfig.config,
+					config: request.config,
 				};
 			}
 			const initializedDocument = await this.loadParsedFrontmatterDocument(file);
@@ -21939,13 +22031,17 @@ export default class OperonPlugin extends Plugin {
 					? { ...initializedDocument.managedFieldValues }
 					: null,
 				operonParentTags: operonParentTaskId ? [...initializedDocument.tags] : null,
-				config: resolvedConfig.config,
+				config: request.config,
 				noticeShown: false,
 			};
-			const createdSnapshot = resolved.config?.createAsOperonTask
+			// A template can create a File Task even when automatic parenting is off.
+			// Date-named Sunday containers need a durable identity for pipeline protection.
+			const registerContainer = request.config.createAsOperonTask
+				|| (request.config.weekStart === 'sunday' && isValidOperonId(operonParentTaskId ?? ''));
+			const createdSnapshot = registerContainer
 				? createPeriodicNoteCreatedFileSnapshot(result.path, result.operationOwnedContent)
 				: null;
-			const registration = resolved.config?.createAsOperonTask
+			const registration = registerContainer
 				? await this.ensurePeriodicNoteContainerRegistered(resolved)
 				: { status: 'committed', acknowledgement: 'direct' } as const;
 			const registrationDisposition = resolvePeriodicNoteContainerRegistrationDisposition(
@@ -22080,7 +22176,7 @@ export default class OperonPlugin extends Plugin {
 		const config = periodicNote.config;
 		const file = periodicNote.file;
 		const dateKey = periodicNote.dateKey;
-		if (!config?.createAsOperonTask || !(file instanceof TFile) || !dateKey) {
+		if (!config || !(file instanceof TFile) || !dateKey) {
 			return { status: 'committed', acknowledgement: 'direct' };
 		}
 		try {
@@ -22100,11 +22196,14 @@ export default class OperonPlugin extends Plugin {
 			) {
 				throw new Error('Periodic File Task indexing did not establish one exact container identity.');
 			}
+			// Registry identities use the ISO Monday even when the UI creates the note on Sunday.
+			const anchorDateKey = config.weekStart === 'sunday' ? weeklyRowMonday(dateKey, 'sunday') : dateKey;
+			if (!anchorDateKey) throw new Error('Invalid periodic note container date.');
 			const entry: PeriodicNoteContainerRegistryEntryV1 = {
 				operonId: indexed.operonId,
 				kind: config.kind,
 				lastKnownPath: indexed.primary.filePath,
-				anchorDateKey: dateKey,
+				anchorDateKey,
 				source: config.source,
 			};
 			const persistence = await this.storage.periodicNoteContainers.register(entry);
@@ -23467,6 +23566,10 @@ export default class OperonPlugin extends Plugin {
 		};
 	}
 
+	private readonly openFilterPreviewEditor: FilterModalEvalDeps['openEditor'] = (id, preview) => {
+		void this.openEditorForId(id, undefined, preview, () => preview.isConnected && preview.ownerDocument === getActiveDocument());
+	};
+
 	private buildFilterModalEvalDeps(): FilterModalEvalDeps {
 		return {
 			getRepeatSkipSignature: () => this.getRepeatSkipSignature(),
@@ -23475,15 +23578,7 @@ export default class OperonPlugin extends Plugin {
 			getFilePropertySnapshot: tasks => this.getTableFilePropertySnapshot(tasks),
 			getPipelines: () => this.settings.pipelines,
 			getPriorities: () => this.settings.priorities ?? DEFAULT_PRIORITIES,
-			openEditor: (operonId: string) => {
-				void (async () => {
-					const task = this.indexer.getTask(operonId);
-					if (!task) return;
-					await this.openTaskEditorFor(this.loadEditableParsedTask(task), async (request) => {
-						return await this.applyEditedTaskFromView(task, request);
-					});
-				})();
-			},
+			openEditor: this.openFilterPreviewEditor,
 			cycleStatus: (operonId: string) => {
 				void this.handleTaskIconClick(operonId);
 			},
@@ -23513,6 +23608,243 @@ export default class OperonPlugin extends Plugin {
 			getProjectSerialDisplay: (operonId: string) => this.getProjectSerialDisplayForTask(operonId),
 			getProjectSerialSignature: () => this.getProjectSerialSignature(),
 		};
+	}
+
+	private readonly automationRunner = new AutomationRunner();
+	private finishAutomationStartup!: (ready: boolean) => void;
+	private readonly automationStartup = new Promise<boolean>(resolve => { this.finishAutomationStartup = resolve; });
+	private autoAutomationEvents?: AutoAutomationEvents;
+	private autoRuleMembership?: AutomationRuleMembership;
+
+	private readonly startupAutomationRuns = new Map<string, AutomationRule>();
+
+	private syncAutoAutomationRules(): void {
+		const saved = this.storage.getSettings().automationRules;
+		const rules = isAutomationRulesSettings(saved) ? saved.rules : [];
+		for (const [id, expected] of this.startupAutomationRuns) {
+			if (JSON.stringify(rules.find(rule => rule.id === id)) !== JSON.stringify(expected)) this.startupAutomationRuns.delete(id);
+		}
+		this.autoAutomationEvents?.configure(rules);
+		this.autoRuleMembership?.configure(rules);
+	}
+
+	requestSavedAutomationRun(rule: AutomationRule): void {
+		if (this.autoAutomationEvents) this.autoAutomationEvents.requestSavedRule(rule);
+		else if (this.agentRuntimeLifecycle.getPhase() !== 'unloading') this.startupAutomationRuns.set(rule.id, rule);
+	}
+
+	private startAutoAutomationEvents(): void {
+		const native = getNativePropertyIndex(this.app);
+		const pins = this.storage.pinned;
+		const foreground = () => getFocusedVisibleWorkspaceWindow(this.app) !== null;
+		const membership = this.autoRuleMembership = new AutomationRuleMembership({
+			all: () => this.indexer.getAllTasks(), task: id => this.indexer.getTask(id),
+			settle: () => this.indexer.awaitRamSettlement(), children: id => this.indexer.secondary.getChildIds(id),
+			unavailableIds: () => this.indexer.getUnavailableTaskIds(),
+			unavailable: id => this.indexer.hasDuplicateOperonIdConflict(id) || this.indexer.isTaskSourceTransitionActive(id),
+			generation: () => this.indexer.getGeneration(), verified: () => this.indexer.getLiveReadAuthoritySnapshot().state === 'verified',
+		});
+		const events = this.autoAutomationEvents = new AutoAutomationEvents({
+			taskIds: () => this.indexer.getAllTasks().map(task => task.operonId),
+			image: id => {
+				const task = this.indexer.getTask(id);
+				return task ? automationTaskImage(task, native) : undefined;
+			},
+			pins: () => pins.getPinnedIds(), pin: id => pins.getCanonicalEntry(id),
+			settled: () => this.indexer.getLiveReadAuthoritySnapshot().settled,
+			settle: async () => { await this.indexer.awaitRamSettlement(); },
+			currentPath: id => this.indexer.getTask(id)?.primary.filePath,
+			today: localToday, foreground,
+			run: take => this.runAutomation(take),
+			error: error => console.error('Operon: automatic task observation failed', error),
+		});
+		this.syncAutoAutomationRules();
+		for (const rule of this.startupAutomationRuns.values()) events.requestSavedRule(rule);
+		this.startupAutomationRuns.clear();
+		this.register(this.indexer.subscribeIndexReconciliation(event => {
+			if (event.kind === 'full') events.rebase();
+			else events.reconcile(event.affectedOperonIds);
+			membership.reconcile(event);
+		}));
+		this.register(pins.subscribe(() => events.pinsChanged()));
+		const changed = (file: TAbstractFile) => events.fileChanged(file.path);
+		this.registerEvent(this.app.vault.on('create', changed));
+		this.registerEvent(this.app.vault.on('modify', changed));
+		this.registerEvent(this.app.vault.on('rename', changed));
+		this.register(native.subscribeSource(path => events.reconcile(this.indexer.secondary.getTasksInFile(path))));
+		registerWorkspaceDayRefresh(this, this.app, () => {
+			events.wake();
+			if (this.backgroundAutomationApproval && !foreground()) this.backgroundAutomationApproval();
+		});
+	}
+	private automationApproval?: ConfirmActionModal;
+	private backgroundAutomationApproval?: () => void;
+
+	runManualAutomationRule(id: string): Promise<boolean> {
+		return this.runAutomation(id);
+	}
+
+	async runAutomationDraft(draft: AutomationRule): Promise<void> {
+		await this.runAutomation(draft);
+	}
+
+	private async runAutomation(request: ExplicitAutomationRequest | (() => Promise<AutoRunBatch>)): Promise<boolean> {
+		let ruleNames = new Map<string, string>();
+		let releaseAutoPersist: (() => void) | undefined;
+		let permit: TaskWriterExclusiveMutationPermit | undefined;
+		try {
+			const ports: import('./src/systems/manual-automation-run').AutomationRunPorts = {
+				waitForSavedRun: async () => {
+					const ready = await this.automationStartup;
+					if (ready && this.agentRuntimeLifecycle.getPhase() !== 'unloading') await this.indexer.awaitRamSettlement();
+					if (this.agentRuntimeLifecycle.getPhase() === 'unloading') return 'dismissed';
+					return ready ? 'ready' : 'index-unavailable';
+				},
+				validateSavedRule: rule => this.settingsTab!.validateAutomationRun(rule),
+				vault: this.app.vault,
+				settings: () => readAutomationRules(this.storage.getSettings().automationRules),
+				available: () => this.startupReady && this.agentRuntimeLifecycle.getPhase() !== 'unloading',
+				now: localNow,
+				planAutoIfNoChanges: (rules, triggers) => this.taskCardIndexState === 'ready'
+					? this.autoRuleMembership?.planIfNoChanges(rules, triggers, this.settings.keyMappings) ?? null : null,
+				plan: (rules, policy, asOf, triggers, getFrontmatter, actionReferenceDay) => {
+					ruleNames = new Map(rules.map(rule => [rule.id, rule.name.trim() || t('settings', 'automationUnsavedRule')]));
+					return this.planAutomationRules(rules, policy, { asOf, triggers, getFrontmatter, actionReferenceDay });
+				},
+				prepare: (plan, yamlSources, seriesIds, asOf) => {
+					if (typeof request === 'function' && !releaseAutoPersist) {
+						releaseAutoPersist = this.indexer.deferPendingPersistForAuto(isPending => plan.changes.some(change => {
+							if (change.field === 'pinned') return false;
+							const task = this.indexer.getTask(change.taskId);
+							return !!task && isPending(task.primary.filePath);
+						}));
+					}
+					const tasks = this.indexer.getAllTasks();
+					const base = plan.changes.some(c => c.field.startsWith('file.property:')) ? this.getTableFilePropertySnapshot(tasks) : null;
+					return prepareAutomationWork(plan, {
+						yamlSources, seriesIds, asOf, repeatStore: this.storage.repeatSeries, recurrence: this.recurrenceService,
+						app: this.app, writer: this.writer, pins: this.storage.pinned, settings: this.settings, allTasks: tasks,
+						readState: captureAutomationReadState(this.app.vault, this.indexer, this.storage.pinned, tasks, plan.changes, () => JSON.stringify([
+							this.settings.keyMappings, this.settings.inlinePropertyDefinitions, this.settings.pipelines, this.settings.projectSerialScopes,
+							this.settings.calendarWeekStart, this.settings.weeklyNoteFormat, this.settings.defaultPipelineName, this.settings.inheritPropertiesOnParentLink, this.settings.childTaskInheritanceFields,
+							this.settings.autoExpandParentTaskDateRange,
+							this.settings.keepInlineTasksWithParent, this.settings.pinnedDockAutoUnpinFinished, this.settings.fileTaskDisplayTitleEnabled,
+							this.settings.fileTaskDisplayTitleChangeMode, this.timeTracker.getActiveOperonId(),
+							getNativePropertyIndex(this.app).getTypes(),
+						])),
+						native: base ? projectIndexedNativeProperties(this.app, base, tasks, this.settings) : undefined,
+						getTask: taskId => this.indexer.getTask(taskId), indexed: file => this.indexer.isIndexedSourceCurrent(file),
+						validPath: (path, absent) => this.isPluginTaskWritePathContained(path, absent),
+						buffersMatch: (path, text) => this.taskEditorDeleteOpenViewsMatch(path, text),
+						withSources: (paths, allowed, apply) => withExcalidrawMarkdownSources(this.app, this.writer, paths, file => this.isExcalidrawTaskSource(file), allowed, apply),
+						sync: (path, before, after) => this.syncTaskEditorDeleteOpenViews(path, before, after), permit: () => permit,
+						observePin: (taskId, pinned, stamp) => this.autoAutomationEvents?.ownPin(taskId, pinned, stamp),
+						observeSource: async (ids, file, path, content) => {
+							const events = this.autoAutomationEvents;
+							if (!events?.watching) return () => {};
+							const since = events.beginSource();
+							const projected = await this.indexer.projectAutomationSource(file, content);
+							const expected = [...projected.tasks].filter(task => ids.has(task.operonId)).map(task =>
+								[task.operonId, automationTaskImage(task, projected.native, path)] as const);
+							projected.native.dispose();
+							return () => { for (const [taskId, image] of expected) events.ownSource(taskId, image, since); };
+						},
+						refresh: async (paths, renamedFrom, committed) => {
+							const onCommittedScan = typeof request === 'function' && committed.size
+								? (file: TFile, scan: FileScanResult) => {
+									if (committed.get(file) === scan.content) this.rememberAutoSourceScan(file, scan);
+								} : undefined;
+							await this.indexer.reindexCommittedMutationSources([...paths], { notify: false, requireAllSources: true, renamedFrom, onCommittedScan });
+							this.refreshViews();
+						},
+					});
+				},
+				exclusive: operation => this.writer.runExclusiveTaskMutation(async owned => {
+					permit = owned;
+					try { return await operation(); } finally { permit = undefined; }
+				}),
+				indexSettling: () => this.indexer.getLiveReadAuthoritySnapshot().state === 'settling',
+				deferIndexRetry: (batch, shown) => this.autoAutomationEvents?.deferIndexRetry(batch, shown) ?? false,
+				refreshBatch: batch => this.autoAutomationEvents?.refreshBatch(batch),
+				deferConfirmation: (batch, shown) => this.autoAutomationEvents?.deferConfirmation(batch, shown) ?? false,
+				confirm: (plan, rules, batch) => new Promise(resolve => {
+					const cancelOnly = typeof request === 'object';
+					const draftRun = cancelOnly && !isSavedAutomationRequest(request);
+					const eligible = () => {
+						if (draftRun) return true;
+						const stored = this.storage.getSettings().automationRules;
+						return isAutomationRulesSettings(stored) && rules.every(rule =>
+							JSON.stringify(stored.rules.find(item => item.id === rule.id)) === JSON.stringify(rule));
+					};
+					if (!this.startupReady || this.agentRuntimeLifecycle.getPhase() === 'unloading') { resolve('dismiss'); return; }
+					if (!eligible()) { resolve('replan'); return; }
+					let closeReason: 'background' | 'replan' | undefined;
+					const unsubscribe = this.storage.subscribeAutomationRules(() => {
+						if (!eligible()) { closeReason = 'replan'; this.automationApproval?.close(); }
+					});
+					this.automationApproval = automationApprovalModal(this.app, plan, rules, result => {
+						unsubscribe();
+						this.automationApproval = undefined;
+						this.backgroundAutomationApproval = undefined;
+						resolve(closeReason ?? result);
+					}, cancelOnly, this.buildFilterModalEvalDeps());
+					if (batch) this.backgroundAutomationApproval = () => {
+						this.autoAutomationEvents?.refreshBatch(batch);
+						if (!Array.from(batch.rules.values()).includes('all')) return;
+						closeReason = 'background';
+						this.automationApproval?.close();
+					};
+					this.automationApproval.open();
+				}),
+				deactivate: rules => deactivateAutomationRules(this.storage, rules),
+			};
+			const result = typeof request === 'function' ? await this.automationRunner.runAuto(request, ports) : await this.automationRunner.run(request, ports);
+			showAutomationResult(result, typeof request === 'function', ruleNames);
+			return result.status === 'deactivated';
+		} catch (error) {
+			console.error('Operon: task automation did not settle', error);
+			new Notice(t('settings', 'automationRetry'));
+			return false;
+		} finally {
+			releaseAutoPersist?.();
+		}
+	}
+
+	/** Drafts use cached frontmatter. Executions supply the source documents used to prepare writes. */
+	planAutomationRules(rules: readonly AutomationRule[], confirmation: AutomationConfirmation,
+		{ asOf = localNow(), actionReferenceDay, triggers, includePreviewTaskIds, getFrontmatter = task => this.getSourceContextFrontmatter(task.primary.filePath) }:
+			Partial<Pick<AutomationPlanSnapshot, 'asOf' | 'actionReferenceDay' | 'getFrontmatter' | 'includePreviewTaskIds'>> & { triggers?: AutoTriggers } = {}) {
+		const tasks = this.indexer.getAllTasks();
+		const catalog = new FilterFieldCatalog({ keyMappings: this.settings.keyMappings, getRootGroup: () => undefined, getSettings: () => this.settings });
+		const expandParentDates = this.settings.autoExpandParentTaskDateRange;
+		const indexState = this.indexer.getLiveReadAuthoritySnapshot();
+		const needsNative = (node: FilterGroup): boolean => node.children.some(child =>
+			'children' in child ? needsNative(child) : child.field.startsWith('file.property:'));
+		const base = rules.some(rule => needsNative(rule.scope) || needsNative(rule.target)
+			|| rule.actions.some(action => action.field.startsWith('file.property:'))) ? this.getTableFilePropertySnapshot(tasks) : null;
+		return planAutomationChanges({
+			weekNumbering: localWeekNumbering(this.settings.weeklyNoteFormat),
+			tasks, asOf, actionReferenceDay, includePreviewTaskIds, conditionFields: new Map(catalog.getFieldOptions(true).map(option => [option.field, option.type])),
+			ready: this.startupReady && this.taskCardIndexState === 'ready' && indexState.settled
+				&& indexState.state !== 'unloading' && indexState.state !== 'recovery-required',
+			settings: this.settings, pins: this.pinnedCache ? new Set(this.pinnedCache.getPinnedIds()) : null,
+			activeTimerId: this.timeTracker?.getActiveOperonId(),
+			getFrontmatter,
+			fileRenameState: (task, destination) => {
+				const path = task.primary.filePath;
+				if (this.app.vault.getAbstractFileByPath(destination)) return 'occupied';
+				if (tasks.some(other => other.operonId !== task.operonId && other.primary.filePath === path)
+					|| Object.values(this.app.metadataCache.resolvedLinks).some(links => links[path])) return 'unknown';
+				return this.app.vault.getAbstractFileByPath(path) instanceof TFile ? 'available' : 'unknown';
+			},
+			getInlineList: (task, name) => getNativePropertyIndex(this.app).readMappedInlineList(task, name),
+			getDuplicateInstances: () => this.indexer.getAllDuplicateInstanceSnapshots(),
+			unavailableIds: new Set(tasks.filter(task => this.indexer.hasDuplicateOperonIdConflict(task.operonId)
+				|| this.indexer.isTaskSourceTransitionActive(task.operonId)).map(task => task.operonId)),
+			native: base ? projectIndexedNativeProperties(this.app, base, tasks, this.settings) : undefined,
+			getRepeatSkipDates: id => this.storage.repeatSeries.getSkipDates(id),
+			projectAggregates: (graph, affected) => this.aggregateCoordinator.projectAutomationAggregateFields(graph, affected, expandParentDates),
+		}, rules, confirmation, triggers);
 	}
 
 	private getTableFilePropertySnapshot(tasks: readonly IndexedTask[] = this.indexer.getAllTasks()) {
@@ -25188,14 +25520,17 @@ export default class OperonPlugin extends Plugin {
    if (!current) { content.destroy({ skipCloseSave: true }); this.showPluginUiMutationOutcome('source-missing'); return; }
    if (!currentOpening()) { content.destroy({ skipCloseSave: true }); return; }
    openingSource = current;
-   const markdown = showSource ?? (current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource);
-   openingTrace?.kind(markdown ? 'paired' : 'editor');
-   const session = await openTaskWorkspace(this.app, anchor, {
-    file: current.file, subpath: '', operonId: indexed.operonId,
-    ...(current.format === 'inline' ? { line: current.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(current.parsed) } : {}),
-   }, { task: { file: current.file, operonId: indexed.operonId }, content, markdown, position: preferences.position, openingTrace }, canOpen ? currentOpening : undefined);
-   if (session) onOpen?.(session);
-   return;
+   // A separate Settings window can host an editor modal but has no tab group for a native workspace.
+   if (!openingAnchor?.matches('.operon-filter-preview-modal-shell') || findLightboxOwnerLeaf(this.app, document)) {
+    const markdown = showSource ?? (current.format === 'yaml' ? preferences.fileSource : preferences.inlineSource);
+    openingTrace?.kind(markdown ? 'paired' : 'editor');
+    const session = await openTaskWorkspace(this.app, anchor, {
+     file: current.file, subpath: '', operonId: indexed.operonId,
+     ...(current.format === 'inline' ? { line: current.lineNumber, caretCh: resolveInlineTaskDescriptionCursorCh(current.parsed) } : {}),
+    }, { task: { file: current.file, operonId: indexed.operonId }, content, markdown, position: preferences.position, openingTrace }, canOpen ? currentOpening : undefined);
+    if (session) onOpen?.(session);
+    return;
+   }
   }
   const modal = new TaskEditorModal(this.app, this.indexer, this.settings, task, onSave, this.timeTracker, options, content);
   modal.onCloseSaveSettled = () => this.refreshAfterTaskEditorClose(task?.filePath);
@@ -28658,10 +28993,21 @@ export default class OperonPlugin extends Plugin {
 		this.taskSourceModifyReconciler?.markInternalWrite(filePath);
 	}
 
+	private rememberAutoSourceScan(file: TFile, scan: FileScanResult): void {
+		const generation = this.indexer.getGeneration();
+		const mappings = JSON.stringify(scan.keyMappings);
+		this.taskSourceModifyReconciler?.rememberIndexedSource(scan.filePath, (current, content) =>
+			current === file && file.path === scan.filePath && file.stat.mtime === scan.mtime && file.stat.size === scan.sizeBytes
+			&& content === scan.content && this.indexer.getGeneration() === generation && this.indexer.isIndexedSourceCurrent(file)
+			&& this.indexer.getLiveReadAuthoritySnapshot().state === 'verified' && JSON.stringify(this.settings.keyMappings) === mappings
+				? scan : undefined);
+	}
+
 	private async reconcileTaskSourceModify(
 		filePath: string,
 		mode: TaskSourceModifyReconciliationMode,
   canContinue?: () => boolean,
+		matchIndexedSource?: MatchIndexedSource,
 	): Promise<void> {
 		if (canContinue && !canContinue()) return;
 		const file = this.app.vault.getAbstractFileByPath(filePath);
@@ -28678,12 +29024,20 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 		this.tasksConversionSettledSources.delete(filePath);
-		await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue);
+		const covered = mode === 'deferred' && matchIndexedSource?.(file, source) ? matchIndexedSource : undefined;
+		await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue, covered);
 		if (mode === 'deferred') {
 			const settledFile = this.app.vault.getAbstractFileByPath(filePath);
 			if (!(settledFile instanceof TFile) || settledFile.extension !== 'md') {
 				await this.indexer.handleFileDelete(filePath);
 				return;
+			}
+			if (covered) {
+				try {
+					if (covered(settledFile, await this.app.vault.read(settledFile))) return;
+				} catch {
+					// A failed proof read leaves the normal reconciliation responsible for this source.
+				}
 			}
 			await this.indexer.forceReindexFilePathAfterMutation(filePath);
 		}
@@ -28744,7 +29098,7 @@ export default class OperonPlugin extends Plugin {
 		return true;
 	}
 
-	private async normalizeWorkflowStateAfterRawEdit(filePath: string, canContinue?: () => boolean): Promise<void> {
+	private async normalizeWorkflowStateAfterRawEdit(filePath: string, canContinue?: () => boolean, covered?: MatchIndexedSource): Promise<void> {
 		if (canContinue && !canContinue()) return;
 		const owned = this.tasksConversionOwnedSources.get(filePath);
 		if (owned?.written) {
@@ -28770,15 +29124,18 @@ export default class OperonPlugin extends Plugin {
 		}
 
 		this.workflowNormalizationInProgress.add(filePath);
+		let normalized = false;
 		try {
 			do {
 				this.workflowNormalizationPending.delete(filePath);
-				await this.normalizeWorkflowStateAfterRawEditPass(filePath, canContinue);
+				await this.normalizeWorkflowStateAfterRawEditPass(filePath, canContinue, covered);
 			} while ((!canContinue || canContinue()) && this.workflowNormalizationPending.delete(filePath));
+			normalized = true;
 		} finally {
 			const renamedFilePath = this.workflowNormalizationRenameTargets.get(filePath);
 			this.workflowNormalizationRenameTargets.delete(filePath);
-			if (!canContinue || canContinue()) this.indexer.scheduleReindex(renamedFilePath ?? filePath);
+			// The deferred caller checks the final bytes and forces a fresh scan if normalization wrote.
+			if ((!covered || !normalized || renamedFilePath) && (!canContinue || canContinue())) this.indexer.scheduleReindex(renamedFilePath ?? filePath);
 			this.workflowNormalizationInProgress.delete(filePath);
 			let followupScheduled = false;
 			if ((!canContinue || canContinue()) && renamedFilePath) {
@@ -28796,7 +29153,7 @@ export default class OperonPlugin extends Plugin {
 		}
 	}
 
-	private async normalizeWorkflowStateAfterRawEditPass(filePath: string, canContinue?: () => boolean): Promise<void> {
+	private async normalizeWorkflowStateAfterRawEditPass(filePath: string, canContinue?: () => boolean, covered?: MatchIndexedSource): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(filePath);
 		if (!(file instanceof TFile) || file.extension !== 'md') return;
 		if (isOperonExcludedPath(file.path, this.settings)) {
@@ -28834,7 +29191,7 @@ export default class OperonPlugin extends Plugin {
 			return;
 		}
 
-		const scan = await scanFileWithMappings(this.app, file, this.settings.keyMappings, canContinue ? resolvedContent : undefined);
+		const scan = covered?.(file, resolvedContent) ?? await scanFileWithMappings(this.app, file, this.settings.keyMappings, canContinue ? resolvedContent : undefined);
   if (canContinue && !canContinue()) return;
 		const currentById = new Map<string, Record<string, string>>();
 		for (const inlineTask of scan.inlineTasks) {
@@ -32081,13 +32438,14 @@ export default class OperonPlugin extends Plugin {
 			new Notice(t('notifications', 'inlineTaskTargetInvalid'));
 			return { kind: 'failed' };
 		}
+		const placement = await this.resolveSpecificFilePlacement(targetDateKey);
 		return {
 			kind: 'target',
 			file: targetFile,
 			fallbackParentTaskId: null,
 			fallbackParentFieldValues: null,
 			fallbackParentTags: null,
-			dailyDateHeading: await this.resolveInlineTaskSpecificFileHeading(targetDateKey),
+			...(placement.kind === 'under-heading' ? { headingKeyword: placement.headingKeyword } : { dailyDateHeading: placement.heading }),
 		};
 	}
 
@@ -32164,6 +32522,13 @@ export default class OperonPlugin extends Plugin {
 		await this.app.vault.create(targetPath, '');
 		const created = this.app.vault.getAbstractFileByPath(targetPath);
 		return created instanceof TFile && created.extension === 'md' ? created : null;
+	}
+
+	private async resolveSpecificFilePlacement(dateKey: string) {
+		const headingKeyword = normalizeSpecificFileHeading(this.settings.inlineTaskSpecificFileHeading);
+		return headingKeyword
+			? { kind: 'under-heading' as const, headingKeyword }
+			: { kind: 'under-exact-heading' as const, heading: await this.resolveInlineTaskSpecificFileHeading(dateKey) };
 	}
 
 	private async resolveInlineTaskSpecificFileHeading(dateKey: string): Promise<string> {
@@ -32255,6 +32620,7 @@ export default class OperonPlugin extends Plugin {
 			fallbackParentTags?: string[] | null;
 			inlineHeading?: string;
 			dailyDateHeading?: string | null;
+			headingKeyword?: string;
 			autoParentEnabled?: boolean;
 		} = {},
 	): Promise<{ operonId: string; lineNumber: number } | null> {
@@ -32263,7 +32629,7 @@ export default class OperonPlugin extends Plugin {
         const content = source ? await source.read() : await this.app.vault.cachedRead(file);
 		const dailyDateHeading = options.dailyDateHeading?.trim();
 		const explicitInlineHeading = options.inlineHeading;
-		const inlineHeadingKeyword = normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
+		const inlineHeadingKeyword = options.headingKeyword ?? normalizeInlineTaskHeadingKeyword(this.settings.inlineTaskHeading);
 		const insertTaskLine = (sourceContent: string, taskLine: string) => {
 			if (source) return insertExcalidrawInlineTask(sourceContent, dailyDateHeading || explicitInlineHeading || inlineHeadingKeyword, taskLine);
             if (dailyDateHeading) {
@@ -32398,6 +32764,7 @@ export default class OperonPlugin extends Plugin {
 					? scheduledPeriodicParent.parentTags
 					: target.fallbackParentTags,
 				dailyDateHeading: target.dailyDateHeading,
+				headingKeyword: target.headingKeyword,
 				autoParentEnabled: parentTaskExplicitlyCleared || useScheduledPeriodicParent
 					? false
 					: target.autoParentEnabled,
@@ -36345,7 +36712,7 @@ export default class OperonPlugin extends Plugin {
         }
         const resolution = await this.resolveEffectivePeriodicNoteConfig(decision.periodicKind);
         if (!resolution.available || !resolution.config.createAsOperonTask) return { ...plan, reason: 'unavailable' };
-        const prepared = await this.getPeriodicNoteService().prepare({ kind: decision.periodicKind, dateKey: decision.targetDateKey, config: resolution.config });
+        const prepared = await this.getPeriodicNoteService().prepare(this.uiPeriodicNoteRequest(decision.periodicKind, decision.targetDateKey, resolution.config));
         if (prepared.status === 'error') return { ...plan, reason: 'unavailable' };
         const path = prepared.status === 'existing' ? prepared.result.path : prepared.plan.path;
         const target = this.indexer.getFileTaskByPath(path);
@@ -38280,7 +38647,80 @@ export default class OperonPlugin extends Plugin {
   } catch (error) { return { status: error instanceof PropertyEditorSourceConflict ? 'conflict' : 'failed' }; }
  }
 
+	private cursorTimerContext() {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view?.file || view.getMode() !== 'source') return null;
+		const { line } = view.editor.getCursor();
+		const inline = this.parseInlineTaskLine(view.editor.getLine(line), line, view.file.path);
+		return {
+			inlineTaskId: inline?.operonId ?? null,
+			fileTaskId: this.indexer.getFileTaskByPath(view.file.path)?.operonId ?? null,
+		};
+	}
+
+	// Capture Operon registrations before Obsidian adds the plugin prefix and editor guards.
+	override addCommand(command: Command): Command {
+		return this.commandLinks ? this.commandLinks.register(command) : super.addCommand(command);
+	}
+
+	private getCommandViewSources(): OperonViewSources {
+		const { tablePresets, tableDefaultPresetId, calendarPresets, kanbanPresets, filterSets } = this.settings;
+		const fileTableIds = new Set<string>();
+		const tables = tablePresets.filter(preset => {
+			const source = this.tablePresetRegistry.getSource(preset.id);
+			if (!source) return true;
+			if (source.kind !== 'table-file' || !source.path || !this.app.vault.getFileByPath(source.path)) return false;
+			fileTableIds.add(preset.id);
+			return true;
+		});
+		return {
+			presets: { table: tables, calendar: calendarPresets, kanban: kanbanPresets, filter: getNormalFilterSets(filterSets) },
+			desktop: Platform.isDesktopApp, fileTableIds,
+			defaultTableId: tableDefaultPresetId,
+		};
+	}
+
+	private async openCommandTableLightbox(presetId: string): Promise<void> {
+		const path = this.tablePresetRegistry.getPath(presetId);
+		const file = path && this.app.vault.getFileByPath(path);
+		if (!file) {
+			new Notice(t('settings', 'uriPresetMissing'));
+			return;
+		}
+		await openFileLightboxAsync(this.app, getActiveDocument().body, { file, subpath: '', expectedTablePresetId: presetId });
+	}
+
 	private registerCommands(): void {
+		const links = this.commandLinks = new OperonCommandLinks({
+			register: command => super.addCommand(command),
+			remove: id => this.removeCommand(id),
+			viewSources: () => this.getCommandViewSources(),
+			rules: () => {
+				const stored = this.storage.getSettings().automationRules;
+				return isAutomationRulesSettings(stored) ? stored.rules : [];
+			},
+			openRule: id => {
+				if (this.settingsTab) this.settingsTab.openAutomationRule(id);
+				else new Notice(t('settings', 'uriUnavailable'));
+			},
+			runRule: async id => { await this.runAutomation({ savedRuleId: id }); },
+			vaultName: () => this.app.vault.getName(),
+			cursor: () => this.cursorTimerContext(),
+			openPresetTab: (type, presetId) => type === 'calendar'
+				? this.openCalendarView({ presetId, useNamedPresetOnMobile: true })
+				: this.openRelatedViewTarget({ type, presetId }),
+			openTableLightbox: presetId => this.openCommandTableLightbox(presetId),
+			confirmTableTab: () => this.promptConfirmAction(t('settings', 'uriOpenInNewTab'), t('settings', 'uriLightboxUnavailable'),
+				t('settings', 'uriOpenInNewTab'), t('buttons', 'cancel')),
+			unavailable: reason => {
+				new Notice(t('settings', reason === 'rule' ? 'uriRuleMissing' : reason === 'preset' ? 'uriPresetMissing' : 'uriUnavailable'));
+			},
+		});
+		links.register({
+			id: 'open-uri-builder',
+			name: t('commands', 'openUriBuilder'),
+			callback: () => this.settingsTab?.openUriBuilder(),
+		}, 'uri-only');
   if (LIGHTBOX_PERF_ENABLED) this.register(installLightboxOpeningProbe(window));
   this.register(registerNativeTaskWorkspace(this.app, {
    position: () => this.settings.taskEditorPosition,
@@ -38682,34 +39122,23 @@ export default class OperonPlugin extends Plugin {
 			}),
 		});
 
-		// Start/stop timer
-			this.addCommand({
-				id: 'toggle-timer',
-				name: t('commands', 'toggleTimer'),
-				editorCallback: (editor: Editor, view: MarkdownView) => {
-					runAsyncAction('toggle timer command failed', async () => {
-					const cursor = editor.getCursor();
-					const line = editor.getLine(cursor.line);
-					const filePath = view.file?.path ?? '';
-
-				const parsed = this.parseInlineTaskLine(line, cursor.line, filePath);
-					if (!parsed?.operonId) {
-						new Notice(t('notifications', 'noTaskWithId'));
-						return;
+		this.addCommand({
+			id: 'toggle-timer',
+			name: t('commands', 'toggleTimer'),
+			checkCallback: checking => {
+				const context = this.cursorTimerContext();
+				const operonId = context?.inlineTaskId || context?.fileTaskId;
+				if (!operonId) return false;
+				if (!checking) runAsyncAction('toggle timer command failed', async () => {
+					if (this.timeTracker.isTimerRunning(operonId)) {
+						if (await this.stopActiveTimer('manual')) new Notice(t('notifications', 'timerStopped', { operonId }));
+					} else if (await this.startTimerForTask(operonId, 'command')) {
+						new Notice(t('notifications', 'timerStarted', { operonId }));
 					}
-
-					if (this.timeTracker.isTimerRunning(parsed.operonId)) {
-						const stopped = await this.stopActiveTimer('manual');
-						if (stopped) new Notice(t('notifications', 'timerStopped', { operonId: parsed.operonId }));
-					} else {
-							const started = await this.startTimerForTask(parsed.operonId, 'command');
-							if (started) new Notice(t('notifications', 'timerStarted', { operonId: parsed.operonId }));
-						}
-						});
-					},
-			});
-
-
+				});
+				return true;
+			},
+		});
 
 		// Rebuild full index
 		this.addCommand({
@@ -38802,9 +39231,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-filter-view',
 				name: t('commands', 'openFilterView'),
-				callback: () => {
-					runAsyncAction('open filter view command failed', () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId));
-				},
+				callback: () => this.openFilterViewById(this.settings.leftRailDefaultFilterViewId),
 			});
 
 			this.addCommand({
@@ -38832,9 +39259,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-calendar-view',
 				name: t('commands', 'openCalendar'),
-				callback: () => {
-					runAsyncAction('open calendar command failed', () => this.openCalendarView());
-				},
+				callback: () => this.openCalendarView(),
 			});
 
 			this.addCommand({
@@ -38856,9 +39281,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-kanban-view',
 				name: t('commands', 'openKanban'),
-				callback: () => {
-					runAsyncAction('open kanban command failed', () => this.openKanbanView());
-				},
+				callback: () => this.openKanbanView(),
 			});
 
 			this.addCommand({
@@ -38872,9 +39295,7 @@ export default class OperonPlugin extends Plugin {
 			this.addCommand({
 				id: 'open-table-view',
 				name: t('commands', 'openOperonTable'),
-				callback: () => {
-					runAsyncAction('open operon table command failed', () => this.openOperonTable());
-				},
+				callback: () => this.openOperonTable(),
 			});
 
 			this.addCommand({
@@ -38884,6 +39305,10 @@ export default class OperonPlugin extends Plugin {
 					this.insertOperonTableEmbedAtCursor(editor, view);
 				},
 			});
+
+		links.refresh();
+		this.register(this.storage.subscribeViewPresets(() => links.refresh()));
+		this.register(this.storage.subscribeAutomationRules(() => links.refresh()));
 
 	}
 }

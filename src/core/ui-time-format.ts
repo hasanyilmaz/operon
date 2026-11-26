@@ -46,3 +46,18 @@ export function formatUiMinuteOfDay(app: App, settings: TimeFormatSettings, date
 	const minutes = String(displayMinute % 60).padStart(2, '0');
 	return formatUiTime(app, settings, `${dateKey}T${hours}:${minutes}:00`);
 }
+
+export function formatCompactDatetimeTime(value: string, settings: Pick<OperonSettings, 'timeFormat'>): string {
+	const match = /(?:^|T)(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim());
+	if (!match) return value;
+	const hour = Number.parseInt(match[1], 10);
+	const minute = match[2];
+	if (!Number.isFinite(hour) || hour < 0 || hour > 24) return value;
+	if (settings.timeFormat !== '12h') {
+		return `${String(hour).padStart(2, '0')}:${minute}`;
+	}
+	const normalizedHour = hour % 24;
+	const displayHour = normalizedHour % 12 || 12;
+	const suffix = normalizedHour >= 12 ? 'PM' : 'AM';
+	return `${displayHour}:${minute} ${suffix}`;
+}

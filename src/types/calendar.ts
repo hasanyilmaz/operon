@@ -47,6 +47,8 @@ export interface CalendarPreset {
 }
 
 export interface CalendarLeafState {
+	/** Use the shortcut’s preset on mobile until the user selects a source in this tab. */
+	useNamedPresetOnMobile?: boolean;
 	forceMobileLayout: boolean;
 	presetId: string | null;
 	anchorDate: string;
@@ -444,6 +446,7 @@ export function normalizeCalendarLeafState(
 		: anchorDate;
 
 	return {
+		...(state?.useNamedPresetOnMobile === true && presetId === requestedPresetId ? { useNamedPresetOnMobile: true } : {}),
 		forceMobileLayout: state?.forceMobileLayout === true,
 		presetId,
 		anchorDate,

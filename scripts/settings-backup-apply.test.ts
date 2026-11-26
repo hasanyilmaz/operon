@@ -1,3 +1,4 @@
+import { createAutomationActionId, createAutomationRule, createAutomationRuleId, migrateAutomationRuleIds, readAutomationRules } from '../src/core/automation-rules';
 import { normalizeTaskEditorSections } from '../src/types/task-editor-sections';
 import { connectPluginDataAdapter } from './test-support/plugin-data-adapter';
 import { defaultPropertyPoolPreferences } from '../src/core/property-value-pool';
@@ -262,7 +263,8 @@ interface Harness {
 	adapter: MemoryAdapter;
 }
 
-async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
+async function createHarness(initial: OperonDataPackageV1, observeBoot?: (data: ControlledPluginData) => void,
+	beforeBoot?: (data: ControlledPluginData, adapter: MemoryAdapter) => void): Promise<Harness> {
 	const adapter = new MemoryAdapter();
 	const data = new ControlledPluginData(initial);
 	const tableSources = new Map((initial.views.tablePresets.fileBindings ?? []).map(binding => {
@@ -287,7 +289,9 @@ async function createHarness(initial: OperonDataPackageV1): Promise<Harness> {
 		},
 	} as unknown as App;
 	const storage = new OperonStorage(app, connectPluginDataAdapter(adapter, { loadData: data.loadData, saveData: data.saveData }));
+	beforeBoot?.(data, adapter);
 	await storage.initialize();
+	observeBoot?.(data);
 	data.reset();
 	adapter.mutations = 0;
 	return { storage, data, adapter };
@@ -335,7 +339,7 @@ function exportLegacyArchiveJson(settings: OperonSettings): string {
 async function createPlan(
 	storage: OperonStorage,
 	source: OperonSettings,
-	selectedGroups: readonly ('general' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
+	selectedGroups: readonly ('general' | 'automations' | 'kanban' | 'calendar' | 'filters' | 'preset-favorites' | 'table-global' | 'priorities')[] = ['general'],
 ): Promise<{
 	sourceJson: string;
 	plan: OperonSettingsBackupRestorePlanV1;
@@ -375,6 +379,272 @@ function protectedProjection(dataPackage: OperonDataPackageV1) {
 		},
 	};
 }
+
+test('new and duplicate automation rule IDs avoid existing IDs', () => {
+	const random = Math.random;
+	try {
+		Math.random = () => 0;
+		const first = createAutomationRule('First');
+		assert.equal(first.id, 'ar_0000000');
+		assert.deepEqual([first.scope.id, first.target.id], ['fg_00000000', 'fg_00000001']);
+		const used = new Set(['act_00000000']);
+		assert.equal(createAutomationActionId(used), 'act_00000001');
+		assert.equal(createAutomationActionId(used), 'act_00000002');
+		const second = createAutomationRule('Second', [first]);
+		assert.equal(second.id, 'ar_0000001');
+		assert.equal(createAutomationRuleId([first, second]), 'ar_0000002');
+	} finally {
+		Math.random = random;
+	}
+});
+
+test('nested ID migration reserves existing nodes and actions and keeps rule contents intact', () => {
+	const rule = createAutomationRule('Example');
+	rule.scope.id = 'scope-00000000';
+	rule.target.id = 'fg_00000001';
+	rule.scope.children.push({ id: 'fg_00000000', logic: 'all', children: [] });
+	rule.actions = ['old-00000000', 'act_00000000', 'other-00000000'].map(id => (
+		{ id, field: 'tags', operation: 'add', value: ['review'] }
+	));
+	const settings = { ...readAutomationRules(undefined), rules: [rule] };
+	const expected = clone(settings);
+	expected.rules[0].scope.id = 'fg_00000002';
+	expected.rules[0].actions[0].id = 'act_00000001';
+	expected.rules[0].actions[2].id = 'act_00000002';
+	const migrated = migrateAutomationRuleIds(settings);
+	assert.deepEqual(migrated, expected);
+	assert.equal(migrateAutomationRuleIds(migrated), migrated);
+	const both = clone(settings);
+	both.rules[0].target.id = both.rules[0].scope.id;
+	const [converted] = migrateAutomationRuleIds(both).rules;
+	assert.match(converted.target.id, /^fg_[0-9a-z]{8}$/u);
+	assert.notEqual(converted.scope.id, converted.target.id);
+});
+
+for (const schema of [2, 3] as const) {
+	test('legacy automation rule IDs migrate once with a recoverable preimage on schema ' + schema, async () => {
+		const defaults = clone(DEFAULT_SETTINGS);
+		defaults.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+		const initial = canonicalPackage(defaults);
+		initial.schemaVersion = schema;
+		if (schema === 3) initial.taxonomy.inlinePropertyDefinitions = { version: 1, entries: [] };
+		const ids = ['old-a123456', 'ar_a123456', 'legacy-a123456', '!!!'];
+		const rules = ids.map(id => ({ ...createAutomationRule(id), id, active: true }));
+		rules[0].scope.id = 'old-scope';
+		rules[0].target.id = 'old-target';
+		rules[0].actions.push({ id: 'old-action', operation: 'remove', field: 'tags', value: ['review'] });
+		const original = { ...readAutomationRules(undefined), rules };
+		initial.automation.ruleSettings = original;
+		const migrated = migrateAutomationRuleIds(original);
+		assert.deepEqual(migrated.rules.map(rule => rule.id), ['ar_a123458', 'ar_a123456', 'ar_a123457', 'ar_0000000']);
+		assert.deepEqual(migrated.rules, migrateAutomationRuleIds({ ...original, rules: [...rules].reverse() }).rules.reverse());
+		assert.equal(migrateAutomationRuleIds(migrated), migrated);
+		const expected = clone(initial);
+		expected.automation.ruleSettings = migrated;
+		const first = await createHarness(initial, data => assert.equal(data.saveSuccesses, 1));
+		assert.deepEqual(first.data.committed, expected);
+		assert.ok([...first.adapter.files].some(([name, value]) => name.includes('.bak') && JSON.stringify(JSON.parse(value)) === JSON.stringify(initial)));
+		first.storage.destroy();
+		const second = await createHarness(expected, data => assert.equal(data.saveAttempts, 0));
+		second.data.committed = clone(initial);
+		await second.storage.reloadCanonicalSettingsPackage();
+		assert.deepEqual(second.data.committed, expected);
+		assert.equal(second.data.saveSuccesses, 1);
+		await second.storage.reloadCanonicalSettingsPackage();
+		assert.equal(second.data.saveAttempts, 1);
+		second.storage.destroy();
+	});
+}
+
+for (const schema of [2, 3] as const) {
+	test('automation drafts survive reload without initializing absent rules on schema ' + schema, async () => {
+		const defaultsWithFilters = clone(DEFAULT_SETTINGS);
+		defaultsWithFilters.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+		const initial = canonicalPackage(defaultsWithFilters);
+		initial.schemaVersion = schema;
+		if (schema === 3) initial.taxonomy.inlinePropertyDefinitions = { version: 1, entries: [] };
+		const observe = (data: ControlledPluginData): void => {
+			assert.equal(data.saveAttempts, 0, 'opening an existing package must not save settings');
+		};
+		const first = await createHarness(initial, observe);
+		const second = await createHarness(first.data.committed, observe);
+		first.storage.destroy();
+		const { storage, data } = second;
+		const draft = createAutomationRule(' Example ');
+		const defaults = readAutomationRules(storage.getSettings().automationRules);
+		assert.deepEqual(defaults, { version: 1, confirmation: 'always', rules: [] });
+		assert.equal(draft.name, 'Example');
+		assert.deepEqual([draft.mode, draft.active, draft.scope.children, draft.target.children, draft.actions], ['manual', false, [], [], []]);
+		assert.notEqual(draft.scope.id, draft.target.id);
+		const next = { ...defaults, confirmation: 10 as const, rules: [draft] };
+		const changes: unknown[] = [];
+		const unsubscribe = storage.subscribeAutomationRules(() => changes.push(storage.getSettings().automationRules));
+		const before = clone(data.committed);
+		await storage.saveAutomationRules(undefined, next);
+		assert.deepEqual(data.committed, { ...before, automation: { ...before.automation, ruleSettings: next } });
+		assert.equal(data.saveSuccesses, 1);
+		await assert.rejects(storage.saveAutomationRules(undefined, defaults));
+		assert.equal(data.saveSuccesses, 1);
+		data.mode = 'fail-clean';
+		await assert.rejects(storage.saveAutomationRules(next, defaults));
+		assert.deepEqual(storage.getSettings().automationRules, next);
+		assert.deepEqual(data.committed.automation.ruleSettings, next);
+		assert.deepEqual(changes, [next], 'stale and failed saves must stay silent');
+		data.mode = 'normal';
+		unsubscribe();
+		await storage.saveAutomationRules(next, { ...next, rules: [{ ...draft, active: true }] });
+		assert.deepEqual(changes, [next]);
+		const restarted = await createHarness(data.committed, observe);
+		assert.equal(readAutomationRules(restarted.storage.getSettings().automationRules).rules[0].active, true);
+		storage.destroy();
+		restarted.storage.destroy();
+	});
+}
+
+test('automation ID migration recovers after backup failure, write rejection and acknowledgement loss', async () => {
+	const defaults = clone(DEFAULT_SETTINGS);
+	defaults.filterSets.push(createDefaultDynamicFileTaskFilterSet(), createDefaultDynamicSubtasksFilterSet());
+	const original = { ...readAutomationRules(undefined), rules: [{ ...createAutomationRule('Existing'), id: 'legacy-rule' }] };
+	const initial = canonicalPackage({ ...defaults, automationRules: original });
+	const expected = clone(initial);
+	expected.automation.ruleSettings = migrateAutomationRuleIds(original);
+	for (const failure of ['backup', 'fail-clean', 'commit-then-error'] as const) {
+		const committed = failure === 'commit-then-error';
+		const first = await createHarness(initial, data => assert.equal(data.saveAttempts, failure === 'backup' ? 0 : 1), (data, adapter) => {
+			if (failure === 'backup') adapter.write = async () => { throw new Error('Injected backup failure'); };
+			else data.mode = failure;
+		});
+		assert.deepEqual(first.data.committed, committed ? expected : initial);
+		assert.equal(Boolean(first.storage.getCanonicalSettingsWriteSuspensionReason()), !committed);
+		first.storage.destroy();
+		const restart = await createHarness(first.data.committed, data => assert.equal(data.saveAttempts, committed ? 0 : 1));
+		assert.deepEqual(restart.data.committed, expected);
+		restart.storage.destroy();
+	}
+});
+
+test('Kanban command names follow committed saves, Restore, Undo and canonical reload', async () => {
+	const { storage, data } = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
+	const before = clone(storage.getSettings().kanbanPresets);
+	const source = { ...storage.getSettings(), kanbanPresets: before.map(preset => ({ ...preset, name: 'Restored ' + preset.name })) };
+	const changes: string[][] = [];
+	const names = () => storage.getSettings().kanbanPresets.map(p => p.name);
+	const unsubscribe = storage.subscribeViewPresets(() => changes.push(names()));
+	const { sourceJson, plan } = await createPlan(storage, source, ['kanban']);
+	data.mode = 'fail-clean';
+	assert.equal((await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan))).status, 'failed');
+	assert.deepEqual(changes, []);
+	data.mode = 'normal';
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(changes, [source.kanbanPresets.map(p => p.name)]);
+	const restored = clone(data.committed);
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(changes[1], before.map(p => p.name));
+	data.committed = restored;
+	await storage.reloadCanonicalSettingsPackage();
+	await storage.reloadCanonicalSettingsPackage();
+	assert.deepEqual(changes, [source.kanbanPresets.map(p => p.name), before.map(p => p.name), source.kanbanPresets.map(p => p.name)]);
+	unsubscribe();
+	storage.destroy();
+});
+
+test('Calendar and saved Filter commands observe successful saves, Restore and Undo', async () => {
+	const { storage } = await createHarness(canonicalPackage(clone(DEFAULT_SETTINGS)));
+	const settings = storage.getSettings();
+	const filter = settings.filterSets.find(item => item.id !== DYNAMIC_FILE_TASK_FILTER_ID && item.id !== DYNAMIC_SUBTASKS_FILTER_ID)!;
+	const calendar = settings.calendarPresets[0];
+	const names = () => [settings.calendarPresets.find(item => item.id === calendar.id)?.name,
+		settings.filterSets.find(item => item.id === filter.id)?.name];
+	const changes: ReturnType<typeof names>[] = [];
+	const unsubscribe = storage.subscribeViewPresets(() => changes.push(names()));
+	await storage.filters.upsert({ ...filter, name: 'Saved filter' });
+	assert.deepEqual(changes.at(-1), [calendar.name, 'Saved filter']);
+	await storage.updateSettings({calendarPresets: settings.calendarPresets.map(item =>
+		item.id === calendar.id ? { ...item, name: 'Saved calendar' } : item)});
+	assert.deepEqual(changes.at(-1), ['Saved calendar', 'Saved filter']);
+	const source = { ...settings,
+		calendarPresets: settings.calendarPresets.map(item => item.id === calendar.id ? {...item,name:'Restored calendar'} : item),
+		filterSets: settings.filterSets.map(item => item.id === filter.id ? {...item,name:'Restored filter'} : item) };
+	const {sourceJson, plan} = await createPlan(storage, source, ['calendar','filters']);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(changes.at(-1), ['Restored calendar','Restored filter']);
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(changes.at(-1), ['Saved calendar','Saved filter']);
+	unsubscribe();
+	storage.destroy();
+});
+
+test('selected automation restore deactivates all imported rules and Undo restores the exact preimage', async () => {
+	const activeRule = { ...createAutomationRule('Existing'), active: true, mode: 'auto' as const };
+	const previous = { ...readAutomationRules(undefined), rules: [activeRule] };
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), automationRules: previous }));
+	const { storage, data } = harness;
+	const imported = [createAutomationRule('First'), { ...createAutomationRule('Second'), id: 'legacy-rule', active: true }];
+	imported[1].actions.push({ id: 'action', field: 'tags', operation: 'add', value: 'review' });
+	const source = { ...storage.getSettings(), automationRules: { ...previous, confirmation: 25, rules: imported } };
+	const { sourceJson, plan } = await createPlan(storage, source, ['automations']);
+	assert.deepEqual(JSON.parse(sourceJson).body.groups.automations.data.rules.map((rule: { active: boolean }) => rule.active), [false, true]);
+	const expected = { ...source.automationRules, rules: imported.map(rule => ({ ...rule, active: false })) };
+	expected.rules[1] = { ...expected.rules[1], id: 'ar_acyrule', actions: [{ ...imported[1].actions[0], id: 'act_00action' }] };
+	assert.deepEqual(plan.candidateSettings.automationRules, expected);
+	const changes: unknown[] = [];
+	storage.subscribeAutomationRules(() => changes.push(storage.getSettings().automationRules));
+	const before = clone(data.committed);
+	data.mode = 'fail-clean';
+	assert.equal((await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan))).status, 'failed');
+	assert.deepEqual(changes, []);
+	data.mode = 'normal';
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(changes, [expected]);
+	assert.deepEqual(data.committed, { ...before, automation: { ...before.automation, ruleSettings: expected } });
+	const token = result.receipt?.recovery.undoTokenId;
+	assert.ok(token && result.receipt);
+	data.mode = 'fail-clean';
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'failed');
+	assert.deepEqual(changes, [expected]);
+	data.mode = 'normal';
+	assert.equal((await storage.undoSettingsBackupRestoreV1(token, result.receipt.receiptId)).status, 'success');
+	assert.deepEqual(data.committed, before);
+	await storage.reloadCanonicalSettingsPackage();
+	assert.deepEqual(changes, [expected, previous], 'Undo publishes its preimage once, identical reload stays silent');
+	const unselected = await createPlan(storage, source, ['general']);
+	assert.deepEqual(unselected.plan.candidateSettings.automationRules, previous);
+	const body = JSON.parse(sourceJson).body as OperonSettingsBackupBodyV1;
+	delete body.groups.automations;
+	const legacy = serializeOperonSettingsBackupV1(buildOperonSettingsBackupV1(body));
+	const legacyPlan = preflightOperonSettingsBackupRestoreV1({ sourceJson: legacy, targetSnapshot: await storage.captureCommittedSettingsBackupSnapshot(), selectedGroups: ['general'] });
+	assert.ok(legacyPlan.ok && legacyPlan.restorePlan);
+	assert.deepEqual(legacyPlan.restorePlan.candidateSettings.automationRules, previous);
+	storage.destroy();
+});
+
+test('unreadable stored automation rules survive unrelated saves, reload and restore', async () => {
+	const future = { version: 2, rules: ['future format'] };
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), automationRules: future }));
+	const { storage, data } = harness;
+	const source = { ...storage.getSettings(), automationRules: readAutomationRules(undefined) };
+	await assert.rejects(storage.saveAutomationRules(future, source.automationRules));
+	await assert.rejects(storage.updateSettings({ automationRules: source.automationRules }));
+	await storage.updateSettings({ language: 'de' });
+	assert.deepEqual(data.committed.automation.ruleSettings, future);
+	const sourceJson = exportJson(source);
+	const snapshot = await storage.captureCommittedSettingsBackupSnapshot();
+	const blocked = preflightOperonSettingsBackupRestoreV1({ sourceJson, targetSnapshot: snapshot, selectedGroups: ['automations'] });
+	assert.ok(blocked.ok && !blocked.restorePlan);
+	const unrelated = await createPlan(storage, source, ['general']);
+	assert.deepEqual(unrelated.plan.candidateSettings.automationRules, future);
+	const result = await storage.applySettingsBackupRestorePlanV1(applyInput(unrelated.sourceJson, unrelated.plan));
+	assert.equal(result.status, 'success');
+	assert.deepEqual(data.committed.automation.ruleSettings, future);
+	storage.destroy();
+});
 
 test('plugin coordinator source boundary keeps apply and recovery receipt-owned and fully settled', () => {
 	const source = readFileSync(path.resolve('main.ts'), 'utf8');
@@ -1425,4 +1695,24 @@ test('General backups distinguish an absent legacy vault icon field from an expl
 	assert.deepEqual(candidateIcons(legacy), current.vaultPropertyIcons);
 	assert.deepEqual(candidateIcons(currentExport), {});
 	harness.storage.destroy();
+});
+
+test('General backup restores and undoes a Specific File heading independently of the general inline heading', async () => {
+	const harness = await createHarness(canonicalPackage({ ...clone(DEFAULT_SETTINGS), inlineTaskHeading: 'New Todo' }));
+	try {
+		const current = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+		const { sourceJson, plan } = await createPlan(harness.storage, { ...current, inlineTaskSpecificFileHeading: 'Minor Tasks' }, ['general']);
+		const applied = await harness.storage.applySettingsBackupRestorePlanV1(applyInput(sourceJson, plan));
+		assert.equal(applied.status, 'success');
+		assert.equal(harness.storage.getSettings().inlineTaskSpecificFileHeading, 'Minor Tasks');
+		const receipt = applied.receipt;
+		assert.ok(receipt?.recovery.undoTokenId);
+		const undone = await harness.storage.undoSettingsBackupRestoreV1(receipt.recovery.undoTokenId, receipt.receiptId);
+		assert.equal(undone.status, 'success');
+		const restored = (await harness.storage.captureCommittedSettingsBackupSnapshot()).settings;
+		assert.equal(restored.inlineTaskSpecificFileHeading, '');
+		assert.equal(restored.inlineTaskHeading, 'New Todo');
+	} finally {
+		harness.storage.destroy();
+	}
 });

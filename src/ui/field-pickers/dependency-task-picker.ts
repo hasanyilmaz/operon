@@ -31,6 +31,7 @@ interface DependencyTaskPickerOptions {
 	keyMappings?: KeyMapping[];
 	excludedIds?: string[];
 	closeOnSelect?: boolean;
+	singleValue?: boolean;
 	onSave: (payload: Record<DependencyFieldKey, string>) => void;
 	onClose?: () => void;
 }
@@ -246,7 +247,7 @@ export function showDependencyTaskPicker(anchor: HTMLElement | DOMRect, options:
 
 	const selectId = (operonId: string) => {
 		if (!operonId || excludedIds.has(operonId) || selectedIds.includes(operonId)) return;
-		selectedIds = [...selectedIds, operonId];
+		selectedIds = options.singleValue ? [operonId] : [...selectedIds, operonId];
 		options.onSave(normalizeDependencyPair(options.fieldKey, selectedIds, options.oppositeValue));
 		renderSelected();
 		input.value = '';

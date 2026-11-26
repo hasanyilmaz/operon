@@ -6,9 +6,10 @@ import { readParsedInlinePropertyProjection, createInlinePropertyReadPlan, type 
 import { nativeEditorPropertyTypes, nativePropertyReadOnlyReason, nativePropertyValueReadOnlyReason, type NativePropertyReadOnlyReason } from '../core/task-editor-native-properties';
 import { isWritableRawYamlPropertyName } from '../core/raw-yaml-property';
 import { resolveInlinePropertyDefinition, type InlinePropertyType } from '../core/inline-property-definitions';
+import { decodeVaultPropertyValue, getVaultPropertyDateError } from '../core/vault-property-codec';
 import { loadPropertyTypeRegistry, type ObsidianPropertyTypeId } from '../core/property-type-registry';
 import { scanFileWithMappings } from './file-scanner';
-import { getManagedYamlAliases } from '../core/yaml-fields';
+import { getManagedYamlAliases, readYamlFields } from '../core/yaml-fields';
 import { compactNativeInline, persistNativePropertySource, restoreNativePropertySource, NATIVE_SOURCE_RESCAN,
  type NativePropertySource, type PersistedNativePropertySource } from './native-property-persistence';
 export type { NativePropertySource } from './native-property-persistence';
@@ -17,6 +18,24 @@ type Settings = Pick<OperonSettings, 'keyMappings' | 'inlinePropertyDefinitions'
 export function captureNativePropertySource(content: string, inline: readonly ParsedTask[], fileTask = true): NativePropertySource {
  const document = fileTask ? readFileTaskPropertyDocument(content) : null;
  return { frontmatter: document?.frontmatter ?? null, order: document?.order ?? [], inline: inline.map(compactNativeInline) };
+}
+function automaticKanbanType(value: unknown, inline: boolean): InlinePropertyType | null {
+ if (typeof value === 'number') return Number.isFinite(value) ? 'number' : null;
+ if (typeof value === 'boolean') return 'checkbox';
+ if (typeof value !== 'string') return Array.isArray(value) && !nativePropertyValueReadOnlyReason(value) ? 'list' : null;
+ if (value.length >= 10 && value[4] === '-' && value[7] === '-') {
+  const datetime = value[10] === 'T';
+  if (!getVaultPropertyDateError(value, datetime)) return datetime ? 'datetime' : 'date';
+ }
+ if (inline) {
+  if (value === 'true' || value === 'false') return 'checkbox';
+  // Preserve zero-padded identifiers while accepting the same decimals and exponents as a typed field.
+  if (Number.isFinite(Number(value)) && !/^[+-]?0\d/u.test(value)) {
+   try { decodeVaultPropertyValue(value, 'number'); return 'number'; }
+   catch { return 'text'; }
+  }
+ }
+ return 'text';
 }
 export interface NativePropertyRecord {
  sourceName: string;
@@ -80,6 +99,7 @@ export class NativePropertyIndex {
  private readPlans = new Map<string, InlinePropertyReadPlan>();
  private aliasCache = new Map<string, string[]>();
  private listeners = new Set<() => void>();
+ private sourceListeners = new Set<(path: string) => void>();
  private revision = 0;
  private interpretationRevision = 0;
  private known: Map<string, IndexedTask> | null = null;
@@ -136,6 +156,62 @@ export class NativePropertyIndex {
   this.usageRevision = this.revision; this.usageNames = names;
   return names;
  }
+ private automaticRevision = -1;
+ private automaticTextCompatible = new Set<string>();
+ /** A legacy Auto Text axis may keep reading date-shaped strings and inline tokens. */
+ isAutomaticKanbanTextCompatible(name: string): boolean {
+  this.getAutomaticKanbanTypes();
+  return this.registryState === 'ready' && this.automaticTextCompatible.has(name.toLowerCase());
+ }
+ private automaticTypes: Readonly<Record<string, InlinePropertyType>> = {};
+ /** Infer Kanban candidates from the in-memory task sources, once per index revision. */
+ getAutomaticKanbanTypes(): Readonly<Record<string, InlinePropertyType>> {
+  if (this.registryState !== 'ready') return {};
+  if (this.automaticRevision === this.revision) return this.automaticTypes;
+  const authoritative = new Set(Object.keys(this.declarations).map(name => name.toLowerCase()));
+  const candidates = new Map<string, { name: string; type: InlinePropertyType | null; stringsOnly: boolean }>();
+  const observe = (name: string, type: InlinePropertyType | null, stringSample = false) => {
+   const key = name.toLowerCase();
+   if (authoritative.has(key)) return;
+   const prior = candidates.get(key);
+   if (!prior) candidates.set(key, { name, type, stringsOnly: stringSample });
+   else {
+    prior.stringsOnly &&= stringSample;
+    if (prior.type !== type) prior.type = prior.stringsOnly ? 'text' : null;
+   }
+  };
+  for (const entry of this.settings.inlinePropertyDefinitions?.entries ?? []) {
+   if (entry.encoding === 'vault-v1') {
+    observe(entry.sourceName, entry.type);
+    authoritative.add(entry.sourceName.toLowerCase());
+   }
+  }
+  const emptyNames = new Set<string>();
+  for (const source of this.sources.values()) {
+   if (source.error || !source.raw?.frontmatter) continue;
+   for (const name of source.raw.order) {
+    const value = source.raw.frontmatter[name];
+    if (value == null) continue;
+    if (value === '') emptyNames.add(name);
+    else observe(name, automaticKanbanType(value, false), typeof value === 'string');
+   }
+  }
+  // Typed YAML is stronger evidence than inline tokens, which are always strings.
+  for (const key of candidates.keys()) authoritative.add(key);
+  for (const source of this.sources.values()) {
+   if (source.error || !source.raw) continue;
+   for (const row of source.raw.inline) for (const field of row.fields) {
+    if (authoritative.has(field.sourceKey.toLowerCase())) continue;
+    if (!field.rawValue.trim()) emptyNames.add(field.sourceKey);
+    else observe(field.sourceKey, automaticKanbanType(field.rawValue.trim(), true), true);
+   }
+  }
+  for (const name of emptyNames) if (!candidates.has(name.toLowerCase())) observe(name, 'text');
+  this.automaticTextCompatible = new Set([...candidates].filter(([, candidate]) => candidate.stringsOnly).map(([key]) => key));
+  this.automaticTypes = Object.fromEntries([...candidates.values()].flatMap(({ name, type }) => type ? [[name, type]] : []));
+  this.automaticRevision = this.revision;
+  return this.automaticTypes;
+ }
  typesAvailable(): boolean { return this.registryState === 'ready'; }
  private reinterpret(): void {
   this.interpretationRevision++;
@@ -145,6 +221,7 @@ export class NativePropertyIndex {
   this.prepare([...(this.known?.values() ?? [])]);
   this.changed();
  }
+ subscribeSource(listener: (path: string) => void): () => void { this.sourceListeners.add(listener); return () => { this.sourceListeners.delete(listener); }; }
  subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
  private changed(notify = true): void {
   this.revision++; this.dirty = true;
@@ -203,6 +280,8 @@ export class NativePropertyIndex {
   this.sources.set(path, { raw, persisted, stamp, error: false, revision: this.revision + 1, rows: new Map() });
   this.prepare(this.tasksByPath.get(path) ?? []);
   this.changed(notify);
+  // An independent native-source refresh can finish without another task reconciliation.
+  if (notify) for (const listener of this.sourceListeners) listener(path);
  }
  /** Cache hydration uses the saved stamp, never the current file's possibly newer stamp. */
  restore(path: string, persisted: PersistedNativePropertySource, stamp: string): void {
@@ -313,6 +392,36 @@ export class NativePropertyIndex {
  prepare(tasks: readonly IndexedTask[]): void {
   for (const task of tasks) if (this.sourceReady(task)) this.getTask(task);
  }
+ /** File-stat fallbacks do not represent edits to stored task dates. Hydrated fragments can omit managed keys. */
+ storedTaskDates(task: IndexedTask): string | undefined {
+  const source = this.sources.get(task.primary.filePath);
+  if (!source || source.error) return undefined;
+  const file = this.app.vault.getAbstractFileByPath(task.primary.filePath);
+  const frontmatter = source.hydrated && file instanceof TFile
+   ? this.app.metadataCache.getFileCache(file)?.frontmatter : source.raw?.frontmatter;
+  if (!frontmatter) return undefined;
+  const fields = readYamlFields(frontmatter, this.settings.keyMappings);
+  return JSON.stringify([fields.datetimeCreated, fields.datetimeModified]);
+ }
+ private inlineTaskSource(source: SourceEntry, id: string) {
+  if (!source.inlineById) {
+   source.inlineById = new Map();
+   for (const row of source.raw?.inline ?? []) source.inlineById.set(row.operonId, source.inlineById.has(row.operonId) ? null : row);
+  }
+  const row = source.inlineById.get(id);
+  return row && row.fields.filter(field => field.key === 'operonId').length === 1 ? row : null;
+ }
+ /** Read the raw tokens with the mapping's declared list type, including after cache hydration. */
+ readMappedInlineList(task: IndexedTask, name: string): (string | number)[] | null {
+  const source = this.sources.get(task.primary.filePath);
+  if (task.primary.format !== 'inline' || !source?.raw || source.error || !this.sourceReady(task)
+   || this.duplicateIds.has(task.operonId) || (this.known && !this.matchesKnown(task))) return null;
+  const row = this.inlineTaskSource(source, task.operonId);
+  if (!row) return null;
+  const [property] = readParsedInlinePropertyProjection(row, { [name]: 'list' }, this.settings.keyMappings, this.settings.inlinePropertyDefinitions).properties;
+  if (property.state === 'missing') return [];
+  return property.state === 'valid' && Array.isArray(property.value) ? property.value : null;
+ }
  getTask(task: IndexedTask): NativeTaskProperties {
   const source = this.sources.get(task.primary.filePath);
   const available = !!source?.raw && !source.error && this.registryState === 'ready'
@@ -326,12 +435,7 @@ export class NativePropertyIndex {
   const raw = source?.raw;
   let identity = false;
   if (raw && task.primary.format === 'inline') {
-   if (!source.inlineById) {
-    source.inlineById = new Map();
-    for (const candidate of raw.inline) source.inlineById.set(candidate.operonId, source.inlineById.has(candidate.operonId) ? null : candidate);
-   }
-   const candidate = source.inlineById.get(task.operonId);
-   const parsed = candidate && candidate.fields.filter(field => field.key === 'operonId').length === 1 ? candidate : null;
+   const parsed = this.inlineTaskSource(source, task.operonId);
    if (parsed) {
     identity = true;
     const types: Record<string, InlinePropertyType> = {};
@@ -397,7 +501,7 @@ export class NativePropertyIndex {
  }
  dispose(): void {
   this.draftReaders.clear(); this.usageNames = new Set(); this.usageRevision = -1;
-  this.disposed = true; this.listeners.clear(); this.sources.clear(); this.known = null; this.indexedStamps.clear(); this.tasksByPath.clear(); this.refreshSource = undefined;
+  this.disposed = true; this.listeners.clear(); this.sourceListeners.clear(); this.sources.clear(); this.known = null; this.indexedStamps.clear(); this.tasksByPath.clear(); this.refreshSource = undefined;
   for (const job of this.jobs.values()) job.resolve();
   for (const pending of this.pending.values()) pending.resolve();
   this.pending.clear();

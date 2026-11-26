@@ -14,6 +14,7 @@ import { withCustomPropertyTypeWriteLock } from '../core/custom-property-type-sy
 import type { CustomKeyReusePreparation } from '../ui/custom-key-type-reuse';
 import { resolveInlinePropertyDefinition, cloneInlinePropertyDefinitions, reconcileInlinePropertyDefinitions, retainInlinePropertyDefinition, type InlinePropertyDefinition, type InlinePropertyDefinitions } from '../core/inline-property-definitions';
 import { workflowColor, workflowColorDefinition, workflowColorKey, type WorkflowColorChange } from '../core/workflow-color';
+import { readAutomationRules, type AutomationRule, type AutomationRulesSettings } from '../core/automation-rules';
 import { editPropertyPoolPreferences, resolvePropertyPoolFavorite, type PropertyPoolEdit } from '../core/property-value-pool';
 /**
  * Operon storage manager.
@@ -351,6 +352,7 @@ function pickTaskCreationProfileStoreSettings(settings: OperonSettings): TaskCre
 		inlineTaskUseDailyNote: settings.inlineTaskUseDailyNote,
 		inlineTaskTargetFile: settings.inlineTaskTargetFile,
 		inlineTaskHeading: settings.inlineTaskHeading,
+		inlineTaskSpecificFileHeading: settings.inlineTaskSpecificFileHeading,
 		fileTaskParentInlineTargetMode: settings.fileTaskParentInlineTargetMode,
 		fileTaskParentFileTargetMode: settings.fileTaskParentFileTargetMode,
 		inlineToFileTaskMovePlainCheckboxes: settings.inlineToFileTaskMovePlainCheckboxes,
@@ -1243,6 +1245,86 @@ export class OperonStorage {
   });
  }
 
+	private readonly viewPresetListeners = new Set<() => void>();
+	private viewCommandSignature = '';
+
+	private getViewCommandSignature(): string {
+		const names = (presets: readonly { id: string; name: string }[]) => presets.map(({ id, name }) => [id, name]);
+		const { kanbanPresets, calendarPresets, filterSets, tableDefaultPresetId } = this.settings;
+		return JSON.stringify([names(kanbanPresets), names(calendarPresets), names(filterSets), tableDefaultPresetId]);
+	}
+
+	subscribeViewPresets(listener: () => void): () => void {
+		if (!this.viewPresetListeners.size) this.viewCommandSignature = this.getViewCommandSignature();
+		this.viewPresetListeners.add(listener);
+		return () => { this.viewPresetListeners.delete(listener); };
+	}
+
+	private notifyViewPresetsChange(): void {
+		if (!this.viewPresetListeners.size) return;
+		const next = this.getViewCommandSignature();
+		if (next === this.viewCommandSignature) return;
+		this.viewCommandSignature = next;
+		for (const listener of this.viewPresetListeners) {
+			try { listener(); } catch (error) { console.error('Operon: View commands refresh failed', error); }
+		}
+	}
+
+	private readonly automationRuleListeners = new Set<() => void>();
+	private automationRulesSignature?: string;
+
+	subscribeAutomationRules(listener: () => void): () => void {
+		if (!this.automationRuleListeners.size) this.automationRulesSignature = JSON.stringify(this.settings.automationRules);
+		this.automationRuleListeners.add(listener);
+		return () => { this.automationRuleListeners.delete(listener); };
+	}
+
+	private notifyAutomationRulesChange(): void {
+		if (!this.automationRuleListeners.size) return;
+		const signature = JSON.stringify(this.settings.automationRules);
+		if (signature === this.automationRulesSignature) return;
+		this.automationRulesSignature = signature;
+		for (const listener of [...this.automationRuleListeners]) {
+			try { listener(); } catch (error) { console.error('Operon: Automation rules refresh failed', error); }
+		}
+	}
+
+	async saveAutomationRules(expected: unknown, next: AutomationRulesSettings): Promise<void> {
+		const expectedSource = JSON.stringify(expected);
+		const updated = readAutomationRules(next);
+		await this.updateAutomationRules(raw => {
+			if (JSON.stringify(raw) !== expectedSource) throw new Error('Automation rules changed before save');
+			readAutomationRules(raw);
+			return updated;
+		});
+	}
+
+	async saveAutomationRule(original: AutomationRule | undefined, draft: AutomationRule): Promise<void> {
+		const expected = JSON.stringify(original);
+		const replacement = structuredClone(draft);
+		if (original && original.id !== replacement.id) throw new Error('Automation rule ID changed');
+		await this.updateAutomationRules(raw => {
+			const current = readAutomationRules(raw);
+			const index = current.rules.findIndex(rule => rule.id === replacement.id);
+			if (JSON.stringify(current.rules[index]) !== expected) throw new Error('Automation rule changed before save');
+			if (index < 0) current.rules.push(replacement);
+			else current.rules[index] = replacement;
+			return readAutomationRules(current);
+		});
+	}
+
+	private async updateAutomationRules(update: (raw: unknown) => AutomationRulesSettings): Promise<void> {
+		await this.enqueueSettingsTransaction(async () => {
+			let updated!: AutomationRulesSettings;
+			await this.dataPackageStore.updateDataPackageCas(current => {
+				updated = update(current.automation.ruleSettings);
+				return { ...current, automation: { ...current.automation, ruleSettings: updated } };
+			});
+			this.settings.automationRules = updated;
+			this.notifyAutomationRulesChange();
+		});
+	}
+
 	/** A narrow CAS update, serialized with saves and reloads; memory changes only after commit. */
 	async editPropertyValuePool(edit: PropertyPoolEdit, expected: unknown, canCommit: () => boolean = () => true): Promise<void> {
 		const pending = JSON.parse(JSON.stringify(edit)) as PropertyPoolEdit;
@@ -1532,6 +1614,7 @@ export class OperonStorage {
 				: currentPackage.views.tablePresets;
 			const nextPackage = {
 				...dataPackage,
+				automation: { ...currentPackage.automation, taskAutomationPolicy: dataPackage.automation.taskAutomationPolicy },
 				views: this.tablePresetRecovery.health === 'degraded'
 					? { ...dataPackage.views, tablePresets: degradedTablePresets }
 					: dataPackage.views,
@@ -1594,6 +1677,7 @@ export class OperonStorage {
 			if (this.settings[key] === submitted[key]) Object.assign(this.settings, { [key]: normalized[key] });
 		}
 		this.hydratePackageBackedSettingStores();
+		this.notifyViewPresetsChange();
 		this.notifyPropertyPoolChange();
 	}
 
@@ -1773,6 +1857,10 @@ export class OperonStorage {
 					// The canonical package is already committed. Main owns explicit reload recovery.
 				}
 			}
+			if (!runtimeCommitFailed) {
+				this.notifyViewPresetsChange();
+				this.notifyAutomationRulesChange();
+			}
 			const retainSessionUndo = input.retainSessionUndo !== false;
 			const recoveryTokenId = retainSessionUndo && (runtimeCommitFailed || previousSettings)
 				? buildSettingsBackupUndoTokenId(activePlan.planId, input.appliedAt)
@@ -1880,6 +1968,7 @@ export class OperonStorage {
 					candidateSettings: entry.previousSettings,
 				});
 				const candidateInput = { ...currentSettings, ...previousPatch };
+				if (entry.selectedGroups.includes('automations') && entry.previousSettings.automationRules === undefined) delete candidateInput.automationRules;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.propertyValuePool === undefined) delete candidateInput.propertyValuePool;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.workspaceTweaksCoreQuickSwitcherOpenBehavior === undefined) delete candidateInput.workspaceTweaksCoreQuickSwitcherOpenBehavior;
 				if (entry.selectedGroups.includes('general') && entry.previousSettings.statusDockCreatorStartsTimer === undefined) delete candidateInput.statusDockCreatorStartsTimer;
@@ -1931,6 +2020,8 @@ export class OperonStorage {
 				};
 			}
 			this.settingsBackupUndoEntries.delete(undoTokenId);
+			this.notifyViewPresetsChange();
+			this.notifyAutomationRulesChange();
 			return { status: 'success', receiptId, blockedReason: null };
 		}, true);
 	}
@@ -1939,6 +2030,7 @@ export class OperonStorage {
 	 * Update settings and persist.
 	 */
 	async updateSettings(partial: Partial<OperonSettings>): Promise<void> {
+		if (Object.prototype.hasOwnProperty.call(partial, 'automationRules')) throw new Error('Automation rules require a conditional save');
 		const pendingUpdate = cloneOperonSettingsPartial(partial);
 		if (pendingUpdate.pipelines?.length === 0) {
 			throw new Error('Operon requires at least one configured pipeline');
@@ -1961,6 +2053,8 @@ export class OperonStorage {
 				await this.persistSettings({ forceRecoveredWrite: true }, [], undefined, true);
 			}
 			this.notifyPropertyPoolChange();
+			this.notifyViewPresetsChange();
+			this.notifyAutomationRulesChange();
 			return {
 				changed: result.changed,
 				diagnostics: result.diagnostics,
@@ -2004,6 +2098,7 @@ export class OperonStorage {
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockMode')) delete this.settings.statusDockMode;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'statusDockAlignment')) delete this.settings.statusDockAlignment;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'contextualMenuActionOrder')) delete this.settings.contextualMenuActionOrder;
+		if (normalized.automationRules === undefined) delete this.settings.automationRules;
 		if (!Object.prototype.hasOwnProperty.call(normalized, 'propertyValuePool')) delete this.settings.propertyValuePool;
 		const target = this.settings as unknown as Record<string, unknown>;
 		const source = normalized as unknown as Record<string, unknown>;

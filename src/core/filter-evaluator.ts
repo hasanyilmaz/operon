@@ -1,3 +1,4 @@
+import { calendarRowWeekNumber, hasInvalidWeekNumber, isWeekNumberOperator, type WeekNumbering } from './calendar-row-week';
 import { getTaskOccurrenceDate, type RepeatSkipDateResolver } from './task-occurrence-date';
 import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from './time-scope-values';
 /**
@@ -9,7 +10,8 @@ import { getTimeScopedFieldValues, getTaskTimeScope, withTaskTimeScope } from '.
 import { FilterFieldType, FilterGroup, FilterNode, FilterSet, FilterSetCondition, FilterSortSpec } from '../types/settings';
 import { IndexedTask } from '../types/fields';
 import type { Pipeline } from '../types/pipeline';
-import { localToday, parseLocalTimestamp } from './local-time';
+import { localToday, parseLocalTimestamp, toLocalDate } from './local-time';
+import { getVaultPropertyDateError } from './vault-property-codec';
 import { PinnedCache } from '../storage/pinned-cache';
 import {
 	buildWorkflowStatusOrderIndex,
@@ -22,7 +24,7 @@ import {
 	PROJECT_SERIAL_SCOPE_FILTER_FIELD,
 	type ProjectSerialScopeFilterResolver,
 } from './project-serials';
-import type { ProjectSerialScope } from '../types/settings';
+import type { OperonSettings, ProjectSerialScope } from '../types/settings';
 import {
 	classifyFilePropertyCell,
 	isFilePropertyColumnKey,
@@ -77,14 +79,18 @@ export interface GroupedFilterResults {
 }
 
 interface EvalContext {
+	canReadCondition?: (condition: FilterSetCondition, task: IndexedTask) => boolean;
 	getRepeatSkipDates?: RepeatSkipDateResolver;
 	occurrenceDates: WeakMap<IndexedTask, string>;
+	hasInvalidWeekNumber?: boolean;
 	trackedOnEvaluation: TrackedOnFilterEvaluation | null | undefined;
 	timeScopeTasks: readonly IndexedTask[];
 	today: string;
+	weekStart: OperonSettings['calendarWeekStart'];
+	weekNumbering?: WeekNumbering;
 	priorityRankMap: Record<string, number> | null;
 	workflowStatusOrder: WorkflowStatusOrderIndex;
-	pinnedCache: PinnedCache | null;
+	pinnedCache: Pick<PinnedCache, 'isPinned'> | null;
 	taskById: Map<string, IndexedTask>;
 	childIdsByParentId: Map<string, string[]>;
 	dependencyTaskById: Map<string, IndexedTask>;
@@ -105,6 +111,8 @@ export interface FilterEvaluationOptions {
 	timeScopeTasks?: readonly IndexedTask[];
 	/** One local calendar-day snapshot for deterministic date evaluation. */
 	today?: string;
+	weekStart?: OperonSettings['calendarWeekStart'];
+	weekNumbering?: WeekNumbering;
 	projectSerialScopes?: readonly ProjectSerialScope[];
 	projectSerialScopeTasks?: readonly IndexedTask[];
 	dependencyTasks?: readonly IndexedTask[];
@@ -164,24 +172,26 @@ export const DATE_OPERATORS = [
 	{ id: 'dateIs', label: 'date is' },
 	{ id: 'before', label: 'before' },
 	{ id: 'after', label: 'after' },
-	{ id: 'isToday', label: 'is today' },
-	{ id: 'notToday', label: 'not today' },
-	{ id: 'beforeToday', label: 'before today' },
-	{ id: 'afterToday', label: 'after today' },
-	{ id: 'exactlyDaysAgo', label: 'exactly X days ago' },
-	{ id: 'exactlyDaysAway', label: 'exactly X days away' },
-	{ id: 'underDaysAgo', label: 'under X days ago' },
-	{ id: 'underDaysAway', label: 'under X days away' },
-	{ id: 'overDaysAgo', label: 'over X days ago' },
-	{ id: 'overDaysAway', label: 'over X days away' },
-	{ id: 'thisWeek', label: 'this week' },
-	{ id: 'lastWeek', label: 'last week' },
-	{ id: 'nextWeek', label: 'next week' },
-	{ id: 'thisMonth', label: 'this month' },
-	{ id: 'lastMonth', label: 'last month' },
-	{ id: 'nextMonth', label: 'next month' },
+	{ id: 'isToday', relativeToToday: true, label: 'is today' },
+	{ id: 'notToday', relativeToToday: true, label: 'not today' },
+	{ id: 'beforeToday', relativeToToday: true, label: 'before today' },
+	{ id: 'afterToday', relativeToToday: true, label: 'after today' },
+	{ id: 'exactlyDaysAgo', relativeToToday: true, label: 'exactly X days ago' },
+	{ id: 'exactlyDaysAway', relativeToToday: true, label: 'exactly X days away' },
+	{ id: 'underDaysAgo', relativeToToday: true, label: 'under X days ago' },
+	{ id: 'underDaysAway', relativeToToday: true, label: 'under X days away' },
+	{ id: 'overDaysAgo', relativeToToday: true, label: 'over X days ago' },
+	{ id: 'overDaysAway', relativeToToday: true, label: 'over X days away' },
+	{ id: 'thisWeek', relativeToToday: true, label: 'this week' },
+	{ id: 'lastWeek', relativeToToday: true, label: 'last week' },
+	{ id: 'nextWeek', relativeToToday: true, label: 'next week' },
+	{ id: 'thisMonth', relativeToToday: true, label: 'this month' },
+	{ id: 'lastMonth', relativeToToday: true, label: 'last month' },
+	{ id: 'nextMonth', relativeToToday: true, label: 'next month' },
 	{ id: 'dayOfWeekIs', label: 'day of week is' },
 	{ id: 'dayOfWeekNot', label: 'day of week is not' },
+	{ id: 'weekIs', label: 'week is' },
+	{ id: 'weekNot', label: 'week is not' },
 	{ id: 'monthIs', label: 'month is' },
 	{ id: 'monthNot', label: 'month is not' },
 	{ id: 'hasAnyValue', label: 'has any value' },
@@ -278,11 +288,19 @@ export const NUMERIC_INPUT_DATE_OPERATORS = new Set([
 	'underDaysAgo', 'underDaysAway',
 	'overDaysAgo', 'overDaysAway',
 	'dayOfWeekIs', 'dayOfWeekNot',
-	'monthIs', 'monthNot',
+	'weekIs', 'weekNot', 'monthIs', 'monthNot',
 ]);
 
+interface FilterOperator { id: string; label: string; relativeToToday?: boolean }
+
+export function filterUsesLocalDay(node: FilterNode): boolean {
+	if ('children' in node) return node.children.some(filterUsesLocalDay);
+	if (node.fieldType !== 'date' && node.fieldType !== 'datetime') return false;
+	return getOperatorsForField(node.field, node.fieldType, true).some(op => op.id === node.operator && op.relativeToToday);
+}
+
 /** Get the operator list for a given field type */
-export function getOperatorsForType(type: FilterFieldType): readonly { id: string; label: string }[] {
+export function getOperatorsForType(type: FilterFieldType): readonly FilterOperator[] {
 	switch (type) {
 		case 'text': return TEXT_OPERATORS;
 		case 'number': return NUMBER_OPERATORS;
@@ -300,7 +318,7 @@ export function getOperatorsForType(type: FilterFieldType): readonly { id: strin
 }
 
 /** Operators for a raw YAML File Task property. Managed-field semantics stay unchanged. */
-export function getFilePropertyOperators(type: FilterFieldType): readonly { id: string; label: string }[] {
+export function getFilePropertyOperators(type: FilterFieldType): readonly FilterOperator[] {
 	switch (type) {
 		case 'checkbox': return FILE_PROPERTY_CHECKBOX_OPERATORS;
 		case 'date':
@@ -322,13 +340,13 @@ export function getFilePropertyOperators(type: FilterFieldType): readonly { id: 
 }
 
 /** Resolve operators by both field origin and type. */
-export function getOperatorsForField(field: string, type: FilterFieldType, includeLegacy = false): readonly { id: string; label: string }[] {
+export function getOperatorsForField(field: string, type: FilterFieldType, includeLegacy = false): readonly FilterOperator[] {
 	if (field === 'trackedOn') {
 		// Keep saved development filters readable without offering retired operators for new conditions.
 		const dates = includeLegacy ? DATE_OPERATORS : DATE_OPERATORS.filter(op =>
 			!['afterToday', 'exactlyDaysAway', 'underDaysAway', 'overDaysAway', 'nextWeek', 'nextMonth'].includes(op.id),
 		);
-		return [...dates, { id: 'inLastDays', label: 'in the last X days' },
+		return [...dates, { id: 'inLastDays', relativeToToday: true, label: 'in the last X days' },
 			...(includeLegacy ? [{ id: 'between', label: 'is between' }] : [])];
 	}
 	if (field === 'trackers') return includeLegacy ? LIST_OPERATORS : LIST_OPERATORS.filter(op =>
@@ -356,7 +374,7 @@ export function evaluateFilterSet(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
@@ -367,7 +385,7 @@ export function evaluateFilterSetWithTimeScope(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): ScopedFilterResult {
@@ -403,7 +421,7 @@ export function sortFilterTasks(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
@@ -417,7 +435,7 @@ export function filterTasksOnly(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	options?: FilterEvaluationOptions,
 ): IndexedTask[] {
 	const context = createEvalContext(tasks, priorities, pinnedCache, undefined, {
@@ -434,7 +452,7 @@ export function evaluateFilterSetGrouped(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): GroupedFilterResults {
@@ -457,7 +475,7 @@ export function groupFilterTasks(
 	filterSet: FilterSet,
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	options?: FilterEvaluationOptions,
 ): GroupedFilterResults {
@@ -568,7 +586,7 @@ function isUnavailableFilePropertyGroupField(field: string, context: EvalContext
 export function getTaskGroupKey(
 	task: IndexedTask,
 	groupBy: string,
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 ): string {
 	if (groupBy === 'checkbox') return task.checkbox;
@@ -624,18 +642,37 @@ function getTaskGroupLabel(
 type FilterTruth = 'true' | 'false' | 'unknown';
 
 function matchesFilterSet(filterSet: FilterSet, task: IndexedTask, context: EvalContext): boolean {
-	const rootGroup = getRootGroup(filterSet);
+	return matchRootGroup(getRootGroup(filterSet), task, context) === 'true';
+}
+
+/** Evaluate a condition tree against candidates while retaining the entire task hierarchy. */
+export function prepareFilterGroupMatcher(
+	root: FilterGroup,
+	tasks: IndexedTask[],
+	pinned: Pick<PinnedCache, 'isPinned'> | null,
+	options: FilterEvaluationOptions,
+	canReadCondition: NonNullable<EvalContext['canReadCondition']>,
+): (task: IndexedTask) => FilterTruth {
+	const context = createEvalContext(tasks, undefined, pinned, undefined, {
+		dependencyState: root.children.some(nodeUsesDependencyState),
+	}, options);
+	context.canReadCondition = canReadCondition;
+	return task => matchRootGroup(root, task, context);
+}
+
+function matchRootGroup(rootGroup: FilterGroup, task: IndexedTask, context: EvalContext): FilterTruth {
+	context.hasInvalidWeekNumber ??= hasInvalidWeekNumber(rootGroup);
+	if (context.hasInvalidWeekNumber) return 'unknown';
 	if (context.trackedOnEvaluation === undefined) {
 		context.trackedOnEvaluation = usesTrackedOn(rootGroup)
-			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id), evaluateDateCondition,
+			? new TrackedOnFilterEvaluation(rootGroup, context.timeScopeTasks, context.today, DATE_OPERATORS.map(operator => operator.id),
+				(op, date, value) => evaluateDateCondition(op, date, value, context),
 				(node, candidate) => matchesFilterNode(node, candidate, context))
 			: null;
 	}
-	if (context.trackedOnEvaluation) return context.trackedOnEvaluation.evaluate(task).truth === 'true';
-	if (rootGroup.children.length === 0) return true;
-	// Unknown at the root is deliberately excluded. It represents a stale or
-	// type-incompatible raw property rule, never permission to include a task.
-	return matchesFilterGroup(rootGroup, task, context) === 'true';
+	if (context.trackedOnEvaluation) return context.trackedOnEvaluation.evaluate(task).truth;
+	if (rootGroup.children.length === 0) return 'true';
+	return matchesFilterGroup(rootGroup, task, context);
 }
 
 function getRootGroup(filterSet: FilterSet): FilterGroup {
@@ -648,18 +685,20 @@ function getRootGroup(filterSet: FilterSet): FilterGroup {
 }
 
 function filterSetUsesDependencyState(filterSet: FilterSet): boolean {
-	const visit = (node: FilterNode): boolean => {
-		if (isFilterGroup(node)) return node.children.some(visit);
-		return node.operator === 'hasActiveBlockers'
-			|| node.operator === 'hasNoActiveBlockers'
-			|| node.operator === 'isActivelyBlockingTasks'
-			|| node.operator === 'isNotActivelyBlockingTasks';
-	};
-	return getRootGroup(filterSet).children.some(visit);
+	return getRootGroup(filterSet).children.some(nodeUsesDependencyState);
+}
+
+function nodeUsesDependencyState(node: FilterNode): boolean {
+	if (isFilterGroup(node)) return node.children.some(nodeUsesDependencyState);
+	return node.operator === 'hasActiveBlockers'
+		|| node.operator === 'hasNoActiveBlockers'
+		|| node.operator === 'isActivelyBlockingTasks'
+		|| node.operator === 'isNotActivelyBlockingTasks';
 }
 
 function matchesFilterNode(node: FilterNode, task: IndexedTask, context: EvalContext): FilterTruth {
 	if (isFilterGroup(node)) return matchesFilterGroup(node, task, context);
+	if (context.canReadCondition && !context.canReadCondition(node, task)) return 'unknown';
 	if (node.field.startsWith('file.property:')) return evaluateFilePropertyCondition(node, task, context);
 	return evaluateCondition(node, task, context);
 }
@@ -761,14 +800,15 @@ function evaluateCondition(cond: FilterSetCondition, task: IndexedTask, context:
 					cond.operator,
 					getHappensOnDateValues(task),
 					cond.value ?? '',
-					context.today,
+					context,
 				));
 			}
 			return toFilterTruth(evaluateDateCondition(
 				cond.operator,
 				rawFieldValue ?? '',
 				cond.value ?? '',
-				context.today,
+				context,
+				cond.fieldType,
 			));
 
 		case 'pinned':
@@ -920,7 +960,7 @@ function evaluateFilePropertyCondition(
 		case 'date':
 		case 'datetime':
 			if (typeof state.value !== 'string') return 'unknown';
-			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context.today));
+			return toFilterTruth(evaluateDateCondition(cond.operator, state.value, target, context, field.type));
 		case 'list':
 		case 'tags':
 			if (!Array.isArray(state.value)) return 'unknown';
@@ -967,7 +1007,7 @@ function evaluateCheckboxCondition(op: string, checkbox: string): boolean {
 	}
 }
 
-function evaluatePinnedCondition(op: string, task: IndexedTask, pinnedCache?: PinnedCache | null): boolean {
+function evaluatePinnedCondition(op: string, task: IndexedTask, pinnedCache?: Pick<PinnedCache, 'isPinned'> | null): boolean {
 	switch (op) {
 		case 'isPinned':
 			return pinnedCache?.isPinned(task.operonId) ?? false;
@@ -983,6 +1023,21 @@ function evaluateProjectTreeCondition(op: string, task: IndexedTask, target: str
 		default:
 			return false;
 	}
+}
+
+/** Compile a condition whose result depends only on this indexed task. */
+export function prepareLocalAutomationCondition(condition: FilterSetCondition): ((task: IndexedTask) => boolean) | null {
+	const { field, fieldType, operator, value = '' } = condition;
+	if (!getOperatorsForField(field, fieldType, true).some(option => option.id === operator)) return null;
+	if (field === 'folders' && fieldType === 'folders') {
+		const query = normalizeFolderQuery(value);
+		return task => !!query && isFolderTreeMatch(getFolderPath(task.primary.filePath), query);
+	}
+	if (field === 'tags' && fieldType === 'tags') return task => evaluateListCondition(operator, task.tags, value);
+	if (field === 'description' && fieldType === 'text') return task => evaluateTextCondition(operator, task.description, value, true);
+	if (field === 'priority' && fieldType === 'text') return task => evaluateTextCondition(operator, task.fieldValues.priority, value,
+		Object.prototype.hasOwnProperty.call(task.fieldValues, field) === true);
+	return null;
 }
 
 function evaluateFolderCondition(op: string, task: IndexedTask, target: string, context: EvalContext): boolean {
@@ -1162,101 +1217,107 @@ function evaluateNumberCondition(op: string, rawValue: string | undefined, targe
 	}
 }
 
-function evaluateDateCondition(op: string, value: string, target: string, today: string): boolean {
-	const hasValue = value.trim() !== '';
+function evaluateDateCondition(op: string, rawValue: string, target: string, { today, weekStart, weekNumbering }: Pick<EvalContext, 'today' | 'weekStart' | 'weekNumbering'>, type: 'date' | 'datetime' = 'date'): boolean {
+	const hasValue = rawValue.trim() !== '';
 
 	switch (op) {
 		case 'hasAnyValue': return hasValue;
 		case 'hasNoValue': return !hasValue;
+		case 'dateIs': return rawValue === target;
+		case 'before': return hasValue && rawValue < target;
+		case 'after': return hasValue && rawValue > target;
+	}
+	if (!hasValue) return false;
+	let value = rawValue;
+	if (type === 'datetime') {
+		const stored = rawValue.trim().replace(' ', 'T');
+		if (getVaultPropertyDateError(stored, stored.length > 10)) return false;
+		// Only an explicit timezone can put a stored timestamp on a different local day.
+		if (/(?:Z|[+-]\d{2}:\d{2})$/u.test(stored)) {
+			const timestamp = parseLocalTimestamp(stored);
+			if (timestamp === null) return false;
+			value = toLocalDate(new Date(timestamp));
+		} else {
+			value = stored.slice(0, 10);
+		}
+	}
+
+	switch (op) {
 		case 'isToday': return value === today;
-		case 'notToday': return hasValue && value !== today;
-		case 'beforeToday': return hasValue && value < today;
-		case 'afterToday': return hasValue && value > today;
-		case 'dateIs': return value === target;
-		case 'before': return hasValue && value < target;
-		case 'after': return hasValue && value > target;
+		case 'notToday': return value !== today;
+		case 'beforeToday': return value < today;
+		case 'afterToday': return value > today;
 		case 'exactlyDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value === offsetDate(today, -n);
 		}
 		case 'exactlyDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value === offsetDate(today, n);
 		}
 		case 'underDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			const threshold = offsetDate(today, -n);
 			return value >= threshold && value < today;
 		}
 		case 'underDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			const threshold = offsetDate(today, n);
 			return value > today && value <= threshold;
 		}
 		case 'overDaysAgo': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value < offsetDate(today, -n);
 		}
 		case 'overDaysAway': {
 			const n = parseInt(target, 10);
-			if (isNaN(n) || !hasValue) return false;
+			if (isNaN(n)) return false;
 			return value > offsetDate(today, n);
 		}
+		case 'lastWeek':
+		case 'nextWeek':
 		case 'thisWeek': {
-			if (!hasValue) return false;
-			const { start, end } = getWeekRange(today, 0);
-			const dateOnly = value.slice(0, 10); // handle datetime values
-			return dateOnly >= start && dateOnly <= end;
-		}
-		case 'lastWeek': {
-			if (!hasValue) return false;
-			const { start, end } = getWeekRange(today, -1);
-			const dateOnly = value.slice(0, 10);
-			return dateOnly >= start && dateOnly <= end;
-		}
-		case 'nextWeek': {
-			if (!hasValue) return false;
-			const { start, end } = getWeekRange(today, 1);
+			const offset = op === 'lastWeek' ? -1 : op === 'nextWeek' ? 1 : 0;
+			const { start, end } = getWeekRange(today, weekStart, offset);
 			const dateOnly = value.slice(0, 10);
 			return dateOnly >= start && dateOnly <= end;
 		}
 		case 'thisMonth': {
-			if (!hasValue) return false;
 			const dateOnly = value.slice(0, 10);
 			return dateOnly.slice(0, 7) === today.slice(0, 7);
 		}
 		case 'lastMonth': {
-			if (!hasValue) return false;
 			const { ym } = getMonthOffset(today, -1);
 			return value.slice(0, 7) === ym;
 		}
 		case 'nextMonth': {
-			if (!hasValue) return false;
 			const { ym } = getMonthOffset(today, 1);
 			return value.slice(0, 7) === ym;
 		}
 		case 'dayOfWeekIs': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return d.getDay() === parseInt(target, 10);
 		}
 		case 'dayOfWeekNot': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return d.getDay() !== parseInt(target, 10);
 		}
+		case 'weekIs':
+		case 'weekNot': {
+			if (getVaultPropertyDateError(value, false)) return false;
+			const matches = calendarRowWeekNumber(value, weekStart, weekNumbering) === Number(target);
+			return op === 'weekIs' ? matches : !matches;
+		}
 		case 'monthIs': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return (d.getMonth() + 1) === parseInt(target, 10);
 		}
 		case 'monthNot': {
-			if (!hasValue) return false;
 			const d = new Date(value + 'T00:00:00');
 			return (d.getMonth() + 1) !== parseInt(target, 10);
 		}
@@ -1264,7 +1325,12 @@ function evaluateDateCondition(op: string, value: string, target: string, today:
 	}
 }
 
-function evaluateDateSetCondition(op: string, values: string[], target: string, today: string): boolean {
+function evaluateDateSetCondition(op: string, values: string[], target: string, context: EvalContext): boolean {
+	if (isWeekNumberOperator(op)) {
+		const dates = values.map(value => value.trim()).filter(value => value && !getVaultPropertyDateError(value, false));
+		const matches = dates.some(date => calendarRowWeekNumber(date, context.weekStart, context.weekNumbering) === Number(target));
+		return dates.length > 0 && (op === 'weekIs' ? matches : !matches);
+	}
 	const normalizedValues = values
 		.map(value => value.trim())
 		.filter(Boolean);
@@ -1277,10 +1343,10 @@ function evaluateDateSetCondition(op: string, values: string[], target: string, 
 		case 'dayOfWeekNot':
 		case 'monthNot':
 			return hasAnyValue && normalizedValues.every(value =>
-				!evaluateDateCondition(getPositiveDateOperatorForNegative(op), value, target, today),
+				!evaluateDateCondition(getPositiveDateOperatorForNegative(op), value, target, context),
 			);
 		default:
-			return normalizedValues.some(value => evaluateDateCondition(op, value, target, today));
+			return normalizedValues.some(value => evaluateDateCondition(op, value, target, context));
 	}
 }
 
@@ -1339,7 +1405,7 @@ function sortTasks(
 	sorts: FilterSortSpec[],
 	priorityRankMap: Record<string, number> | null | undefined,
 	workflowStatusOrder: WorkflowStatusOrderIndex,
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	projectSerialScopeResolver?: ProjectSerialScopeFilterResolver | null,
 	filePropertyContext?: FilePropertyQueryContext | null,
 	getRepeatSkipDates?: RepeatSkipDateResolver,
@@ -1609,22 +1675,17 @@ function offsetDate(dateStr: string, days: number): string {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** Get Monday–Sunday range for a week offset from today (0 = this week, -1 = last, +1 = next) */
-function getWeekRange(today: string, weekOffset: number): { start: string; end: string } {
-	const d = new Date(today + 'T00:00:00');
-	// Monday-based week: getDay() returns 0 for Sunday, adjust to 1-based Monday start
-	const dayOfWeek = d.getDay();
-	const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-	d.setDate(d.getDate() + mondayOffset + (weekOffset * 7));
-	const start = offsetDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, 0);
-	const end = offsetDate(start, 6);
-	return { start, end };
+function getWeekRange(today: string, weekStart: OperonSettings['calendarWeekStart'], weekOffset: number): { start: string; end: string } {
+	const weekday = new Date(today + 'T00:00:00').getDay();
+	const daysSinceStart = (weekday + (weekStart === 'sunday' ? 0 : 6)) % 7;
+	const start = offsetDate(today, weekOffset * 7 - daysSinceStart);
+	return { start, end: offsetDate(start, 6) };
 }
 
 /** Get YYYY-MM string for a month offset from today (0 = this month, -1 = last, +1 = next) */
 function getMonthOffset(today: string, monthOffset: number): { ym: string } {
 	const d = new Date(today + 'T00:00:00');
-	d.setMonth(d.getMonth() + monthOffset);
+	d.setMonth(d.getMonth() + monthOffset, 1);
 	const pad = (n: number) => String(n).padStart(2, '0');
 	return { ym: `${d.getFullYear()}-${pad(d.getMonth() + 1)}` };
 }
@@ -1632,7 +1693,7 @@ function getMonthOffset(today: string, monthOffset: number): { ym: string } {
 function createEvalContext(
 	tasks: IndexedTask[],
 	priorities?: { label: string }[],
-	pinnedCache?: PinnedCache | null,
+	pinnedCache?: Pick<PinnedCache, 'isPinned'> | null,
 	pipelines?: readonly Pipeline[],
 	orderRequirements: {
 		sorts?: readonly FilterSortSpec[];
@@ -1686,6 +1747,8 @@ function createEvalContext(
 		getRepeatSkipDates: options?.getRepeatSkipDates,
 		occurrenceDates: new WeakMap(),
 		today: options?.today ?? localToday(),
+		weekStart: options?.weekStart ?? 'monday',
+		weekNumbering: options?.weekNumbering,
 		trackedOnEvaluation: undefined,
 		timeScopeTasks: options?.timeScopeTasks ?? options?.projectSerialScopeTasks ?? options?.dependencyTasks ?? tasks,
 		priorityRankMap: orderFields.has('priority') ? buildPriorityRankMap(priorities) : null,

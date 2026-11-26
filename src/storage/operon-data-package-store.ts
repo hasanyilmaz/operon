@@ -1,3 +1,4 @@
+import { isAutomationRulesSettings, migrateAutomationRuleIds } from '../core/automation-rules';
 import { assertKanbanAxesWritable } from '../core/kanban-axis-model';
 import { prepareInlinePropertyUpgradeBackup } from './inline-property-upgrade';
 import { isSupportedDataPackageSchema, OPERON_TYPED_PROPERTY_SCHEMA_VERSION } from './operon-data-package';
@@ -179,6 +180,13 @@ const DATA_PACKAGE_DOMAINS: readonly OperonDataPackageDomain[] = [
 	'state',
 ];
 
+function migratePackageAutomationRuleIds(data: OperonDataPackageV1): OperonDataPackageV1 {
+	const previous = data.automation.ruleSettings;
+	if (!isAutomationRulesSettings(previous)) return data;
+	const rules = migrateAutomationRuleIds(previous);
+	return rules === previous ? data : { ...data, automation: { ...data.automation, ruleSettings: rules } };
+}
+
 export class OperonDataPackageStore {
 	private dataPackage: OperonDataPackageV1 | null = null;
 	private dataPackageSignature = '';
@@ -311,7 +319,13 @@ export class OperonDataPackageStore {
 		const canonicalMigrationBase = existingPackage && isCompleteDataPackage(existingPackage)
 			? existingPackage
 			: baseDataPackage;
-		const migrationCandidate = taskCreationProfileMigrationRequired && existingPackage
+		const otherMigrationRequired = shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
+			|| dataPackageSchemaMigrationRequired
+			|| hasRetiredSettings
+			|| recoverableDeveloperApiGrantPackageDrift
+			|| archiveRoutingMigrationRequired
+			|| taskCreationProfileMigrationRequired;
+		const candidateBase = taskCreationProfileMigrationRequired && existingPackage
 			? buildTaskCreationProfileV2MigrationCandidate(
 				canonicalMigrationBase,
 				baseDataPackage,
@@ -320,18 +334,13 @@ export class OperonDataPackageStore {
 			)
 			: archiveRoutingMigrationRequired
 				? buildNormalizedSettingsMigrationCandidate(canonicalMigrationBase, baseDataPackage, defaults)
-				: baseDataPackage;
+				: otherMigrationRequired ? baseDataPackage : canonicalMigrationBase;
+		const migrationCandidate = migratePackageAutomationRuleIds(candidateBase);
+		const ruleIdsChanged = migrationCandidate !== candidateBase;
 		let dataPackage = baseDataPackage;
 		if (existingPackage && !this.writesSuspended && tablePresetRecovery.health !== 'degraded' && !unsupportedDeveloperApiGrantPackage
 			&& !unsupportedTaskCreationProfilePackage
-			&& (
-				shouldNormalizePipelineTaxonomy(this.startupPipelineTaxonomyDiagnostics)
-					|| dataPackageSchemaMigrationRequired
-					|| hasRetiredSettings
-					|| recoverableDeveloperApiGrantPackageDrift
-					|| archiveRoutingMigrationRequired
-					|| taskCreationProfileMigrationRequired
-			)) {
+			&& (otherMigrationRequired || ruleIdsChanged)) {
 			if (taskCreationProfileMigrationRequired) {
 				if (!this.writesSuspended) {
 					const migrationResult = await this.commitTaskCreationProfileV2Migration(
@@ -344,7 +353,7 @@ export class OperonDataPackageStore {
 				}
 			} else {
 				let backupReady = true;
-				if ((recoverableDeveloperApiGrantPackageDrift || archiveRoutingMigrationRequired)
+				if ((ruleIdsChanged || recoverableDeveloperApiGrantPackageDrift || archiveRoutingMigrationRequired)
 					&& !this.startupPipelineTaxonomyDiagnostics.backupPath) {
 					try {
 						await this.backupCanonicalDataPackageNow(existingPackage);
@@ -694,9 +703,9 @@ export class OperonDataPackageStore {
 				const migrationSafePackage = legacyArchiveReload
 					? buildLegacyArchiveReloadMigrationCandidate(mergedPackage, current, defaults)
 					: mergedPackage;
-				const dataPackage = shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
+				const dataPackage = migratePackageAutomationRuleIds(shouldNormalizePipelineTaxonomy(pipelineTaxonomy)
 					? normalizePipelineTaxonomySlice(migrationSafePackage, defaults)
-					: migrationSafePackage;
+					: migrationSafePackage);
 				const nextSignature = buildStableJsonSignature(dataPackage);
 				const externalSignature = buildStableJsonSignature(externalPackage);
 				const packageChanged = nextSignature !== this.dataPackageSignature;

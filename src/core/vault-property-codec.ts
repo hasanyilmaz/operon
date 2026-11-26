@@ -46,19 +46,24 @@ export function decodeVaultPropertyList(raw: string): (string | number)[] {
   return value;
  });
 }
-function validateDate(value: string, datetime: boolean): void {
+export function getVaultPropertyDateError(value: string, datetime: boolean): string | null {
  const pattern = datetime
   ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/u
   : /^(\d{4})-(\d{2})-(\d{2})$/u;
  const match = pattern.exec(value);
- if (!match) throw new Error('Invalid property date');
+ if (!match) return 'Invalid property date';
  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
  if (month < 1 || month > 12 || day < 1 || day > days[month - 1]
-  || Number(match[4] ?? 0) > 23 || Number(match[5] ?? 0) > 59 || Number(match[6] ?? 0) > 59) throw new Error('Invalid property date');
+  || Number(match[4] ?? 0) > 23 || Number(match[5] ?? 0) > 59 || Number(match[6] ?? 0) > 59) return 'Invalid property date';
  const offset = /[+-](\d{2}):(\d{2})$/u.exec(value);
- if (offset && (Number(offset[1]) > 23 || Number(offset[2]) > 59)) throw new Error('Invalid property timezone');
+ if (offset && (Number(offset[1]) > 23 || Number(offset[2]) > 59)) return 'Invalid property timezone';
+ return null;
+}
+function validateDate(value: string, datetime: boolean): void {
+ const error = getVaultPropertyDateError(value, datetime);
+ if (error) throw new Error(error);
 }
 export function decodeVaultPropertyValue(raw: string, type: InlinePropertyType): VaultPropertyValue {
  if (type === 'list') return decodeVaultPropertyList(raw);

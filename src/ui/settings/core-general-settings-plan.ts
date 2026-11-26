@@ -1,16 +1,17 @@
-export type CoreGeneralSettingsGroupId = 'languageFormats' | 'updates' | 'demoWorkspace' | 'operonDocs' | 'taskIndexing' | 'duplicateIdAlerts' | 'developerApi';
+export type CoreGeneralSettingsGroupId = 'languageFormats' | 'updates' | 'demoWorkspace' | 'operonDocs' | 'taskIndexing' | 'duplicateIdAlerts' | 'uriBuilder' | 'developerApi';
 
 export type CoreGeneralSettingsPlanItem =
 	| { type: 'entry'; entryId: string }
 	| { type: 'group'; groupId: CoreGeneralSettingsGroupId; entryIds: string[] };
 
 const CORE_GENERAL_SETTINGS_GROUPS: ReadonlyArray<{ groupId: CoreGeneralSettingsGroupId; entryIds: readonly string[] }> = [
-	{ groupId: 'languageFormats', entryIds: ['settings.language', 'settings.timeFormat', 'settings.dateDisplayFormat'] },
+	{ groupId: 'languageFormats', entryIds: ['settings.language', 'settings.timeFormat', 'settings.dateDisplayFormat', 'settings.calendarWeekStart'] },
 	{ groupId: 'updates', entryIds: ['settings.checkForUpdatesOnStartup', 'settings.releaseNotesShowOnUpdate'] },
 	{ groupId: 'demoWorkspace', entryIds: ['settings.demoWorkspace'] },
 	{ groupId: 'operonDocs', entryIds: ['settings.operonDocsFolder', 'settings.operonDocsAutoUpdateEnabled', 'settings.operonDocs'] },
 	{ groupId: 'taskIndexing', entryIds: ['settings.indexEventDebounceMs', 'settings.fullReindexOnStartup'] },
 	{ groupId: 'duplicateIdAlerts', entryIds: ['settings.duplicateAlertDelaySeconds', 'settings.duplicateAlertAutoOpenManager'] },
+	{ groupId: 'uriBuilder', entryIds: ['settings.uriBuilder'] },
 	{ groupId: 'developerApi', entryIds: ['integrations.developerApi'] },
 ];
 

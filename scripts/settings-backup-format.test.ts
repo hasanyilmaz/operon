@@ -201,10 +201,11 @@ test('scope declarations authoritatively match sensitive and external-resource g
 
 test('compatibility registry is exhaustive and preserves approved portability boundaries', () => {
 	assert.equal(new Set(ALL_OPERON_SETTINGS_BACKUP_KEYS).size, ALL_OPERON_SETTINGS_BACKUP_KEYS.length);
-	assert.deepEqual(ALL_OPERON_SETTINGS_BACKUP_KEYS.filter(key => !(key in DEFAULT_SETTINGS)), ['inlinePropertyDefinitions', 'workspaceTweaksCoreQuickSwitcherOpenBehavior', 'statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial', 'statusDockTimerDialSize', 'statusDockVisible', 'statusDockSections', 'statusDockClickAction', 'statusDockMode', 'statusDockAlignment', 'contextualMenuActionOrder', 'miniCalendarClickAction', 'miniCalendarViewMode', 'propertyValuePool']);
-	assert.equal(ALL_OPERON_SETTINGS_BACKUP_KEYS.length, Object.keys(DEFAULT_SETTINGS).length + 15);
+	assert.deepEqual(ALL_OPERON_SETTINGS_BACKUP_KEYS.filter(key => !(key in DEFAULT_SETTINGS)), ['inlinePropertyDefinitions', 'vaultPropertyIcons', 'workspaceTweaksCoreQuickSwitcherOpenBehavior', 'statusDockCreatorStartsTimer', 'statusDockShowSeconds', 'statusDockShowTimerDial', 'statusDockTimerDialSize', 'statusDockVisible', 'statusDockSections', 'statusDockClickAction', 'statusDockMode', 'statusDockAlignment', 'contextualMenuActionOrder', 'miniCalendarClickAction', 'miniCalendarViewMode', 'automationRules', 'propertyValuePool']);
+	assert.equal(ALL_OPERON_SETTINGS_BACKUP_KEYS.length, Object.keys(DEFAULT_SETTINGS).length + 17);
 	assertSettingsBackupCompatibilityRegistryExhaustive(DEFAULT_SETTINGS);
-	assert.equal(SETTINGS_BACKUP_GROUPS.length, 11);
+	assert.equal(SETTINGS_BACKUP_GROUPS.length, 12);
+	assert.deepEqual(SETTINGS_BACKUP_COMPATIBILITY_BY_KEY.automationRules.groups, ['automations']);
 	assert.deepEqual(SETTINGS_BACKUP_SYSTEM_KEY_OVERRIDE_FIELDS, [
 		'visiblePropertyName',
 		'hideInFileTaskView',
@@ -218,7 +219,7 @@ test('compatibility registry is exhaustive and preserves approved portability bo
 	assert.equal(SETTINGS_BACKUP_GROUPS.find(group => group.id === 'external-calendars')?.defaultSelected, true);
 	assert.deepEqual(
 		SETTINGS_BACKUP_GROUPS.filter(group => group.id !== 'system-key-mappings').map(group => group.mergeStrategy),
-		Array(10).fill('replace'),
+		Array(11).fill('replace'),
 	);
 });
 

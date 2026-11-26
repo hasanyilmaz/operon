@@ -18,6 +18,8 @@ import { iterateMarkdownLinesOutsideFences } from '../core/markdown-fenced-lines
 
 /** Result of scanning a single file */
 export interface FileScanResult {
+	readonly content: string;
+	readonly keyMappings: readonly KeyMapping[];
  nativeProperties: NativePropertySource;
 	filePath: string;
 	/** Inline tasks found in file body */
@@ -78,7 +80,7 @@ export async function scanFileWithMappings(
 	const yamlTask = scanYamlTask(file, content, filePath, keyMappings);
 
 	return {
-		filePath,
+		filePath, content, keyMappings,
   nativeProperties: captureNativePropertySource(content, bodyScan.inlineTasks, !!yamlTask),
 		inlineTasks: bodyScan.inlineTasks,
 		plainCheckboxProgress: bodyScan.plainCheckboxProgress,

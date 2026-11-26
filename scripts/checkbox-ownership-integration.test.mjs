@@ -60,6 +60,7 @@ import {extractMarkdownCheckboxListItem,extractMarkdownListItemDescription,measu
 import {tasksConversionProtectedLines} from './src/core/tasks-conversion-scope';
 import {convertTasksEmojiLineToOperon} from './src/core/tasks-emoji-to-operon';
 import {applyTasksEmojiConversionToParsedTask} from './src/core/tasks-emoji-application';
+import {localWeekNumbering} from './src/core/periodic-note-path';
 import {evaluateFilterSet} from './src/core/filter-evaluator';
 import {resolveInlineParentCheckboxPlacement,indentNewInlineSubtask} from './src/core/task-creator-target-resolver';
 const localNow=()=> '2026-09-27T12:00:00'; let nextId=0;

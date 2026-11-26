@@ -228,12 +228,13 @@ equal(englishLocale.filterSets.operator_allClosed, 'are all closed', 'The closed
 equal(englishLocale.filterSets.operator_exists, 'exist', 'The existence operator uses the approved label.');
 
 const filterModalSource = readFileSync('src/ui/filter-set-modal.ts', 'utf8');
-const conditionOnlyStart = filterModalSource.indexOf('if (includeConditionOnly) {');
-const conditionOnlyEnd = filterModalSource.indexOf('\n\n\t\tconst mappingCandidates', conditionOnlyStart);
-const conditionOnlyBlock = filterModalSource.slice(conditionOnlyStart, conditionOnlyEnd);
+const editorSource = readFileSync('src/ui/filter-condition-editor.ts', 'utf8');
+const conditionOnlyStart = editorSource.indexOf('if (includeConditionOnly) {');
+const conditionOnlyEnd = editorSource.indexOf('\n\n\t\tconst mappings', conditionOnlyStart);
+const conditionOnlyBlock = editorSource.slice(conditionOnlyStart, conditionOnlyEnd);
 equal(conditionOnlyBlock.includes('PLAIN_CHECKBOXES_FILTER_FIELD_KEY'), true, 'Condition-only picker options include Plain Checkboxes.');
-equal(filterModalSource.includes('this.getFieldOptions(false, true)'), true, 'Sort and group continue using non-condition field options.');
-equal(filterModalSource.includes("t('filterSets', 'fieldCheckbox')"), true, 'The existing Operon Task condition keeps its field translation key.');
+equal(filterModalSource.includes('this.fields.getFieldOptions(false, true)'), true, 'Sort and group continue using non-condition field options.');
+equal(editorSource.includes("t('filterSets', 'fieldCheckbox')"), true, 'The existing Operon Task condition keeps its field translation key.');
 
 const tableFieldCatalogSource = readFileSync('src/ui/table/table-field-catalog.ts', 'utf8');
 const taskProgressTracksSource = readFileSync('src/ui/task-progress-tracks.ts', 'utf8');

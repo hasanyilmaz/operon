@@ -36,6 +36,7 @@ export interface RepeatDayPickerPopoverOptions {
 }
 
 interface RepeatPickerOptions {
+	ruleOnly?: boolean;
 	value?: string;
 	repeatEnd?: string;
 	repeatOccurrenceDate?: string;
@@ -484,16 +485,18 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		modeWrap.appendChild(countBtn);
 
 		const cadenceSection = panel.createDiv('operon-repeat-picker-section');
-		const scheduleRow = cadenceSection.createDiv('operon-repeat-picker-row');
-		scheduleRow.classList.add('is-single');
-		const scheduleWrap = scheduleRow.createDiv('operon-repeat-picker-field');
-		scheduleWrap.createEl('label', { text: t('taskEditor', 'repeatReferenceDate'), cls: 'operon-floating-subtitle' });
-		const scheduleInput = scheduleWrap.createEl('input', {
+		const scheduleRow = options.ruleOnly ? null : cadenceSection.createDiv('operon-repeat-picker-row');
+		scheduleRow?.classList.add('is-single');
+		const scheduleWrap = scheduleRow?.createDiv('operon-repeat-picker-field');
+		scheduleWrap?.createEl('label', { text: t('taskEditor', 'repeatReferenceDate'), cls: 'operon-floating-subtitle' });
+		const scheduleInput = scheduleWrap?.createEl('input', {
 			cls: 'operon-floating-input operon-repeat-picker-date-input is-reference-date',
 			attr: { type: 'text' },
 		});
-		scheduleInput.placeholder = t('filterSets', 'datePlaceholder');
-		scheduleInput.inputMode = 'numeric';
+		if (scheduleInput) {
+			scheduleInput.placeholder = t('filterSets', 'datePlaceholder');
+			scheduleInput.inputMode = 'numeric';
+		}
 
 		const countConfigRow = cadenceSection.createDiv('operon-repeat-picker-row');
 		countConfigRow.classList.add('is-single');
@@ -528,7 +531,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		let noEndBtn: HTMLButtonElement | null = null;
 		let endDateInput: HTMLInputElement | null = null;
 		let endDateWrap: HTMLElement | null = null;
-		if (draft.mode !== 'count') {
+		if (!options.ruleOnly && draft.mode !== 'count') {
 			const endSection = panel.createDiv('operon-repeat-picker-section');
 			endSection.createDiv({ cls: 'operon-floating-subtitle', text: t('taskEditor', 'repeatEnd') });
 			const endWrap = endSection.createDiv('operon-repeat-picker-end');
@@ -586,7 +589,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		}
 
 		const showInfoSection = draft.mode === 'count' || (draft.mode === 'schedule' && draft.hasEndDate);
-		const infoSection = showInfoSection ? panel.createDiv('operon-repeat-picker-section') : null;
+		const infoSection = !options.ruleOnly && showInfoSection ? panel.createDiv('operon-repeat-picker-section') : null;
 		const infoRow = infoSection?.createDiv('operon-repeat-picker-row') ?? null;
 		const showInfoEndDate = draft.mode === 'count';
 		const showInfoCount = draft.mode === 'schedule' && draft.hasEndDate;
@@ -620,7 +623,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			});
 		}
 
-		if (draft.mode === 'done') {
+		if (!options.ruleOnly && draft.mode === 'done') {
 			const completionSection = panel.createDiv('operon-repeat-picker-section operon-repeat-picker-completed-copy-section');
 			completionSection.createDiv({ cls: 'operon-floating-subtitle', text: t('taskEditor', 'repeatCompletedCopy') });
 			const completionWrap = completionSection.createDiv('operon-repeat-picker-segment operon-repeat-picker-completed-copy');
@@ -831,20 +834,21 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 			draft.remainingCount = normalizeCount(draft.remainingCount);
 			renderBuilder();
 		});
-		scheduleInput.addEventListener('change', () => {
+		scheduleInput?.addEventListener('change', () => {
 			draft.referenceDate = extractDatePart(scheduleInput.value) || getReferenceDateSeed(options, draft.mode);
 			draft.referenceDateTouched = true;
 			renderBuilder();
 		});
 		const openReferenceDatePopover = (): void => {
+			if (!scheduleInput) return;
 			openDatePopover(scheduleInput, draft.referenceDate, false, value => {
 				draft.referenceDate = value;
 				draft.referenceDateTouched = true;
 				renderBuilder();
 			});
 		};
-		scheduleInput.addEventListener('focus', openReferenceDatePopover);
-		scheduleInput.addEventListener('click', openReferenceDatePopover);
+		scheduleInput?.addEventListener('focus', openReferenceDatePopover);
+		scheduleInput?.addEventListener('click', openReferenceDatePopover);
 		freqSelect.addEventListener('change', () => {
 			draft.freq = freqSelect.value as RepeatFrequency;
 			if (draft.freq === 'week' && draft.days.size === 0) {
@@ -865,7 +869,7 @@ export function showRepeatPicker(anchor: HTMLElement | DOMRect, options: RepeatP
 		setButtonState(scheduleBtn, draft.mode === 'schedule');
 		setButtonState(doneBtn, draft.mode === 'done');
 		setButtonState(countBtn, draft.mode === 'count');
-		scheduleInput.value = draft.referenceDate;
+		if (scheduleInput) scheduleInput.value = draft.referenceDate;
 		freqSelect.value = draft.freq;
 		intervalInput.value = String(draft.interval);
 		remainingCountInput.value = String(draft.remainingCount);

@@ -6,7 +6,7 @@ import { getOwnerDocument, getOwnerWindow } from '../core/dom-compat';
 import { t } from '../core/i18n';
 import { classifyLocalTaskMediaPreview } from '../core/task-media-preview-kind';
 import { getYoutubeEmbedUrl, parseYoutubeVideoUrl } from '../core/youtube-url';
-import { nativeLightboxViewType, getLightboxOwnerLeaf, prepareLightboxTab, lightboxFileState, focusLightboxSourceCaret, openFileLightbox, openWebLightbox } from './web-lightbox';
+import { nativeLightboxViewType, findLightboxOwnerLeaf, getLightboxOwnerLeaf, prepareLightboxTab, lightboxFileState, focusLightboxSourceCaret, openFileLightbox, openWebLightbox } from './web-lightbox';
 import { openTaskMediaLightbox, type TaskMediaPreviewSource } from './task-media-lightbox';
 
 /** Original references are retained separately from resource/embed URLs. */
@@ -14,7 +14,7 @@ export type LightboxTarget =
  | { kind: 'web'; url: string; media?: TaskMediaPreviewSource }
  | { kind: 'local'; linktext: string; sourcePath: string; line?: number; caretCh?: number; operonId?: string; label?: string };
 export type LightboxOpenResult = 'opened' | 'missing' | 'unsupported' | 'unavailable';
-export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number; operonId?: string }
+export interface ResolvedLightboxFile { file: TFile; subpath: string; line?: number; caretCh?: number; operonId?: string; expectedTablePresetId?: string }
 
 export function resolveLightboxFile(app: App, target: Extract<LightboxTarget, { kind: 'local' }>): ResolvedLightboxFile | null {
  const raw = target.linktext.trim().replace(/^!?\[\[([\s\S]*)\]\]$/u, '$1').split('|')[0];
@@ -56,11 +56,23 @@ export async function openLightboxTarget(app: App, anchor: HTMLElement, target: 
   new Notice('Enable the bases core plugin to open this base.');
   return 'unavailable';
  }
- if (mode === 'tab') return await transferLightboxOpening(anchor, mediaTabOpening(app, anchor, target)) ? 'opened' : 'unavailable';
+ // A standalone Settings preview has no workspace tabs to host a native Markdown view.
+ const workspaceHost = app.workspace.containerEl;
+ const detachedSource = file.extension === 'md' && target.operonId && anchor.closest('.operon-filter-preview-modal-shell')
+  && workspaceHost.ownerDocument !== anchor.ownerDocument && !findLightboxOwnerLeaf(app, anchor.ownerDocument);
+ const sourceHost = detachedSource ? workspaceHost : anchor;
+ if (mode === 'tab') {
+  const opened = await transferLightboxOpening(anchor, mediaTabOpening(app, sourceHost, target));
+  if (opened && detachedSource) getOwnerWindow(sourceHost).focus();
+  return opened ? 'opened' : 'unavailable';
+ }
  if (mediaKind !== 'unknown') {
   const pdfPage = mediaKind === 'pdf' && /^#page=\d+$/u.test(subpath) ? subpath : '';
   openTaskMediaLightbox(app, anchor, { kind: mediaKind, url: `${app.vault.getResourcePath(file)}${pdfPage}`, label: target.label?.trim() || file.name }, mediaTabOpening(app, anchor, target), mediaTabOpening(app, anchor, target, 'split'), mediaTabOpening(app, anchor, target, 'below'));
- } else openFileLightbox(app, anchor, resolved);
+ } else {
+  if (detachedSource) getOwnerWindow(sourceHost).focus();
+  openFileLightbox(app, sourceHost, resolved);
+ }
  return 'opened';
 }
 

@@ -6,7 +6,7 @@ import { TFile } from 'obsidian';
 import { OperonIndexer } from '../src/indexer/indexer';
 import { TaskSourceModifyReconciler } from '../src/systems/task-source-modify-reconciliation';
 import { DEFAULT_SETTINGS, type OperonSettings } from '../src/types/settings';
-import { runtimeTransactionPort } from './agent-runtime/mutation/transaction-id-fixture';
+import { runtimeMainMethod, runtimeTransactionPort } from './agent-runtime/mutation/transaction-id-fixture';
 
 interface FakeTimer {
 	readonly id: number;
@@ -336,6 +336,59 @@ test('a source removed before deferred reconciliation uses the file-delete path'
 	assert.equal(removedCount, 1);
 });
 
+test('deferred Auto notifications reuse only the exact committed file and preserve intervening edits', async () => {
+	const before = '---\noperonId: yaml001\ntaskType: Before\n---\n';
+	const harness = createIndexerHarness(before);
+	const { file, filePath, indexer, content } = harness;
+	const clock = new FakeClock();
+	const reconcile = runtimeMainMethod('reconcileTaskSourceModify', { TFile });
+	const remember = runtimeMainMethod('rememberAutoSourceScan', {});
+	let changeDuringNormalization: (() => void) | undefined;
+	let readCount = 0, failFinalRead = false, forcedScans = 0;
+	const capture = indexer.forceReindexFilePathAfterMutation.bind(indexer);
+	indexer.forceReindexFilePathAfterMutation = async (...args) => { forcedScans++; await capture(...args); };
+	const scheduler = new TaskSourceModifyReconciler<FakeTimer>({
+		suppressionMs: 750, now: () => clock.now, setTimer: clock.setTimer, clearTimer: clock.clearTimer,
+		reconcile: async (path, mode, match) => { await reconcile.call(host, path, mode, undefined, match); },
+	});
+	const host = {
+		app: { vault: {
+			getAbstractFileByPath: () => file,
+			read: () => {
+				if (++readCount === 2 && failFinalRead) throw Error('transient verification read');
+				return Promise.resolve(content.value);
+			},
+		} },
+		settings: DEFAULT_SETTINGS, indexer, taskSourceModifyReconciler: scheduler,
+		tasksConversionSettledSources: new Map(), tasksConversionOwnedSources: new Map(),
+		normalizeWorkflowStateAfterRawEdit: async () => { changeDuringNormalization?.(); },
+	};
+	try {
+		await indexer.fullReindex();
+		// The lightweight harness has no durable coordinator, so isolate verified RAM authority.
+		indexer.getLiveReadAuthoritySnapshot = () => ({ state: 'verified' } as ReturnType<typeof indexer.getLiveReadAuthoritySnapshot>);
+		for (const variant of ['same', 'external', 'during', 'read-error']) {
+			content.value = before;
+			file.stat.size = before.length;
+			scheduler.markInternalWrite(filePath);
+			scheduler.handleModify(filePath);
+			await indexer.reindexCommittedMutationSources([filePath], {
+				onCommittedScan: (f, scan) => { remember.call(host, f, scan); },
+			});
+			const externalEdit = () => { content.value = before.replace('Before', 'Edited'); };
+			if (variant === 'external') externalEdit(); // Identical size and mtime.
+			changeDuringNormalization = variant === 'during' ? externalEdit : undefined;
+			readCount = 0;
+			failFinalRead = variant === 'read-error';
+			const previousScans = forcedScans;
+			await clock.advanceTo(clock.now + 750);
+			await scheduler.awaitReconciliations([filePath]);
+			assert.equal(forcedScans - previousScans, variant === 'same' ? 0 : 1, variant);
+			assert.equal(indexer.getTask('yaml001')?.fieldValues.taskType, content.value.includes('Edited') ? 'Edited' : 'Before');
+		}
+	} finally { scheduler.destroy(); indexer.destroy(); }
+});
+
 test('main wiring defers suppressed events and forces exact reconciliation without platform forks', () => {
 	const mainSource = readFileSync('main.ts', 'utf8');
 	const watcherStart = mainSource.indexOf('private registerFileWatchers()');
@@ -350,7 +403,7 @@ test('main wiring defers suppressed events and forces exact reconciliation witho
 	const reconcileStart = mainSource.indexOf('private async reconcileTaskSourceModify(');
 	const reconcileEnd = mainSource.indexOf('\n\tprivate applyFieldRulesToTaskPayload(', reconcileStart);
 	const reconcile = mainSource.slice(reconcileStart, reconcileEnd);
-	const normalize = reconcile.indexOf('await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue)');
+	const normalize = reconcile.indexOf('await this.normalizeWorkflowStateAfterRawEdit(filePath, canContinue, covered)');
 	const forceReindex = reconcile.indexOf('await this.indexer.forceReindexFilePathAfterMutation(filePath)', normalize);
 	assert.ok(normalize >= 0 && forceReindex > normalize);
 	assert.match(reconcile, /await this\.indexer\.handleFileDelete\(filePath\)/u);

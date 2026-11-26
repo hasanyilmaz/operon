@@ -14,6 +14,8 @@ import {
 	resolveDatePickerLanguage,
 } from './date-nlp';
 
+import { automationDateLabel } from './automation-date-options';
+
 export interface ManualDatePickerOptions {
 	weekStart: DayPickerWeekStart;
 	showWeekNumbers: boolean;
@@ -37,6 +39,7 @@ interface DatePickerClassNames {
 }
 
 interface DatePickerOptions {
+	relativeDay?: { value?: string; onSelect: (expression: string, label: string) => void };
 	app?: App;
 	fieldKey?: string;
 	language?: DatePickerLang;
@@ -78,17 +81,17 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	input.className = joinDatePickerClasses('operon-floating-input', baseDatePickerClass('operon-date-picker-query', useBaseClasses), options.classNames?.query);
 	input.placeholder = strings.searchPlaceholder;
 
+	const relative = options.relativeDay;
+
 	const results = panel.createDiv(joinDatePickerClasses(baseDatePickerClass('operon-date-picker-results', useBaseClasses), options.classNames?.results));
 
 	const manualLabel = panel.createDiv('operon-floating-subtitle');
-	manualLabel.textContent = strings.manualDate;
+	manualLabel.textContent = relative ? strings.fixedDate : strings.manualDate;
 
 	let nativeInput: HTMLInputElement | null = null;
 	let dayPicker: OperonDayPickerController | null = null;
 	let manualDateValue = normalizeManualDateValue(options.value);
 	let displayedCanonicalDate = manualDateValue;
-	let parsedCandidates: DateParseCandidate[] = [];
-	let quickCandidates: DateParseCandidate[] = [];
 	let visibleCandidates: DateParseCandidate[] = [];
 	let activeIndex = 0;
 	let useInitialQuickSuggestions = !!options.value?.trim();
@@ -100,16 +103,24 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		close();
 	};
 
-	const getActiveCandidate = (): DateParseCandidate | null => visibleCandidates[activeIndex] ?? null;
+	const selectCandidate = (candidate: DateParseCandidate) => {
+		if (relative && candidate.rule) {
+			completed = true;
+			relative.onSelect(candidate.rule, automationDateLabel(candidate.rule, language));
+			close();
+		} else {
+			commit(candidate.isoDate);
+		}
+	};
 
 	const applyCurrentSelection = () => {
 		if (options.manualDatePicker && manualDateValue) {
 			commit(manualDateValue);
 			return;
 		}
-		const active = getActiveCandidate();
+		const active = visibleCandidates[activeIndex];
 		if (active) {
-			commit(active.isoDate);
+			selectCandidate(active);
 			return;
 		}
 		if (manualDateValue) {
@@ -133,6 +144,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 			locale: getAppLocale(app),
 			clearLabel: strings.clear,
 			todayLabel: strings.today,
+			showToday: !relative,
 			previousYearLabel: t('calendar', 'previousYear'),
 			nextYearLabel: t('calendar', 'nextYear'),
 			previousMonthLabel: t('calendar', 'previousMonth'),
@@ -176,8 +188,6 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	const render = () => {
 		results.replaceChildren();
 		const hiddenCalendarDate = options.manualDatePicker ? manualDateValue : '';
-		visibleCandidates = mergeDatePickerVisibleCandidates(parsedCandidates, quickCandidates, hiddenCalendarDate);
-
 		if (visibleCandidates.length === 0) {
 			if (hiddenCalendarDate) return;
 			const empty = results.createDiv(joinDatePickerClasses(baseDatePickerClass('operon-date-picker-empty', useBaseClasses), options.classNames?.empty));
@@ -207,7 +217,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 			button.addEventListener('mousedown', event => {
 				event.preventDefault();
 				activeIndex = index;
-				commit(candidate.isoDate);
+				selectCandidate(candidate);
 			});
 			results.appendChild(button);
 		}
@@ -218,8 +228,7 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		const built = buildDatePickerCandidates(app, queryValue, context, {
 			quickQuery: useInitialQuickSuggestions ? '' : queryValue,
 		});
-		parsedCandidates = built.parsed;
-		quickCandidates = built.quick;
+		visibleCandidates = mergeDatePickerVisibleCandidates(built.parsed, built.quick, options.manualDatePicker ? manualDateValue : '');
 		activeIndex = 0;
 		useInitialQuickSuggestions = false;
 		render();
@@ -236,15 +245,18 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 	});
 
 	input.addEventListener('keydown', event => {
+		const count = visibleCandidates.length;
 		if (event.key === 'ArrowDown') {
-			if (visibleCandidates.length === 0) return;
+			if (count === 0) return;
+			if (relative) manualDateValue = '';
 			event.preventDefault();
-			activeIndex = Math.min(activeIndex + 1, visibleCandidates.length - 1);
+			activeIndex = Math.min(activeIndex + 1, count - 1);
 			render();
 			return;
 		}
 		if (event.key === 'ArrowUp') {
-			if (visibleCandidates.length === 0) return;
+			if (count === 0) return;
+			if (relative) manualDateValue = '';
 			event.preventDefault();
 			activeIndex = Math.max(activeIndex - 1, 0);
 			render();
@@ -256,10 +268,11 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 				commit(manualDateValue);
 				return;
 			}
-			const active = getActiveCandidate();
+			const active = visibleCandidates[activeIndex];
 			if (!active && !manualDateValue) return;
 			event.preventDefault();
-			commit(active?.isoDate ?? manualDateValue);
+			if (active) selectCandidate(active);
+			else commit(manualDateValue);
 		}
 	});
 
@@ -271,7 +284,9 @@ export function showDatePicker(anchor: HTMLElement | DOMRect, options: DatePicke
 		refreshCandidates();
 	});
 
-	if (options.value) {
+	if (relative?.value) {
+		input.value = automationDateLabel(relative.value, language);
+	} else if (options.value) {
 		input.value = formatDatePickerInputDisplay(options.value, options.dateDisplayFormat);
 		manualDateValue = normalizeManualDateValue(options.value);
 		displayedCanonicalDate = manualDateValue;

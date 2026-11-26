@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 import { transformSync } from 'esbuild';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const modalSource = read('src/ui/filter-set-modal.ts');
+const modalSource = read('src/ui/filter-condition-editor.ts');
 const styles = read('styles.css');
 
 const groupEditorStart = modalSource.indexOf('\tprivate renderGroupEditor(');
@@ -54,7 +54,7 @@ test('paste mutates once only after decode and destination compatibility pass', 
 	assert.match(source, /getFilterGroupPasteCompatibilityIssue\(decoded\.group\)/u);
 	assert.match(source, /if \(this\.filterGroupPasteInProgress\) return;/u);
 	assert.match(source, /resolveFilterGroupPasteTarget\(/u);
-	assert.match(source, /pasteTarget\.target\.children\.push\(decoded\.group\);\s*this\.syncMirroredFilterFields\(\);\s*this\.renderCurrentSurface\(\);/u);
+	assert.match(source, /pasteTarget\.target\.children\.push\(decoded\.group\);\s*this\.options\.onChange\(\);\s*this\.render\(\);/u);
 	assert.equal((source.match(/pasteTarget\.target\.children\.push/g) ?? []).length, 1);
 });
 
