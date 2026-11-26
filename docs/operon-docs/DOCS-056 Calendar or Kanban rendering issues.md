@@ -27,6 +27,10 @@ An **Incomplete totals** notice means some potentially matching tasks could not 
 
 An unavailable configuration can mean a missing pipeline, deleted property, changed property type, or unsupported saved configuration. Open the preset and inspect the indicated field. Saved settings are preserved rather than silently replaced. Do not recreate the preset merely to hide the warning.
 
+Kanban supports **Auto** for Text, List, Number, Checkbox, Date, and Datetime. If a saved board reports a type conflict, compare the type saved in the preset with the property’s assigned type and the values stored on the affected tasks.
+
+For example, a saved **Project** swimlane can become unavailable when the Operon custom key is **List** and Obsidian has explicitly assigned **Text** to `project`. The board and preset settings show both types. If you use `Project` as a list across your vault, set its property type to **List** in Obsidian. The existing preset can then group cards by project again.
+
 If an All-value axis has no values in scope, it cannot generate headings. Review the filter or select an existing known value through Add value to keep a planning heading available.
 
 ## A Kanban drop is rejected

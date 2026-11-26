@@ -2,7 +2,7 @@
 Notes: Record real effort with TrackTime and FlowTime, with estimate and duration examples
 Icon: timer
 Color: "#9333ea"
-Updated: 2026-11-18T16:34:55+03:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Time tracking
@@ -15,7 +15,7 @@ Time tracking records the actual effort you spend on a task, so you can compare 
 
 ## Start and stop
 
-Run **Start/stop time tracker** on a task to begin timing, and run it again to stop. Run it on a different task to switch what you are tracking. You can also start or stop from a task's [[DOCS-042 Contextual menu actions|contextual menu]].
+In the active Markdown editor, run **Start/stop timer for task at cursor** to begin timing and run it again to stop. An inline task on the cursor line takes priority. Elsewhere in a File Task note, the command uses the File Task itself. In a regular note, place the cursor on an inline task to use this command. Run it on a different task to switch what you are tracking. You can also start or stop from a task's [[DOCS-042 Contextual menu actions|contextual menu]].
 
 Run **Operon: Start/stop timer** from the command palette to control the shared timer from any view. When idle, it starts an unassigned timer in the selected TrackTime or FlowTime mode. Run it again to stop the active timer. A timer assigned to a task saves a session to that task. Unassigned time is discarded when stopped.
 

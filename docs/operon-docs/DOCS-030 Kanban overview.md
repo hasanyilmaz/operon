@@ -2,14 +2,14 @@
 Notes: Plan tasks in property-based columns and swimlanes
 Icon: columns-3
 Color: "#0284c7"
-Updated: 2026-11-05T01:14:43+01:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Kanban overview
 
 The Kanban shows inline and file tasks as cards in columns, with optional horizontal rows called **swimlanes**. Each direction can use its own property: Status × Priority for workflow planning, Scheduled × Assignees for assigning dated work, or two other supported fields. Cards are views of the same task records, so edits are reflected wherever those tasks appear.
 
-Open it with **Operon Kanban** from the command palette.
+Run **Open Kanban › Default › New Tab** from the command palette. To open a saved board directly, search for its name. For example, **Open Kanban › Books › New Tab** opens a board named Books.
 
 > **MEDIA-DOCS-030-1:** The Operon Kanban with task chips visible on cards across status columns.
 

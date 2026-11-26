@@ -2,7 +2,7 @@
 Notes: Desktop previews, editable file views, navigation controls, and background dimming
 Icon: panels-top-left
 Color: "#0891b2"
-Updated: 2026-11-18T16:38:41+03:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Lightbox
@@ -26,6 +26,8 @@ The shared opening rules apply to supported links on:
 This is not a global replacement for Obsidian links. General Markdown notes and the Creator/Task Editor's own field editors keep their existing behavior. Chips inside Task Finder, Pinned, Upcoming, time-tracking headings outside Time Session History, and other deliberately passive task lists do not become interactive link surfaces. Task Finder's result-opening choice is separate from chip interaction; see [[DOCS-027 Task Finder|Task Finder]]. Mobile navigation is unchanged.
 
 Which chip or cell opens a preview is covered in [[DOCS-041 Task chips display and behavior|Task chips]] and [[DOCS-112 Table cells display and behavior|Table cells]]. Ordinary property values still open their pickers. A Text or List value must be a complete, existing wikilink to use the link exception; an HTTP address stored as ordinary Text remains a Text value.
+
+To open a saved table directly on desktop, choose **Open Table › [preset name] › Lightbox** in the command palette. This option appears for tables backed by a `.table` file. You can copy a link to the same command in [[DOCS-157 URI Finder|URI Finder]].
 
 ## Open a link
 

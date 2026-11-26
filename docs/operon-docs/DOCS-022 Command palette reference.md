@@ -2,7 +2,7 @@
 Notes: Operon's context-aware commands
 Icon: terminal
 Color: "#475569"
-Updated: 2026-11-18T16:38:41+03:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Command palette reference
@@ -55,16 +55,18 @@ These commands create or open the periodic note itself; they do not require an i
 ## State and time
 
 - [[DOCS-090 Toggle task completion|Toggle task completion]]: completes or reopens the task at the cursor.
-- **Start/stop time tracker**: starts or stops the timer on the task at the cursor. See [[DOCS-034 Time tracking|Time tracking]].
+- **Start/stop timer for task at cursor** uses the inline task on the cursor line or, elsewhere in a File Task note, the File Task itself. See [[DOCS-034 Time tracking|Time tracking]].
 - **Start/stop timer** controls the shared TrackTime or FlowTime timer from any view. It starts an unassigned timer when idle or stops the active timer. An assigned timer saves its session to the task. See [[DOCS-034 Time tracking#Start and stop|Start and stop]].
 
 ## Open views and table embeds
 
-- **Operon Filter View**: filtered, saved task lists. See [[DOCS-025 Filter View|Filter View]].
-- **Operon Calendar**: scheduled and timed tasks on a calendar. See [[DOCS-028 Calendar overview|Calendar overview]].
+Search for the view name and the preset name together. For example, **Open Kanban › Books › New Tab** opens a saved board named Books. Choose **Default** for the view’s usual opening behavior. On desktop, a Table preset backed by a `.table` file also offers **Lightbox**.
+
+- **Open Filter › Default › New Tab**: filtered, saved task lists. See [[DOCS-025 Filter View|Filter View]].
+- **Open Calendar › Default › New Tab**: scheduled and timed tasks on a calendar. See [[DOCS-028 Calendar overview|Calendar overview]].
 - **Open mini calendar** opens the independent date sidebar or brings it forward. Select a day or week number to open its note. See [[DOCS-155 Mini Calendar|Mini Calendar]].
-- **Operon Kanban**: tasks as cards in workflow columns. See [[DOCS-030 Kanban overview|Kanban overview]].
-- **Operon Table**: tasks as rows and columns, like a spreadsheet. See [[DOCS-105 Table overview|Table overview]].
+- **Open Kanban › Default › New Tab**: tasks as cards in workflow columns. See [[DOCS-030 Kanban overview|Kanban overview]].
+- **Open Table › Default › New Tab**: tasks as rows and columns, like a spreadsheet. See [[DOCS-105 Table overview|Table overview]].
 - **Insert Operon Table embed**: inserts the default Table preset's `operon-table` code block at the cursor in the active Markdown editor, or replaces the current selection. See [[DOCS-110 Embed a table in a note|Embed a table in a note]].
 - **Toggle Pinned Tasks dock** / **Open Pinned Tasks**: the floating dock or the side panel of pinned tasks. See [[DOCS-032 Pinned Task Dock|Pinned Task Dock]].
 - **Toggle status dock**: desktop-only; hides or shows the [[DOCS-152 Status Dock|Status Dock]] across windows without changing timers or breaks. It shares the saved **Show Status Dock** setting under **Interface → Status Dock → General Settings**, so the choice survives a restart.
@@ -79,6 +81,12 @@ Pool commands are available in their corresponding active Canvas or Excalidraw v
 
 - **Open Excalidraw Task Pool**: find existing tasks to add to the active drawing. See [[DOCS-148 Canvas and Excalidraw Task Pool|Canvas and Excalidraw Task Pool]].
 - **Open Excalidraw Property Pool**: find reusable values to apply to task cards in the active drawing. See [[DOCS-145 Canvas and Excalidraw Property Value Pool|Canvas and Excalidraw Property Value Pool]].
+
+## Open or run an automation
+
+Every saved rule has two commands. **Open automation › Weekly review** opens the editor for a rule named Weekly review. **Run automation › Weekly review** runs its saved actions once, in either mode and even when the rule is inactive. Operon applies your current confirmation preference to the distinct tasks its actions would change.
+
+To copy a link to a command, open [[DOCS-157 URI Finder|URI Finder]] in **Settings → Operon → Core → General**.
 
 ## Maintenance
 

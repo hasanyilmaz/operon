@@ -2,7 +2,7 @@
 Notes: Configure and use Daily and Weekly Notes as safe task destinations and optional Operon containers
 Icon: calendar-range
 Color: "#059669"
-Updated: 2026-11-18T16:38:41+03:00
+Updated: 2026-11-25T15:54:08+03:00
 ---
 
 # Daily and Weekly Notes
@@ -20,6 +20,7 @@ Task Router decides whether new inline tasks go to Daily or Weekly Notes. The se
 | Purpose | Settings location |
 |---|---|
 | Choose the default inline destination | **Settings → Operon → Tasks → Task Router → Inline Task Default Save Location** |
+| Choose the first day of the week in Operon views and Weekly Notes | **Settings → Operon → Core → General → Language & Formats → Week start** |
 | Manage Daily/Weekly formats, templates, and folders | **Settings → Operon → Tasks → Task Router → Daily and Weekly Notes** |
 | Make newly created notes into File Tasks | **Settings → Operon → Tasks → File Tasks → Daily and Weekly Notes as File Tasks** |
 
@@ -40,7 +41,9 @@ Daily Notes therefore have two supported configuration sources:
 
 Turn on **Manage weekly notes with Operon** to make Weekly Notes available as a routed destination. Weekly Notes use their own format, template, and folder and do not depend on Core Daily Notes.
 
-The weekly path and optional container identity are anchored to the week's ISO Monday. The actual routed date is still kept for placement inside the note, so a task for Thursday goes under Thursday's linked-date heading rather than Monday's.
+**Week start** determines which dates share a Weekly Note in Task Creator, Mini Calendar, and the **Create weekly note** command. With **Sunday** selected, November 22–28, 2026 is one week. With the `GGGG-[W]WW` format, both Sunday the 22nd and Monday the 23rd open `2026-W48.md`. The week number comes from the Monday in that row, including at the turn of the year.
+
+With a date format such as `YYYY-MM-DD`, the same week opens `2026-11-22.md`. If only the former Monday note (`2026-11-23.md`) exists, Operon reuses it. If both notes exist, Operon opens the Sunday note.
 
 ## Create a periodic note from the command palette
 
@@ -53,7 +56,7 @@ Each command deliberately requires its matching Operon management setting. **Cre
 Run **Operon: Open mini calendar**, then select a **day** for its Daily Note or a **week number** for its Weekly Note. Mini Calendar opens the existing note or creates the missing note using the applicable format, folder, template, and File Task preference.
 
 - **Daily Notes** use Operon's settings when **Manage daily notes with Operon** is on. Otherwise, Mini Calendar can use the enabled Obsidian **Daily Notes** core plugin. The palette's **Create daily note** command requires Operon management.
-- **Weekly Notes** require **Manage weekly notes with Operon**. Mini Calendar anchors the note to the week's ISO Monday, including when the grid displays Sunday first.
+- **Weekly Notes** require **Manage weekly notes with Operon**. Selecting the week number opens the note for that row, using the configured first day of the week.
 
 The Mini Calendar's desktop **Click behavior** determines what opens in Lightbox. On mobile the note opens in the normal Obsidian file view. See [[DOCS-155 Mini Calendar|Mini Calendar]] for the opening choices.
 
@@ -92,7 +95,7 @@ An existing plain note is deliberately not converted into a File Task. Ambiguous
 
 Daily Notes use the configured inline heading keyword. Operon inserts beneath the first Markdown heading in the note body whose text contains that phrase (case-insensitively) and creates a level-two heading when none exists and it is safe to append one.
 
-Weekly Notes use a linked daily-date heading for the actual routed date, for example `## [[2026-08-20]]`. ISO Monday determines the Weekly Note path and container identity only; it does not replace the task's real date or force every task under Monday.
+Inside the Weekly Note, each inline task goes under its own routed date. For example, with Sunday as the first day and `YYYY-MM-DD` as the daily format, a task routed to Thursday, November 26 appears under `## [[2026-11-26]]` in `2026-W48.md` when the weekly format is `GGGG-[W]WW`.
 
 Heading matching skips YAML frontmatter and fenced code blocks, including heading examples inside templates. Unclosed frontmatter prevents insertion. If no matching heading exists and the note ends inside an unclosed code block, Operon refuses to append the new heading and task there. Repair that structure before retrying; the task is not inserted into the protected text.
 
@@ -114,6 +117,8 @@ Changing `dateScheduled` may update a verified periodic parent, but it never mov
 The task's path, inline representation, source line, and physical locator stay unchanged. Parent realignment is a relationship update, not a copy or relocation.
 
 ## Runtime and CLI routing
+
+Typed Runtime/CLI periodic-note routing uses ISO Monday as the start of the week. For example, a weekly request for Sunday, November 22, 2026 resolves to `2026-W47.md` with `GGGG-[W]WW`, even when the Operon UI uses Sunday as its first day.
 
 For typed Runtime/CLI creation, an existing registered container with the correct kind and date anchor can still become the parent when **Create as Operon Task** is off. The toggle controls creation of a missing container on this route; it does not invalidate an already verified one. This differs from Task Creator's automatic-parent rule above.
 

@@ -2,7 +2,7 @@
 Notes: Look back at finished work and keep completed tasks tidy
 Icon: list-checks
 Color: "#4f46e5"
-Updated: 2026-10-01T14:00:09+02:00
+Updated: 2026-11-25T20:00:12+03:00
 ---
 
 # Completed task review
@@ -36,7 +36,7 @@ Nothing is destroyed by these. Completed tasks keep their record and their track
 
 ## FAQ
 
-**How do I list everything I finished this week?** Filter for finished tasks completed in the last seven days. The Filter View is the place for this.
+**How do I list everything I finished this week?** In Filter View, set the completion date (`dateCompleted`) to **this week**. The week begins on the day you chose under **Settings → Operon → Core → General → Language & Formats → Week start**.
 
 **Do completed tasks get deleted?** No. They are kept, and file tasks can be archived to a folder rather than removed.
 

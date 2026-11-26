@@ -2,14 +2,14 @@
 Notes: See tasks as rows and columns on the Operon Table
 Icon: table
 Color: "#0284c7"
-Updated: 2026-10-19T13:37:14+02:00
+Updated: 2026-11-25T15:56:12+03:00
 ---
 
 # Table overview
 
 The Table shows your tasks as rows and columns, like a spreadsheet of your work. It is the best surface for comparing many fields at once, sorting and grouping by any property, rolling up totals, and scanning or auditing a large set of tasks in one place. An [[DOCS-011 Inline tasks|inline task]] and a [[DOCS-013 File tasks|file task]] sit in the same rows; both carry the same fields, so the Table is one grid over all your work regardless of how each task is written. Where the [[DOCS-028 Calendar overview|Calendar]] plans a day or week by *when* and the [[DOCS-030 Kanban overview|Kanban]] plans by *how far along*, the Table plans by *comparison*. Open its [[DOCS-139 Gantt view|Gantt timeline]] when the same rows also need a longer schedule, durations, and dependencies.
 
-Open it with **Operon Table** from the command palette.
+Run **Open Table › Default › New Tab** from the command palette, or choose **Open Table › [preset name] › New Tab** for a saved layout. On desktop, a table backed by a `.table` file also offers **Open Table › [preset name] › Lightbox**.
 
 > **MEDIA-DOCS-105-1:** The Operon Table showing tasks as rows with columns for task, status, priority and dates.
 

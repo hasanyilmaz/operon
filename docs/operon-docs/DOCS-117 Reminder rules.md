@@ -2,7 +2,7 @@
 Notes: The anatomy of a reminder rule, its reference dates and offset syntax, with examples
 Icon: bell-ring
 Color: "#ca8a04"
-Updated: 2026-07-23T16:45:34
+Updated: 2026-11-25T17:22:16+03:00
 ---
 
 # Reminder rules
@@ -36,7 +36,9 @@ A rule can attach to any of these five task fields, and no others:
 | `datetimeStart` | Date & time | The start of a timed block |
 | `datetimeEnd` | Date & time | The end of that timed block |
 
-The rule picker only offers the ones the task actually has a value for. A task with only a due date gives you one candidate per offset; a task with a due date and a timed block gives you three.
+When editing reminders on an individual task, the picker offers the reference dates that task already has. A task with only a due date gives you one candidate per offset. A task with a due date and a timed block gives you three.
+
+In Automation Actions, you can add or remove a reminder rule for any of the five reference dates, even when the field on a target task is empty. To apply the same reminder across tasks, see [[DOCS-156 Automations#Actions by field|Actions by field]].
 
 **The first three carry a date but no time.** Operon resolves them at **midnight** at the start of that day. So `dateDue.0m` on a task due the 14th fires at 00:00 on the 14th, and `dateDue.2h` fires at 22:00 on the 13th.
 

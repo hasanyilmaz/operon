@@ -2,7 +2,7 @@
 Notes: The conditions, operators, and groups that make up an Operon filter
 Icon: list-filter
 Color: "#0284c7"
-Updated: 2026-11-18T16:29:19+03:00
+Updated: 2026-11-25T19:56:55+03:00
 ---
 
 # Filter conditions and operators
@@ -45,6 +45,8 @@ On desktop with a mouse or trackpad, inactive logic choices and the **Add Condit
 
 This presentation is shared wherever Operon uses the filter editor; the underlying All/Any/None logic and saved conditions are unchanged.
 
+Automation **Scope** and **Triggers** use these same condition groups. Choosing **Tomorrow** for **date is** stores the specific date you picked. **Exactly 1 day away** checks against the day the filter runs. See [[DOCS-156 Automations#Build your first rule|Build your first automation rule]] for an example that combines folder and date conditions.
+
 ## Operators by property type
 
 Most fields use the sets below. **Tracked time** and **Trackers** have their own choices, described alongside them.
@@ -65,13 +67,26 @@ For number fields like `estimate`:
 
 For date fields like `dateDue` and `dateScheduled` (date and time fields use the same set):
 
-`date is`, `before`, `after`, `is today`, `not today`, `before today`, `after today`, `exactly X days ago`, `exactly X days away`, `under X days ago`, `under X days away`, `over X days ago`, `over X days away`, `this week`, `last week`, `next week`, `this month`, `last month`, `next month`, `day of week is`, `day of week is not`, `month is`, `month is not`, `has any value`, `has no value`.
+`date is`, `before`, `after`, `is today`, `not today`, `before today`, `after today`, `exactly X days ago`, `exactly X days away`, `under X days ago`, `under X days away`, `over X days ago`, `over X days away`, `this week`, `last week`, `next week`, `this month`, `last month`, `next month`, `day of week is`, `day of week is not`, `week is`, `week is not`, `month is`, `month is not`, `has any value`, `has no value`.
 
 The "X days" operators take a number, and "day of week is" and "month is" take a weekday or month number, so their input is numeric rather than a date picker.
 
 When a task Date or Date & time condition opens the date picker, its selected date and suggestion dates follow **Settings → Operon → Core → General → Language & Formats → Date format**. The filter still stores and compares the canonical value, so changing the display preference does not change which tasks match. Natural-language input and the picker itself are covered in [[DOCS-063 Date and time picker|Date and time picker]].
 
 An embedded filter can require an exact date for a supported field in just that block. The date replaces any saved conditions for that field when evaluating the block. See [[DOCS-083 Embed a filter in a note#Filter by the note's date|Filter by the note's date]] for the supported keys and behavior in nested groups.
+
+#### Filter by week
+
+Choose **Sunday** or **Monday** in **Settings → Operon → Core → General → Language & Formats → Week start**. `this week` covers the seven days starting on that weekday, and `last week` and `next week` select the adjacent seven-day periods. For example, on a Sunday, `this week` starts that day if you chose Sunday, or six days earlier if you chose Monday.
+
+Use `week is` or `week is not` with the week number shown in the **Mini Calendar** sidebar. Enter one whole number from **1 to 53** per condition. The number applies across years, and a Date & time value uses its local calendar day.
+
+| Goal | Group | First condition | Second condition |
+|---|---|---|---|
+| Include tasks due in W12 or W13 | **Any** | Due → week is → `12` | Due → week is → `13` |
+| Exclude both weeks and keep tasks due in other weeks | **All** | Due → week is not → `12` | Due → week is not → `13` |
+
+Both examples require a due date. For **Happens on**, `week is` matches if any of the task’s Started, Scheduled, or Due dates falls in the selected week. With `week is not`, at least one of those dates must be present and every valid date must fall outside that week.
 
 ### Repeat reference date
 
@@ -98,7 +113,7 @@ Both recurrence date options are also available in the filter editor's **Sort** 
 
 **Tracked time** filters saved sessions by their **local start date**. It selects both the tasks and the sessions shown in the filtered view; it does not add a date field to the task.
 
-It uses the date operators above except `after today`, the three `X days away` choices, `next week`, and `next month`. It also offers **in the last X days**: enter a positive whole number, such as `7` for today and the previous six calendar days. Week choices run Monday through Sunday.
+It uses the date operators above except `after today`, the three `X days away` choices, `next week`, and `next month`. It also offers **in the last X days**: enter a positive whole number, such as `7` for today and the previous six calendar days. Weekly conditions use the same **Week start** setting as other date fields and apply it to each session’s local start date.
 
 For a custom range, put two Tracked time conditions in an **All** group. `before` and `after` exclude the chosen date, so **September 10–20 inclusive** becomes `after September 9` and `before September 21`. For a single day, use `date is`. New conditions do not offer `is between`.
 

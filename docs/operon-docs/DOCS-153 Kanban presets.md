@@ -32,6 +32,8 @@ For example, a filter can include 100 tasks while selected assignees and dates l
 
 Each section has a **Property** picker. Suitable Operon canonical fields, custom keys, and vault properties are available for Text, Number, Date, Datetime, Checkbox, and List types. Internal and calculated fields, such as duration or progress, are excluded. A renamed canonical field can show both names on one line, such as **Tier - priority**. Property options are left-aligned and have no usage counts.
 
+With a vault property set to **Auto**, either picker can use Text, List, Number, Checkbox, Date, or Datetime. Once Kanban identifies the type, grouping and card moves work the same way as for an explicitly assigned property. To offer a custom key in **Swimlane selection**, enable **Show in Kanban swimlanes** in [[DOCS-040 Custom keys|Custom keys]]. If that key’s Operon type conflicts with its assigned Obsidian type, the swimlane picker shows the key as disabled and lists both types.
+
 You may use the same property and values in both directions. A single-valued property can match only equal intersections; list properties can match several cells. See [[DOCS-074 Kanban swimlanes|Kanban swimlanes]] for counts and cell actions.
 
 ### Status uses a pipeline
